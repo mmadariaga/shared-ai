@@ -2,9 +2,9 @@
 
 ## Scope and authority
 
-This is the single closing-format authority for standalone `/sai-4-apply`,
-`/sai-build`, and Explore's full Direct Build route, in Claude Code and opencode.
-The `--no-specs` POC keeps its own closing behavior. Render once at the route's
+This is the single closing-format authority for Explore's full Direct Build
+route, in Claude Code and opencode. The `--no-specs` POC keeps its own closing
+behavior. Render once at the route's
 existing terminal close, including failure, cancellation, and interruption;
 an execution question or a pending recovery choice is a pause, not a close.
 Contract-pinned stop text keeps its existing precedence.
@@ -48,9 +48,9 @@ route-owned.
    when there are no pending checks or the review never ran; a stopped report
    uses only findings actually obtained.
 5. **Next step.** Use the route's existing navigation or recovery options,
-   appropriate to the outcome. Apply and Build use the same pinned completion
-   message only on completion; stopped reports use the existing stop/recovery
-   guidance instead. For an unplanned stop, name the required decision here;
+   appropriate to the outcome. The route uses its pinned completion message only
+   on completion; stopped reports use the existing stop/recovery guidance
+   instead. For an unplanned stop, name the required decision here;
    the options of `@sai/policies/stop-options.md` follow Execution details as a
    separate decision prompt, outside the report.
 6. **Execution details**, last report section. Put the technical record of

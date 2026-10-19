@@ -22,7 +22,7 @@ This capability keeps Claude Code and opencode command wrappers thin by constrai
 
 ### Requirement: Wrapper file inventory
 
-The per-harness wrapper file list SHALL contain exactly nineteen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each forwarding its InvocationEnvelope through the harness boot adapter to the merge command bootstrap.
+The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each forwarding its InvocationEnvelope through the harness boot adapter to the merge command bootstrap.
 
 #### Scenario: sai-merge wrapper present on both harnesses
 
@@ -31,12 +31,12 @@ The per-harness wrapper file list SHALL contain exactly nineteen `sai-*.md` comm
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 19 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, and `sai-explore`'s additional harness-specific loads. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path.
+The wrapper template SHALL be the same for all 17 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, `sai-explore`'s additional harness-specific loads, and `sai-explore`'s one `Receipt:` context-pointer line placed first after the frontmatter. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path.
 
 #### Scenario: sai-build follows the shared template
 
 - **WHEN** `commands/claude/sai-build.md` is read in its canonical form
-- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/meta-build/command-bootstrap.md` and `command_name: meta-build`
+- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/build/coordinator.md` and `command_name: build`
 - **AND** it does not embed phase logic inline
 
 #### Scenario: example wrapper after rewrite
@@ -62,6 +62,11 @@ The wrapper template SHALL be the same for all 19 wrappers in each harness, with
 
 - **WHEN** `commands/opencode/sai-status.md` is read in its canonical form
 - **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the command bootstrap call to `@sai/commands/status/command-bootstrap.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
+
+#### Scenario: sai-explore receipt pointer is a permitted variance
+
+- **WHEN** `commands/claude/sai-explore.md` or `commands/opencode/sai-explore.md` is read in its canonical form
+- **THEN** the first line after the frontmatter is the `Receipt:` pointer line naming `@sai/commands/explore/body.md § Load receipt`, and no other wrapper carries such a line
 
 ### Requirement: active-spec-uses-requirement-format
 

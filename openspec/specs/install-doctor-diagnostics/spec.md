@@ -26,3 +26,15 @@ Doctor MUST remain loadable when opencode managed-agent inventory derivation fai
 #### Scenario: Manifest expansion failure becomes a doctor diagnostic
 - **WHEN** doctor runs while the install manifest cannot be loaded or its opencode projections cannot be expanded
 - **THEN** doctor emits an error diagnostic naming the opencode projection expansion and continues producing its diagnostic result
+
+### Requirement: Doctor distinguishes managed and customized retired audit files
+
+Doctor SHALL use the shared retirement identity for legacy audit commands and workers on both Claude Code and opencode. Its retired-file record SHALL distinguish recognized managed copies, including permitted tunable-only differences, from customized bodies. A customized audit body SHALL receive a pending-resolution recommendation to transfer its instructions to the new name and review removal of the preserved file.
+
+#### Scenario: Customized retired audit is still installed
+- **WHEN** doctor finds an old audit command or worker with a body that does not match the declared managed identity
+- **THEN** it reports the file as unrecognized and pending resolution rather than declaring the audit migration complete
+
+#### Scenario: Retired file differs only in tunables
+- **WHEN** doctor finds a retired audit file matching the managed body after its declared tunable lines are removed
+- **THEN** it reports a recognized managed historical copy with install/update or uninstall remediation

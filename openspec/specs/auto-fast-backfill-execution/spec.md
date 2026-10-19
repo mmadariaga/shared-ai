@@ -16,21 +16,21 @@ Direct Build (unattended) SHALL use the existing backfill worker's read-only pre
 
 ### Requirement: Coordinator-authorized backfill execution
 
-The Direct Build backfill worker SHALL keep preparation read-only and SHALL execute only a coordinator-authorized closed order containing the validated change name, destination paths, and exact draft contents.
+The Direct Build backfill worker SHALL keep preparation free of repository writes and SHALL execute only a coordinator-authorized closed order containing the validated change name and, for every draft, the validated reference `{path, sha256, destination}`, never the draft contents.
 
 #### Scenario:
 
 - **WHEN** the worker receives the prepare envelope
-- **THEN** it SHALL compose and return drafts without writing files or running state-changing git commands
+- **THEN** it SHALL compose the drafts and hand them over as transfer-file references without writing repository files or running state-changing git commands
 
 ### Requirement: Exact backfill draft writes
 
-The execution continuation SHALL write only the validated `.openspec.yaml`, `proposal.md`, and capability specification paths represented in the prepared draft set.
+The execution continuation SHALL write only the validated `.openspec.yaml`, `proposal.md`, and capability specification destinations represented in the prepared references, and only after `transfer.js verify` passes for every reference.
 
 #### Scenario:
 
 - **WHEN** the coordinator forwards a valid execution order
-- **THEN** the worker SHALL write the named contents byte-for-byte and report an ordered duplicate-free `changed_files` union
+- **THEN** the worker SHALL materialize the verified transfer-file bytes byte-for-byte to the named destinations and report an ordered duplicate-free `changed_files` union
 
 ### Requirement: Backfill execution is one-shot
 

@@ -5,9 +5,10 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Priority Stack Section In Implementation Instructions
 
-The always-active implementation step file (`sai/commands/implement/steps/common.md`) SHALL contain a section titled `## Code Quality Priority Stack`, placed immediately after the `## Hard Rules` section. The section MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
+The Code Quality Priority Stack SHALL live in its own policy file, `sai/policies/code-quality-priority-stack.md`, which opens with the heading `# Code Quality Priority Stack`. The always-active implementation step file (`sai/commands/implement/steps/common.md`) SHALL load it unconditionally with the line `Fetch @sai/policies/code-quality-priority-stack.md` in its fetch block, after `Fetch @sai/policies/glossary-format.md`. It MUST NOT contain a `## Code Quality Priority Stack` section of its own. No other file under `sai/` SHALL contain a `## Code Quality Priority Stack` section. The policy MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
 
 1. YAGNI — do not build behavior, abstraction, or configurability that is not required by the current change.
 2. SOLID (object-oriented designs only), expressed operationally.
@@ -18,9 +19,20 @@ The always-active implementation step file (`sai/commands/implement/steps/common
 
 #### Scenario: Section present and ordered
 
-- **WHEN** a reader inspects `sai/commands/implement/steps/common.md`
-- **THEN** a `## Code Quality Priority Stack` section exists directly after `## Hard Rules`
+- **WHEN** a reader inspects `sai/policies/code-quality-priority-stack.md`
+- **THEN** it opens with `# Code Quality Priority Stack`
 - **AND** it lists the six rules in the exact priority order above, numbered so that a lower number outranks a higher one
+
+#### Scenario: Implementation step library always loads the policy
+
+- **WHEN** a reader inspects `sai/commands/implement/steps/common.md`
+- **THEN** its fetch block contains the line `Fetch @sai/policies/code-quality-priority-stack.md`
+- **AND** the file contains no `## Code Quality Priority Stack` section
+
+#### Scenario: The stack has a single source
+
+- **WHEN** every Markdown file under `sai/` is searched for the heading `## Code Quality Priority Stack`
+- **THEN** no file contains it
 
 ### Requirement: SOLID Stated Operationally
 
@@ -72,10 +84,22 @@ The priority order MUST act as a deterministic tie-breaker when two rules pull i
 
 ### Requirement: Review Maintainability Rule References The Stack
 
-The Maintainability review category in `sai/commands/review/steps/resolve-review-analysis.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single added sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list.
+The Maintainability review category (pass 6) in `sai/commands/review/steps/resolve-review-analysis.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list. The sentence SHALL load the stack conditionally: only on a tension between two Maintainability practices, in a finding the reviewer reports or dismisses, with the line `Fetch @sai/policies/code-quality-priority-stack.md`, resolving the tension there. A reported finding that rests on a tension SHALL name its result as `<winner> over <loser>`, each side written as `rule N <name>` or `project alignment`.
 
 #### Scenario: Reviewer cites the stack without duplicating it
 
-- **WHEN** the Maintainability category in `review.md` is read
-- **THEN** it points to the Code Quality Priority Stack as the tie-breaking order
+- **WHEN** pass 6 in `sai/commands/review/steps/resolve-review-analysis.md` is read
+- **THEN** it points to `sai/policies/code-quality-priority-stack.md` through a `Fetch` line as the tie-breaking order
 - **AND** it does not re-enumerate the six rules
+
+#### Scenario: Review without a tension loads no policy
+
+- **WHEN** the review raises no tension between two Maintainability practices in any finding it reports or dismisses
+- **THEN** pass 6 directs no load of `sai/policies/code-quality-priority-stack.md`
+- **AND** the `review.md` format is unchanged
+
+#### Scenario: Reported tension finding names the winning rule
+
+- **WHEN** a reported Maintainability finding rests on a tension between two practices
+- **THEN** pass 6 directs the reviewer to fetch the policy and resolve the tension there
+- **AND** the finding names the result as `rule N <name> over rule M <name>` or `project alignment over rule M <name>`

@@ -41,61 +41,49 @@
   },
   "command:sai-3-implement": {
     "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
-  },
-  "worker:sai-3-implementation-worker": {
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
-  },
-  "command:sai-4-apply": {
-    "model": "openai/gpt-6.1-sol",
     "variant": "high"
   },
-  "worker:sai-4-red-worker": {
+  "worker:sai-3-red-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "worker:sai-4-green-worker": {
+  "worker:sai-3-green-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "command:sai-review": {
+  "command:sai-deep-review": {
     "model": "openai/gpt-6.1-sol",
     "variant": "medium"
   },
-  "command:sai-5-review": {
+  "command:sai-4-review": {
     "model": "openai/gpt-6.1-sol",
     "variant": "medium"
   },
-  "worker:sai-5-review-worker": {
+  "worker:sai-4-review-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "worker:sai-review-fix-worker": {
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
-  },
-  "command:sai-6-security": {
+  "command:sai-5-security": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "worker:sai-6-security-worker": {
+  "worker:sai-5-security-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "command:sai-7-performance": {
+  "command:sai-6-performance": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "worker:sai-7-performance-worker": {
+  "worker:sai-6-performance-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "command:sai-8-accessibility": {
+  "command:sai-7-accessibility": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "worker:sai-8-accessibility-worker": {
+  "worker:sai-7-accessibility-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
@@ -128,10 +116,6 @@
     "variant": "max"
   },
   "worker:sai-commit-worker": {
-    "model": "openai/gpt-6-luna",
-    "variant": "max"
-  },
-  "utility:sai-pr": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },

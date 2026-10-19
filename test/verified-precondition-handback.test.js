@@ -49,17 +49,18 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 });
 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
-const routedPhases = ['spec', 'implement', 'review', 'security', 'performance', 'accessibility'];
+const routedPhases = ['spec', 'security', 'performance', 'accessibility'];
 const routedCards = routedPhases.flatMap((phase) =>
   ['coordinator.md', 'worker.md'].map((name) => `sai/commands/${phase}/${name}`)
 );
 const designCards = ['coordinator.md', 'worker.md'].map((name) => `sai/commands/design/${name}`);
+const compositionCards = ['sai/commands/deep-review/coordinator.md'];
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
 );
-const utilityCards = ['explore', 'pr', 'retire-docs', 'status', 'worktree']
+const utilityCards = ['explore', 'retire-docs', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
-const commandCards = [...routedCards, ...designCards, ...routedMinimalCards, ...utilityCards];
+const commandCards = [...routedCards, ...designCards, ...compositionCards, ...routedMinimalCards, ...utilityCards];
 
 function countLiteral(text, value) {
   return text.split(value).length - 1;
@@ -88,7 +89,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 25);
+  assert.equal(commandCards.length, 21);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);
@@ -132,8 +133,8 @@ test('excluded non-card surfaces do not fetch the policy directly', () => {
 
 test('representative fixed STOP and contract-authored hand-back text remains unchanged', () => {
   assert.match(
-    read('sai/commands/apply/invocation.md'),
-    /implementation\.md not found for '\{change-name\}'\. Run \/sai-3-implement first\./
+    read('sai/commands/implement/coordinator.md'),
+    /Cannot start \/sai-3-implement for \{name\}: missing \{list of the absent items\}\./
   );
   assert.match(
     read('sai/commands/design/steps/design.md'),

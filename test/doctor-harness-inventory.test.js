@@ -221,7 +221,7 @@ describe('doctor harness inventory', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-boot-claude-');
     const opencodeBase = makeTempDir('sai-harness-boot-opencode-');
-    const utilities = ['explore', 'pr', 'retire-docs', 'status', 'worktree'];
+    const utilities = ['explore', 'retire-docs', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
@@ -246,10 +246,12 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'backfill', card)),
             `${harness} should install the routed backfill ${card} card`);
         }
-        for (const card of ['command-bootstrap.md', 'coordinator.md']) {
-           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'meta-build', card)),
-            `${harness} should install the build ${card} card`);
+        for (const card of ['command-bootstrap.md', 'coordinator.md', 'findings-selection.md']) {
+           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'deep-review', card)),
+            `${harness} should install the deep-review ${card} card`);
         }
+        assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', 'coordinator.md')),
+          `${harness} should install the build coordinator card`);
   for (const card of ['coordinator.md', 'worker.md', 'command-bootstrap.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', card)),
             `${harness} should install the routed commit ${card} card`);
@@ -258,14 +260,12 @@ describe('doctor harness inventory', () => {
           `${harness} must not install the retired commit body card`);
         assert.ok(fs.existsSync(path.join(base, 'commands', 'sai-build.md')),
           `${harness} should install sai-build.md`);
-        for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', card)),
-            `${harness} should install the routed apply card ${card}`);
+        for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'implement', card)),
+            `${harness} should install the implement card ${card}`);
         }
-        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'body.md')), false,
-          `${harness} must not install the retired apply body card`);
-        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'instructions.md')), false,
-          `${harness} must not install the retired monolithic apply instruction`);
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply')), false,
+          `${harness} must not install the retired apply card set`);
         assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'sai-4-apply.md')), false,
           `${harness} must not install the flat sai-4-apply.md utility source`);
       }
@@ -340,7 +340,7 @@ test('Step 3 Claude and opencode neutral inventories are equivalent and differ o
     assert.equal(Object.keys(claude).length > 0, true, 'claude should carry a non-empty neutral inventory');
     assert.deepEqual(claude, opencode,
       'claude and opencode should project the same neutral sources to the same relative destinations');
-    for (const source of ['sai/commands/meta-build/coordinator.md', 'sai/commands/meta-build/command-bootstrap.md']) {
+    for (const source of ['sai/commands/build/coordinator.md', 'sai/commands/deep-review/command-bootstrap.md']) {
       assert.equal(Object.hasOwn(claude, source), true,
         `claude should project the neutral build source ${source}`);
       assert.equal(Object.hasOwn(opencode, source), true,

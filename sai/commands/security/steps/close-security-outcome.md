@@ -1,24 +1,18 @@
 # Security Step — Close Security Outcome
 
-Active step: close-security-outcome. The step is done when `security.md` is saved and verified per the worker contract and `completed` is returned with the worker contract's summary.
+Active step: close-security-outcome. The step is done when `security.md` is saved, verified in its form, and `completed` is returned with the summary defined below.
 
 Fetch @sai/commands/security/security-report.template.md
 
 ## 1. Draft
 
-Draft the report in memory from the template. Derive `{Feature Name}` from the change name in title case.
+Draft the report in memory from the template. Derive `{Feature Name}` from the change name in title case. The scan type names the analyses that ran.
 
-## 2. Self-critique
+When `discover-module-map` decided the audit does not apply, draft the Not Applicable report — the provenance line and the `## Not Applicable` section with its justification — and go to step 4.
 
-Check the draft before it goes further:
+## 2. Check the draft
 
-1. **Taint coverage** — every external input source identified in Phase 1 was traced to at least one sink (or silently ignored as clean).
-2. **Evidence completeness** — every SAST finding has `file:line` + trace; every SCA finding has CVE + version range.
-3. **No speculative findings** — every exploit scenario describes the current code, not a hypothetical future change.
-4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
-5. **Conciseness** — sections without content were omitted entirely.
-6. **Severity floor** — no findings below Low severity were included in the report. Informational-level observations are omitted.
-7. **Identifiers and tally** — every finding heading leads with its severity-prefixed identifier, and the closing `Summary:` line counts match the report's findings.
+Check the draft against the hard rules and the severity taxonomy in `common.md`, and correct each violation.
 
 ## 3. Challenge the draft
 
@@ -30,6 +24,11 @@ When the draft has no finding, go to step 4. Otherwise dispatch exactly one `bud
 
 You have the last word: accept or reject each verdict on its own. The report shows only the outcome — a discarded finding is absent, an accepted downgrade appears at its final severity — with no trace of the dispute. When the dispatch fails, times out, or returns a malformed report, keep your own findings and continue.
 
-## 4. Save and return
+## 4. Save, verify, and return
 
-Save the report to `openspec/changes/{change-name}/security.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Verify it per the worker contract, then return `completed` with the summary the worker contract defines. The coordinator owns everything the user sees after that return, including any fix of these findings.
+Save the report to `openspec/changes/{change-name}/security.md`; a normal report closes with the `Summary:` tally counted over the kept findings at final severity. Verify the saved file in its form:
+
+- **Normal report** — the file exists and is non-empty, carries the provenance line, every finding heading leads with its severity-prefixed identifier, and the `Summary:` tally matches the report's findings.
+- **Not Applicable report** — the file carries the provenance line and the `## Not Applicable` section with its justification.
+
+Then return `completed`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch; for a Not Applicable report the justification replaces the counts and findings. `changed_files` is `openspec/changes/{change-name}/security.md`. Return no report contents. The coordinator owns everything the user sees after that return, including any fix of these findings.

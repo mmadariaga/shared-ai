@@ -8,7 +8,7 @@
 
 ### File Manifest
 
-<!-- Net fold of tasks.md Files Affected, or exactly: None — no files affected -->
+<!-- Net fold of tasks.md Files Affected as Markdown bullets (- <token> <path> (Step N)), one entry per line, or exactly: None — no files affected -->
 
 ## Context
 

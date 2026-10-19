@@ -1,20 +1,14 @@
 # Review Step — Close Review Outcome
 
-Active step: close-review-outcome. The step is done when `review.md` is saved and verified per the worker contract and `completed` is returned with the summary below.
+Active step: close-review-outcome. The step is done when `review.md` is saved, passes the verification in step 4, and the `completed` result below is returned.
 
 Fetch @sai/commands/review/review-report.template.md
 
+The template is the single source of the report format, read in place: `/sai-3-implement` consumes the reports of both review commands, so no copy of it exists here.
+
 ## 1. Classify
 
-Assign each finding one severity:
-
-- **Critical** — must be fixed before merge: bugs, security holes, broken builds, contract violations, contradictions of the change artifacts.
-- **High** — should be fixed before merge: significant maintainability, performance, or test-coverage issues that will hurt soon.
-- **Medium** — a moderate maintainability, performance, or test-coverage concern that leaves merge-readiness intact but should be addressed soon.
-- **Low** — nice to fix: naming, small refactors, low-impact polish.
-- **Question** — genuine uncertainty that needs the user's input; reserve it for that.
-
-Resilience findings take the severity rule of pass 11 in the analysis step.
+Assign each finding its severity per `common.md` § Severity.
 
 ## 2. Draft
 
@@ -32,13 +26,13 @@ You have the last word: accept or reject each verdict on its own. The report sho
 
 ## 4. Save and return
 
-Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Verify it per the worker contract, then return `completed`. Its `summary` carries the severity counts, the top three Critical findings when present, the report path, the parent-branch statement, and this block verbatim, with every line resolved from the triage passes:
+Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Before returning `completed`, verify that `review.md` exists, is non-empty, and carries an identifier on every finding, the three `Surface touched` lines, and a closing `Summary:` tally whose counts match its findings. Then return `completed`: `review_path` is the report path, `counts` the severity counts of the `Summary:` tally, `changed_files` the report path alone, and `summary` carries the severity counts, the top three Critical findings when present, the report path, and the parent-branch statement. `recommended_audits` carries this block verbatim, with every line resolved from the triage passes:
 
 ```
 ## Recommended Audits
-Security     → { ⚠️  Run `/sai-6-security {change-name}` | ✅ Not required }
-Performance  → { ⚠️  Run `/sai-7-performance {change-name}` | ✅ Not required }
-Accessibility→ { ⚠️  Run `/sai-8-accessibility {change-name}` | ✅ Not required }
+Security     → { ⚠️  Run `/sai-5-security {change-name}` | ✅ Not required }
+Performance  → { ⚠️  Run `/sai-6-performance {change-name}` | ✅ Not required }
+Accessibility→ { ⚠️  Run `/sai-7-accessibility {change-name}` | ✅ Not required }
 ```
 
-The coordinator owns everything the user sees after that return, including any fix of these findings.
+The coordinator verifies the report again, commits it, and owns everything the user sees after that return. You fix none of these findings: `/sai-3-implement` applies them.

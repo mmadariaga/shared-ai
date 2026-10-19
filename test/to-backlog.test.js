@@ -1,0 +1,551 @@
+'use strict';
+
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const { spawnSync } = require('node:child_process');
+const { resolve, address } = require('../sai/tools/to-backlog');
+const github = require('../sai/tools/to-backlog-github');
+// Keep the shared resolver's original host-based contract under a GitHub-only
+// fixture; backlog-gitlab.test.js covers the installed multi-provider registry.
+const registry = { providers: require('../skills/universal/to-backlog/providers/registry.json').providers.filter(entry => entry.id === 'github') };
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
+const { translate } = require('../bin/capabilities');
+const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
+
+const root = path.resolve(__dirname, '..');
+const request = { provider: 'github', repository: 'code/repo', title: '-n $(touch nope)', description: '# Markdown\n```sh\necho "$HOME"; `whoami`\n```\nUnicode: ñ' };
+function temp() { return fs.mkdtempSync(path.join(fs.existsSync('/tmp/opencode') ? '/tmp/opencode' : os.tmpdir(), 'to-backlog-test-')); }
+
+// A simulated gh implements the relevant API, including cursor pages and lost
+// mutation responses. No real executable, credentials or network are used.
+function fakeGithub(state, command, args, input) {
+  // Direct reads see a member after `visibleAfter` earlier reads of it. Kept inside: the CLI test serializes this function.
+  const visible = () => {
+    if (!state.member) return false;
+    state.visibleReads = (state.visibleReads || 0) + 1;
+    return state.visibleReads > (state.visibleAfter || 0);
+  };
+  if (command !== 'gh') throw new Error('Unexpected command');
+  if (state.unavailable) throw new Error('gh unavailable');
+  if (args[0] === '--version') return 'gh fake';
+  if (args[0] === 'auth') { if (state.unauthenticated) throw new Error('not authenticated'); return ''; }
+  if (JSON.stringify(args) !== JSON.stringify(['api', 'graphql', '--hostname', 'github.com', '--input', '-'])) throw new Error('Unsafe invocation');
+  const { query, variables } = JSON.parse(input);
+  const project = { id: 'P', title: 'Board', url: 'https://github.com/orgs/board/projects/7', closed: !!state.closed, viewerCanUpdate: !state.readOnlyProject };
+  const page = (nodes, next = false) => ({ nodes, pageInfo: { hasNextPage: next, endCursor: next ? 'next' : null } });
+  let data;
+  if (query.includes('createIssue(')) {
+    state.creations = (state.creations || 0) + 1;
+    state.issue = { id: 'I', number: 5, url: 'https://github.com/code/repo/issues/5', title: variables.title, body: variables.body, author: { login: 'me' } };
+    if (state.driftAfterCreation) state.private = true;
+    if (state.editAfterCreation) state.issue.body = 'external edit';
+    if (state.loseCreation) throw new Error('response lost');
+    data = { createIssue: { issue: state.issue } };
+  } else if (query.includes('addProjectV2ItemById(')) {
+    state.insertions = (state.insertions || 0) + 1;
+    if (state.insertionError) {
+      state.member = !!state.raceMember;
+      state.afterInsertionError = true;
+      if (state.graphqlError) return JSON.stringify({ errors: [{ message: state.insertionError }] });
+      throw new Error(state.insertionError);
+    }
+    if (state.failInsertion) throw new Error('Project access denied');
+    state.member = true;
+    if (state.loseInsertion) throw new Error('insertion response lost');
+    data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: 'ITEM' } } };
+  } else if (query.includes('items(first:')) {
+    // The Project items connection lags insertions; membership must never depend on it.
+    data = { node: { items: page([]) } };
+  } else if (query.includes('on ProjectV2Item{')) {
+    data = { node: visible() ? { id: variables.id, project: { id: 'P' }, content: { id: state.itemContent || 'I' } } : null };
+  } else if (query.includes('projectItems(first:')) {
+    if (state.afterInsertionError && state.failRaceRead) throw new Error('Membership query denied');
+    const own = visible() ? [{ id: 'ITEM', project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
+    data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'OTHER', project: { id: 'P2' } }, ...own] : own) } };
+  } else if (query.includes('issues(first:')) {
+    data = { repository: { issues: page(state.issue ? [state.issue] : []) } };
+  } else if (query.includes('projectsV2(first:')) {
+    if (state.projectError) throw new Error('Project query failed');
+    const nodes = state.noProjects ? [] : state.twoProjects ? [project, { ...project, id: 'P2' }] : [project];
+    data = { repository: { projectsV2: variables.cursor ? page(nodes) : page([{ ...project, id: 'CLOSED', closed: true }], true) } };
+  } else if (query.includes('projectV2(number:')) {
+    data = { organization: { projectV2: project }, user: { projectV2: project } };
+  } else if (query.includes('repository(owner:')) {
+    data = { viewer: { login: state.otherActor ? 'other' : 'me' }, repository: { id: 'R', nameWithOwner: `${variables.owner}/${variables.name}`, visibility: state.private ? 'PRIVATE' : 'PUBLIC', url: 'https://github.com/code/repo', hasIssuesEnabled: !state.disabled, isArchived: false } };
+  } else data = { viewer: { login: state.otherActor ? 'other' : 'me' } };
+  return JSON.stringify({ data });
+}
+function mock(state = {}) { return { sleep: ms => (state.sleeps ||= []).push(ms), run: (...args) => fakeGithub(state, ...args) }; }
+function approved(state = {}) {
+  const io = mock(state);
+  const ready = github.query(request, io);
+  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp();
+  const receipt = path.join(directory, 'receipt.json');
+  return { io, receipt, input: { ...request, confirmation: ready.confirmation, receipt } };
+}
+
+test('resolution prioritizes explicit destination, configuration and deduplicated remotes', () => {
+  const remotes = ['git@github.com:a/b.git', 'https://github.com/a/b.git'];
+  assert.equal(resolve({ remotes }, registry).repository, 'a/b');
+  assert.equal(resolve({ config: { provider: 'github', repository: 'configured/repo' }, remotes }, registry).repository, 'configured/repo');
+  assert.equal(resolve({ explicit: { repository: 'https://github.com/explicit/repo' }, config: { provider: 'jira' }, remotes }, registry).repository, 'explicit/repo');
+  assert.equal(resolve({ explicit: { provider: 'jira' }, remotes }, registry).status, 'unsupported');
+  assert.equal(resolve({ remotes: [...remotes, 'ssh://git@github.com/c/d.git'] }, registry).reason, 'repository-ambiguous');
+  assert.equal(resolve({ remotes: [] }, registry).reason, 'provider-ambiguous');
+  assert.equal(resolve({ remotes: [...remotes, 'git@gitlab.com:other/repo.git'] }, registry).reason, 'provider-ambiguous');
+  assert.equal(resolve({ explicit: { repository: 'https://gitlab.com/a/b' }, remotes }, registry).reason, 'unrecognized-destination');
+  assert.deepEqual(address('ssh://git@github.com/a/b.git'), { host: 'github.com', repository: 'a/b' });
+  assert.equal(address('$(touch nope)'), null);
+  assert.throws(() => resolve({ config: { labels: 'no' } }, registry), /Invalid destination/);
+});
+
+test('registry extensions do not need provider branches in resolver', () => {
+  const extended = { providers: [...registry.providers, { id: 'example', hosts: ['example.test'], capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-example.js' }] };
+  assert.equal(resolve({ remotes: ['git@example.test:a/b.git'] }, extended).provider, 'example');
+  assert.equal(resolve({ remotes: ['git@example.test:a/b.git', 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
+});
+
+test('provider-owned resolution receives raw inputs and read-only IO without a host catalogue', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-example.js' };
+  const extended = { providers: [...registry.providers, entry] };
+  const remote = 'ssh://git@private.example:2222/group/nested/repo.git';
+  const explicit = { provider: 'example', repository: remote };
+  const config = { repository: 'configured/project' };
+  const remotes = [remote];
+  const io = {
+    run(command, args) { assert.equal(command, 'example-cli'); assert.deepEqual(args, ['resolve', remote]); return 'group/nested/repo'; },
+    loadAdapter(selected) {
+      assert.equal(selected, entry);
+      return { resolve(input, receivedIO) {
+        assert.equal(receivedIO, io);
+        assert.deepEqual(input, { explicit, config, remotes });
+        return { status: 'resolved', repository: receivedIO.run('example-cli', ['resolve', input.explicit.repository]) };
+      } };
+    },
+  };
+  assert.deepEqual(resolve({ explicit, config, remotes }, extended, io), { status: 'resolved', repository: 'group/nested/repo', provider: 'example', instructions: entry.instructions, adapter: entry.adapter });
+  assert.equal(resolve({ remotes: [remote] }, extended, { loadAdapter: () => ({ resolve: input => ({ status: 'resolved', repository: input.remotes[0] }) }) }).repository, remote);
+  assert.equal(resolve({ remotes: [remote, 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
+  assert.equal(resolve({ explicit: { repository: 'https://github.com/a/b' } }, extended).provider, 'github');
+  assert.equal(resolve({ config: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => ({ status: 'needs_input', reason: 'repository-ambiguous' }) }) }).reason, 'repository-ambiguous');
+  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid registry adapter/);
+  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, instructions: '../escape.md' }] }, io), /Invalid provider instruction reference/);
+  assert.throws(() => resolve({ explicit: { provider: 'github', repository: 'a/b' } }, { providers: [{ ...registry.providers[0], instructions: '../escape.md' }] }), /Invalid provider instruction reference/);
+});
+
+test('delegated clarification and unsupported results pass through without publication', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-github.js' };
+  const extended = { providers: [entry] };
+  const directory = temp();
+  const registryPath = path.join(directory, 'registry.json');
+  fs.writeFileSync(registryPath, JSON.stringify(extended));
+  for (const outcome of [
+    { status: 'needs_input', reason: 'destination-required', candidates: ['one', 'two'] },
+    { status: 'unsupported', reason: 'incompatible-destination', message: 'Unsupported destination' },
+  ]) {
+    const expected = { ...outcome, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
+    assert.deepEqual(resolve({ explicit: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => outcome, publish() { assert.fail('Must not publish'); } }) }), expected);
+    const script = `const adapter=require('./sai/tools/to-backlog-github'); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; process.exitCode=require('./sai/tools/to-backlog').main(['resolve',process.argv[1]]);`;
+    const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: root, input: JSON.stringify({ explicit: { provider: 'example' } }), encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), expected);
+  }
+});
+
+test('queries exhaust pages, omit closed Projects, respect explicit independent owner and public visibility', () => {
+  const ready = github.query(request, mock());
+  assert.equal(ready.status, 'ready');
+  assert.equal(ready.proposal.project.id, 'P');
+  assert.equal(ready.proposal.visibility, 'PUBLIC');
+  assert.equal(github.query(request, mock({ twoProjects: true })).reason, 'project-ambiguous');
+  assert.equal(github.query(request, mock({ noProjects: true })).reason, 'project-required');
+  assert.throws(() => github.query(request, mock({ projectError: true })), /query failed/);
+  assert.equal(github.query({ ...request, project: ready.proposal.project.url }, mock({ projectError: true })).status, 'ready');
+  assert.throws(() => github.query(request, mock({ disabled: true })), /issues disabled/);
+  assert.throws(() => github.query(request, mock({ unauthenticated: true })), /not authenticated/);
+  assert.throws(() => github.query(request, mock({ unavailable: true })), /unavailable/);
+  assert.equal(github.query(request, mock({ readOnlyProject: true })).reason, 'project-required');
+  assert.throws(() => github.query({ ...request, project: ready.proposal.project.url }, mock({ closed: true })), /closed/);
+  assert.throws(() => github.query({ ...request, project: ready.proposal.project.url }, mock({ readOnlyProject: true })), /not writable/);
+});
+
+test('confirmation binds content, destination and visibility; absence and edits cause no mutation', () => {
+  for (const edit of [{ confirmation: undefined }, { title: 'changed' }, { description: 'changed' }, { repository: 'different/repo' }]) {
+    const state = {};
+    const { input, io } = approved(state);
+    assert.equal(github.publish({ ...input, ...edit }, io).status, 'failure_before_publication');
+    assert.equal(state.creations, undefined);
+  }
+  const state = {};
+  const { input, io } = approved(state);
+  state.private = true;
+  assert.equal(github.publish(input, io).status, 'failure_before_publication');
+  assert.equal(state.creations, undefined);
+});
+
+test('publication preserves Markdown exactly and publishes at most once per receipt', () => {
+  const state = {};
+  const { input, io } = approved(state);
+  const result = github.publish(input, io);
+  assert.equal(result.status, 'complete');
+  assert.equal(state.issue.title, request.title);
+  assert.equal(state.issue.body, request.description);
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+  assert.equal(github.publish(input, io).status, 'failure_before_publication');
+  assert.equal(state.creations, 1);
+});
+
+test('Project membership is verified by direct reads and a lagging items connection is never trusted', () => {
+  const state = {};
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.equal(state.sleeps, undefined);
+});
+
+test('a lagging direct read is retried every two seconds, five reads in total', () => {
+  const state = { visibleAfter: 2 };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.deepEqual(state.sleeps, [2000, 2000]);
+});
+
+test('an unverified insertion is a partial failure with the issue preserved; recovery verifies without repeating the mutation', () => {
+  const state = { visibleAfter: 99 };
+  const { input, io, receipt } = approved(state);
+  const result = github.publish(input, io);
+  assert.equal(result.status, 'partial_failure');
+  assert.match(result.message, /Project membership not verified/);
+  assert.equal(result.issue.number, 5);
+  assert.deepEqual(state.sleeps, [2000, 2000, 2000, 2000]);
+  assert.equal(JSON.parse(fs.readFileSync(receipt, 'utf8')).stage, 'insertion_pending');
+  state.visibleAfter = 0;
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.equal(state.creations, 1);
+});
+
+test('a direct item read of another issue is not membership', () => {
+  const state = { itemContent: 'OTHER' };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'partial_failure');
+  assert.equal(state.sleeps.length, 4);
+});
+
+test('a response without an item id is verified by the issue-side read', () => {
+  const state = { noItemId: true, visibleAfter: 1 };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.deepEqual(state.sleeps, [2000]);
+});
+
+test('an issue already in the Project, archived or not, is verified without adding it again', () => {
+  for (const archived of [false, true]) {
+    const state = { member: true, archived };
+    const { input, io } = approved(state);
+    assert.equal(github.publish(input, io).status, 'complete');
+    assert.equal(state.insertions, undefined);
+    assert.equal(state.sleeps, undefined);
+  }
+});
+
+test('only the destination Project counts and a null projectItems means no items', () => {
+  for (const option of ['otherProject', 'nullItems']) {
+    const state = { [option]: true };
+    const { input, io } = approved(state);
+    assert.equal(github.publish(input, io).status, 'complete', option);
+    assert.equal(state.insertions, 1, option);
+  }
+});
+
+for (const graphqlError of [false, true]) test(`concurrent auto-add completes only after a fresh destination read (${graphqlError ? 'GraphQL' : 'gh'})`, () => {
+  const state = { insertionError: graphqlError ? 'Content already exists' : 'gh: gh: Content already exists (addProjectV2ItemById)\n', graphqlError, raceMember: true, visibleAfter: 2 };
+  const { input, io, receipt } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.visibleReads, 3);
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+});
+
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${option}`, () => {
+  const state = { insertionError: option === 'unrelated-error' ? 'Project access denied' : 'Content already exists', otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' };
+  const { input, io, receipt } = approved(state);
+  const result = github.publish(input, io);
+  assert.equal(result.status, 'partial_failure');
+  assert.equal(result.issue.id, 'I');
+  const saved = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+  assert.equal(saved.stage, 'insertion_pending');
+  assert.equal(saved.issue.id, 'I');
+  assert.match(result.message, option === 'read-error' ? /Membership query denied/ : option === 'unrelated-error' ? /Project access denied/ : /Project membership not verified/);
+  state.insertionError = null; state.failRaceRead = false; state.member = true;
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+});
+
+test('single-issue recovery also resolves a concurrent insertion without recreating the issue', () => {
+  const state = { failInsertion: true };
+  const { input, io, receipt } = approved(state);
+  assert.equal(github.publish(input, io).status, 'partial_failure');
+  state.failInsertion = false;
+  state.insertionError = 'Content already exists';
+  state.raceMember = true;
+  const verified = github.recover({ receipt }, io);
+  assert.equal(verified.status, 'partial_failure');
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 2);
+});
+
+test('only the specific duplicate-content response is eligible for automatic verification', () => {
+  const failures = [
+    { message: 'Content already exists but permission denied' },
+    { message: 'Network failure: Content already exists' },
+    { message: 'gh: Content already exists (createIssue)' },
+    { errors: [{ message: 'Content already exists' }, { message: 'Forbidden' }] },
+    { errors: [{ message: 'Content already exists', path: ['createIssue'] }] },
+  ];
+  for (const failure of failures) {
+    let reads = 0;
+    const io = { run(command, args, input) {
+      const { query } = JSON.parse(input);
+      if (query.includes('addProjectV2ItemById')) {
+        if (failure.errors) return JSON.stringify({ errors: failure.errors });
+        throw new Error(failure.message);
+      }
+      reads++;
+      return JSON.stringify({ data: { node: { projectItems: { nodes: [], pageInfo: { hasNextPage: false } } } } });
+    } };
+    assert.throws(() => github.ensureMembership(io, 'P', 'I'));
+    assert.equal(reads, 1, JSON.stringify(failure));
+  }
+});
+
+test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', () => {
+  const { input } = approved();
+  const relative = `to-backlog-rejected-${process.pid}.json`;
+  const inside = path.join(root, relative);
+  const io = { run() { assert.fail('A rejected receipt must not query or mutate GitHub'); } };
+  for (const receipt of [relative, inside]) {
+    assert.equal(github.publish({ ...input, receipt }, io).status, 'failure_before_publication');
+    assert.equal(github.recover({ receipt }, io).status, 'failure_before_publication');
+    assert.equal(fs.existsSync(path.resolve(receipt)), false);
+  }
+  const cwd = process.cwd();
+  try {
+    process.chdir(path.join(root, 'test'));
+    assert.match(github.publish({ ...input, receipt: inside }, io).message, /outside the repository/);
+    assert.equal(fs.existsSync(inside), false);
+  } finally { process.chdir(cwd); }
+});
+
+test('receipt boundary rejects symlink aliases into the repository and linked receipt files', { skip: process.platform === 'win32' }, () => {
+  const { input } = approved();
+  const directory = temp();
+  const alias = path.join(directory, 'repo-alias');
+  fs.symlinkSync(root, alias, 'dir');
+  const receipt = path.join(alias, `to-backlog-rejected-${process.pid}.json`);
+  const io = { run() { assert.fail('A rejected symlink must not access GitHub'); } };
+  assert.match(github.publish({ ...input, receipt }, io).message, /outside the repository/);
+  assert.match(github.recover({ receipt }, io).message, /outside the repository/);
+  assert.equal(fs.existsSync(receipt), false);
+  const target = path.join(temp(), 'original.json');
+  fs.writeFileSync(target, 'unchanged', { mode: 0o600 });
+  const linked = path.join(directory, 'linked.json');
+  fs.symlinkSync(target, linked);
+  assert.match(github.publish({ ...input, receipt: linked }, io).message, /regular/);
+  assert.match(github.recover({ receipt: linked }, io).message, /regular/);
+  assert.equal(fs.readFileSync(target, 'utf8'), 'unchanged');
+});
+
+test('receipt parent must remain private', { skip: process.platform === 'win32' }, () => {
+  const directory = temp();
+  fs.chmodSync(directory, 0o755);
+  const receipt = path.join(directory, 'receipt.json');
+  const io = { run() { assert.fail('Insecure receipts must not access GitHub'); } };
+  assert.match(github.publish({ ...request, receipt }, io).message, /private/);
+  assert.match(github.recover({ receipt }, io).message, /private/);
+  assert.equal(fs.existsSync(receipt), false);
+});
+
+test('explicit unsupported provider takes precedence over incompatible destination without Git or gh probing', () => {
+  const explicit = { provider: 'jira', repository: 'https://github.com/code/repo' };
+  assert.deepEqual(resolve({ explicit }, registry), { status: 'unsupported', provider: 'jira' });
+  const directory = temp();
+  // An empty PATH makes even accidental Git/gh calls fail instead of passing.
+  const result = spawnSync(process.execPath, [path.join(root, 'sai/tools/to-backlog.js'), 'resolve', path.join(root, 'skills/universal/to-backlog/providers/registry.json')], { cwd: directory, input: JSON.stringify({ explicit }), encoding: 'utf8', env: { ...process.env, PATH: '' } });
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), { status: 'unsupported', provider: 'jira' });
+});
+
+test('recovery blocks visibility drift and known-issue edits before receipt writes or insertion', () => {
+  for (const originalPrivate of [false, true]) {
+    const state = { private: originalPrivate, failInsertion: true };
+    const { input, io, receipt } = approved(state);
+    assert.equal(github.publish(input, io).status, 'partial_failure');
+    const before = fs.readFileSync(receipt, 'utf8');
+    const insertions = state.insertions;
+    state.private = !originalPrivate;
+    state.failInsertion = false;
+    const result = github.recover({ receipt }, io);
+    assert.equal(result.status, 'partial_failure');
+    assert.match(result.message, /visibility changed; fresh review/);
+    assert.equal(fs.readFileSync(receipt, 'utf8'), before);
+    assert.equal(state.insertions, insertions);
+    assert.equal(state.creations, 1);
+  }
+  for (const field of ['title', 'body']) {
+    const state = { failInsertion: true };
+    const { input, io, receipt } = approved(state);
+    github.publish(input, io);
+    state.issue[field] = 'external edit';
+    state.failInsertion = false;
+    const before = fs.readFileSync(receipt, 'utf8');
+    const insertions = state.insertions;
+    assert.match(github.recover({ receipt }, io).message, /content changed; fresh review/);
+    assert.equal(state.insertions, insertions);
+    assert.equal(state.creations, 1);
+    assert.equal(fs.readFileSync(receipt, 'utf8'), before);
+    assert.equal(state.issue[field], 'external edit');
+  }
+});
+
+test('initial insertion also checks visibility and issue content after creation', () => {
+  for (const option of ['driftAfterCreation', 'editAfterCreation']) {
+    const state = { [option]: true };
+    const { input, io } = approved(state);
+    const result = github.publish(input, io);
+    assert.equal(result.status, 'partial_failure');
+    assert.match(result.message, /fresh review/);
+    assert.equal(state.creations, 1);
+    assert.equal(state.insertions, undefined);
+  }
+});
+
+test('partial failure and lost insertion recover membership without issue recreation', () => {
+  for (const option of ['failInsertion', 'loseInsertion']) {
+    const state = { [option]: true };
+    const { input, io, receipt } = approved(state);
+    assert.equal(github.publish(input, io).status, 'partial_failure');
+    const before = state.insertions;
+    state[option] = false;
+    const verified = github.recover({ receipt }, io);
+    assert.equal(state.insertions, before);
+    const result = verified.status === 'complete' ? verified : github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(state.creations, 1);
+    assert.equal(state.insertions, option === 'loseInsertion' ? before : before + 1);
+  }
+});
+
+test('lost creation returns uncertain, requires verified issue choice, never repeats creation', () => {
+  const state = { loseCreation: true };
+  const { input, io, receipt } = approved(state);
+  assert.equal(github.publish(input, io).status, 'uncertain');
+  const found = github.recover({ receipt }, io);
+  assert.equal(found.status, 'uncertain');
+  assert.equal(found.candidates[0].url, state.issue.url);
+  const verified = github.recover({ receipt, issueUrl: state.issue.url }, io);
+  assert.equal(verified.status, 'partial_failure');
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+});
+
+test('single publication retry is durably consumed before insertion and cannot reset through verification', () => {
+  const state = { failInsertion: true };
+  const { input, io, receipt } = approved(state);
+  github.publish(input, io);
+  let verified = github.recover({ receipt }, io);
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'partial_failure');
+  assert.equal(JSON.parse(fs.readFileSync(receipt)).automatic_retry_consumed, true);
+  verified = github.recover({ receipt }, io);
+  assert.match(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).message, /exhausted/);
+  assert.equal(state.insertions, 2);
+  state.failInsertion = false;
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+});
+
+test('uncertain empty verification and changed authentication remain blocked', () => {
+  const state = { loseCreation: true };
+  const { input, io, receipt } = approved(state);
+  github.publish(input, io);
+  state.issue = null;
+  const result = github.recover({ receipt }, io);
+  assert.equal(result.status, 'uncertain');
+  assert.deepEqual(result.candidates, []);
+  state.otherActor = true;
+  assert.match(github.recover({ receipt }, io).message, /identity/);
+  assert.equal(state.creations, 1);
+});
+
+test('pagination failures are errors rather than empty destinations', () => {
+  assert.throws(() => github.pages(() => ({ nodes: [], pageInfo: { hasNextPage: true, endCursor: null } }), page => page), /cursor/);
+  assert.throws(() => github.pages(() => ({ nodes: [] }), page => page), /Incomplete/);
+});
+
+test('common instructions retain conversation, confirmation and cancellation boundaries in both wrappers', () => {
+  const skill = fs.readFileSync(path.join(root, 'skills/universal/to-backlog/SKILL.md'), 'utf8');
+  assert.match(skill, /prioritizing recent messages/);
+  assert.match(skill, /retaining earlier/);
+  assert.match(skill, /Cancel ends without publication/);
+  assert.match(skill, /new full confirmation/);
+  assert.match(skill, /explicit approval/);
+  assert.match(skill, /If public, explicitly warn/);
+  const provider = fs.readFileSync(path.join(root, 'skills/universal/to-backlog/providers/github.md'), 'utf8');
+  assert.match(provider, /`publish`, `publish-set`, and `continue-set`/);
+  assert.match(provider, /Only confirmed membership in the requested\nProject counts as success/);
+  assert.match(provider, /both Claude Code and opencode/);
+  assert.doesNotMatch(skill, /provider ===|provider: "github"/);
+  for (const harness of ['claude', 'opencode']) {
+    const wrapper = fs.readFileSync(path.join(root, `commands/${harness}/to-backlog.md`), 'utf8');
+    assert.match(wrapper, /current conversation/);
+    assert.doesNotMatch(wrapper, /boot\.md|starts clean|subtask: true/);
+  }
+});
+
+test('both harness projections install references, registry, wrappers, skill and tools', () => {
+  const manifest = loadInstallManifest(root);
+  for (const harness of ['claude', 'opencode']) {
+    const destination = temp();
+    const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(destination, key)]));
+    const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
+    for (const suffix of ['skills/to-backlog/SKILL.md', 'skills/to-backlog/providers/github.md', 'skills/to-backlog/providers/registry.json', 'skills/to-backlog/providers/resolution.md', 'commands/to-backlog.md', 'sai/tools/to-backlog.js', 'sai/tools/to-backlog-github.js']) {
+      assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
+    }
+    const profile = translate(manifest.capabilities, 'to-backlog-command', harness).profile;
+    assert.ok(profile.question);
+    assert.ok(profile.shell.includes('node {sai}/tools/to-backlog.js *'));
+    assert.ok(!profile.shell.some(command => /^(gh|glab) /.test(command)));
+  }
+});
+
+test('CLI uses simulated Git and gh, structured stdin and no shell interpretation', { skip: process.platform === 'win32' }, () => {
+  const dir = temp();
+  const statePath = path.join(dir, 'state.json');
+  fs.writeFileSync(statePath, '{}');
+  fs.writeFileSync(path.join(dir, 'git'), `#!${process.execPath}\nprocess.stdout.write('origin\\tgit@github.com:code/repo.git (fetch)\\n');\n`, { mode: 0o700 });
+  fs.writeFileSync(path.join(dir, 'gh'), `#!${process.execPath}\nconst fs=require('node:fs');\n${fakeGithub.toString()}\nconst file=process.env.FAKE_GH_STATE; const state=JSON.parse(fs.readFileSync(file));\ntry { console.log(fakeGithub(state,'gh',process.argv.slice(2),fs.readFileSync(0,'utf8'))); } catch(e) { console.error(e.message);process.exitCode=1; } finally { fs.writeFileSync(file,JSON.stringify(state)); }\n`, { mode: 0o700 });
+  const invoke = (op, input) => {
+    const result = spawnSync(process.execPath, [path.join(root, 'sai/tools/to-backlog.js'), op, path.join(root, 'skills/universal/to-backlog/providers/registry.json')], { cwd: dir, input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, FAKE_GH_STATE: statePath } });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return JSON.parse(result.stdout);
+  };
+  const destination = invoke('resolve', {});
+  assert.equal(destination.repository, 'code/repo');
+  const ready = invoke('query', request);
+  const result = invoke('publish', { ...request, receipt: path.join(temp(), 'receipt.json'), confirmation: ready.confirmation });
+  assert.equal(result.status, 'complete');
+  assert.equal(fs.readFileSync(statePath, 'utf8').includes('Unicode: ñ'), true);
+  assert.equal(fs.existsSync(path.join(dir, 'nope')), false);
+});

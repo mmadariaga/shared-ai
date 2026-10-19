@@ -58,17 +58,28 @@ The shared engine SHALL accept an injectable input source (a DI'd stdin/keypress
 - **THEN** the engine SHALL process the injected keys exactly as it would process real raw-mode keypresses, without a TTY or user input
 
 ### Requirement: Optional non-selectable frame header
-The shared navigator engine SHALL accept an optional header supplied as a string or an array of strings and render its lines inside the frame between the question and the option rows. Header lines SHALL be pure decoration: the cursor and selection index SHALL continue to address only `options`, so header lines MUST NOT consume arrow-key movement, space toggles, or Enter confirmation. Header lines SHALL be included in the redraw cursor-up accounting so multi-line repaint stays correct. `promptChecklist` SHALL forward a header supplied through its navigator options into the shared frame. When the input source is not interactive, the engine SHALL resolve non-interactive before painting anything, including the header.
+
+The shared navigator engine SHALL accept an optional header supplied as a string or an array of strings and render its visible lines inside the frame between the question and the option rows. When the complete frame fits the available height budget, all supplied header lines SHALL be rendered. In an oversized frame, header visibility SHALL follow the selected-option priority rule, allowing trailing header lines to be omitted and later restored as space changes.
+
+Header lines SHALL be pure decoration: the cursor and selection index SHALL continue to address only options, so header lines MUST NOT consume arrow-key movement, space toggles, or Enter confirmation. Rendered header lines SHALL be included in physical-row accounting for height budgeting and redraw. promptChecklist SHALL forward a header supplied through its navigator options into the shared frame. When the input source is not interactive, the engine SHALL resolve non-interactive before painting anything, including the header.
 
 #### Scenario: Header renders above the options without affecting selection
-- **WHEN** a multi-select navigator runs with a two-line header, a default-selected item, a down-arrow press, and Enter confirmation
-- **THEN** the outcome SHALL match the same interaction without a header, the cursor arrow SHALL land on the second option skipping the non-selectable header rows, and the redraw SHALL move up by the full physical row count including the header lines
+
+- **WHEN** a multi-select navigator has enough height for a two-line header and processes a down-arrow press followed by Enter
+- **THEN** it SHALL render both header lines between the question and options, preserve the same selection outcome as without the header, and include rendered header rows in physical-row redraw accounting
 
 #### Scenario: Checklist forwards the caller-supplied header
-- **WHEN** `promptChecklist` is invoked with a header in its navigator options
-- **THEN** the rendered frame SHALL contain those header lines between the question and the option rows
+
+- **WHEN** promptChecklist is invoked with a header in its navigator options and the complete frame fits
+- **THEN** the rendered frame SHALL contain those header lines between the question and option rows
+
+#### Scenario: Short window temporarily omits header decoration
+
+- **WHEN** supplied header lines prevent the highlighted option from fitting within the terminal-height budget
+- **THEN** the navigator SHALL omit trailing header lines as needed without changing cursor movement, toggles, or confirmation values
 
 #### Scenario: Non-TTY input paints nothing
+
 - **WHEN** the input source is not a TTY and a header is supplied
 - **THEN** the navigator SHALL resolve non-interactive with no frame content painted, header included
 
@@ -104,3 +115,90 @@ The shared raw-readline navigator SHALL accept an opt-in `toggleAll` setting for
 #### Scenario: Disabled and single-select navigators ignore bulk toggle
 - **WHEN** a checklist without `toggleAll` or a single-select menu receives `Ctrl+A`
 - **THEN** the navigator SHALL not apply toggle-all behavior or alter the selected result
+
+### Requirement: Height-bounded scrolling navigator frames
+
+The shared raw-readline navigator SHALL use a finite positive terminal height to limit the rendered frame to at most the terminal height minus one physical row, with a minimum frame budget of one row. When terminal height is unavailable or invalid, the navigator SHALL retain unbounded frame construction. It SHALL count wrapped lines and embedded newlines, excluding ANSI sequences from text-length accounting, when calculating the frame's physical rows.
+
+When the complete frame fits the budget, the navigator SHALL render the question, supplied headers, all option rows, and supplied instructions in their existing order. Otherwise, it SHALL render a contiguous visible portion of the option list and adjust that portion as the highlighted option moves so the highlighted option remains visible.
+
+Visible-area changes SHALL remain independent of the highlighted option and checkbox state. Separators SHALL remain non-selectable, offscreen checked options SHALL remain selected, and existing confirmation, cancellation, and bulk-toggle behavior SHALL remain unchanged.
+
+#### Scenario: Complete menu fits
+
+- **WHEN** the question, headers, options, and instructions fit within the physical-row budget
+- **THEN** the navigator SHALL render the complete existing frame and use its physical row count for subsequent redraws
+
+#### Scenario: Oversized menu scrolls with navigation
+
+- **WHEN** arrow-key movement highlights an option beyond the current visible portion of an oversized menu
+- **THEN** the navigator SHALL adjust the visible portion to include that option without changing checked options or making separators selectable
+
+#### Scenario: Wrapping and embedded newlines consume physical rows
+
+- **WHEN** frame content wraps at the terminal width or contains embedded newlines
+- **THEN** the navigator SHALL include those physical rows in the height budget rather than treating every logical string as one row
+
+#### Scenario: Redraw does not accumulate menu copies
+
+- **WHEN** an oversized menu is repeatedly navigated without resizing
+- **THEN** subsequent bounded redraws SHALL overwrite the previous visible frame without adding repeated menu copies to scrollback
+
+#### Scenario: Offscreen selection remains part of confirmation
+
+- **WHEN** a multi-select navigator scrolls away from a checked option and later confirms its selection
+- **THEN** the confirmed items SHALL include that offscreen checked option unless a selection operation changed its state
+
+#### Scenario: Bulk toggle includes offscreen options
+
+- **WHEN** an oversized multi-select navigator with toggleAll enabled receives Ctrl+A
+- **THEN** the existing bulk-toggle operation SHALL apply to all selectable options, including offscreen options, without confirming the menu
+
+### Requirement: Selected-option priority in short terminal windows
+
+When auxiliary content and the highlighted option cannot fit together, the shared navigator SHALL remove header lines from the end first, then remove instructions, and finally remove the question until the highlighted option can occupy the available budget. It SHALL restore omitted auxiliary content when a later render has sufficient space.
+
+When the highlighted option itself exceeds the remaining budget, the navigator SHALL clip its trailing content to that budget while retaining its leading cursor and text. Clipping SHALL account for wrapped rows, embedded newlines, and ANSI sequences, and SHALL reset ANSI styling afterward.
+
+In a one-row terminal, the navigator SHALL render at most one physical row and use carriage-return positioning without appending a newline.
+
+#### Scenario: Auxiliary content is reduced in priority order
+
+- **WHEN** a terminal is too short to display the auxiliary content and highlighted option together
+- **THEN** the navigator SHALL reduce headers first, instructions second, and the question last while keeping the highlighted option visible
+
+#### Scenario: Oversized highlighted option is clipped
+
+- **WHEN** the highlighted option exceeds the available physical-row budget
+- **THEN** the navigator SHALL display its leading cursor and text within that budget without rendering trailing content outside the visible frame
+
+#### Scenario: Auxiliary content returns after enlargement
+
+- **WHEN** a terminal becomes large enough to display previously omitted auxiliary content
+- **THEN** the navigator SHALL restore that content without changing the highlighted option or checked items
+
+#### Scenario: One-row terminal avoids newline scrolling
+
+- **WHEN** the navigator renders in a terminal whose height is one row
+- **THEN** it SHALL paint at most one physical row and SHALL use carriage returns rather than a trailing newline
+
+### Requirement: Resize-aware navigator redraw and cleanup
+
+When the output exposes event-listener registration, the shared navigator SHALL listen for resize events while the menu is pending. On resize, it SHALL recalculate terminal dimensions and the visible frame while preserving the highlighted option and checked items. It SHALL clear the visible screen and establish a new drawing origin rather than moving upward by the old frame's row count.
+
+When the navigator confirms, cancels, returns back, or settles because terminal input ends, closes, or errors, it SHALL remove its resize listener when listener removal is available. A resize event after settlement SHALL NOT repaint the menu.
+
+#### Scenario: Resize establishes a fresh drawing origin
+
+- **WHEN** terminal dimensions change and the pending navigator receives a resize event
+- **THEN** it SHALL clear the visible screen, establish a fresh origin, and render a recalculated bounded frame without seeking the previous frame's old rows
+
+#### Scenario: Resize preserves logical selection
+
+- **WHEN** a multi-select navigator is resized while an option is highlighted and multiple items are checked
+- **THEN** the highlighted option and checked items SHALL remain unchanged while the visible frame adjusts
+
+#### Scenario: Settlement removes resize handling
+
+- **WHEN** the navigator confirms, cancels, returns back, or receives terminal input end, close, or error
+- **THEN** its resize listener SHALL be removed and a subsequent resize SHALL not repaint the settled menu

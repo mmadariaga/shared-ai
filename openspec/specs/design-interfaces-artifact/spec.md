@@ -118,7 +118,7 @@ A step that introduces neither a new/modified public interface nor a testable as
 
 ### Requirement: interfaces artifact registered but excluded from apply.requires
 
-`openspec/schemas/sai-workflow/schema.yaml` SHALL register an `interfaces` artifact with `id: interfaces`, `generates: interfaces.md`, and `requires: [tasks]`. The `generates` field is mandatory so `openspec` tooling can resolve the artifact to its filename. The `interfaces` artifact SHALL NOT appear in the schema's `apply.requires` list, because no stage consumes it in this slice. `apply.requires` SHALL remain `[tasks, implementation]`.
+`openspec/schemas/sai-workflow/schema.yaml` SHALL register an `interfaces` artifact with `id: interfaces`, `generates: interfaces.md`, and `requires: [tasks]`. The `generates` field is mandatory so `openspec` tooling can resolve the artifact to its filename. The `interfaces` artifact SHALL NOT appear in the schema's `apply.requires` list. `apply.requires` SHALL remain `[tasks]`.
 
 #### Scenario: interfaces registered in the artifact graph
 - **WHEN** the sai-workflow schema is read
@@ -126,12 +126,4 @@ A step that introduces neither a new/modified public interface nor a testable as
 
 #### Scenario: apply is not gated on interfaces.md
 - **WHEN** the schema's `apply.requires` is read
-- **THEN** it lists `tasks` and `implementation` only, and does NOT list `interfaces`
-
-### Requirement: No stage consumes interfaces.md in this slice
-
-This slice SHALL NOT wire any consumer to `interfaces.md`. The `sai-3-implement` step library (`sai/commands/implement/steps/`) and `sai/commands/apply/instructions.md` (`sai-4-apply`) SHALL be unchanged with respect to reading or acting on `interfaces.md`.
-
-#### Scenario: implement and apply unchanged
-- **WHEN** `sai-3-implement` or `sai-4-apply` runs after `interfaces.md` exists
-- **THEN** neither reads nor depends on `interfaces.md`; their behavior is identical to before this change
+- **THEN** it lists `tasks` only, and does NOT list `interfaces`

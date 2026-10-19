@@ -2,8 +2,10 @@
 
 // Block emit: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
 // validates the Ready to Propose block set read from stdin with the detector's
-// strict profile and only then records the extracted change names as the
-// explore slice inventory. Every case spawns the CLI as a real process.
+// dispatchable profile (plus the judgment verdicts after the verdicts marker)
+// and only then records the extracted change names as the explore slice
+// inventory and stores each block's text, hash, and verdicts. Every case
+// spawns the CLI as a real process.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,6 +15,10 @@ const { spawnSync } = require('child_process');
 
 const { sessionFile } = require('../bin/sai-state.js');
 const { RECEIVED_AT_PATTERN } = require('../sai/tools/worker-report-validator.js');
+
+const { hashBlock, VERDICTS_MARKER } = require('../sai/tools/ready-to-propose.js');
+const { composeVerdicts, checkDispatchable, verifyBlockFile } = require('../sai/tools/ready-to-propose.js');
+const transfer = require('../sai/tools/transfer.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const SAI_STATE_TOOL = path.join(REPO_ROOT, 'bin', 'sai-state.js');
@@ -25,10 +31,23 @@ function runCli(argv, input) {
   return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status };
 }
 
-function spawnSession(key) {
+const IDEA_MACHINE = 'explore-idea@1';
+
+function advanceIdea(id, steps) {
+  for (let i = 0; i < steps; i++) {
+    const result = runCli(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
+    assert.equal(result.exitCode, 0, result.stderr);
+  }
+}
+
+// The block emit is accepted only at the `crystallize` stage of
+// `explore-idea@1`, so a session advances there unless a case passes `false`.
+function spawnSession(key, atCrystallize = true) {
   const result = runCli(['spawn', '--key', `${key}-${process.pid}-${Date.now()}`]);
   assert.equal(result.exitCode, 0, result.stderr);
-  return JSON.parse(result.stdout).id;
+  const id = JSON.parse(result.stdout).id;
+  if (atCrystallize) advanceIdea(id, 3);
+  return id;
 }
 
 function cleanup(id) {
@@ -45,6 +64,11 @@ function readSet(id) {
   if (!entry) return null;
   const state = entry.state || entry;
   return state.set;
+}
+
+function readStoredBlocks(id) {
+  const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+  return record.blocks || null;
 }
 
 function block(name, overrides = {}) {
@@ -74,6 +98,192 @@ function block(name, overrides = {}) {
   return lines.join('\n');
 }
 
+test('stored-file transport: both harnesses export exact Unicode bytes and retain old references across amendments', () => {
+  const id = spawnSession('rtp-private-export');
+  const directories = [];
+  try {
+    const original = block('private-change', { What: ' Preserves café, 日本語 and 🐋.' }).trimEnd();
+    assert.equal(blockEmit(id, composeVerdicts(original, [])).exitCode, 0);
+    for (const harness of ['claude', 'opencode']) {
+      const result = runCli(['block', id, 'private-change', '--export', '--harness', harness]);
+      if (harness === 'opencode' && process.platform === 'linux' && !fs.existsSync('/tmp/opencode')) {
+        assert.equal(result.exitCode, 1);
+        assert.match(JSON.parse(result.stdout).reason, /temporary root.*missing/);
+        continue;
+      }
+      assert.equal(result.exitCode, 0, result.stderr);
+      const reference = JSON.parse(result.stdout);
+      directories.push(reference.transfer_dir);
+      assert.equal(Object.keys(reference)[0], 'received_at');
+      assert.equal(reference.text, undefined);
+      assert.equal(fs.readFileSync(reference.block_file, 'utf8'), original);
+      assert.equal(reference.hash, hashBlock(original));
+      assert.equal(verifyBlockFile(reference.block_file, reference.hash), original);
+      const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+      const verified = spawnSync(process.execPath, [tool, 'verify-file', '--block-file', reference.block_file, '--block-hash', reference.hash], { encoding: 'utf8' });
+      assert.equal(verified.status, 0, verified.stderr);
+      assert.equal(JSON.parse(verified.stdout).ok, true);
+      const checked = spawnSync(process.execPath, [tool, 'check', '--profile', 'dispatchable', '--block-file', reference.block_file], { encoding: 'utf8' });
+      assert.equal(checked.status, 0, checked.stderr);
+      assert.equal(JSON.parse(checked.stdout).dispatchable, true);
+      if (process.platform !== 'win32') {
+        assert.equal(fs.statSync(reference.transfer_dir).mode & 0o777, 0o700);
+        assert.equal(fs.statSync(reference.block_file).mode & 0o777, 0o600);
+      }
+    }
+    const old = JSON.parse(runCli(['block', id, 'private-change', '--export', '--harness', 'claude']).stdout);
+    directories.push(old.transfer_dir);
+    const amended = original.replace('Preserves café', 'Amends café');
+    assert.equal(blockEmit(id, composeVerdicts(amended, []), MACHINE, ['--amend', 'private-change']).exitCode, 0);
+    const next = JSON.parse(runCli(['block', id, 'private-change', '--export', '--harness', 'claude']).stdout);
+    directories.push(next.transfer_dir);
+    assert.notEqual(old.block_file, next.block_file);
+    assert.notEqual(old.hash, next.hash);
+    assert.equal(verifyBlockFile(old.block_file, old.hash), original);
+    assert.equal(verifyBlockFile(next.block_file, next.hash), amended);
+    assert.throws(() => verifyBlockFile(old.block_file, next.hash), /hash/);
+    fs.writeFileSync(next.block_file, amended.replace('日本語', 'altered'));
+    assert.throws(() => verifyBlockFile(next.block_file, next.hash), /hash/);
+    assert.throws(() => verifyBlockFile(path.join(next.transfer_dir, 'missing.md'), next.hash), /ENOENT/);
+    assert.throws(() => verifyBlockFile(next.block_file), /hash/);
+    assert.throws(() => verifyBlockFile(next.transfer_dir, next.hash));
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(old.block_file, path.join(next.transfer_dir, 'linked.md'));
+      assert.throws(() => verifyBlockFile(path.join(next.transfer_dir, 'linked.md'), old.hash), /regular file/);
+    }
+  } finally {
+    directories.forEach(dir => transfer.close(dir));
+    cleanup(id);
+  }
+});
+
+test('stored-file transport: export rejects missing entries, corrupt hashes and unspecified harnesses', () => {
+  const id = spawnSession('rtp-export-errors');
+  try {
+    assert.equal(runCli(['block', id, 'absent', '--export', '--harness', 'claude']).exitCode, 1);
+    assert.equal(runCli(['block', id, 'absent', '--export']).exitCode, 2);
+    assert.equal(runCli(['block', id, 'absent', '--export', '--harness', 'unknown']).exitCode, 2);
+    assert.equal(blockEmit(id, block('corrupt-change')).exitCode, 0);
+    const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    record.blocks['corrupt-change'].hash = '0'.repeat(64);
+    fs.writeFileSync(sessionFile(id), JSON.stringify(record));
+    const result = runCli(['block', id, 'corrupt-change', '--export', '--harness', 'claude']);
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.parse(result.stdout).error, 'BLOCK_EXPORT_FAILED');
+    assert.equal(JSON.parse(result.stdout).block_file, undefined);
+  } finally { cleanup(id); }
+});
+
+test('verdict composition: executable file boundary handles newline/no-newline registration and amendment', () => {
+  const id = spawnSession('rtp-compose');
+  const { dir } = transfer.open('claude');
+  const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+  try {
+    for (const ending of ['', '\n']) {
+      const text = block('compose-change', { Why: ' Documents git commit behavior.' }).trimEnd() + ending;
+      const pending = checkDispatchable(text).flagged;
+      const verdicts = pending.map(entry => ({ ...entry, verdict: 'context', evidence: 'Subject matter, not a requested operation.' }));
+      const inputFile = transfer.put(dir, 'block.md', text).path;
+      const verdictFile = transfer.put(dir, 'verdicts.json', JSON.stringify(verdicts)).path;
+      const result = spawnSync(process.execPath, [tool, 'compose', '--block-file', inputFile, '--verdicts-file', verdictFile], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      assert.ok(result.stdout.includes('\n<<<VERDICTS>>>\n'));
+      assert.equal(checkDispatchable(result.stdout).blocks[0].hash, hashBlock(text.trimEnd()));
+      const emitted = blockEmit(id, result.stdout, MACHINE, ending ? ['--amend', 'compose-change'] : []);
+      assert.equal(emitted.exitCode, 0, emitted.stdout);
+      assert.equal(JSON.parse(emitted.stdout).validation.ok, true);
+      assert.equal(readStoredBlocks(id)['compose-change'].text, text.trimEnd());
+      assert.throws(() => composeVerdicts(text.replace(/---\s*$/, ''), verdicts), /separator/);
+      assert.throws(() => composeVerdicts(text, {}), /array/);
+      assert.throws(() => composeVerdicts(text, []), /verdicts/);
+      assert.throws(() => composeVerdicts(text, [{ ...verdicts[0], verdict: 'invalid' }]), /verdicts/);
+      assert.equal(checkDispatchable(text.trimEnd() + VERDICTS_MARKER + '\n[]').dispatchable, false);
+    }
+    transfer.put(dir, 'verdicts.json', '{');
+    const rejected = spawnSync(process.execPath, [tool, 'compose', '--block-file', path.join(dir, 'block.md'), '--verdicts-file', path.join(dir, 'verdicts.json')], { encoding: 'utf8' });
+    assert.equal(rejected.status, 1);
+    assert.equal(rejected.stdout, '');
+  } finally { transfer.close(dir); cleanup(id); }
+});
+
+test('file-backed emits compose registration and amendment without shell re-encoding', () => {
+  const id = spawnSession('rtp-file-emits');
+  const { dir } = transfer.open('claude');
+  try {
+    const verdictFile = transfer.put(dir, 'verdicts.json', '[]').path;
+    const inputFile = transfer.put(dir, 'block.md', block('file-change', { What: ' Retains 日本語.' }).trimEnd()).path;
+    for (const options of [[], ['--amend', 'file-change']]) {
+      const result = runCli(['emit', id, MACHINE, '--ready-to-propose', ...options, '--block-file', inputFile, '--verdicts-file', verdictFile]);
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      assert.equal(JSON.parse(result.stdout).validation.ok, true);
+      assert.equal(readStoredBlocks(id)['file-change'].text, fs.readFileSync(inputFile, 'utf8'));
+    }
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    for (const invalid of ['{}', '[{"verdict":"invalid"}]', '{']) {
+      transfer.put(dir, 'verdicts.json', invalid);
+      const rejected = runCli(['emit', id, MACHINE, '--ready-to-propose', '--amend', 'file-change', '--block-file', inputFile, '--verdicts-file', verdictFile]);
+      assert.equal(rejected.exitCode, 1);
+      assert.equal(JSON.parse(rejected.stdout).reason, 'BLOCK_COMPOSITION_FAILED');
+      assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before);
+    }
+  } finally { transfer.close(dir); cleanup(id); }
+});
+
+test('origin attachment transports verified input and amended output as file references', () => {
+  const { dir } = transfer.open('claude');
+  let outputDir;
+  try {
+    const text = block('origin-file', { What: ' Retains café.' }).trimEnd();
+    const source = transfer.put(dir, 'block.md', text);
+    const request = {
+      block_files: [{ block_file: source.path, hash: hashBlock(text) }],
+      correspondence: { version: 1, platform: 'github', role: 'parent', parent: 'https://github.com/team/repo/issues/10', slices: [{ change_name: 'origin-file', issue: 'https://github.com/team/repo/issues/11', depends_on: [] }] },
+    };
+    const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+    const result = spawnSync(process.execPath, [tool, 'attach-origin', '--harness', 'claude'], { input: JSON.stringify(request), encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const output = JSON.parse(result.stdout);
+    outputDir = output.transfer_dir;
+    assert.equal(output.blocks[0].text, undefined);
+    const amended = verifyBlockFile(output.blocks[0].block_file, output.blocks[0].hash);
+    assert.equal(amended.replace('**Backlog origin**: https://github.com/team/repo/issues/11\n', ''), text);
+    assert.equal(fs.readFileSync(source.path, 'utf8'), text);
+    assert.equal(composeVerdicts(amended, []).includes('\n<<<VERDICTS>>>\n[]'), true);
+    request.block_files[0].hash = '0'.repeat(64);
+    const rejected = spawnSync(process.execPath, [tool, 'attach-origin', '--harness', 'claude'], { input: JSON.stringify(request), encoding: 'utf8' });
+    assert.equal(rejected.status, 1);
+    assert.equal(JSON.parse(rejected.stdout).ok, false);
+  } finally { if (outputDir) transfer.close(outputDir); transfer.close(dir); }
+});
+
+test('stored file verification reports unreadable input without substituting content', t => {
+  const { dir } = transfer.open('claude');
+  try {
+    const text = block('unreadable-change').trimEnd();
+    const source = transfer.put(dir, 'block.md', text);
+    const originalRead = fs.readFileSync;
+    const mocked = t.mock.method(fs, 'readFileSync', function (filename, ...args) {
+      if (filename === source.path) throw Object.assign(new Error('EACCES: file unreadable'), { code: 'EACCES' });
+      return originalRead.call(this, filename, ...args);
+    });
+    assert.throws(() => verifyBlockFile(source.path, hashBlock(text)), /unreadable/);
+    mocked.mock.restore();
+  } finally { transfer.close(dir); }
+});
+
+test('both harness routes and all three consuming workers use file/hash references', () => {
+  const read = name => fs.readFileSync(path.join(REPO_ROOT, name), 'utf8');
+  for (const name of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/spec/worker.md']) {
+    assert.match(read(name), /--block-file/);
+    assert.match(read(name), /--block-hash/);
+    assert.match(read(name), /Stored block transport/);
+  }
+  for (const name of ['sai/commands/explore/steps/pipeline-direct-build.md', 'sai/commands/explore/steps/pipeline-plan-unattended.md']) {
+    assert.match(read(name), /--export --harness <claude\|opencode>/);
+    assert.match(read(name), /--block-file/);
+  }
+});
+
 test('block emit: a valid single block records its name and returns the route-selector pointer', () => {
   const id = spawnSession('rtp-single');
   try {
@@ -83,13 +293,118 @@ test('block emit: a valid single block records its name and returns the route-se
     assert.equal(Object.keys(json)[0], 'received_at');
     assert.match(json.received_at, RECEIVED_AT_PATTERN);
     assert.equal(json.validation.ok, true);
-    assert.equal(json.validation.profile, 'strict');
+    assert.equal(json.validation.profile, 'dispatchable');
     assert.equal(json.stage, 'waiting');
     assert.equal(json.next.follow, ROUTE_SELECTOR);
     assert.deepEqual(readSet(id), ['one-change']);
   } finally {
     cleanup(id);
   }
+});
+
+test('block guard: a block emitted before the crystallize stage is rejected and records nothing', () => {
+  for (const steps of [0, 1, 2]) {
+    const id = spawnSession(`rtp-guard-${steps}`, false);
+    try {
+      advanceIdea(id, steps);
+      const result = blockEmit(id, block('early-change'));
+      assert.equal(result.exitCode, 1);
+      const json = JSON.parse(result.stdout);
+      assert.equal(json.error, 'INVALID_EVENT');
+      assert.equal(json.reason, 'STAGE_NOT_CRYSTALLIZE');
+      assert.equal(json.stage, ['explore-change', 'review-edge-cases', 'implementation-details'][steps]);
+      assert.match(result.stderr, /crystallize/);
+      assert.equal(readSet(id), null);
+      assert.equal(readStoredBlocks(id), null);
+    } finally {
+      cleanup(id);
+    }
+  }
+});
+
+test('block guard: the block is accepted once the exploration reaches crystallize, and an amendment is not stage-checked', () => {
+  const id = spawnSession('rtp-guard-open', false);
+  try {
+    advanceIdea(id, 3);
+    assert.equal(blockEmit(id, block('late-change')).exitCode, 0);
+    assert.deepEqual(readSet(id), ['late-change']);
+    // The idea leaves crystallize through the late POC entry; the amend stays outside the guard.
+    const lane = runCli(['emit', id, IDEA_MACHINE, '-'], '{"intent":"poc-lane-late"}');
+    assert.equal(lane.exitCode, 0, lane.stderr);
+    const amended = blockEmit(id, block('late-change', { What: ' Adds another thing.' }), MACHINE, ['--amend', 'late-change']);
+    assert.equal(amended.exitCode, 0, amended.stderr);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block guard: the issue shortcut reaches crystallize in one emit and the block is then accepted', () => {
+  const id = spawnSession('rtp-shortcut', false);
+  try {
+    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: ['E1: empty input fails.'], implementationDetailsList: ['I1: add the module.'] });
+    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
+    assert.equal(shortcut.exitCode, 0, shortcut.stderr);
+    const json = JSON.parse(shortcut.stdout);
+    assert.equal(json.stage, 'crystallize');
+    assert.equal(json.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+    assert.equal(blockEmit(id, block('shortcut-change')).exitCode, 0);
+    assert.deepEqual(readSet(id), ['shortcut-change']);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block guard: the issue shortcut is rejected after the exploration left explore-change, so the guard still holds', () => {
+  const id = spawnSession('rtp-shortcut-late', false);
+  try {
+    advanceIdea(id, 1);
+    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1: add the module.'] });
+    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
+    assert.equal(JSON.parse(shortcut.stdout).rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE');
+    const result = blockEmit(id, block('early-change'));
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.parse(result.stdout).reason, 'STAGE_NOT_CRYSTALLIZE');
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('dependency set storage orders blockers, hashes internal edges and rejects invalid amendments without replacement', () => {
+  const id = spawnSession('dependency-set');
+  try {
+    const dependent = block('dependent').replace('**What**:', '**Depends on**: blocker\n**What**:');
+    const blocker = block('blocker');
+    assert.equal(blockEmit(id, dependent + '\n' + blocker).exitCode, 0);
+    assert.deepEqual(readSet(id), ['blocker', 'dependent']);
+    const before = readStoredBlocks(id);
+    assert.match(before.dependent.text, /\*\*Depends on\*\*: blocker/);
+    assert.equal(before.dependent.hash, hashBlock(before.dependent.text));
+    for (const value of ['missing', 'dependent', 'blocker, blocker']) {
+      const amended = dependent.replace('**Depends on**: blocker', `**Depends on**: ${value}`);
+      assert.equal(blockEmit(id, amended, MACHINE, ['--amend', 'dependent']).exitCode, 1);
+      assert.deepEqual(readStoredBlocks(id), before);
+    }
+    const cycle = blocker.replace('**What**:', '**Depends on**: dependent\n**What**:');
+    assert.equal(blockEmit(id, cycle, MACHINE, ['--amend', 'blocker']).exitCode, 1);
+    assert.deepEqual(readStoredBlocks(id), before);
+    assert.equal(blockEmit(id, dependent.replace('Adds a thing.', 'Adds a revised thing.'), MACHINE, ['--amend', 'dependent']).exitCode, 0);
+    assert.notEqual(readStoredBlocks(id).dependent.hash, before.dependent.hash);
+  } finally { cleanup(id); }
+});
+
+test('complete dependency sets fail before emission when references are missing or cyclic', () => {
+  const id = spawnSession('invalid-dependency-set');
+  try {
+    const one = block('one').replace('**What**:', '**Depends on**: two\n**What**:');
+    const two = block('two').replace('**What**:', '**Depends on**: one\n**What**:');
+    for (const text of [one, one + '\n' + two]) {
+      const result = blockEmit(id, text);
+      assert.equal(result.exitCode, 1);
+      assert.equal(JSON.parse(result.stdout).validation.ok, false);
+      assert.equal(readStoredBlocks(id), null);
+      assert.equal(readSet(id), null);
+    }
+  } finally { cleanup(id); }
 });
 
 test('block emit: a multi-slice set records every name in display order, with header text between blocks ignored', () => {
@@ -226,6 +541,384 @@ test('block emit: usage errors exit 2 (other machine, missing marker, combined f
     assert.equal(blockEmit(id, valid, MACHINE, ['--progress']).exitCode, 2);
     assert.equal(blockEmit(id, valid, MACHINE, ['--with-overview', 'true']).exitCode, 2);
     assert.equal(readSet(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a single change with - None under Implementation Details is recorded (E4)', () => {
+  const id = spawnSession('rtp-no-item');
+  try {
+    const result = blockEmit(id, block('empty-details', { 'Implementation Details': '\n- None' }));
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(JSON.parse(result.stdout).validation.ok, true);
+    assert.notEqual(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a slice of a sliced set with no in-scope item records nothing (E7)', () => {
+  const id = spawnSession('rtp-slice-no-item');
+  try {
+    const result = blockEmit(id, `${block('slice-a')}\n${block('slice-b', { 'Implementation Details': '\n- None' })}`);
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.ok(json.validation.blocks[1].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+    assert.equal(json.stage, undefined);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a flagged line without a verdict records nothing and is reported', () => {
+  const id = spawnSession('rtp-pending');
+  try {
+    const result = blockEmit(id, block('git-subject', { Why: ' The change is about git commit messages.' }));
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.equal(json.validation.structural_ok, true);
+    assert.deepEqual(json.validation.flagged.map((f) => f.clause), ['mutating-git']);
+    assert.equal(json.validation.judgment.pending.length, 1);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: context verdicts record the set and store text, hash, and verdicts per change name (E3)', () => {
+  const id = spawnSession('rtp-context');
+  try {
+    const text = block('git-subject', { Why: ' The change is about git commit messages.' });
+    const flaggedLine = text.split('\n').findIndex((line) => line.startsWith('**Why**')) + 1;
+    const verdicts = [{ clause: 'mutating-git', line: flaggedLine, evidence: 'Why names the subject of the change.', verdict: 'context' }];
+    const result = blockEmit(id, `${text}\n${VERDICTS_MARKER}\n${JSON.stringify(verdicts)}\n`);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.deepEqual(readSet(id), ['git-subject']);
+    const stored = readStoredBlocks(id);
+    assert.deepEqual(Object.keys(stored), ['git-subject']);
+    const blockText = text.split('\n').slice(0, text.split('\n').indexOf('---') + 1).join('\n');
+    assert.equal(stored['git-subject'].text, blockText);
+    assert.equal(stored['git-subject'].hash, hashBlock(blockText));
+    assert.deepEqual(stored['git-subject'].verdicts, verdicts);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a violation verdict records nothing and the verdict is shown (E4)', () => {
+  const id = spawnSession('rtp-violation');
+  try {
+    const text = block('bad-ask', { 'Implementation Details': '\n- I1: run git commit after the edit.' });
+    const flaggedLine = text.split('\n').findIndex((line) => line.startsWith('- I1')) + 1;
+    const verdicts = [{ clause: 'mutating-git', line: flaggedLine, evidence: 'I1 asks for a commit.', verdict: 'violation' }];
+    const result = blockEmit(id, `${text}\n${VERDICTS_MARKER}\n${JSON.stringify(verdicts)}`);
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.judgment.violations.length, 1);
+    assert.equal(json.validation.judgment.violations[0].line, flaggedLine);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a later successful emit replaces the stored blocks', () => {
+  const id = spawnSession('rtp-store-replace');
+  try {
+    assert.equal(blockEmit(id, block('first-set')).exitCode, 0);
+    assert.deepEqual(Object.keys(readStoredBlocks(id)), ['first-set']);
+    assert.equal(blockEmit(id, `${block('second-a')}\n${block('second-b')}`).exitCode, 0);
+    assert.deepEqual(Object.keys(readStoredBlocks(id)), ['second-a', 'second-b']);
+    assert.deepEqual(readStoredBlocks(id)['second-a'].verdicts, []);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', { skip: process.platform === 'win32' || (typeof process.getuid === 'function' && process.getuid() === 0) }, () => {
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-blocks-'));
+  const env = Object.assign({}, process.env, { TMPDIR: tmp, TEMP: tmp, TMP: tmp });
+  const run = (argv, input) => spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], { encoding: 'utf8', input: input || '', env });
+  const stateDir = path.join(tmp, 'sai-state');
+  try {
+    const spawned = run(['spawn', '--key', `rtp-unwritable-${process.pid}-${Date.now()}`]);
+    assert.equal(spawned.status, 0, spawned.stderr);
+    const id = JSON.parse(spawned.stdout).id;
+    // The block emit is accepted only at the crystallize stage, so reach it
+    // while the state directory is still writable.
+    for (let i = 0; i < 3; i++) {
+      const advanced = run(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
+      assert.equal(advanced.status, 0, advanced.stderr);
+    }
+    fs.chmodSync(stateDir, 0o500);
+    const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'));
+    assert.equal(result.status, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+    assert.ok(json.warnings.includes('BLOCKS_NOT_STORED'));
+    assert.equal(json.validation.ok, true);
+  } finally {
+    try { fs.chmodSync(stateDir, 0o700); } catch { /* best-effort */ }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Stored block dispatch: `sai-state block` and the single-slice amendment
+// ---------------------------------------------------------------------------
+
+function blockVerb(id, name) {
+  return runCli(['block', id, name]);
+}
+
+function amendEmit(id, name, input) {
+  return runCli(['emit', id, MACHINE, '--ready-to-propose', '--amend', name, '-'], input);
+}
+
+function readState(id) {
+  const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+  return record.stateByMachine[MACHINE].state;
+}
+
+function blockTextOf(text) {
+  return text.split('\n').slice(0, text.split('\n').indexOf('---') + 1).join('\n');
+}
+
+test('block verb: returns the stored text and hash of one recorded slice', () => {
+  const id = spawnSession('rtp-block-verb');
+  try {
+    const text = `${block('slice-a')}\n${block('slice-b', { What: ' Adds another thing.' })}`;
+    assert.equal(blockEmit(id, text).exitCode, 0);
+    const result = blockVerb(id, 'slice-b');
+    assert.equal(result.exitCode, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+    assert.match(json.received_at, RECEIVED_AT_PATTERN);
+    assert.equal(Object.keys(json)[0], 'received_at');
+    assert.equal(json.text, readStoredBlocks(id)['slice-b'].text);
+    assert.equal(json.hash, hashBlock(json.text));
+    assert.match(json.text, /Adds another thing\./);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block verb: a missing session, store, or change name is BLOCK_NOT_FOUND with no text', () => {
+  const id = spawnSession('rtp-block-missing');
+  try {
+    const empty = blockVerb(id, 'slice-a');
+    assert.equal(empty.exitCode, 1);
+    assert.equal(JSON.parse(empty.stdout).error, 'BLOCK_NOT_FOUND');
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    const unknown = blockVerb(id, 'other');
+    assert.equal(unknown.exitCode, 1);
+    const json = JSON.parse(unknown.stdout);
+    assert.equal(json.error, 'BLOCK_NOT_FOUND');
+    assert.equal(json.text, undefined);
+    assert.equal(blockVerb(id, '__proto__').exitCode, 1);
+    assert.equal(runCli(['block', id]).exitCode, 2);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block verb: after the session closes the block is gone', () => {
+  const id = spawnSession('rtp-block-closed');
+  assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+  assert.equal(runCli(['close', id]).exitCode, 0);
+  const result = blockVerb(id, 'slice-a');
+  assert.equal(result.exitCode, 1);
+  cleanup(id);
+});
+
+test('amend: a pending slice is replaced and no other stored entry or inventory field changes (E5)', () => {
+  const id = spawnSession('rtp-amend-pending');
+  try {
+    const set = `${block('slice-a')}\n${block('slice-b')}`;
+    assert.equal(blockEmit(id, set).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const stateBefore = readState(id);
+    const amended = block('slice-b', { What: ' Adds the corrected thing.' });
+    const result = amendEmit(id, 'slice-b', amended);
+    assert.equal(result.exitCode, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, true);
+    assert.equal(json.rejected, undefined);
+    const after = readStoredBlocks(id);
+    assert.deepEqual(after['slice-a'], before['slice-a']);
+    assert.equal(after['slice-b'].text, blockTextOf(amended));
+    assert.equal(after['slice-b'].hash, hashBlock(blockTextOf(amended)));
+    assert.notEqual(after['slice-b'].hash, before['slice-b'].hash);
+    assert.deepEqual(Object.keys(after), ['slice-a', 'slice-b']);
+    assert.deepEqual(readState(id), stateBefore);
+    assert.equal(JSON.parse(blockVerb(id, 'slice-b').stdout).hash, after['slice-b'].hash);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: the amended block carries its own verdicts', () => {
+  const id = spawnSession('rtp-amend-verdicts');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    const amended = block('slice-a', { Why: ' The change is about git commit messages.' });
+    const line = amended.split('\n').findIndex((l) => l.startsWith('**Why**')) + 1;
+    const verdicts = [{ clause: 'mutating-git', line, evidence: 'Why names the subject.', verdict: 'context' }];
+    const result = amendEmit(id, 'slice-a', `${amended}\n${VERDICTS_MARKER}\n${JSON.stringify(verdicts)}`);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.deepEqual(readStoredBlocks(id)['slice-a'].verdicts, verdicts);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: a stopped (parked) slice is accepted and keeps its saved cursor', () => {
+  const id = spawnSession('rtp-amend-stopped');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"complete"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"fail"}').exitCode, 0);
+    const parkedBefore = readState(id).parked;
+    assert.deepEqual(Object.keys(parkedBefore), ['slice-a']);
+    const amended = block('slice-a', { What: ' Adds the corrected thing.' });
+    const result = amendEmit(id, 'slice-a', amended);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).rejected, undefined);
+    assert.deepEqual(readState(id).parked, parkedBefore);
+    assert.equal(readStoredBlocks(id)['slice-a'].text, blockTextOf(amended));
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: a running slice is rejected and its stored block stays unchanged (E5)', () => {
+  const id = spawnSession('rtp-amend-running');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    const before = readStoredBlocks(id);
+    const result = amendEmit(id, 'slice-a', block('slice-a', { What: ' Changed mid-run.' }));
+    assert.equal(JSON.parse(result.stdout).rejected, 'SLICE_RUNNING');
+    assert.deepEqual(readStoredBlocks(id), before);
+    // A different, pending slice is still amendable while one runs.
+    const other = amendEmit(id, 'slice-b', block('slice-b', { What: ' Changed while another runs.' }));
+    assert.equal(JSON.parse(other.stdout).rejected, undefined);
+    assert.match(readStoredBlocks(id)['slice-b'].text, /Changed while another runs\./);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: a completed slice is rejected and the stored block stays unchanged (E5)', () => {
+  const id = spawnSession('rtp-amend-completed');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    for (let i = 0; i < 3; i++) assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"complete"}').exitCode, 0);
+    assert.deepEqual(readState(id).done, ['slice-a']);
+    const before = readStoredBlocks(id);
+    const result = amendEmit(id, 'slice-a', block('slice-a', { What: ' Changed after completion.' }));
+    assert.equal(JSON.parse(result.stdout).rejected, 'SLICE_COMPLETED');
+    assert.deepEqual(readStoredBlocks(id), before);
+    assert.deepEqual(readState(id).done, ['slice-a']);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: an unknown slice name is rejected and nothing is stored', () => {
+  const id = spawnSession('rtp-amend-unknown');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const result = amendEmit(id, 'slice-z', block('slice-z'));
+    assert.equal(JSON.parse(result.stdout).rejected, 'UNKNOWN_SLICE');
+    assert.deepEqual(readStoredBlocks(id), before);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: a slice of a stored multi-slice set cannot be amended to - None, a single stored slice can (E4, E7)', () => {
+  const id = spawnSession('rtp-amend-none-set');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const result = amendEmit(id, 'slice-b', block('slice-b', { 'Implementation Details': '\n- None' }));
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.ok(json.validation.blocks.flatMap((b) => b.violations).some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+    assert.deepEqual(readStoredBlocks(id), before);
+  } finally {
+    cleanup(id);
+  }
+
+  const single = spawnSession('rtp-amend-none-single');
+  try {
+    assert.equal(blockEmit(single, block('slice-a')).exitCode, 0);
+    const amended = block('slice-a', { 'Implementation Details': '\n- None' });
+    const result = amendEmit(single, 'slice-a', amended);
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(readStoredBlocks(single)['slice-a'].text, blockTextOf(amended));
+  } finally {
+    cleanup(single);
+  }
+});
+
+test('amend: the block is validated with the dispatchable contract and invalid text replaces nothing', () => {
+  const id = spawnSession('rtp-amend-invalid');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const duplicated = amendEmit(id, 'slice-a', block('slice-a', { 'Out of scope Implementation Details': '\n- I1: add the module.' }));
+    assert.equal(duplicated.exitCode, 1);
+    assert.equal(JSON.parse(duplicated.stdout).validation.ok, false);
+    const unjudged = amendEmit(id, 'slice-a', block('slice-a', { Why: ' About git push.' }));
+    assert.equal(unjudged.exitCode, 1);
+    assert.equal(JSON.parse(unjudged.stdout).validation.judgment.pending.length, 1);
+    const cutOff = amendEmit(id, 'slice-a', block('slice-a').replace(/\n---\n$/, '\n'));
+    assert.equal(cutOff.exitCode, 1);
+    assert.equal(JSON.parse(cutOff.stdout).reason, 'EVENT_UNPARSEABLE');
+    assert.deepEqual(readStoredBlocks(id), before);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: exactly one block carrying the amended change name is required', () => {
+  const id = spawnSession('rtp-amend-scope');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const two = amendEmit(id, 'slice-a', `${block('slice-a')}\n${block('slice-b')}`);
+    assert.equal(two.exitCode, 1);
+    assert.equal(JSON.parse(two.stdout).reason, 'AMEND_BLOCK_COUNT');
+    const renamed = amendEmit(id, 'slice-a', block('slice-b', { What: ' Wrong slice.' }));
+    assert.equal(renamed.exitCode, 1);
+    assert.equal(JSON.parse(renamed.stdout).reason, 'AMEND_NAME_MISMATCH');
+    assert.deepEqual(readStoredBlocks(id), before);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: usage errors exit 2 (no name, other machine)', () => {
+  const id = spawnSession('rtp-amend-usage');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '--ready-to-propose', '--amend', '-'], block('slice-a')).exitCode, 2);
+    assert.equal(runCli(['emit', id, 'explore-idea@1', '--ready-to-propose', '--amend', 'slice-a', '-'], block('slice-a')).exitCode, 2);
   } finally {
     cleanup(id);
   }

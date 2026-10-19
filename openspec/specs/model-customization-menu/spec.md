@@ -5,7 +5,7 @@ TTY-only post-setup customization menu and isolated harness adapters that apply 
 
 ### Requirement: Post-setup customization menu
 
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly five actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen.
+The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly six actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project settings`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project settings` MUST open the project settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again.
 
 #### Scenario: User exits from the post-setup menu
 
@@ -31,6 +31,16 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 
 - **WHEN** the user selects `Load preset` at the post-setup menu and chooses a harness
 - **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
+
+#### Scenario: User opens project settings from the post-setup menu
+
+- **WHEN** the user selects `Project settings`, edits `backlog.provider`, and leaves the screen
+- **THEN** the flow MUST save the setting through the project settings screen and present the post-setup menu again
+
+#### Scenario: Interrupted project settings return to the menu
+
+- **WHEN** the user interrupts a prompt inside the project settings screen
+- **THEN** the flow MUST present the post-setup menu again and leave `.sai/settings.jsonc` unchanged
 
 ### Requirement: TTY-only interaction
 
@@ -86,17 +96,45 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 - **THEN** the flow MUST call the Claude Code adapter's operations and MUST NOT call OpenCode adapter operations
 
 ### Requirement: Derived target families
+
 The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters. `sai-commit-worker` SHALL remain a routed worker and `sai-commit` SHALL remain a command on both adapters, with `utility:sai-commit` absent. An existing project-local override for sai-commit SHALL keep resolving without migration because both families resolve to the same commands directory.
+
+Both Claude Code and opencode adapters SHALL restrict their shared command enumeration to manifest-projected Markdown wrappers whose names begin with `sai-`, before command-versus-utility classification. Non-SAI wrappers, including `from-backlog`, `from-next-backlog-item`, `to-backlog`, and `to-pr`, MUST NOT become customization command targets in Orchestrators or All scopes. Enumeration SHALL leave wrapper contents unchanged. Supported SAI command targets, independently derived worker and agent targets, and separate utility classification SHALL remain available. A missing target profile or unavailable effective setting MUST NOT exclude an otherwise eligible SAI target.
+
 #### Scenario: Merge targets appear in the menu
 
 - **WHEN** the customization menu enumerates configurable targets on either adapter
 - **THEN** the merge worker and command are present in their routed/command families with the updated counts asserted by the suite
+
 #### Scenario: Budget remains an agent but not a command
+
 - **WHEN** the All scope enumerates targets for a harness with a budget agent
-- **THEN** it includes `agent:budget` and excludes `command:budget`.
+- **THEN** it includes `agent:budget` and excludes `command:budget`
+
 #### Scenario: Commit appears as an orchestrator with its worker
+
 - **WHEN** the menu enumerates targets for either harness
 - **THEN** sai-commit SHALL appear as command:sai-commit in the command family and sai-commit-worker SHALL remain a routed worker, with utility:sai-commit absent
+
+#### Scenario: Shared enumeration excludes every non-SAI wrapper
+
+- **WHEN** either harness adapter enumerates manifest-projected command wrappers containing supported `sai-*` names, the four reported non-SAI wrappers, and another wrapper without the `sai-` prefix
+- **THEN** enumeration SHALL return only supported `sai-*` wrapper names and SHALL leave every wrapper's contents unchanged
+
+#### Scenario: Orchestrators excludes non-SAI commands in both harnesses
+
+- **WHEN** a user opens the Orchestrators customization scope in Claude Code or opencode
+- **THEN** the checklist and its default selection SHALL exclude non-SAI command wrappers while retaining supported SAI command targets
+
+#### Scenario: All retains independent families and utilities
+
+- **WHEN** a user opens the All customization scope in Claude Code or opencode
+- **THEN** the checklist and its default selection SHALL exclude non-SAI command wrappers while retaining supported SAI commands, independently derived workers and agents, and separately classified utilities
+
+#### Scenario: Unknown or unavailable does not determine eligibility
+
+- **WHEN** an eligible `sai-*` command has no mapped target profile and its effective setting is unavailable on either harness
+- **THEN** it SHALL remain in the Orchestrators and All checklists with Unknown profile columns and an unavailable setting
 
 ### Requirement: Checklist rows expose context and difficulty
 The model-customization checklist and the reset and save/load preset previews SHALL render columns in the order `TYPE`, `TARGET`, `CONTEXT`, `DIFFICULTY`, and `SETTING` for every target in both OpenCode and Claude Code flows, with headers, separators, and rows aligned and setting text preserved.
@@ -109,19 +147,19 @@ The model-customization checklist and the reset and save/load preset previews SH
 - **THEN** its header and rows SHALL show `CONTEXT` before `DIFFICULTY` with the same widths as the customization checklist
 
 ### Requirement: Target profiles use family-qualified identities
-The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` from one shared static profile mapping keyed by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix, for both supported harnesses. Configured context values MUST be `Small`, `Medium`, or `Large`; configured difficulty values MUST be `↑`, `↑↑`, or `↑↑↑`. An unmapped identity SHALL display `Unknown` in both columns so that a missing entry never reads as a small or easy task. `CONTEXT` estimates the typical task context — instructions, documents, results, and accumulated continuations: `Small` for isolated tasks with few inputs and little history, `Medium` for several documents or continuations, and `Large` for substantial documents, results, and accumulated state. It describes the task, independent of the selected model's context-window capacity and of live token counts. `DIFFICULTY` estimates the task's reasoning demand. Profiles are display-only: selection identities, family grouping, ordering, effective settings, and preset file contents SHALL be independent of them. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-4-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
+The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` from one shared static profile mapping keyed by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix, for both supported harnesses. Configured context values MUST be `Small`, `Medium`, or `Large`; configured difficulty values MUST be `↑`, `↑↑`, or `↑↑↑`. An unmapped identity SHALL display `Unknown` in both columns so that a missing entry never reads as a small or easy task. `CONTEXT` estimates the typical task context — instructions, documents, results, and accumulated continuations: `Small` for isolated tasks with few inputs and little history, `Medium` for several documents or continuations, and `Large` for substantial documents, results, and accumulated state. It describes the task, independent of the selected model's context-window capacity and of live token counts. `DIFFICULTY` estimates the task's reasoning demand. Profiles are display-only: selection identities, family grouping, ordering, effective settings, and preset file contents SHALL be independent of them. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-3-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
 #### Scenario: Prevent bare-name taxonomy collisions
 
 - **WHEN** a profile is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
 - **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display values remain within the permitted sets
 #### Scenario: Commit coordinator and green worker difficulty
-- **WHEN** difficulty is resolved for command:sai-commit and worker:sai-4-green-worker
+- **WHEN** difficulty is resolved for command:sai-commit and worker:sai-3-green-worker
 - **THEN** each lookup SHALL use its complete identity and return a single up-arrow and a double up-arrow respectively
 #### Scenario: Low-difficulty coordinator still shows medium context
 - **WHEN** the checklist displays `command:sai-6-security`
 - **THEN** it SHALL show `Medium` under `CONTEXT` and a single arrow under `DIFFICULTY`
 #### Scenario: Fresh Step workers carry less context than their supervisor
-- **WHEN** the checklist displays `command:sai-4-apply` and its RED and GREEN workers
+- **WHEN** the checklist displays `command:sai-3-implement` and its RED and GREEN workers
 - **THEN** the coordinator SHALL show `Large` and each worker SHALL show `Medium` under `CONTEXT`
 #### Scenario: Unmapped target shows Unknown
 - **WHEN** a target has no profile entry

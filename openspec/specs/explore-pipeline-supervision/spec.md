@@ -8,7 +8,7 @@ Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-e
 
 ### Requirement: Name supervised route identity
 
-The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Direct Build - Unattended` and route identity `direct-build-unattended` for its separate worker flow. `/sai-build` and `meta-build` SHALL remain distinct composition identities.
+The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Direct Build - Unattended` and route identity `direct-build-unattended` for its separate worker flow.
 
 #### Scenario: supervised selection is classified
 
@@ -17,7 +17,7 @@ The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-u
 
 ### Requirement: Reuse supervised lifecycle
 
-The supervised pipeline SHALL resolve gate 9 immediately after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds for a dispatchable route, and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
+The supervised pipeline SHALL use the overview language that round 3 of the route round resolved immediately after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds for a dispatchable route, and before `active_change` is set or the first spec worker is dispatched. Only when round 3 left the overview language unresolved, because the overview answer was missing or cancelled, SHALL the supervised pipeline ask gate 9 on its own exactly once at that point, with the same options and rules as the round-3 question. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
 
 A resolved overview language SHALL remain available for a retry over the same crystallized idea or slice set, and SHALL reset for a materially new idea without being persisted.
 
@@ -37,6 +37,11 @@ On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coord
 
 - **WHEN** the spec phase ends by cap exhaustion with the worker returning `completed`
 - **THEN** the run continues to the chained design phase rather than stopping at the spec phase, and the chained design envelope carries `--supervised`
+
+#### Scenario: missing round-3 overview answer asks before the spec worker
+
+- **WHEN** the native picker returns exactly `Plan - Unattended` for a dispatchable change and the round-3 overview answer was missing or cancelled
+- **THEN** gate 9 asks on its own exactly once before `active_change` is set and before the first spec worker is dispatched
 
 ### Requirement: Supervision preserves worker terminal behavior
 
@@ -273,12 +278,19 @@ When the completion transition finds uncompleted entries in last_crystallization
 
 ### Requirement: Direct Build slice attempts reset only per-attempt state
 
-Each re-entered slice selection SHALL start a fresh Direct Build attempt and reset `base_sha`, `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters according to their existing per-attempt rules. The reset SHALL retain `completed_changes` and completed idea-progress states, and a failed, cancelled, incomplete-recovery, coordinator-disproved, STOP-bearing, or suite-gate-stopped result SHALL not mark the slice completed or trigger completion re-entry.
+Only a new Direct Build slice execution SHALL initialize its execution state, capture initial `base_sha` and slice snapshots, reset `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters, start at Step 1, and receive that slice's original one-local-commit authorization. The initialization SHALL retain completed changes and completed idea-progress states.
+
+Resumption of a pending execution in the same conversation SHALL preserve its accepted work, initial references, counters, replacement usage, pending step, and authorization consumption instead of initializing a fresh attempt. A failed, cancelled, incomplete-recovery, coordinator-disproved, STOP-bearing, or suite-gate-stopped result SHALL not mark the slice completed or trigger completion re-entry.
 
 #### Scenario: A new slice gets fresh attempt state
 
-- **WHEN** the completion transition re-enters selection for an uncompleted slice
-- **THEN** the next slice starts with reset per-attempt counters while previously completed slice state remains intact.
+- **WHEN** the completion transition re-enters selection for a new uncompleted slice execution
+- **THEN** that slice starts with initialized per-attempt counters while previously completed slice state remains intact
+
+#### Scenario: Pending execution retains its attempt state
+
+- **WHEN** a stopped Direct Build execution resumes in the same conversation
+- **THEN** it retains its existing counters and accepted work without restarting implementation or renewing commit authorization
 
 ### Requirement: Direct Build terminal navigation waits for slice exhaustion
 
@@ -309,7 +321,7 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with the keys `direct-build`, `backfill`, and `archive`, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with one key per step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), each allowing three attempts for its failed step, initialized to zero only by a new slice and persisting across a same-slice resume, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
@@ -328,27 +340,8 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 #### Scenario: A failed order without effect is corrected and issued again
 
-- **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the scope has an attempt left
+- **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the failed step has an attempt left
 - **THEN** the route corrects the cause through the recovery path and issues a new order to the step's owner
-
-### Requirement: Direct Build - Unattended pre-dispatch compatibility refusal
-
-Before Step 1 of the Direct Build Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only. A published specification under `openspec/specs/**` SHALL change only through the change's delta, backfill, and the archive sync that steps 3 through 8 own. Explore SHALL check for planning-artifact creation, mutating git commands, subagent dispatch, or direct edits to published `openspec/specs/**` that the block designates as step-1 implementation work; every other repository artifact, including any other content under `openspec/`, SHALL be step-1 scope and never a violation. When the block evidence clearly triggers a genuine violation, explore SHALL emit a documented refusal naming the violated clause and the block evidence, dispatch nothing, mutate no selection state, and leave the change retryable with Manual available. A block that only mentions published specs in Why, Decisions and Rationale, or Research Leads SHALL pass straight through to Step 1 with no refusal.
-
-#### Scenario: Genuine step-1 violations are refused
-
-- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or direct edits to published `openspec/specs/**`)
-- **THEN** explore emits a documented refusal naming the violated clause and the block evidence, dispatches nothing, mutates no selection state, and leaves the change retryable.
-
-#### Scenario: Bookkeeping-only blocks pass through without refusal
-
-- **WHEN** the block only mentions or references OpenSpec bookkeeping artifacts in non-Capabilities fields
-- **THEN** explore dispatches to Step 1 without refusal.
-
-#### Scenario: Other OpenSpec content passes through
-
-- **WHEN** the block designates implementation work under `openspec/` outside `openspec/specs/**`, such as `openspec/schemas/**` or `openspec/config.yaml`
-- **THEN** explore dispatches to Step 1 with no refusal
 
 ### Requirement: Explore worker bindings load at their dispatch points
 
@@ -381,12 +374,23 @@ The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for
 
 ### Requirement: Build spec review checks MODIFIED-delta completeness
 
-The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-delta completeness check read-only over the returned backfill draft content: for every `## MODIFIED Requirements` entry in a draft, compare its scenario set against the existing main-spec requirement at `openspec/specs/{capability}/spec.md`. A MODIFIED that drops an existing scenario is a High completeness finding routed through the same findings continuation, because syncing it would silently destroy content.
+The Direct Build - Unattended route's step-4 spec review SHALL apply the shared scenario-preservation receiver boundary to temporary backfill drafts and their separate exception reference. It SHALL verify references, independently approve every exception against the approved block, and run the deterministic checker against current published specifications, comparing scenario names within each capability and MODIFIED requirement. Unapproved missing scenarios SHALL be High completeness findings routed to the same backfill worker within the existing findings budget. A failed or incomplete comparison SHALL NOT be accepted through review-round cap exhaustion. Verified temporary metadata and approval evidence SHALL remain available through archive, and the coordinator SHALL repeat the independent archive boundary on current deltas immediately before archive execution. Worker-authored exceptions alone SHALL grant no approval.
 
 #### Scenario: A draft MODIFIED drops an existing scenario
-
-- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds
+- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds without an applicable exception independently approved against the accepted scope
 - **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget.
+
+#### Scenario: Approved exception permits only its named difference
+- **WHEN** an exception explicitly covered by the approved block permits one scenario removal or rename
+- **THEN** the checker permits only that difference and still reports any unrelated missing scenario
+
+#### Scenario: Exhausted review budget does not accept invalid preservation
+- **WHEN** the review budget is exhausted but the scenario comparison still fails or cannot complete
+- **THEN** the affected drafts are not accepted for materialization or archive
+
+#### Scenario: Metadata survives until the archive check
+- **WHEN** validated backfill drafts have been materialized but archive has not completed
+- **THEN** the transfer directory and verified metadata remain available for the independent archive check and any corrections until terminal cleanup
 
 ### Requirement: The Direct Build run has three guard windows
 
@@ -443,7 +447,7 @@ After a valid native picker answer for `Direct Build - Unattended` activates `ro
 
 ### Requirement: Direct Build archive failure correction routing
 
-The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the `archive` scope. Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
+The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the failed step's own key (`step-7` or `step-8`). Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
 
 #### Scenario: Backfill-artifact archive failure relaunches after correction
 
@@ -452,7 +456,7 @@ The supervision SHALL route an archive preparation or execution failure through 
 
 #### Scenario: Repeated defect without progress closes as failed-retryable
 
-- **WHEN** the same diagnosis repeats after a correction or the three attempts are spent
+- **WHEN** the same diagnosis repeats after a correction or the failed step's three attempts are spent
 - **THEN** the supervision SHALL stop with the policy's stop notice and the verbatim failure in view, and the slice stays retryable at explicit user request
 
 ### Requirement: Plan slice-machine emits
@@ -558,3 +562,73 @@ The Direct Build - Unattended route SHALL classify every observation of its func
 #### Scenario: the run ends with no scope observation
 - **WHEN** a Direct Build - Unattended run reaches its terminal report with no scope observation held
 - **THEN** the terminal report omits the `Scope observations` record
+
+### Requirement: Direct Build owns retained same-conversation execution state
+
+The full Direct Build route SHALL define its retained execution state once in `pipeline-direct-build.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed, original envelopes, exact opaque continuation histories, required reconstruction metadata and replacement usage, first-seen changed-path union, findings, draft validation evidence, the backfill transfer directory path and the latest draft references (never draft content), suite results, verification references, existing recovery counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
+
+Parking the slice SHALL release machine active state without clearing this conversation execution state. Guard baseline state SHALL remain local to its live window; a human interruption SHALL close and verify that window, and subsequent worker work SHALL open a fresh window under the existing guard policy. Resumption SHALL introduce no new persistent storage and SHALL not support a new conversation.
+
+#### Scenario: Pending execution is parked
+
+- **WHEN** Direct Build fails, is cancelled, or remains stopped
+- **THEN** its route step remains pending and its conversation execution references remain available even though the machine releases active
+
+#### Scenario: Human boundary closes guard state
+
+- **WHEN** a human interruption crosses an active Direct Build guard window
+- **THEN** the coordinator closes and verifies that window and opens a fresh window before forwarding subsequent worker work without carrying the old guard baseline across the boundary
+
+#### Scenario: Resumption reads the block from the store
+
+- **WHEN** a parked Direct Build slice resumes after its conversation was compacted
+- **THEN** the pending step reads the slice's block from `sai-state block` and no missing block keeps the route stopped while the store holds it
+
+### Requirement: Direct Build resumes the first pending accepted-check operation
+
+On `resume-direct-build`, the coordinator SHALL reconcile the retained pending internal step with the machine's saved stage: Steps 1–2b belong to build-implement, Steps 3–6 to backfill, and Steps 7–8 to archive. Missing information required for the pending operation SHALL keep execution stopped and be identified. A stage mismatch SHALL require reconciliation from accepted checks, never fresh initialization.
+
+The coordinator SHALL recheck accepted-step evidence against repository state, preserve accepted work whose evidence remains valid, and review affected work whose evidence changed without resetting counters or scope. It SHALL enter at the first pending internal step. A completed worker stretch alone SHALL not accept a step: acceptance SHALL require validator-compatible output and every ordinary step check. Only accepted internal checks SHALL advance `pending_step`, and high-level `complete` SHALL be emitted only after all internal checks for that stage pass.
+
+#### Scenario: Backfill is the first pending operation
+
+- **WHEN** implementation and suite checks are accepted and the parked stage is backfill
+- **THEN** resumption continues the pending backfill operation without re-running accepted implementation
+
+#### Scenario: Reconstruction information is missing
+
+- **WHEN** resumption lacks a required block, handle history, counter, authorization state, or verification reference
+- **THEN** the route remains stopped and identifies the missing information
+
+#### Scenario: Accepted evidence changed
+
+- **WHEN** current repository state invalidates evidence for previously accepted work
+- **THEN** the coordinator reviews the affected work while preserving scope and counters rather than accepting stale evidence or restarting the whole execution
+
+### Requirement: Direct Build continues the corresponding agent before replacement
+
+For pending agent work, the coordinator SHALL first attempt same-worker continuation with the retained handle through the existing native binding: Claude Code's captured agent handle or opencode's task session identifier. Failed delivery and permitted replacement SHALL follow existing command-runner continuation, replacement, reconstruction, and unattended recovery contracts. Replacement work SHALL require complete reconstruction and SHALL retain replacement usage and recovery counters. Each pending step SHALL continue its corresponding role rather than dispatching a new implementer for backfill or archive.
+
+#### Scenario: Existing role agent remains available
+
+- **WHEN** pending work can continue through its retained agent handle
+- **THEN** the coordinator continues that same agent before considering permitted replacement
+
+#### Scenario: Continuation delivery fails
+
+- **WHEN** same-agent continuation cannot be delivered
+- **THEN** the coordinator applies only the replacement and reconstruction permitted by existing contracts and remains stopped if reconstruction is incomplete
+
+### Requirement: Rejected responses preserve work and remain pending
+
+Every Direct Build response SHALL reach the active validator exactly as received. Invalid output SHALL preserve existing repository changes, keep the step pending, and request a fresh validator-compatible response from its author through existing recovery rules. Rejected output SHALL supply no accepted status or changed-path claim. Recoverable errors SHALL follow the existing unattended recovery procedure before a user decision. An exhausted budget SHALL leave the step pending and report the cause; choosing resumption SHALL not reopen that budget.
+
+#### Scenario: Agent returns invalid output
+
+- **WHEN** an agent response fails active payload validation
+- **THEN** the coordinator preserves existing changes and requests corrected output from the author within the existing recovery budget without advancing the step
+
+#### Scenario: Recovery budget is exhausted
+
+- **WHEN** a pending step has exhausted its existing recovery attempts
+- **THEN** the coordinator reports the cause and keeps the step pending without granting another attempt merely because resumption was requested

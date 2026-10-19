@@ -10,7 +10,9 @@
 > it per the instruction's own Delivery rule; where it conditions on an
 > answer, the coordinator forwards the selected value or free text through the
 > binding continuation; and where Phase 6 says **create** or **write**, the
-> worker composes the draft content and returns it as payload text. On the
+> worker composes the draft content, writes each draft as a transfer file
+> with `transfer.js put`, and returns references to those files, never the
+> content (`backfill/worker.md` § Draft transfer). On the
 > ordinary route, schema validation against
 > `openspec/schemas/sai-workflow/schema.yaml` and every final write into
 > `openspec/changes/{name}/` execute coordinator-side per
@@ -232,11 +234,18 @@ Do NOT compose any draft for a write until the name is confirmed (or fast-track-
 
 ## Phase 6: Draft Composition
 
-Only after Phases 1–5 complete with no abort and a confirmed change name, compose the following drafts in order and return their CONTENT as payload text inside your terminal payload. The draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never compose `design.md`, `tasks.md`, or `implementation.md` — they are prohibited outputs everywhere in this flow.
+Only after Phases 1–5 complete with no abort and a confirmed change name, compose the following drafts in order and hand them over as transfer-file references inside your terminal payload (`backfill/worker.md` § Draft transfer): write each draft with `transfer.js put` and return no draft content in any message. The draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never compose `design.md`, `tasks.md`, or `implementation.md` — they are prohibited outputs everywhere in this flow.
 
 ### 6a. Draft `.openspec.yaml`
 
-For a run with no usable intent context, carry exactly these three keys and no others:
+Fetch @sai/policies/issue-origin-preservation.md and apply it to the received
+block and the selected change's existing metadata, when present. Preserve the
+validated `backlog_origin` as an optional key in either form below; it is
+independent of usable intent and never sets `prior_intent` by itself. Compare
+the draft with the known origin before handing over its transfer reference.
+
+For a run with no usable intent context, carry these three required keys and
+only the optional `backlog_origin` key:
 
 ```yaml
 schema: sai-workflow
@@ -244,7 +253,8 @@ created: {calendar date in YYYY-MM-DD, e.g. 2026-05-21}
 backfilled: true
 ```
 
-For a run with usable intent context, carry exactly these four keys and no others:
+For a run with usable intent context, carry these four required keys and
+only the optional `backlog_origin` key:
 
 ```yaml
 schema: sai-workflow
@@ -290,7 +300,15 @@ Classify every requirement's delta header per requirement, never per file or per
 
 ## Completion Boundary
 
-On the ordinary route, after all draft artifact content has been returned for
+For MODIFIED drafting and all corrected drafts, use
+`@sai/policies/scenario-preservation.md` (loaded by the worker's Draft transfer
+section). Preserve scenario identities within each requirement unless the
+approved scope explicitly removes or renames them. Put proposed exceptions in
+the separate temporary metadata, then check the complete temporary draft set
+before delivery. The coordinator independently verifies approval and repeats
+the check before materialization or archive.
+
+On the ordinary route, after all draft references have been returned for
 write, stop. Do not create any planning artifact, run another SAI command, or
 invoke an archive command from this flow. The coordinator validates the drafts
 against `openspec/schemas/sai-workflow/schema.yaml` and executes the final

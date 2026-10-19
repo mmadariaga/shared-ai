@@ -11,7 +11,6 @@ const {
   MANAGED_WORKERS,
   CLAUDE_SPEC_WORKER_AGENT,
   CLAUDE_DESIGN_WORKER_AGENT,
-  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_REVIEW_WORKER_AGENT,
 } = require('../bin/install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
@@ -20,11 +19,9 @@ const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-work
 const WORKER_BINDINGS = [
   ['spec', 'sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['design', 'sai-2-design-worker', 'design-worker.md'],
-  ['implement', 'sai-3-implementation-worker', 'implementation-worker.md'],
-  ['review', 'sai-5-review-worker', 'review-worker.md'],
-  ['security', 'sai-6-security-worker', 'security-worker.md'],
-  ['performance', 'sai-7-performance-worker', 'performance-worker.md'],
-  ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
+  ['security', 'sai-5-security-worker', 'security-worker.md'],
+  ['performance', 'sai-6-performance-worker', 'performance-worker.md'],
+  ['accessibility', 'sai-7-accessibility-worker', 'accessibility-worker.md'],
   ['commit', 'sai-commit-worker', 'commit-worker.md'],
   ['archive', 'sai-archive-worker', 'archive-worker.md'],
   ['backfill', 'sai-backfill-worker', 'backfill-worker.md'],
@@ -34,11 +31,10 @@ const WORKER_BINDINGS = [
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
@@ -52,21 +48,18 @@ const CLAUDE_GENERIC_AGENTS = {
 };
 
 const UTILITY_COMMANDS = {
-  'sai-4-apply': 'apply',
   'sai-archive': 'archive',
   'sai-explore': 'explore',
-  'sai-pr': 'pr',
   'sai-retire-docs': 'retire-docs',
   'sai-status': 'status',
   'sai-worktree': 'worktree',
 };
 
 const UTILITY_CARD_CONTENTS = {
-  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md', 'steps', 'worker-common.md'],
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
+  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'list-writing.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -120,7 +113,7 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /non-empty and empty implementation-detail branches/);
   assert.match(source, /entry into `Crystallize`/);
   assert.match(source, /Material-change detection runs before selector-response classification/);
-  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
@@ -142,21 +135,19 @@ test('managed worker registry defines every Claude compatibility export', () => 
   assert.ok(MANAGED_WORKERS, 'MANAGED_WORKERS should be exported');
 
   const expectedNames = [
-    'sai-3-implementation-worker',
     'sai-2-design-worker',
-    'sai-5-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-4-review-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
     'sai-1-spec-proposal-worker',
     'sai-commit-worker',
     'sai-archive-worker',
     'sai-backfill-worker',
     'sai-merge-worker',
-    'sai-4-red-worker',
-    'sai-4-green-worker',
+    'sai-3-red-worker',
+    'sai-3-green-worker',
     'sai-direct-build-worker',
-    'sai-review-fix-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
     'registry keys should contain each managed worker exactly once');
@@ -180,32 +171,26 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-2-design-worker': {
       agent: 'sai-2-design-worker.md',
     },
-    'sai-3-implementation-worker': {
-      agent: 'sai-3-implementation-worker.md',
+    'sai-4-review-worker': {
+      agent: 'sai-4-review-worker.md',
     },
-    'sai-5-review-worker': {
-      agent: 'sai-5-review-worker.md',
+    'sai-5-security-worker': {
+      agent: 'sai-5-security-worker.md',
     },
-    'sai-6-security-worker': {
-      agent: 'sai-6-security-worker.md',
+    'sai-6-performance-worker': {
+      agent: 'sai-6-performance-worker.md',
     },
-    'sai-7-performance-worker': {
-      agent: 'sai-7-performance-worker.md',
+    'sai-7-accessibility-worker': {
+      agent: 'sai-7-accessibility-worker.md',
     },
-    'sai-8-accessibility-worker': {
-      agent: 'sai-8-accessibility-worker.md',
+    'sai-3-red-worker': {
+      agent: 'sai-3-red-worker.md',
     },
-    'sai-4-red-worker': {
-      agent: 'sai-4-red-worker.md',
-    },
-    'sai-4-green-worker': {
-      agent: 'sai-4-green-worker.md',
+    'sai-3-green-worker': {
+      agent: 'sai-3-green-worker.md',
     },
     'sai-direct-build-worker': {
       agent: 'sai-direct-build-worker.md',
-    },
-    'sai-review-fix-worker': {
-      agent: 'sai-review-fix-worker.md',
     },
   };
 
@@ -223,8 +208,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
 
   assert.equal(CLAUDE_SPEC_WORKER_AGENT, 'sai-1-spec-proposal-worker.md');
   assert.equal(CLAUDE_DESIGN_WORKER_AGENT, 'sai-2-design-worker.md');
-  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_AGENT, 'sai-3-implementation-worker.md');
-  assert.equal(CLAUDE_REVIEW_WORKER_AGENT, 'sai-5-review-worker.md');
+  assert.equal(CLAUDE_REVIEW_WORKER_AGENT, 'sai-4-review-worker.md');
 });
 
 test('STEP1_RETIRE_INLINE: installer exports retain only Claude and opencode entrypoints', () => {
@@ -244,8 +228,8 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-  assert.match(design, /^model: opus$/m);
-  assert.match(design, /^effort: medium$/m);
+  assert.match(design, /^model: sonnet$/m);
+  assert.match(design, /^effort: high$/m);
    assert.equal(design.match(/^allowed-tools: (.+)$/m)[1], require('./helpers/capability-source').commandTools('sai-2-design'));
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -256,22 +240,24 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   const saiCmdDir = path.join(tmpDir, 'sai', 'commands');
   assert.ok(fs.existsSync(saiCmdDir), 'sai/commands/ dir should exist');
   const files = fs.readdirSync(saiCmdDir);
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'coordinator.md')), 'apply/coordinator.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'red-worker.md')), 'apply/red-worker.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'green-worker.md')), 'apply/green-worker.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'runner.md')), 'apply/runner.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'invocation.md')), 'apply/invocation.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'meta-build', 'coordinator.md')), 'meta-build/coordinator.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'meta-build', 'command-bootstrap.md')), 'meta-build/command-bootstrap.md should be in sai/commands/');
-  assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
-  assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'implement', 'coordinator.md')), 'implement/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'implement', 'red-worker.md')), 'implement/red-worker.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'implement', 'green-worker.md')), 'implement/green-worker.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'implement', 'worker-common.md')), 'implement/worker-common.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'coordinator.md')), 'build/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'deep-review', 'coordinator.md')), 'deep-review/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'deep-review', 'command-bootstrap.md')), 'deep-review/command-bootstrap.md should be in sai/commands/');
+  assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply')), false, 'the apply card set should be retired from sai/commands/');
+  for (const retired of ['meta-build', 'meta-review', 'implement-new', 'review-new', 'build-new']) {
+    assert.equal(fs.existsSync(path.join(saiCmdDir, retired)), false, `${retired} should not be projected`);
+  }
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');
   for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md')]) {
     assert.ok(fs.existsSync(path.join(saiCmdDir, file)), `${file} should be projected`);
   }
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'implement', 'invocation.md')), false,
     'implement/invocation.md should not be projected after retirement');
-  for (const file of ['sai-1-spec.md', 'sai-5-review.md', 'sai-6-security.md', 'sai-7-performance.md', 'sai-8-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
+  for (const file of ['sai-1-spec.md', 'sai-4-review.md', 'sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(saiCmdDir, file)), false, `${file} should not be projected`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -327,11 +313,10 @@ test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
-    'sai-3-implementation-worker',
-    'sai-5-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-4-review-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
   ];
   try {
     installClaude(tmpDir);
@@ -407,6 +392,8 @@ test('installClaude projects the adapter idea-list render glue and resolves it f
     const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
     assert.match(wrapper, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/,
       'sai-explore should resolve the Claude idea-list adapter');
+    assert.match(wrapper, /^Receipt: .*@sai\/commands\/explore\/body\.md § Load receipt/m,
+      'sai-explore should carry the load receipt pointer');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -463,7 +450,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed' &&
         WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(tunable.length, 11, 'the manifest should declare 11 tunable-seed Claude worker agent projections');
+    assert.equal(tunable.length, 10, 'the manifest should declare 10 tunable-seed Claude worker agent projections');
     assert.ok(tunable.every(projection => projection.ownership === 'managed'),
       'every tunable-seed Claude worker projection should be managed');
 
@@ -545,8 +532,8 @@ test('installClaude replaces foreign managed content but retains tunables with a
 
 test('installClaude retains tuning and overwrites divergent bodies with notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-tuned-'));
-  const agentPath = path.join(tmpDir, 'agents', 'sai-5-review-worker.md');
-  const sidecarPath = path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json');
+  const agentPath = path.join(tmpDir, 'agents', 'sai-4-review-worker.md');
+  const sidecarPath = path.join(tmpDir, 'agents', '.sai-4-review-worker.owner.json');
   try {
     installClaude(tmpDir);
     const sourceBytes = fs.readFileSync(agentPath);
@@ -608,8 +595,8 @@ test('installClaude re-install preserves tuned values and never recreates owners
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
-    const agentPath = path.join(tmpDir, 'agents', 'sai-3-implementation-worker.md');
-    const sidecarPath = path.join(tmpDir, 'agents', '.sai-3-implementation-worker.owner.json');
+    const agentPath = path.join(tmpDir, 'agents', 'sai-2-design-worker.md');
+    const sidecarPath = path.join(tmpDir, 'agents', '.sai-2-design-worker.owner.json');
     const sourceBytes = fs.readFileSync(agentPath);
     fs.writeFileSync(agentPath, fs.readFileSync(agentPath, 'utf8')
       .replace(/^model:.*$/m, 'model: tuned-model')
@@ -644,12 +631,10 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
   const wrappers = [
     ['commands/sai-2-design.md', 'design', 'design-worker.md'],
-    ['commands/sai-3-implement.md', 'implement', 'implementation-worker.md'],
     ['commands/sai-commit.md', 'commit', 'commit-worker.md'],
-    ['commands/sai-5-review.md', 'review', 'review-worker.md'],
-    ['commands/sai-6-security.md', 'security', 'security-worker.md'],
-    ['commands/sai-7-performance.md', 'performance', 'performance-worker.md'],
-    ['commands/sai-8-accessibility.md', 'accessibility', 'accessibility-worker.md'],
+    ['commands/sai-5-security.md', 'security', 'security-worker.md'],
+    ['commands/sai-6-performance.md', 'performance', 'performance-worker.md'],
+    ['commands/sai-7-accessibility.md', 'accessibility', 'accessibility-worker.md'],
   ];
 
   function globInstalledFiles(relativeDir = '') {
@@ -702,7 +687,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the fifteen matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the thirteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -716,21 +701,21 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+    const phases = ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 10, 'Claude should project exactly ten phase worker bindings');
+    assert.equal(bindingNames.length, 8, 'Claude should project exactly eight phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'Claude must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 15,
-      'Claude should keep only the fifteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 13,
+      'Claude should keep only the thirteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -742,18 +727,16 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 18, 'Claude should project exactly eighteen managed agents');
+    assert.equal(agentNames.length, 16, 'Claude should project exactly sixteen managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }
     assert.ok(WORKER_NAMES.every(name => agentNames.includes(name)),
       'Claude should still project every routed worker agent');
-    assert.ok(['sai-4-red-worker', 'sai-4-green-worker'].every(name => agentNames.includes(name)),
-      'Claude should project the RED and GREEN apply worker agents');
+    assert.ok(['sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker'].every(name => agentNames.includes(name)),
+      'Claude should project the RED, GREEN, and review worker agents');
     assert.ok(['sai-direct-build-worker'].every(name => agentNames.includes(name)),
       'Claude should project the direct-build implement worker agent');
-    assert.ok(['sai-review-fix-worker'].every(name => agentNames.includes(name)),
-      'Claude should project the review-fix worker agent');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -798,7 +781,7 @@ test('installClaude active projection carries the neutral root protocols, routed
     assert.equal(sourceSet.has('sai/adapters/opencode/boot.md'), false,
       'Claude must not project the opencode boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
-      if (utility === 'apply' || utility === 'archive' || utility === 'backfill') continue;
+      if (utility === 'archive' || utility === 'backfill') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `Claude should project the utility card sai/commands/${utility}/body.md`);
     }
@@ -816,14 +799,12 @@ test('installClaude active projection carries the neutral root protocols, routed
     }
     assert.equal(sourceSet.has('sai/commands/backfill/body.md'), false,
       'Claude must not project the retired backfill body card');
-    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
-      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
-        `Claude should project the routed apply card sai/commands/apply/${card}`);
+    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md']) {
+      assert.ok(sourceSet.has(`sai/commands/implement/${card}`),
+        `Claude should project the implement card sai/commands/implement/${card}`);
     }
-    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
-      'Claude must not project the retired apply body card');
-    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
-      'Claude must not project the retired monolithic apply instruction');
+    assert.equal(sources.some(source => source.startsWith('sai/commands/apply/')), false,
+      'Claude must not project the retired apply card set');
     for (const flat of Object.keys(UTILITY_COMMANDS).map(name => `sai/commands/${name}.md`)) {
       assert.equal(sourceSet.has(flat), false, `${flat} must be absent from the active source layout`);
     }
@@ -836,15 +817,13 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
-    'sai-build',
+    'sai-deep-review',
     'sai-1-spec',
     'sai-2-design',
-    'sai-3-implement',
     'sai-commit',
-    'sai-5-review',
-    'sai-6-security',
-    'sai-7-performance',
-    'sai-8-accessibility',
+    'sai-5-security',
+    'sai-6-performance',
+    'sai-7-accessibility',
   ];
   try {
     installClaude(tmpDir);
@@ -861,6 +840,11 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
       'the Claude boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md')), false,
       'the opencode boot adapter must not be installed in the Claude harness');
+    for (const name of ['sai-3-implement', 'sai-4-review', 'sai-build']) {
+      const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
+      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
+        `${name} fetches its coordinator directly and loads no boot adapter`);
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -895,14 +879,14 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
-      if (name === 'apply' || name === 'archive' || name === 'backfill') continue;
+      if (name === 'archive' || name === 'backfill') continue;
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the Claude boot must not select a coordinator card for the ${name} utility`);
     }
-    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
-      'the Claude boot must select the routed coordinator card for apply');
-    assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/,
-      'the Claude boot must no longer select the apply utility body card');
+    assert.match(boot, /@sai\/commands\/deep-review\/coordinator\.md/,
+      'the Claude boot must select the routed coordinator card for deep-review');
+    assert.doesNotMatch(boot, /@sai\/commands\/apply\//,
+      'the Claude boot must no longer select any apply card');
     assert.match(boot, /Routed names \([^)]*`archive`/,
       'the Claude boot must classify archive as a routed name');
     assert.doesNotMatch(boot, /Utility names \([^)]*`archive`/,

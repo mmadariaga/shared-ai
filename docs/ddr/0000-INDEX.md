@@ -17,7 +17,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 - [0133b — Review progress is marked only by no-High pass evidence](./0133b-review-progress-is-evidence-only.md) — Refs 0109c, Refs 0110, Refs 0111
 - [0134a — Automatic planning review has two distinct bounded counters](./0134a-automatic-review-has-two-distinct-counters.md) — Refs 0133b
@@ -26,12 +25,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 - [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
-- [0156a — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c
 
 ### `/sai-2-design`
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 - [0109c — Progress plans are declared, canonical, and immutable; the coordinator renders and marks only](./0109c-declared-canonical-immutable-progress-plan.md)
 - [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
@@ -61,6 +58,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0153 — Unclear Architecture Snapshot classification defaults to external](./0153-unclear-architecture-surface-defaults-to-external.md)
 - [0154 — Architecture Snapshot boundary split is prospective only](./0154-architecture-snapshot-boundary-split-is-prospective-only.md)
+- [0164 — A committed project setting is a read-only source for the overview-language gate](./0164-project-settings-answer-the-overview-language-gate-read-only.md) — **Amends** 0123c
 
 ### `/sai-3-implement`
 
@@ -91,6 +89,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0151b — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151b-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
+- [0163 — The learnings file is coordinator-owned and promoted at every closing report](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) — **Amends** 0155
 
 ### `/sai-5-review`
 
@@ -134,6 +133,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0157 — Fast-lane validation and mutation stay in separate actors](./0157-fast-lane-validation-and-mutation-stay-in-separate-actors.md) — Refs adr:0172d
 - [0158 — The autofast implementer receives only the crystallized block](./0158-autofast-implementer-receives-only-the-block.md)
 - [0159 — Fast-lane selection consent pre-authorizes exactly one local commit](./0159-fast-lane-selection-pre-authorizes-one-local-commit.md) — Refs 0157, Refs 0052
+- [0164 — A committed project setting is a read-only source for the overview-language gate](./0164-project-settings-answer-the-overview-language-gate-read-only.md) — **Amends** 0123c
 
 ### `/sai-backfill`
 
@@ -213,6 +213,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
 - [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
 - [0162 — `received_at` is the CLI response clock; verdicts are timeless](./0162-received-at-is-the-cli-response-clock.md) — **Amends** 0140, **Amends** 0141
+- [0163 — The learnings file is coordinator-owned and promoted at every closing report](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) — **Amends** 0155
 
 ### Fetch resolution & path conventions
 
@@ -289,7 +290,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### Artifact metadata & routing tokens
 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0118b — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118b-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
 - [0142a — Backfill intent remains ephemeral and subordinate to verified diff evidence](./0142a-intent-remains-ephemeral-and-subordinate-to-diff-evidence.md)
 - [0145a — Backfill `created` metadata uses a date-only value](./0145a-backfill-created-metadata-is-date-only.md)
@@ -309,14 +309,18 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118a](../adr/0118a-per-harness-wall-clock-commands-in-bindings.md) |
 | [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0140](./0140-closed-worker-payloads-carry-result-emission-time.md) |
 | [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) |
+| [0163](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) | amends | [0155](./0155-terminal-documentation-set-is-explicit-and-root-aware.md) |
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 | [0151c](./0151c-external-findings-block-is-only-review-evidence.md) | amends | [0133b](./0133b-review-progress-is-evidence-only.md) |
+| [0164](./0164-project-settings-answer-the-overview-language-gate-read-only.md) | amends | [0123c](./0123c-invocation-scoped-overview-language-selection.md) |
 
 | [0160](./0160-multi-dispatcher-phases-validate-at-the-worker.md) | refs | [adr:0048](../adr/0048-single-source-fast-track-parse-in-body-file.md) |
 
 ## Superseded DDRs (historical)
 
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./archive/0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070 — *ARCHIVED to ./archive/ — the proposal `Complexity` token it calibrated was retired by `spec-instruction-audit`*
+- [0156a — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./archive/0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c — *ARCHIVED to ./archive/ — the duplication invariant is retired by [adr:0191](../adr/0191-spec-restatements-need-a-record-or-an-observed-failure.md); its external-findings rules no longer exist in the spec worker*
 - [0109a — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109a-delegation-envelope-status-reserved-for-dispatch-outcomes.md) — *Superseded: the explore prerequisite check runs inline, with no delegated report*
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137b](./0137b-apply-routed-boundary-carries-progress-events.md)*
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md) — *Superseded by [0149](./0149-orchestration-core-contracts-live-under-orchestration.md)* — placement rule only; its harness-neutral, phase-agnostic protocol decision remains in force

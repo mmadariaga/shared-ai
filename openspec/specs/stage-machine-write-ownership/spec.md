@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change enforce-single-writer-stage-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Coordinator-only stage machine emission
 
 Worker cards MUST NOT reference the stage machine emission surface. The stage machine is coordinator-owned; only coordinator sessions may invoke the emit, spawn, reset, close, and run operations. The invariant is enforced at lint time to prevent accidental introduction of worker-to-stage-machine invocations.
@@ -29,7 +31,7 @@ Worker cards MUST NOT reference the stage machine emission surface. The stage ma
 
 #### Scenario: Lint fails on new machine IDs
 
-- **WHEN** a worker card references `review-standalone@1` or `security-standalone@1`
+- **WHEN** a worker card references `review-steps@1`, `implement-run@1`, or `security-standalone@1`
 - **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
 
 ### Requirement: Lint check coverage of emission surface
@@ -45,4 +47,3 @@ The worker-emission-ownership lint check SHALL detect all forms of stage machine
 
 - **WHEN** a worker card references `bin/sai-state.js`
 - **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
-

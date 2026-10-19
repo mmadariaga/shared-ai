@@ -73,44 +73,12 @@ test('validate terminal payload - needs_input (valid)', () => {
   assertValidSidecar(result, 'terminal');
 });
 
-function lookupPayload() {
-  return {
-    status: 'needs_input', summary: 'Bounded convention lookup requested',
-    changed_files: [], resolved_change_name: 'example-change',
-    lookup_request: { type: 'bounded-project-lookup', items: [
-      { id: 'lookup-1', area: 'error handling', reason: 'Step 1 convention', step: 1 },
-    ] },
-    questions: [{ id: 'lookup-1', question: 'Request lookup of error handling in the project for Step 1 convention (Step 1)',
-      options: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }] }],
-  };
-}
-
-test('typed bounded lookup validates only a matched limited yes/no batch', () => {
-  const payload = lookupPayload();
-  assertValidSidecar(tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']), 'terminal');
-  for (const change of [
-    p => { p.lookup_request.type = 'other'; },
-    p => { p.lookup_request.extra = 'entire repository'; },
-    p => { p.lookup_request.items[0].path = '/etc'; },
-    p => { p.lookup_request.items[0].area = '../other'; },
-    p => { p.lookup_request.items[0].step = 0; },
-    p => { p.lookup_request.items = Array(6).fill(p.lookup_request.items[0]); },
-    p => { p.questions[0].id = 'unmatched'; },
-    p => { p.questions[0].options[0].value = 'approve-all'; },
-    p => { p.status = 'completed'; },
-    p => { delete p.resolved_change_name; },
-  ]) {
-    const invalid = lookupPayload();
-    change(invalid);
-    assertInvalidNoSidecar(tool(JSON.stringify(invalid), ['validate', '--kind', 'terminal', '--json']));
-  }
-});
-
-test('an ordinary question mentioning lookup remains an ordinary input, not a typed grant', () => {
+test('an unresolved-gap question validates as an ordinary input', () => {
   const payload = { status: 'needs_input', summary: 'Question', changed_files: [],
-    question: 'May I look up conventions?', options: [{ label: 'Yes', value: 'yes' }] };
+    resolved_change_name: 'example-change',
+    question: 'Step 2 needs the error-handling convention; the explorer found none. Which one applies?',
+    options: [{ label: 'Result type', value: 'result' }, { label: 'Exceptions', value: 'exceptions' }] };
   assertValidSidecar(tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']), 'terminal');
-  assert.equal('lookup_request' in payload, false);
 });
 
 test('validate terminal payload - failed with failure_class (valid)', () => {

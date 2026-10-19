@@ -15,7 +15,7 @@
  *   pr-title-rules <text>                Check that a PR title follows title rules.
  *   glossary-format <file>               Check that GLOSSARY.md follows glossary format.
  *   ready-to-propose <file>              Check that a file follows ready-to-propose format
- *                                        (delegates to sai/tools/ready-to-propose.js, strict profile).
+ *                                        (delegates to sai/tools/ready-to-propose.js, dispatchable profile).
  *   artifact-review <file>               Check that artifact review findings follow the contract.
  *   sai-learnings-format <file>          Check that SAI_LEARNINGS.md follows learnings format.
  *   step-contract <file>                 Check that interfaces.md follows step contract format.
@@ -37,7 +37,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { checkStrict: checkStrictReadyToPropose } = require('./ready-to-propose.js');
+const { checkDispatchable: checkDispatchableReadyToPropose } = require('./ready-to-propose.js');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -224,12 +224,13 @@ function checkGlossaryFormat(content) {
 
 /**
  * Check Ready to Propose block format.
- * Delegates to the strict profile of sai/tools/ready-to-propose.js, the single
- * definition of sai/policies/ready-to-propose-format.md; no section list lives
- * here.
+ * Delegates to the deterministic checks of the dispatchable profile of
+ * sai/tools/ready-to-propose.js, the single definition of
+ * sai/policies/ready-to-propose-format.md; no section list lives here. The
+ * hygiene pre-filter and its judgment are not lint findings.
  */
 function checkReadyToPropose(content) {
-  const verdict = checkStrictReadyToPropose(content);
+  const verdict = checkDispatchableReadyToPropose(content);
   const violations = [];
   for (const v of verdict.violations) {
     violations.push({ file: 'block', line: v.line, problem: v.problem, detail: v.detail });
@@ -610,7 +611,7 @@ function checkStepContract(content) {
  * The stage machine emission surface includes:
  *   - sai-state commands (emit, spawn, close, reset, etc.)
  *   - bin/sai-state.js file reference
- *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-standalone@1, review-standalone@1, security-standalone@1)
+ *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-run@1, review-steps@1, security-standalone@1)
  *   - Legacy /emit HTTP command
  */
 function checkWorkerEmissionOwnership(content) {
@@ -624,7 +625,7 @@ function checkWorkerEmissionOwnership(content) {
   const saiStateBinPattern = /bin\/sai-state\.js/;
   const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|reset|run)`/;
   // 3. Stage machine IDs in the format name@version
-  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-standalone|review-standalone|security-standalone)@\d+/;
+  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-run|review-steps|security-standalone)@\d+/;
   // 4. Legacy /emit HTTP command
   const legacyEmitPattern = /\/emit\b/;
 

@@ -35,21 +35,17 @@ function matrixAgent(harness, phase) {
 const MANAGED_WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
 ];
 
 const WORKER_CONTRACT_DIRS = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
-  'sai-3-implementation-worker': 'implement',
-  'sai-5-review-worker': 'review',
-  'sai-6-security-worker': 'security',
-  'sai-7-performance-worker': 'performance',
-  'sai-8-accessibility-worker': 'accessibility',
+  'sai-5-security-worker': 'security',
+  'sai-6-performance-worker': 'performance',
+  'sai-7-accessibility-worker': 'accessibility',
 };
 
 function tempDir(prefix) {
@@ -83,19 +79,19 @@ function projectionSources(harness) {
   }
 }
 
-test('canonical manifest keeps implementation projections interface returns the required projection record', () => {
+test('canonical manifest keeps worker projections interface returns the required projection record', () => {
   const projection = projectionSources('claude').find(({ source }) =>
-    source === '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md');
+    source === '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-2-design-worker.md');
   assert.ok(projection, 'Claude worker projection should exist');
   for (const field of REQUIRED_PROJECTION_FIELDS) {
     assert.ok(projection[field], `${field} should be populated`);
   }
 });
 
-test('Claude implementation coordinator uses medium effort', () => {
-  const wrapper = fs.readFileSync(path.join(repoRoot, 'commands', 'claude', 'sai-3-implement.md'), 'utf8');
-  assert.match(wrapper, /^model:\s*opus\s*$/m);
-  assert.match(wrapper, /^effort:\s*medium\s*$/m);
+test('Claude design coordinator uses sonnet with high effort', () => {
+  const wrapper = fs.readFileSync(path.join(repoRoot, 'commands', 'claude', 'sai-2-design.md'), 'utf8');
+  assert.match(wrapper, /^model:\s*sonnet\s*$/m);
+  assert.match(wrapper, /^effort:\s*high\s*$/m);
 });
 
 test('Step 3 manifest projects the shared lifecycle and one active harness binding', () => {
@@ -103,15 +99,15 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     claude: [
       'sai/orchestration/command-runner.md',
       'sai/orchestration/worker-core.md',
-      'sai/commands/implement/worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
+      'sai/commands/design/worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/design-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-2-design-worker.md',
     ],
     opencode: [
       'sai/orchestration/command-runner.md',
       'sai/orchestration/worker-core.md',
-      'sai/commands/implement/worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
+      'sai/commands/design/worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/design-worker.md',
     ],
   };
 
@@ -123,18 +119,18 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     }
     assert.equal(new Set(projections.map(projection => projection.destination)).size, projections.length,
       `${harness} destinations should be unique`);
-    const bindingSource = `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/implementation-worker.md`;
+    const bindingSource = `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/design-worker.md`;
     const bindingProjection = projections.find(({ source }) => source === bindingSource);
     assert.ok(bindingProjection, `${harness} should project its matrix binding source`);
     assert.match(bindingProjection.destination.replace(/\\/g, '/'),
-      /orchestration\/workers\/bindings\/implementation-worker\.md$/,
+      /orchestration\/workers\/bindings\/design-worker\.md$/,
       `${harness} binding should project to the neutral relative path`);
     assert.doesNotMatch([...sources].join('\n'), /sai\/orchestration\/inline-invocation\.md/);
     if (harness === 'claude') {
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/design-worker.md'), false);
     } else {
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md'), false);
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/design-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-2-design-worker.md'), false);
     }
   }
 });
@@ -143,8 +139,8 @@ test('a tuned Claude worker is reused and is removed by uninstall', () => {
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
-    const workerPath = path.join(base, 'agents', 'sai-3-implementation-worker.md');
-    const ownerPath = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
+    const workerPath = path.join(base, 'agents', 'sai-2-design-worker.md');
+    const ownerPath = path.join(base, 'agents', '.sai-2-design-worker.owner.json');
     const sourceBytes = fs.readFileSync(workerPath);
     const tuned = fs.readFileSync(workerPath, 'utf8')
       .replace(/^model:.*$/m, 'model: tuned-model')
@@ -223,7 +219,7 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
 test('Step 3 overwrites incompatible Claude destinations with notice while preserving customized opencode workers', () => {
   const claudeBase = tempDir('sai-step-3-claude-collision-');
   const opencodeBase = tempDir('sai-step-3-opencode-collision-');
-  const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
+  const claudePath = path.join(claudeBase, 'agents', 'sai-2-design-worker.md');
   const opencodePath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'incompatible Claude worker\n';
   const opencodeSentinel = '{\n' +
@@ -239,7 +235,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     '    "explore": { "mode": "subagent", "model": "user-explore" },\n' +
     '    "executor": { "mode": "subagent", "model": "user-executor" },\n' +
     '    "budget": { "mode": "subagent", "model": "user-budget" },\n' +
-    '    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-model" }\n' +
+    '    "sai-2-design-worker": { "mode": "subagent", "model": "user-model" }\n' +
     '  }\n' +
     '}\n';
   try {
@@ -256,7 +252,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     }
     assert.deepEqual(
       fs.readFileSync(claudePath),
-      Buffer.from(matrixAgent('claude', 'implementation')),
+      Buffer.from(matrixAgent('claude', 'design')),
       'the incompatible Claude worker should be overwritten with the managed source bytes');
     assert.ok(claudeNotices.some(message => message.includes(claudePath)),
       'stdout should announce the overwrite naming the file');
@@ -266,11 +262,11 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     assert.equal(fs.readFileSync(opencodePath, 'utf8'), opencodeSentinel,
       'the customized opencode configuration must be preserved byte-identical');
     const opencodeConfig = jsonc.parse(fs.readFileSync(opencodePath, 'utf8'));
-    assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
+    assert.deepEqual(opencodeConfig.agent['sai-2-design-worker'], {
       mode: 'subagent',
       model: 'user-model',
     }, 'no canonical prompt should be injected into the customized worker entry');
-    const projectedAgentPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    const projectedAgentPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
     assert.ok(fs.existsSync(projectedAgentPath),
       'the projected worker agent file should exist under agents/');
 
@@ -279,7 +275,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     const agentsDoc = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
     const documentation = [adr, boundaries, agentsDoc].join('\n');
     assert.match(documentation, /sai-2-design-worker/);
-    assert.match(documentation, /sai-3-implementation-worker/);
+    assert.match(documentation, /sai-2-design-worker/);
     assert.match(documentation, /tunable-seed/i);
     assert.match(documentation, /body[\s\S]{0,120}(?:non-tunable|frontmatter)|non-tunable[\s\S]{0,120}body/i);
     assert.match(documentation, /model.*variant.*mode.*permissions|configured.*runtime/i);

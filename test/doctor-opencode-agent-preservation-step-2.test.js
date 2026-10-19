@@ -13,13 +13,12 @@ const { installOpencode } = require('../bin/install-flow.js');
 const MANAGED_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
-  'sai-4-red-worker',
-  'sai-4-green-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
+  'sai-3-red-worker',
+  'sai-3-green-worker',
 ];
 
 function makeProjectRoot() {
@@ -83,11 +82,11 @@ test('customized managed agents are accepted by name presence', async () => {
     writeConfig(opencodeBase, JSON.stringify({ subagent_depth: 2, experimental: { subagent_depth: 2 }, agent: {
       'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec-model' },
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model', variant: 'low' },
-      'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation-model', permission: { edit: 'deny' } },
-      'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
-      'sai-6-security-worker': { mode: 'subagent', model: 'user-security-model' },
-      'sai-7-performance-worker': { mode: 'subagent', model: 'user-performance-model' },
-      'sai-8-accessibility-worker': { mode: 'subagent', model: 'user-accessibility-model' },
+      'sai-3-red-worker': { mode: 'subagent', model: 'user-red-model', permission: { edit: 'deny' } },
+      'sai-4-review-worker': { mode: 'subagent', model: 'user-review-model' },
+      'sai-5-security-worker': { mode: 'subagent', model: 'user-security-model' },
+      'sai-6-performance-worker': { mode: 'subagent', model: 'user-performance-model' },
+      'sai-7-accessibility-worker': { mode: 'subagent', model: 'user-accessibility-model' },
     } }));
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
@@ -96,13 +95,12 @@ test('customized managed agents are accepted by name presence', async () => {
     assert.deepEqual(records.map(record => record.name).sort(), [
       'sai-1-spec-proposal-worker',
       'sai-2-design-worker',
-      'sai-3-implementation-worker',
-      'sai-4-green-worker',
-      'sai-4-red-worker',
-      'sai-5-review-worker',
-      'sai-6-security-worker',
-      'sai-7-performance-worker',
-      'sai-8-accessibility-worker',
+      'sai-3-green-worker',
+      'sai-3-red-worker',
+      'sai-4-review-worker',
+      'sai-5-security-worker',
+      'sai-6-performance-worker',
+      'sai-7-accessibility-worker',
     ]);
     for (const record of records) {
       assert.equal(record.severity, 'ok', `${record.name} should be ok`);
@@ -168,21 +166,21 @@ test('missing projected worker file is reported while intact workers remain ok',
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
     installOpencode(opencodeBase);
-    const workerPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
     assert.ok(fs.existsSync(workerPath), 'the projected worker file should exist after install');
     fs.unlinkSync(workerPath);
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
     assert.equal(code, 1);
     const records = managedRecords(report);
-    const missing = records.find(record => record.name === 'sai-3-implementation-worker');
-    assert.ok(missing, 'implementation worker should be enumerated by name');
+    const missing = records.find(record => record.name === 'sai-2-design-worker');
+    assert.ok(missing, 'design worker should be enumerated by name');
     assert.equal(missing.severity, 'error');
     assert.match(missing.message || '', /missing/i);
     assert.match(missing.message || '', /re-?install/i,
       'a missing projected file should carry re-install remediation');
     for (const record of records) {
-      if (record.name === 'sai-3-implementation-worker') continue;
+      if (record.name === 'sai-2-design-worker') continue;
       assert.equal(record.severity, 'ok', `${record.name} should remain ok`);
     }
   } finally {
@@ -219,7 +217,7 @@ test('doctor validation is independent of the opencode configuration agent map',
 
 // --- Step 3: projected-file compatibility records ---
 
-test('Step 3 doctor accepts seven exact-compatible projected worker agent files', async () => {
+test('Step 3 doctor accepts eight exact-compatible projected worker agent files', async () => {
   const projectRoot = makeProjectRoot();
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
@@ -242,15 +240,15 @@ test('Step 3 doctor flags a missing projected worker agent file with re-install 
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
     installOpencode(opencodeBase);
-    const workerPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
     assert.ok(fs.existsSync(workerPath),
       'the projected worker agent file should exist after install before the missing-file probe');
     fs.unlinkSync(workerPath);
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
     assert.equal(code, 1);
-    const record = managedRecords(report).find(entry => entry.name === 'sai-3-implementation-worker');
-    assert.ok(record, 'implementation worker should be enumerated by name');
+    const record = managedRecords(report).find(entry => entry.name === 'sai-2-design-worker');
+    assert.ok(record, 'design worker should be enumerated by name');
     assert.equal(record.severity, 'error');
     assert.match(record.message || '', /missing/i);
     assert.match(record.message || '', /re-?install/i,

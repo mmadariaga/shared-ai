@@ -1,12 +1,12 @@
 # sai-workflow — custom OpenSpec schema for the shared-AI pipeline
 #
-# Encodes the full 11-artifact graph with dependency edges and apply requirements.
+# Encodes the full 10-artifact graph with dependency edges and apply requirements.
 # Stored here (not in spec-driven) so CLI updates never overwrite it.
 # See design.md D1 for rationale.
 
 name: sai-workflow
 version: 1
-description: shared-AI pipeline — proposal → specs → design → tasks → interfaces → implementation → review → audits
+description: shared-AI pipeline — proposal → specs → design → tasks → interfaces → review → audits
 
 artifacts:
   - id: proposal
@@ -17,14 +17,6 @@ artifacts:
       Create proposal.md establishing WHY this change is needed.
 
       Sections:
-      - **Complexity**: the FIRST line of the file, immediately above `## Why`, separated from it by one blank line.
-        Form: `**Complexity**: <token>` where <token> is exactly one of `low`, `medium`, `high`.
-        An optional trailing parenthetical may follow for audit, e.g. `medium (3 files, no breaking change)`;
-        parsers ignore everything from the first `(` onward.
-        Derive the token using `## Complexity Derivation Rubric` in sai/commands/spec/steps/validation.md.
-        Because the requirements count is one of the rubric's signals, derive or revise the token AFTER
-        specs/**/*.md are written, before reporting completion. Never invent a tier outside the three.
-        The line is descriptive metadata: it names no model, vendor, price tier, or harness.
       - **Why**: 1-2 sentences. What problem does this solve? Why now?
       - **What Changes**: Bullet list. Mark breaking changes with **BREAKING**.
       - **Capabilities**:
@@ -83,7 +75,7 @@ artifacts:
 
   - id: tasks
     generates: tasks.md
-    description: Implementation planning scaffold — narrative steps for human review and sai-3-implement to expand
+    description: Implementation task list — narrative steps for human review and sai-3-implement to work through
     template: tasks.md
     instruction: |
       Fetch and follow sai/commands/design/instructions.md section ### Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.
@@ -123,23 +115,13 @@ artifacts:
       only; it does not restate the generation contract.
     requires: [interfaces]
 
-  - id: implementation
-    generates: implementation.md
-    description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers, with Discarded findings sub-blocks inside audit steps derived from review.md / security.md / performance.md / accessibility.md
-    template: implementation.md
-    instruction: |
-      Fetch and follow sai/commands/implement/implementation-plan.template.md exactly. This instruction is an informative reference only; it does not restate the implementation plan contract.
-    requires:
-      - tasks
-
   - id: review
     generates: review.md
     description: Code review report — correctness, maintainability, testing, surface triage
     template: review.md
     instruction: |
       Fetch and follow sai/commands/review/review-report.template.md exactly. This instruction is an informative reference only; it does not restate the review report contract.
-    requires:
-      - implementation
+    requires: []
 
   - id: security
     generates: security.md
@@ -147,8 +129,7 @@ artifacts:
     template: security.md
     instruction: |
       Fetch and follow sai/commands/security/security-report.template.md exactly. This instruction is an informative reference only; it does not restate the security report contract.
-    requires:
-      - implementation
+    requires: []
 
   - id: performance
     generates: performance.md
@@ -156,8 +137,7 @@ artifacts:
     template: performance.md
     instruction: |
       Fetch and follow sai/commands/performance/performance-report.template.md exactly. This instruction is an informative reference only; it does not restate the performance report contract.
-    requires:
-      - implementation
+    requires: []
 
   - id: accessibility
     generates: accessibility.md
@@ -165,12 +145,11 @@ artifacts:
     template: accessibility.md
     instruction: |
       Fetch and follow sai/commands/accessibility/accessibility-report.template.md exactly. This instruction is an informative reference only; it does not restate the accessibility report contract.
-    requires:
-      - implementation
+    requires: []
 
 apply:
-  requires: [tasks, implementation]
-  tracks: implementation.md
+  requires: [tasks]
+  tracks: tasks.md
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
     Pause if you hit blockers or need clarification.

@@ -52,6 +52,66 @@ function supervisionContract() {
   ].join('\n');
 }
 
+test('Direct Build retains execution context and accepts steps only after checks', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Dispatchable blocks only**'));
+  for (const field of ['pending_step', 'base_sha', 'guard_base', 'slice_snapshot', 'order_snapshot',
+    'fix_rounds', 'gate_rounds', 'diagnosis_rounds.direct_build', 'direct_build_commit_authorized',
+    'validated_execution_order', 'execution_state']) assert.ok(retained.includes(field), field);
+  assert.match(retained, /each role's captured Handle/);
+  assert.match(retained, /first attempt same-worker continuation using its retained Handle/);
+  assert.match(retained, /original envelopes and exact opaque continuation histories/);
+  assert.match(retained, /Continuation and replacement/);
+  assert.match(retained, /Reconstruction must be complete before replacement work/);
+  assert.match(retained, /Only a new slice execution initializes counters to zero/);
+  assert.match(retained, /first pending internal step/);
+  assert.match(retained, /completed worker stretch alone does not accept a step/);
+  assert.match(retained, /all that step's checks/);
+  assert.match(retained, /preserve replacement usage and all recovery counters/);
+  assert.match(retained, /Claude Code[\s\S]*opencode/);
+});
+
+test('Direct Build resumption separates immutable slice references from window-local guard state', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Entry and same-conversation resumption**'));
+  assert.match(retained, /retain `guard_base` only within its live window/);
+  assert.match(retained, /no-commit-guard\.md` § Window pairing/);
+  assert.match(retained, /including a user interruption: close and verify the running window/);
+  assert.match(retained, /After the human turn, open a fresh window[\s\S]*before forwarding worker work/);
+  assert.match(retained, /`guard_base` is never carried across a boundary/);
+  assert.match(retained, /immutable slice references `base_sha` and `slice_snapshot` through resumption/);
+  assert.match(retained, /fresh guard snapshot replaces only the window-local baseline, not those slice references/);
+  assert.doesNotMatch(retained, /Reuse[^\n]*`guard_base`/);
+});
+
+test('format and commit recovery preserve work and the original single-commit grant', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  assert.match(route, /every response to the active validator exactly as received/);
+  assert.match(route, /invalid output, preserve existing changes, keep the step pending/);
+  assert.match(route, /fresh validator-compatible response from the authoring agent/);
+  assert.match(route, /unattended-runtime-recovery\.md` § Precedence and § Attempts/);
+  assert.match(route, /resume choice alone does not reopen any budget/);
+  assert.match(route, /confirmed to have occurred, record its reference and consumption once/);
+  assert.match(route, /confirmed absent[\s\S]*no-effect check/);
+  assert.match(route, /absence of a commit does not authorize replay of a partially applied archive order/);
+  assert.match(route, /inconclusive check keeps execution stopped/);
+  assert.match(route, /consumed order or commit grant is never renewed by resumption; never push/);
+});
+
+test('pending Direct Build decisions precede the initial picker and retain parked references', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const pending = selector.slice(selector.indexOf('\n## Pending Direct Build execution'), selector.indexOf('\n## Native route picker'));
+  assert.match(pending, /recoverable error[\s\S]*before asking for a decision/);
+  assert.match(pending, /only executable actions/);
+  assert.match(pending, /Plan and Manual do not replace/);
+  assert.match(pending, /Resume Direct Build[\s\S]*only when retained state/);
+  assert.match(pending, /Remain stopped/);
+  assert.match(pending, /resume-direct-build[\s\S]*without `route-choice`/);
+  assert.match(pending, /grants no additional[\s\S]*attempts or commit/);
+  assert.match(spec('sai/commands/explore/steps/slice.md'), /releasing the machine's `active` is not clearing conversation execution state/);
+  assert.match(spec('docs/commands/sai-explore.md'), /Claude Code and opencode use the same rules/);
+});
+
 test('supervision is entered only through an explicit crystallization route choice', () => {
   const source = exploreContract();
 
@@ -68,7 +128,7 @@ test('the native selector follows the authoritative shared close after inventory
 
   assert.match(source, /\*\*Crystallization-turn close \(shared, owns B6\)\.\*\*/);
   assert.match(source, /Only after that checkpoint succeeds does its `next\.follow` load this selector/i);
-  assert.match(source, /present the native three-option picker at the end of the same assistant turn/i);
+  assert.match(source, /Present the native three-option picker \(round 3\) only after rounds 1 and 2 have finished or been skipped/i);
   assert.match(source, /Opening the picker exposes no route and authorizes no work/i);
   assert.match(source, /route intents blocked until a valid picker answer/i);
   assert.match(source, /\*\*Plan - Unattended\*\* \(`plan-unattended`\) — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
@@ -79,18 +139,41 @@ test('the native selector follows the authoritative shared close after inventory
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
   assert.match(sharedCloseSpec, /single-change and sliced-feature items SHALL compose their blocks and reference that definition/i);
-  assert.match(sharedCloseSpec, /Inline proposal refusal SHALL stay outside the shared close/);
+  assert.match(sharedCloseSpec, /No inline proposal refusal path exists outside the shared close/);
   assert.match(source, /`--fast-track` auto-selects nothing: the native picker requires an explicit answer/i);
+});
+
+test('optional actions preserve skill ownership, negative answers, free text, and explicit fast-track questions', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const actions = selector.slice(selector.indexOf('\n## Optional pre-route actions'),
+    selector.indexOf('\n## Native route picker'));
+  assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry/);
+  assert.match(actions, /opencode's `question` tool with custom\/free-text input enabled/);
+  assert.match(actions, /All questions remain explicit under `--fast-track` in Claude Code and opencode/);
+  assert.match(actions, /On No, skip only this action and leave out the publication question/);
+  assert.match(actions, /On No, skip only this action and leave out the base question/);
+  assert.match(actions, /invoke the installed `to-backlog` skill in the current conversation[\s\S]*prepare the full publication proposal without publishing/);
+  assert.match(actions, /invoke the installed `new-change-branch` skill and ask it to prepare the suggested bases/);
+  assert.match(actions, /Free text may supply instructions or request clarification/);
+  assert.match(actions, /resolve intent before executing an action; keep the current question pending/);
+  assert.match(actions, /Free text never selects an implementation route/);
+  assert.match(actions, /Each accepted skill keeps its scope, naming, validation, execution, errors, and cancellation handling/);
+  assert.match(actions, /Wait until each skill finishes \(including its own no-change, error, or cancellation close\) before the next dependent action/);
+  assert.match(actions, /only after the backlog, branch, and assignment answers have each been resolved/);
+  assert.match(actions, /A picker retry, Manual re-presentation, or later slice does not repeat completed actions/);
+  assert.match(actions, /reset them when a new crystallization replaces the set/);
+  assert.match(actions, /These actions authorize no production code edits, route intent, route panel entry, or implementation dispatch/);
+  const scope = spec('sai/commands/explore/instructions.md');
+  assert.match(scope, /permits only local branch creation and switching through the installed `new-change-branch` skill/);
+  assert.match(scope, /This exception permits no production code edits or other repository-file writes/);
 });
 
 test('the shared crystallization close records inventory before presenting route choice', () => {
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
   const selector = spec('sai/commands/explore/steps/route-selector.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
   assert.ok(closeStart >= 0, 'the shared close should exist');
-  assert.ok(closeEnd > closeStart, 'the inline-refusal section should follow the shared close');
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
 
   const steps = [
     '1. **Stage panel.**',
@@ -111,12 +194,11 @@ test('the shared crystallization close records inventory before presenting route
   assert.match(close, /`sai-state emit <id> explore-slice@1 --ready-to-propose -`/);
   assert.match(close, /never compose a `recordedList` by hand/i);
   assert.match(close, /Print the block set exactly as sent in step 2/i);
-  assert.match(close, /Set `route_choice_reply_pending = true`[\s\S]{0,200}present its native picker as the final action of this turn/i);
+  assert.match(close, /Set `route_choice_reply_pending = true`[\s\S]{0,200}start its optional pre-route actions as the final action of this turn/i);
   assert.match(close, /do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,180}until the user returns one valid option/i);
 
   const singleStart = protocol.indexOf('5. **Crystallization protocol (single change)**');
   const slicedStart = protocol.indexOf('6. **Crystallization protocol (sliced feature)**');
-  const inlineStart = protocol.indexOf('**Inline proposal refusal**', closeStart);
   const single = protocol.slice(singleStart, slicedStart);
   const sliced = protocol.slice(slicedStart, closeStart);
   for (const [name, branch] of [['single-change', single], ['sliced', sliced]]) {
@@ -125,8 +207,7 @@ test('the shared crystallization close records inventory before presenting route
     assert.doesNotMatch(branch, /clear the stage TODO|emit the `recordedList`|present the crystallization-close route selector/i,
       `${name} should not repeat the close procedure`);
   }
-  assert.match(close, /The `inline-refusal` path is excluded and keeps its immediate handoff: it prints its block\(s\) without the block emit and records no inventory/i);
-  assert.match(protocol.slice(inlineStart), /no further choice|no choice/i);
+  assert.doesNotMatch(protocol, /Inline proposal refusal|inline-refusal/i, 'the inline proposal refusal path is retired');
   assert.match(selector, /The shared close in `crystallization-protocol\.md` owns block emission, stage-panel handling, and ordered inventory recording/i);
   assert.match(selector, /its block emit records the complete ordered inventory before any block is displayed/i);
   assert.match(selector, /only after a complete ordered inventory has been recorded successfully/i);
@@ -139,7 +220,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   const instructions = spec('sai/commands/explore/instructions.md');
   const selector = spec('sai/commands/explore/steps/route-selector.md');
   const routeChoice = selector.slice(
-    selector.indexOf('## Native route picker'),
+    selector.indexOf('\n## Native route picker\n'),
     selector.indexOf('**Direct Build continuation authorization'),
   );
 
@@ -150,7 +231,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
       `${harness} wrapper must not implement a separate route-choice path`);
   }
   assert.match(instructions, /picker may be presented in the block-emission turn only after every proposal block is visible and its complete inventory is recorded/i);
-  assert.match(routeChoice, /Claude Code uses `AskUserQuestion`; opencode uses the `question` tool/i);
+  assert.match(routeChoice, /"Closed-choice prompts" rule in `sai\/policies\/remember\.md` \(`AskUserQuestion` on Claude Code, `question` on opencode\)/);
   assert.match(routeChoice, /cancelled picker, an absent response, an `Other`\/free-text answer/i);
   assert.match(routeChoice, /native picker answer is the only route-choice input/i);
   assert.match(routeChoice, /Plan - Unattended[\s\S]*Direct Build - Unattended[\s\S]*Manual/);
@@ -170,8 +251,7 @@ test('the Ready to Propose format carries no post-block close cue; the block emi
 test('the close records one or many names in order before exposing the native route picker', () => {
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
   assert.match(close, /extracts the change names, and records them as the ordered inventory in one step/i);
   assert.match(close, /The set is validated as a whole: when any block fails, no name is recorded/i);
   assert.match(close, /Use the existing session; do not reset either machine/i);
@@ -209,8 +289,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
   const stageMachine = spec('sai/policies/stage-machine.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
   const panelIndex = close.indexOf('**Stage panel.**');
   const emitIndex = close.indexOf('**Block emit.**');
   const pointerIndex = close.indexOf('**Load the pointer.**');
@@ -236,7 +315,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   assert.match(stageMachine, /The literal `none` is a no-file sentinel, not a path/i);
 });
 
-test('overview-language gate is deferred from crystallization until a dispatchable supervised Plan selection', () => {
+test('overview-language gate is deferred from crystallization until round 3 of the route round', () => {
   const crystallization = [
     spec('sai/commands/explore/steps/common.md'),
     spec('sai/commands/explore/steps/slicing-assessment.md'),
@@ -247,7 +326,8 @@ test('overview-language gate is deferred from crystallization until a dispatchab
 
   assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
   assert.match(supervised, /Gate 9 at Plan \(unattended\) activation/);
-  assert.match(supervised, /after the native route picker returns Plan and before dispatchable work starts/i);
+  assert.match(supervised, /Round 3 of the route round asks gate 9 beside the route question/i);
+  assert.match(supervised, /Only when round 3 left `overview_language` unresolved[\s\S]*?ask gate 9 on its own exactly once here/i);
   assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
   assert.match(supervised, /Empty or completed crystallization sets, an ambiguous or invalid reply, and an already-active run end before this gate/i);
   assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
@@ -287,7 +367,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 
   assert.match(source, /The recommendation names no pipeline token/);
   assert.match(source, /names the literal token `review-loop` exactly once/);
-  assert.match(source, /\*\*Inline-refusal path\*\*: stays outside this close and keeps its immediate handoff with no route choice/);
+  assert.doesNotMatch(source, /Inline-refusal path|Creating a proposal opens a new context/);
   assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Direct Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
     'the review-loop description should name all three selector options');
   assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
@@ -320,9 +400,10 @@ test('supervised spec dispatch preserves the selected block and branches between
   const source = exploreContract();
 
   assert.match(source, /SpecWorkerRequest/);
-  assert.match(source, /complete emitted Ready to Propose block/);
+  assert.match(source, /--block-file/);
+  assert.match(source, /--export --harness <claude\|opencode>/);
   assert.match(source, /selected change.*complete.*Ready to Propose|complete.*emitted Ready to Propose/i);
-  assert.match(source, /only that complete emitted Ready to Propose block|receives only.*block/i);
+  assert.match(source, /verified file is the worker's only substantive block input/i);
   assert.match(source, /needs_input/);
   assert.match(source, /ordered option|options.*order|order.*option/i);
   assert.match(source, /auto[- ]answer/i);
@@ -737,7 +818,8 @@ test('active exploration closure defines the three conversation-only states and 
   assert.match(source, /On every successful turn while the state is `active-uncrystallized`/);
   assert.match(source, /genuine unresolved question remains/);
   assert.match(source, /When no genuine unresolved question remains/);
-  assert.match(source, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
+  assert.match(source, /At stage 3 \(`Implementation details`\), name `next-step`\. At stage 4/);
+  assert.doesNotMatch(source, /Say `crystallize` when ready/);
   assert.match(source, /every later successful qualifying turn/);
 });
 
@@ -792,7 +874,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
+  const selectorStart = contract.search(/## Change overview question/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -815,7 +897,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
+  const selectorStart = contract.search(/## Change overview question/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -969,7 +1051,7 @@ test('Plan spec envelope carries leading --supervised only in arguments_value', 
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
     'spec Plan dispatch must not construct or forward the wrapper echo field');
   assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Plan dispatch should put --supervised on arguments_value');
-  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
+  assert.match(source, /arguments_value:[\s\S]{0,100}--supervised\s+--block-file[^\n]+\s+--block-hash/i, 'spec arguments_value should begin with --supervised ahead of the paired stored-file/hash reference');
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:\s*"--supervised"/,
     'explore must not carry the marker as a bare non-empty wrapper echo');
 });
@@ -1314,8 +1396,7 @@ test('Step 4: the later Manual choice emits every path-specific sai-1 handoff', 
     assert.match(handoffBlock, new RegExp(`\\*\\*${label}\\*\\*[\\s\\S]{0,520}${branch.source}`, 'i'),
       `${label} should keep its handoff wording after a Manual choice`);
   }
-  assert.match(handoffBlock, /\*\*Inline-refusal path\*\*: stays outside this close[\s\S]{0,400}Creating a proposal opens a new context[\s\S]{0,260}\/sai-1-spec[\s\S]{0,200}Do not dispatch a proposal in-session/,
-    'the inline refusal keeps its immediate handoff with no route choice');
+  assert.doesNotMatch(handoffBlock, /Inline-refusal path/, 'the inline refusal path is retired');
   assert.match(selectorSpecFile, /exactly once only after the native picker returns the exact `Manual` label/,
     'the spec places the handoff after the explicit native Manual choice');
 });
@@ -1407,7 +1488,7 @@ test('Plan completion and Direct Build continuation use the native route picker'
   assert.match(pocLane, /deferred crystallization route choice never offers it/);
   assert.doesNotMatch(directBuild, /crystallization-close route selector never offers it/);
   assert.doesNotMatch(pocLane, /crystallization-close route selector never offers it/);
-  assert.match(routeSelector, /This separate question remains a native picker and is not the route choice above/i);
+  assert.match(routeSelector, /This separate question stays a distinct question of round 3 and is not the route choice above/i);
 });
 
 test('Direct Build final report is outcome-first and leaves the Plan report unchanged', () => {
@@ -1588,8 +1669,6 @@ test('Step 2 item-10 diagnosis references Bounded Recovery without restating the
   for (const coordinatorPath of [
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
-    'sai/commands/apply/coordinator.md',
-    'sai/commands/meta-build/coordinator.md',
   ]) {
     assert.match(
       artifact(coordinatorPath),
@@ -1779,7 +1858,7 @@ test('Direct Build continuation consent is one-time, set-scoped, context-complet
   assert.match(routeSelector, /`direct_build_continuation_answer`[\s\S]{0,240}to `unasked`[\s\S]{0,80}becomes `yes` or `no`/);
   assert.match(routeSelector, /Initialize `direct_build_continuation_prompted` to `false` and `direct_build_continuation_answer` to `unasked`/);
   assert.match(routeSelector, /Reset both values and set `pending_direct_build_change` to `null` only when a new crystallization replaces that set/i);
-  assert.match(routeSelector, /chosen with more than one pending slice and `direct_build_continuation_prompted` is `false`, ask once/i);
+  assert.match(routeSelector, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/i);
   assert.match(routeSelector, /ask once through the harness-native picker, even if earlier slices used Manual or Plan/i);
   assert.match(routeSelector, /Only an explicit `yes` authorizes automatic continuation/i);
   assert.match(routeSelector, /authorizes one local commit per automatically started slice; nothing is pushed/i);
@@ -1821,4 +1900,46 @@ test('Manual route is a completed handoff only and non-clean routes remain pendi
   assert.match(ideaList, /no later step starts, and the route is not completed/i);
   assert.match(ideaList, /Only a clean terminal result completes the active route/i);
   assert.match(ideaList, /Reset route state when a new slice is chosen; preserve completed slices and all pending slices/i);
+});
+
+test('E2: a single change keeps the yes/no branch question and a slice set gets one explicit three-choice question', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const question = selector.slice(selector.indexOf('2. **Branch question:**'), selector.indexOf('\n**Free-text answers.**'));
+  assert.match(question, /chosen by its size \(the recorded `explore-slice@1` inventory, not the pending remainder\)/);
+  assert.match(question, /\*\*One recorded change:\*\* “Would you like to create and switch to a local change branch for this crystallized proposal\?”/);
+  assert.match(question, /\*\*More than one recorded change \(a slice set\):\*\* ask one three-choice question/);
+  assert.match(question, /“¿Quieres crear una nueva rama\?”/);
+  const values = [...question.matchAll(/\(`(shared|per-slice|none)`;/g)].map(match => match[1]);
+  assert.deepEqual(values, ['shared', 'per-slice', 'none']);
+  assert.match(question, /Sí, crea una única para la issue principal[\s\S]*Crear una rama por slice[\s\S]*No crear nada/);
+  assert.match(question, /says that no branch is published/);
+  assert.match(selector, /All questions remain explicit under `--fast-track`/);
+  assert.match(question, /On `none`, skip only this action, keep the current branch and every existing branch as they are/);
+  assert.match(question, /On `shared`, create the branch once after publication through the installed `new-change-branch` skill[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
+  assert.match(question, /On `per-slice`, create the first pending slice's branch the same way, named after that slice/);
+});
+
+test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and stays conversation-scoped', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const chain = selector.slice(selector.indexOf('## Slice branch chain'), selector.indexOf('\n## Native route picker'));
+  assert.match(chain, /never persist them, never send them to a worker, and never add them to `explore-slice@1`/);
+  assert.match(chain, /Inventory order is dependency order/);
+  assert.match(chain, /only when its previous slice is completed: Direct Build archive completed, or `next-slice` at `implement` in Plan or Manual/);
+  assert.match(chain, /pending, failed, cancelled, parked, or still at sai-1 or sai-2 holds the chain at its position/);
+  assert.match(chain, /planning completion alone never completes a slice/);
+  assert.match(chain, /immediately before that slice starts[\s\S]*automatic continuation before `\{intent: auto-continue\}`/);
+  assert.match(chain, /authorizes every local creation and switch in the chain in advance/);
+  assert.match(chain, /`base` set to the previous slice's branch, and `require_clean: true`/);
+  assert.match(chain, /Never push or publish/);
+  assert.match(chain, /creation stops on uncommitted changes, create nothing and start nothing[\s\S]*previous slice's work must be committed first/);
+  assert.match(chain, /`name` reporting that the branch already exists is the lookup in git/);
+  assert.match(chain, /records that branch for this slice[\s\S]*resume on it[\s\S]*create nothing/);
+  assert.match(chain, /reuse the existing branch[\s\S]*give a corrected name[\s\S]*Never rename, overwrite, or delete the existing branch/);
+  assert.match(selector, /prepare the slice's branch when `branch_strategy` is `per-slice` and it is not yet prepared[\s\S]*then set `route_choice_reply_pending = false` and emit `\{intent: route-choice\}`/);
+  const slice = spec('sai/commands/explore/steps/slice.md');
+  assert.match(slice, /`next-slice` confirms the slice is implemented and committed/);
+  assert.match(slice, /the slice machine, its inventory, and its transitions stay unchanged and carry no branch data/);
+  assert.match(spec('sai/commands/explore/steps/pipeline-plan-unattended.md'), /`next-slice` confirms the slice is implemented and committed/);
+  assert.match(spec('sai/commands/explore/steps/pipeline-direct-build.md'), /an `auto_continue` first prepares the next slice's branch[\s\S]*before `\{intent: auto-continue\}` is emitted and before any worker dispatch/);
+  assert.match(spec('sai/commands/explore/instructions.md'), /choosing `per-slice` in the slice-set branch question is that acceptance in advance/);
 });

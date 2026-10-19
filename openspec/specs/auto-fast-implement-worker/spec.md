@@ -14,7 +14,7 @@ TBD - created by archiving change auto-fast-selector-option. Update Purpose afte
 
 ### Requirement: Alpha input model
 
-The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires. `**Capabilities in scope**` and `**Implementation Details**` SHALL bound the run, and the worker SHALL implement exactly the items listed under `**Implementation Details**`. `**Out of scope Implementation Details**` SHALL be context only: the worker SHALL use its items solely to choose among options that are equivalent for this run, SHALL NOT implement an out-of-scope item, and SHALL NOT do anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice.
+The implementer SHALL receive one opaque `arguments_value` beginning with `--direct-build`, followed by `--block-file <absolute path>` and `--block-hash <sha256>`, with no inline stored block. It SHALL verify the file before dependent work and fail without changes on a missing line, unreadable file, or mismatch. The verified block SHALL be its sole substantive input; no parent conversation or inferred requirements beyond implementation needs SHALL enter the request. The pinned `--direct-build --no-specs` POC SHALL remain exempt with no stored file or hash verification. Capabilities in scope, Key constraints, Edge Cases, and in-scope Implementation Details SHALL bound implementation. Research Leads and Out of scope Implementation Details SHALL be non-authoritative context only. Out-of-scope details SHALL only inform equivalent choices, never implementation, stubs, hooks, future abstractions, or references serving later slices.
 
 #### Scenario: Block-only input
 
@@ -31,6 +31,11 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 - **WHEN** two implementation options are equivalent for the current slice and only one of them would block a later out-of-scope item
 - **THEN** the worker chooses the option that does not block the later item, and adds no code whose only purpose is to serve that item
+
+#### Scenario: Altered block is refused before work
+
+- **WHEN** the file named by `--block-file` does not match the paired `--block-hash`
+- **THEN** the worker returns `failed` with no changes before reading the repository
 
 ### Requirement: Write containment
 The implementer worker SHALL treat any repository artifact required by the crystallized block as writable, regardless of file format, under the shared protected update protocols and its role restrictions. It SHALL NOT directly modify `openspec/specs/**`, with proposal, specs, design, tasks, and metadata reconstructed later by backfill. It SHALL NOT create planning artifacts, SHALL NOT run a mutating git command, and SHALL NOT dispatch subagents.
@@ -92,3 +97,27 @@ When the block carries `**Request Additional Notes**`, the Direct Build implemen
 
 - **WHEN** the implementer receives a block that carries Request Additional Notes content
 - **THEN** it implements only from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, and treats the notes as context that adds no scope
+
+### Requirement: Implementer reads the learnings file as repository context
+
+When the root `SAI_LEARNINGS.md` exists, the Direct Build implementer SHALL read it once as context about the repository: it records how the repository builds, tests, and behaves. The file SHALL add no requirement, scope, or file to the implementation, and when an entry contradicts the block the block SHALL prevail. The implementer SHALL ignore an entry that cites paths that no longer exist, SHALL NOT correct such an entry, and SHALL NOT write `SAI_LEARNINGS.md`. When the file does not exist, the implementer SHALL proceed from the block alone with no error and no notice.
+
+#### Scenario: Learnings file present
+
+- **WHEN** the implementer starts in a repository whose root contains `SAI_LEARNINGS.md`
+- **THEN** it reads the file once and uses it as repository context, while implementing only what the block lists
+
+#### Scenario: Entry contradicts the block
+
+- **WHEN** an entry of the learnings file contradicts the block
+- **THEN** the implementer follows the block
+
+#### Scenario: Entry cites a path that no longer exists
+
+- **WHEN** an entry of the learnings file cites a path that is no longer in the repository
+- **THEN** the implementer ignores the entry and leaves `SAI_LEARNINGS.md` unchanged
+
+#### Scenario: Learnings file absent
+
+- **WHEN** the repository has no root `SAI_LEARNINGS.md`
+- **THEN** the implementer proceeds from the block alone, with no error and no notice

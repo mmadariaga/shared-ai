@@ -16,15 +16,19 @@ The neutral task-list policy SHALL define a milestone stamp as a decorative anno
 
 ### Requirement: All routed progress plans use payload-sourced closure stamps
 
-Milestone stamps SHALL apply to every routed phase progress plan marked from worker progress events, including the spec, design, implementation, review, security, performance, and accessibility plans. The `sai-explore` Idea Progress List and `/sai-4-apply` run-start step projection SHALL remain unstamped.
+Milestone stamps SHALL apply to every routed phase progress plan marked from worker progress events, including the spec, design, review, security, performance, and accessibility plans. The `sai-explore` Idea Progress List SHALL remain unstamped.
 
 #### Scenario: An audit plan renders a completed step
 - **WHEN** a review, security, performance, or accessibility progress result marks a declared step
 - **THEN** the completed step receives the `HH:mm` of the marking response's `received_at`.
 
 #### Scenario: Apply projection renders
-- **WHEN** apply projects implementation headings at run start
-- **THEN** the projection carries no milestone stamps even when RED or GREEN results are timestamped.
+- **WHEN** the command catalog is read for an apply projection of implementation headings at run start
+- **THEN** no `/sai-4-apply` command exists, so no apply projection exists and none carries milestone stamps, even when RED or GREEN results are timestamped.
+
+#### Scenario: Idea Progress List renders
+- **WHEN** the `sai-explore` Idea Progress List renders
+- **THEN** the list carries no milestone stamps.
 
 ### Requirement: Stamps are attached only at completion
 

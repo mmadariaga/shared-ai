@@ -15,11 +15,10 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
@@ -27,7 +26,7 @@ const WORKER_NAMES = [
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
 
-function agentProjection(dir, workerName = 'sai-5-review-worker.md') {
+function agentProjection(dir, workerName = 'sai-4-review-worker.md') {
   const sourcePath = path.join(dir, 'sources', workerName);
   const destinationPath = path.join(dir, 'agents', workerName);
   fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
@@ -126,8 +125,8 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
   try {
     flow.installClaude(dir);
     const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-    assert.equal(entries.length, 18,
-      'Claude uninstall should enumerate 18 managed agent destinations: the fifteen workers plus the three budget agents');
+    assert.equal(entries.length, 16,
+      'Claude uninstall should enumerate 16 managed agent destinations: the thirteen workers plus the three budget agents');
     assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
       'no owner sidecar destination may be enumerated as a deletion target');
     const basenames = entries.map(entry => path.basename(entry.dest, '.md'));
@@ -137,7 +136,7 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
     }
     assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
       'Claude should still enumerate the eleven worker destinations');
-    for (const name of ['sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker']) {
+    for (const name of ['sai-3-red-worker', 'sai-3-green-worker', 'sai-direct-build-worker']) {
       assert.ok(basenames.includes(name),
         `Claude should enumerate the ${name} role managed agent destination`);
     }

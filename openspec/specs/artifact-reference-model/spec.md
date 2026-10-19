@@ -5,12 +5,14 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Audit and review instructions SHALL reference change artifacts by their explicit file paths, not by a generic `spec.md` alias.
+Audit and review instructions SHALL reference change artifacts by their explicit file paths, not by a generic `spec.md` alias.
 
 The previous instructions treated `proposal.md + design.md + specs/**/*.md` as collectively equivalent to a single `spec.md`. This alias has been removed; each artifact is now named and described individually.
 
 #### Scenario: Agent loads prerequisites for a review or audit
-- **WHEN** an agent executes any of `review.md`, `security.md`, `performance.md`, `accessibility.md`, or `pr.md`
+- **WHEN** an agent executes any of `review.md`, `security.md`, `performance.md`, or `accessibility.md`
 - **THEN** the Prerequisites section instructs it to read `proposal.md`, `design.md` (if present), and all files matching `specs/**/*.md` — listed separately, each with its purpose described
 
 #### Scenario: Required artifact is absent

@@ -300,6 +300,12 @@ On the answer:
 
 #### Writing the resolution
 
+Before authoring a code resolution or a coordinator-authorized code correction,
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it within the approved strategy, behavior-preservation requirements, and
+authorized ranges; those restrictions prevail. Choosing a complete existing
+version (`git-ours` / `git-theirs`) alone requires no policy load.
+
 The tool places the bytes; you supply the text. Send every region of every
 `authored` file through one call, with the resolved text on standard input:
 
@@ -327,17 +333,39 @@ On a coordinator-authorized correction, pass the `correction` snapshot's
 reference/hash to the same command: its `conflict_id`s name the authorized
 byte ranges. To rewrite a region of the original snapshot, send its
 `conflict_id` again with the corrected text. Keep the original confirmed
-objective and return the same complete resolution payload for review and
-re-staging. A missing/stale reference or unauthorized path stops before a
+objective and return the same complete resolution result for review and
+re-staging, handed over through a new transfer file as described below. A missing/stale reference or unauthorized path stops before a
 write; a new objective returns to strategy analysis.
 
-The completed `summary` holds a concise application outcome (affected paths,
-confirmed strategy revision, new errors/escalations if any), then
+The **complete original result** is the terminal `completed` payload whose
+`summary` holds a concise application outcome (affected paths, confirmed
+strategy revision, new errors/escalations if any), then
 `## Complete resolution payload` with exactly one JSON object. The payload's
 decision inventory reuses the confirmed strategy. Its semantic explanation
 was delivered at presentation; omit another Conflict Analysis or selected-
 decision explanation here. Every new or revised strategy still receives the
 complete Step 7 presentation before any write.
+
+The complete original result never travels as message text. Write it, exactly
+as you would otherwise return it (its envelope, its `summary` with the payload
+section, and its `changed_files`), to a transfer file with
+`node <transfer-tool> put --dir <transfer-dir> --path <relative>` (the result on
+standard input), resolving `transfer.js` per
+`@sai/policies/tool-resolution.md` and using the coordinator's disclosed
+transfer directory. Use a fresh relative path for each result
+(`resolution-1.json`, `resolution-2.json`, ...), so an earlier result stays
+intact as evidence. Write a transfer file through no other tool. Then return
+the terminal `completed` payload with:
+
+- `summary`: only the application-outcome text, with no
+  `## Complete resolution payload` section and no region text;
+- `resolution_reference`: exactly `{path, sha256}` as printed by `put`.
+
+When the helper is unavailable or its invocation is denied, return `failed`
+naming the blocked operation; never fall back to returning the payload inline.
+A corrected result (a coordinator-authorized correction, or a rejected
+payload) is written to a new transfer file and returned with its new
+reference, which supersedes every earlier one.
 
 ```json
 {
@@ -382,6 +410,12 @@ Payload rules:
   `selected_contextual_decisions` holds one record per semantic conflict.
 
 ### Step 8: Test correction
+
+Before authoring a proposed code correction,
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it within the approved strategy and behavior-preservation requirements;
+those restrictions prevail. This load grants no write: the coordinator must
+authorize and capture the correction ranges before application in `apply`.
 
 The coordinator runs the suite after it has validated, reviewed, and staged
 the resolution. It continues you here only when round 1 or 2 failed, with the

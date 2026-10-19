@@ -65,7 +65,7 @@ over the Explore idea list.
 The closed `SpecWriteSurface` is:
 
 - `openspec/changes/{change-name}/.openspec.yaml`, created only by
-  `openspec new change` on a creation run and never edited afterwards;
+  `openspec new change` on a creation run; the worker may preserve only the block's explicit `backlog_origin` provenance afterwards, without changing other keys;
 - `openspec/changes/{change-name}/proposal.md`;
 - `openspec/changes/{change-name}/specs/**`; and
 - the repository-root `GLOSSARY.md`, only for terms resolved by the spec

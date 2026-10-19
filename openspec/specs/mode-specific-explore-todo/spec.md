@@ -34,15 +34,13 @@ The Auto route SHALL contain exactly `sai-1` followed by `sai-2`. A clean spec c
 
 ### Requirement: Direct Build exposes only high-level stages
 
-The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, the Step 2b suite gate, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` SHALL become completed only after the implementer and functional fix loop converge and the suite gate is green or skipped because no test suite was found. `Build/Implement` MUST NOT be interpreted as `/sai-build` or `meta-build`.
+The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, the Step 2b suite gate, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` SHALL become completed only after the implementer and functional fix loop converge and the suite gate is green or skipped because no test suite was found. `Build/Implement` MUST NOT be interpreted as `/sai-build`.
 
 #### Scenario: Direct Build advances through high-level stages
-
 - **WHEN** the implementer and functional-fix work, backfill execution, and archive execution each return cleanly
 - **THEN** the route completes `Build/Implement`, then `Backfill`, then `Archive`, while the CLI archive invocation remains an internal Archive substep
 
 #### Scenario: A stopped suite gate keeps Build/Implement open
-
 - **WHEN** the Step 2b suite gate stops the route
 - **THEN** `Build/Implement` does not become completed and `Backfill` does not start
 
@@ -65,7 +63,7 @@ Failed, cancelled, STOP-bearing, coordinator-disproved, and unrecovered outcomes
 - **THEN** the active item remains pending, no later item starts, and retrying the selected slice does not change another slice's route state
 
 ### Requirement: Manual handoff definition lives in route selector
-`sai/commands/explore/steps/route-selector.md` SHALL own the post-Manual handoff and keep-window-open recommendation with single-change and sliced wordings plus the inline-refusal immediate handoff, while boot SHALL keep only a pointer with English scaffolding intact.
+`sai/commands/explore/steps/route-selector.md` SHALL own the post-Manual handoff and keep-window-open recommendation with single-change and sliced wordings and no inline-refusal immediate handoff, while boot SHALL keep only a pointer with English scaffolding intact.
 
 #### Scenario: Manual resolution emits selector-owned handoff
 - **WHEN** a deferred choice resolves to Manual

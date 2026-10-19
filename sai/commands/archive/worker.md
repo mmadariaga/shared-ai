@@ -7,6 +7,7 @@ Fetch @sai/commands/archive/retirement-declaration.md
 Fetch @sai/policies/command-execution.md and follow it exactly.
 Fetch @skills/safe-operations/SKILL.md and use it for every Direct Build (unattended) mutation.
 Fetch @sai/policies/commit-rules.md and follow it for the Direct Build (unattended) commit.
+Fetch @sai/policies/foreign-index-preservation.md and follow it for the Direct Build (unattended) index.
 
 ## Invocation
 
@@ -20,8 +21,8 @@ carries `resolved_change_name`, and `$ARGUMENTS` in the instructions is that
 name.
 
 The coordinator declares `fast_track_active` beside the envelope as session
-state. It changes only the unchecked-items question; the CORE stop, the AUDIT
-line, the collision check, and every retirement refusal behave identically.
+state. It changes nothing in the pre-flight: the CORE stop, the AUDIT line, the
+collision check, and every retirement refusal behave identically.
 
 The Direct Build (unattended) composition prefixes the initial envelope with a
 `--direct-build-prepare` line followed by the resolved change name. Strip the
@@ -40,15 +41,14 @@ English `summary`, an ordered duplicate-free `changed_files`, and
 
 ## Pre-flight
 
-Run the whole pre-flight of `instructions.md`: Classification Check,
-Completion Check, delta-sync summary, capability retirement detection and
-preconditions, and collision check. Everything reads; findings travel as
-payload content (the AUDIT line, the unchecked-item list, the delta-sync
-summary, the retired capabilities, the collision verdict) for the coordinator
-to present verbatim.
+Run the whole pre-flight of `instructions.md`: Classification Check, delta-sync
+summary, capability retirement detection and preconditions, and collision check.
+Everything reads; findings travel as payload content (the AUDIT line, the
+delta-sync summary, the retired capabilities, the collision verdict) for the
+coordinator to present verbatim.
 
-Close the run early on the CORE stop, a retirement refusal (a stop with no
-mutation plan and no execution order), or a declined unchecked-items answer.
+Close the run early on the CORE stop or a retirement refusal (a stop with no
+mutation plan and no execution order).
 Otherwise close with a `completed` summary restating the change name, schema,
 collision verdict, delta-sync summary, every retired capability, and any
 warnings. The coordinator presents it before running the CLI archive on the
@@ -93,25 +93,37 @@ Execute exactly this order:
    move primitive. On failure or invalid JSON, return `failed` with the exact
    error, verbatim, and end the order there; recovery belongs to the
    coordinator.
+   Fetch @sai/policies/issue-origin-preservation.md and compare the known
+   pre-move origin with the archived metadata after the move; warn and continue
+   when it is lost or unverifiable.
 2. **Staging** — classify every approved path before staging any. A path is
    tracked (including a tracked deletion) when
    `git ls-files --error-unmatch -- <path>` succeeds, untracked on its exit 1,
    and any other error is terminal. For an untracked path, run
    `git check-ignore --quiet -- <path>`: exit 0 means ignored, so omit it and
    append `[sai-archive] warning: omitted ignored untracked path: <path>` to
-   the summary; exit 1 means eligible; anything else is terminal. Then stage
+   the summary; exit 1 means eligible; anything else is terminal. Before
+   staging, set aside the foreign entries under
+   `foreign-index-preservation.md`, with the exact owned staging paths as the
+   owned paths; a pending record from an earlier order is restored first, and a
+   restore that stops ends the order. Then stage
    every eligible path with the exact allowlist, deletion-aware, never with
    `-A`, `.`, or `-f`, and never an unrelated path. A classification or staging
    error stops the order with the exact completed state.
 3. **Commit** — when the index holds staged changes (`git diff --cached --quiet`
    exits 1), author the message from the staged state under the commit rules,
    add the retired-capability body lines of `retirement-declaration.md`
-   § Disclosure, and create one local commit by passing the complete message to
-   `git commit -F -` on standard input under the already-consumed Direct Build
-   authorization, using `@sai/policies/command-execution.md`.
+   § Disclosure, add the closing lines of `sai/policies/commit-rules.md`
+   § Closing Lines for the archived change, and create one local commit by
+   passing the complete message to `git commit -F -` on standard input under
+   the already-consumed Direct Build authorization, using
+   `@sai/policies/command-execution.md`.
    When the index is empty (every approved path was ignored), report
    `[sai-archive] no commit: staging left the index empty` and create nothing.
-   Never amend, push, or ask for a second commit.
+   Never amend, push, or ask for a second commit. Whether the commit was created
+   or not, finish by restoring the foreign entries under
+   `foreign-index-preservation.md`; a restore that stops is reported in the
+   summary with its exact paths, and the record stays for recovery.
 
 The summary names every retired capability, as the prepare summary does.
 Record each realized path in `changed_files`, taking spec paths from the

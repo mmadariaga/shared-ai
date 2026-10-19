@@ -17,12 +17,19 @@ const STRATEGIES = Object.freeze([
 ]);
 const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
-const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents']);
+const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents', 'commands']);
 const MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeBinding',
   'opencodeBinding',
   'claudeAgent',
   'opencodeAgent',
+]);
+// Binding templates for roles that live outside the shared orchestration (the
+// implement and review commands). Loaded only when the manifest declares them; the renderer
+// fails closed when such a role exists without its template.
+const OPTIONAL_MATRIX_TEMPLATE_NAMES = Object.freeze([
+  'claudeStandaloneBinding',
+  'opencodeStandaloneBinding',
 ]);
 const MATRIX_KINDS = new Set(['binding', 'agent']);
 const MATRIX_SCRATCH_RELATIVE = path.join('.tmp', 'collapse-sai-worker-matrix', 'matrix-sources');
@@ -31,11 +38,9 @@ const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_')
 const PHASE_WORKER_IDENTITIES = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
-  review: 'sai-5-review-worker',
-  security: 'sai-6-security-worker',
-  performance: 'sai-7-performance-worker',
-  accessibility: 'sai-8-accessibility-worker',
+  security: 'sai-5-security-worker',
+  performance: 'sai-6-performance-worker',
+  accessibility: 'sai-7-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',
@@ -44,8 +49,6 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
-  review: 'review',
   security: 'security',
   performance: 'performance',
   accessibility: 'accessibility',
@@ -152,28 +155,15 @@ function validateRule(rule, ids) {
   }
 }
 
-const APPLY_CONTRACT_BY_WORKER = Object.freeze({
-  'sai-4-red-worker': 'sai/commands/apply/red-worker.md',
-  'sai-4-green-worker': 'sai/commands/apply/green-worker.md',
-});
-
 const DIRECT_BUILD_CONTRACT_BY_WORKER = Object.freeze({
   'sai-direct-build-worker': 'sai/commands/explore/direct-build-worker.md',
-  'sai-review-fix-worker': 'sai/commands/meta-review/review-fix-worker.md',
+  'sai-3-red-worker': 'sai/commands/implement/red-worker.md',
+  'sai-3-green-worker': 'sai/commands/implement/green-worker.md',
+  'sai-4-review-worker': 'sai/commands/review/worker.md',
 });
 
 function assertWorkerIdentity(entry, harness) {
   const prefix = `${harness} worker matrix: `;
-  if (entry.phase === 'apply') {
-    const expectedContract = APPLY_CONTRACT_BY_WORKER[entry.workerName];
-    if (expectedContract === undefined) {
-      throw new Error(`${prefix}unknown apply worker identity ${entry.workerName}`);
-    }
-    if (entry.workerContract !== expectedContract) {
-      throw new Error(`${prefix}apply worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
-    }
-    return;
-  }
   if (Object.prototype.hasOwnProperty.call(DIRECT_BUILD_CONTRACT_BY_WORKER, entry.workerName)) {
     const expectedContract = DIRECT_BUILD_CONTRACT_BY_WORKER[entry.workerName];
     if (entry.workerContract !== expectedContract) {
@@ -240,6 +230,11 @@ function validateMatrixBlock(matrix) {
       throw new Error(`worker-matrix block must declare template source for ${name}`);
     }
   }
+  for (const name of OPTIONAL_MATRIX_TEMPLATE_NAMES) {
+    if (matrix.templates[name] !== undefined && (typeof matrix.templates[name] !== 'string' || matrix.templates[name].length === 0)) {
+      throw new Error(`worker-matrix block template source for ${name} must be a nonempty string`);
+    }
+  }
   for (const kind of ['bindings', 'agents']) {
     const section = matrix[kind];
     if (!section || typeof section !== 'object' || Array.isArray(section)) {
@@ -265,7 +260,6 @@ function validateMatrixBlock(matrix) {
     throw new Error('worker-matrix block must declare at least one phase entry');
   }
   const seen = new Set();
-  let applySeen = 0;
   for (const entry of matrix.entries) {
     if (!entry || typeof entry !== 'object') {
       throw new Error('worker-matrix phase entry must be an object');
@@ -273,17 +267,10 @@ function validateMatrixBlock(matrix) {
     if (typeof entry.phase !== 'string' || entry.phase.length === 0) {
       throw new Error('worker-matrix phase entry must declare a phase');
     }
-    if (entry.phase === 'apply') {
-      applySeen += 1;
-      if (applySeen > 2) {
-        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
-      }
-    } else {
-      if (seen.has(entry.phase)) {
-        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
-      }
-      seen.add(entry.phase);
+    if (seen.has(entry.phase)) {
+      throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
     }
+    seen.add(entry.phase);
   }
   defineWorkerMatrix(matrix.entries);
 }
@@ -319,7 +306,7 @@ function validateRetirements(manifest, projectionIds) {
     if (!retirement.destination
         || !RETIREMENT_DESTINATION_CLASSES.has(retirement.destination.class)
         || typeof retirement.destination.path !== 'string') {
-      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills", path }`);
+      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills" | "agents" | "commands", path }`);
     }
     const destination = `${retirement.destination.class}/${normalizeRelative(retirement.destination.path)}`;
     if (!Array.isArray(retirement.harnesses) || retirement.harnesses.length === 0 || retirement.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {
@@ -335,6 +322,13 @@ function validateRetirements(manifest, projectionIds) {
     }
     if (new Set(retirement.managedHashes).size !== retirement.managedHashes.length) {
       throw new Error(`Retirement ${retirement.id} has duplicate managedHashes`);
+    }
+    if (retirement.managedBodyHashes !== undefined
+        && (!Array.isArray(retirement.managedBodyHashes) || retirement.managedBodyHashes.length === 0
+          || retirement.managedBodyHashes.some(hash => !SHA256.test(hash))
+          || !Array.isArray(retirement.tunableKeys) || retirement.tunableKeys.length === 0
+          || retirement.tunableKeys.some(key => !['model', 'effort', 'variant'].includes(key)))) {
+      throw new Error(`Retirement ${retirement.id} has invalid tunable body identity`);
     }
   }
 }
@@ -387,12 +381,10 @@ function matrixProjectionId(harness, kind, item) {
   return `${harness}-${path.basename(item.destinationName, '.md')}`;
 }
 
-function matrixRenderFor(manifest, harness, repoRoot) {
-  const matrix = manifest['worker-matrix'];
-  if (!matrix) return [];
-  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
+function loadMatrixTemplates(matrix, harness, repoRoot) {
   const templates = {};
-  for (const name of MATRIX_TEMPLATE_NAMES) {
+  const declared = OPTIONAL_MATRIX_TEMPLATE_NAMES.filter(name => matrix.templates[name] !== undefined);
+  for (const name of [...MATRIX_TEMPLATE_NAMES, ...declared]) {
     const templatePath = path.resolve(repoRoot, matrix.templates[name]);
     if (!fs.existsSync(templatePath)) {
       throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
@@ -400,6 +392,14 @@ function matrixRenderFor(manifest, harness, repoRoot) {
     templates[name] = fs.readFileSync(templatePath, 'utf8');
     assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
   }
+  return templates;
+}
+
+function matrixRenderFor(manifest, harness, repoRoot) {
+  const matrix = manifest['worker-matrix'];
+  if (!matrix) return [];
+  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
+  const templates = loadMatrixTemplates(matrix, harness, repoRoot);
   const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities), templates);
   return rendered
     .filter(item => item.harness === harness)
@@ -420,15 +420,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabi
     return [];
   }
   validateMatrixEntries(matrix.entries, harness);
-  const templates = {};
-  for (const name of MATRIX_TEMPLATE_NAMES) {
-    const templatePath = path.resolve(repoRoot, matrix.templates[name]);
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
-    }
-    templates[name] = fs.readFileSync(templatePath, 'utf8');
-    assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
-  }
+  const templates = loadMatrixTemplates(matrix, harness, repoRoot);
   let matrixDef;
   let rendered;
   try {
@@ -517,6 +509,10 @@ function expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot
         destinationPath: path.resolve(destinationBase, retirement.destination.path),
         harness,
         managedHashes: [...retirement.managedHashes],
+        ...(retirement.managedBodyHashes ? {
+          managedBodyHashes: [...retirement.managedBodyHashes],
+          tunableKeys: [...retirement.tunableKeys],
+        } : {}),
       };
     })
     .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id));

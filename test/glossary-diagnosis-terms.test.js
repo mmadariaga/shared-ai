@@ -13,8 +13,7 @@ const DIAGNOSIS_TERMS = [
   'Diagnosis Key',
   'Duplicate Diagnosis',
   'Unresolved Cause',
-  'Continuation/Transport Loss',
-  'Known-False Report Recovery'
+  'Continuation/Transport Loss'
 ];
 
 function glossary() {
@@ -47,26 +46,6 @@ test('GLOSSARY.md defines the diagnosis and recovery terms', () => {
   for (const term of DIAGNOSIS_TERMS) {
     definitionFor(term);
   }
-});
-
-test('Known-False Report Recovery is locus-aware and not GREEN-only', () => {
-  const definition = definitionFor('Known-False Report Recovery');
-
-  assert.match(
-    definition,
-    /\blocus\b/i,
-    'Known-False Report Recovery should define the locus that produced the report'
-  );
-  assert.match(
-    definition,
-    /\b(?:RED|transport|continuation|verification|diagnosis)\b/i,
-    'Known-False Report Recovery should cover a non-GREEN diagnosis or transport locus'
-  );
-  assert.doesNotMatch(
-    definition,
-    /(?:\b(?:only|solely|exclusively|just)\b[^.\n]*\bGREEN\b|\bGREEN\b[^.\n]*\b(?:only|solely|exclusively|just)\b)/i,
-    'Known-False Report Recovery must not be defined as GREEN-only'
-  );
 });
 
 test('Diagnosis Round names Review Engine recovery feedback without aliasing review_rounds', () => {

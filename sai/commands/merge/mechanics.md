@@ -36,7 +36,9 @@ evidence after launch: do not replace its SHAs with current HEAD or moved refs.
 
 External records live outside the target repository in the harness-approved
 temporary area, use unique paths, and remain available through replacement and
-closure. They are invocation records, not change artifacts or `changed_files`.
+closure. The worker's complete resolution result is one such record: a transfer
+file in the invocation's transfer directory (`coordinator.md` § Transfer
+directory), identified by its `{path, sha256}` reference. They are invocation records, not change artifacts or `changed_files`.
 Never overwrite a conflict snapshot to make a failed comparison pass. Verify
 its retained `record_hash` before using it; missing or changed records stop
 before a write, staging, or finalization.

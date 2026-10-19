@@ -16,12 +16,12 @@ The implementation and apply coordinators SHALL declare `fast_track_active` as a
 
 ### Requirement: Workers Preserve Fast-Track State Across Continuations for Defined Branches
 
-The implementation worker SHALL keep the delivered boolean across progress, input, and recovery continuations and SHALL honor it only for its other defined fast-track branches, never inferring bounded lookup authorization from it.
+The implementation worker SHALL keep the delivered boolean across progress, input, and recovery continuations and SHALL honor it only for its worker-owned fast-track branches in the plan-generation and validation steps.
 
 #### Scenario: Continuation retains state without widening authorization
 
 - **WHEN** the worker continues after progress or input with fast-track state delivered
-- **THEN** the worker retains the boolean for its defined branches while lookup approval still awaits the coordinator's explicit typed decisions
+- **THEN** the worker retains the boolean and applies it only to its defined fast-track branches
 
 ### Requirement: Standalone Absence Sets an Explicit False Signal
 

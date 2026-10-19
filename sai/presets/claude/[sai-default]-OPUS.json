@@ -40,62 +40,50 @@
     "effort": "medium"
   },
   "command:sai-3-implement": {
-    "model": "sonnet",
-    "effort": "high"
-  },
-  "worker:sai-3-implementation-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-4-apply": {
-    "model": "opus",
-    "effort": "medium"
-  },
-  "worker:sai-4-red-worker": {
+  "worker:sai-3-red-worker": {
     "model": "haiku",
     "effort": "medium"
   },
-  "worker:sai-4-green-worker": {
+  "worker:sai-3-green-worker": {
     "model": "haiku",
     "effort": "xhigh"
   },
-  "command:sai-review": {
+  "command:sai-deep-review": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-5-review": {
-    "model": "sonnet",
-    "effort": "high"
-  },
-  "worker:sai-5-review-worker": {
+  "command:sai-4-review": {
     "model": "opus",
     "effort": "medium"
   },
-  "worker:sai-review-fix-worker": {
-    "model": "haiku",
-    "effort": "medium"
-  },
-  "command:sai-6-security": {
-    "model": "sonnet",
-    "effort": "high"
-  },
-  "worker:sai-6-security-worker": {
+  "worker:sai-4-review-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-7-performance": {
+  "command:sai-5-security": {
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-7-performance-worker": {
+  "worker:sai-5-security-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-8-accessibility": {
+  "command:sai-6-performance": {
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-8-accessibility-worker": {
+  "worker:sai-6-performance-worker": {
+    "model": "opus",
+    "effort": "medium"
+  },
+  "command:sai-7-accessibility": {
+    "model": "sonnet",
+    "effort": "high"
+  },
+  "worker:sai-7-accessibility-worker": {
     "model": "opus",
     "effort": "medium"
   },
@@ -128,10 +116,6 @@
     "effort": "high"
   },
   "worker:sai-commit-worker": {
-    "model": "haiku",
-    "effort": "medium"
-  },
-  "utility:sai-pr": {
     "model": "haiku",
     "effort": "medium"
   },

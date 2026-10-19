@@ -1,8 +1,10 @@
 # Accessibility Step — Resolve Static Accessibility Audit
 
-Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below. The step is done when every UI file in scope has been checked against every phase that applies to its component types; then report the `resolve-static-audit` progress event per the worker contract.
+Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below. The step is done when every component in `component types` has been evaluated against every triggered checklist and, when Visual Design is triggered, every CSS file and design token as well; then report the `resolve-static-audit` progress event per the worker contract.
 
 ### Phase 2: Semantics & Structure
+
+Trigger: always.
 
 - **Headings:** logical order (no skipped levels), one `<h1>` per page/route, no headings used for styling
 - **Landmarks:** `<main>`, `<nav>`, `<header>`, `<footer>`, `<aside>`, `<section>` with names where multiple exist
@@ -17,6 +19,8 @@ WCAG mapping: 1.3.1, 2.4.1, 2.4.6, 4.1.2.
 
 ### Phase 3: ARIA & Naming
 
+Trigger: always.
+
 - **Names** — every interactive element has an accessible name (visible label, `aria-label`, `aria-labelledby`). Icon-only buttons must declare a name.
 - **Roles** — only added when native semantics are insufficient. Flag redundant roles (e.g. `role="button"` on `<button>`).
 - **States** — `aria-expanded`, `aria-pressed`, `aria-selected`, `aria-checked`, `aria-disabled`, `aria-current` reflect actual state and update on interaction.
@@ -28,6 +32,8 @@ WCAG mapping: 1.3.1, 2.4.1, 2.4.6, 4.1.2.
 WCAG mapping: 4.1.2, 4.1.3.
 
 ### Phase 4: Keyboard & Focus
+
+Trigger: always.
 
 - **All functionality keyboard-reachable** — no `<div onClick>` without keyboard handler; no `tabindex="-1"` on what should be focusable; no `tabindex` > 0 (overrides natural order).
 - **Tab order** matches visual order; no orphan focusable nodes outside viewport without intent.
@@ -43,6 +49,8 @@ WCAG mapping: 4.1.2, 4.1.3.
 WCAG mapping: 2.1.1, 2.1.2, 2.4.3, 2.4.7, 2.4.11, 2.4.13, 2.5.7.
 
 ### Phase 5: Forms
+
+Trigger: component types include forms.
 
 - **Every input has a label** — `<label for="...">` or wrapping `<label>`; never placeholder-as-label.
 - **Programmatic name matches visible label** (WCAG 2.5.3).
@@ -62,6 +70,8 @@ WCAG mapping: 2.1.1, 2.1.2, 2.4.3, 2.4.7, 2.4.11, 2.4.13, 2.5.7.
 WCAG mapping: 1.3.5, 2.5.3, 3.3.1, 3.3.2, 3.3.3, 3.3.4, 3.3.7, 3.3.8, 4.1.2.
 
 ### Phase 6: Visual Design (Tailwind / CSS)
+
+Trigger: UI files in scope include a CSS file, or design tokens is not none.
 
 - **Contrast** (WCAG 1.4.3):
     - Body text ≥ 4.5:1 against background
@@ -83,6 +93,8 @@ WCAG mapping: 1.4.1, 1.4.3, 1.4.4, 1.4.10, 1.4.11, 1.4.12, 2.2.2, 2.3.1, 2.3.3, 
 
 ### Phase 7: Media & Non-Text Content
 
+Trigger: component types include media.
+
 - **Images:**
     - Informative `<img>` has meaningful `alt`
     - Decorative `<img>` has `alt=""` (and SVG has `aria-hidden="true"`)
@@ -96,6 +108,8 @@ WCAG mapping: 1.4.1, 1.4.3, 1.4.4, 1.4.10, 1.4.11, 1.4.12, 2.2.2, 2.3.1, 2.3.3, 
 WCAG mapping: 1.1.1, 1.2.1, 1.2.2, 1.2.3, 1.2.5, 1.4.2.
 
 ### Phase 8: Dynamic Content & SPA
+
+Trigger: component types include dynamic content.
 
 - **Route announcements** — SPA route change updates `document.title` and announces in a live region or moves focus.
 - **Live regions** for async results (toasts, validation summaries, search count) at appropriate politeness; avoid duplicate announcements.

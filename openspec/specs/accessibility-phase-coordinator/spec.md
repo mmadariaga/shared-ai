@@ -21,12 +21,12 @@ The Claude Code and opencode `/sai-8-accessibility` entrypoints SHALL invoke an 
 
 ### Requirement: Accessibility invocation arguments remain worker-owned
 
-The coordinator SHALL preserve the complete accessibility invocation argument string in the harness-defined original envelope, including the existing argument contract: one required change-name positional, optional `--full` or `--path {dir}` scope flag, optional `--runtime` flag, and optional trailing parent-branch value. It SHALL not parse, normalize, resolve, or discard those values before dispatch.
+The coordinator SHALL preserve the complete accessibility invocation argument string in the harness-defined original envelope. That string follows the contract declared in `sai/commands/accessibility/options.md`: an optional change name, optional `--full` or `--path <dir>` scope flag, optional `--runtime` flag, and optional `--parent-branch <branch>`. The coordinator SHALL fetch that declaration and SHALL not parse, normalize, resolve, or discard those values before dispatch.
 
 #### Scenario: Routed accessibility receives scope and runtime arguments
-- **WHEN** a routed invocation includes a change name, an explicit scope, `--runtime`, or an optional parent branch
+- **WHEN** a routed invocation includes a change name, an explicit scope, `--runtime`, or `--parent-branch <branch>`
 - **THEN** the worker receives the complete original argument string
-- **AND** the coordinator does not reinterpret `--runtime` or remove any positional value
+- **AND** the coordinator does not reinterpret `--runtime` or remove any option or value
 
 ### Requirement: Accessibility coordinator performs no technical I/O
 

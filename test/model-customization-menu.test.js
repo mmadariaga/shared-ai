@@ -36,19 +36,17 @@ const OPENCODE_AGENTS = [
   'explore',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-4-green-worker',
-  'sai-4-red-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-3-green-worker',
+  'sai-3-red-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
   'sai-direct-build-worker',
   'sai-merge-worker',
-  'sai-review-fix-worker',
 ];
 
 const CLAUDE_AGENTS = [
@@ -57,23 +55,21 @@ const CLAUDE_AGENTS = [
   'budget-subagent',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-4-green-worker',
-  'sai-4-red-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-3-green-worker',
+  'sai-3-red-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
   'sai-direct-build-worker',
   'sai-merge-worker',
-  'sai-review-fix-worker',
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
-const UTILITY_COMMANDS = ['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
+const UTILITY_COMMANDS = ['sai-retire-docs', 'sai-status', 'sai-worktree'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -82,19 +78,17 @@ const COMMANDS = [
   'sai-1-spec',
   'sai-2-design',
   'sai-3-implement',
-  'sai-4-apply',
-  'sai-5-review',
-  'sai-6-security',
-  'sai-7-performance',
-  'sai-8-accessibility',
+  'sai-4-review',
+  'sai-5-security',
+  'sai-6-performance',
+  'sai-7-accessibility',
   'sai-archive',
   'sai-backfill',
   'sai-build',
   'sai-commit',
+  'sai-deep-review',
   'sai-explore',
-  'sai-pr',
   'sai-retire-docs',
-  'sai-review',
   'sai-status',
   'sai-worktree',
 ];
@@ -103,13 +97,13 @@ const MODEL_COMMANDS = COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name))
 // Step 3: deliberately non-alphabetical enumeration output so the All-scope
 // assertions can pin flow-side alphabetical ordering per family.
 const SCRAMBLED_WORKERS = [
-  'sai-3-implementation-worker',
+  'sai-3-red-worker',
   'budget',
   'sai-1-spec-proposal-worker',
 ];
 
 const SCRAMBLED_COMMANDS = [
-  'sai-pr',
+  'sai-status',
   'sai-1-spec',
   'sai-backfill',
 ];
@@ -119,8 +113,8 @@ const COMBINED_BOTH = [
   'worker:sai-1-spec-proposal-worker',
   'command:sai-backfill',
   'worker:budget',
-  'worker:sai-3-implementation-worker',
-  'utility:sai-pr',
+  'worker:sai-3-red-worker',
+  'utility:sai-status',
 ];
 
 const COMBINED_BOTH_BARE = [
@@ -128,32 +122,30 @@ const COMBINED_BOTH_BARE = [
   'sai-1-spec-proposal-worker',
   'sai-backfill',
   'budget',
-  'sai-3-implementation-worker',
-  'sai-pr',
+  'sai-3-red-worker',
+  'sai-status',
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 19 names. These are current-state
+// basenames. Both harnesses ship the same 17 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
   'sai-1-spec',
   'sai-2-design',
   'sai-3-implement',
-  'sai-4-apply',
-  'sai-5-review',
-  'sai-6-security',
-  'sai-7-performance',
-  'sai-8-accessibility',
+  'sai-4-review',
+  'sai-5-security',
+  'sai-6-performance',
+  'sai-7-accessibility',
   'sai-archive',
   'sai-backfill',
   'sai-build',
   'sai-commit',
+  'sai-deep-review',
   'sai-explore',
   'sai-merge',
-  'sai-pr',
   'sai-retire-docs',
-  'sai-review',
   'sai-status',
   'sai-worktree',
 ];
@@ -170,20 +162,17 @@ const COMBINED_BOTH_FULL = [
   'worker:sai-2-design-worker',
   'command:sai-build',
   'command:sai-3-implement',
-  'worker:sai-3-implementation-worker',
-  'command:sai-4-apply',
-  'worker:sai-4-red-worker',
-  'worker:sai-4-green-worker',
-  'command:sai-review',
-  'command:sai-5-review',
-  'worker:sai-5-review-worker',
-  'worker:sai-review-fix-worker',
-  'command:sai-6-security',
-  'worker:sai-6-security-worker',
-  'command:sai-7-performance',
-  'worker:sai-7-performance-worker',
-  'command:sai-8-accessibility',
-  'worker:sai-8-accessibility-worker',
+  'worker:sai-3-red-worker',
+  'worker:sai-3-green-worker',
+  'command:sai-4-review',
+  'worker:sai-4-review-worker',
+  'command:sai-deep-review',
+  'command:sai-5-security',
+  'worker:sai-5-security-worker',
+  'command:sai-6-performance',
+  'worker:sai-6-performance-worker',
+  'command:sai-7-accessibility',
+  'worker:sai-7-accessibility-worker',
   'command:sai-backfill',
   'worker:sai-backfill-worker',
   'command:sai-archive',
@@ -194,7 +183,6 @@ const COMBINED_BOTH_FULL = [
   'worker:executor',
   'worker:explore',
   'worker:sai-merge-worker',
-  'utility:sai-pr',
   'utility:sai-retire-docs',
   'utility:sai-status',
   'utility:sai-worktree',
@@ -531,18 +519,18 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns only the fifteen routed workers', () => {
+test('opencode enumerateWorkers returns only the thirteen routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 15, 'exactly fifteen routed workers should enumerate for opencode');
+  assert.equal(agents.length, 13, 'exactly thirteen routed workers should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
     'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns only the fifteen routed workers', () => {
+test('claude enumerateWorkers returns only the thirteen routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 15, 'exactly fifteen routed workers should enumerate for claude');
+  assert.equal(agents.length, 13, 'exactly thirteen routed workers should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
     'claude workers should exclude generic delegation agents');
 });
@@ -552,8 +540,8 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
   assert.deepEqual(opencode.agent, ['budget', 'executor', 'explore']);
-  assert.equal(claude.worker.length, 15);
-  assert.equal(opencode.worker.length, 15);
+  assert.equal(claude.worker.length, 13);
+  assert.equal(opencode.worker.length, 13);
 });
 
 test('Claude settings selection asks separate model and effort screens from the real catalog', async () => {
@@ -870,7 +858,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     {
       scope: 'All',
-      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 22), '', ...COMBINED_BOTH_FULL.slice(22, 32), '', ...COMBINED_BOTH_FULL.slice(32)],
+      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 19), '', ...COMBINED_BOTH_FULL.slice(19, 29), '', ...COMBINED_BOTH_FULL.slice(29)],
       defaults: COMBINED_BOTH_FULL,
     },
   ];
@@ -1100,10 +1088,10 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
   }
 });
 
-test('review-fix worker follows the review worker in All and stays alphabetical in Workers for both harnesses', async () => {
+test('the implement and review workers follow their commands in All and stay alphabetical in Workers for both harnesses', async () => {
   for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
-    const workers = ['sai-6-security-worker', 'sai-review-fix-worker', 'sai-5-review-worker'];
-    const commands = ['sai-6-security', 'sai-5-review'];
+    const workers = ['sai-5-security-worker', 'sai-4-review-worker', 'sai-3-green-worker', 'sai-3-red-worker'];
+    const commands = ['sai-5-security', 'sai-4-review', 'sai-3-implement'];
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(workers, ops, { model: 'opencode-go/test-model' }, commands));
     try {
@@ -1117,13 +1105,15 @@ test('review-fix worker follows the review worker in All and stays alphabetical 
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][1], [
-        'command:sai-5-review',
-        'worker:sai-5-review-worker',
-        'worker:sai-review-fix-worker',
-        'command:sai-6-security',
-        'worker:sai-6-security-worker',
+        'command:sai-3-implement',
+        'worker:sai-3-red-worker',
+        'worker:sai-3-green-worker',
+        'command:sai-4-review',
+        'worker:sai-4-review-worker',
+        'command:sai-5-security',
+        'worker:sai-5-security-worker',
       ],
-        `${harness}: All shows sai-review-fix-worker immediately after sai-5-review-worker and before sai-6-security`);
+        `${harness}: All shows the RED and GREEN workers after sai-3-implement and the review worker after sai-4-review`);
     } finally {
       restore();
     }
@@ -1151,11 +1141,11 @@ test('review-fix worker follows the review worker in All and stays alphabetical 
   }
 
   for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
-    for (const missing of ['sai-review-fix-worker', 'sai-5-review-worker']) {
-      const present = missing === 'sai-review-fix-worker' ? 'sai-5-review-worker' : 'sai-review-fix-worker';
+    for (const missing of ['sai-3-red-worker', 'sai-3-green-worker']) {
+      const present = missing === 'sai-3-red-worker' ? 'sai-3-green-worker' : 'sai-3-red-worker';
       const ops = { select: [], create: [] };
       const restore = patchFactory(factoryName, () => makeFakeAdapter(
-        [present], ops, { model: 'opencode-go/test-model' }, ['sai-5-review', 'sai-6-security']));
+        [present], ops, { model: 'opencode-go/test-model' }, ['sai-3-implement', 'sai-5-security']));
       try {
         const answers = ['Customize models', harness, 'All', 'Exit'];
         const checklistCalls = [];
@@ -1165,7 +1155,7 @@ test('review-fix worker follows the review worker in All and stays alphabetical 
           promptChoice: async () => answers.shift() ?? '<model>',
           promptChecklist: recordChecklist(checklistCalls),
         });
-        assert.deepEqual(checklistCalls[0][1], ['command:sai-5-review', `worker:${present}`, 'command:sai-6-security'],
+        assert.deepEqual(checklistCalls[0][1], ['command:sai-3-implement', `worker:${present}`, 'command:sai-5-security'],
           `${harness}: missing ${missing} shows only available workers without empty or duplicate rows`);
       } finally {
         restore();
@@ -1179,7 +1169,7 @@ test('injected checklist seam renders context before difficulty in both harnesse
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(
       ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
-      ['sai-pr', 'sai-build']
+      ['sai-status', 'sai-build']
     ));
     try {
       const checklistCalls = [];
@@ -1192,11 +1182,11 @@ test('injected checklist seam renders context before difficulty in both harnesse
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][0], [
-        'command:sai-build', '', 'worker:sai-worker', '', 'utility:sai-pr',
+        'command:sai-build', '', 'worker:sai-worker', '', 'utility:sai-status',
       ],
         'the All scope checklist items carry a blank separator between the orchestrator-worker block and utilities');
       assert.deepEqual(checklistCalls[0][1], [
-        'command:sai-build', 'worker:sai-worker', 'utility:sai-pr',
+        'command:sai-build', 'worker:sai-worker', 'utility:sai-status',
       ],
         'selection defaults use stable values without the blank separator, not display labels');
       assert.deepEqual(checklistCalls[0][4].header, [
@@ -1209,10 +1199,10 @@ test('injected checklist seam renders context before difficulty in both harnesse
         '',
         `WORKER        sai-worker  Unknown  Unknown${' '.repeat(3)}  opencode-go/test-model (high)`,
         '',
-        `UTILITY       sai-pr      Medium   ↑${' '.repeat(9)}  opencode-go/test-model (high)`,
+        `UTILITY       sai-status  Small    ↑${' '.repeat(9)}  opencode-go/test-model (high)`,
       ],
         'display labels are left-aligned type/target/context/difficulty/setting columns with a blank separator row and no ANSI wrappers');
-      assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-pr'],
+      assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-status'],
         'the injected seam returns stable identities independently of labels');
     } finally {
       restore();
@@ -1413,26 +1403,27 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 19 manifest-declared commands', () => {
+const SHIPPED_COMMANDS = OPENCODE_COMMANDS;
+const NON_SAI_COMMANDS = ['to-backlog', 'from-backlog', 'from-next-backlog-item', 'to-pr'];
+
+test('opencode enumerateCommands returns exactly the supported SAI commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for opencode');
-  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 19 manifest-declared names');
+  assert.equal(commands.length, SHIPPED_COMMANDS.length);
+  assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
-test('claude enumerateCommands returns exactly the same 19 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same supported SAI commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for claude');
-  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 19 manifest-declared names');
+  assert.equal(commands.length, SHIPPED_COMMANDS.length);
+  assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
   const decoyNames = ['decoy-command', 'decoy-other'];
   for (const harness of ['opencode', 'claude']) {
-    const fixture = makeEnumerationFixture(harness, OPENCODE_COMMANDS, decoyNames);
+    const fixture = makeEnumerationFixture(harness, [...SHIPPED_COMMANDS, ...NON_SAI_COMMANDS], decoyNames);
     try {
       const createAdapter = harness === 'opencode' ? createOpencodeAdapter : createClaudeAdapter;
       const adapter = createAdapter({
@@ -1440,16 +1431,77 @@ test('command enumeration reads the manifest-declared package source directory, 
         globalCommandRoot: fixture.decoyDir,
       });
       const commands = adapter.enumerateCommands();
-      assert.equal(commands.length, OPENCODE_COMMANDS.length,
-        `${harness}: the fixture package source should enumerate every command the fixture manifest declares`);
+      assert.equal(commands.length, SHIPPED_COMMANDS.length,
+        `${harness}: the fixture package source should enumerate only supported SAI commands`);
       assert.ok(commands.includes('sai-worktree'),
         `${harness}: a package-source command absent from the decoy installed directory still enumerates`);
       assert.ok(!commands.includes('decoy-command'),
         `${harness}: decoy-only names from the installed global command directory never appear`);
-      assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
+      assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort(),
         `${harness}: the enumerated set should be exactly the fixture package-source command set`);
     } finally {
       fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('both harnesses exclude non-SAI wrappers in Orchestrators and All without hiding unknown SAI targets', async () => {
+  for (const [harness, label, factoryName, createAdapter, agents] of [
+    ['opencode', 'OpenCode', 'createOpencodeAdapter', createOpencodeAdapter, OPENCODE_AGENTS],
+    ['claude', 'Claude Code', 'createClaudeAdapter', createClaudeAdapter, CLAUDE_AGENTS],
+  ]) {
+    const excluded = [...NON_SAI_COMMANDS, 'another-command'];
+    const fixture = makeEnumerationFixture(harness, [...SHIPPED_COMMANDS, ...excluded, 'sai-unmapped'], []);
+    const before = snapshotTree(fixture.packageRoot);
+    const adapter = createAdapter({
+      packageRoot: fixture.packageRoot,
+      projectPath: fixture.root,
+      globalAgentRoot: fixture.decoyDir,
+      globalCommandRoot: fixture.decoyDir,
+    });
+    const restore = patchFactory(factoryName, () => adapter);
+    try {
+      assert.deepEqual(adapter.enumerateCommands(), [...SHIPPED_COMMANDS, 'sai-unmapped'].sort());
+      const targets = adapter.enumerateTargets();
+      assert.deepEqual(targets.utility, UTILITY_COMMANDS);
+      assert.deepEqual([...targets.agent, ...targets.worker].sort(), [...agents].sort());
+      for (const scope of ['Orchestrators', 'All']) {
+        const calls = [];
+        const answers = ['Customize models', label, scope];
+        await runPostSetupMenu({
+          projectPath: fixture.root,
+          isTTY: true,
+          promptChoice: async () => answers.shift(),
+          promptChecklist: async (...args) => {
+            calls.push(args);
+            return { status: 'cancelled' };
+          },
+        });
+        assert.equal(calls.length, 1);
+        const [items, defaults, , , options] = calls[0];
+        for (const name of excluded) {
+          assert.ok(!items.includes(`command:${name}`), `${harness}/${scope}: excludes ${name}`);
+          assert.ok(!defaults.includes(`command:${name}`));
+        }
+        for (const name of SHIPPED_COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name))) {
+          assert.ok(defaults.includes(`command:${name}`), `${harness}/${scope}: retains ${name}`);
+        }
+        const unknownRow = items.indexOf('command:sai-unmapped');
+        assert.ok(unknownRow >= 0);
+        assert.match(options.displayOptions[unknownRow], /Unknown\s+Unknown\s+unavailable$/);
+        if (scope === 'All') {
+          for (const name of agents) {
+            const family = targets.agent.includes(name) ? 'agent' : 'worker';
+            assert.ok(defaults.includes(`${family}:${name}`));
+          }
+          for (const name of UTILITY_COMMANDS) assert.ok(defaults.includes(`utility:${name}`));
+        } else {
+          assert.ok(defaults.every(value => value.startsWith('command:')));
+        }
+      }
+      assert.deepEqual(snapshotTree(fixture.packageRoot), before, 'enumeration leaves every wrapper unchanged');
+    } finally {
+      restore();
     }
   }
 });
@@ -3664,25 +3716,23 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   }
 });
 
-test('customization inventory is matrix-derived: exactly fifteen worker agents per harness in the manifest', () => {
+test('customization inventory is matrix-derived: exactly thirteen worker agents per harness in the manifest', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
-    'sai-3-implementation-worker',
-    'sai-4-red-worker',
-    'sai-4-green-worker',
-    'sai-5-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-3-red-worker',
+    'sai-3-green-worker',
+    'sai-4-review-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
     'sai-archive-worker',
     'sai-backfill-worker',
     'sai-commit-worker',
     'sai-direct-build-worker',
     'sai-merge-worker',
-    'sai-review-fix-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -3699,10 +3749,10 @@ test('customization inventory is matrix-derived: exactly fifteen worker agents p
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 15,
-        `${harness} customization inventory should contain exactly fifteen matrix managed agents`);
+      assert.equal(agentNames.length, 13,
+        `${harness} customization inventory should contain exactly thirteen matrix managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
-        `${harness} customization inventory should be exactly the fifteen worker identities`);
+        `${harness} customization inventory should be exactly the thirteen worker identities`);
       assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
         `${harness} customization inventory must not include support agents as matrix worker inventory`);
       const allAgentNames = active
@@ -3711,8 +3761,8 @@ test('customization inventory is matrix-derived: exactly fifteen worker agents p
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
           'claude customization inventory should not include the opencode-only generic basenames');
-        assert.equal(allAgentNames.length, 18,
-          'claude customization inventory should contain exactly eighteen managed agents: fifteen workers plus the three budget agents');
+        assert.equal(allAgentNames.length, 16,
+          'claude customization inventory should contain exactly sixteen managed agents: thirteen workers plus the three budget agents');
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {
@@ -4062,7 +4112,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
     makeFakeAdapter([], { select: [], create: [] }));
   try {
     const valid = 'sai-backfill';
-    const missing = 'sai-pr';
+    const missing = 'sai-worktree';
     const invalid = 'sai-status';
     const commandSourceDir = path.join(fixture.packageRoot, 'commands', 'claude');
     fs.mkdirSync(commandSourceDir, { recursive: true });

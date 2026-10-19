@@ -8,30 +8,18 @@ Provide six independently loadable SAI instruction output templates while preser
 
 ### Requirement: Dedicated template files
 
-The instruction library SHALL contain six independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/implement/implementation-plan.template.md`, `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
+The instruction library SHALL contain five independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
 
 #### Scenario: all command templates are independently available
 
 - **WHEN** an instruction phase loads its assigned template
-- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other five template contracts remain independently addressable
-
-### Requirement: Implementation plan contract is preserved
-
-The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, no-TODO rule, and first-generation versus rerun behavior as carried by `sai/commands/implement/implementation-plan.template.md`.
-
-#### Scenario: Implementation plan is generated from the extracted template
-- **WHEN** the implementation phase creates `openspec/changes/{change-name}/implementation.md` for the first time
-- **THEN** it uses `sai/commands/implement/implementation-plan.template.md` and produces the same required plan structure and verification gates as the former inline template
-
-#### Scenario: Existing implementation plan is rerun
-- **WHEN** the implementation phase is rerun after an implementation plan already exists
-- **THEN** the extracted template does not cause the phase to regenerate or overwrite the existing plan
+- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other four template contracts remain independently addressable
 
 ### Requirement: Audit report contracts are preserved independently
 
-Each audit SHALL load only its command-owned template and retain its artifact path, shared severity vocabulary, identifiers, evidence requirements, and tally. Review SHALL use C/H/M/L/Q findings and close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>`. Its top-level sections SHALL be Summary, Security Surface Triage, Performance Surface Triage, Accessibility Surface Triage, Findings, and Coverage Notes, in that order. Summary SHALL record goal coverage and scope creep in one or two lines without repeating findings. Domain Alignment analysis SHALL remain, including decision contradictions as findings. Coverage Notes SHALL retain files reviewed/skipped, test inspection, and a `Resilience:` outcome even without surface, affected paths, and relevant idempotency and no-existing-pattern notes. Resilience findings SHALL remain in Findings under their unchanged rules. Review SHALL have no Next Steps, Domain Alignment Check, Resilience Surface Triage, or Mutation Analysis section or mutation counts/identifiers. All three audit recommendations SHALL remain under unchanged criteria.
+Each audit SHALL load only its command-owned template and retain its artifact path, shared severity vocabulary, identifiers, evidence requirements, and tally. Review SHALL use C/H/M/L/Q findings and close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>`. Its report SHALL open with one provenance line, `**Reviewed:**`, carrying the parent branch, commit range and date. Its top-level sections SHALL be Security Surface Triage, Performance Surface Triage, Accessibility Surface Triage, and Findings, in that order, with no Summary or Coverage Notes section. Each triage section SHALL carry only its `**Surface touched:** {Yes / No}` line. Every finding SHALL carry its identifier and title in the heading `#### <ID> — {Short title}`. Every Critical, High, Medium and Low finding SHALL use `Location`, `Problem` and `Suggested fix`, with any code quote inside `Problem`. Questions SHALL use `Location` and `Question`. The review template SHALL carry no Verdict, Findings count, `Areas affected`, `Tiers affected`, `Recommendation`, `Category`, `Evidence`, `Spec reference`, `Suggestion`, or `Resilience:` field. Domain Alignment analysis SHALL remain, reporting through findings. Resilience findings SHALL remain in Findings under their unchanged rules. Review SHALL have no Next Steps, Domain Alignment Check, Resilience Surface Triage, or Mutation Analysis section or mutation counts/identifiers. All three audit recommendations SHALL remain under unchanged criteria in the worker's completed summary.
 
-Security, performance, and accessibility SHALL retain their mandatory Not Applicable sections with Justification, severity-prefixed identifiers, and phase-specific tallies; security SHALL retain conditional SCA, supply-chain, license, policy and evidence rules; performance SHALL retain evidence, metrics, hot-path, remediation and validation; accessibility SHALL retain WCAG/framework, location, impact, runtime and clean-coverage fields. Security's fenced template body SHALL stay unindented like its siblings. No other audit contract SHALL change.
+Security, performance, and accessibility SHALL retain their mandatory Not Applicable sections with Justification, severity-prefixed identifiers, and phase-specific tallies; security SHALL retain conditional SCA and evidence rules; performance SHALL retain evidence, metrics, remediation and validation; accessibility SHALL retain WCAG/framework, location, impact, runtime and clean-coverage fields. Security's fenced template body SHALL stay unindented like its siblings. No other audit contract SHALL change.
 
 #### Scenario: Audit phase loads only its own contract
 - **WHEN** a phase drafts its report
@@ -52,12 +40,20 @@ Security, performance, and accessibility SHALL retain their mandatory Not Applic
 #### Scenario: Review contract presents the shared severity sections and tally
 - **WHEN** review Findings is read
 - **THEN** its severity subsections and identifiers use Critical/High/Medium/Low/Questions and C1/H1/M1/L1/Q1
-- **AND** findings count and closing tally use that vocabulary with no mutation roll-up
+- **AND** the closing tally uses that vocabulary with no mutation roll-up
 
 #### Scenario: Audit contracts carry identifiers and closing tallies
 - **WHEN** security, performance, or accessibility finding bodies and closing sections are read
 - **THEN** example headings lead with severity-prefixed identifiers
 - **AND** each closes with its severity-subset tally
+
+#### Scenario: Security contract drops supply-chain, license, and policy sections
+- **WHEN** the security report template is read
+- **THEN** it contains no Supply Chain Hygiene, License Risk, or Policy Compliance section and no SCA `License` field
+
+#### Scenario: Review findings share one field shape
+- **WHEN** the review template's Low finding is read
+- **THEN** it carries `Location`, `Problem` and `Suggested fix` like the other severities, with no `Suggestion` field
 
 ### Requirement: Pull request body contract is preserved
 
@@ -69,11 +65,11 @@ The pull request body template SHALL preserve its Summary, Goal, Design Decision
 
 ### Requirement: Parent instructions load templates by exact path
 
-Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/implement/implementation-plan.template.md`, `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
+Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
 
 #### Scenario: parent instruction resolves its assigned neighbor
 
-- **WHEN** a harness executes one of the six affected command instructions
+- **WHEN** a harness executes one of the five affected command instructions
 - **THEN** it resolves exactly one matching `sai/commands/{name}/*.template.md` file and retains the phase-specific surrounding workflow rules
 
 ### Requirement: Extraction fidelity and projection verification are explicit
@@ -88,7 +84,7 @@ The fold SHALL verify that each command-local template contains the complete for
 #### Scenario: both projections contain folded templates
 
 - **WHEN** the manifest-driven projections are inspected for Claude Code and opencode
-- **THEN** each supported harness contains all six command-local templates with content equivalent to the repository source
+- **THEN** each supported harness contains all five command-local templates with content equivalent to the repository source
 
 ### Requirement: Existing installation projections remain consistent
 
@@ -124,7 +120,7 @@ The extraction SHALL not modify generated artifact names or locations, OpenSpec-
 
 ### Requirement: Report template severity content changes preserve the pinned parity
 
-Command-owned templates SHALL remain write-time authority. Matching schema scaffolds SHALL retain identical top-level heading sequences and header metadata labels, with descriptive comments delegating severity, finding shape, evidence, and tally to that authority. Both review templates SHALL use the simplified structure together; the scaffold SHALL describe the Summary and `Resilience:` coverage content without reproducing the normative finding format or tally. `test/report-template-authority.test.js` SHALL verify the maintained structure and authority pointer; the retired parity test SHALL NOT be restored.
+Command-owned templates SHALL remain write-time authority. Matching schema scaffolds SHALL retain identical top-level heading sequences and header metadata labels, with descriptive comments delegating severity, finding shape, evidence, and tally to that authority. Both review templates SHALL use the trimmed structure together: the same provenance line, the same four top-level headings, and no Summary or Coverage Notes section. The scaffold SHALL describe each section without reproducing the normative finding format or tally. `test/report-template-authority.test.js` SHALL verify the maintained structure and authority pointer; the retired parity test SHALL NOT be restored.
 
 #### Scenario: Scaffold mirrors the contract severity change
 - **WHEN** review's command-owned report contract changes

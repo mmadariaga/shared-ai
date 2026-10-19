@@ -97,10 +97,16 @@ function sessionDir() {
 
 const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
 const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
-const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
+const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
+
+const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> - (one Ready to Propose block on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array)";
 
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
+
+// The block emit is accepted only while this machine sits at its final stage.
+const BLOCK_STAGE_MACHINE = 'explore-idea@1';
+const BLOCK_STAGE = 'crystallize';
 
 // The design machine is the only one that accepts the variant option.
 const WITH_OVERVIEW_MACHINE = 'design-standalone@1';
@@ -188,8 +194,10 @@ function withWarnings(payload, warnings) {
 
 // Machine-authored observability fields carried verbatim onto the emit wire.
 // The set is closed: budget tallies, the name of the exhausted budget, scope
-// entry outcomes, and the apply-only authorized retry grant/history.
-const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history'];
+// entry outcomes, the apply-only authorized retry grant/history, and the
+// apply-only worker veto record/override outcomes, and the `/sai-3-implement`
+// run view (identifiers and paths only).
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run'];
 
 function attachObservabilityFields(target, source) {
   if (!target || !source) return target;
@@ -256,6 +264,11 @@ function canonicalizeMergedState(mod, mergedState) {
 // is accepted because callers serialize store operations per session id and
 // the union keeps survivors harmless for monotonic step sets. One file per
 // session, never one per machine.
+// Top-level session-record fields the next persistMachineOutcome write carries
+// with the machine state, so an inventory and its stored blocks land in one
+// session-file write. Set by the block emit around its runEmit call only.
+let pendingRecordExtras = null;
+
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
   let freshRecord = null;
   try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
@@ -314,6 +327,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   const merged = Object.assign({}, baseForMeta);
   merged.createdAt = createdAt;
   merged.stateVersion = STATE_VERSION;
+  if (pendingRecordExtras) Object.assign(merged, pendingRecordExtras);
   merged.stateByMachine = {};
   const allKeys = new Set(Object.keys(staleMap).concat(Object.keys(freshMap)));
   for (const key of allKeys) {
@@ -344,7 +358,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
 }
 
 // Flags that never take a value, so a following `-` stays positional.
-const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose']);
+const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose', 'export']);
 
 function parseArgs(argv) {
   const out = { command: null, positional: [], named: {} };
@@ -568,20 +582,33 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
 }
 
 // Block emit: validates the Ready to Propose block set read from stdin with the
-// detector's strict profile BEFORE any session, machine, or registry read, then
-// derives `{ recordedList: [...] }` from the extracted change names (display
-// order) and advances the explore slice machine. The whole set is validated as
-// one unit: an invalid verdict records nothing. Output always carries
+// detector's dispatchable profile BEFORE any session, machine, or registry read,
+// then derives `{ recordedList: [...] }` from the extracted change names
+// (display order) and advances the explore slice machine. The stdin may carry
+// the bounded-judgment verdicts after a `<<<VERDICTS>>>` line (a JSON array, see
+// sai/policies/block-hygiene-judgment.md). The whole set is validated as one
+// unit: a set with a structural violation, a flagged line without a `context`
+// verdict, or a `violation` verdict records nothing. Output always carries
 // `validation`; change names never appear on the wire, so the verdict is
 // projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is empty
 // stdin, stdin with no block heading, or a final block cut off before its
 // `---` line; every other violation is an invalid verdict.
 function projectBlockVerdict(verdict) {
+  const judgment = verdict.judgment || { ok: true, pending: [], violations: [], unknown: [], invalid: [] };
   return {
-    ok: verdict.ok,
+    ok: verdict.dispatchable === true,
+    structural_ok: verdict.ok,
     profile: verdict.profile,
-    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations })),
+    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations, flagged: block.flagged })),
     violations: verdict.violations,
+    flagged: verdict.flagged,
+    judgment: {
+      ok: judgment.ok,
+      pending: judgment.pending,
+      violations: judgment.violations,
+      unknown: judgment.unknown,
+      invalid: judgment.invalid,
+    },
   };
 }
 
@@ -592,9 +619,73 @@ function blockDeliveryFailed(text, verdict) {
   return last.violations.some((v) => v.problem === 'MISSING_SEPARATOR');
 }
 
-function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
-  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
-    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose - and reads the block set from stdin: ' + EMIT_BLOCKS_FORM + '\n');
+// Builds, per change name, each recorded block's text, sha256 hash, and the
+// judgment verdicts of its flagged lines: the session file's top-level `blocks`
+// map. It travels in the same session-file write as the inventory, and a later
+// successful block emit replaces the whole map exactly as it replaces the
+// inventory.
+function buildRecordedBlocks(detector, verdict, text) {
+  const texts = detector.extractBlockTexts(text);
+  const cleared = (verdict.judgment && verdict.judgment.cleared) || [];
+  const blocks = {};
+  verdict.blocks.forEach((block, i) => {
+    blocks[block.name] = {
+      text: texts[i],
+      hash: block.hash,
+      verdicts: cleared
+        .filter((entry) => entry.block === block.index)
+        .map((entry) => ({ clause: entry.clause, line: entry.line, evidence: entry.evidence, verdict: entry.verdict })),
+    };
+  });
+  return blocks;
+}
+
+function blocksMatch(stored, expected) {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return false;
+  const keys = Object.keys(expected);
+  if (Object.keys(stored).length !== keys.length) return false;
+  return keys.every((key) => stored[key] && stored[key].hash === expected[key].hash && stored[key].text === expected[key].text);
+}
+
+// Confirms the stored blocks match the recorded inventory. When they do not,
+// retries the store once and, failing that, removes any earlier emit's map so
+// stale text is never left beside a newer inventory. Returns whether the
+// session file now holds exactly the recorded blocks.
+function ensureRecordedBlocks(id, expected) {
+  try {
+    if (blocksMatch((readSessionRecord(id).record || {}).blocks, expected)) return true;
+    const record = readSessionRecord(id).record;
+    if (record) {
+      record.blocks = expected;
+      writeSessionFile(id, record);
+      return true;
+    }
+  } catch (err) {}
+  try {
+    const record = readSessionRecord(id).record;
+    if (record && record.blocks !== undefined) {
+      delete record.blocks;
+      writeSessionFile(id, record);
+    }
+  } catch (err) {}
+  return false;
+}
+
+// The `explore-idea@1` stage recorded for this session; the machine's initial
+// stage when the session holds no state for it.
+function ideaStageOf(id) {
+  const session = getSession(id);
+  seedFromRecord(session, readSessionRecord(id).record);
+  const mod = registry.get(BLOCK_STAGE_MACHINE);
+  const state = session.stateByMachine.has(BLOCK_STAGE_MACHINE) ? session.stateByMachine.get(BLOCK_STAGE_MACHINE) : mod.initialState;
+  return state && typeof state.stage === 'string' ? state.stage : mod.initialState.stage;
+}
+
+function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName, blockFile, verdictsFile) {
+  const amending = amendName !== undefined;
+  const fromFiles = blockFile !== undefined || verdictsFile !== undefined;
+  if (!id || !machineIdArg || (fromFiles ? (eventSource !== undefined && eventSource !== '-') : eventSource !== '-') || (extraArgs && extraArgs.length > 0) || (!fromFiles && process.stdin.isTTY) || (amending && (typeof amendName !== 'string' || amendName === ''))) {
+    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from stdin: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
     process.exitCode = 2;
     return;
   }
@@ -613,8 +704,19 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
   }
 
   let text = '';
-  try { text = readStdinSync(); } catch (err) { text = ''; }
-  const verdict = detector.detect(text, 'strict');
+  if (fromFiles) {
+    try {
+      if (typeof blockFile !== 'string' || typeof verdictsFile !== 'string') throw new Error('--block-file and --verdicts-file are both required');
+      text = detector.composeVerdicts(fs.readFileSync(blockFile, 'utf8'), JSON.parse(fs.readFileSync(verdictsFile, 'utf8')));
+    } catch (error) {
+      writeResponse({ error: 'INVALID_EVENT', reason: 'BLOCK_COMPOSITION_FAILED', detail: error.message });
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    try { text = readStdinSync(); } catch (err) { text = ''; }
+  }
+  const verdict = detector.detect(text, 'dispatchable');
   const validation = projectBlockVerdict(verdict);
 
   if (blockDeliveryFailed(text, verdict)) {
@@ -626,16 +728,175 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
     return;
   }
 
-  if (!verdict.ok) {
+  if (!verdict.dispatchable) {
     writeResponse({ validation });
     process.exitCode = 1;
     return;
   }
 
-  const event = { recordedList: verdict.names.slice() };
-  const outcome = runEmit(id, machineIdArg, () => ({ event }));
-  writeResponse(Object.assign({ validation }, outcome.payload));
+  if (amending) {
+    commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName);
+    return;
+  }
+
+  const stage = ideaStageOf(id);
+  if (stage !== BLOCK_STAGE) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose is accepted only at the ' + BLOCK_STAGE + ' stage of ' + BLOCK_STAGE_MACHINE + ', found ' + stage + '; no transition occurred. Advance the exploration to ' + BLOCK_STAGE + ' first.\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'STAGE_NOT_CRYSTALLIZE', stage, next: pointerFor(session, BLOCK_STAGE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+
+  const dependencies = detector.validateDependencySet(text);
+  if (!dependencies.ok) {
+    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies });
+    process.exitCode = 1;
+    return;
+  }
+  const event = { recordedList: dependencies.order };
+  const expectedBlocks = buildRecordedBlocks(detector, verdict, text);
+  pendingRecordExtras = { blocks: expectedBlocks };
+  let outcome;
+  try {
+    outcome = runEmit(id, machineIdArg, () => ({ event }));
+  } finally {
+    pendingRecordExtras = null;
+  }
+  let payload = outcome.payload;
+  if (outcome.code === 0 && !payload.rejected && !ensureRecordedBlocks(id, expectedBlocks)) {
+    payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
+  }
+  writeResponse(Object.assign({ validation }, payload));
   process.exitCode = outcome.code;
+}
+
+// Stores one amended block entry beside the untouched entries of the other
+// slices: reads the session record, replaces only `blocks[name]`, writes it back,
+// and confirms the stored entry. Returns whether the session file now holds it.
+function storeAmendedBlock(id, name, entry) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const record = readSessionRecord(id).record;
+      if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
+      const blocks = (record.blocks && typeof record.blocks === 'object' && !Array.isArray(record.blocks)) ? record.blocks : {};
+      record.blocks = Object.assign({}, blocks, { [name]: entry });
+      writeSessionFile(id, record);
+      const stored = (readSessionRecord(id).record || {}).blocks;
+      if (stored && stored[name] && stored[name].hash === entry.hash && stored[name].text === entry.text) return true;
+    } catch (err) {}
+  }
+  return false;
+}
+
+// Single-slice amendment (`emit --ready-to-propose --amend <change-name>`): the
+// dispatchable verdict of the one block is already in hand. The block must be
+// the only one on stdin and carry the amended change name; the machine then
+// accepts the amendment for a pending or stopped slice only, and only an
+// accepted amendment replaces that slice's stored text, hash, and verdicts.
+function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName) {
+  if (verdict.blocks.length !== 1) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose --amend takes exactly one block; no transition occurred. Send it as: ' + EMIT_AMEND_FORM + '\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_BLOCK_COUNT', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+  if (verdict.names[0] !== amendName) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose --amend read a block whose change name differs from the amended slice; no transition occurred.\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_NAME_MISMATCH', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+
+  const recorded = (readSessionRecord(id).record || {}).blocks || {};
+  if (!Object.prototype.hasOwnProperty.call(recorded, amendName)) {
+    const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
+    writeResponse(Object.assign({ validation }, outcome.payload));
+    process.exitCode = outcome.code;
+    return;
+  }
+  const resulting = Object.entries(recorded).map(([name, entry]) => name === amendName ? detector.extractBlockTexts(text)[0] : entry.text);
+  // The amended block alone reads as a single change, so a multi-slice
+  // inventory validates the resulting set: every slice keeps an in-scope `I`
+  // and no `I` is duplicated or left without a slice.
+  if (resulting.length > 1) {
+    const setVerdict = detector.detect(resulting.join('\n\n'), 'dispatchable');
+    if (!setVerdict.ok) {
+      const setValidation = Object.assign(projectBlockVerdict(setVerdict), { flagged: validation.flagged, judgment: validation.judgment });
+      writeResponse({ validation: setValidation });
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const dependencies = detector.validateDependencySet(resulting.join('\n\n'));
+  if (!dependencies.ok) {
+    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies, error: 'INVALID_EVENT', reason: 'AMEND_DEPENDENCIES_INVALID' });
+    process.exitCode = 1;
+    return;
+  }
+  // Inventory order cannot be changed underneath running or completed work.
+  const previous = detector.validateDependencySet(Object.values(recorded).map(entry => entry.text).join('\n\n'));
+  if (JSON.stringify(previous.order) !== JSON.stringify(dependencies.order)) {
+    writeResponse({ validation, dependencies, error: 'INVALID_EVENT', reason: 'AMEND_REQUIRES_SET_REEMISSION' });
+    process.exitCode = 1;
+    return;
+  }
+  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
+  let payload = outcome.payload;
+  if (outcome.code === 0 && !payload.rejected) {
+    const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
+    if (!storeAmendedBlock(id, amendName, entry)) {
+      payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
+    }
+  }
+  writeResponse(Object.assign({ validation }, payload));
+  process.exitCode = outcome.code;
+}
+
+// `sai-state block <id> <change-name>`: returns the stored block text and hash
+// of one recorded slice. A missing record, session, or entry is BLOCK_NOT_FOUND
+// (exit 1) with no text; the caller dispatches nothing.
+function commandBlock(id, name, exportFile, harness) {
+  if (!id || !name) {
+    process.stderr.write('block requires <id> <change-name>\n');
+    process.exitCode = 2;
+    return;
+  }
+  let entry = null;
+  try {
+    const blocks = (readSessionRecord(id).record || {}).blocks;
+    if (blocks && typeof blocks === 'object' && !Array.isArray(blocks) && Object.prototype.hasOwnProperty.call(blocks, name)) {
+      entry = blocks[name];
+    }
+  } catch (err) { entry = null; }
+  if (!entry || typeof entry.text !== 'string' || entry.text === '' || typeof entry.hash !== 'string' || entry.hash === '') {
+    writeResponse({ error: 'BLOCK_NOT_FOUND' });
+    process.exitCode = 1;
+    return;
+  }
+  if (exportFile) {
+    try {
+      const detector = loadDetector();
+      const texts = detector.extractBlockTexts(entry.text);
+      if (texts.length !== 1 || detector.hashBlock(texts[0]) !== entry.hash) throw new Error('Stored block does not match its hash');
+      // Both installed and source layouts put transfer beside the detector.
+      const detectorPath = DETECTOR_CANDIDATES.find(candidate => fs.existsSync(candidate));
+      const transfer = require(path.join(path.dirname(detectorPath), 'transfer.js'));
+      const { dir } = transfer.open(harness);
+      const reference = transfer.put(dir, 'block.md', Buffer.from(entry.text, 'utf8'));
+      writeResponse({ hash: entry.hash, block_file: reference.path, transfer_dir: dir });
+    } catch (error) {
+      writeResponse({ error: 'BLOCK_EXPORT_FAILED', reason: error.message });
+      process.exitCode = 1;
+      return;
+    }
+  } else writeResponse({ hash: entry.hash, text: entry.text });
+  process.exitCode = 0;
 }
 
 function commandReset(id, machineIdArg) {
@@ -764,7 +1025,7 @@ function commandClose(id) {
 
 function main(argv) {
   const parsed = parseArgs(argv);
-  if (['spawn', 'emit', 'reset', 'close'].includes(parsed.command)) {
+  if (['spawn', 'emit', 'reset', 'close', 'block'].includes(parsed.command)) {
     const validator = loadValidator();
     if (!validator || typeof validator.generateReceivedAt !== 'function' || typeof validator.validateText !== 'function') {
       process.stderr.write('sai-state could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
@@ -783,7 +1044,7 @@ function main(argv) {
       process.exitCode = 2;
       return;
     }
-    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
+    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.named['block-file'], parsed.named['verdicts-file']);
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
@@ -802,10 +1063,22 @@ function main(argv) {
     commandClose(parsed.positional[0]);
     return;
   }
+  if (parsed.command === 'block') {
+    if (parsed.named.export !== undefined && (parsed.named.export !== true || !['claude', 'opencode'].includes(parsed.named.harness))) {
+      process.stderr.write('block --export requires --harness <claude|opencode>\n');
+      process.exitCode = 2;
+      return;
+    }
+    commandBlock(parsed.positional[0], parsed.positional[1], parsed.named.export === true, parsed.named.harness);
+    return;
+  }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -   (one amended block on stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>\n');
+  process.stderr.write('       sai-state block <id> <change-name> [--export --harness <claude|opencode>]\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;

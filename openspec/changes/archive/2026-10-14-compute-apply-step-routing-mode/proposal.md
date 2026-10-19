@@ -1,0 +1,43 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+In an opencode `/sai-build` run, the apply coordinator classified a test-only Step as `green-direct`. It then re-routed the Step mid-way to `green-exception-test-only` and sent the RED worker without its own `dispatch-check`. The late checkpoint made `verify` fail with `only_in_subagent`, and the run stopped. The stop was a coordinator ordering defect, not a code or test failure. Its root cause was the prose classification in `runner.md` § Step Routing Tree, which allowed a wrong mode and the mid-Step re-route. All three inputs of that classification are deterministic facts of the written plan, so the tool can compute them.
+
+## What Changes
+
+- `sai/tools/apply-step.js` gains a `route --change <name> --step <N> [--cwd <dir>] [--json]` subcommand. It returns `{step, mode}`, the Step Routing Tree mode of the Step, computed from `implementation.md`, `interfaces.md`, and `tasks.md` as they are on disk.
+- One classification function, `classifyStep()`, is the single home of the Step Routing Tree. `route` and `dispatch-check` both use it. It uses three facts: a RED block in the Step; exactly one `## Step N` heading in `interfaces.md` (the contract); and a production file in the Step's instruction paths or its `tasks.md` Files Affected. It raises an error naming the Step and the cause when `implementation.md` is missing or has no heading for the Step.
+- One test/support path recognizer, `isTestPath()`, is extracted from the `Existing tests to update` validation and extended with `*Tests/`, `*.Tests/`, `_test.`, and `test_*.py`. Both that validation and the classification use it, so plans written before this change classify without re-running `/sai-3-implement`.
+- `dispatch-check` accepts only the dispatch kinds of the Step's mode: `split-flow` accepts `red` and `green`; `green-direct` accepts `green-direct` and the recovery fresh-RED `red`; both `green-exception-*` modes accept `green-exception`; `stop-missing-contract` accepts none. Any other kind returns `{ok: false, reason: "dispatch-mode-mismatch", mode, checkpoint: null}` before the foreign-file scope check.
+- `sai/commands/apply/runner.md` § Step Routing Tree no longer has the five-row table. It now tells the coordinator to run `apply-step.js route` on entering each Step, emit the returned mode unchanged, and stop that Step with stop options when `route` errors.
+- `sai/commands/apply/coordinator.md`: the Route step emits the mode `route` returns. The degraded-store fallback picks `sai/commands/apply/steps/routing-<mode>.md` from that mode. On a `dispatch-mode-mismatch` refusal, the coordinator emits the returned mode, follows `next.follow`, and continues with the dispatches its routing file names.
+- `sai/commands/implement/steps/validation.md` names `apply-step.js route` returning `stop-missing-contract` as the effect of a missing contract. `sai/policies/tool-resolution.md` documents the `route` invocation. The `sai-state/machines/apply-standalone.js` comment names the tool as the mode source.
+- New ADR 0193 (amends ADR 0183) records the decision, and the ADR index lists it.
+
+## Capabilities
+
+### New Capabilities
+
+- None
+
+### Modified Capabilities
+
+- `apply-step-routing-tree`: the decision tree is computed by `apply-step.js route`, and the coordinator emits the mode unchanged.
+- `apply-standalone-state-machine`: the emitted mode and the degraded-store routing file come from `apply-step.js route` instead of the runner table.
+- `apply-step-tool`: the new `route` subcommand and the dispatch-check refusal of a dispatch kind the Step's mode does not accept.
+- `apply-steps-library`: a mode maps to `routing-<mode>.md` through the tool's mode, with no table in `runner.md`.
+- `apply-routed-card-set`: `runner.md` carries the instruction to emit the route mode instead of the routing table.
+
+## Impact
+
+- New files: `docs/adr/0193-apply-step-routing-mode-is-computed-by-the-tool.md`.
+- Modified files: `sai/tools/apply-step.js`, `sai/commands/apply/runner.md`, `sai/commands/apply/coordinator.md`, `sai/commands/implement/steps/validation.md`, `sai/policies/tool-resolution.md`, `sai-state/machines/apply-standalone.js`, `docs/adr/0000-INDEX.md`, `test/apply-step-tool.test.js`, `test/apply-routed-architecture.test.js`, `test/implement-coordinator-worker.test.js`.
+- Claude Code and opencode share the tool and the cards, so both harnesses behave the same.
+- Known limitation: the path recognizer is a heuristic. In a project with an unusual test layout, a test file can be classified as production.
+- Known limitation: a coordinator that omits a `dispatch-check` for another reason still gets the generic `only_in_subagent` diagnosis. There is no in-run recovery path for a checkpoint captured late.
+- Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
+
+## Request Additional Notes
+
+Future scope, outside this change: an in-run exit when the coordinator's own checkpoint is invalid (for example a `verify` field reporting files written before the checkpoint, plus a rule that such a verify is not recovery-eligible) was discussed and deferred until a real occurrence without a misrouted mode is observed. Other retrospective findings from the same session (a `to-backlog.js` call with swapped arguments that exited 0 without output, and acting on an ambiguous mid-run user message) are separate follow-ups.

@@ -29,7 +29,7 @@ The routing determines how many feature blocks crystallization produces and thei
 #### Scenario: idea fits a single change
 
 - **WHEN** the candidate idea passes the size assessment and the friction assessment does not fire
-- **THEN** `sai-explore` uses the single-block crystallization protocol and, on an explicit crystallize request, emits exactly one `Ready to Propose` block
+- **THEN** `sai-explore` uses the single-block crystallization protocol and, on entry into `Crystallize`, emits exactly one `Ready to Propose` block
 
 #### Scenario: idea fits a single change but friction fires
 
@@ -39,7 +39,7 @@ The routing determines how many feature blocks crystallization produces and thei
 #### Scenario: idea is too big for one change
 
 - **WHEN** the candidate idea trips one or more size scope signals
-- **THEN** `sai-explore` identifies a Walking Skeleton and dependency-ordered backlog slices and uses the sliced crystallization protocol on an explicit crystallize request
+- **THEN** `sai-explore` identifies a Walking Skeleton and dependency-ordered backlog slices and uses the sliced crystallization protocol on entry into `Crystallize`
 
 #### Scenario: technical uncertainty does not pause feature emission
 
@@ -48,7 +48,7 @@ The routing determines how many feature blocks crystallization produces and thei
 
 #### Scenario: an earlier POC does not re-evaluate size and friction
 
-- **WHEN** a POC ran earlier in the progression and the user then requests crystallization
+- **WHEN** a POC ran earlier in the progression and the progression then enters `Crystallize`
 - **THEN** size and friction are not re-evaluated against a post-POC repository, because the lane abandoned its isolation and left the original repository in place
 
 #### Scenario: a POC taken earlier does not enter the slicing assessment

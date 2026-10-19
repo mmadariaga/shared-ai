@@ -48,6 +48,7 @@ function roots(base) {
 
 function retirementDestinationRoot(base) {
   return {
+    commands: path.join(base, 'commands'),
     sai: path.join(base, 'sai'),
     skills: path.join(base, 'skills'),
     agents: path.join(base, 'agents'),
@@ -381,15 +382,13 @@ test('matrix retirement: active projections never source from retired per-phase 
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', 'security', 'performance', 'accessibility'];
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
-    implementation: 'sai-3-implementation-worker',
-    review: 'sai-5-review-worker',
-    security: 'sai-6-security-worker',
-    performance: 'sai-7-performance-worker',
-    accessibility: 'sai-8-accessibility-worker',
+    security: 'sai-5-security-worker',
+    performance: 'sai-6-performance-worker',
+    accessibility: 'sai-7-accessibility-worker',
   };
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -422,14 +421,14 @@ test('matrix retirement: active projections never source from retired per-phase 
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, `${harness} should declare exactly seven worker bindings`);
+    assert.equal(bindingNames.length, 5, `${harness} should declare exactly five worker bindings`);
     assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} worker binding names should match the canonical phase matrix`);
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
+    assert.equal(agentNames.length, 5, `${harness} should declare exactly five managed agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
   }

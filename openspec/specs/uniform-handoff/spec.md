@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: sai-1-handoff
 `instructions/sai/spec.propose.md` SHALL end with a mandatory STOP+print block that outputs exactly:
 `Specs ready in openspec/changes/{name}/. Review and run /sai-2-design {name} when ready.`
@@ -20,30 +21,6 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 #### Scenario: sai-2 handoff fires on completion
 - **WHEN** the sai-2 step completes
 - **THEN** the agent stops and prints the sai-2 handoff text verbatim
-
-### Requirement: sai-3-handoff
-`instructions/sai/implement.md` SHALL end with a mandatory STOP+print block that outputs exactly:
-`Implementation plan ready in openspec/changes/{name}/. Review and run /sai-4-apply {name} when ready.`
-
-#### Scenario: sai-3 handoff present in implement.md
-- **WHEN** `instructions/sai/implement.md` is read
-- **THEN** the final STOP+print block contains the sai-3 handoff text
-
-### Requirement: sai-4-handoff
-`instructions/sai/apply.md` SHALL end with a mandatory STOP+print block that outputs exactly:
-`Implementation done in openspec/changes/{name}/. Run /sai-5-review {name} when ready.`
-
-#### Scenario: sai-4 handoff present in apply.md
-- **WHEN** `instructions/sai/apply.md` is read
-- **THEN** the final STOP+print block contains the sai-4 handoff text
-
-### Requirement: sai-5-handoff
-`instructions/sai/review.md` SHALL end with a mandatory STOP+print block that outputs exactly:
-`Code review ready in openspec/changes/{name}/. Review and run /sai-6-security {name} when ready.`
-
-#### Scenario: sai-5 handoff present in review.md
-- **WHEN** `instructions/sai/review.md` is read
-- **THEN** the final STOP+print block contains the sai-5 handoff text
 
 ### Requirement: sai-6-handoff
 `instructions/sai/security.md` SHALL end with a mandatory STOP+print block that outputs exactly:

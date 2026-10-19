@@ -45,7 +45,7 @@ The maturity selector SHALL offer, in this order, a choice equivalent to `Revisa
 
 ### Requirement: Reviewing edge cases exits ask mode and waits for explicit advancement
 
-Selecting the maturity choice equivalent to `Revisar edge cases` SHALL exit ask mode and enter the existing edge-case prompt for the current idea. It SHALL not auto-agree to the proposed list, auto-run implementation details, crystallize, or advance beyond the existing edge-case question. After the edge-case prompt has been handled, ask mode SHALL resume only at the next explicit `next-step` request or equivalent natural-language advancement; the selector response and the edge-case discussion alone SHALL NOT resume it or advance the progression. Selecting the maturity choice equivalent to `Seguir iterando`, or submitting free text through the maturity selector, SHALL remain in ask mode and SHALL not advance the progression automatically.
+Selecting the maturity choice equivalent to `Revisar edge cases` SHALL exit ask mode and enter the existing edge-case prompt for the current idea. It SHALL not auto-agree to the proposed list, auto-run implementation details, crystallize, or advance beyond the existing edge-case question. After the edge-case prompt has been handled, ask mode SHALL resume only at the next explicit `next-step` request or semantic list confirmation; the selector response and the edge-case discussion alone SHALL NOT resume it or advance the progression. Selecting the maturity choice equivalent to `Seguir iterando`, or submitting free text through the maturity selector, SHALL remain in ask mode and SHALL not advance the progression automatically.
 
 #### Scenario: review choice enters edge-case prompting
 
@@ -58,13 +58,13 @@ Selecting the maturity choice equivalent to `Revisar edge cases` SHALL exit ask 
 
 - **WHEN** the edge-case prompt has been handled after the user selected the review choice
 - **THEN** the staged flow does not advance or resume ask mode automatically
-- **AND** only the next explicit `next-step` or equivalent natural-language advancement resumes the staged ask-mode flow
+- **AND** only the next explicit `next-step` or semantic list confirmation resumes the staged ask-mode flow
 
 #### Scenario: maturity iteration and free text do not advance
 
 - **WHEN** the user selects the iteration choice or submits free text through the maturity selector
 - **THEN** `sai-explore` remains in ask mode
-- **AND** the current stage, edge-case agreement, implementation-detail agreement, and crystallization request remain unchanged
+- **AND** the current stage, edge-case agreement, and implementation-detail agreement remain unchanged
 
 ### Requirement: The later selector preserves discussion or performs exact next-step advancement
 
@@ -89,7 +89,7 @@ The later selector SHALL offer, in this order, a choice equivalent to `Ir al sig
 
 ### Requirement: Material idea changes reset selector progression and agreed lists
 
-When the explored idea materially changes into a new stable idea, `sai-explore` SHALL reset the selector and staged-progression state to `Explore change`, discard the previously agreed edge-case and implementation-detail lists, clear any pending selector response or crystallization request, and begin a new active-uncrystallized lifecycle. The reset SHALL re-render the stage state according to the existing stage-panel contract and SHALL not start an edge-case review, show a later selector, or advance the new idea without explicit user intent.
+When the explored idea materially changes into a new stable idea, `sai-explore` SHALL reset the selector and staged-progression state to `Explore change`, discard the previously agreed edge-case and implementation-detail lists, clear any pending selector response, and begin a new active-uncrystallized lifecycle. The reset SHALL re-render the stage state according to the existing stage-panel contract and SHALL not start an edge-case review, show a later selector, or advance the new idea without explicit user intent.
 
 #### Scenario: material change clears prior selector state
 
@@ -102,7 +102,7 @@ When the explored idea materially changes into a new stable idea, `sai-explore` 
 
 - **WHEN** a material idea change resets progression
 - **THEN** no edge-case question or later selector is shown solely because of the reset
-- **AND** the new idea waits for an explicit `next-step` or equivalent natural-language advancement
+- **AND** the new idea waits for an explicit `next-step`
 
 ### Requirement: Selector localization does not opt into overview generation
 

@@ -13,3 +13,9 @@ It also prints a `[Project health]` section (openspec binary, `openspec/` dir, `
 - Exit code `0` when green, `1` when any error-severity check fails (CI-usable). Warnings (unexpected files, version skew, skill staleness, retired copies) do not fail the exit code.
 - Add `--json` for machine-readable output.
 - Add `--offline` to skip the network version check.
+
+`writing-for-agents` is optional and user-owned: doctor does not check its
+presence or version, and uninstall does not remove it. Missing provider CLIs or
+credentials for backlog and PR workflows are reported by those workflows, not
+provisioned by doctor. After reinstalling managed definitions, restart Claude
+Code or opencode; refresh project schema templates with `setup` when needed.

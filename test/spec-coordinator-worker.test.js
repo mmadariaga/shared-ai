@@ -263,8 +263,8 @@ test('Claude spec invocation routes through the launcher and neutral worker bind
   const launcher = artifact('sai/commands/spec/command-bootstrap.md');
   const claudeBinding = matrixBinding('claude', 'spec');
   const manifest = artifact('sai/install-manifest.json');
-  assert.match(wrapper, /^model:\s*opus\s*$/m);
-  assert.match(wrapper, /^effort:\s*medium\s*$/m);
+  assert.match(wrapper, /^model:\s*sonnet\s*$/m);
+  assert.match(wrapper, /^effort:\s*high\s*$/m);
   assert.match(wrapper, /spec[\\/]command-bootstrap\.md/);
     assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(claudeBinding, /name:\s*"sai-1-spec-proposal-worker"/);
@@ -287,16 +287,21 @@ test('opencode spec invocation routes through the launcher and neutral worker bi
   assert.match(wrapper, /\$ARGUMENTS/);
 });
 
-test('README documents the routed spec architecture and proposal-only scope', () => {
+test('documentation records the routed spec architecture and proposal-only scope', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
+  const agents = artifact('AGENTS.md');
   for (const harness of ['Claude Code', 'opencode']) {
-    assert.match(readme, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+    assert.match(agents, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
-  assert.match(readme, /Claude Code.*rout|rout.*Claude Code/i);
-  assert.match(readme, /opencode.*rout|rout.*opencode/i);
-  assert.match(readme, /spec.*core|core.*spec/i);
-  assert.match(readme, /spec.*worker|worker.*spec/i);
-  assert.match(readme, /proposal.*spec|spec.*proposal/i);
+  assert.match(agents, /Claude Code.*rout|rout.*Claude Code/i);
+  assert.match(agents, /opencode.*rout|rout.*opencode/i);
+  assert.match(agents, /spec.*core|core.*spec/i);
+  assert.match(agents, /spec.*worker|worker.*spec/i);
+  assert.match(agents, /proposal.*spec|spec.*proposal/i);
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
+  assert.match(guide, /AGENTS\.md/);
+  assert.match(guide, /\/sai-1-spec/);
 });
 
 test('AGENTS documents the routed architecture, ownership, and artifact scope', () => {
@@ -322,8 +327,8 @@ test('wrapper model defaults and README installation topology match routed metad
   assert.match(guide, /independent model roles/);
   assert.match(readme, /commands[\\/]claude|Claude Code/);
   assert.match(readme, /commands[\\/]opencode|opencode/);
-  assert.match(claude, /^model:\s*opus\s*$/m);
-  assert.match(claude, /^effort:\s*medium\s*$/m);
+  assert.match(claude, /^model:\s*sonnet\s*$/m);
+  assert.match(claude, /^effort:\s*high\s*$/m);
    assert.match(opencode, /^model:\s*opencode-go\/muse-spark-1\.3-contributor#xhigh\s*$/m);
    assert.doesNotMatch(opencode, /^variant:/m);
   assert.match(manifest, /agents[\\/]claude[\\/]worker-template\.md/);
@@ -402,7 +407,6 @@ test('Step 5: structured research is an unconditional boundary before proposal g
 test('Step 5: spec progress remains nonterminal, feedback-safe, and validation closes the plan', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Progress events are returned lifecycle results/);
   assert.match(
     worker,
     /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`/,
@@ -415,7 +419,6 @@ test('Step 5: spec progress remains nonterminal, feedback-safe, and validation c
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/spec/steps/review.md')), false,
     'the dead spec review step file should be retired');
   assert.match(worker, /feedback text[\s\S]{0,220}(?:MUST NOT|must not)[\s\S]{0,160}(?:emit|re-present|duplicate)/i);
-  assert.match(worker, /one terminal lifecycle status/i);
 });
 
 // ─── Step 2: todo-list-step-timestamps (spec coordinator) ──────────────────
@@ -480,8 +483,6 @@ test('Step 2: the canonical plan is shared by standalone and supervised consumer
 test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Progress events are returned lifecycle results/,
-    'progress events should be returned as lifecycle results');
   assert.match(worker, /startup progress event for `prereqs-and-change` and `research`/,
     'the startup act should report prereqs-and-change together with research in one progress event');
   assert.match(worker, /completed `proposal\.md` write returns `proposal`/,
@@ -636,7 +637,6 @@ test('Duplication collapse: spec step files contain no normative block in two fi
     { name: 'Verification', pattern: /^## Verification$/m },
     { name: 'Research Guide', pattern: /^## Research guide$/m },
     { name: 'Handoff input', pattern: /^## Handoff input$/m },
-    { name: 'Complexity Derivation Rubric', pattern: /^## Complexity Derivation Rubric$/m },
     { name: 'Completion', pattern: /^## Completion$/m },
     { name: 'Rule #1', pattern: /## Rule #1 — Proposal-to-spec self-consistency gate/ },
     { name: 'Rule #2', pattern: /## Rule #2 — Source-grounding of spec-pinned literals/ },
@@ -654,6 +654,19 @@ test('Duplication collapse: spec step files contain no normative block in two fi
     }
     assert.strictEqual(fileCount, 1, `${name} should appear in exactly one step file, found in: ${files.join(', ')}`);
   }
+});
+
+test('Proposal Complexity is retired from the spec path', () => {
+  const validation = artifact('sai/commands/spec/steps/validation.md');
+  const proposalStep = artifact('sai/commands/spec/steps/proposal.md');
+  const template = artifact('openspec/schemas/sai-workflow/templates/proposal.md');
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+
+  assert.doesNotMatch(validation, /Complexity Derivation Rubric/);
+  assert.doesNotMatch(proposalStep, /\*\*Complexity\*\*/);
+  assert.doesNotMatch(template, /\*\*Complexity\*\*/);
+  assert.match(template, /^## Why$/m);
+  assert.doesNotMatch(schema, /\*\*Complexity\*\*: <token>/);
 });
 
 test('Supervised mode degenerate case: bare --supervised flag with no request fails validation', () => {

@@ -59,7 +59,7 @@ test('approach comparison: fixed choices, refinements, and material-change prece
   assert.match(contract, /refinements of the same idea, explain only what changes and why/);
   assert.match(contract, /\*\*Material change\*\* uses the existing reset and reassesses approaches for the new idea/);
   assert.match(reset, /Material-change detection runs before selector-response classification/);
-  assert.match(reset, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(reset, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(reset, /do not emit an edge-case prompt, later selector, crystallization, or advancement automatically/);
 });
 
@@ -105,9 +105,9 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     .filter(file => file.endsWith('.md'))
     .sort();
 
-  // E3: All sixteen files should exist, including the follow-loaded stage, slice, POC lane, and route selector steps
-  assert.equal(stepsFiles.length, 16,
-    `Expected 16 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
+  // E3: All seventeen files should exist, including the follow-loaded stage, slice, POC lane, route selector, and issue intake steps
+  assert.equal(stepsFiles.length, 17,
+    `Expected 17 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
 
   // Verify the specific expected files exist
   const expectedFiles = [
@@ -117,6 +117,7 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     'crystallization-protocol.md',
     'idea-list.md',
     'implementation-details.md',
+    'issue-intake.md',
     'open-decisions.md',
     'pipeline-direct-build.md',
     'pipeline-plan-unattended.md',
@@ -155,7 +156,7 @@ test('open decisions: the step pins one notice, a closed-choice question per dec
   assert.match(step, /show this notice once per idea/);
   assert.equal(step.match(/^> Some decisions are still open\./gm).length, 1, 'the notice text is pinned once');
   assert.match(step, /will be asked during planning or implementation, and that question stops an unattended route/);
-  assert.match(step, /Ask each open decision once, one decision per question, as a closed-choice prompt through the native picker/);
+  assert.match(step, /Ask each open decision once, one decision per question\. Present it through the harness-native picker per the "Closed-choice prompts" rule/);
   assert.match(step, /sai\/policies\/remember\.md/);
   assert.match(step, /@sai\/policies\/question-context\.md/);
   assert.match(step, /followed by `Leave it open` as the last option/);
@@ -173,4 +174,34 @@ test('open decisions: the step adds no stage, event, or panel entry to explore-i
   assert.match(step, /`explore-idea@1` receives no event for this step and the panel gains no entry/);
   assert.doesNotMatch(source('sai-state/machines/explore-idea.js'), /open-decision/);
   assert.deepEqual(ideaMachine.STAGES, ['explore-change', 'poc-lane', 'review-edge-cases', 'implementation-details', 'crystallize']);
+});
+
+test('load receipt: wrappers carry only the pointer and body.md owns the rule (I1, I3)', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const wrapper = source(`commands/${harness}/sai-explore.md`);
+    const lines = wrapper.split('\n');
+    const closing = lines.indexOf('---', 1);
+    assert.match(lines[closing + 1], /^Receipt: .*every explore turn.*@sai\/commands\/explore\/body\.md § Load receipt\.$/,
+      `${harness} wrapper must lead with the receipt pointer after the frontmatter`);
+    assert.doesNotMatch(wrapper, /deferred message/i, `${harness} wrapper must not restate the rule`);
+  }
+  const body = source('sai/commands/explore/body.md');
+  assert.match(body, /^ {2}## Load receipt$/m);
+  const section = body.slice(body.indexOf('## Load receipt'), body.indexOf('## Prerequisite checks'));
+  for (const rule of ['Turn check', 'Deferred messages', 'Cancellation', 'Prerequisite halt', 'Spawn failure']) {
+    assert.ok(section.includes(`**${rule}.**`), `Load receipt must define ${rule}`);
+  }
+  assert.match(section, /`verdict: pass` of the `prereqs\.js` check plus the id returned by `sai-state spawn`/);
+  assert.match(section, /in arrival order/);
+  assert.match(section, /keeps the current stage and the agreed lists/);
+});
+
+test('load receipt: sai-state spawn is the final load step and stage events emit on the receipt id (I2)', () => {
+  const body = source('sai/commands/explore/body.md');
+  const spawn = body.indexOf('Run `sai-state spawn --key <stable-key>`');
+  assert.ok(spawn > body.indexOf('Fetch @sai/policies/remember.md'), 'spawn must follow the instruction loads');
+  assert.ok(spawn < body.indexOf('## Run'), 'spawn must precede the Run section');
+  const instructions = source('sai/commands/explore/instructions.md');
+  assert.match(instructions, /emits against the owning machine on the receipt id from the load/);
+  assert.doesNotMatch(instructions, /spawn-then-emit/);
 });

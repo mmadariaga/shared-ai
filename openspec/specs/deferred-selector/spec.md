@@ -7,12 +7,12 @@ TBD - created by archiving change explore-deferred-route-todo. Update Purpose af
 
 ### Requirement: Deferred route choice served by idle via next follow
 
-After a successful inventory emit, the machine SHALL enter `waiting` and, when no slice is active, return `next.follow: sai/commands/explore/steps/route-selector.md`. The route selector SHALL present its native picker at the end of the same assistant turn after the complete block set and ordered inventory are recorded. Presentation SHALL not select or start a route. Only a valid picker answer in a later turn SHALL emit `intent: route-choice` and expose route processing. Fast-track SHALL never auto-select it.
+After a successful inventory emit, the machine SHALL enter `waiting` and, when no slice is active, return `next.follow: sai/commands/explore/steps/route-selector.md`. After the complete block set and ordered inventory are recorded and every block is displayed, the route selector SHALL start its optional backlog-then-branch actions. It SHALL present its native implementation route picker only after both actions finish or are explicitly skipped. Presentation SHALL not select or start a route. Only a valid picker answer in a later turn SHALL emit `intent: route-choice` and expose route processing. Fast-track SHALL never auto-select the route or skip either optional question.
 
 #### Scenario: Idle with pending presents choice before dispatch
 
 - **WHEN** crystallization concludes with same-turn block emission, at least one pending slice, and no active route running
-- **THEN** the machine records the inventory, returns the selector pointer, presents the native picker, and requires a later valid picker answer before route dispatch
+- **THEN** the machine records the inventory and returns the selector pointer, which starts optional backlog and branch actions after block display, presents the native picker only after their completion or explicit skip, and requires a later valid picker answer before route dispatch
 
 ### Requirement: Deferred choice presentation with fixed titles and identities
 

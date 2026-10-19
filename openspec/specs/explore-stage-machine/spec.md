@@ -7,17 +7,22 @@ TBD - created by archiving change state-machine-sidecar. Update Purpose after ar
 
 ### Requirement: Deterministic stage transitions
 
-The `explore-idea` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The machine SHALL consume a `recordedList` event: a non-null `recordedList` records the supplied list into the current stage's own list (`ideaList` at `explore-change`, `edgeCaseList` at `review-edge-cases`, `implementationDetailsList` at `implementation-details`) without advancing the stage; recording and advancing remain separate emits, and a recorded empty list advances only on a later no-intent emit per the content-based empty-set rule. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side. The machine id SHALL be `explore-idea@1`. Emit of retired `explore-stage@1` SHALL be `UNKNOWN_MACHINE` with no alias.
+The `explore-idea` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rule, and SHALL never advance on model readiness judgment. The content-based rule is: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent. At the `implementation-details` stage a recorded empty implementation-details list SHALL NOT advance without intent; it advances only on the `next-step` intent, which carries the user's confirmation of the proposed `- None`. The rule fires only on its own stage's recorded list; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The machine SHALL consume a `recordedList` event: a non-null `recordedList` records the supplied list into the current stage's own list (`ideaList` at `explore-change`, `edgeCaseList` at `review-edge-cases`, `implementationDetailsList` at `implementation-details`) without advancing the stage; recording and advancing remain separate emits, a recorded empty edge-case list advances only on a later no-intent emit per the content-based empty-set rule, and a recorded empty implementation-details list advances only on a later `next-step` emit. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side. The machine id SHALL be `explore-idea@1`. Emit of retired `explore-stage@1` SHALL be `UNKNOWN_MACHINE` with no alias.
 
 #### Scenario: Intent advances, readiness does not
 
-- **WHEN** the caller emits a stage event without an explicit intent signal and the stage is not `review-edge-cases` with a recorded empty edge-case list, and not `implementation-details` with a recorded empty implementation-details list
+- **WHEN** the caller emits a stage event without an explicit intent signal and the stage is not `review-edge-cases` with a recorded empty edge-case list
 - **THEN** the machine rejects the advance and returns the current state's pointer instead of moving to the next stage
 
 #### Scenario: Empty list auto-advances deterministically
 
-- **WHEN** the caller emits the stage event against the `review-edge-cases` or `implementation-details` stage where the stage's own recorded list is empty and no explicit intent signal
+- **WHEN** the caller emits the stage event against the `review-edge-cases` stage where the recorded edge-case list is empty and no explicit intent signal
 - **THEN** the machine advances without requiring an intent signal and returns the next stage's pointer
+
+#### Scenario: Empty implementation-details list advances only on next-step
+
+- **WHEN** the implementation-details list is recorded empty at `implementation-details` and the caller emits a stage event with no intent or with an empty intent
+- **THEN** the machine stays at `implementation-details` with `rejected: READINESS_IS_NOT_INTENT`, and a later `next-step` emit advances to `crystallize` keeping the empty list
 
 #### Scenario: Auto-advance does not fire at other stages, even with empty recorded lists
 
@@ -37,7 +42,7 @@ The `explore-idea` machine SHALL advance stages only on explicit caller-supplied
 #### Scenario: Recording an empty list does not advance by itself
 
 - **WHEN** the caller emits an empty `recordedList` at `review-edge-cases` or `implementation-details`
-- **THEN** the list records as recorded-empty and the stage stays until a later no-intent emit fires the content-based empty-set rule
+- **THEN** the list records as recorded-empty and the stage stays until a later no-intent emit at `review-edge-cases`, or a later `next-step` emit at `implementation-details`
 
 #### Scenario: Retired explore-stage id has no alias
 
@@ -165,11 +170,13 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 
 ### Requirement: Explore-idea intent allowlist
 
-The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
+The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and the empty edge-case list auto-advance on a later no-intent emit SHALL remain unchanged.
 
-The recorded empty-list auto-advance SHALL be advancement by content, not by intent: it SHALL apply only to an intent-less emit, whose `intent` field is absent, null, or the empty string. A signal carrying any other intent SHALL NOT take the auto-advance path at a stage with a recorded empty list and SHALL instead be evaluated by the intent allowlist, so an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The conditional-stage entry check SHALL continue to be evaluated before the auto-advance.
+The recorded empty edge-case list auto-advance SHALL be advancement by content, not by intent: it SHALL apply only to an intent-less emit at `review-edge-cases`, whose `intent` field is absent, null, or the empty string. A signal carrying any other intent SHALL NOT take the auto-advance path at a stage with a recorded empty list and SHALL instead be evaluated by the intent allowlist, so an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The conditional-stage entry check SHALL continue to be evaluated before the auto-advance.
 
 In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
+
+The machine SHALL also accept the `issue-shortcut` intent, the one intent that reaches `crystallize` without the intermediate stages. It SHALL be valid only at `explore-change`, SHALL carry an `edgeCaseList` and an `implementationDetailsList` of strings, either of which MAY be empty (an empty implementation list is the agreed `- None` the user confirmed by accepting the shortcut), SHALL record both lists as the agreed lists, and SHALL move the stage to `crystallize` with `next.follow` naming the crystallization step file. Emitted at any other stage it SHALL be rejected with SHORTCUT_NOT_AT_EXPLORE_CHANGE, and with missing or non-string lists it SHALL be rejected with SHORTCUT_LISTS_INVALID, both with an unchanged state.
 
 #### Scenario: Stray intent does not advance
 
@@ -179,7 +186,7 @@ In addition, the machine SHALL accept exactly two conditional-stage entry intent
 #### Scenario: An empty recorded list does not excuse an unrecognized intent
 
 - **WHEN** the caller emits `banana`, `crystallize-resume`, or an out-of-stage `poc-lane` at `review-edge-cases` with an empty recorded edge-case list, or at `implementation-details` with an empty recorded implementation-details list
-- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and `pocLane` unchanged, and does not take the empty-list auto-advance
+- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and `pocLane` unchanged, and does not advance
 
 #### Scenario: Exact next-step advances one stage
 
@@ -188,8 +195,8 @@ In addition, the machine SHALL accept exactly two conditional-stage entry intent
 
 #### Scenario: Recorded lists preserve existing semantics
 
-- **WHEN** the caller emits recordedList with a non-empty or empty list, followed where applicable by a later no-intent emit
-- **THEN** recording alone does not advance and a recorded empty list at a list stage auto-advances only on the later no-intent emit
+- **WHEN** the caller emits recordedList with a non-empty or empty list, followed where applicable by a later emit
+- **THEN** recording alone does not advance, a recorded empty edge-case list auto-advances only on the later no-intent emit, and a recorded empty implementation-details list advances only on a later `next-step` emit
 
 #### Scenario: A lane intent routes without advancing
 
@@ -210,6 +217,21 @@ In addition, the machine SHALL accept exactly two conditional-stage entry intent
 
 - **WHEN** the caller emits `crystallize-resume` at the crystallize stage
 - **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and the crystallize stage's own step file as `next.follow`
+
+#### Scenario: The issue shortcut moves explore-change to crystallize
+
+- **WHEN** the caller emits `issue-shortcut` at explore-change with a string edge-case list and a string implementation-details list
+- **THEN** the machine records both lists, moves to crystallize, and returns `sai/commands/explore/steps/crystallization-protocol.md` as `next.follow`
+
+#### Scenario: The issue shortcut accepts an empty implementation list
+
+- **WHEN** the caller emits `issue-shortcut` at explore-change with an empty edge-case list and an empty implementation-details list
+- **THEN** the machine records the empty implementation list as agreed and moves to crystallize with no rejection
+
+#### Scenario: The issue shortcut is rejected outside explore-change or with malformed lists
+
+- **WHEN** the caller emits `issue-shortcut` at any other stage, or at explore-change with missing or non-string lists
+- **THEN** the machine returns SHORTCUT_NOT_AT_EXPLORE_CHANGE or SHORTCUT_LISTS_INVALID respectively, with an unchanged state
 
 ### Requirement: The POC lane is a conditional stage of explore-idea
 
@@ -249,3 +271,21 @@ The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positio
 
 - **WHEN** the caller emits `next-step` at `poc-lane` after entering it with `poc-lane-late` from `implementation-details` or `crystallize`
 - **THEN** the stage becomes `review-edge-cases`, `pocLane` remains true, and the previously recorded edge-case and implementation-detail lists are returned unchanged
+
+### Requirement: Explore spawns its session at the end of the load
+
+`/sai-explore` SHALL run `sai-state spawn --key <stable-key>` per `@sai/policies/stage-machine.md` as the final step of its load, after the instruction loads and before the `## Run` section of `sai/commands/explore/body.md`, and SHALL retain the returned `id` as the load receipt's session id. The spawn SHALL run on every explore load, including loads that never reach a stage event.
+
+#### Scenario: Spawn closes the load
+
+- **WHEN** `/sai-explore` is invoked and the prerequisite check passes
+- **THEN** the instruction loads complete, `sai-state spawn` runs as the last load step, and its returned id is kept as the receipt's session id before the user's request is handled
+
+### Requirement: Stage events emit on the load receipt id
+
+Every explore stage-event turn (a user intent that advances the progression, or a recorded list at an agreement gate) SHALL emit against the owning machine (`explore-idea@1` or `explore-slice@1`) on the receipt id from the load and SHALL open no session of its own. `sai/commands/explore/instructions.md` § Stage machines SHALL NOT prescribe a per-turn spawn-then-emit cycle.
+
+#### Scenario: Stage event reuses the receipt id
+
+- **WHEN** a stage-event turn emits to `explore-idea@1` or `explore-slice@1` after the load
+- **THEN** the emit targets the session id retained from the load's `sai-state spawn` and no new spawn runs for that turn

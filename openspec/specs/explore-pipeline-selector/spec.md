@@ -31,7 +31,7 @@ Selecting Direct Build - Unattended SHALL preserve the direct implementation, fu
 #### Scenario: Build uses the existing closed flow
 
 - **WHEN** Direct Build - Unattended is selected for an eligible slice
-- **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build` or `meta-build`.
+- **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build`.
 
 ### Requirement: Preserve Manual and fast-track gates
 
@@ -95,7 +95,7 @@ Plan and Direct Build SHALL select only the first pending slice from `last_cryst
 
 ### Requirement: Preserve deterministic Direct Build continuation
 
-After a clean Direct Build slice completion, Explore SHALL preserve crystallization order, exclude completed changes, and resolve the authoritative continuation state to `auto_continue` or `route_choice`. `auto_continue` SHALL start the first pending slice as Direct Build by emitting `intent: auto-continue` with no pick. `route_choice` SHALL present a fresh native picker and SHALL start no later slice until a valid picker answer arrives. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL not start a later slice.
+After a clean Direct Build slice completion, Explore SHALL preserve crystallization order, exclude completed changes, and resolve the authoritative continuation state to `auto_continue` or `route_choice`. `auto_continue` SHALL start the first pending slice as Direct Build by emitting `intent: auto-continue` with no pick. With the `per-slice` branch strategy, `auto_continue` SHALL first prepare that slice's chained branch without a further prompt, before `intent: auto-continue` is emitted and before any worker dispatch; when that preparation stops on uncommitted changes, Explore SHALL emit nothing, start nothing, and present the native route picker for that slice instead. `route_choice` SHALL present a fresh native picker and SHALL start no later slice until a valid picker answer arrives. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL not start a later slice.
 
 #### Scenario: pending slices retain explicit authorization
 - **WHEN** a Direct Build slice completes cleanly while another crystallized slice remains pending
@@ -105,6 +105,11 @@ After a clean Direct Build slice completion, Explore SHALL preserve crystallizat
 
 - **WHEN** the continuation state resolves to `auto_continue` with pending slices remaining
 - **THEN** the first pending slice starts as Direct Build with one local commit authorized and no push
+
+#### Scenario: Chained branch stop falls back to the route picker
+
+- **WHEN** the continuation resolves to `auto_continue` under the `per-slice` strategy and the chained branch creation stops on uncommitted changes
+- **THEN** Explore emits no `intent: auto-continue`, dispatches no worker, and presents the native route picker for that slice
 
 ### Requirement: Authorize Auto dispatch
 
@@ -154,7 +159,7 @@ Fast-track SHALL not auto-select Plan or Direct Build and SHALL not suppress rou
 - **THEN** the native picker remains required with no auto-selection, no emission-turn handoff, and unchanged command literals
 
 ### Requirement: Direct Build continuation requests authorization for each pending slice
-The system SHALL ask the one-time Direct Build continuation question once per crystallization set when Direct Build is chosen with more than one pending slice, even if earlier slices used Manual or Plan, and SHALL keep the yes or no answer for the whole set. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
+The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue, SHALL authorize only starting each later slice in order and that slice's single local commit, and SHALL authorize nothing else; switches between chained branches SHALL stay authorized by the `per-slice` answer of the branch question, assignment of each later slice's issue SHALL stay authorized only by the set-level assignment answer of round 1, and no continuation answer SHALL select another route; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
 
 #### Scenario: pending slices remain after clean completion
 - **WHEN** a clean Direct Build slice completes and pending_slices is non-empty
@@ -167,6 +172,18 @@ The system SHALL ask the one-time Direct Build continuation question once per cr
 #### Scenario: One-time consent with queued change applies after current slice
 - **WHEN** an explicit chat-stated yes, no, or route request arrives during an active slice
 - **THEN** it queues without interrupting the slice and applies after the clean terminal result.
+
+#### Scenario: Continuation answer ignored for a Plan route
+- **WHEN** round 3 returns `Plan - Unattended` together with a continuation answer of yes
+- **THEN** the continuation answer authorizes nothing and a later Direct Build round asks the question again.
+
+#### Scenario: Continuation yes keeps its own authorization scope
+- **WHEN** round 3 returns Direct Build with a continuation answer of yes under the `per-slice` branch strategy
+- **THEN** yes authorizes starting each later slice in order with its single local commit and nothing else, while the chained branch switches rest on the `per-slice` branch answer.
+
+#### Scenario: Continuation yes does not authorize assignment
+- **WHEN** round 3 returns Direct Build with a continuation answer of yes and later slices start automatically
+- **THEN** assignment of each later slice's issue rests only on the set-level assignment answer of round 1.
 
 ### Requirement: Obsolete token forms dispatch nothing
 
@@ -283,9 +300,59 @@ The pipeline selector SHALL be presented only after same-turn block emission and
 
 ### Requirement: Direct Build enters only via stage-machine emit and follow
 
-Direct Build selection SHALL enter only after a later valid `Direct Build - Unattended` picker answer, an emit of intent `direct-build` to `explore-slice@1`, and `next.follow` to `pipeline-direct-build.md`. It SHALL never enter via an ad-hoc Temp script or any other helper path.
+Initial Direct Build selection SHALL enter only after a later valid `Direct Build - Unattended` picker answer, an emit of intent `direct-build` to `explore-slice@1`, and `next.follow` to `pipeline-direct-build.md`. A pending Direct Build execution in the same conversation SHALL instead enter through `resume-direct-build` and the returned parked-stage pointer, without a new `route-choice` activation. Both entry paths SHALL use their applicable machine emit and `next.follow`, never an ad-hoc Temp script or another helper path.
 
 #### Scenario: Direct Build uses stage-machine route
 
-- **WHEN** the native picker returns `Direct Build - Unattended`
+- **WHEN** the native picker returns `Direct Build - Unattended` for an initial selection
 - **THEN** the flow emits `direct-build` intent and follows to the Direct Build contract without loading an ad-hoc helper path
+
+#### Scenario: Pending Direct Build resumes through its saved stage
+
+- **WHEN** an executable same-conversation resume choice or explicit resume request is accepted for pending Direct Build work
+- **THEN** Explore emits `resume-direct-build` without `route-choice` or a slice name and follows the returned parked-stage pointer without granting additional attempts or commit authorization
+
+### Requirement: Pending Direct Build decisions precede initial route selection
+
+Before presenting the initial native route picker, Explore SHALL distinguish a pending Direct Build execution using retained conversation state and the first pending slice's parked mode. For that execution, Explore SHALL apply existing unattended recovery before requesting a decision. When intervention is required, the native picker SHALL present only executable actions to resolve the actual blocker or remain stopped. `Resume Direct Build` SHALL be offered only when retained state and existing recovery rules permit the pending operation. Plan and Manual SHALL not replace the pending execution. Initial selection, Plan retries, and selection for later slices SHALL retain their existing behavior on Claude Code and opencode.
+
+#### Scenario: Pending work needs intervention
+
+- **WHEN** a parked Direct Build execution requires user intervention
+- **THEN** Explore names the change, accepted work, pending operation, blocking cause, and remaining budget and offers only applicable actions, including remaining stopped, instead of the initial three-route selector
+
+#### Scenario: Recovery can continue without a new decision
+
+- **WHEN** an interrupted Direct Build operation can be corrected within the existing unattended recovery rules
+- **THEN** Explore applies that recovery before presenting a user decision and retains the original execution identity, scope, and authorization
+
+#### Scenario: Response does not authorize executable resumption
+
+- **WHEN** the pending-execution decision is invalid, cancelled, or selects `Remain stopped`
+- **THEN** Explore dispatches nothing and preserves the pending execution state
+
+#### Scenario: Initial selection remains unchanged
+
+- **WHEN** the first pending slice has no pending Direct Build execution
+- **THEN** Explore retains the existing initial route picker and its authorization rules
+
+#### Scenario: Exhaustion or uncertainty restricts choices
+
+- **WHEN** recovery attempts are exhausted or an execute operation has uncertain effects
+- **THEN** Explore offers no automatic retry for exhaustion and offers verification rather than replay for uncertainty
+
+### Requirement: Direct Build automatic chain stays open across an assignment question
+
+For the full Direct Build route, Step 1 SHALL complete `sai/policies/backlog-implementation-start.md` for each slice before technical dispatch. For a slice started by `auto_continue`, it SHALL apply the set's assignment answer from the route selector without a question. A question that the policy raises for that slice (other assignees, or a failed assignment) SHALL be asked in Step 1 and waited on, and SHALL keep the chain open: the answer, or Retry or Skip after a failed assignment, SHALL continue that slice and the chain, and only Stop SHALL end the chain.
+
+#### Scenario: Automatic slice with a matching set-level answer
+- **WHEN** a slice starts through `auto_continue` and the set-level assignment answer applies without conflict
+- **THEN** Step 1 applies it without a question and dispatches the implementer
+
+#### Scenario: Assignment question during the chain
+- **WHEN** the policy asks keep, replace, or skip for a slice started through `auto_continue`
+- **THEN** Step 1 waits for the answer and then continues that slice and the remaining chain
+
+#### Scenario: Stop after a failed assignment
+- **WHEN** an assignment fails for a chained slice and the user answers Stop
+- **THEN** the chain ends

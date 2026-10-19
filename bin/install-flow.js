@@ -49,7 +49,7 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
   if (!splitFrontmatter(destinationText)) return sourceText;
   // Opencode agents use separate `model:` and optional `variant:` lines;
   // opencode commands keep a single-line `model: <id>#<variant>`.
-  // This (currently unused) helper preserves the destination's tunable
+  // Audit-name migration preserves the destination's tunable
   // lines in the command single-line shape and drops any residual
   // `variant:` lines so a reinstall migrates legacy command files.
   if (tunableKeys.includes('variant')) {
@@ -219,21 +219,19 @@ const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', '
 // the validated Worker Matrix phase entries. The canonical key order below is
 // preserved for compatibility with consumers that read MANAGED_WORKERS.
 const MANAGED_WORKER_ORDER = Object.freeze([
-  'sai-3-implementation-worker',
   'sai-2-design-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-1-spec-proposal-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-merge-worker',
-  'sai-4-red-worker',
-  'sai-4-green-worker',
+  'sai-3-red-worker',
+  'sai-3-green-worker',
   'sai-direct-build-worker',
-  'sai-review-fix-worker',
 ]);
 
 function matrixRenderings(harness) {
@@ -257,10 +255,9 @@ function matrixWorkerRoster(harness) {
 const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
   MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
 ));
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
 const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
-const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
+const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-4-review-worker'].claude.agent;
 
 const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
   loadInstallManifest(REPOSITORY_ROOT)['worker-matrix'].entries.map(entry => [entry.workerName, entry.workerContract])
@@ -396,8 +393,8 @@ function parseClaudeInitialDispatches(text, bindingPath) {
 function validateClaudeWorkerBindings() {
   assertBindingDirectoryUsesOneStringEnvelope(CLAUDE_BINDINGS_DIR);
   const roster = matrixWorkerRoster('claude');
-  if (roster.length !== 15) {
-    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered fifteen-worker roster.');
+  if (roster.length !== 13) {
+    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered thirteen-worker roster.');
   }
   const seenBy = new Map();
   for (const binding of matrixBindings('claude')) {
@@ -475,8 +472,8 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
         throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial task dispatch.`);
       }
     }
-    if (seenBy.size !== 15) {
-      throw new Error('Opencode worker roster must contain exactly the ordered fifteen-worker roster.');
+    if (seenBy.size !== 13) {
+      throw new Error('Opencode worker roster must contain exactly the ordered thirteen-worker roster.');
     }
       return [...seenBy.keys()].sort((left, right) =>
         left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
@@ -697,6 +694,152 @@ async function offerCodegraphInstall({
   }
 }
 
+const WRITING_FOR_AGENTS_SKILL = 'writing-for-agents';
+const WRITING_FOR_AGENTS_SKILLS_ARGS = [
+  'skills@latest',
+  'add',
+  'mattpocock/skills',
+  `--skill=${WRITING_FOR_AGENTS_SKILL}`,
+];
+
+// Runner candidates in fallback order. `userAgentPrefix` maps the invoking
+// package manager (npm_config_user_agent) to its runner.
+const SKILLS_RUNNERS = [
+  { userAgentPrefix: 'npm/', command: 'npx', prefixArgs: [] },
+  { userAgentPrefix: 'pnpm/', command: 'pnpm', prefixArgs: ['dlx'] },
+  { userAgentPrefix: 'bun/', command: 'bunx', prefixArgs: [] },
+];
+
+// On Windows an npm-installed CLI is a `.cmd` shim that spawnSync cannot run
+// without a shell. The arguments are fixed literals, so the shell hop adds no
+// quoting hazard; on POSIX we spawn directly without a shell.
+function spawnRunner(command, args, options) {
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync([command, ...args].join(' '), { ...options, shell: true });
+  }
+  return childProcess.spawnSync(command, args, options);
+}
+
+function writingForAgentsCommandFor(runner) {
+  return [runner.command, ...runner.prefixArgs, ...WRITING_FOR_AGENTS_SKILLS_ARGS].join(' ');
+}
+
+function isRunnerAvailable(runner) {
+  const result = spawnRunner(runner.command, ['--version'], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+// Pure mapping from the invoking package manager to its runner; spawns nothing.
+function invokingSkillsRunner(env = process.env) {
+  const userAgent = typeof env.npm_config_user_agent === 'string' ? env.npm_config_user_agent : '';
+  return SKILLS_RUNNERS.find(runner => userAgent.startsWith(runner.userAgentPrefix)) || null;
+}
+
+function selectSkillsRunner({ env = process.env, available = isRunnerAvailable } = {}) {
+  const invoking = invokingSkillsRunner(env);
+  if (invoking && available(invoking)) return invoking;
+  return SKILLS_RUNNERS.find(runner => available(runner)) || null;
+}
+
+function writingForAgentsRootsFor(assistant, { claudeBase = CLAUDE_BASE, opencodeBase, homeDir = os.homedir() } = {}) {
+  if (assistant === 'Claude Code') {
+    return [path.join(claudeBase, 'skills')];
+  }
+  if (assistant === 'Opencode') {
+    const base = opencodeBase || resolveOpencodeBase();
+    return [
+      path.join(base, 'skills'),
+      path.join(claudeBase, 'skills'),
+      path.join(homeDir, '.agents', 'skills'),
+    ];
+  }
+  return [];
+}
+
+// Returns the subset of `assistants` whose user-global skills directories lack
+// `writing-for-agents/SKILL.md`. statSync follows symlinks, so a dangling link
+// throws and counts as absent. Presence only, no version.
+function probeWritingForAgents(assistants, options = {}) {
+  return assistants.filter(assistant => {
+    const roots = writingForAgentsRootsFor(assistant, options);
+    return !roots.some(root => {
+      try {
+        return fs.statSync(path.join(root, WRITING_FOR_AGENTS_SKILL, 'SKILL.md')).isFile();
+      } catch {
+        return false;
+      }
+    });
+  });
+}
+
+function runWritingForAgentsInstall(runner) {
+  const result = spawnRunner(
+    runner.command,
+    [...runner.prefixArgs, ...WRITING_FOR_AGENTS_SKILLS_ARGS],
+    { stdio: 'inherit' }
+  );
+  return !result.error && result.status === 0;
+}
+
+async function offerWritingForAgentsInstall({
+  assistants = [],
+  probe = probeWritingForAgents,
+  selectRunner = selectSkillsRunner,
+  runInstall = runWritingForAgentsInstall,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+  env = process.env,
+  opencodeBase,
+  notices,
+} = {}) {
+  const probeOptions = opencodeBase !== undefined ? { opencodeBase } : {};
+  const missing = probe(assistants, probeOptions);
+  if (missing.length === 0) {
+    return;
+  }
+
+  const names = missing.join(' and ');
+  const manualNoticeFor = runner => {
+    const command = writingForAgentsCommandFor(runner || SKILLS_RUNNERS[0]);
+    return `Optional: the writing-for-agents skill is not installed for ${names} — install it with \`${command}\`.`;
+  };
+
+  // Without a TTY nothing may be spawned, not even a runner availability probe:
+  // the manual command comes from the user-agent mapping alone.
+  if (!isTTY) {
+    emitInstallerNotice(notices, manualNoticeFor(invokingSkillsRunner(env)));
+    return;
+  }
+
+  const runner = selectRunner();
+  const manualNotice = manualNoticeFor(runner);
+  if (!runner) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  const answer = await promptYesNo(
+    `Install the optional writing-for-agents skill for ${names} through skills.sh now? [y/n] `
+  );
+  if (!answer) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  if (!runInstall(runner)) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  const manualCommand = writingForAgentsCommandFor(runner);
+  for (const assistant of probe(assistants, probeOptions)) {
+    emitInstallerNotice(
+      notices,
+      `writing-for-agents is still not available for ${assistant} after the skills.sh install — run \`${manualCommand}\` again and choose ${assistant}.`
+    );
+  }
+}
+
 // openspec is REQUIRED for the SAI workflow (unlike opencode/CodeGraph, which
 // are optional). Returns true when openspec is present or was just installed,
 // false when the caller must abort. Never calls process.exit itself so it stays
@@ -754,8 +897,38 @@ function terminalWidth(output) {
 // frame is redrawn by moving the cursor up a row count, so a wrapped line that
 // counted as 1 would drift the whole frame by one row per keypress.
 function rowsFor(line, width) {
-  const visible = line.replace(ANSI_SEQUENCE, '').length;
-  return visible === 0 ? 1 : Math.ceil(visible / width);
+  return line.split('\n').reduce((total, part) => {
+    const visible = part.replace(ANSI_SEQUENCE, '').length;
+    return total + Math.max(1, Math.ceil(visible / width));
+  }, 0);
+}
+
+// An option can itself be taller than the window. Keep its arrow and leading
+// text visible without allowing the remainder to scroll the frame off screen.
+function clipToRows(line, width, budget) {
+  const parts = [];
+  for (const part of line.split('\n')) {
+    if (budget <= 0) break;
+    const rows = rowsFor(part, width);
+    if (rows <= budget) {
+      parts.push(part);
+      budget -= rows;
+      continue;
+    }
+    let visible = 0;
+    let clipped = '';
+    for (const token of part.match(/\x1B\[[0-9;]*[A-Za-z]|[\s\S]/g) || []) {
+      if (token.startsWith('\x1B[')) clipped += token;
+      else {
+        if (visible >= width * budget) break;
+        clipped += token;
+        visible += 1;
+      }
+    }
+    parts.push(clipped);
+    break;
+  }
+  return parts.join('\n') + '\x1B[0m';
 }
 
 // Consecutive navigator screens share one raw-input session. Tearing raw mode
@@ -843,43 +1016,83 @@ async function runNavigator({
     while (cursor < options.length && isChecklistSeparator(options[cursor])) cursor += 1;
     if (cursor >= options.length && options.length > 0) cursor = 0;
     let previousRows = 0;
+    let viewStart = 0;
     let settled = false;
 
-    function frameLines() {
-      const lines = [];
-      if (question) lines.push(question);
+    function frameLines(width, budget) {
+      let title = question ? [question] : [];
       // Header lines are decoration only: cursor and selection index into
       // `options`, so they never consume movement or toggles.
-      if (header) lines.push(...(Array.isArray(header) ? header : [header]));
-      options.forEach((option, i) => {
+      const headers = header ? [...(Array.isArray(header) ? header : [header])] : [];
+      let instructions = footer ? [footer] : [];
+      const optionLines = options.map((option, i) => {
         if (isChecklistSeparator(option)) {
-          lines.push('');
-          return;
+          return '';
         }
         const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
           ? displayOptions[i]
           : option;
         const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
-        lines.push(`${arrow} ${marker} ${label}`);
+        return `${arrow} ${marker} ${label}`;
       });
-      if (footer) lines.push(footer);
-      return lines;
+      const rowCount = lines => lines.reduce((total, line) => total + rowsFor(line, width), 0);
+      const complete = [...title, ...headers, ...optionLines, ...instructions];
+      if (rowCount(complete) <= budget) {
+        viewStart = 0;
+        return complete;
+      }
+
+      const selectedRows = Math.min(budget, rowsFor(optionLines[cursor] || '', width));
+      const auxiliaryRows = () => rowCount([...title, ...headers, ...instructions]);
+      while (headers.length && auxiliaryRows() + selectedRows > budget) headers.pop();
+      if (auxiliaryRows() + selectedRows > budget) instructions = [];
+      if (auxiliaryRows() + selectedRows > budget) title = [];
+      const available = budget - auxiliaryRows();
+
+      if (cursor < viewStart) viewStart = cursor;
+      while (viewStart < cursor && rowCount(optionLines.slice(viewStart, cursor + 1)) > available) {
+        viewStart += 1;
+      }
+      const visible = [];
+      let used = 0;
+      for (let i = viewStart; i < optionLines.length; i += 1) {
+        const rows = rowsFor(optionLines[i], width);
+        if (used + rows > available) {
+          if (i === cursor) visible.push(clipToRows(optionLines[i], width, available - used));
+          break;
+        }
+        visible.push(optionLines[i]);
+        used += rows;
+      }
+      return [...title, ...headers, ...visible, ...instructions];
     }
 
-    function render() {
-      const lines = frameLines();
+    function render(resized = false) {
       const width = terminalWidth(output);
+      const height = Number.isFinite(output.rows) && output.rows > 0 ? Math.floor(output.rows) : Infinity;
+      // Reserve the cursor's final blank row: a newline at the bottom of the
+      // terminal would otherwise scroll the first row out of reach.
+      const budget = Math.max(1, height - 1);
+      const lines = frameLines(width, budget);
       let frame = '';
-      if (previousRows > 0) {
+      if (resized) {
+        // Resize can reflow or discard old rows. Their old relative coordinates
+        // are no longer safe; clear the visible screen and establish a new origin.
+        frame += '\x1B[2J\x1B[H';
+      } else if (previousRows > 0) {
         // Up to the first row of the previous frame, then erase everything
         // below the cursor so shorter lines leave no tail behind.
         frame += `\x1B[${previousRows}A`;
       }
-      frame += '\x1B[0J';
-      frame += `${lines.join('\n')}\n`;
+      frame += (height === 1 ? '\r' : '') + '\x1B[0J';
+      frame += lines.join('\n') + (height === 1 ? '\r' : '\n');
       output.write(frame);
-      previousRows = lines.reduce((total, line) => total + rowsFor(line, width), 0);
+      previousRows = height === 1 ? 0 : lines.reduce((total, line) => total + rowsFor(line, width), 0);
+    }
+
+    function onResize() {
+      if (!settled) render(true);
     }
 
     function cleanup() {
@@ -895,6 +1108,7 @@ async function runNavigator({
       input.removeListener('end', onInputClosed);
       input.removeListener('close', onInputClosed);
       input.removeListener('error', onInputClosed);
+      if (typeof output.removeListener === 'function') output.removeListener('resize', onResize);
       releaseRawInput(input);
     }
 
@@ -963,6 +1177,7 @@ async function runNavigator({
     input.on('end', onInputClosed);
     input.on('close', onInputClosed);
     input.on('error', onInputClosed);
+    if (typeof output.on === 'function') output.on('resize', onResize);
 
     output.write('\x1B[?25l');
     render();
@@ -1012,6 +1227,14 @@ function installProjection(projection, targetPath, notices) {
   }
   if (projection.strategy === 'tunable-seed') {
     tunableSeedInstaller(projection);
+    return;
+  }
+  if (require('./audit-name-migration').isAuditCommand(projection.destinationPath)
+      && fs.existsSync(projection.destinationPath)) {
+    const source = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
+    const previous = fs.readFileSync(projection.destinationPath, 'utf8');
+    const keys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+    fs.writeFileSync(projection.destinationPath, spliceTunables(source, previous, keys));
     return;
   }
   if (projection.strategy === 'owned-copy') {
@@ -1067,8 +1290,8 @@ function cleanupRetiredProjections(harness, roots) {
       results.push({ ...retirement, action: 'not-found' });
       continue;
     }
-    const currentHash = sha256Buffer(fs.readFileSync(retirement.destinationPath));
-    if (!retirement.managedHashes.includes(currentHash)) {
+    if (!require('./retirement-identity').recognizedRetirement(fs.readFileSync(retirement.destinationPath), retirement)) {
+      console.warn(`Pending resolution: customized retired file preserved: ${retirement.destinationPath}`);
       results.push({ ...retirement, action: 'preserved' });
       continue;
     }
@@ -1135,6 +1358,7 @@ function installClaude(destBase) {
   validateClaudeWorkerBindings();
   assertInstalledMarkdownSourcesUseOneStringEnvelope();
   const targetPath = destBase || CLAUDE_BASE;
+  require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('claude', { base: targetPath });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
@@ -1151,6 +1375,7 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } 
   const targetPath = destBase || (Object.keys(resolveOptions).length > 0 ? resolveOpencodeBase(resolveOptions) : resolveOpencodeBase());
   const projections = expandForInstall('opencode', { base: targetPath });
   assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
+  require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of projections) installProjection(projection, targetPath, notices);
 
@@ -1512,6 +1737,7 @@ async function main() {
     console.log(`Opencode skills installed to: ${path.join(resolvedOpencodeBase, 'skills')}`);
   }
 
+  await offerWritingForAgentsInstall({ assistants: choices, opencodeBase: resolvedOpencodeBase, notices });
   await offerCodegraphInstall({ notices });
   emitCodegraphStateNotices({ projectRoot: process.cwd(), opencodeBase: resolvedOpencodeBase, notices });
 
@@ -1587,12 +1813,19 @@ module.exports = {
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,
+  WRITING_FOR_AGENTS_SKILLS_ARGS,
+  SKILLS_RUNNERS,
+  invokingSkillsRunner,
+  selectSkillsRunner,
+  writingForAgentsCommandFor,
+  probeWritingForAgents,
+  runWritingForAgentsInstall,
+  offerWritingForAgentsInstall,
   OPENSPEC_INSTALL_CMD,
   probeOpenspec,
   runOpenspecInstall,
   offerOpenspecInstall,
   MANAGED_WORKERS,
-  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_DESIGN_WORKER_AGENT,
   CLAUDE_SPEC_WORKER_AGENT,
   CLAUDE_REVIEW_WORKER_AGENT,
@@ -1604,6 +1837,7 @@ module.exports = {
   tunableSeedInstaller,
   deleteSidecarUnderShapeGuard,
   stripTunableLines,
+  spliceTunables,
   matrixBindings,
   matrixWorkerRoster,
   __test: {

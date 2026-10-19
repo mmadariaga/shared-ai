@@ -1,29 +1,32 @@
 ## Step 1: <!-- Title -->
 
-**Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
+- [ ] Step 1: <!-- Title -->
+
+**Routing**: category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other --> · context=<!-- small|medium|large --> · difficulty=<!-- low|medium|high -->
 
 **Files Affected**:
-<!-- A|M|D|R entries, one per line -->
+<!-- Markdown bullets: - <A|M|D|R> <path>, one entry per line; R uses <source> -> <destination>. Preserve None when empty. -->
 
 **What Will Be Done**: <!-- prose description -->
 
 **Testing Strategy**: <!-- verification approach -->
 
-**Existing Tests Broken**: <!-- compile|runtime list, or None -->
+**Existing Tests Broken**:
+<!-- Markdown bullets: - <path> — <compile|runtime>, one entry per line, or None -->
 
 ## Required Documentation
 
 ### Spec files
 
-<!-- one path per line, or None -->
+<!-- Markdown bullets: - <path>, one entry per line, or None -->
 
 ### Local files
 
-<!-- one entry per line: <path> — <note>, or None -->
+<!-- Markdown bullets: - <path> — <note>, one entry per line, or None -->
 
 ### External URLs
 
-<!-- one entry per line: <URL> — <note>, or None -->
+<!-- Markdown bullets: - <URL> — <note>, one entry per line, or None -->
 
 ## Implementation Context
 

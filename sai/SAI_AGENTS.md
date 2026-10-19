@@ -15,7 +15,7 @@ If this file exists, it means the project's domain language is recorded for the 
 
 - **Canonical location**: project root — `./SAI_LEARNINGS.md`
 - **Purpose**: durable, execution-observed facts about how the repository builds, tests, and behaves.
-- **Writer**: the apply phase's Learnings Promotion Pass.
+- **Writer**: the `/sai-3-implement` coordinator, which promotes learnings from the deviations of its run at run close.
 - **Format**: sai/policies/sai-learnings-format.md
 
 If this file exists, it means execution-observed repository facts are recorded here.
@@ -24,7 +24,7 @@ If this file exists, it means execution-observed repository facts are recorded h
 
 - **Canonical location**: `docs/adr/0000-INDEX.md`
 - **Purpose**: the relational map of the project's architecture decision records.
-- **Writer**: the implementation phase's Step 3 index maintenance.
+- **Writer**: the project's own maintainers; no SAI command maintains the index at present.
 - **Format**: sai/commands/implement/adr-index.template.md
 
 If this file exists, it means the project maintains architecture decision records.
@@ -33,7 +33,7 @@ If this file exists, it means the project maintains architecture decision record
 
 - **Canonical location**: `docs/ddr/0000-INDEX.md`
 - **Purpose**: the relational map of the project's domain decision records.
-- **Writer**: the implementation phase's Step 3 index maintenance.
+- **Writer**: the project's own maintainers; no SAI command maintains the index at present.
 - **Format**: sai/commands/implement/ddr-index.template.md
 
 If this file exists, it means the project maintains domain decision records.

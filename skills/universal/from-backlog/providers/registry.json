@@ -1,0 +1,27 @@
+{
+  "providers": [
+    {
+      "id": "azuredevops",
+      "classification": "provider",
+      "resolution": "provider",
+      "capabilities": ["read"],
+      "instructions": "providers/azuredevops.md",
+      "adapter": "from-backlog-azuredevops.js"
+    },
+    {
+      "id": "github",
+      "hosts": ["github.com"],
+      "domainless": true,
+      "capabilities": ["read"],
+      "instructions": "providers/github.md",
+      "adapter": "from-backlog-github.js"
+    },
+    {
+      "id": "gitlab",
+      "resolution": "provider",
+      "capabilities": ["read"],
+      "instructions": "providers/gitlab.md",
+      "adapter": "from-backlog-gitlab.js"
+    }
+  ]
+}

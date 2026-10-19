@@ -1,0 +1,39 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+Applying review findings after `/sai-build-new` needed a manual follow-up: the close invited the user to delete the findings they did not want and run `/sai-3-implement-new` (ADR 0195 Decision 4). `/sai-build-new` now assesses the findings of its own review, fixes the ones it judges justified, and records the rest as excluded with a reason, so a build run ends with the findings handled instead of a triage task.
+
+## What Changes
+
+- `sai/commands/build-new/coordinator.md`: the coordinator runs one assessment pass itself after segment 2 writes `review.md`, judging each fixable finding with no fixed selection rule, threshold, or severity cutoff (impact, correction cost, and correction risk are possible considerations, never mandatory checks). It appends ` (EXCLUDED: <reason>)` to the heading line of each finding it will not fix, never to a Question, and commits `review.md` alone under the review-new commit rule (`git check-ignore -q` first, path-limited commit, Conventional Commits subject of at most 50 characters, no attribution trailer, no push; an ignored `review.md` keeps the marks on disk uncommitted).
+- `sai/commands/build-new/coordinator.md`: a third segment follows `sai/commands/implement-new/coordinator.md` again for the fixable findings that carry no mark; it starts only when at least one such finding remains. No review runs after segment 3. A blocked, stopped, or precondition-failed segment 3 ends the run like segment 1 does.
+- `sai/commands/build-new/coordinator.md` § Close: the triage invitation is replaced by the counts by category, the recommended audits, and, each only when it has entries, the **Fixed** list, the **Excluded** list with reasons and the recovery instruction (remove the mark and run `/sai-3-implement-new {name}`), the **Left open by the fix segment** list with reasons (never listed as excluded), and the statement that Questions stay open until the user answers them. With zero findings no list is printed. The run still ends with exactly `Build-new done.`
+- `sai/policies/finding-state.md`: a new Excluded mark section defines the literal ` (EXCLUDED: <reason>)` heading suffix, its writers (the `/sai-build-new` coordinator or the user), the heading-only edit rule, that a Question never carries it, that an excluded finding stays open for every consumer except `/sai-3-implement-new`, that the Direct Build close of `/sai-review` and `/sai-5-review` does not honor it, that removing it reopens the finding, and that regenerating a report replaces excluded marks together with fixed marks.
+- `sai/commands/implement-new/coordinator.md`: a finding whose heading carries the excluded mark is skipped (not applied, not marked, not a pending finding, not an obstacle), standalone and inside `/sai-build-new`; a finding reopened by removing the mark goes through the step cycle again.
+- New ADR `docs/adr/0198-build-new-selects-and-fixes-findings-after-its-review.md` supersedes ADR 0195 Decision 4, and `docs/adr/0000-INDEX.md` records it as amending 0195.
+- Documentation (`AGENTS.md`, `README.md`, `docs/commands/sai-build-new.md`, `docs/commands/sai-3-implement-new.md`, `docs/commands/sai-4-review-new.md`, `docs/on-demand-commands.md`) describes the assessment, the excluded mark, and the fix segment.
+- Tests in `test/review-new-command.test.js` and `test/implement-new-family.test.js` replace the pinned triage-close literals with the new close, assessment, excluded-mark, skip, and ADR assertions.
+
+## Capabilities
+
+### New Capabilities
+
+- None
+
+### Modified Capabilities
+
+- `build-new-command`: three segments (implementation, review, fix), a coordinator-run assessment pass with exclusion marks and a path-limited `review.md` commit, and a close that reports fixed, excluded, and left-open findings with a recovery instruction instead of a triage invitation.
+- `finding-state`: the excluded mark and its semantics beside the fixed mark; open findings exclude excluded findings only for `/sai-3-implement-new`.
+- `implement-new-loop`: `/sai-3-implement-new` skips every finding that carries the excluded mark.
+
+## Impact
+
+- New files: `docs/adr/0198-build-new-selects-and-fixes-findings-after-its-review.md`.
+- Modified files: `sai/commands/build-new/coordinator.md`, `sai/commands/implement-new/coordinator.md`, `sai/policies/finding-state.md`, `docs/adr/0000-INDEX.md`, `AGENTS.md`, `README.md`, `docs/commands/sai-build-new.md`, `docs/commands/sai-3-implement-new.md`, `docs/commands/sai-4-review-new.md`, `docs/on-demand-commands.md`, `test/review-new-command.test.js`, `test/implement-new-family.test.js`.
+- `/sai-4-review-new` behavior is unchanged; its documentation only mentions the excluded mark as a triage option.
+- Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
+
+## Request Additional Notes
+
+Future scope, outside this change: a later `/sai-review` change removes its general review phase and keeps only the thematic audits (security, performance, accessibility), so after `/sai-build-new` no new `review.md` is generated unless `/sai-build-new` runs again.

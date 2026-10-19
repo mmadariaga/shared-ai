@@ -179,15 +179,25 @@ test('an empty recorded list does not turn an unrecognized intent into an advanc
       assert.equal(emitted.rejected, 'READINESS_IS_NOT_INTENT');
     }
 
-    // E1/E4: the intent-less and `next-step` paths keep their current outcome.
-    const auto = idea.transition(start, {});
-    assert.ok(!('rejected' in auto));
     const explicit = idea.transition(start, { intent: 'next-step' });
     assert.ok(!('rejected' in explicit));
-    assert.equal(explicit.state.stage, auto.state.stage);
+    assert.notEqual(explicit.state.stage, base.stage);
+
+    const auto = idea.transition(start, {});
     const emptyIntent = idea.transition(start, { intent: '' });
-    assert.equal(emptyIntent.state.stage, auto.state.stage);
-    assert.ok(!('rejected' in emptyIntent));
+    if (base.stage === 'review-edge-cases') {
+      // E3: an empty edge-case list still advances without an intent.
+      assert.ok(!('rejected' in auto));
+      assert.equal(explicit.state.stage, auto.state.stage);
+      assert.equal(emptyIntent.state.stage, auto.state.stage);
+      assert.ok(!('rejected' in emptyIntent));
+    } else {
+      // E3: an empty implementation-details list advances only on `next-step`.
+      for (const emitted of [auto, emptyIntent]) {
+        assert.equal(emitted.state.stage, 'implementation-details');
+        assert.equal(emitted.rejected, 'READINESS_IS_NOT_INTENT');
+      }
+    }
 
     // E3: conditional entry is evaluated before the auto-advance, so a valid
     // late entry still enters the lane from an empty-list stage.
@@ -206,4 +216,59 @@ test('caller-side next-step recognition lives in common.md and slice.md points a
   assert.match(common, /Mere containment of the string `next-step` SHALL NOT fire the token/);
   assert.match(common, /negates, defers, quotes, or discusses the token SHALL NOT advance/);
   assert.match(slice, /stage-progression rule in `common\.md`/);
+});
+
+test('issue-shortcut records the issue lists and moves explore-change straight to crystallize', () => {
+  const event = { intent: 'issue-shortcut', edgeCaseList: ['E1 a', 'E4 b'], implementationDetailsList: ['I1 x', 'I3 y'] };
+  const shortcut = idea.transition(idea.initialState, event);
+
+  assert.equal(shortcut.state.stage, 'crystallize');
+  assert.deepEqual(shortcut.state.edgeCaseList, ['E1 a', 'E4 b']);
+  assert.deepEqual(shortcut.state.implementationDetailsList, ['I1 x', 'I3 y']);
+  assert.equal(shortcut.state.pocLane, false);
+  assert.equal(shortcut.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+  assert.ok(!('rejected' in shortcut));
+});
+
+test('issue-shortcut accepts an empty implementation list as a confirmed - None (E8)', () => {
+  const shortcut = idea.transition(idea.initialState, { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [] });
+
+  assert.ok(!('rejected' in shortcut));
+  assert.equal(shortcut.state.stage, 'crystallize');
+  assert.deepEqual(shortcut.state.implementationDetailsList, []);
+});
+
+test('an empty implementation-details list advances only on next-step (E3)', () => {
+  const at = { stage: 'implementation-details', ideaList: ['a'], candidateList: null, edgeCaseList: ['E1'], implementationDetailsList: null, pocLane: false };
+  const recorded = idea.transition(at, { recordedList: [] });
+  assert.equal(recorded.state.stage, 'implementation-details');
+  assert.deepEqual(recorded.state.implementationDetailsList, []);
+
+  const intentless = idea.transition(recorded.state, {});
+  assert.equal(intentless.state.stage, 'implementation-details');
+  assert.equal(intentless.rejected, 'READINESS_IS_NOT_INTENT');
+
+  const confirmed = idea.transition(recorded.state, { intent: 'next-step' });
+  assert.equal(confirmed.state.stage, 'crystallize');
+  assert.ok(!('rejected' in confirmed));
+  assert.deepEqual(confirmed.state.implementationDetailsList, []);
+});
+
+test('issue-shortcut is rejected outside explore-change and with malformed lists', () => {
+  const event = { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1 x'] };
+  for (const stage of ['review-edge-cases', 'implementation-details', 'crystallize', 'poc-lane']) {
+    const rejected = idea.transition({ stage, ideaList: [], edgeCaseList: null, implementationDetailsList: null }, event);
+    assert.equal(rejected.rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE', stage);
+    assert.equal(rejected.state.stage, stage);
+  }
+  for (const bad of [
+    { intent: 'issue-shortcut' },
+    { intent: 'issue-shortcut', edgeCaseList: 'E1', implementationDetailsList: ['I1 x'] },
+    { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [1] },
+  ]) {
+    const rejected = idea.transition(idea.initialState, bad);
+    assert.equal(rejected.rejected, 'SHORTCUT_LISTS_INVALID');
+    assert.equal(rejected.state.stage, 'explore-change');
+    assert.equal(rejected.state.implementationDetailsList, null);
+  }
 });

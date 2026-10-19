@@ -160,7 +160,7 @@ function retiredFileRecords(section, entries) {
   return entries
     .filter(entry => entry.assetType === 'retired-managed-file' && fs.existsSync(entry.dest))
     .map(entry => {
-      const recognized = entry.acceptedHashes.includes(uninstall.sha256File(entry.dest));
+      const recognized = require('./retirement-identity').recognizedRetirement(fs.readFileSync(entry.dest), entry);
       return {
         section,
         name: 'retired-file',
@@ -171,7 +171,9 @@ function retiredFileRecords(section, entries) {
         recognized,
         recommendation: recognized
           ? 'Run install/update or uninstall to remove this managed historical copy'
-          : 'Review and remove this preserved file manually if it is no longer needed',
+          : entry.managedBodyHashes
+            ? 'Pending resolution: transfer customized audit instructions to the new name, then review removal of this preserved file'
+            : 'Review and remove this preserved file manually if it is no longer needed',
       };
     });
 }

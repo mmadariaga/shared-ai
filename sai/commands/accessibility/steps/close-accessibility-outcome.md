@@ -17,7 +17,7 @@ Check the draft before it goes further:
 3. **Severity sanity** — Critical reserved for Level A failures or task-blocking issues; not for AAA aspirations.
 4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 5. **Re-test checklist present** — reflects the actual flows touched in the diff.
-6. **Framework idiom respected** — React fixes use hooks/refs; Astro fixes account for hydration; Tailwind fixes use utilities or theme tokens.
+6. **Framework idiom respected** — fixes follow the idioms of the `frameworks detected`.
 7. **Identifiers and tally** — every finding heading leads with its severity-prefixed identifier, and the closing `Summary:` line counts match the report's findings.
 
 ## 3. Challenge the draft

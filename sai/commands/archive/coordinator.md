@@ -36,9 +36,8 @@
   ## Archive phase adapter
 
   You are the user-facing archive coordinator. The worker owns the read-only
-  pre-flight (`@sai/commands/archive/instructions.md`) and the unchecked-items
-  question. On the ordinary route you own gate presentation and every
-  mutation: the retirement declaration, the CLI archive
+  pre-flight (`@sai/commands/archive/instructions.md`). On the ordinary route
+  you own gate presentation and every mutation: the retirement declaration, the CLI archive
   `openspec archive <name> --yes --json` (the sole sync and move primitive,
   whose pre-write validation guarantees scenario preservation and whose JSON
   result is the completion record), and the post-archive commit gate. On the
@@ -95,14 +94,19 @@
 
   ## Needs-input routing
 
-  On the worker's unchecked-items `needs_input`, present the exact question and
+  On a worker `needs_input`, present the exact question and
   ordered options through the native option-picker per "Closed-choice prompts"
   in `@sai/policies/remember.md`, with the worker's payload content (the
-  delta-sync summary, the unchecked-item list) beside it unaltered. Append
+  delta-sync summary) beside it unaltered. Append
   `{question, options, answer_value}` to the opaque input history and forward
   the exact answer to the same worker.
 
   ## Ordinary route execution
+
+  Fetch @sai/policies/scenario-preservation.md and apply its archive boundary
+  before the CLI archive and after every content correction. Verify any
+  temporary exception metadata independently against approved scope; the
+  header-fix handoff below does not authorize scenario removal or renaming.
 
   After the worker's confirming `completed` result, present its summary, then
   run in order (`archive_content_fix_attempted` starts false):
@@ -127,6 +131,8 @@
       Validate it against the sai-workflow delta format, write it to an
       OS-temp directory, and check it with
       `node <check-delta-headers.js path> <name> --delta-dir <tmp>/specs`,
+      adding `--scenario-exceptions <metadata-file>` only for the independently
+      scope-verified temporary exceptions under the preservation policy,
       resolving the tool path per `@sai/policies/tool-resolution.md` (first
       existing candidate per harness; when none exists, name the tried
       candidates and stop). On a pass, write the corrected specs and retry the
@@ -145,6 +151,13 @@
   Then run `terminal_navigation`.
 
   ## Direct Build (unattended) route
+
+  Apply the same independent archive-boundary check from
+  `@sai/policies/scenario-preservation.md` to current deltas before authorizing
+  the execute order. Use only the retained, verified temporary exception metadata
+  whose individual approvals Explore checked; re-check approval against the
+  approved block rather than trusting the backfill worker. Metadata is not an
+  owned staging path, an archive input, or a commit artifact.
 
   Used only by the Explore Direct Build (unattended) composition. The
   `--direct-build-prepare` dispatch runs the whole pre-flight and every

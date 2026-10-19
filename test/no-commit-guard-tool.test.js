@@ -280,9 +280,6 @@ test('every coordinator card that dispatches a routed worker carries the guard p
   const cards = [
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
-    'sai/commands/implement/coordinator.md',
-    'sai/commands/apply/coordinator.md',
-    'sai/commands/review/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
@@ -290,7 +287,7 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     'sai/commands/archive/coordinator.md',
     'sai/commands/backfill/coordinator.md',
     'sai/commands/merge/coordinator.md',
-    'sai/commands/meta-review/coordinator.md',
+    'sai/commands/deep-review/coordinator.md',
   ];
   for (const card of cards) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
@@ -299,10 +296,11 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     assert.ok(body.includes('snapshot') && body.includes('verify'), `${card} must pair snapshot and verify`);
     assert.ok(!body.includes('autonomy-audit-log'), `${card} must not restate the guard's incident line`);
   }
-  // Composition coordinators that never dispatch directly carry no guard.
-  for (const card of ['sai/commands/meta-build/coordinator.md']) {
+  // The implement, review, and build coordinators run outside the shared
+  // orchestration: they own their local commits and carry no guard window.
+  for (const card of ['sai/commands/implement/coordinator.md', 'sai/commands/review/coordinator.md', 'sai/commands/build/coordinator.md']) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
-    assert.ok(!body.includes('@sai/policies/no-commit-guard.md'), `${card} dispatches nothing itself`);
+    assert.ok(!body.includes('@sai/policies/no-commit-guard.md'), `${card} runs outside the shared guard windows`);
   }
 });
 

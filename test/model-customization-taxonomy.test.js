@@ -11,7 +11,7 @@ const customization = require('../bin/model-customization.js');
 function fixtureManifest() {
   return {
     projections: [
-      ...['sai-1-spec-proposal-worker', 'sai-4-red-worker'].map(name => ({
+      ...['sai-1-spec-proposal-worker', 'sai-3-red-worker'].map(name => ({
         destination: { class: 'agents', path: `${name}.md` }, harnesses: ['claude', 'opencode'],
         matrix: { kind: 'agent', phase: 'apply' },
       })),
@@ -33,18 +33,18 @@ test('model customization exposes the five stable taxonomy labels and metadata f
   try {
     for (const harness of ['claude', 'opencode']) {
       fs.mkdirSync(path.join(root, 'commands', harness), { recursive: true });
-      for (const name of ['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree', 'sai-build']) {
+      for (const name of ['sai-commit', 'sai-retire-docs', 'sai-status', 'sai-worktree', 'sai-build']) {
         fs.writeFileSync(path.join(root, 'commands', harness, `${name}.md`), '---\n---\n');
       }
     }
     const families = customization.enumerateProjectionTargets(root, () => fixtureManifest(), 'claude');
-    assert.deepEqual(families.worker, ['sai-1-spec-proposal-worker', 'sai-4-red-worker']);
+    assert.deepEqual(families.worker, ['sai-1-spec-proposal-worker', 'sai-3-red-worker']);
     assert.deepEqual(families.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
     assert.deepEqual(customization.buildChecklistTargets('Workers', families).map(item => item.value), [
-      'worker:sai-1-spec-proposal-worker', 'worker:sai-4-red-worker',
+      'worker:sai-1-spec-proposal-worker', 'worker:sai-3-red-worker',
     ]);
     assert.deepEqual(customization.buildChecklistTargets('Utilities', families).map(item => item.value), [
-      'utility:sai-pr', 'utility:sai-retire-docs', 'utility:sai-status', 'utility:sai-worktree',
+      'utility:sai-retire-docs', 'utility:sai-status', 'utility:sai-worktree',
     ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -81,11 +81,11 @@ test('target profiles carry a context estimate and a difficulty per family-quali
 });
 
 test('context estimates distinguish fresh Step workers from cumulative orchestration', () => {
-  assert.equal(customization.taskContextFor({ value: 'command:sai-4-apply' }), 'Large');
-  assert.equal(customization.taskContextFor({ value: 'worker:sai-4-red-worker' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'worker:sai-4-green-worker' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'command:sai-6-security' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'worker:sai-6-security-worker' }), 'Large');
+  assert.equal(customization.taskContextFor({ value: 'command:sai-3-implement' }), 'Large');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-3-red-worker' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-3-green-worker' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'command:sai-5-security' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-5-security-worker' }), 'Large');
   assert.equal(customization.taskContextFor({ value: 'utility:sai-status' }), 'Small');
 });
 
@@ -103,13 +103,12 @@ test('orchestrator difficulty reflects coordinator reasoning rather than worker 
     'sai-1-spec': '↑↑',
     'sai-2-design': '↑↑',
     'sai-build': '↑↑↑',
-    'sai-3-implement': '↑↑',
-    'sai-4-apply': '↑↑↑',
-    'sai-review': '↑↑',
-    'sai-5-review': '↑↑',
-    'sai-6-security': '↑',
-    'sai-7-performance': '↑',
-    'sai-8-accessibility': '↑',
+    'sai-3-implement': '↑↑↑',
+    'sai-deep-review': '↑↑',
+    'sai-4-review': '↑↑',
+    'sai-5-security': '↑',
+    'sai-6-performance': '↑',
+    'sai-7-accessibility': '↑',
     'sai-backfill': '↑↑',
     'sai-archive': '↑↑',
     'sai-merge': '↑↑↑',

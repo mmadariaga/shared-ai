@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: File scope — rules only, no workflow
 `commit-rules.md` SHALL contain only commit message format rules. It MUST NOT include git inspection steps, workflow sequences, file-staging instructions, or user interaction flows.
 
@@ -33,11 +35,15 @@ The body SHALL be optional and omitted when the subject is self-evident. When in
 - **THEN** the agent MUST omit the body
 
 ### Requirement: Footer conventions
-Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes (subject also uses `feat!:` or `fix!:`); `Refs: #N` or `Closes: #N` when an issue is discoverable in the branch name or recent commits. `Co-Authored-By` or "Generated with Claude Code" trailers MUST NOT be added unless the user explicitly requests them.
+Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes (subject also uses `feat!:` or `fix!:`); `Refs: #N` when an issue is mentioned by the user or appears in the branch name, where a branch-name id is a reference only and SHALL NOT be written as `Closes`; and `Closes owner/repo#N` lines only as defined by the closing-lines rule for archive commits. `Co-Authored-By` or "Generated with Claude Code" trailers MUST NOT be added unless the user explicitly requests them.
 
 #### Scenario: Breaking API change
 - **WHEN** the staged diff contains an incompatible API change
 - **THEN** the subject type uses `!` suffix AND a `BREAKING CHANGE:` footer is appended
+
+#### Scenario: Branch-name id is a non-closing reference
+- **WHEN** the current branch is `feat/120_pr-closing-references` and the commit is not an archive commit
+- **THEN** the footer may carry `Refs: #120` and carries no `Closes` line for issue 120
 
 ### Requirement: Repo commit-style detection rubric
 
@@ -141,3 +147,15 @@ The session-scoped commit authorization referenced by the commit rules SHALL be 
 #### Scenario: Commit rules reference a defined session grant
 - **WHEN** an apply run uses session-scoped commit authorization
 - **THEN** the apply invocation defines its lifecycle and the grant does not authorize push, force operations, branch changes, rebase, merge, tag, or pull-request actions
+
+### Requirement: Closing lines come only from the archived change's backlog origin
+
+Archive commits SHALL be the only commits that carry a closing line. An archive commit SHALL carry one footer line per archived change, built from the `backlog_origin` key of `openspec/changes/archive/<date>-<name>/.openspec.yaml`. A GitHub `https://github.com/owner/repo/issues/N` SHALL become `Closes owner/repo#N`, and a GitLab `https://host/group/project/-/issues/N` SHALL become `Closes group/project#N`. Every closing line SHALL use the fully qualified form. A change without a `backlog_origin`, or with an Azure DevOps origin, SHALL get no closing line. The `.openspec.yaml` reader SHALL return `backlog_origin`, quoted or unquoted, and `null` when the key is absent.
+
+#### Scenario: GitHub origin becomes a qualified closing line
+- **WHEN** the archived change's `backlog_origin` is `https://github.com/mmadariaga/shared-ai/issues/120`
+- **THEN** the archive commit carries the footer line `Closes mmadariaga/shared-ai#120`
+
+#### Scenario: No origin produces no closing line
+- **WHEN** the archived change's `.openspec.yaml` has no `backlog_origin`
+- **THEN** the archive commit carries no closing line

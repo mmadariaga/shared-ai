@@ -28,14 +28,12 @@ them as premises to confirm and extend: they start your research and never
 replace it, and the stop criterion above still decides when research ends.
 
 - Validate each cited path or range, inspect it, and follow related code and
-  docs beyond it. Research Leads are starting points, not a closed inspection
-  list, a scope, or a target-file selection.
+  docs beyond it. Research Leads are starting points.
 - When a source contradicts or under-supports the premise it is cited for,
   including a range that now points at unrelated content, reject the premise
   and write specs from what current sources support.
 - When a cited path no longer resolves (deleted or renamed), research that item
   from scratch.
-- When Research Leads are absent, `- None`, or insufficient, research normally.
 - Provenance cites intent and Research Leads guide investigation; neither adds
   a target-file or "where to modify" field to any artifact. Implementation
   targeting belongs to later phases.

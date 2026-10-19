@@ -69,7 +69,7 @@ Every `bin/sai-state.js` verb (`spawn`, `emit`, `emit --progress`, `reset`, `clo
 - **THEN** it loads `sai/tools/worker-report-validator.js` and validates the payload
 
 ### Requirement: Progress mode accepts only progress payloads and leaves event emits unchanged
-A terminal, notice, `needs_input`, or `conflict_detected` payload piped to a progress emit SHALL return `validation.ok: false`. Those kinds SHALL keep validating through `worker-report-validator.js validate --kind <kind>`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every machine, including `explore-idea`, `explore-slice`, `apply-standalone`, and `recovery-ledger`.
+A terminal, notice, `needs_input`, or `conflict_detected` payload piped to a progress emit SHALL return `validation.ok: false`. Those kinds SHALL keep validating through `worker-report-validator.js validate --kind <kind>`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every machine, including `explore-idea`, `explore-slice`, and `recovery-ledger`.
 
 #### Scenario: Non-progress kind is rejected
 - **WHEN** a terminal `completed` payload is piped to a progress emit
@@ -80,15 +80,15 @@ A terminal, notice, `needs_input`, or `conflict_detected` payload piped to a pro
 - **THEN** the output and exit code carry no `validation` field and match the pre-change contract
 
 ### Requirement: Step-machine coordinators route progress through the progress emit
-When the active adapter declares a `step_machine`, the coordinator SHALL pipe the worker's progress payload, as received, into the progress emit instead of running a separate `validate --kind progress` call and then hand-composing event JSON. An invalid `validation` block SHALL take the existing malformed-payload route. The Milestone Stamp SHALL read the response's top-level `received_at` with no conversion. The same invocation SHALL apply on Claude Code and opencode, with no `allowed-tools` entry added or removed and no opencode permission field added. Meta-review SHALL keep its security → performance → accessibility single-writer order. Questions, feedback, `continue_after_recovery`, and replacement-worker reconstruction SHALL invoke no emit. Adapters without a `step_machine` SHALL keep the separate `validate --kind progress` call.
+When the active adapter declares a `step_machine`, the coordinator SHALL pipe the worker progress payload, as received, into the progress emit instead of running a separate `validate --kind progress` call and then hand-composing event JSON. An invalid `validation` block SHALL take the existing malformed-payload route. The Milestone Stamp SHALL read the response top-level `received_at` with no conversion. The same invocation SHALL apply on Claude Code and opencode, with no `allowed-tools` entry added or removed and no opencode permission field added. Questions, feedback, `continue_after_recovery`, and replacement-worker reconstruction SHALL invoke no emit. Adapters without a `step_machine` SHALL keep the separate `validate --kind progress` call.
 
 #### Scenario: One call validates and routes a progress event
 - **WHEN** a step-machine coordinator receives a worker progress event
-- **THEN** it runs one progress emit and builds the two-line pointer continuation from that call's `next.follow`
+- **THEN** it runs one progress emit and builds the two-line pointer continuation from that call `next.follow`
 
 #### Scenario: Stamp comes from the validation block
 - **WHEN** a step-machine progress emit marks a step completed
-- **THEN** the step's Milestone Stamp is the `HH:mm` of the response's top-level `received_at` with no wall-clock call
+- **THEN** the step Milestone Stamp is the `HH:mm` of the response top-level `received_at` with no wall-clock call
 
 ### Requirement: Progress emit behavior is tested through the spawned CLI
 The repository SHALL test the progress emit by spawning `node bin/sai-state.js emit … --progress -` as a real process. The tests SHALL cover invalid shapes, non-JSON stdin, verdict parity without time normalization, validation-before-store-read, store failures with the verdict intact, a missing validator module on every verb, the installed layout, `--with-overview` seeding and misuse, empty `step_ids`, non-progress kinds, and unchanged plain emit. A further test SHALL run every `sai-state` verb and assert `received_at` is the first stdout key while stderr carries no time. The existing validator tests SHALL pass with the rename applied.

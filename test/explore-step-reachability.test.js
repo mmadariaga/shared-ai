@@ -117,6 +117,58 @@ test('common.md does not fetch nested crystallization files', () => {
   }
 });
 
+test('loaded sibling instructions and orientation cannot bypass optional pre-route actions', () => {
+  const slice = fs.readFileSync(path.join(explorerStepsDir, 'slice.md'), 'utf8');
+  assert.match(slice, /authoritative shared crystallization close in `crystallization-protocol\.md`/);
+  assert.match(slice, /`route-selector\.md`'s optional pre-route actions and completion gate before presenting its native route picker/);
+  // Inspect the whole selector-loaded sibling closure, not just the selector itself.
+  for (const file of getReachableStepFiles()) {
+    const source = fs.readFileSync(path.join(explorerStepsDir, file), 'utf8');
+    assert.doesNotMatch(source,
+      /(?:present(?:s)?|open(?:s)?) (?:its |the selector's |the )?(?:native (?:three-option |route )?)?picker at the end of (?:that|the) same assistant turn/i,
+      `${file} must not restore the block-display-turn picker requirement`);
+    assert.doesNotMatch(source, /picker is the immediate action after the printed blocks/i,
+      `${file} must not skip the optional actions`);
+  }
+  const orientation = fs.readFileSync(path.join(__dirname, '..', 'AGENTS.md'), 'utf8');
+  assert.match(orientation, /Claude Code and opencode share the post-crystallization sequence/);
+  assert.match(orientation, /under the selector's\s+completion gate, then present the native implementation route picker/);
+  assert.match(orientation, /optional actions can require multiple human turns/);
+});
+
+test('next.follow delivers optional actions and the route picker together, never at startup', () => {
+  const machine = require('../sai-state/machines/explore-slice.js');
+  const before = machine.project(machine.initialState);
+  assert.equal(before.next.follow, 'none');
+  const waiting = machine.transition(machine.initialState, { recordedList: ['proposal'] });
+  assert.equal(waiting.next.follow, 'sai/commands/explore/steps/route-selector.md');
+  const selector = fs.readFileSync(path.join(explorerStepsDir, 'route-selector.md'), 'utf8');
+  const backlog = selector.indexOf('1. **Backlog question:**');
+  const branch = selector.indexOf('2. **Branch question:**');
+  const picker = selector.indexOf('\n## Native route picker');
+  assert.ok(backlog >= 0 && branch > backlog && picker > branch);
+  for (const startup of [nucleusFile, path.join(explorerStepsDir, 'common.md'),
+    path.join(__dirname, '..', 'sai', 'commands', 'explore', 'body.md')]) {
+    const source = fs.readFileSync(startup, 'utf8');
+    assert.doesNotMatch(source, /Fetch @skills\/(?:to-backlog|new-change-branch)\/SKILL\.md/);
+    assert.doesNotMatch(source, /Would you like to (?:create or update a backlog item|create and switch to a local change branch)/);
+  }
+  for (const intent of ['plan', 'direct-build']) {
+    assert.equal(machine.transition(waiting.state, { intent }).rejected, 'ROUTE_CHOICE_REQUIRED');
+  }
+});
+
+test('optional backlog wording retains backlog across languages without changing authorization', () => {
+  const selector = fs.readFileSync(path.join(explorerStepsDir, 'route-selector.md'), 'utf8');
+  const backlog = selector.slice(selector.indexOf('1. **Backlog question:**'), selector.indexOf('2. **Branch question:**'));
+  assert.match(backlog, /Retain the word `backlog` in the question and option descriptions in every language/);
+  assert.match(backlog, /¿Quieres crear o actualizar el backlog con esta propuesta\?/);
+  assert.match(backlog, /Yes as creating or updating the backlog and No as skipping the backlog action/);
+  assert.match(selector, /Offer \*\*Yes\*\* and \*\*No\*\* in that order, with stable values `yes` and `no`/);
+  assert.match(selector, /Claude Code's `AskUserQuestion`[\s\S]*opencode's `question`/);
+  assert.match(selector, /Do not duplicate its rules or treat the optional Yes as a publication confirmation or base selection/);
+});
+
 test('crystallization-protocol.md fetches assessment and language gates', () => {
   const fetches = findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md'));
   assert.ok(fetches.includes('slicing-assessment.md'),
@@ -249,4 +301,18 @@ test('each directly loaded step file is named by the explore instructions load e
     assert.match(nucleus, new RegExp(`The one exception is \`steps/${file.replace('.', '\\.')}\``),
       `${file} must be named by the explicit load exception`);
   }
+});
+
+test('the slice branch chain is reachable from the selector, the slice step and automatic continuation', () => {
+  const read = file => fs.readFileSync(path.join(explorerStepsDir, file), 'utf8');
+  const selector = read('route-selector.md');
+  const chain = selector.indexOf('## Slice branch chain');
+  assert.ok(chain > selector.indexOf('2. **Branch question:**') && chain < selector.indexOf('\n## Native route picker'));
+  assert.match(selector, /as defined in `## Slice branch chain`/);
+  assert.match(read('slice.md'), /`route-selector\.md` `## Slice branch chain`/);
+  assert.match(read('pipeline-direct-build.md'), /`route-selector\.md` `## Slice branch chain`/);
+  assert.match(read('route-selector.md'), /for Manual, before the handoff/);
+  assert.match(selector, /When the user closes a slice with `next-slice`, tell them that `next-slice` confirms the slice is implemented and committed/);
+  const machine = fs.readFileSync(path.join(machinesDir, 'explore-slice.js'), 'utf8');
+  assert.doesNotMatch(machine, /branch/i);
 });

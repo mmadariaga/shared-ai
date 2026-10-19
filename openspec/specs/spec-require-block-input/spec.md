@@ -5,15 +5,6 @@ Make `sai-1-spec` creation require the crystallized `Ready to Propose` block fro
 
 ## Requirements
 
-### Requirement: Creation requires crystallized block concepts
-
-The `sai-1-spec` creation entry SHALL require the crystallized `Ready to Propose` block judged by concepts never byte-exact: What, Why, Capabilities in scope, Decisions and Rationale, Alternatives Considered, Trade-offs Accepted, Key constraints, Terms, Edge Cases, and Implementation Details, with Change name as the resolution source. When the request carries those concepts the worker SHALL resolve the name from the block and proceed as creation. Otherwise the worker SHALL STOP before change resolution and print exactly the creation STOP with redirect to sai-explore. This covers an empty request, a name-only request, an incomplete block with any listed concept missing, and a hand-created change directory with no proposal or specs.
-
-#### Scenario: Missing block stops creation
-
-- **WHEN** creation is invoked without the block concepts
-- **THEN** the worker SHALL STOP before resolution with the redirect to sai-explore
-
 ### Requirement: No change-picker fallback and no name-only creation path
 
 The `sai-1-spec` worker SHALL never fetch the change-picker policy. There SHALL be no change-picker fallback and no name-only creation path in this phase.
@@ -58,3 +49,17 @@ During `sai-1-spec` creation, only the items under the block's `Implementation D
 
 - **WHEN** creation runs from a per-slice block whose `**Out of scope Implementation Details**` lists items
 - **THEN** the written proposal and specs contain no requirement or scenario derived from those items
+
+### Requirement: Creation requires a dispatchable Ready to Propose block
+
+The `sai-1-spec` creation entry SHALL require the crystallized `Ready to Propose` block, validated before anything else with the dispatchable contract of `sai/policies/ready-to-propose-format.md`. A request SHALL be a block attempt when it carries the `## Ready to Propose` heading or passes the `loose` profile; a block attempt SHALL pass the `dispatchable` profile and the bounded hygiene judgment before change resolution or any write, after which the worker SHALL resolve the name from the block's `Change name` and proceed as creation. Otherwise the worker SHALL STOP before change resolution and print exactly the creation STOP with redirect to sai-explore. This covers an empty request, a name-only request, text that is not a block attempt, and a hand-created change directory with no proposal or specs.
+
+#### Scenario: Missing block stops creation
+
+- **WHEN** creation is invoked with a request that is not a block attempt
+- **THEN** the worker SHALL STOP before resolution with the redirect to sai-explore
+
+#### Scenario: Invalid block attempt writes nothing
+
+- **WHEN** a block attempt fails the `dispatchable` profile or receives a `violation` verdict
+- **THEN** the worker writes nothing and shows the violations with line numbers instead of resolving the change

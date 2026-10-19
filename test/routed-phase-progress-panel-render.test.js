@@ -11,8 +11,6 @@ const repoRoot = path.join(__dirname, '..');
 const routedPhases = [
   'spec',
   'design',
-  'implementation',
-  'review',
   'security',
   'performance',
   'accessibility',
@@ -73,8 +71,6 @@ test('routed coordinators delegate progress rendering to the shared policy', () 
   const coordinatorPaths = [
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
-    'sai/commands/implement/coordinator.md',
-    'sai/commands/review/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
@@ -111,11 +107,11 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
       assert.match(binding.text, /worker never emits panel tool calls/);
     }
 
-    const applyBindings = bindings.filter(item => item.phase === 'apply');
-    assert.equal(applyBindings.length, 2, `${harness} should retain RED and GREEN bindings`);
-    for (const binding of applyBindings) {
+    const standaloneBindings = bindings.filter(item => ['red', 'green', 'review'].includes(item.phase));
+    assert.equal(standaloneBindings.length, 3, `${harness} should retain RED, GREEN, and review bindings`);
+    for (const binding of standaloneBindings) {
       assert.doesNotMatch(binding.text, /panel-render\.md/,
-        `${harness}/${binding.destinationName} must not bind the progress panel for apply`);
+        `${harness}/${binding.destinationName} must not bind the progress panel for a standalone coordinator`);
       const dispatchPrefix = binding.text.slice(0, binding.text.indexOf('Dispatch the worker'));
       assert.doesNotMatch(dispatchPrefix, /\n\n\n/,
         `${harness}/${binding.destinationName} must not contain a blank placeholder block`);
@@ -136,16 +132,13 @@ test('supervised explore runs keep visual plan rendering disabled while retainin
     'the static SpecStepPointerMap reference should not remain');
 });
 
-test('panel degradation is declared for routed phases, apply projection, and explore', () => {
+test('panel degradation is declared for routed phases and explore', () => {
   for (const relativePath of [
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
-    'sai/commands/implement/coordinator.md',
-    'sai/commands/review/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
-    'sai/commands/apply/coordinator.md',
   ]) {
     assert.match(read(relativePath), /unavailable at runtime/,
       `${relativePath} should define the runtime panel degradation route`);

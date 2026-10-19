@@ -24,7 +24,7 @@ A `needs_input` returned by one audit SHALL pause only that audit's own segment 
 
 ### Requirement: Audit failure or cancellation never aborts siblings
 
-An audit `failed` or `cancelled` outcome SHALL NOT abort sibling audits, retry anything, or re-run the review segment. Per-audit status SHALL appear in the combined terminal report.
+An audit `failed` or `cancelled` outcome SHALL NOT close the composition, SHALL NOT abort sibling audits, SHALL NOT retry anything, and SHALL NOT re-run the review segment. Per-audit status SHALL appear in the combined terminal report. This rule SHALL be stated in the concurrent-dispatch section of `sai/commands/deep-review/coordinator.md` as an exception to `sai/orchestration/composition.md` § 2 that applies to audit segments only. `sai/orchestration/composition.md` SHALL keep its general rule that a `failed` or `cancelled` segment closes the composition.
 
 #### Scenario: One failed audit does not cancel the others
 - **WHEN** the performance audit returns `failed` while security and accessibility are activated
@@ -32,14 +32,12 @@ An audit `failed` or `cancelled` outcome SHALL NOT abort sibling audits, retry a
 
 ### Requirement: The concurrent audit batch is one guard window
 
-In the meta-review composition, the concurrent audit batch SHALL sit inside one no-commit-guard window per the no-commit-guard policy's batch semantics. A segment transition is not a boundary, so a window already running from the review segment at position 0 SHALL continue through the batch; otherwise the snapshot SHALL run at batch start. The batch close — after every activated segment's Result Loop has closed and before the combined terminal — SHALL be verified when it is a boundary. No HEAD mutation SHALL occur inside the batch, and no meta-review window carries `allow_commit`.
+In the deep-review composition, the concurrent audit batch SHALL sit inside one no-commit-guard window per the no-commit-guard policy's batch semantics. A segment transition is not a boundary, so a window already running from the review segment at position 0 SHALL continue through the batch; otherwise the snapshot SHALL run at batch start. The batch close — after every activated segment's Result Loop has closed and before the combined terminal — SHALL be verified when it is a boundary. No HEAD mutation SHALL occur inside the batch, and no deep-review window carries `allow_commit`.
 
 #### Scenario: the batch is verified once, before the combined terminal
-
 - **WHEN** the eligible audit segments are dispatched concurrently, their Result Loops close, and the batch close is a boundary
 - **THEN** the coordinator verifies the running window once after all segments close and before the combined terminal, with no guard call between the segments and no HEAD mutation inside the batch
 
 #### Scenario: the review segment and the batch share one window
-
 - **WHEN** the eligible audit segments are dispatched concurrently after the review segment with no human turn in between, and their Result Loops close
 - **THEN** the review segment and the batch run under one window that is verified once before the combined terminal, with no HEAD mutation inside the batch

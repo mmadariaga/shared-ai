@@ -1,0 +1,43 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+`/sai-2-design` already researches the project's test command (`**Test Command**` in `tasks.md`'s `## Implementation Context`) and the documentation relevant to the change (`## Required Documentation`), but no surviving command read either of them. With the apply command retired, `SAI_LEARNINGS.md` also had no writer, so the self-correction that the design and implement commands rely on was lost. `/sai-3-implement` now reuses the design research instead of repeating it, and takes over learnings promotion at run close.
+
+## What Changes
+
+- `sai/commands/implement/coordinator.md`, Start step 4: from `tasks.md`, the coordinator also takes `## Required Documentation` and the `**Test Command**` field of `## Implementation Context`, and does not research them again.
+- `sai/commands/implement/coordinator.md`, Start step 7: the first source of the test commands is `**Test Command**` in `tasks.md` (its command line, with its scoping idiom for the step tests). When the field is missing or holds the sentinel `None — no test runner in this project`, the coordinator falls back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files; when no suite can be found or run, the baseline is recorded as `unavailable`.
+- `sai/commands/implement/coordinator.md`, step brief: each brief also carries the `## Required Documentation` entries relevant to the step (path or URL with its note, as context that adds no requirement), and none when the section is missing or every subsection is `None`.
+- `sai/commands/implement/coordinator.md`, Close: a new first step promotes learnings before the build log and the report. Only deviations from `deviations.md` that are project facts fitting Stack, Conventions, Avoid, or Test Command qualify (a repository-level artifact, not a symbol or file the change introduced or renamed). With no qualifying deviation, `SAI_LEARNINGS.md` is left untouched and no file is created; otherwise the coordinator fetches `sai/policies/sai-learnings-format.md` and writes only the root `SAI_LEARNINGS.md` per its key, append, supersede, and bootstrap rules. No worker promotes, and the run neither stages nor commits the file. `build-log.md` gains the learnings promoted, and the closing report names the file, the entries added and superseded per section, and that the file is uncommitted, only when it was written.
+- `sai/commands/design/steps/tasks.md`: states that `/sai-3-implement` reads `## Required Documentation` for its step briefs and `**Test Command**` for its test discovery, and names the `/sai-3-implement` coordinator's learnings promotion at run close as the only writer of `SAI_LEARNINGS.md`.
+- `sai/policies/sai-learnings-format.md`, `sai/SAI_AGENTS.md`, `AGENTS.md`: name the `/sai-3-implement` coordinator as the only writer of `SAI_LEARNINGS.md`, by learnings promotion at run close. The format, merge, and supersede rules are unchanged.
+- `test/implement-family.test.js`: allows the coordinator to fetch `sai/policies/sai-learnings-format.md` and asserts the test-command order, the sentinel fallback, the documentation entries in the step brief, and the learnings promotion at run close.
+- `test/coordinator-owned-fast-track-gates.test.js`: asserts the published `sai-build-command` requirement that strips residual `--fast-track` tokens and the implement coordinator's token drop, in place of the retired apply fast-track requirements.
+
+## Capabilities
+
+### New Capabilities
+
+None.
+
+### Modified Capabilities
+
+- `implement-new-loop`: the coordinator may load the learnings format policy; test discovery takes the design-provided `**Test Command**` first; step briefs carry the relevant `## Required Documentation` entries.
+- `implement-new-run-log`: run close promotes learnings before composing `build-log.md`, which records the learnings promoted.
+- `sai-learnings-file`: the `/sai-3-implement` coordinator is the only writer of `SAI_LEARNINGS.md`, so promotion, bootstrap, and Test Command supersede happen again.
+- `sai-learnings-consumption`: the design contradiction notice names the implement coordinator as the writer; the implement coordinator reads `SAI_LEARNINGS.md` only as a test-command fallback and for promotion.
+- `tasks-required-documentation`: `/sai-3-implement` now reads `## Required Documentation` for its step briefs.
+
+## Impact
+
+- Modified: `sai/commands/implement/coordinator.md`
+- Modified: `sai/commands/design/steps/tasks.md`
+- Modified: `sai/policies/sai-learnings-format.md`
+- Modified: `sai/SAI_AGENTS.md`
+- Modified: `AGENTS.md`
+- Modified: `test/implement-family.test.js`
+- Modified: `test/coordinator-owned-fast-track-gates.test.js`
+- Trade-off accepted: each implement step brief grows by the relevant documentation entries.
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

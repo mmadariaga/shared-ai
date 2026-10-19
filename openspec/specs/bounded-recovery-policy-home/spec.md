@@ -33,11 +33,16 @@ The repository SHALL host the shared bounded same-worker recovery machinery in `
 
 ### Requirement: Recovery-role coordinators load the policy statically
 
-Exactly six coordinator cards — `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, `sai/commands/implement/coordinator.md`, `sai/commands/apply/coordinator.md`, `sai/commands/meta-build/coordinator.md`, and `sai/commands/meta-review/coordinator.md` — SHALL each carry one static, unconditional fetch line reading `Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.` inserted immediately after each card's first fetch directive. No worker binding, utility body card, audit coordinator card (review, security, performance, accessibility), or adapter file SHALL fetch the policy: workers never diagnose routing, and utility commands never execute the shared result loop. The load SHALL be a deliberate static resident load per role rather than an event-triggered conditional fetch.
+Exactly two coordinator cards — `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` — SHALL each carry one static, unconditional fetch line reading `Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.` inserted immediately after each card's first fetch directive. No worker binding, utility body card, audit coordinator card (review, security, performance, accessibility), or adapter file SHALL fetch the policy: workers never diagnose routing, and utility commands never execute the shared result loop. The load SHALL be a deliberate static resident load per role rather than an event-triggered conditional fetch.
 
 #### Scenario: All six coordinator cards carry the static fetch
 
-- **WHEN** any of the spec, design, implement, apply, meta-build, or meta-review coordinator cards is read
+- **WHEN** the spec, design, and every other coordinator card is read
+- **THEN** only `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` contain the exact line `Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.`, and no other coordinator card carries it
+
+#### Scenario: Both coordinator cards carry the static fetch
+
+- **WHEN** the spec or design coordinator card is read
 - **THEN** it contains the exact line `Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.`
 - **AND** the line appears immediately after that card's first fetch directive
 

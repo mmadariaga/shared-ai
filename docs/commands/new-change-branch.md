@@ -1,0 +1,48 @@
+# `/new-change-branch`
+
+## Command function
+
+Creates and switches to a consistently named **local** branch in Claude Code
+and opencode, reusing the current discussion. No OpenSpec setup is required.
+
+## Inputs and choices
+
+There are no documented behavior flags. The skill derives the change type,
+name, and optional relevant work-item identifier from context, asking only when
+information is missing or ambiguous.
+
+- Types: `feat`, `fix`, `docs`, `chore`.
+- Names: `<type>/<name_with_underscores>` or `<type>/<id>_<name_with_underscores>`.
+  The name becomes lowercase, underscore-separated words; an actual work-item
+  identifier is preserved exactly. Existing branches keep their names.
+- Base: you always choose a suggested reference or enter one. Suggestions include
+  the current branch, a detected parent, and available `main`/`master` references.
+  A detected parent is the nearest tip among the 20 most recent first-parent
+  commits, a convenience and not proof of historical origin. Existing
+  remote-tracking references may be stale; the skill does not fetch. In both
+  Claude Code and opencode, suggested options show short names such as `main`
+  and `origin/main`, with localized local/remote qualifiers when names coincide.
+  Each option still selects its full, exact Git reference. This display change
+  applies only to suggested options; free-text input and option order stay unchanged.
+  Claude Code shows at most four options per page: with more than four bases, the
+  first page carries three bases and a `More` option. A detached HEAD has no
+  current-branch option.
+
+## In detail
+
+The skill shows the final branch and base commit before creating it. Your explicit
+request and base selection authorize only creation and switching. Cancellation
+before creation leaves the repository unchanged.
+
+An occupied name requires a new choice; it is never reused or automatically
+suffixed. A missing HEAD or an active merge/rebase blocks the workflow. Staged,
+unstaged, and untracked work are preserved. If Git prevents switching, the skill
+stops rather than stashing or discarding work.
+
+A calling workflow can ask the tool to stop on uncommitted changes
+(`require_clean`). `/sai-explore` does this for chained per-slice branches only;
+the standalone flow keeps its behavior.
+
+Success reports the verified active branch and selected base. A failed operation
+reports whether creation occurred and which branch remains active. There is no
+automatic cleanup or retry, remote tracking, commit, push, or remote refresh.

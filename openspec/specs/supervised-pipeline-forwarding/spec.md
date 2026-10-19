@@ -3,33 +3,27 @@
 ## Purpose
 
 *To be determined — brief description of what this capability does and why it exists.*
+
 ## Requirements
 
 ### Requirement: Forward Plan envelopes unchanged
 
-Plan (unattended) SHALL preserve the existing supervised worker envelopes, including their markers, selected block content, flag ordering, and phase transition forwarding rules.
+Plan - Unattended SHALL preserve the one-string supervised worker envelope and existing chained phase forwarding. Its spec request SHALL use the supervised marker followed by the paired stored-file and hash references instead of inline stored text. Design forwarding SHALL remain name-first with its existing fast-track, supervised, and optional language flags.
 
 #### Scenario: Plan forwards a worker request
 
 - **WHEN** Plan dispatches a supervised worker
-- **THEN** the existing one-string envelope is forwarded with only the route terminology changed outside the worker protocol.
+- **THEN** the existing one-string envelope is forwarded with the spec block delivered through the paired file/hash reference and the existing chained design protocol preserved.
+
 ### Requirement: Forward supervised marker on Auto dispatches
 
-When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include the literal flag `--supervised` in every phase-worker request it constructs. The marker SHALL ride as flag content on `arguments_value`, which is the sole request field. No wrapper-echo or third envelope field SHALL be introduced.
-
-Phase-specific placement (two grammars, one marker token):
-
-- The initial `sai-1` spec-proposal dispatch SHALL set `arguments_value` to the leading flag line `--supervised`, a newline, then the complete `Ready to Propose` block, so after the spec worker's line-wise flag strip the verbatim request is still that full block.
-- The chained `sai-2` design dispatch SHALL reuse the existing name-first flag mechanism, forming `arguments_value` of the shape `{name} --fast-track --supervised` and, when an overview language was selected, additionally `--overview-lang {overview_language}`. The equivalent inverse order `{name} --supervised --fast-track` is also valid, including the language-bearing form; the design worker does not require `--supervised` to be the first token.
-- A design-phase retry that re-dispatches only the design worker SHALL carry `--supervised` exactly as the normal chained design dispatch does and SHALL still supply `--overview-lang {overview_language}` again when localization is required (language non-persistence is unchanged).
-
-`Manual` SHALL forward nothing: no `--supervised`, no `--fast-track` injection, and no `--overview-lang` injection from the supervised path. Independently invoked `/sai-1-spec` and `/sai-2-design` outside Auto SHALL not receive the marker from explore.
+Explore-supervised Plan requests SHALL carry `--supervised` within the sole `arguments_value` field. The spec request SHALL begin with `--supervised`, then `--block-file <absolute path>` and `--block-hash <sha256>` from a fresh stored export, without inline block text. After verification the file SHALL supply the complete request. Chained design and design-only retry requests SHALL keep `{name} --fast-track --supervised` or the equivalent inverse flag order and repeat `--overview-lang <language>` when selected. Manual SHALL dispatch nothing and inject no supervised, fast-track, or language flags. No wrapper-echo or third envelope field SHALL be introduced.
 
 #### Scenario: Auto spec dispatch carries the marker
 
 - **WHEN** Auto starts a supervised run for a change whose spec phase has not yet converged or exhausted
-- **THEN** `arguments_value` begins with the line `--supervised` ahead of the crystallized body
-- **AND** after flag stripping the worker still receives the complete crystallized `Ready to Propose` block as the verbatim request
+- **THEN** `arguments_value` begins with the line `--supervised`, followed by the paired `--block-file` and `--block-hash` lines without inline block text
+- **AND** after reference verification the file supplies the complete crystallized `Ready to Propose` block as the verbatim request
 
 #### Scenario: Auto chained design dispatch carries the marker
 

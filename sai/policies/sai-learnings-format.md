@@ -6,7 +6,7 @@
 
 Canonical structure for `SAI_LEARNINGS.md` — the durable record of execution-observed facts about how a repository actually builds, tests, and behaves. Modeled structurally on `sai/policies/glossary-format.md`.
 
-This file is consumed by the promotion and consumption instructions. Any agent that reads, writes, or audits `SAI_LEARNINGS.md` must conform to this format.
+The `/sai-3-implement` coordinator is the only writer: it promotes learnings from the deviations of its run at run close. This file is consumed by the promotion and consumption instructions. Any agent that reads, writes, or audits `SAI_LEARNINGS.md` must conform to this format.
 
 ## Scope
 

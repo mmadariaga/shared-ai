@@ -65,8 +65,8 @@ function validateRegistry(registry) {
 function shellPatterns(patterns, harness) {
   const root = harness === 'claude' ? '.claude' : '.opencode';
   const global = harness === 'claude' ? '~/.claude' : '~/.config/opencode';
-  return (patterns || []).flatMap(pattern => pattern.includes('{sai}')
-    ? [pattern.replaceAll('{sai}', `${root}/sai`), pattern.replaceAll('{sai}', `${global}/sai`)] : [pattern]);
+  return (patterns || []).flatMap(pattern => /\{(?:sai|skills)\}/.test(pattern)
+    ? [root, global].map(base => pattern.replaceAll('{sai}', `${base}/sai`).replaceAll('{skills}', `${base}/skills`).replaceAll('{harness}', harness)) : [pattern]);
 }
 
 function translate(registry, name, harness) {

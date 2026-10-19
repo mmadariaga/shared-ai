@@ -43,55 +43,47 @@
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "worker:sai-3-implementation-worker": {
+  "worker:sai-3-red-worker": {
+    "model": "openai/gpt-6-luna",
+    "variant": "xhigh"
+  },
+  "worker:sai-3-green-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "command:sai-4-apply": {
+  "command:sai-deep-review": {
+    "model": "openai/gpt-6-luna",
+    "variant": "xhigh"
+  },
+  "command:sai-4-review": {
+    "model": "openai/gpt-6-luna",
+    "variant": "xhigh"
+  },
+  "worker:sai-4-review-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "worker:sai-4-red-worker": {
+  "command:sai-5-security": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "worker:sai-4-green-worker": {
-    "model": "openai/gpt-6-luna",
-    "variant": "max"
-  },
-  "command:sai-review": {
-    "model": "openai/gpt-6-luna",
-    "variant": "xhigh"
-  },
-  "command:sai-5-review": {
-    "model": "openai/gpt-6-luna",
-    "variant": "xhigh"
-  },
-  "worker:sai-5-review-worker": {
+  "worker:sai-5-security-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "command:sai-6-security": {
+  "command:sai-6-performance": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "worker:sai-6-security-worker": {
+  "worker:sai-6-performance-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "command:sai-7-performance": {
+  "command:sai-7-accessibility": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "worker:sai-7-performance-worker": {
-    "model": "openai/gpt-5.6-luna",
-    "variant": "max"
-  },
-  "command:sai-8-accessibility": {
-    "model": "openai/gpt-6-luna",
-    "variant": "xhigh"
-  },
-  "worker:sai-8-accessibility-worker": {
+  "worker:sai-7-accessibility-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
@@ -124,10 +116,6 @@
     "variant": "xhigh"
   },
   "worker:sai-commit-worker": {
-    "model": "openai/gpt-6-luna",
-    "variant": "xhigh"
-  },
-  "utility:sai-pr": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },

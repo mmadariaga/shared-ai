@@ -69,9 +69,9 @@ Where a signature appears in both `## Target State` and a `## Step N` section, t
 
 ### Requirement: File Manifest is a deterministic net fold over Files Affected
 
-The `### File Manifest` subsection SHALL be a flat, git-status-style list produced by a deterministic net fold over the same change's per-Step Files Affected entries. Ordinary exact-file entries SHALL yield exactly one line per file the change creates, modifies, deletes, or renames, using the A/M/D/R tokens and R source-to-destination form defined by tasks-scaffold-format. One exact path SHALL have one net line rather than concatenated per-Step entries.
+The `### File Manifest` subsection SHALL be a flat, git-status-style list produced by a deterministic net fold over the same change's per-Step Files Affected entries. Each non-empty generated manifest entry SHALL be a Markdown bullet prefixed with `- `. Ordinary exact-file entries SHALL yield exactly one line per file the change creates, modifies, deletes, or renames, using the A/M/D/R tokens and R source-to-destination form defined by tasks-scaffold-format. One exact path SHALL have one net line rather than concatenated per-Step entries.
 
-Bounded generated A families SHALL be the sole exception to the individual-file line contract. The manifest SHALL retain one derivative family line as `A <directory>/<prefix>*<suffix> — generated count=<positive integer> (Step <n>)`, preserving the declaration's directory, family, expected count, and attribution. This line SHALL not be an executable path or independently authorize writes. Apply SHALL resolve the authoritative task declaration to exact paths before close. Overlapping generated families and generated-family collisions recognized by the fold SHALL be rejected rather than silently merged.
+Bounded generated A families SHALL be the sole exception to the individual-file line contract. The manifest SHALL retain one derivative family line as `- A <directory>/<prefix>*<suffix> — generated count=<positive integer> (Step <n>)`, preserving the declaration's directory, family, expected count, and attribution. This line SHALL not be an executable path or independently authorize writes. Apply SHALL resolve the authoritative task declaration to exact paths before close. Overlapping generated families and generated-family collisions recognized by the fold SHALL be rejected rather than silently merged.
 
 For ordinary exact paths, the fold SHALL process Step sections in ascending order and entries in file order. State SHALL be keyed by path, with net token and touched Steps seeded empty. Empty SHALL cover both untouched paths and paths whose earlier touches netted to ∅.
 
@@ -105,13 +105,15 @@ An exact path whose final state is ∅ SHALL be omitted even though it appears i
 
 Every Step whose entry folds into a line SHALL appear in its attribution list in ascending order, including every touch rather than only the Step fixing the net token. A rename SHALL contribute source and destination arcs to their corresponding lines. Dissolved or collapsed renames SHALL retain the appropriate Steps: R then D carries both on D source; R then source A carries the rename Step on A destination and source-arc Steps other than the rename on the resurrected source; chained R carries all rename Steps.
 
-Ordinary lines SHALL use `<net token> <path> (Step <n>[, Step <n>]*)`; renamed lines SHALL use `R <src> -> <dst> (Step <n>…)`. Generated derivative lines SHALL retain the count suffix before the attribution. Token/path and pre-parenthesis separators SHALL be single spaces; Step separators SHALL be comma-plus-space; R separators SHALL be single spaces around the arrow. Lines SHALL not be aligned or padded.
+Ordinary lines SHALL use `- <net token> <path> (Step <n>[, Step <n>]*)`; renamed lines SHALL use `- R <src> -> <dst> (Step <n>…)`. Generated derivative lines SHALL retain the count suffix before the attribution. Token/path and pre-parenthesis separators SHALL be single spaces; Step separators SHALL be comma-plus-space; R separators SHALL be single spaces around the arrow. Lines SHALL not be aligned or padded.
 
 Lines SHALL be path-sorted, using R destination paths and generated declaration paths as their respective keys. The manifest SHALL remain a concise derivative review surface. Tasks SHALL remain authoritative for per-Step tokens, declarations, and attribution; downstream phases SHALL not parse the manifest as authoritative executable input.
 
+The bullet prefix SHALL change presentation only. Verification SHALL continue to accept legacy unbulleted manifest entries without rewriting them; explicit regeneration SHALL emit bullets. Empty markers, net-fold transitions, ordering, generated-family counts, and Step attribution SHALL remain unchanged.
+
 #### Scenario: a path touched by several steps yields one net line
 - **WHEN** tasks list `A src/lib/util.ts` in Step 1 and `M src/lib/util.ts` in Step 3
-- **THEN** the manifest contains exactly `A src/lib/util.ts (Step 1, Step 3)` without per-Step duplicate lines
+- **THEN** the manifest contains exactly `- A src/lib/util.ts (Step 1, Step 3)` without per-Step duplicate lines
 
 #### Scenario: a path created and later deleted is omitted
 - **WHEN** tasks list `A docs/tmp.md` in Step 2 and `D docs/tmp.md` in Step 6
@@ -119,31 +121,31 @@ Lines SHALL be path-sorted, using R destination paths and generated declaration 
 
 #### Scenario: a rename folds to the destination path
 - **WHEN** tasks list `M src/lib/old.ts` in Step 2 and `R src/lib/old.ts -> src/lib/new.ts` in Step 5
-- **THEN** the manifest contains `R src/lib/old.ts -> src/lib/new.ts (Step 2, Step 5)` without a separate old-path line
+- **THEN** the manifest contains `- R src/lib/old.ts -> src/lib/new.ts (Step 2, Step 5)` without a separate old-path line
 
 #### Scenario: a path deleted and recreated folds to M
 - **WHEN** tasks list `D src/lib/util.ts` in Step 2 and `A src/lib/util.ts` in Step 5
-- **THEN** the manifest contains `M src/lib/util.ts (Step 2, Step 5)` because the path exists before and after the change
+- **THEN** the manifest contains `- M src/lib/util.ts (Step 2, Step 5)` because the path exists before and after the change
 
 #### Scenario: a resurrected source path dissolves the rename
 - **WHEN** tasks list `R a.md -> b.md` in Step 2 and `A a.md` in Step 5
-- **THEN** the manifest contains `A b.md (Step 2)` and `M a.md (Step 5)` without an R line
+- **THEN** the manifest contains `- A b.md (Step 2)` and `- M a.md (Step 5)` without an R line
 
 #### Scenario: a change-created source resurrected after its rename folds to A
 - **WHEN** tasks list `A a.md` in Step 1, `R a.md -> b.md` in Step 2, and `A a.md` in Step 5
-- **THEN** the manifest contains `A a.md (Step 1, Step 5)` and `A b.md (Step 2)` with no M line
+- **THEN** the manifest contains `- A a.md (Step 1, Step 5)` and `- A b.md (Step 2)` with no M line
 
 #### Scenario: a rename followed by a deletion emits the baseline path
 - **WHEN** tasks list `R a.md -> b.md` in Step 2 and `D b.md` in Step 5
-- **THEN** the manifest contains `D a.md (Step 2, Step 5)`, sorted by a.md, and no line names b.md
+- **THEN** the manifest contains `- D a.md (Step 2, Step 5)`, sorted by a.md, and no line names b.md
 
 #### Scenario: a second rename collapses to the original source and the final destination
 - **WHEN** tasks list `R a.md -> b.md` in Step 2 and `R b.md -> c.md` in Step 4
-- **THEN** the manifest contains `R a.md -> c.md (Step 2, Step 4)` and no line mentions b.md
+- **THEN** the manifest contains `- R a.md -> c.md (Step 2, Step 4)` and no line mentions b.md
 
 #### Scenario: a move onto a path deleted earlier in the change dissolves the rename
 - **WHEN** tasks list `D b.md` in Step 1 and `R a.md -> b.md` in Step 3
-- **THEN** the manifest contains `D a.md (Step 3)` and `M b.md (Step 1, Step 3)` without an R line because b.md existed at the change baseline
+- **THEN** the manifest contains `- D a.md (Step 3)` and `- M b.md (Step 1, Step 3)` without an R line because b.md existed at the change baseline
 
 #### Scenario: R lines are sorted by destination path
 - **WHEN** a change renames z-old.ts to a-new.ts and modifies b-mid.ts
@@ -163,7 +165,7 @@ Lines SHALL be path-sorted, using R destination paths and generated declaration 
 
 #### Scenario: Generated count remains a derivative declaration
 - **WHEN** Step 1 declares `A generated/migration-*.sql — generated count=2`
-- **THEN** the manifest contains `A generated/migration-*.sql — generated count=2 (Step 1)` rather than inventing filenames or authorizing wildcard staging
+- **THEN** the manifest contains `- A generated/migration-*.sql — generated count=2 (Step 1)` rather than inventing filenames or authorizing wildcard staging
 
 ### Requirement: File Manifest has an independent None sentinel
 

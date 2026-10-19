@@ -1,76 +1,83 @@
-<TASK>
+# `/sai-4-review` coordinator
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/stage-machine.md and follow it for every store interaction.
+Fetch @sai/policies/public-chat.md and follow it exactly.
+Fetch @sai/policies/remember.md
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/finding-state.md
+Fetch @sai/commands/review/options.md. It declares the options this command accepts and the form of the parent branch.
 
-  ## Your Role: Review Phase Coordinator
+You are the driver of the run. The invocation carries one string, `arguments_value`: an optional change name and the options of step 2 of Start.
 
-  You are the user-facing review coordinator. You run the shared runner's Result Loop for one `sai-5-review-worker` and own lifecycle routing and terminal presentation. The worker owns every technical act: argument and change resolution, OpenSpec queries, git and diff inspection, review passes 1–11, test inspection, findings, and `review.md`.
+## Goal
 
-  ## Artifact access
+Review a change's diff against its parent branch in a fresh worker and leave the result in `openspec/changes/{name}/review.md`. The run is done when `review.md` is written, verified, and committed (or left on disk when the project ignores it), or when the diff is empty and the run says so. The command only reviews: it fixes no finding, and fixes belong to `/sai-3-implement`, which applies open findings. The command asks the user nothing between change resolution and its close; the only question it can ask is the escalation of a report the worker cannot produce.
 
-  - **Clean route** — every result through the terminal close. The coordinator stays artifact-blind; the no-commit guard's two tool invocations are its only git access.
-  - **Direct Build close** — the sole exception (§ Review navigation). It reads the freshly generated `review.md`, the on-disk audits, and the diff its fix loop verifies, all read-only, and performs the one path-scoped stage and local commit.
+## Start
 
-  ## Phase adapter
+1. Fetch @sai/policies/prereqs-check.md and run its check. A halt prints the matching literal and ends the run before anything else happens. Fetch @sai/policies/prereqs-paths.md for the artifact paths.
+2. Drop any `--fast-track` token from `arguments_value`. The remainder holds an optional change name, the first token that does not start with `--` and is not an option's value, and the options below. An unknown `--` token, a second positional value, or an option without its value prints this and ends the run, writing nothing: `Cannot start /sai-4-review: unknown or malformed argument '{token}'. The parent branch is passed as --parent-branch <branch>.`
+   - `--parent-branch <branch>`: the branch the diff is taken against. Default: detected by the worker.
+3. An empty change name takes the only change directory under `openspec/changes/` (archive excluded) that has a `proposal.md`. When there are none or several, print this and end the run, without escalating and writing nothing: `Cannot start /sai-4-review: name the change ({candidates, or none}).`
+4. The change is startable when `openspec/changes/{name}/proposal.md` exists. Otherwise print this and end the run, writing nothing: `Cannot start /sai-4-review for {name}: missing proposal.md.`
+5. Open the step machine. `spawn` a `sai-state` session (key: `review-{name}`) and `reset` `review-steps@1`, resolving the CLI per `tool-resolution.md`. The `reset` response names the first pointer, `establish-diff-scope`. When the store fails, carry on with the static order: `establish-diff-scope`, `resolve-review-analysis`, `close-review-outcome`, each at `sai/commands/review/steps/{step}.md`.
 
-  Declare these fields for the shared runner:
+## The worker
 
-  - `original_envelope` — exactly one opaque string, the `arguments_value` supplied by the active wrapper.
-  - `dispatch_operation` and `continuation_operation` — the active review-worker binding's dispatch and same-worker continuation.
-  - `allowed_nonterminal_extensions` — only `progress`; `extension_handlers` is empty.
-  - `replacement_reconstruction_fields` — the original envelope, changed-files union, opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id`.
-  - `progress_plan` — the four steps below, in order, with exactly these ids and labels:
-    - `resolve-change` — "Resolve change"
-    - `establish-diff-scope` — "Resolve diff scope"
-    - `resolve-review-analysis` — "Resolve review analysis"
-    - `close-review-outcome` — "Close review outcome"
-  - `step_machine: review-standalone@1`
-  - `recovery_policy: false` — keep no recovery ledger and send no `continue_after_recovery`.
-  - `terminal_navigation` — § Review navigation.
+Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.
 
-  ## No-commit guard
+Create `sai-4-review-worker` once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
 
-  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
-  the review worker's stretches: `snapshot` opens a window, holding the returned SHA as
-  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
-  own two tool invocations are this coordinator's only git access on the
-  artifact-blind clean route and change no other rule above.
+The task message opens with `Active step: establish-diff-scope — follow <pointer>`, then names the change, the `--parent-branch` value when one was given, and the path `openspec/changes/{name}/review.md`.
 
-  ## Lifecycle Steps
+The worker returns one of these closed results and ends its turn:
 
-  ### 1. Initialize and render
+```yaml
+event: step-done
+step_id: establish-diff-scope | resolve-review-analysis
+```
 
-  Initialize an ordered duplicate-free changed-file union and an empty opaque input history. Render the full plan per `@sai/policies/todo-structure.md` (first step `in_progress`, the rest `pending`) at dispatch, before the dispatch itself. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route instead: record its notice, disable later panel calls for this invocation, and continue without a panel.
+```yaml
+status: completed
+summary: string
+changed_files: string[]
+review_path: string
+counts: {critical: n, high: n, medium: n, low: n, questions: n}
+recommended_audits: string
+```
 
-  ### 2. Dispatch exactly one worker
+```yaml
+status: no-changes | failed
+summary: string
+changed_files: string[]
+```
 
-  Dispatch exactly one worker per the runner's § Dispatch and task disclosure. Send the first filed step's pointer (`establish-diff-scope`), which the segment-start `reset` returns, as the first line of the post-ready task disclosure, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Before the first progress event, the worker's `active_step_id` is that step.
+After a `step-done`, emit the step's id to the machine as `{"step_ids": [...]}` through `emit <id> review-steps@1 -` (the first `step-done` carries `review-intake` and `establish-diff-scope`), then send the worker `Active step: <stage> — follow <next.follow>` from the response. The store never gates the run: when an emit fails, send the next pointer from the static order.
 
-  ### 3. Run the Result Loop
+## Close
 
-  Process every result through the runner. The review-specific additions:
+- `no-changes`: print the worker's `summary`, which is exactly `No changes detected against {parent-branch}. Nothing to review.`, write no `review.md`, commit nothing, and end the run with `Review done.`
+- `failed`: print the worker's `summary` and end the run with no closing line. Nothing is committed.
+- `completed`: verify the report, then commit it, then print the closing report.
 
-  - `progress` — Mark steps only from worker progress-event `step_ids`. Progress-event panel updates and worker continuation follow `@sai/policies/todo-structure.md` through the shared command runner's same-turn rule; an unavailable panel uses the same recorded degradation route and does not block continuation. The `continue_after_progress` acknowledgement is protocol-only: record it nowhere, neither as user input nor in opaque input history.
-  - `needs_input` — present the exact question and ordered options through the native picker, append `{question, options, answer_value}` to the opaque input history, and continue the same worker with the exact value.
-  - Reconcile at run-closing results: `completed` renders every unmarked step `completed`; `failed`, `cancelled`, and a `needs_input` pause (not run-closing) leave the list exactly as last rendered.
+**Verify.** Read `openspec/changes/{name}/review.md` yourself. It is valid when it exists and is non-empty, every finding heading (`####` under a severity heading) carries an identifier whose letter matches that heading (`C`, `H`, `M`, `L`, or `Q` followed by a number), the three `Surface touched` lines are present, and the closing `Summary:` tally matches the number of findings under each severity heading. The worker's `counts` must agree with the tally. A report that fails this check is an obstacle of the run (identifier `review-report`).
 
-  ## Review navigation
+**Commit.** Check the report with `git check-ignore -q openspec/changes/{name}/review.md`. When it reports the path as not ignored (non-zero exit), `git add` that path alone and commit with `git commit -m "<subject>" -- <path>`, so a path the repository already had staged stays out of the commit. The subject is a Conventional Commits message of at most 50 characters, for example `docs(review): add review report`; the body, when needed, names the change. The message carries no `Co-Authored-By` trailer and no AI-attribution line of any kind, even when the harness suggests one. When the path is ignored, the report stays on disk uncommitted. Never force-add with `-f`, never push, and commit nothing but this one file. Invoking the command authorizes this one local commit and nothing else. A regenerated report identical to the committed one leaves nothing to commit.
 
-  - `completed` — print the worker-authored `summary` verbatim; it already carries the `## Recommended Audits` block. In standalone `/sai-5-review`, run the Direct Build close below. Then print the changed-files union and exactly `Review done.`, and stop. The run has no feedback gate.
-  - `failed` or `cancelled` (an empty diff returns `cancelled`) — print the summary and the changed-files union, then stop.
+**Report.** Print the worker's `summary` (severity counts, the top three Critical findings when present, the report path, the parent-branch statement) and its `recommended_audits` block verbatim, then say whether `review.md` was committed or left uncommitted because the project ignores it. Then end the run with exactly `Review done.`. Inside `/sai-build` and `/sai-deep-review` the line of that command replaces this one.
 
-  Inside the `/sai-review` composition, meta-review owns the terminal outcome and takes only this navigation's presentation: offer no selector and dispatch nothing from this adapter.
+A new review regenerates `review.md` completely: earlier findings, their ` (FIXED)` marks, and the user's deletions are replaced, and no earlier report is read. Open, fixed, and Question mean what `finding-state.md` says; this command marks nothing.
 
-  ### Direct Build close (standalone `/sai-5-review`, `completed` only)
+## Obstacles
 
-  Fetch @sai/commands/meta-review/direct-build-close.md and follow it with:
+The only obstacle is the worker's report: an unreadable or invalid `review.md` (the Verify check fails), a worker that returns no ready, a worker that stays silent past what the review needs, or a worker that drifts from its instruction. The goal is a valid report, so respond and keep moving.
 
-  - `input` — the freshly generated `review.md` plus `security.md`, `performance.md`, and `accessibility.md` as they exist on disk, never regenerated in this run. Tell the user in chat that those audits may be stale.
-  - `direct-label = Direct Build`, `decline-label = Do not implement anything now`, and `decline-close` = the standard close above.
+Give the obstacle a budget of 3 attempts. An attempt is one response with an approach different from the previous one, so repeating an approach is not an attempt. The approaches are:
 
-  A fix that touches a triage surface leaves `review.md` as written; the audits run later on the fixed tree.
+- a corrected instruction to the same worker that names the defect and where it is, which includes asking again when the worker is silent or drifted;
+- a new worker, created the same way as the first. It replaces the old one, gets the ready handshake, and receives a hand-over note you write that names the symptom. It never receives the old worker's history, and it reviews from the first step;
+- a mechanical repair you write yourself when the defect is only mechanical, such as a `Summary:` tally that miscounts the findings. A repair never adds, removes, or rewrites a finding.
 
-</TASK>
+An exhausted budget escalates at once. State in plain words what happened, what you tried, and that nothing is committed. Ask through the native picker with options you write: one or more ways to continue, each naming a different approach, and one that stops the run. A `continue` resets the budget and you carry out the chosen approach; a `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no `review.md` and no commit.
 
-Follow instruction on <TASK> step by step
+Before ending in any outcome, `close` the `sai-state` session.

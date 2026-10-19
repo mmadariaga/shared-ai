@@ -27,7 +27,7 @@ test('Step 1 security card uses neutral root protocols and retires flat canonica
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
-    'sai/orchestration/workers/sai-6-security-worker.md',
+    'sai/orchestration/workers/sai-5-security-worker.md',
   ]) {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
       `${relativePath} should be absent from the active source layout`);
@@ -49,7 +49,7 @@ test('security coordinator declares the canonical five-step progress plan in ord
   assert.match(coordinator, /resolve-security-scope[\s\S]{0,200}Resolve security scope/i);
   assert.match(coordinator, /discover-module-map[\s\S]{0,200}Discover modules and trust boundaries/i);
   assert.match(coordinator, /resolve-sast-analysis[\s\S]{0,200}Resolve SAST analysis/i);
-  assert.match(coordinator, /resolve-sca[\s\S]{0,200}Resolve SCA gate/i);
+  assert.match(coordinator, /resolve-sca[\s\S]{0,200}Audit dependencies/i);
   assert.match(coordinator, /close-security-outcome[\s\S]{0,200}Close security outcome/i);
 });
 
@@ -82,9 +82,9 @@ test('security transport carries only arguments_value and contract metadata acro
     assert.doesNotMatch(source, /wrapper_echo_value/,
       'no security transport surface may carry wrapper_echo_value');
   }
-  assert.match(bindings[0], /sai-6-security-worker/);
+  assert.match(bindings[0], /sai-5-security-worker/);
   assert.match(bindings[0], /Agent/);
-  assert.match(bindings[1], /sai-6-security-worker/);
+  assert.match(bindings[1], /sai-5-security-worker/);
   assert.match(bindings[1], /task/i);
 });
 
@@ -108,9 +108,9 @@ test('security worker contract enumerates the five ids and pins the batch semant
   );
   assert.match(worker, /startup act/i);
   assert.match(worker, /resolve-security-scope/);
-  assert.match(worker, /manifest[\s\S]{0,240}(?:changed|skip|not applicable)/i);
+  assert.match(worker, /no manifest[\s\S]{0,240}resolve-sca/i);
   assert.match(worker, /resolve-sca/);
-  assert.match(worker, /empty diff[\s\S]{0,240}(?:no-change|completed)/i);
+  assert.match(worker, /empty diff[\s\S]{0,400}completed/i);
   assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
@@ -154,7 +154,7 @@ const SECURITY_PLAN_STEPS = [
   ['resolve-security-scope', 'Resolve security scope'],
   ['discover-module-map', 'Discover modules and trust boundaries'],
   ['resolve-sast-analysis', 'Resolve SAST analysis'],
-  ['resolve-sca', 'Resolve SCA gate'],
+  ['resolve-sca', 'Audit dependencies'],
   ['close-security-outcome', 'Close security outcome'],
 ];
 const SECURITY_STEP_MAP = {
@@ -219,11 +219,13 @@ test('step-gated: the security worker loads steps/common.md at dispatch and exec
 
   assert.match(worker, /Fetch @sai\/commands\/security\/steps\/common\.md and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
-  assert.match(worker, /## Active Step Execution/, 'the worker contract should own active-step execution');
-  assert.match(worker, /this contract plus common\.md is the sealed initial surface/);
+  assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan and active-step execution in one Steps section');
+  assert.doesNotMatch(worker, /^## (?:Progress Reporting|Active Step Execution|Security Audit)$/m,
+    'the retired worker sections should stay merged into Steps');
+  assert.match(worker, /this contract plus common\.md is the sealed initial surface/i);
   assert.match(worker, /`resolve-security-scope` runs from it before the first progress event/,
     'the fileless first step should run from the sealed surface before the first pointer');
-  assert.match(worker, /never prefetch, open, or follow any other step instruction file/,
+  assert.match(worker, /each step file is opened when its pointer arrives/,
     'the worker must execute only the coordinator-named step');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/security\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');

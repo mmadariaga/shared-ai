@@ -1,4 +1,4 @@
-<!-- Format validator: node sai/tools/ready-to-propose.js check --profile strict < text (strict profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
+<!-- Format validator: node sai/tools/ready-to-propose.js check --profile dispatchable < text (dispatchable profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
 
 # Ready to Propose Block Format
 
@@ -12,6 +12,8 @@ The block is structured as follows:
 ## Ready to Propose
 
 **Change name**: <kebab-case suggestion>
+**Depends on**: <comma-separated immediate dependency change names, or None>
+**Backlog origin**: <selected canonical GitHub, GitLab or Azure DevOps child URL; omit without issue provenance>
 **What**: <1–2 sentences describing the change>
 **Why**: <1–2 sentences stating the motivation; optional inline file:line provenance citations when the hypothesis was grounded in specific files>
 **Capabilities in scope**:
@@ -54,11 +56,37 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 
 `**Out of scope Implementation Details**` is also mandatory: every block carries it immediately after `**Implementation Details**`, as exactly `- None` when no item is out of scope.
 
+`**Implementation Details**` carries exactly `- None` when no technical decision qualifies, in a single change only: the user confirmed that empty list at the `Implementation details` stage. Every slice of a sliced set carries at least one in-scope item.
+
 Sections follow the block order above; `**Overview language**` is the last line before the `---` separator.
+
+## Dispatchable contract
+
+One contract makes a block valid for every route that consumes it — Plan - Unattended, Direct Build - Unattended, and Manual — so choosing a route never fails on block shape. A block is dispatchable when it passes the `dispatchable` profile of `sai/tools/ready-to-propose.js` (this format, plus the implementation item rules: `- None` for a single change, each `I` exactly once per block, every `I` in scope of at least one slice of a sliced set, and at least one in-scope item per slice of a sliced set) and each line the tool's lexical pre-filter flags carries a `context` verdict from the bounded judgment in `@sai/policies/block-hygiene-judgment.md`. That policy owns the four block-hygiene clauses: a block never requests planning-artifact creation, a mutating git command, subagent dispatch, or direct edits to `openspec/specs/**` as implementation work. The tool computes each block's sha256 hash and is the single source of the clause ids.
 
 `**Request Additional Notes**` is optional and sits outside the mandatory sections: when present it follows `**Out of scope Implementation Details**` and immediately precedes `**Overview language**`; when it has no content it is omitted entirely — no label, no `- None`.
 
+## Stored block transport
+
+Plan - Unattended and Direct Build - Unattended dispatch a block only from the `sai-state` store. In Claude Code and opencode, run `sai-state block <id> <change-name> --export --harness <claude|opencode>` and send the returned `block_file` and `hash` together as `--block-file <absolute path>` and `--block-hash <sha256>` envelope lines. The tool writes the stored text directly into a private transfer file under the active harness temp root; no model copies its content into a message or heredoc.
+
+Every receiving worker, including direct implementation, backfill prepare, and supervised specification, verifies before dependent work:
+
+1. Require both envelope lines. Resolve `ready-to-propose.js` per `@sai/policies/tool-resolution.md` and run `node <tool-path> verify-file --block-file <path> --block-hash <hash>`.
+2. On a missing, unreadable, unsafe, or mismatched file, return `failed` with no changes, naming the problem. Never reconstruct or repair the block from chat. Read the verified file as the sole block input only after success.
+
+Export anew after every amendment and before every fresh dispatch or replacement; carry the new file and its hash as one reference. Retain transfer directories while any continuation or recovery may need them, and close them with `transfer.js close --dir <dir>` only after that possibility ends. A previous file is never paired with a new hash. Existing LF-normalized block hashing remains unchanged: separators and non-ASCII content remain significant, and transport preserves the stored bytes, including the absence of a final newline.
+
+### Block and verdict delivery
+
+For both registration and amendment, author or update block content in a UTF-8 file and keep judgment verdicts in a separate JSON-array file. Run `sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>`. It calls the shared `ready-to-propose.js` composer internally, avoiding shell text re-encoding in both Bash and PowerShell. Composition failure returns `BLOCK_COMPOSITION_FAILED` without a store mutation. The composer inserts the newline before `<<<VERDICTS>>>` mechanically, outside the hashed block, and rejects incomplete blocks and invalid or incomplete verdicts; the parser still requires a separate marker line. Use `[]` when no line needs judgment. Never concatenate a marker onto a stored separator or transcribe a stored block to attach verdicts. The same composer is available as `node <tool-path> compose --block-file <path> --verdicts-file <path>` when a caller needs its composed stdout.
+
+The Manual route has no store and no hash.
+
 ## Field rules
+
+- **Depends on**: inside the block immediately after Change name; required for newly emitted slices (None for an independent slice). Older blocks without it mean no dependencies. Use real immediate dependencies only, separated by commas; branch ancestry adds no edges. `validateDependencies` in `ready-to-propose.js` checks one block's syntax, duplicates, and self references without demanding external slices. `validateDependencySet` additionally checks existing references and cycles and returns stable blocker-first order. Producers validate the complete set before storage, display, amendment, or publication; contradictions that need an agreement change go to the user. Never invent or delete agreed edges to pass validation. The line is stored and hashed with the block.
+- **Backlog origin**: optional issue identity carried with the separately delivered slice, after Depends on when present. It is provenance, not remote-mutation authority. Retain the selected child URL, not its parent context URL. After a completed set publication, `backlog-origin-transport.md` attaches the actual child identities to stored blocks through validated amendments and recomputed hashes before planning dispatch. The validator returns the canonical `backlog_origin`; Spec preserves it under `.openspec.yaml`'s `backlog_origin`; implementation coordinators independently verify the selected child and parent before assignment.
 
 - **Change name**: kebab-case suggestion
 - **What**: 1–2 sentences describing the change
@@ -72,8 +100,8 @@ Sections follow the block order above; `**Overview language**` is the last line 
 - **Key constraints**: constraints and non-goals of the change's own behavior and scope
 - **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
-- **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved, or exactly one `- None` bullet when no agreed item is in scope. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
-- **Out of scope Implementation Details**: every other agreed `I1`…`In` statement — items owned by an earlier or a later slice — under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope (always in a non-sliced block, and whenever the agreed list is empty). Within one block each identifier appears exactly once, in exactly one of the two sections, and together the two sections cover the full agreed list. This section is non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation derives from it.
+- **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved. A single change carries exactly `- None` when the user confirmed that no technical decision qualifies; the I-list holds technical decisions about how to implement, not tasks, so what to build travels in the request, `**Edge Cases**`, and `**Capabilities in scope**`. Every slice of a sliced set owns at least one in-scope item, and every `I` is in scope of at least one slice; a shared `I` may stay in scope of several slices. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
+- **Out of scope Implementation Details**: every other agreed `I1`…`In` statement — items owned by an earlier or a later slice — under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope (always in a non-sliced block). Within one block each identifier appears exactly once, in exactly one of the two sections, and together the two sections cover the full agreed list. This section is non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation derives from it.
 - **Request Additional Notes**: optional, free-form, non-normative Markdown (paragraphs or bullets) carrying discussed, agreed context that could influence implementation and fits no other field. Examples of what it holds, not an exhaustive list:
   - future behavior the conversation agreed on but excluded from this change;
   - related follow-up work, such as PBIs or tickets;

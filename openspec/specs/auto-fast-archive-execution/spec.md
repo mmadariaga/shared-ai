@@ -130,3 +130,34 @@ In the Direct Build execution continuation, `sai/commands/archive/worker.md` SHA
 
 - **WHEN** neither Bash nor PowerShell 7 is available in the Direct Build execution continuation
 - **THEN** the worker returns a closed `failed` result and performs no mutation through another channel
+
+### Requirement: The Direct Build archive commit SHALL carry the archived change's closing lines
+
+When the Direct Build archive execution creates its one local commit, the worker SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. They SHALL follow the retired-capability body lines and come before the complete message is passed to `git commit -F -`. The rule SHALL add no extra commit, no amend, and no push.
+
+#### Scenario: Direct Build archive commit closes the backlog origin
+- **WHEN** the Direct Build archive execution commits a change whose archived `.openspec.yaml` carries a GitHub `backlog_origin`
+- **THEN** the single local commit message carries one `Closes owner/repo#N` line for that origin
+
+#### Scenario: No origin adds no closing line
+- **WHEN** the archived change has no `backlog_origin`
+- **THEN** the Direct Build archive commit carries no closing line
+
+### Requirement: The Direct Build archive commit excludes foreign index entries
+
+The archive worker SHALL follow `sai/policies/foreign-index-preservation.md` for the Direct Build (unattended) index. In an authorized execute order, before it stages the eligible paths, it SHALL first restore a pending foreign-index record left by an earlier order, ending the order when that restore stops, and SHALL then set aside the foreign entries, using the exact owned staging paths as the owned paths. The archive commit SHALL therefore contain only the slice's owned paths, including an owned path that was staged before the slice. After the commit step, whether a commit was created or staging left the index empty, the worker SHALL restore the foreign entries; a restore that stops SHALL be reported in the summary with its exact paths, and the record SHALL stay for recovery.
+
+#### Scenario: Foreign entries are kept out of the archive commit
+
+- **WHEN** the index holds foreign entries staged before the slice and the execute order reaches staging
+- **THEN** the worker sets the foreign entries aside before staging, commits only the owned paths, and restores the foreign entries after the commit
+
+#### Scenario: A pending record from an earlier order
+
+- **WHEN** an execute order begins its staging and a foreign-index record from an earlier order exists
+- **THEN** the worker restores that record first, and ends the order when that restore stops
+
+#### Scenario: The restore after the commit stops
+
+- **WHEN** a foreign entry no longer matches its record at the restore after the commit step
+- **THEN** the worker restores nothing, reports the exact differing paths in the summary, and leaves the record for recovery

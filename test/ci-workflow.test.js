@@ -8,8 +8,8 @@ const { spawnSync } = require('node:child_process');
 
 const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/ci.yml'), 'utf8');
 
-test('CI checks main pull requests and pushes without documentation filters or write access', () => {
-  assert.match(workflow, /pull_request:\s+branches: \[main\]/);
+test('CI checks main and v0.9-beta pull requests and main pushes without documentation filters or write access', () => {
+  assert.match(workflow, /pull_request:\s+branches: \[main, v0\.9-beta\]/);
   assert.match(workflow, /push:\s+branches: \[main\]/);
   assert.doesNotMatch(workflow, /paths(?:-ignore)?:|pull_request_target|secrets\.|cache:|upload-artifact/);
   assert.match(workflow, /permissions:\s+contents: read/);
@@ -24,6 +24,12 @@ test('CI keeps both Node 22 platforms, interpreter preflight, tests, and package
   assert.match(workflow, /pwsh -NoProfile -NonInteractive -Command .*PSVersion\.Major -lt 7/);
   assert.match(workflow, /- run: npm ci\s+- run: npm test/);
   assert.match(workflow, /npm pack --dry-run --json \| node \.github\/scripts\/verify-package\.cjs/);
+});
+
+test('CI provisions the required private OpenCode temporary root on Linux before tests', () => {
+  const setup = "- name: Prepare Linux temporary root for OpenCode tests\n        if: runner.os == 'Linux'\n        run: mkdir -m 700 /tmp/opencode";
+  assert.ok(workflow.includes(setup));
+  assert.ok(workflow.indexOf(setup) < workflow.indexOf('- run: npm test'));
 });
 
 test('CI Required runs after all prerequisites and rejects every non-success result', () => {

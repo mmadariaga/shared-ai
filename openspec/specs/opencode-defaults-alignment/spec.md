@@ -23,7 +23,7 @@ Each file in `commands/opencode/` SHALL declare `model: opencode-go/muse-spark-1
 
 ### Requirement: Worker-matrix opencodeAgent entries match the Go+Zen preset
 
-The worker matrix MUST retain the configured model identifiers and variant levels for its fifteen OpenCode agents, with each model stored as a bare `model` value and each selected level stored as a separate `variant` value. Materialization MUST use those separate values without appending a suffix to the model. This requirement does not change the OpenCode command-wrapper format.
+The worker matrix MUST retain the configured model identifiers and variant levels for its seventeen OpenCode agents, with each model stored as a bare `model` value and each selected level stored as a separate `variant` value. Materialization MUST use those separate values without appending a suffix to the model. This requirement does not change the OpenCode command-wrapper format.
 
 #### Scenario: Manifest entries mirror the preset
 

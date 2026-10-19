@@ -1,6 +1,3 @@
-**Complexity**: <low|medium|high>
-<!-- First line of the file. Derive per `## Complexity Derivation Rubric` in sai/commands/spec/steps/validation.md, after specs/**/*.md are written. Optional trailing parenthetical, e.g. `medium (3 files, no breaking change)` — parsers ignore everything from the first `(`. -->
-
 ## Why
 
 <!-- What problem does this solve? Why now? (1-2 sentences) -->
@@ -25,9 +22,11 @@
 
 ## Proposal Research Documentation
 
-**Local files**: <!-- List every local file consulted during spec-phase codebase research -->
+**Local files**:
+<!-- List every local file consulted during spec-phase codebase research as Markdown bullets (- <path>), one entry per line. Keep any note alongside its path. Preserve the existing empty-list marker. -->
 
-**External URLs**: <!-- List every external URL consulted during spec-phase codebase research -->
+**External URLs**:
+<!-- List every external URL consulted during spec-phase codebase research as Markdown bullets (- <URL>), one entry per line. Keep any note alongside its URL. Preserve the existing empty-list marker. -->
 
 ## Request Additional Notes
 

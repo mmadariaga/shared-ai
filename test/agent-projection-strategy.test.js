@@ -12,21 +12,19 @@ const { STRATEGIES, validateManifest, loadInstallManifest, expandInstallManifest
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-merge-worker',
 ];
 
-const APPLY_WORKER_NAMES = ['sai-4-red-worker', 'sai-4-green-worker'];
+const IMPLEMENT_WORKER_NAMES = ['sai-3-red-worker', 'sai-3-green-worker'];
 
-const ALL_WORKER_NAMES = [...WORKER_NAMES, ...APPLY_WORKER_NAMES,
-  'sai-direct-build-worker', 'sai-review-fix-worker'];
+const ALL_WORKER_NAMES = [...WORKER_NAMES, ...IMPLEMENT_WORKER_NAMES,
+  'sai-direct-build-worker', 'sai-4-review-worker'];
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
 
@@ -59,8 +57,8 @@ function agentDestinationRoots(prefix) {
 function agentRule(id) {
   return {
     id,
-    source: 'agents/claude/sai-5-review-worker.md',
-    destination: { class: 'agents', path: 'sai-5-review-worker.md' },
+    source: 'agents/claude/sai-4-review-worker.md',
+    destination: { class: 'agents', path: 'sai-4-review-worker.md' },
     harnesses: ['claude'],
     strategy: 'owned-copy',
     recursive: false,
@@ -111,18 +109,18 @@ test('tunable-seed routes to the dedicated installer', () => {
   }
 });
 
-test('the manifest declares 30 matrix tunable-seed managed agent projections', () => {
+test('the manifest declares 26 matrix tunable-seed managed agent projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-18'));
+  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-13'));
   const allAgentProjections = [];
   for (const harness of ['claude', 'opencode']) {
     const allAgents = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents));
     const agentProjections = allAgents
       .filter(projection => ALL_WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(agentProjections.length, 15,
-      `the manifest should declare exactly 15 matrix agent projections for ${harness}`);
+    assert.equal(agentProjections.length, 13,
+      `the manifest should declare exactly 13 matrix agent projections for ${harness}`);
     assert.ok(agentProjections.every(projection => projection.strategy === 'tunable-seed'),
       `every ${harness} matrix agent projection should use the tunable-seed strategy`);
     assert.ok(agentProjections.every(projection => projection.ownership === 'managed'),
@@ -130,28 +128,28 @@ test('the manifest declares 30 matrix tunable-seed managed agent projections', (
     assert.deepEqual(
       agentProjections.map(projection => path.basename(projection.destinationPath, '.md')).sort(),
       [...ALL_WORKER_NAMES].sort(),
-      `${harness} matrix agent projections should cover exactly the fifteen worker identities`);
+      `${harness} matrix agent projections should cover exactly the thirteen worker identities`);
     assert.ok(allAgents.every(projection => projection.strategy === 'tunable-seed'),
       `every ${harness} agent projection, matrix and support alike, should use the tunable-seed strategy`);
     allAgentProjections.push(...agentProjections);
   }
-  assert.equal(allAgentProjections.length, 30,
-    'the manifest should declare 30 matrix managed agent projections across both harnesses');
+  assert.equal(allAgentProjections.length, 26,
+    'the manifest should declare 26 matrix managed agent projections across both harnesses');
 });
 
-test('the manifest declares exactly 36 tunable-seed agent projections, exactly 18 targeting Claude', () => {
+test('the manifest declares exactly 32 tunable-seed agent projections, exactly 16 targeting Claude', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const agentRules = manifest.projections
     .filter(projection => projection.destination && projection.destination.class === 'agents');
   const tunableAgentRules = agentRules.filter(projection => projection.strategy === 'tunable-seed');
-  assert.equal(tunableAgentRules.length, 36,
-    'the manifest should declare exactly 36 tunable-seed agent-class projections');
+  assert.equal(tunableAgentRules.length, 32,
+    'the manifest should declare exactly 32 tunable-seed agent-class projections');
   assert.equal(
-    tunableAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 18,
-    'exactly 18 tunable-seed agent-class projections should target Claude');
+    tunableAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 16,
+    'exactly 16 tunable-seed agent-class projections should target Claude');
   assert.equal(
-    tunableAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 18,
-    'exactly 18 tunable-seed agent-class projections should target opencode');
+    tunableAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 16,
+    'exactly 16 tunable-seed agent-class projections should target opencode');
 });
 
 test('the three new Claude generic-agent projections are Claude-only, destination-unique, and tunable-seed', () => {
@@ -190,14 +188,14 @@ test('no managed agent projection declares owned-copy', () => {
   const agentRules = manifest.projections
     .filter(projection => projection.destination && projection.destination.class === 'agents');
   const matrixAgentRules = agentRules.filter(projection => projection.matrix);
-  assert.equal(matrixAgentRules.length, 30,
-    'the manifest should declare 30 matrix agent-class projections (fifteen per harness)');
+  assert.equal(matrixAgentRules.length, 26,
+    'the manifest should declare 26 matrix agent-class projections (thirteen per harness)');
   assert.equal(
-    matrixAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 15,
-    'claude should declare exactly fifteen matrix agent projections');
+    matrixAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 13,
+    'claude should declare exactly thirteen matrix agent projections');
   assert.equal(
-    matrixAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 15,
-    'opencode should declare exactly fifteen matrix agent projections');
+    matrixAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 13,
+    'opencode should declare exactly thirteen matrix agent projections');
   for (const name of ['explore', 'executor', 'budget']) {
     assert.ok(agentRules.some(projection => projection.destination.path.endsWith(`${name}.md`)),
       `opencode should retain its regular ${name} support agent projection`);
@@ -208,10 +206,10 @@ test('no managed agent projection declares owned-copy', () => {
 
 test('validateManifest rejects the retired owned-copy strategy', () => {
   assert.throws(
-    () => validateManifest(agentRule('claude-sai-5-review-worker')),
+    () => validateManifest(agentRule('claude-sai-4-review-worker')),
     error => {
       const message = String(error && error.message || error);
-      return message.includes('claude-sai-5-review-worker') &&
+      return message.includes('claude-sai-4-review-worker') &&
         /invalid|unsupported|unknown|not supported|retired/i.test(message);
     },
     'validateManifest should throw naming the projection id and the invalid strategy'
@@ -237,13 +235,13 @@ test('installProjection throws on the retired owned-copy strategy', () => {
   }
 });
 
-test('the apply worker agents are tunable-seed managed projections in both harnesses', () => {
+test('the implement worker agents are tunable-seed managed projections in both harnesses', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-apply-projection-'));
   for (const harness of ['claude', 'opencode']) {
     const allAgents = expandInstallManifest(manifest, { harness, repoRoot: path.join(__dirname, '..'), destinationRoot })
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents));
-    for (const name of APPLY_WORKER_NAMES) {
+    for (const name of IMPLEMENT_WORKER_NAMES) {
       const projection = allAgents.find(candidate =>
         path.basename(candidate.destinationPath, '.md') === name);
       assert.ok(projection, `${harness} should declare the ${name} matrix agent projection`);
@@ -257,7 +255,7 @@ test('the apply worker agents are tunable-seed managed projections in both harne
   }
 });
 
-test('apply agents resolve their own per-harness budget-tier matrix configuration', () => {
+test('implement agents resolve their own per-harness budget-tier matrix configuration', () => {
   const tuningOf = (text, harness) => {
     const model = (text.match(/^model:\s*(.+)$/m) || [])[1];
     const trimmed = model ? model.trim() : model;
@@ -279,7 +277,7 @@ test('apply agents resolve their own per-harness budget-tier matrix configuratio
           `${harness} should install the ${name} managed agent`);
         return fs.readFileSync(agentPath, 'utf8');
       };
-      for (const name of APPLY_WORKER_NAMES) {
+      for (const name of IMPLEMENT_WORKER_NAMES) {
         const tier = tuningOf(textOf(name), harness);
         applyTiers[`${harness}/${name}`] = tier;
         const entry = manifest['worker-matrix'].entries.find(candidate => candidate.workerName === name);
@@ -299,9 +297,9 @@ test('apply agents resolve their own per-harness budget-tier matrix configuratio
       fs.rmSync(base, { recursive: true, force: true });
     }
   }
-  assert.notEqual(applyTiers['claude/sai-4-red-worker'], applyTiers['opencode/sai-4-red-worker'],
+  assert.notEqual(applyTiers['claude/sai-3-red-worker'], applyTiers['opencode/sai-3-red-worker'],
     'the RED apply agent must resolve its own harness budget tier with no universal pinned model identifier');
-  assert.notEqual(applyTiers['claude/sai-4-green-worker'], applyTiers['opencode/sai-4-green-worker'],
+  assert.notEqual(applyTiers['claude/sai-3-green-worker'], applyTiers['opencode/sai-3-green-worker'],
     'the GREEN apply agent must resolve its own harness budget tier with no universal pinned model identifier');
 });
 
@@ -309,10 +307,11 @@ test('OpenCode worker generation omits optional variant without changing Claude 
   const { defineWorkerMatrix, materializeWorkerMatrix } = require('../bin/worker-matrix.js');
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const entries = structuredClone(manifest['worker-matrix'].entries);
-  const worker = entries.find(entry => entry.workerName === 'sai-4-red-worker');
+  const worker = entries.find(entry => entry.workerName === 'sai-3-red-worker');
   delete worker.opencodeAgent.variant;
   const templates = {
     claudeBinding: '{{canonicalFetch}}', opencodeBinding: '{{canonicalFetch}}',
+    claudeStandaloneBinding: '{{canonicalFetch}}', opencodeStandaloneBinding: '{{canonicalFetch}}',
     claudeAgent: 'model: {{model}}\neffort: {{effort}}',
     opencodeAgent: fs.readFileSync(path.join(__dirname, '..', 'agents/opencode/worker-template.md'), 'utf8'),
   };
@@ -324,7 +323,7 @@ test('OpenCode worker generation omits optional variant without changing Claude 
   assert.match(generated, /^permissions:$/m);
   const claude = outputs.find(item => item.kind === 'agent' && item.harness === 'claude'
     && item.workerName === worker.workerName).text;
-  assert.match(claude, /^model: sonnet\neffort: medium$/m);
+  assert.match(claude, /^model: haiku\neffort: medium$/m);
 });
 
 test('fresh OpenCode install separates every managed agent model from its variant', () => {

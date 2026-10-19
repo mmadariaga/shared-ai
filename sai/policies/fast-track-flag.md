@@ -8,7 +8,7 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 
 1. **Owner** — the coordinator (or the main session on surfaces without a
    routed coordinator) owns BOTH the parse and the banner for `sai-explore`,
-   `sai-3-implement`, `sai-4-apply`, `sai-archive`, and `sai-merge`. Workers
+   `sai-archive`, and `sai-merge`. Workers
    never parse `--fast-track` for activation and never emit the activation
    banner; `sai-2-design` and `sai-backfill` are the phase-owned exceptions
    below.
@@ -49,18 +49,10 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
 - `sai-backfill` parses `--fast-track` and the diff-source tokens
   (`--staged | --unstaged | --diff <sha>`) in its own worker card
   (phase-owned parse, no banner).
-- `/sai-review` strips an explicit `--fast-track` token as a pure
-  behavioral no-op: it neither activates fast-track nor emits a banner.
-- `/sai-build` strips an explicit `--fast-track` token as a build-local
-  no-op: no build-local activation and no banner at strip time — the
-  explicit token decides nothing. The supervisor always injects
-  `fast_track_active=true` as invocation-scoped session state (never written
-  to a file) for the chained implement segment and the chained apply segment
-  and prints the single `> FAST-TRACK MODE ACTIVE` supervisor banner once at
-  the first fast-track activation of the build (implement activation), never
-  twice — zero times when neither segment activates. Builds with and without
-  the explicit token behave identically; the chained segments' skipped shells
-  print no second banner.
+- `/sai-deep-review`, `/sai-build`, `/sai-3-implement`, and `/sai-4-review`
+  accept and ignore an explicit `--fast-track` token: they commit locally by
+  invocation and ask for no approval, so the token activates nothing and
+  prints no banner. Runs with and without the token behave identically.
 - `sai-explore`'s POC lane does NOT auto-approve or skip any of its three stops
   under `--fast-track`: the go/no-go at the close of stage 1, the `C1..Cn`
   candidate-list agreement, and the verdict menu. All three are always
@@ -68,7 +60,10 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   `--no-specs` profile. The late explicit entry into the lane from stages 2
   through 4 is a user request, not a stop: fast-track neither triggers it nor
   suppresses it. Fast-track bypasses only the crystallization language
-  gate and the overview-language ask, never the POC lane machinery.
+  gate and the overview-language ask, never the POC lane machinery. It fixes
+  only the language questions that no project setting answers: a configured
+  `explore.readyToProposeLanguage` or `explore.overviewLanguage` answers its
+  gate first (`docs/project-settings.md`).
 - `sai-explore`'s open-decision reconfirmation at `Crystallize` entry
   (`sai/commands/explore/steps/open-decisions.md`) runs unchanged under
   `--fast-track`: the notice is shown and every open decision is asked, and

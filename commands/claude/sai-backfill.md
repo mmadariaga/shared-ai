@@ -1,8 +1,8 @@
 ---
 description: Reconstruct proposal.md and capability specs from an already-implemented diff, for a change that skipped the SAI workflow.
 argument-hint: "[change-name] [--staged | --unstaged | --diff <sha>] [--fast-track]"
-model: opus
-effort: medium
+model: sonnet
+effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md

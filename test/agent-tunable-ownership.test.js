@@ -14,11 +14,10 @@ const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifes
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-4-review-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
@@ -29,11 +28,10 @@ const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-sub
 const WORKER_PHASE = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
-  'sai-3-implementation-worker': 'implementation',
-  'sai-5-review-worker': 'review',
-  'sai-6-security-worker': 'security',
-  'sai-7-performance-worker': 'performance',
-  'sai-8-accessibility-worker': 'accessibility',
+  'sai-4-review-worker': 'review',
+  'sai-5-security-worker': 'security',
+  'sai-6-performance-worker': 'performance',
+  'sai-7-accessibility-worker': 'accessibility',
   'sai-commit-worker': 'commit',
   'sai-archive-worker': 'archive',
   'sai-backfill-worker': 'backfill',
@@ -261,7 +259,7 @@ test('a tuned managed destination is recognized as managed and deleted', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-managed-'));
   try {
     flow.installClaude(dir);
-    const agentPath = path.join(dir, 'agents', 'sai-5-review-worker.md');
+    const agentPath = path.join(dir, 'agents', 'sai-4-review-worker.md');
     const tuned = fs.readFileSync(agentPath, 'utf8')
       .replace(/^model:.*$/m, 'model: tuned-model')
       .replace(/^effort:.*$/m, 'effort: tuned-effort');
@@ -287,7 +285,7 @@ test('a body-divergent managed destination is kept as a project-local override',
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-override-'));
   try {
     flow.installClaude(dir);
-    const agentPath = path.join(dir, 'agents', 'sai-5-review-worker.md');
+    const agentPath = path.join(dir, 'agents', 'sai-4-review-worker.md');
     const divergent = fs.readFileSync(agentPath, 'utf8') + '\n// project-local change\n';
     fs.writeFileSync(agentPath, divergent);
 
@@ -306,11 +304,11 @@ test('a body-divergent managed destination is kept as a project-local override',
 
 test('Claude and opencode uninstall enumerate their managed agent destinations', () => {
   const genericNames = ['explore', 'executor', 'budget'];
-  const applyNames = ['sai-4-red-worker', 'sai-4-green-worker',
-    'sai-direct-build-worker', 'sai-review-fix-worker'];
+  const applyNames = ['sai-3-red-worker', 'sai-3-green-worker',
+    'sai-direct-build-worker', 'sai-4-review-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 18],
-    ['opencode', flow.installOpencode, enumerateOpencode, 18],
+    ['claude', flow.installClaude, enumerateClaude, 16],
+    ['opencode', flow.installOpencode, enumerateOpencode, 16],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {
@@ -335,7 +333,7 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
           'claude agent destinations should include the three budget agent basenames');
       }
       assert.ok(applyNames.every(name => basenames.includes(name)),
-        `${harness} agent destinations should include the two apply-role worker filenames`);
+        `${harness} agent destinations should include the role worker filenames`);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

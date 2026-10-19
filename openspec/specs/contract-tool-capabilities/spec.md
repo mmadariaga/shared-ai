@@ -7,15 +7,47 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-five shipped command-requirement assignments SHALL include to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only new-change-branch workflow with their own resolvable profiles, alongside the twenty SAI commands, including sai-3-implement and sai-build. The new-change-branch assignment SHALL NOT require a command wrapper. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
+
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all nineteen commands have resolvable profiles
+- **THEN** all seventeen managed workers, all three Generic Agent roles under both harness names, and all twenty-five command-requirement assignments have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
+
 - **WHEN** profile resolution encounters an unknown capability or inheritance cycle
-- **THEN** resolution fails instead of granting unspecified access
+- **THEN** resolution fails instead of granting unspecified access.
+
+#### Scenario: Backlog invocation capabilities
+
+- **WHEN** the to-backlog command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the to-backlog and safe-operations skills, and shell invocation of the common to-backlog Node tool without changing publication confirmation requirements.
+
+#### Scenario: Backlog import capabilities
+
+- **WHEN** the from-backlog command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the from-backlog skill, and shell invocation of the common from-backlog Node tool, without granting file writes or the publication helper.
+
+#### Scenario: Next backlog-item selection capabilities
+
+- **WHEN** the from-next-backlog-item command profile is resolved for either harness
+- **THEN** it inherits the read-only import profile, includes the selector and importer skills, and limits shell grants to the selector Node helper select invocation and the existing import Node helper without adding file writes or direct provider-CLI grants.
+
+#### Scenario: PR/MR invocation capabilities
+
+- **WHEN** the to-pr command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the to-pr and safe-operations skills, and shell invocation of the common to-pr Node tool without authorizing publication or push.
+
+#### Scenario: Change-branch skill capabilities
+
+- **WHEN** the new-change-branch-command profile is resolved for either harness
+- **THEN** it inherits boot access, grants search and questions, includes the new-change-branch and safe-operations skills, and grants invocation of the common new-change-branch Node helper without authorizing any operation beyond the workflow requested local creation and switch.
+
+#### Scenario: Skill-only command requirements
+
+- **WHEN** capability requirements and installation projections are generated for new-change-branch under either harness
+- **THEN** the requirements registry identifies its new-change-branch-command profile and the universal skill is installed without a new-change-branch command wrapper.
 
 ### Requirement: Harness-native capability translation
 
@@ -76,3 +108,27 @@ The opt-in runtime test SHALL exercise the actual opencode permission evaluator 
 #### Scenario: Inherited permissions conflict with a profile
 - **WHEN** the opt-in test evaluates profile permissions after conflicting inherited rules
 - **THEN** required grants are allowed and excluded or unknown actions remain denied
+
+### Requirement: Concrete skill-owned preparation invocation declarations
+
+The to-backlog and explore command profiles SHALL declare `node {skills}/to-backlog/scripts/prepare-temp.js {harness}` in addition to their existing grants. Capability translation SHALL expand `{skills}` to project-local and user-global skill roots and `{harness}` to `claude` or `opencode`, retaining installed `{sai}` expansion. Claude Code SHALL receive concrete Bash pre-approvals for `.claude/skills` and `~/.claude/skills`; opencode SHALL receive explicit shell allow rules for `.opencode/skills` and `~/.config/opencode/skills`. These additions SHALL NOT add arbitrary Node execution, general-purpose mkdir or chmod grants, or preparation access to the research profile. Declarations SHALL remain separate from operation authorization and live effective-access evidence.
+
+#### Scenario: Claude Code preparation declarations
+
+- **WHEN** the to-backlog or explore command profile is translated for Claude Code
+- **THEN** it includes Bash pre-approvals for the concrete local and global to-backlog preparation script invocations with the `claude` argument.
+
+#### Scenario: OpenCode preparation declarations
+
+- **WHEN** the to-backlog or explore command profile is translated for opencode
+- **THEN** it includes explicit shell allow rules for the concrete local and global to-backlog preparation script invocations with the `opencode` argument.
+
+#### Scenario: Research profile remains unchanged
+
+- **WHEN** the research profile is resolved after adding the command preparation declarations
+- **THEN** it has no preparation-script grant.
+
+#### Scenario: Declaration does not approve publication
+
+- **WHEN** a command has a concrete preparation invocation declaration
+- **THEN** that declaration does not replace explicit publication confirmation or establish that the active harness permits the operation at runtime.

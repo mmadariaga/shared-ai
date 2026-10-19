@@ -6,7 +6,7 @@ This step asks every open decision (defined in `crystallization-protocol.md`, **
 
 > Some decisions are still open. Each decision you leave open will be asked during planning or implementation, and that question stops an unattended route until you answer it.
 
-**Questions.** Ask each open decision once, one decision per question, as a closed-choice prompt through the native picker, per the "Closed-choice prompts" rule in `sai/policies/remember.md` and the content rules of `@sai/policies/question-context.md`. The text before the picker quotes the open decision as the exploration left it and names where it sits: its `E<n>` or `I<n>` identifier, or the conversation. The options are that decision's own concrete answers, followed by `Leave it open` as the last option.
+**Questions.** Ask each open decision once, one decision per question. Present it through the harness-native picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (`AskUserQuestion` on Claude Code, `question` on opencode), with the content rules of `@sai/policies/question-context.md`. The text before the picker quotes the open decision as the exploration left it and names where it sits: its `E<n>` or `I<n>` identifier, or the conversation. The options are that decision's own concrete answers, followed by `Leave it open` as the last option.
 
 **Outcomes.** Each open decision ends in exactly one of two outcomes, held in the conversation only: `explore-idea@1` receives no event for this step and the panel gains no entry.
 

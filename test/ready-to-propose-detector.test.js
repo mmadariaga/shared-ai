@@ -2,12 +2,16 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'ready-to-propose.js');
-const { checkLoose, checkStrict, detect, LOOSE_LITERALS } = require(TOOL);
+const {
+  checkLoose, checkStrict, checkDispatchable, detect, hashBlock, resolveJudgment,
+  extractBlockTexts, LOOSE_LITERALS, HYGIENE_CLAUSES, VERDICTS_MARKER,
+} = require(TOOL);
 
 function run(args, input) {
   const result = spawnSync(process.execPath, [TOOL, ...args], { input, encoding: 'utf8' });
@@ -206,8 +210,131 @@ test('E4: a block can pass loose and fail strict', () => {
 });
 
 // ---------------------------------------------------------------------------
+// dispatchable profile
+// ---------------------------------------------------------------------------
+
+test('dispatchable: a canonical block passes, carries a hash, and flags nothing', () => {
+  const text = block('add-thing');
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, true, JSON.stringify(allViolations(verdict)));
+  assert.equal(verdict.dispatchable, true);
+  assert.deepEqual(verdict.flagged, []);
+  assert.equal(verdict.blocks[0].hash, hashBlock(extractBlockTexts(text)[0]));
+  assert.match(verdict.blocks[0].hash, /^[0-9a-f]{64}$/);
+});
+
+test('dispatchable: a single change with - None under Implementation Details is dispatchable (E4)', () => {
+  const text = block('add-thing', { 'Implementation Details': '\n- None' });
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, true, JSON.stringify(allViolations(verdict)));
+  assert.equal(verdict.dispatchable, true);
+  assert.equal(checkStrict(text).ok, true);
+});
+
+test('dispatchable: - None stays valid under Out of scope Implementation Details', () => {
+  assert.equal(checkDispatchable(block('add-thing')).ok, true);
+});
+
+test('dispatchable: every slice of a sliced set needs its own in-scope item (E7)', () => {
+  const text = `${block('slice-one')}\n${block('slice-two', { 'Implementation Details': '\n- None' })}`;
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, false);
+  assert.deepEqual(verdict.blocks[0].violations, []);
+  assert.ok(verdict.blocks[1].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+});
+
+test('dispatchable: an I in both sections of one block is a duplicate (E13)', () => {
+  const text = block('add-thing', { 'Out of scope Implementation Details': '\n- I1: add the module.' });
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.blocks[0].violations.some((v) => v.problem === 'DUPLICATE_IMPLEMENTATION_ITEM'));
+
+  const twice = checkDispatchable(block('add-thing', { 'Implementation Details': '\n- I1: add the module.\n- I1: add it again.' }));
+  assert.ok(twice.blocks[0].violations.some((v) => v.problem === 'DUPLICATE_IMPLEMENTATION_ITEM'));
+});
+
+test('dispatchable: an I in scope of no slice is rejected, a shared I is accepted (E13)', () => {
+  const one = block('slice-one', { 'Implementation Details': '\n- I1: add the module.', 'Out of scope Implementation Details': '\n- I2: wire it.\n- I3: document it.' });
+  const unowned = checkDispatchable(`${one}\n${block('slice-two', { 'Implementation Details': '\n- I2: wire it.', 'Out of scope Implementation Details': '\n- I1: add the module.' })}`);
+  assert.equal(unowned.ok, false);
+  const codes = unowned.violations.filter((v) => v.problem === 'UNOWNED_IMPLEMENTATION_ITEM');
+  assert.equal(codes.length, 1);
+  assert.match(codes[0].detail, /"I3"/);
+
+  const shared = checkDispatchable(`${one}\n${block('slice-two', { 'Implementation Details': '\n- I2: wire it.\n- I3: document it.\n- I1: add the module.', 'Out of scope Implementation Details': '\n- None' })}`);
+  assert.equal(shared.ok, true, JSON.stringify(allViolations(shared)));
+});
+
+test('dispatchable: the pre-filter flags each clause with block, line, and clause id', () => {
+  const cases = {
+    'planning-artifact': 'Write tasks.md for the change.',
+    'mutating-git': 'Then run git commit on the result.',
+    'subagent-dispatch': 'Dispatch a worker to do it.',
+    'published-spec-edit': 'Edit openspec/specs/foo/spec.md directly.',
+  };
+  for (const [clause, sentence] of Object.entries(cases)) {
+    const text = block('add-thing', { Why: ` ${sentence}` });
+    const verdict = checkDispatchable(text);
+    const line = text.split('\n').findIndex((l) => l.startsWith('**Why**')) + 1;
+    assert.deepEqual(verdict.flagged, [{ block: 0, line, clause }], clause);
+    assert.equal(verdict.ok, true, 'flagging is not a structural violation');
+    assert.equal(verdict.dispatchable, false, 'an unjudged flagged line is not dispatchable');
+  }
+});
+
+test('dispatchable: ordinary prose is not flagged', () => {
+  const text = block('add-thing', { Why: ' The design is simple; the git history stays untouched; the task list is short.' });
+  assert.deepEqual(checkDispatchable(text).flagged, []);
+});
+
+test('dispatchable: a context verdict clears a flagged line; a violation verdict does not (E3, E4)', () => {
+  const text = block('add-thing', { Why: ' The change documents git commit messages.' });
+  const line = text.split('\n').findIndex((l) => l.startsWith('**Why**')) + 1;
+  const context = [{ clause: 'mutating-git', line, evidence: 'subject matter', verdict: 'context' }];
+  const cleared = checkDispatchable(`${text}\n${VERDICTS_MARKER}\n${JSON.stringify(context)}`);
+  assert.equal(cleared.dispatchable, true);
+  assert.equal(cleared.judgment.cleared.length, 1);
+  const violation = [{ clause: 'mutating-git', line, evidence: 'requested work', verdict: 'violation' }];
+  const rejected = checkDispatchable(`${text}\n${VERDICTS_MARKER}\n${JSON.stringify(violation)}`);
+  assert.equal(rejected.dispatchable, false);
+  assert.equal(rejected.judgment.violations.length, 1);
+});
+
+test('dispatchable: unknown, malformed, and unparseable verdicts keep the set undispatchable', () => {
+  assert.equal(resolveJudgment([], [{ clause: 'mutating-git', line: 3, evidence: 'x', verdict: 'context' }]).ok, false);
+  assert.equal(resolveJudgment([], [{ clause: 'nope', line: 3, evidence: 'x', verdict: 'context' }]).invalid.length, 1);
+  assert.equal(resolveJudgment([{ block: 0, line: 3, clause: 'mutating-git' }],
+    [{ clause: 'mutating-git', line: 3, evidence: '', verdict: 'context' }]).ok, false);
+  const bad = checkDispatchable(`${block('add-thing')}\n${VERDICTS_MARKER}\nnot json`);
+  assert.equal(bad.ok, false);
+  assert.ok(bad.violations.some((v) => v.problem === 'VERDICTS_UNPARSEABLE'));
+});
+
+test('dispatchable: the clause ids are the four hygiene clauses', () => {
+  assert.deepEqual(HYGIENE_CLAUSES.map((c) => c.id),
+    ['planning-artifact', 'mutating-git', 'subagent-dispatch', 'published-spec-edit']);
+});
+
+test('dispatchable: the judgment policy lists exactly the tool\'s clause ids (I2)', () => {
+  const policy = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'policies', 'block-hygiene-judgment.md'), 'utf8');
+  const clauses = policy.slice(policy.indexOf('## Clauses'), policy.indexOf('## Judging'));
+  const listed = [...clauses.matchAll(/^- `([a-z-]+)` /gm)].map((m) => m[1]);
+  assert.deepEqual(listed, HYGIENE_CLAUSES.map((c) => c.id));
+});
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
+
+test('cli: dispatchable exits 0 only when the set is dispatchable', () => {
+  const clean = run(['check', '--profile', 'dispatchable'], block('add-thing'));
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.equal(clean.payload.dispatchable, true);
+  const pending = run(['check', '--profile', 'dispatchable'], block('add-thing', { Why: ' About git push.' }));
+  assert.equal(pending.status, 1);
+  assert.equal(pending.payload.ok, true);
+  assert.equal(pending.payload.judgment.pending.length, 1);
+});
 
 test('cli: strict on stdin prints a JSON verdict and exits 0', () => {
   const result = run(['check', '--profile', 'strict'], block('add-thing'));
@@ -229,4 +356,34 @@ test('cli: usage errors exit 2', () => {
   assert.equal(run(['check', '--profile', 'medium'], '').status, 2);
   assert.equal(run(['--profile', 'strict'], '').status, 2);
   assert.equal(run(['check', '--profile', 'strict', '--bogus'], '').status, 2);
+});
+
+test('cli hash: prints the sha256 of the single block and ignores text around it', () => {
+  const text = block('add-thing');
+  const bare = run(['hash'], text);
+  assert.equal(bare.status, 0, bare.stderr);
+  assert.equal(bare.payload.ok, true);
+  assert.equal(bare.payload.hash, hashBlock(extractBlockTexts(text)[0]));
+  assert.equal(bare.payload.hash, detect(text, 'dispatchable').blocks[0].hash);
+  const wrapped = run(['hash'], `--direct-build\n${text}`);
+  assert.equal(wrapped.payload.hash, bare.payload.hash);
+});
+
+test('cli hash: a truncated or altered block hashes differently', () => {
+  const text = block('add-thing');
+  const original = run(['hash'], text).payload.hash;
+  const cut = run(['hash'], text.slice(0, Math.floor(text.length / 2)));
+  assert.notEqual(cut.payload && cut.payload.hash, original);
+  const altered = run(['hash'], text.replace('Adds a thing.', 'Adds two things.'));
+  assert.notEqual(altered.payload.hash, original);
+});
+
+test('cli hash: anything other than exactly one block exits 1', () => {
+  const none = run(['hash'], 'no block here');
+  assert.equal(none.status, 1);
+  assert.equal(none.payload.ok, false);
+  assert.equal(none.payload.blocks, 0);
+  const two = run(['hash'], `${block('one-change')}\n${block('two-change')}`);
+  assert.equal(two.status, 1);
+  assert.equal(two.payload.blocks, 2);
 });

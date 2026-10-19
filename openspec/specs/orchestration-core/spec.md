@@ -75,7 +75,7 @@ The canonical orchestration source SHALL define one shared coordinator contract 
 
 ### Requirement: Chained phase composition
 
-The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters. The composition rules SHALL live in `sai/orchestration/composition.md`, layered on `sai/orchestration/command-runner.md`, and only composition coordinators SHALL fetch that file; the runner SHALL name it without fetching it. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing. Chained apply SHALL inherit the shared route through its existing apply phase adapter; the build coordinator SHALL not duplicate or replace that route.
+The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters. The composition rules SHALL live in `sai/orchestration/composition.md`, layered on `sai/orchestration/command-runner.md`, and only composition coordinators SHALL fetch that file; the runner SHALL name it without fetching it. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing.
 
 #### Scenario: Ordered sequence runs through the shared runner
 
@@ -103,9 +103,9 @@ The shared coordinator contract SHALL permit one invocation to execute an ordere
 
 #### Scenario: E10 recovery exhaustion cannot advance a build segment
 
-- **WHEN** an opted-in apply segment exhausts its three-slot diagnosis ledger without a coordinator-verified clean result
-- **THEN** the supervising composition SHALL close at the apply segment
-- **AND** it SHALL not re-enter implement, skip to a later adapter, or emit successful terminal navigation
+- **WHEN** an opted-in segment exhausts its three-slot diagnosis ledger without a coordinator-verified clean result
+- **THEN** the supervising composition SHALL close at that segment
+- **AND** it SHALL not re-enter an earlier segment, skip to a later adapter, or emit successful terminal navigation
 
 #### Scenario: Non-final completion transitions only to the successor
 
@@ -126,7 +126,7 @@ The shared coordinator contract SHALL permit one invocation to execute an ordere
 - **AND** the new diagnosis route SHALL add no phase-specific prompt, artifact, or lifecycle field unless that adapter opts into it
 
 ### Requirement: Separate phase worker contracts
-The orchestration source SHALL retain separate design-worker and implementation-worker contracts that layer phase policy over the shared worker lifecycle. The workers SHALL NOT be merged into a conditional all-phase prompt.
+The orchestration source SHALL retain a separate design-worker contract that layers phase policy over the shared worker lifecycle, and separate RED and GREEN worker contracts (`sai-3-red-worker`, `sai-3-green-worker`) for implementation behavior. The workers SHALL NOT be merged into a conditional all-phase prompt.
 
 #### Scenario: Phase behavior remains isolated
 - **WHEN** a design-only or implementation-only rule is authored
@@ -157,9 +157,8 @@ Consuming the shared orchestration contracts SHALL preserve existing command inp
 
 #### Scenario: Build inherits apply without a build-card edit
 
-- **WHEN** `/sai-build` activates its existing apply phase adapter
-- **THEN** the apply segment SHALL use the shared non-clean-closure and recovery route
-- **AND** `sai/commands/build/coordinator.md` SHALL retain its own resolution, re-entry, fast-track, and non-removable STOP rules unchanged
+- **WHEN** `/sai-build` runs its three segments (implement, review, implement again)
+- **THEN** no segment is an apply phase adapter, and `sai/commands/build/coordinator.md` alone owns the segment sequence, the change resolution, the re-entry rule, and the stop on a blocked or stopped segment
 
 #### Scenario: Existing invocation crosses the new seam
 
@@ -169,17 +168,17 @@ Consuming the shared orchestration contracts SHALL preserve existing command inp
 
 #### Scenario: Claude Code routed invocation is preserved
 
-- **WHEN** a Claude Code design or implementation wrapper invokes a routed planning phase
+- **WHEN** a Claude Code design wrapper invokes a routed planning phase
 - **THEN** its runtime skill SHALL resolve the canonical Claude binding, dispatch the existing named Claude planning agent, and continue by captured agent ID
 
 #### Scenario: opencode routed invocation is preserved
 
-- **WHEN** an opencode design or implementation wrapper invokes a routed planning phase
+- **WHEN** an opencode design wrapper invokes a routed planning phase
 - **THEN** its runtime skill SHALL resolve the canonical opencode binding, dispatch the existing named planning worker through `task`, and continue by captured task ID
 
 #### Scenario: Copilot inline invocation is preserved
 
-- **WHEN** a GitHub Copilot design or implementation wrapper invokes a planning phase
+- **WHEN** a GitHub Copilot design wrapper invokes a planning phase
 - **THEN** it SHALL resolve the existing inline command body and SHALL NOT enter the routed coordinator lifecycle
 
 ### Requirement: Distinct diagnosis recovery ledger
@@ -299,6 +298,6 @@ The shared runner SHALL validate each progress result before acting on it and SH
 - **AND** no new guard window opens and neither call waits for the other call's return value
 
 #### Scenario: Startup disclosure remains combined
-- **WHEN** a spec, design, implement, review, security, performance, or accessibility worker receives its post-ready task disclosure
+- **WHEN** a spec, design, review, security, performance, or accessibility worker receives its post-ready task disclosure
 - **THEN** the first filed step pointer opens the task continuation, the worker runs the fileless startup act first, and a successful ordinary startup reports the first two completed ids together
 - **AND** a resolution failure returns before analysis or the first filed step, a legitimate early outcome reports only actually completed steps, design seeds its selected variant on the first emit, and reconstruction preserves the active step id

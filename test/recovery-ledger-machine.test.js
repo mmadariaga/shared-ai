@@ -570,3 +570,102 @@ test('recovery-ledger@1 CLI emit carries budgets, exhaustion and Step-entry outc
   assert.equal(postGrantEntry.payload.budgets.worker.spent, 0);
   assert.equal(postGrantEntry.payload.budgets.coordinator.spent, 0);
 });
+
+test('veto: recorded only for an identified, active Step', () => {
+  let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 1' }).state;
+
+  const unidentified = machine.transition(state, { kind: 'veto' });
+  assert.equal(unidentified.rejected, 'unidentified Step');
+  assert.equal(unidentified.state.veto_active, '');
+
+  const inactive = machine.transition(state, { kind: 'veto', step: 'Step 2' });
+  assert.equal(inactive.rejected, 'Step is not active');
+  assert.equal(inactive.state.veto_active, '');
+
+  const recorded = machine.transition(state, { kind: 'veto', step: 'Step 1' });
+  assert.equal(recorded.veto, 'recorded');
+  assert.equal(recorded.state.veto_active, 'Step 1');
+  assert.deepEqual(recorded.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  }, 'recording a veto spends nothing');
+});
+
+test('authorized-veto-override: rejections leave budgets, history, and veto untouched', () => {
+  let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 1' }).state;
+  state = machine.transition(state, { key: ['a.js', 'point one', 'boundary'] }).state;
+  const baseline = machine.project(state).budgets;
+
+  const noVeto = machine.transition(state, { kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(noVeto.rejected, 'no active veto');
+  assert.deepEqual(noVeto.budgets, baseline);
+  assert.deepEqual(noVeto.attempt_history, []);
+  assert.deepEqual(noVeto.state.veto_lifts, []);
+
+  state = machine.transition(state, { kind: 'veto', step: 'Step 1' }).state;
+
+  const unauthorized = machine.transition(state, { kind: 'authorized-veto-override', step: 'Step 1' });
+  assert.equal(unauthorized.rejected, 'explicit authorization required');
+  assert.equal(unauthorized.state.veto_active, 'Step 1', 'an unauthorized event must not lift the veto');
+  assert.deepEqual(unauthorized.budgets, baseline);
+
+  const inactive = machine.transition(state, { kind: 'authorized-veto-override', step: 'Step 2', authorized: true });
+  assert.equal(inactive.rejected, 'Step is not active');
+  assert.equal(inactive.state.veto_active, 'Step 1');
+  assert.deepEqual(inactive.budgets, baseline);
+  assert.deepEqual(inactive.attempt_history, []);
+});
+
+test('authorized-veto-override: lifts exactly one veto without touching budgets or history', () => {
+  let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 1' }).state;
+  state = machine.transition(state, { key: ['a.js', 'point one', 'boundary'] }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt', key: ['b.js', 'point two', 'boundary'] }).state;
+  const baseline = machine.project(state).budgets;
+  state = machine.transition(state, { kind: 'veto', step: 'Step 1' }).state;
+
+  const lift = machine.transition(state, { kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(lift.veto_override, 'granted');
+  assert.equal(lift.rejected, undefined);
+  assert.equal(lift.state.veto_active, '');
+  assert.deepEqual(lift.state.veto_lifts, ['Step 1']);
+  assert.deepEqual(lift.budgets, baseline, 'the lift changes neither worker nor coordinator tallies');
+  assert.deepEqual(lift.attempt_history, [], 'the lift writes no attempt history');
+  assert.equal(lift.state.ledger.length, 1);
+  assert.equal(lift.state.coordinator_ledger.length, 1);
+
+  const second = machine.transition(lift.state, { kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(second.rejected, 'no active veto', 'one event lifts exactly one veto');
+  assert.deepEqual(second.state.veto_lifts, ['Step 1']);
+
+  const again = machine.transition(lift.state, { kind: 'veto', step: 'Step 1' });
+  assert.equal(again.veto, 'recorded');
+  assert.equal(again.state.veto_active, 'Step 1', 'a later veto is active again');
+  const relift = machine.transition(again.state, { kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(relift.veto_override, 'granted', 'a new veto needs and accepts a new override');
+  assert.deepEqual(relift.state.veto_lifts, ['Step 1', 'Step 1']);
+});
+
+test('recovery-ledger@1 CLI emit carries the veto record and override outcomes on the wire', () => {
+  const sessionId = deriveUuidFromKey('recovery-ledger-veto-wire-' + Date.now());
+  callSaiState('spawn', undefined, undefined, undefined);
+  const emit = (event) => callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify(event));
+
+  emit({ kind: 'step-entry', step: 'Step 1' });
+
+  const early = emit({ kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(early.payload.rejected, 'no active veto', 'the wire must reject an override when no veto is active');
+  assert.equal(early.payload.veto_override, undefined);
+
+  const recorded = emit({ kind: 'veto', step: 'Step 1' });
+  assert.equal(recorded.payload.veto, 'recorded', 'the CLI must expose a recorded veto');
+
+  const lifted = emit({ kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(lifted.payload.veto_override, 'granted', 'the CLI must expose an accepted veto override');
+  assert.deepEqual(lifted.payload.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  });
+
+  const second = emit({ kind: 'authorized-veto-override', step: 'Step 1', authorized: true });
+  assert.equal(second.payload.rejected, 'no active veto', 'a second override after the lift is rejected on the wire');
+});

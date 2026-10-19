@@ -43,17 +43,25 @@ When a contract pins the exact stop text (for example the prerequisite literals 
 
 ### Requirement: Contract-defined choice serves as the options
 
-When a contract already defines the choice for a stop (for example apply's exhausted Step: manual correction or one authorized fresh attempt), that choice SHALL be the options for that stop and no second question SHALL be added. Pinned labels, values, and order SHALL remain unchanged.
+When a contract already defines the choice for a stop (for example a stop whose owning contract lists the choices it offers), that choice SHALL be the options for that stop and no second question SHALL be added. Pinned labels, values, and order SHALL remain unchanged.
 
 The recommendation and agent/user work explanation SHALL precede the unchanged choice rather than reorder or rewrite it. Required approvals and recovery limits SHALL remain in force. The recommendation policy SHALL grant no new retry budget or mutation authority.
 
-#### Scenario: Apply Step exhausts its recovery budget
+#### Scenario: Stop's contract already defines the choice
 - **WHEN** an unplanned stop falls on a stop whose contract already defines the user's choice
 - **THEN** the contract-defined choice is presented as the options and no second question is added
 
-#### Scenario: Recommendation preserves Apply retry authorization
+#### Scenario: Apply Step exhausts its recovery budget
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-4-apply` command exists, so no apply exhausted-Step stop presents a choice
+
+#### Scenario: Recommendation preserves an authorized retry choice
 - **WHEN** the existing choice offers manual correction or one explicitly authorized fresh attempt
 - **THEN** the surface preserves that choice and its order while explaining the safe recommendation, proposed agent correction, required retry authorization, and any remaining user work
+
+#### Scenario: Recommendation preserves Apply retry authorization
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-4-apply` command exists, so no Apply retry authorization is offered
 
 ### Requirement: A single viable path is presented as the next step
 
@@ -85,7 +93,7 @@ In unattended lanes, the "what the user must decide" part of the stop notice in 
 
 ### Requirement: Direct Build final report keeps four sections
 
-Apply, Build, and full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for their closing reports instead of the former Direct Build four-section presentation. Next step SHALL name the required decision, and applicable stop options SHALL follow Execution details as a separate decision prompt outside the report. Existing choices and planned-stop exclusions SHALL remain in force; a pending execution question SHALL remain a pause rather than a terminal closing. The `--no-specs` POC SHALL retain its own closing behavior.
+Full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for its closing report instead of the former Direct Build four-section presentation. Next step SHALL name the required decision, and applicable stop options SHALL follow Execution details as a separate decision prompt outside the report. Existing choices and planned-stop exclusions SHALL remain in force; a pending execution question SHALL remain a pause rather than a terminal closing. The `--no-specs` POC SHALL retain its own closing behavior. The `/sai-build` closing line is defined by its coordinator and is not governed by this requirement.
 
 #### Scenario: Direct Build run ends incomplete
 
@@ -94,7 +102,7 @@ Apply, Build, and full Direct Build SHALL use `sai/policies/implementation-closi
 
 ### Requirement: Composition stops close once at the supervisor
 
-In a composition (`/sai-build`, `/sai-review`), a stop inside a segment SHALL close once, at the supervisor, with options covering the whole invocation (for example re-entering through `/sai-build`), and SHALL NOT produce one set of options per segment.
+In a composition (`/sai-build`, `/sai-deep-review`), a stop inside a segment SHALL close once, at the supervisor, with options covering the whole invocation (for example re-entering through `/sai-build`), and SHALL NOT produce one set of options per segment.
 
 #### Scenario: A segment stops inside a composition
 - **WHEN** a segment of a composition halts on an error or an unexpected condition
@@ -110,7 +118,7 @@ Stop options SHALL rest on the evidence the stopping surface already holds (payl
 
 ### Requirement: Options are proposals that grant no authority
 
-Choosing a stop option SHALL authorize only the named action, inside the gates that action already carries: safe-operations confirmations, commit gates, and recovery budgets stay in force. No option SHALL grant a retry budget; apply's authorized Step retry remains the only grant. An option that involves a destructive operation SHALL name it so its confirmation fires. Contract-pinned stop texts, report layouts, and existing choice prompts SHALL stay byte-identical.
+Choosing a stop option SHALL authorize only the named action, inside the gates that action already carries: safe-operations confirmations, commit gates, and recovery budgets stay in force. No option SHALL grant a retry budget; an authorized `continue` answer to an implement escalation, which resets that obstacle's counter, remains the only grant. An option that involves a destructive operation SHALL name it so its confirmation fires. Contract-pinned stop texts, report layouts, and existing choice prompts SHALL stay byte-identical.
 
 #### Scenario: User selects an option that involves a destructive operation
 - **WHEN** the user selects a stop option whose action involves a destructive operation

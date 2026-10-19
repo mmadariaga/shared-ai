@@ -6,12 +6,13 @@ Defines the canonical location for artifacts produced by `ai-*` commands and eli
 ## Requirements
 
 ### Requirement: All ai-* artifacts write to openspec change directory
-Every artifact produced by ai-* commands (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`) SHALL be written to `openspec/changes/{name}/`. The `plans/` directory SHALL NOT be used.
+
+Every artifact produced by ai-* commands (`review.md`, `security.md`, `performance.md`, `accessibility.md`) SHALL be written to `openspec/changes/{name}/`. The `plans/` directory SHALL NOT be used.
 
 #### Scenario: ai-2-implement writes to change directory
-- **WHEN** ai-2-implement completes for change `foo`
-- **THEN** `implementation.md` exists at `openspec/changes/foo/implementation.md`
-- **THEN** no file is created under `plans/`
+- **WHEN** the command catalog is read
+- **THEN** no `/ai-2-implement` command exists, and no `implementation.md` is written under any change directory
+- **AND** no file is created under `plans/`
 
 #### Scenario: ai-4-review writes to change directory
 - **WHEN** ai-4-review completes for change `foo`
@@ -19,7 +20,7 @@ Every artifact produced by ai-* commands (`implementation.md`, `review.md`, `sec
 
 #### Scenario: ai-pr reads from change directory
 - **WHEN** ai-pr is invoked for change `foo`
-- **THEN** it reads `openspec/changes/foo/proposal.md`, `implementation.md`, `review.md` as input artifacts
+- **THEN** it reads `openspec/changes/foo/proposal.md` and `review.md` as input artifacts
 
 ### Requirement: ai-4..7 and ai-pr accept change name as primary argument
 Commands that previously accepted a path to `plans/{name}/spec.md` SHALL accept a change name (kebab-case) and resolve paths to `openspec/changes/{name}/` automatically.

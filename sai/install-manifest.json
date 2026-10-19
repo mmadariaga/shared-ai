@@ -11,28 +11,31 @@
       "worker-read": { "extends": "boot", "search": true, "shell": ["*"], "message": true },
       "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
-      "worker-implementation": { "extends": "worker-write", "webfetch": true, "delegate": ["explorer", "budget"] },
       "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
       "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
       "spec-command": { "extends": "coordinator", "delegate": ["sai-1-spec-proposal-worker"] },
       "design-command": { "extends": "coordinator", "delegate": ["sai-2-design-worker"] },
-      "implementation-command": { "extends": "coordinator", "delegate": ["sai-3-implementation-worker"] },
-      "security-command": { "extends": "coordinator", "delegate": ["sai-6-security-worker"] },
-      "performance-command": { "extends": "coordinator", "delegate": ["sai-7-performance-worker"] },
-      "accessibility-command": { "extends": "coordinator", "delegate": ["sai-8-accessibility-worker"] },
-      "review-coordinator": { "extends": "coordinator", "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "git diff *", "git add *", "git commit *"], "delegate": ["sai-5-review-worker", "sai-6-security-worker", "sai-7-performance-worker", "sai-8-accessibility-worker", "sai-review-fix-worker"] },
-      "review-command": { "extends": "review-coordinator", "delegate": ["sai-5-review-worker", "sai-review-fix-worker"] },
-      "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-implementation-worker", "sai-4-red-worker", "sai-4-green-worker"] },
-      "apply-command": { "extends": "apply-coordinator", "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
+      "security-command": { "extends": "coordinator", "delegate": ["sai-5-security-worker"] },
+      "performance-command": { "extends": "coordinator", "delegate": ["sai-6-performance-worker"] },
+      "accessibility-command": { "extends": "coordinator", "delegate": ["sai-7-accessibility-worker"] },
+      "implement-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations"], "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker"] },
+      "review-command": { "extends": "implement-command", "delegate": ["sai-4-review-worker"] },
+      "build-command": { "extends": "implement-command", "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker"] },
+      "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-5-security-worker", "sai-6-performance-worker", "sai-7-accessibility-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
-      "archive-command": { "extends": "mutation-coordinator", "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
-      "backfill-command": { "extends": "mutation-coordinator", "delegate": ["sai-backfill-worker"] },
-      "merge-command": { "extends": "mutation-coordinator", "delegate": ["sai-merge-worker"] },
-      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
+      "archive-command": { "extends": "mutation-coordinator", "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
+      "backfill-command": { "extends": "mutation-coordinator", "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-backfill-worker"] },
+      "merge-command": { "extends": "mutation-coordinator", "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-merge-worker"] },
+      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
-      "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] }
+      "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
+      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"] },
+      "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] },
+      "from-next-backlog-item-command": { "extends": "from-backlog-command", "skills": ["from-next-backlog-item", "from-backlog"], "shell": ["node {sai}/tools/from-next-backlog-item.js select", "node {sai}/tools/from-backlog.js *"] },
+      "to-pr-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-pr", "safe-operations"], "shell": ["node {sai}/tools/to-pr.js *"] },
+      "new-change-branch-command": { "extends": "boot", "search": true, "question": true, "skills": ["new-change-branch", "safe-operations"], "shell": ["node {sai}/tools/new-change-branch.js *"] }
     },
     "assignments": {
       "agents": {
@@ -41,25 +44,23 @@
         "budget-subagent": "task", "budget": "task",
         "sai-1-spec-proposal-worker": "worker-research",
         "sai-2-design-worker": "worker-design",
-        "sai-3-implementation-worker": "worker-implementation",
-        "sai-5-review-worker": "worker-research",
-        "sai-6-security-worker": "worker-research",
-        "sai-7-performance-worker": "worker-research",
-        "sai-8-accessibility-worker": "worker-research",
+        "sai-5-security-worker": "worker-research",
+        "sai-6-performance-worker": "worker-research",
+        "sai-7-accessibility-worker": "worker-research",
         "sai-commit-worker": "worker-read", "sai-archive-worker": "worker-read",
         "sai-backfill-worker": "worker-backfill", "sai-merge-worker": "worker-write",
-        "sai-4-red-worker": "worker-execution", "sai-4-green-worker": "worker-execution",
-        "sai-direct-build-worker": "worker-write", "sai-review-fix-worker": "worker-write"
+        "sai-direct-build-worker": "worker-write",
+        "sai-3-red-worker": "worker-execution", "sai-3-green-worker": "worker-execution",
+        "sai-4-review-worker": "worker-research"
       },
       "commands": {
-        "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implementation-command",
-        "sai-4-apply": "apply-command", "sai-build": "apply-coordinator",
-        "sai-5-review": "review-command", "sai-review": "review-coordinator",
-        "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
+        "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implement-command",
+        "sai-4-review": "review-command", "sai-build": "build-command", "sai-deep-review": "deep-review-command",
+        "sai-5-security": "security-command", "sai-6-performance": "performance-command", "sai-7-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
-        "sai-explore": "explore-command", "sai-pr": "utility-write", "sai-retire-docs": "utility-write",
-        "sai-status": "status-command", "sai-worktree": "worktree-command"
+        "sai-explore": "explore-command", "sai-retire-docs": "utility-write",
+        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "from-next-backlog-item": "from-next-backlog-item-command", "to-pr": "to-pr-command", "new-change-branch": "new-change-branch-command"
       }
     }
   },
@@ -67,6 +68,8 @@
     "templates": {
       "claudeBinding": "sai/orchestration/workers/bindings/claude/worker-template.md",
       "opencodeBinding": "sai/orchestration/workers/bindings/opencode/worker-template.md",
+      "claudeStandaloneBinding": "sai/orchestration/workers/bindings/claude/standalone-worker-template.md",
+      "opencodeStandaloneBinding": "sai/orchestration/workers/bindings/opencode/standalone-worker-template.md",
       "claudeAgent": "agents/claude/worker-template.md",
       "opencodeAgent": "agents/opencode/worker-template.md"
     },
@@ -109,8 +112,8 @@
         "claudeAgent": {
           "agentName": "sai-1-spec-proposal-worker",
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
@@ -126,8 +129,8 @@
         "claudeAgent": {
           "agentName": "sai-2-design-worker",
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
@@ -136,86 +139,52 @@
         }
       },
       {
-        "phase": "implementation",
-        "workerName": "sai-3-implementation-worker",
-        "workerContract": "sai/commands/implement/worker.md",
-        "bindingStem": "implementation",
-        "claudeAgent": {
-          "agentName": "sai-3-implementation-worker",
-          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
-          "model": "opus",
-          "effort": "medium"
-        },
-        "opencodeAgent": {
-          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
-          "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max"
-        }
-      },
-      {
-        "phase": "review",
-        "workerName": "sai-5-review-worker",
-        "workerContract": "sai/commands/review/worker.md",
-        "bindingStem": "review",
-        "claudeAgent": {
-          "agentName": "sai-5-review-worker",
-          "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
-          "model": "opus",
-          "effort": "medium"
-        },
-        "opencodeAgent": {
-          "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
-          "model": "opencode-go/gpt-5.6-luna",
-          "variant": "max"
-        }
-      },
-      {
         "phase": "security",
-        "workerName": "sai-6-security-worker",
+        "workerName": "sai-5-security-worker",
         "workerContract": "sai/commands/security/worker.md",
         "bindingStem": "security",
         "claudeAgent": {
-          "agentName": "sai-6-security-worker",
-          "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
+          "agentName": "sai-5-security-worker",
+          "description": "Security-audit worker for /sai-5-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opus",
-          "effort": "xhigh"
+          "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
+          "description": "Security-audit worker for /sai-5-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
       },
       {
         "phase": "performance",
-        "workerName": "sai-7-performance-worker",
+        "workerName": "sai-6-performance-worker",
         "workerContract": "sai/commands/performance/worker.md",
         "bindingStem": "performance",
         "claudeAgent": {
-          "agentName": "sai-7-performance-worker",
-          "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
+          "agentName": "sai-6-performance-worker",
+          "description": "Performance-audit worker for /sai-6-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
+          "description": "Performance-audit worker for /sai-6-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
       },
       {
         "phase": "accessibility",
-        "workerName": "sai-8-accessibility-worker",
+        "workerName": "sai-7-accessibility-worker",
         "workerContract": "sai/commands/accessibility/worker.md",
         "bindingStem": "accessibility",
         "claudeAgent": {
-          "agentName": "sai-8-accessibility-worker",
-          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
+          "agentName": "sai-7-accessibility-worker",
+          "description": "Accessibility-audit worker for /sai-7-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
+          "description": "Accessibility-audit worker for /sai-7-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
@@ -228,7 +197,7 @@
         "claudeAgent": {
           "agentName": "sai-commit-worker",
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
-          "model": "sonnet",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {
@@ -245,7 +214,7 @@
         "claudeAgent": {
           "agentName": "sai-archive-worker",
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
-          "model": "sonnet",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {
@@ -289,42 +258,6 @@
         }
       },
       {
-        "phase": "apply",
-        "workerName": "sai-4-red-worker",
-        "workerContract": "sai/commands/apply/red-worker.md",
-        "bindingStem": "red",
-        "tier": "budget",
-        "claudeAgent": {
-          "agentName": "sai-4-red-worker",
-          "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
-          "model": "sonnet",
-          "effort": "medium"
-        },
-        "opencodeAgent": {
-          "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
-          "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max"
-        }
-      },
-      {
-        "phase": "apply",
-        "workerName": "sai-4-green-worker",
-        "workerContract": "sai/commands/apply/green-worker.md",
-        "bindingStem": "green",
-        "tier": "budget",
-        "claudeAgent": {
-          "agentName": "sai-4-green-worker",
-          "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
-          "model": "opus",
-          "effort": "medium"
-        },
-        "opencodeAgent": {
-          "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
-          "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max"
-        }
-      },
-      {
         "phase": "direct-build",
         "workerName": "sai-direct-build-worker",
         "workerContract": "sai/commands/explore/direct-build-worker.md",
@@ -333,8 +266,8 @@
         "claudeAgent": {
           "agentName": "sai-direct-build-worker",
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
@@ -343,20 +276,55 @@
         }
       },
       {
-        "phase": "review-fix",
-        "workerName": "sai-review-fix-worker",
-        "workerContract": "sai/commands/meta-review/review-fix-worker.md",
-        "bindingStem": "review-fix",
+        "phase": "red",
+        "workerName": "sai-3-red-worker",
+        "workerContract": "sai/commands/implement/red-worker.md",
+        "bindingStem": "red",
         "tier": "budget",
         "claudeAgent": {
-          "agentName": "sai-review-fix-worker",
-          "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
+          "agentName": "sai-3-red-worker",
+          "description": "RED worker for /sai-3-implement, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Lives for the whole run and writes each step's failing tests and interface stubs.",
+          "model": "haiku",
+          "effort": "medium"
+        },
+        "opencodeAgent": {
+          "description": "RED worker for /sai-3-implement, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Lives for the whole run and writes each step's failing tests and interface stubs.",
+          "model": "opencode-go/deepseek-v4.1-flash",
+          "variant": "max"
+        }
+      },
+      {
+        "phase": "green",
+        "workerName": "sai-3-green-worker",
+        "workerContract": "sai/commands/implement/green-worker.md",
+        "bindingStem": "green",
+        "tier": "budget",
+        "claudeAgent": {
+          "agentName": "sai-3-green-worker",
+          "description": "GREEN worker for /sai-3-implement, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Lives for the whole run and writes each step's production code, leaving its tests as written.",
+          "model": "haiku",
+          "effort": "xhigh"
+        },
+        "opencodeAgent": {
+          "description": "GREEN worker for /sai-3-implement, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Lives for the whole run and writes each step's production code, leaving its tests as written.",
+          "model": "opencode-go/deepseek-v4.1-flash",
+          "variant": "max"
+        }
+      },
+      {
+        "phase": "review",
+        "workerName": "sai-4-review-worker",
+        "workerContract": "sai/commands/review/worker.md",
+        "bindingStem": "review",
+        "claudeAgent": {
+          "agentName": "sai-4-review-worker",
+          "description": "Review worker for /sai-4-review, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Reviews the change's diff in a fresh worker and writes review.md without fixing anything.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
-          "model": "opencode-go/deepseek-v4.1-flash",
+          "description": "Review worker for /sai-4-review, /sai-build, and /sai-deep-review, dispatched only by their coordinators. Reviews the change's diff in a fresh worker and writes review.md without fixing anything.",
+          "model": "opencode-go/gpt-5.6-luna",
           "variant": "max"
         }
       }
@@ -682,6 +650,50 @@
       "drift": "content"
     },
     {
+      "id": "to-pr-references",
+      "source": "skills/universal/to-pr",
+      "destination": { "class": "skills", "path": "to-pr" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["description-format.md", "providers/**/*.md", "providers/**/*.json"],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "from-backlog-references",
+      "source": "skills/universal/from-backlog/providers",
+      "destination": { "class": "skills", "path": "from-backlog/providers" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["**/*.md", "**/*.json"],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "from-next-backlog-item-references",
+      "source": "skills/universal/from-next-backlog-item/providers",
+      "destination": { "class": "skills", "path": "from-next-backlog-item/providers" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["**/*.md"],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "to-backlog-references",
+      "source": "skills/universal/to-backlog",
+      "destination": { "class": "skills", "path": "to-backlog" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["create.md", "update.md", "slice-set.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
       "id": "claude-skills",
       "source": "skills/claude",
       "destination": {
@@ -716,25 +728,6 @@
       ],
       "ownership": "managed",
       "drift": "content"
-    },
-    {
-      "id": "claude-sai-3-implementation-worker",
-      "source": "agents/claude/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-3-implementation-worker.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "implementation"
-      }
     },
     {
       "id": "claude-sai-2-design-worker",
@@ -775,30 +768,11 @@
       }
     },
     {
-      "id": "claude-sai-5-review-worker",
+      "id": "claude-sai-5-security-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-5-review-worker.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "review"
-      }
-    },
-    {
-      "id": "claude-sai-6-security-worker",
-      "source": "agents/claude/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-6-security-worker.md"
+        "path": "sai-5-security-worker.md"
       },
       "harnesses": [
         "claude"
@@ -813,11 +787,11 @@
       }
     },
     {
-      "id": "claude-sai-7-performance-worker",
+      "id": "claude-sai-6-performance-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-7-performance-worker.md"
+        "path": "sai-6-performance-worker.md"
       },
       "harnesses": [
         "claude"
@@ -832,11 +806,11 @@
       }
     },
     {
-      "id": "claude-sai-8-accessibility-worker",
+      "id": "claude-sai-7-accessibility-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-8-accessibility-worker.md"
+        "path": "sai-7-accessibility-worker.md"
       },
       "harnesses": [
         "claude"
@@ -848,44 +822,6 @@
       "matrix": {
         "kind": "agent",
         "phase": "accessibility"
-      }
-    },
-    {
-      "id": "claude-sai-4-red-worker",
-      "source": "agents/claude/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-4-red-worker.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "apply"
-      }
-    },
-    {
-      "id": "claude-sai-4-green-worker",
-      "source": "agents/claude/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-4-green-worker.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "apply"
       }
     },
     {
@@ -1029,49 +965,11 @@
       }
     },
     {
-      "id": "opencode-sai-3-implementation-worker",
+      "id": "opencode-sai-5-security-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-3-implementation-worker.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "implementation"
-      }
-    },
-    {
-      "id": "opencode-sai-5-review-worker",
-      "source": "agents/opencode/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-5-review-worker.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "review"
-      }
-    },
-    {
-      "id": "opencode-sai-6-security-worker",
-      "source": "agents/opencode/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-6-security-worker.md"
+        "path": "sai-5-security-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1086,11 +984,11 @@
       }
     },
     {
-      "id": "opencode-sai-7-performance-worker",
+      "id": "opencode-sai-6-performance-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-7-performance-worker.md"
+        "path": "sai-6-performance-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1105,11 +1003,11 @@
       }
     },
     {
-      "id": "opencode-sai-8-accessibility-worker",
+      "id": "opencode-sai-7-accessibility-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-8-accessibility-worker.md"
+        "path": "sai-7-accessibility-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1121,44 +1019,6 @@
       "matrix": {
         "kind": "agent",
         "phase": "accessibility"
-      }
-    },
-    {
-      "id": "opencode-sai-4-red-worker",
-      "source": "agents/opencode/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-4-red-worker.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "apply"
-      }
-    },
-    {
-      "id": "opencode-sai-4-green-worker",
-      "source": "agents/opencode/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-4-green-worker.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "apply"
       }
     },
     {
@@ -1295,11 +1155,11 @@
       }
     },
     {
-      "id": "claude-sai-review-fix-worker",
+      "id": "claude-sai-3-red-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-review-fix-worker.md"
+        "path": "sai-3-red-worker.md"
       },
       "harnesses": [
         "claude"
@@ -1310,15 +1170,15 @@
       "drift": "content",
       "matrix": {
         "kind": "agent",
-        "phase": "review-fix"
+        "phase": "red"
       }
     },
     {
-      "id": "opencode-sai-review-fix-worker",
+      "id": "opencode-sai-3-red-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-review-fix-worker.md"
+        "path": "sai-3-red-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1329,7 +1189,83 @@
       "drift": "content",
       "matrix": {
         "kind": "agent",
-        "phase": "review-fix"
+        "phase": "red"
+      }
+    },
+    {
+      "id": "claude-sai-3-green-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-3-green-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "green"
+      }
+    },
+    {
+      "id": "opencode-sai-3-green-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-3-green-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "green"
+      }
+    },
+    {
+      "id": "claude-sai-4-review-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-review-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review"
+      }
+    },
+    {
+      "id": "opencode-sai-4-review-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-review-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review"
       }
     },
     {
@@ -1447,6 +1383,13 @@
     }
   ],
   "retirements": [
+    { "id": "retired-sai-pr-claude", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["claude"], "managedHashes": ["c0571888d02f3a4d5cb92c2c9328c37ac42453703db3592e871f049b495d0dfa", "895c177fa529659d34d0d94344775cc3779d7236ec6c3671012de4ec708f33d9"] },
+    { "id": "retired-sai-pr-opencode", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["opencode"], "managedHashes": ["b5464e822849b6499d4054c4acaa62df4b6d699beda80f48c44ada59a6922c68", "757f4406f2db41f40744bd3dd0b4055441a90d90d5d2618497e93637bdd8c12b"] },
+    { "id": "retired-pr-body", "destination": { "class": "sai", "path": "commands/pr/body.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["634f3094b588e912e2ede4d7273afcb15f25f48437caddd3ccac56d701da32f4"] },
+    { "id": "retired-pr-bootstrap", "destination": { "class": "sai", "path": "commands/pr/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09"] },
+    { "id": "retired-pr-instructions", "destination": { "class": "sai", "path": "commands/pr/instructions.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["64d7a151bd92028ca357b508a34683c098de12dd1ff661767f7289963e0da5bf"] },
+    { "id": "retired-pr-template", "destination": { "class": "sai", "path": "commands/pr/pr-body.template.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["9dc9c051e2d52e4a2392da54032c17c97e0c614d6a69e054b0c5e426376c9cef"] },
+    { "id": "retired-pr-tool", "destination": { "class": "sai", "path": "tools/pr.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["02660495e8d1fe672a55e47d4c2029f5d2a718a66603218ff1fdff3644cd040b"] },
     {
       "id": "retired-review-mutation-analysis-step",
       "destination": {
@@ -1854,7 +1797,8 @@
         "689c2cab58cd9cc41c3a37ecc32e16a4e4503c1ac379304de1fc8e3b6c4311c2",
         "2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01",
         "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14",
-        "a302a73dfc04c21cfbbac3a3f1afa303ee334526e2f0a42967246ce8d0032a4a"
+        "a302a73dfc04c21cfbbac3a3f1afa303ee334526e2f0a42967246ce8d0032a4a",
+        "eb202f20b2a36bf2dbc0722d0d3c076f4308c0a54d25249b8d51e51219e59b26"
       ]
     },
     {
@@ -3452,6 +3396,361 @@
         "4e08d6c3a775ac95e44603fc3b339e5891045ff3b2986d9a3e81709f57ae87e0",
         "9f04518e6667eb787eb6a455ba0d018c32109abe81429c361e4fa759a84f4aa0",
         "b14d6f77b72dead10578eb1eebbefc01c5315baa77da3aa19322ca69a1052411"
+      ]
+    },
+    { "id": "retired-claude-command-sai-4-apply", "destination": { "class": "commands", "path": "sai-4-apply.md" }, "harnesses": ["claude"], "managedHashes": ["38950f45976360cf9e366b6bff3bbe4a274f9ade45b3aff0d3459edaf18395c2"] },
+    { "id": "retired-claude-command-sai-5-review", "destination": { "class": "commands", "path": "sai-5-review.md" }, "harnesses": ["claude"], "managedHashes": ["24a9551e8aa68de9b17bb966cec56b449376f35f0c6414b241e488c3def08352"] },
+    { "id": "retired-claude-command-sai-review", "destination": { "class": "commands", "path": "sai-review.md" }, "harnesses": ["claude"], "managedHashes": ["f0080c43886fe43ab935794e5548dff7d8bb3efd7c171901f66da3ca14f52c8b"] },
+    { "id": "retired-claude-command-sai-build-new", "destination": { "class": "commands", "path": "sai-build-new.md" }, "harnesses": ["claude"], "managedHashes": ["b351c7d136260b2bf5d0b63e9bf00acd8d51ea492502337eb3450858a9e1d574"] },
+    { "id": "retired-claude-command-sai-3-implement-new", "destination": { "class": "commands", "path": "sai-3-implement-new.md" }, "harnesses": ["claude"], "managedHashes": ["e9ec10eda32174b6a2afa319217160995f705df4ec42d801e5bedd8a5d97f584"] },
+    { "id": "retired-claude-command-sai-4-review-new", "destination": { "class": "commands", "path": "sai-4-review-new.md" }, "harnesses": ["claude"], "managedHashes": ["c2d3fd3f76d45add40dba22a56006db1b296a90e8fc3178aab40ce2fa605b593"] },
+    { "id": "retired-claude-agent-sai-3-implementation-worker", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["claude"], "managedHashes": ["be822f59065ed68edc25dd0d1a3931702efa825fa0345ceb94d6c6543135e268"] },
+    { "id": "retired-claude-agent-sai-4-red-worker", "destination": { "class": "agents", "path": "sai-4-red-worker.md" }, "harnesses": ["claude"], "managedHashes": ["8d26d486ca963ea0e4ff093c9f93c80782bdab0108bda160c8fe9fd73f58c384"] },
+    { "id": "retired-claude-agent-sai-4-green-worker", "destination": { "class": "agents", "path": "sai-4-green-worker.md" }, "harnesses": ["claude"], "managedHashes": ["10cee28f47f09aef68c30e67559c3a196c8662b7a783767af8f353731cb802a5"] },
+    { "id": "retired-claude-agent-sai-5-review-worker", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["claude"], "managedHashes": ["1b642583bbebff37e484325af0f5e1a9a244f5f3704323ac0d48bad11ee7e3b1"] },
+    { "id": "retired-claude-agent-sai-review-fix-worker", "destination": { "class": "agents", "path": "sai-review-fix-worker.md" }, "harnesses": ["claude"], "managedHashes": ["e079205565bf9732e660e09532e36082d7cd83f8324b1b6459538f090cad2437"] },
+    { "id": "retired-claude-agent-sai-red-new-worker", "destination": { "class": "agents", "path": "sai-red-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["f9027d5c3c7cc88ab46ef68326a43f07368129ee2567f5e7ed5356ad82103e25"] },
+    { "id": "retired-claude-agent-sai-green-new-worker", "destination": { "class": "agents", "path": "sai-green-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["003786eeea022a8ac8cb71da52f6eefe741a7ce9b680ff88f86b7b892aa3b18c"] },
+    { "id": "retired-claude-agent-sai-review-new-worker", "destination": { "class": "agents", "path": "sai-review-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["d43cf94999b2ff5e9912605ea4dca037df3e1c6a729ec5314149d8ba75f8612e"] },
+    { "id": "retired-claude-binding-implementation-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["claude"], "managedHashes": ["31bda12d4d3df7bc890ea7f14e376923a587827e24ee059eca527bdc660cc44c"] },
+    { "id": "retired-claude-binding-review-fix-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-fix-worker.md" }, "harnesses": ["claude"], "managedHashes": ["8d499ce0f7b6bf140e74d62705ecc5a855ca56e0cf26eeebbaa5b032aa0abd88"] },
+    { "id": "retired-claude-binding-red-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/red-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["97602af1024f1711ccd24b0639ac09417eadf47a719d10547989faff4b320355"] },
+    { "id": "retired-claude-binding-green-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/green-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["db90bb177f0325966651ddc8cc912638392f995ac53f7970dc2fcf6efd8ef6ec"] },
+    { "id": "retired-claude-binding-review-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-new-worker.md" }, "harnesses": ["claude"], "managedHashes": ["dc7b940475cd6e42c643a16e5d243d01c137ec8b2788be1fd32dbbf6af2fd47f"] },
+    { "id": "retired-opencode-command-sai-4-apply", "destination": { "class": "commands", "path": "sai-4-apply.md" }, "harnesses": ["opencode"], "managedHashes": ["682d74fd32e2079febac5c8edab2bf0ddc029230d13ecd328b53de22e0323a75"] },
+    { "id": "retired-opencode-command-sai-5-review", "destination": { "class": "commands", "path": "sai-5-review.md" }, "harnesses": ["opencode"], "managedHashes": ["e769955d4d8a912a1e80beb1ed4ad3adf9a62e5324aed6a33a0a81bb556d1a76"] },
+    { "id": "retired-opencode-command-sai-review", "destination": { "class": "commands", "path": "sai-review.md" }, "harnesses": ["opencode"], "managedHashes": ["35e9b41e567ecbc4689adeed8c6a7ca36c4eb04f5f5513796b3dfcab6fe7f854"] },
+    { "id": "retired-opencode-command-sai-build-new", "destination": { "class": "commands", "path": "sai-build-new.md" }, "harnesses": ["opencode"], "managedHashes": ["e6c896ee595c7f98138975a4138793abef2398d219f2524df05e9d7c7086932f"] },
+    { "id": "retired-opencode-command-sai-3-implement-new", "destination": { "class": "commands", "path": "sai-3-implement-new.md" }, "harnesses": ["opencode"], "managedHashes": ["9b916b4a121cf666b5092a95ce6c8007ed670bd7845a6d9463f34d0d02845d6a"] },
+    { "id": "retired-opencode-command-sai-4-review-new", "destination": { "class": "commands", "path": "sai-4-review-new.md" }, "harnesses": ["opencode"], "managedHashes": ["d5fd4df038a4d1fc075e13f1a1e5cb7595a5df0a3a714db941100dc0424709d1"] },
+    { "id": "retired-opencode-agent-sai-3-implementation-worker", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["00c2df2a1c1105d47314ea5c12976dee9cde4a18f1e7ae9a835d4554b5f3b3ab"] },
+    { "id": "retired-opencode-agent-sai-4-red-worker", "destination": { "class": "agents", "path": "sai-4-red-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["04afe6fa9b510bf9b8c9515a2c7c7e04f40c33d09e5c0bd06f293915b2044adf"] },
+    { "id": "retired-opencode-agent-sai-4-green-worker", "destination": { "class": "agents", "path": "sai-4-green-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["3b4b04b90dfd6267c2c7f51244ae17f78cdfff38a6b5352459ffb790a134e91a"] },
+    { "id": "retired-opencode-agent-sai-5-review-worker", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["4563a564973bc26c0599a54ca733b71fa1c94c5fea772f7f2e1b8bc046bf8f3c"] },
+    { "id": "retired-opencode-agent-sai-review-fix-worker", "destination": { "class": "agents", "path": "sai-review-fix-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["a622022551fb196d8675a26532f291e3d8a41fc142e13043e977d75722e65f31"] },
+    { "id": "retired-opencode-agent-sai-red-new-worker", "destination": { "class": "agents", "path": "sai-red-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["b58f0b7078aad4dd7d10bd6f30a5857a306020a146c6a499b9379936944ce1ca"] },
+    { "id": "retired-opencode-agent-sai-green-new-worker", "destination": { "class": "agents", "path": "sai-green-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["7ce6c1640c4b7f620026195c0b4080f1276c8c926b44e12dacce2b2d36a4355d"] },
+    { "id": "retired-opencode-agent-sai-review-new-worker", "destination": { "class": "agents", "path": "sai-review-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["df203eaa2905ff18e4b7a186aac90a9a769aec11ffe98dede5495ad35c34f2a7"] },
+    { "id": "retired-opencode-binding-implementation-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["f29ce7551be4188d1f8935dc3781259645c1c113204c9c8d2b7afbef6bffc69c"] },
+    { "id": "retired-opencode-binding-review-fix-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-fix-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["6804f36f3ff7d8900fd4f04f6845310047aa065a7f8703ebb8bfeb5f959a7178"] },
+    { "id": "retired-opencode-binding-red-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/red-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["a1fa15f20f6db0a3b709a9d724f80f871d05a6f24f73e24772ade3fca86fa093"] },
+    { "id": "retired-opencode-binding-green-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/green-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["23fae7bfd57a353a1ebc0327798d312f9c7a5b51860bd3f9b7377b90d7944b6b"] },
+    { "id": "retired-opencode-binding-review-new-worker", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-new-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["0841349a1cd34919aea27498e48dcb5e916a4dff8c7ca41956d349c114d30a59"] },
+    { "id": "retired-legacy-build-capabilities-apply-command-json-claude", "destination": { "class": "sai", "path": "capabilities/apply-command.json" }, "harnesses": ["claude"], "managedHashes": ["b92eea38bae806b508bc62fe5716d80fb87acce14b4d92b44451e60772f8d632"] },
+    { "id": "retired-legacy-build-capabilities-apply-command-json-opencode", "destination": { "class": "sai", "path": "capabilities/apply-command.json" }, "harnesses": ["opencode"], "managedHashes": ["8ee2f712174422335e2e5cda54906c34eb562fa2307362cef93a6472cf26857e"] },
+    { "id": "retired-legacy-build-capabilities-apply-coordinator-json-claude", "destination": { "class": "sai", "path": "capabilities/apply-coordinator.json" }, "harnesses": ["claude"], "managedHashes": ["e49fa9575eff047e59539be386bca23bd496e2ecd44666b0306fca990f638f0f"] },
+    { "id": "retired-legacy-build-capabilities-apply-coordinator-json-opencode", "destination": { "class": "sai", "path": "capabilities/apply-coordinator.json" }, "harnesses": ["opencode"], "managedHashes": ["2aa909fa30e436d6a9f5bc899525787526138dd017e19d0612e5da023b71cd38"] },
+    { "id": "retired-legacy-build-capabilities-build-new-command-json-claude", "destination": { "class": "sai", "path": "capabilities/build-new-command.json" }, "harnesses": ["claude"], "managedHashes": ["8225f0797cb9490ba3d01379f7906807546e2db6df21e81be36493c20abe8d6b"] },
+    { "id": "retired-legacy-build-capabilities-build-new-command-json-opencode", "destination": { "class": "sai", "path": "capabilities/build-new-command.json" }, "harnesses": ["opencode"], "managedHashes": ["68a603700773eb14d1dec14caf4e7b3e908fb43f974fbd712f32babc4fe2cfb7"] },
+    { "id": "retired-legacy-build-capabilities-implement-new-command-json-claude", "destination": { "class": "sai", "path": "capabilities/implement-new-command.json" }, "harnesses": ["claude"], "managedHashes": ["a42a4f6dd379d4a7447133c79d45a02a76c660902ec1c817dcd9fa69ee8ef16e"] },
+    { "id": "retired-legacy-build-capabilities-implement-new-command-json-opencode", "destination": { "class": "sai", "path": "capabilities/implement-new-command.json" }, "harnesses": ["opencode"], "managedHashes": ["dd6132866028595872ef0e3206b87a395893e80212d0399b06dd346119bf5794"] },
+    { "id": "retired-legacy-build-capabilities-implementation-command-json-claude", "destination": { "class": "sai", "path": "capabilities/implementation-command.json" }, "harnesses": ["claude"], "managedHashes": ["450873ed294b8256cd2d3f11c689ab0c739e9992e8d0a4eac1782ca5bcdd7cfb"] },
+    { "id": "retired-legacy-build-capabilities-implementation-command-json-opencode", "destination": { "class": "sai", "path": "capabilities/implementation-command.json" }, "harnesses": ["opencode"], "managedHashes": ["a55088165dea0593021665762a20c5d9d5a472cee4cdbf9125e1c4e36afcf326"] },
+    { "id": "retired-legacy-build-capabilities-review-coordinator-json-claude", "destination": { "class": "sai", "path": "capabilities/review-coordinator.json" }, "harnesses": ["claude"], "managedHashes": ["54d2fada00095689929e192c5f1ef2c309cdea5f81e1c767320756471d44ed13"] },
+    { "id": "retired-legacy-build-capabilities-review-coordinator-json-opencode", "destination": { "class": "sai", "path": "capabilities/review-coordinator.json" }, "harnesses": ["opencode"], "managedHashes": ["5888bc1316e5abf69be6a61389e730133500a998196545b3f5582f5729193a81"] },
+    { "id": "retired-legacy-build-capabilities-review-new-command-json-claude", "destination": { "class": "sai", "path": "capabilities/review-new-command.json" }, "harnesses": ["claude"], "managedHashes": ["8abb127d18bbcd1cbf527910a36777f54b8fd0d4f4a68e2202ca7c1bf3783a4e"] },
+    { "id": "retired-legacy-build-capabilities-review-new-command-json-opencode", "destination": { "class": "sai", "path": "capabilities/review-new-command.json" }, "harnesses": ["opencode"], "managedHashes": ["26c4a2e862eee051f1a8f157a7763de6c10c8ec7800252edf2c19b33d69fc8d6"] },
+    { "id": "retired-legacy-build-capabilities-worker-implementation-json-claude", "destination": { "class": "sai", "path": "capabilities/worker-implementation.json" }, "harnesses": ["claude"], "managedHashes": ["8e25b80a4713b03a4f41c977ad10b94c9371fa8fb80927cc35e039d6611b3db1"] },
+    { "id": "retired-legacy-build-capabilities-worker-implementation-json-opencode", "destination": { "class": "sai", "path": "capabilities/worker-implementation.json" }, "harnesses": ["opencode"], "managedHashes": ["6448ad646999d64cda0a86b6f4a915f3da66be11e5b7169bd24a2b097291da2a"] },
+    { "id": "retired-legacy-build-commands-apply-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/apply/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09"] },
+    { "id": "retired-legacy-build-commands-apply-coordinator-md", "destination": { "class": "sai", "path": "commands/apply/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["591636f2f8296136bf06ae936f5e8c9177fe43b42b3046980a8209d1ca90d064"] },
+    { "id": "retired-legacy-build-commands-apply-green-worker-md", "destination": { "class": "sai", "path": "commands/apply/green-worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["34eb3f4c64d0387069ff5d51c9cc27513d191d72664aafa4445df87268295083"] },
+    { "id": "retired-legacy-build-commands-apply-invocation-md", "destination": { "class": "sai", "path": "commands/apply/invocation.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["d035891b581481b6d26a6995379ea3fa954b74070be4c17d07640c522de07b62"] },
+    { "id": "retired-legacy-build-commands-apply-red-worker-md", "destination": { "class": "sai", "path": "commands/apply/red-worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["7079f7b7d2c24f6e93ab681bbdc1f993e92721e15d6b2b4c5946266ec16b41c1"] },
+    { "id": "retired-legacy-build-commands-apply-runner-md", "destination": { "class": "sai", "path": "commands/apply/runner.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["89e12cb6ead2838250074bbe43248ba9f355786718e756acbe0e295da502a9c3"] },
+    { "id": "retired-legacy-build-commands-apply-steps-already-satisfied-md", "destination": { "class": "sai", "path": "commands/apply/steps/already-satisfied.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["82b9394532ea6ed798425506ac1c490cecbfacfe403d966ea00773694533af62"] },
+    { "id": "retired-legacy-build-commands-apply-steps-branch-selection-md", "destination": { "class": "sai", "path": "commands/apply/steps/branch-selection.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["4aec139fe45239599271519974ab93baf6415233a306607f224a7f777899a865"] },
+    { "id": "retired-legacy-build-commands-apply-steps-exhausted-step-md", "destination": { "class": "sai", "path": "commands/apply/steps/exhausted-step.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c6f9d7b1a7a0756400cb6e21fb60a99914912ea748d62314156cbf84f7a37629"] },
+    { "id": "retired-legacy-build-commands-apply-steps-learnings-promotion-md", "destination": { "class": "sai", "path": "commands/apply/steps/learnings-promotion.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3fa8a8819b99b3eb7a90f2449eda372b8b6164f8ee851edd240fe156e0262e7b"] },
+    { "id": "retired-legacy-build-commands-apply-steps-plan-amendment-md", "destination": { "class": "sai", "path": "commands/apply/steps/plan-amendment.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["9dbbb3355de6309620a12cbc4a4d419f81911096bace08d3af2801da465f5e46"] },
+    { "id": "retired-legacy-build-commands-apply-steps-recovery-md", "destination": { "class": "sai", "path": "commands/apply/steps/recovery.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["658f416e6c6abeb291a01248c3eb7c1b064cff515b3ab6f0bd26f89a2308be22"] },
+    { "id": "retired-legacy-build-commands-apply-steps-routing-green-direct-md", "destination": { "class": "sai", "path": "commands/apply/steps/routing-green-direct.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["b45a45f70e9edb04514709169f3eb6230ca01fc4d69ad7f3cfd543da1b68ba45"] },
+    { "id": "retired-legacy-build-commands-apply-steps-routing-green-exception-no-production-md", "destination": { "class": "sai", "path": "commands/apply/steps/routing-green-exception-no-production.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["ec0e66b294fe77e53f5eb2651f847f237c76a0a6244609b7dc083c7ad9772815"] },
+    { "id": "retired-legacy-build-commands-apply-steps-routing-green-exception-test-only-md", "destination": { "class": "sai", "path": "commands/apply/steps/routing-green-exception-test-only.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["cba560b3269d20161c25a5d0d3e7de7229247b7355aa44e614e7098e194804d3"] },
+    { "id": "retired-legacy-build-commands-apply-steps-routing-split-flow-md", "destination": { "class": "sai", "path": "commands/apply/steps/routing-split-flow.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["d4cc3ccf061b12d550adf5b1d298d1b0e55f21c4d06e476114b5ebd7945a4e5c"] },
+    { "id": "retired-legacy-build-commands-apply-steps-routing-stop-missing-contract-md", "destination": { "class": "sai", "path": "commands/apply/steps/routing-stop-missing-contract.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["f19492defe547177bbb29e52f8a367d1a0bcde9abb2120a50c2bde05054c311c"] },
+    { "id": "retired-legacy-build-commands-apply-steps-terminal-lifecycle-md", "destination": { "class": "sai", "path": "commands/apply/steps/terminal-lifecycle.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["a37f7371818fc930d6327a40d08dfa8b93666653698c048897299162f14e4690"] },
+    { "id": "retired-legacy-build-commands-apply-steps-veto-override-md", "destination": { "class": "sai", "path": "commands/apply/steps/veto-override.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["cc8e156daa5859158dbb1544d3b7c834b5d4dc6efa1183139dfc0d433b061f2d"] },
+    { "id": "retired-legacy-build-commands-apply-worker-common-md", "destination": { "class": "sai", "path": "commands/apply/worker-common.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["588b1ee3f1b85dafd7d8a0990e36d7bdab251a1dbe3f04d4ea4b714a81ff5a76"] },
+    { "id": "retired-legacy-build-commands-build-new-coordinator-md", "destination": { "class": "sai", "path": "commands/build-new/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["b0e9d2e9a94972f6e0e1d42274e89e9c3108ad784a8acebd30230339e80173c9"] },
+    { "id": "retired-legacy-build-commands-implement-new-coordinator-md", "destination": { "class": "sai", "path": "commands/implement-new/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["2d60de0d936268e59f94b66be470a7f881016fb6ee620326fc573e9854c9738b"] },
+    { "id": "retired-legacy-build-commands-implement-new-green-worker-md", "destination": { "class": "sai", "path": "commands/implement-new/green-worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["46d138495d2320ca4db968c6c184104ddf80f36a45116a9107fcf429fb7c4f73"] },
+    { "id": "retired-legacy-build-commands-implement-new-red-worker-md", "destination": { "class": "sai", "path": "commands/implement-new/red-worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["6d8e623e02abf02acdbd0bed7eb3897e2d3c2fb667cdc4fed14ee666649fd00e"] },
+    { "id": "retired-legacy-build-commands-implement-new-steps-green-step-md", "destination": { "class": "sai", "path": "commands/implement-new/steps/green-step.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["9003dc3a9f7d877bb377aa5c20ee99257f9e80dd4173db3c632357b742bf42b0"] },
+    { "id": "retired-legacy-build-commands-implement-new-steps-red-step-md", "destination": { "class": "sai", "path": "commands/implement-new/steps/red-step.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["9e36f927cb84bdfc0ef3401f31f5cc3199f0f9d0f9cd02874ea39476ceb1ecfa"] },
+    { "id": "retired-legacy-build-commands-implement-new-worker-common-md", "destination": { "class": "sai", "path": "commands/implement-new/worker-common.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3e3ae9e1cb7decbc189e02cd10afd401a032d8a246cf9df040a9a0e3d76c8e06"] },
+    { "id": "retired-legacy-build-commands-implement-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/implement/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["7b2fd1bde6f2dd17347ed92edb453c074d5c106764f0587f411df790b10475a4"] },
+    { "id": "retired-legacy-build-commands-implement-implementation-plan-template-md", "destination": { "class": "sai", "path": "commands/implement/implementation-plan.template.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["8ccffdad4c3b3d97a110be8938c254779d568ac8ac782e9dc9ba319824886b01"] },
+    { "id": "retired-legacy-build-commands-implement-steps-artifact-analysis-md", "destination": { "class": "sai", "path": "commands/implement/steps/artifact-analysis.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["0baf3de416abf347d4eb2d657f738e22dacf6965a053a5dfcef82253d3d711c2"] },
+    { "id": "retired-legacy-build-commands-implement-steps-audit-ingestion-md", "destination": { "class": "sai", "path": "commands/implement/steps/audit-ingestion.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["88dc45270f74f7672e476781f38c7d8be2dea824e6db1e0203321495e8f8bfca"] },
+    { "id": "retired-legacy-build-commands-implement-steps-collapse-implemented-steps-md", "destination": { "class": "sai", "path": "commands/implement/steps/collapse-implemented-steps.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["419aea427504d5837c5a1061bc97b4f5d0bd1a3e271e50c20f44b2cf3d4b3eab"] },
+    { "id": "retired-legacy-build-commands-implement-steps-common-md", "destination": { "class": "sai", "path": "commands/implement/steps/common.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["2c332cd11107815b084303bec3775f208b4fa7298de01bbf319b0222f976ab0e"] },
+    { "id": "retired-legacy-build-commands-implement-steps-decision-record-index-md", "destination": { "class": "sai", "path": "commands/implement/steps/decision-record-index.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["a72baa34643c7831446134370d4871f69d984d2df17ad6c68f422a123180e7b1"] },
+    { "id": "retired-legacy-build-commands-implement-steps-documentation-review-md", "destination": { "class": "sai", "path": "commands/implement/steps/documentation-review.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["4d20db378979f6324a92eedf85fa237b71ea9f039967a927da9aa5ea7b1a11b6"] },
+    { "id": "retired-legacy-build-commands-implement-steps-plan-generation-md", "destination": { "class": "sai", "path": "commands/implement/steps/plan-generation.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["12a47d873c6f1cb248259af103ab24ad5edad3907c72cef5be75e0567f27eb80"] },
+    { "id": "retired-legacy-build-commands-implement-steps-rerun-preservation-md", "destination": { "class": "sai", "path": "commands/implement/steps/rerun-preservation.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["e0f2ca0b15e93c83f880ce34d4ba18910dafdd93ce59e71d526c60eec9e64dac"] },
+    { "id": "retired-legacy-build-commands-implement-steps-validation-md", "destination": { "class": "sai", "path": "commands/implement/steps/validation.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["ae55f79e206d1a5a7e8720bf241342c6598c3a22e5e385dd6af1ffed788b6471"] },
+    { "id": "retired-legacy-build-commands-implement-worker-md", "destination": { "class": "sai", "path": "commands/implement/worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["0796bae40d2c5584e667c764d70db167c1ba80ef4249b429737d5ff05f836377"] },
+    { "id": "retired-legacy-build-commands-meta-build-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/meta-build/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["7b2fd1bde6f2dd17347ed92edb453c074d5c106764f0587f411df790b10475a4"] },
+    { "id": "retired-legacy-build-commands-meta-build-coordinator-md", "destination": { "class": "sai", "path": "commands/meta-build/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["708c541e3ee4cb02e89dab2dc72acea38be7e0a7407d0f3639c45363474d6298"] },
+    { "id": "retired-legacy-build-commands-meta-review-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/meta-review/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["2a30413d003438c93abc48b0e991287120da0218a8212eefe6703a205f80ca8d"] },
+    { "id": "retired-legacy-build-commands-meta-review-coordinator-md", "destination": { "class": "sai", "path": "commands/meta-review/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["30f6de49c677e100e8ba32f212ba374a220498e6bc899dcfd68a426e51acf535"] },
+    { "id": "retired-legacy-build-commands-meta-review-direct-build-close-md", "destination": { "class": "sai", "path": "commands/meta-review/direct-build-close.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["559dcdba7b9068e32fea7a0edc17ca8f79c01218d04b9371f6a7222c1fed98a9"] },
+    { "id": "retired-legacy-build-commands-meta-review-findings-selection-md", "destination": { "class": "sai", "path": "commands/meta-review/findings-selection.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["88d9d6953d2deb365103b2b399bf240f2effc64587ed881fbe8f0b41d1f47c29"] },
+    { "id": "retired-legacy-build-commands-meta-review-review-fix-worker-md", "destination": { "class": "sai", "path": "commands/meta-review/review-fix-worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["2d277a952d3327b0dd0b5317de77bc0d4f90f8e38eb619ee027d22d304e56eaa"] },
+    { "id": "retired-legacy-build-commands-review-new-coordinator-md", "destination": { "class": "sai", "path": "commands/review-new/coordinator.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["565a136d085bf8c1e872837e120423afcb709dc943cd67ff951d8731a16e2de8"] },
+    { "id": "retired-legacy-build-commands-review-new-steps-close-review-outcome-md", "destination": { "class": "sai", "path": "commands/review-new/steps/close-review-outcome.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["cc6e6f443ec6bb8f2187aafcc785fc75368a27a61e7203de8dcf76fea08bc460"] },
+    { "id": "retired-legacy-build-commands-review-new-steps-common-md", "destination": { "class": "sai", "path": "commands/review-new/steps/common.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c3d69314f1a63b7b34004c54347dfb70402f2ffac174c3e0ff0e556b10319a62"] },
+    { "id": "retired-legacy-build-commands-review-new-steps-establish-diff-scope-md", "destination": { "class": "sai", "path": "commands/review-new/steps/establish-diff-scope.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["af07cabf5fa83b32635b17df2c37db0acacf18e14561febe27936f442ebba89c"] },
+    { "id": "retired-legacy-build-commands-review-new-steps-resolve-review-analysis-md", "destination": { "class": "sai", "path": "commands/review-new/steps/resolve-review-analysis.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["45573acbe61a02aca38ed6fdfab6f49a2e32007292a541decf0d4d47587a9d9b"] },
+    { "id": "retired-legacy-build-commands-review-new-worker-md", "destination": { "class": "sai", "path": "commands/review-new/worker.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c72e13a682e43421f5681532ba001f5104be6743266e70f4eba9eec2d812fb74"] },
+    { "id": "retired-legacy-build-commands-review-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/review/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3959dc7c3354ddb0b83cf32e0180278f3be01562e77b323537a18dcbcbed45e9"] },
+    { "id": "retired-legacy-build-sai-state-machines-apply-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/apply-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["06132231fe890a7350bd3552ccf2c08f785209f4bcbd7d0fa2efaac174d328d4"] },
+    { "id": "retired-legacy-build-sai-state-machines-green-new-steps-js", "destination": { "class": "sai", "path": "sai-state/machines/green-new-steps.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["59c5610184359fad2d280b4619bf6ad0e8db9f210663e947eb356f00697982f3"] },
+    { "id": "retired-legacy-build-sai-state-machines-implement-new-run-js", "destination": { "class": "sai", "path": "sai-state/machines/implement-new-run.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["630cdb9923c99af04f246c56d30bb82a2c10b86af55be1740fbc6907e5278282"] },
+    { "id": "retired-legacy-build-sai-state-machines-implement-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/implement-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["30cfa7bc40f5c14dfc553ba7d533dec2aae811cb7f8dc5c987e7b43f7ed119de"] },
+    { "id": "retired-legacy-build-sai-state-machines-red-new-steps-js", "destination": { "class": "sai", "path": "sai-state/machines/red-new-steps.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["56f100448dce08821fa6acee2dc5a74fd83229eaeff64191a89d2249478c64c7"] },
+    { "id": "retired-legacy-build-sai-state-machines-review-new-steps-js", "destination": { "class": "sai", "path": "sai-state/machines/review-new-steps.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["ec7d1028855a1f0538d8f86a551156163664a2f9ed5962525f160918ec3c6f08"] },
+    { "id": "retired-legacy-build-sai-state-machines-review-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/review-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c70a0f8945cffdf6cdf60209709dfadfccc1cb8d50b7c54e5bd50f6ce25fde52"] },
+    { "id": "retired-legacy-build-tools-apply-step-js", "destination": { "class": "sai", "path": "tools/apply-step.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3083830c727d94a28f5477d122c37193ecdd401d397ea4c0cb7d68974f111240"] },
+    {
+      "id": "retired-claude-retired-audit-sai-6-security-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-6-security-worker.md"
+      },
+      "managedHashes": [
+        "afc26333e222e01d7dd09fe92cf74cd40bff8549ad4477460283efcc8b0bfd43"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "136ad9994449a5b4497f66da73785d01db2e7c5433cb621c2dfacae64581727a"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-7-performance-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-7-performance-worker.md"
+      },
+      "managedHashes": [
+        "0898949abf4a25b397fc7861255afb7ed01b2df52fe3faa3570ffd1d8edb5c98"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "dab5f29ad6d7509bdf746b0e5f5e295f388f03a97c24ed63397ca2ed7360562e"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-8-accessibility-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-8-accessibility-worker.md"
+      },
+      "managedHashes": [
+        "5d7fe4ec107d36f24c67926a6a5673310a1b47e5e381127c95f52fe76572d51c"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "cd567f38968c60eb5f787d595c9ee34c9c3ab04743c8d54963e0ac04114222db"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-6-security",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-6-security.md"
+      },
+      "managedHashes": [
+        "b7dad79e15803f5698637cea3c4bf8f35d4617ce3f5b028563fc8318d1ceda2d"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "99b02321e65d6c4ef5054754c6334ab1779dfc71c66f4c124eed98dd22803792"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-7-performance",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-7-performance.md"
+      },
+      "managedHashes": [
+        "b48062ac8cfd8c0a55d32f1af3d56045f3c5bd637b9d58acb7bb0a40bc0153c9"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "c2eb92e6482fc7910a1fe654471c65192a9a59ca941926abd81b4531edf34600"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-8-accessibility",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-8-accessibility.md"
+      },
+      "managedHashes": [
+        "e6bc42ee2b33728e5a7fc9030ccfa729dc44900e6b562e10e9498c71c1d805da"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "cc0c938dce0e33b5f449fcc2e14ea04e82207176864bf42d79e9bc7b3be62b6d"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-6-security-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-6-security-worker.md"
+      },
+      "managedHashes": [
+        "ee4d0261b3e980942e1ca47517dfdb21c6c4258e01e6d5c4be6879337fabf3fc"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "47b8709e5197172f2d018d03e4addb20316f758248d18f3514b915afbf0a4ea5"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-7-performance-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-7-performance-worker.md"
+      },
+      "managedHashes": [
+        "f32b2a2cc2f6d48049ed4867831caa437e0300cd9c6544018001320243dae755"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "c3b59f721480d0b5af47672a5df5eb60d52a9d4c148143e2c46b190a956df697"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-8-accessibility-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-8-accessibility-worker.md"
+      },
+      "managedHashes": [
+        "370404b421e208bae9a8f5dad96b92a6697f92ea8c8475aa566f1139e1a90014"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "b2f6be72091b7e6abdae83125d2cfc031b8db550be9fdf836d6ea67029c62b5f"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-6-security",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-6-security.md"
+      },
+      "managedHashes": [
+        "403e110a8674a5043943d4cbf0c7582ecff405dd08977be0ae837e630ce5524a"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "2876235fe86c3686897a5bb9d4cb630ce0930e87e5a08e3e05f57b50b7bb839e"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-7-performance",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-7-performance.md"
+      },
+      "managedHashes": [
+        "a48c0d5e941af3adc4f175a2fc3fcb58de9f4a25dfd6e422b048b5c31296eb63"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "d00ded5a901bb5b279dabd6cb8ac60502d3e77b2ba4fff563e4666c4add6a187"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-8-accessibility",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-8-accessibility.md"
+      },
+      "managedHashes": [
+        "34a2b2f7ef1c00fe6b4baf7fdecbaa1364138a1ce116108c976da0bc594c3ed5"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "b6dc6f5006930c074f270798853a67c488eaa5533c64e370af86057b7574bf03"
       ]
     }
   ]

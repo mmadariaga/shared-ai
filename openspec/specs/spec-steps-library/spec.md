@@ -10,9 +10,9 @@ Split the `sai-1-spec` worker's instruction mass into one step file per progress
 The sai-1-spec worker's instruction mass SHALL be split into exactly five step files under `sai/commands/spec/steps/`: `common.md` plus `research.md`, `proposal.md`, `specs.md`, and `validation.md`. They are carved from the former monolithic sources so that each progress-plan step has one dedicated instruction file delivered just-in-time. The library SHALL contain no `review.md`. The distribution SHALL follow the implemented boundaries:
 - `common.md` carries the author role and the `SpecWriteSurface` reference, the question policy, the immediate root `GLOSSARY.md` write rule, the glossary-format, remember, and budget-skill fetches, the step-delivery meta-rule, the full main-agent cost discipline, and verification (the artifact checklist, Rule #1 proposal-to-spec self-consistency, and Rule #2 source-grounding of spec-pinned literals), because validation, artifact feedback, and recovery corrections all re-run it.
 - `research.md` carries the structured research guide, the approximately 80% confidence boundary, and the Ready-to-Propose handoff consumption rules.
-- `proposal.md` carries the OpenSpec CLI proposal sequence (project-context load, creation-only `openspec new change`, `openspec instructions proposal`), the phase overrides, and the `proposal.md` write. It SHALL load no OpenSpec skill and SHALL NOT contain the Complexity Derivation Rubric.
+- `proposal.md` carries the OpenSpec CLI proposal sequence (project-context load, creation-only `openspec new change`, `openspec instructions proposal`), the phase overrides, and the `proposal.md` write. It SHALL load no OpenSpec skill and SHALL NOT write a `**Complexity**` line.
 - `specs.md` carries the delta-spec writes from `openspec instructions specs` output, with no OpenSpec skill reference.
-- `validation.md` carries the verification run, the cited-path gate, the Complexity Derivation Rubric S1–S5, and the `## Completion` decision-summary and validation-report contract.
+- `validation.md` carries the verification run, the cited-path gate, and the `## Completion` decision-summary and validation-report contract. It SHALL NOT contain a Complexity Derivation Rubric or a step that derives a complexity token.
 
 #### Scenario: each step has exactly one instruction file
 
@@ -21,8 +21,8 @@ The sai-1-spec worker's instruction mass SHALL be split into exactly five step f
 
 #### Scenario: complexity rubric lives outside the proposal step
 
-- **WHEN** the worker executes the `proposal` step file
-- **THEN** it finds the OpenSpec CLI proposal sequence and the proposal-template write instructions, but no OpenSpec skill fetch and no Complexity Derivation Rubric, because the token is derived during the validation step from finished artifacts
+- **WHEN** the worker executes the `proposal` and `validation` step files
+- **THEN** it finds the OpenSpec CLI proposal sequence, the proposal-template write instructions, the verification run, the cited-path gate, and the completion contract, but no OpenSpec skill fetch, no `**Complexity**` write, and no Complexity Derivation Rubric
 
 ### Requirement: common.md is the always-active step surface
 
@@ -53,3 +53,17 @@ The `proposal` step SHALL load project context on every run from the `context` s
 #### Scenario: missing project config does not block the step
 - **WHEN** `openspec/config.yaml` and `openspec/config.yml` are both missing or unreadable
 - **THEN** the worker continues the proposal step without project context
+
+### Requirement: Spec-phase restatements of shared contracts require a recorded justification
+
+The `/sai-1-spec` worker contract (`sai/commands/spec/worker.md`) and its step files under `sai/commands/spec/steps/` SHALL restate a rule whose source is another file only when a decision record or an observed failure justifies the restatement; otherwise they SHALL reference the source file instead. Spec-specific rules SHALL stay in the spec worker: the mapping of spec failures to `generation-error`, `validation-failed`, and `blocking-contradiction`, the rule that a failure `summary` states observed evidence and never logs, tracebacks, command output, or file contents, and the `continue_after_recovery` correction flow. Generic lifecycle and failure-classification rules SHALL remain in force through `sai/orchestration/worker-core.md`.
+
+#### Scenario: post-resolution failure points to the shared classification
+
+- **WHEN** `sai/commands/spec/worker.md` describes post-resolution `failed` results
+- **THEN** it references `@sai/orchestration/worker-core.md` § Failure classification and keeps only the spec-specific evidence rule and failure-class mapping
+
+#### Scenario: worker-core restatements are absent
+
+- **WHEN** `sai/commands/spec/worker.md` is read
+- **THEN** it contains no sentence restating that progress events are returned lifecycle results or listing coordinator-only progress duties

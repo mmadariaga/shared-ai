@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Apply overview-language routing to Plan
 
 The overview-language value SHALL remain conversation-only and SHALL be forwarded through the supervised Plan route only. Build SHALL retain its documented no-op treatment for overview-language selection.
@@ -12,21 +14,29 @@ The overview-language value SHALL remain conversation-only and SHALL be forwarde
 
 - **WHEN** a crystallization route is selected with an overview-language value
 - **THEN** only the Plan route forwards that value to supervised design processing.
+
 ### Requirement: Scope the overview-language gate to supervised Plan activation
-The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Plan (unattended)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Direct Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
+The overview-language gate (gate 9) applies only within `sai-explore`. It SHALL be asked as a conditional question in round 3 of the post-crystallization route round, beside the route question, when the pre-check before round 3 leaves the overview language unresolved for the crystallized idea or slice set; it SHALL NOT be a separate interaction after the route answer. Its answer SHALL take effect only when the same round's route answer is `Plan - Unattended`, and the resolved value SHALL be used after deterministic selection confirms a dispatchable change and before `active_change` is set or the first spec-worker dispatch occurs. When the route answer is `Plan - Unattended` and the round-3 overview answer is missing or cancelled, gate 9 SHALL ask on its own exactly once before the first spec-worker dispatch. Gate 9 SHALL NOT be asked at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, or on the transition to Implement, and the standalone fallback ask SHALL NOT occur on Manual, on the Direct Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the fallback. No other `sai-*` command is affected.
 
 #### Scenario: Plan activation evaluates the gate
-- **WHEN** deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run without explicit `--overview-lang`, active fast-track, or a stored value
-- **THEN** gate 9 asks exactly once before any spec-worker dispatch
-- **AND** no question ran when the block was emitted at crystallization
+- **WHEN** round 3 is presented without explicit `--overview-lang`, a direct user statement, a stored value for the set, an `explore.overviewLanguage` setting, or active fast-track, and its route answer is `Plan - Unattended` for a dispatchable change
+- **THEN** round 3 carried the overview question as a conditional question beside the route question, its answer resolves the overview language before any spec-worker dispatch, and no question ran when the block was emitted at crystallization
+
+#### Scenario: Plan route applies the round-3 answer
+- **WHEN** round 3 returns `Plan - Unattended` together with an overview answer, and deterministic selection confirms a dispatchable change
+- **THEN** the answer resolves the overview language before any spec-worker dispatch, and gate 9 is not asked again
+
+#### Scenario: Missing overview answer falls back before the spec worker
+- **WHEN** round 3 returns `Plan - Unattended` with the overview answer missing or cancelled
+- **THEN** gate 9 asks on its own exactly once before the first spec-worker dispatch
 
 #### Scenario: exploration and non-Plan selections never fire the gate
-- **WHEN** a turn continues free-form exploration or the user selects Manual or Direct Build (unattended)
-- **THEN** no overview-language question is asked and no overview opt-in decision is created
+- **WHEN** a turn continues free-form exploration, or round 3 returns Manual or Direct Build (unattended)
+- **THEN** no standalone overview-language question is asked, any round-3 overview answer is ignored, and no overview opt-in decision is created
 
 #### Scenario: non-dispatchable outcomes end before the gate
 - **WHEN** deterministic selection finds an empty set, no uncompleted entry, a Cancel pick, or an already-active run to reject
-- **THEN** gate 9 does not fire
+- **THEN** no round-3 overview answer takes effect and the standalone gate 9 fallback does not fire
 
 ### Requirement: English input skips the gate
 
@@ -81,17 +91,19 @@ When the overview-language ask fires at a supervised Plan (unattended) activatio
 
 ### Requirement: Preserve explicit and fast-track resolution
 
-An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, the overview language MUST resolve to `None` without asking, including at a supervised Plan (unattended) activation. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
+An explicit `--overview-lang <language>` value or a direct user statement of the language SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, without a resolved value for the same crystallized set, and without an `explore.overviewLanguage` setting, the overview language MUST resolve to `None` without asking, in the pre-check before round 3 of the route round, so round 3 carries no overview question. A configured `explore.overviewLanguage` SHALL take precedence over the fast-track `None`. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
 
 #### Scenario: Fast-track at Plan activation without the flag opts out
-- **WHEN** `--fast-track` is active at a supervised Plan (unattended) activation without `--overview-lang`
-- **THEN** gate 9 asks no question
-- **AND** the overview-language value resolves to `None` without overview generation
+- **WHEN** `--fast-track` is active before round 3 of the route round without `--overview-lang`, a direct user statement, a resolved value for the set, or an `explore.overviewLanguage` setting
+- **THEN** the round-3 pre-check resolves the overview-language value to `None`, round 3 carries no overview question, and no overview is generated
 
 #### Scenario: Fast-track with an explicit flag opts in
 - **WHEN** `--fast-track` and `--overview-lang spanish` are both active
-- **THEN** gate 9 asks no question
-- **AND** the overview-language value resolves to `spanish`
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `spanish`
+
+#### Scenario: Setting wins over fast-track
+- **WHEN** `--fast-track` is active without `--overview-lang` and `explore.overviewLanguage` is `Español`
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `Español`
 
 #### Scenario: fast-track never bypasses stages
 - **WHEN** `--fast-track` is active
@@ -117,27 +129,27 @@ When the invocation carried an explicit `--overview-lang <language>` option, the
 
 ### Requirement: Keep the selected language chat-scoped
 
-The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Plan (unattended) activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Plan (unattended) activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration.
+The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Plan (unattended) activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Plan (unattended) activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration. `.sai/settings.jsonc` SHALL be read-only input to the gate.
 
 #### Scenario: re-crystallizing the same idea reuses the value
 - **WHEN** the user re-crystallizes the same idea after gate 9 resolved
-- **THEN** the previous language or `None` decision is reused
-- **AND** gate 9 is not re-asked
+- **THEN** the previous language or `None` decision is reused, and gate 9 is not re-asked
 
 #### Scenario: resolution survives a failed attempt
 - **WHEN** a supervised attempt fails after gate 9 resolved, and a later Plan (unattended) activation selects the same crystallized idea
-- **THEN** the stored value is reused without asking again
-- **AND** its envelope form is reused for any chained design dispatch
+- **THEN** the stored value is reused without asking again, and its envelope form is reused for any chained design dispatch
 
 #### Scenario: A materially new idea resets the value
 - **WHEN** the active idea materially changes and is later crystallized and dispatched
-- **THEN** the prior stored value is discarded
-- **AND** gate 9 asks again at that idea's first eligible Plan (unattended) activation
+- **THEN** the prior stored value is discarded, and gate 9 asks again at that idea's first eligible Plan (unattended) activation
 
 #### Scenario: sliced crystallization resolves once
 - **WHEN** a Plan (unattended) activation covers a slice set crystallized from one idea
-- **THEN** gate 9 resolved once for the whole slice set
-- **AND** the same language or `None` value applies to every slice's dispatch
+- **THEN** gate 9 resolved once for the whole slice set, and the same language or `None` value applies to every slice's dispatch
+
+#### Scenario: a gate answer is not written to the settings
+- **WHEN** the user answers the normal gate 9 question
+- **THEN** the answer stays in the conversation and `.sai/settings.jsonc` is not written
 
 ### Requirement: Decline or non-committal answer falls back to the default policy
 
@@ -179,3 +191,35 @@ The resolved overview-language value is held in conversation-only state without 
 #### Scenario: design-phase retry reuses the stored value
 - **WHEN** a design-phase retry runs after a failed attempt in the same chat over the same crystallized idea
 - **THEN** the retry uses the same one-string envelope including the stored language form without asking gate 9 again
+
+### Requirement: Project setting answers gate 9
+
+Before round 3 of the route round is presented, when neither an explicit `--overview-lang`, a direct user statement of the language, nor a value already resolved for the same crystallized idea or slice set answers gate 9, the agent SHALL run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>` once, before the fast-track rule, resolving `project-settings.js` through the tool-resolution policy. A returned `value` (`English`, `None`, or a language name) SHALL resolve `overview_language` without asking, round 3 SHALL carry no overview question, and the agent SHALL print `Project setting explore.overviewLanguage: <value>` once before the first worker dispatch of a Plan route, never for Direct Build or Manual. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue. The setting SHALL NOT be used by Manual, by Direct Build (unattended), or by standalone `/sai-2-design`, and SHALL NOT change the `**Overview language**` block field.
+
+#### Scenario: Setting answers gate 9
+- **WHEN** `explore.overviewLanguage` is `Español` before round 3 with no explicit override and no resolved value, and the route answer is `Plan - Unattended`
+- **THEN** round 3 carries no overview question, the overview language resolves to Español without asking, and the agent prints `Project setting explore.overviewLanguage: Español` once before the first worker dispatch
+
+#### Scenario: Setting none opts out
+- **WHEN** `explore.overviewLanguage` is `none`
+- **THEN** gate 9 resolves `None` without asking and no overview is generated
+
+#### Scenario: Explicit flag wins over the setting
+- **WHEN** `--overview-lang english` is active and `explore.overviewLanguage` is `Español`
+- **THEN** the overview language resolves to `english` and no setting notice is printed
+
+#### Scenario: Unavailable setting falls through
+- **WHEN** the settings tool exits non-zero or returns `value: null`
+- **THEN** the agent prints the warnings or one failure line and continues with the fast-track rule or the round-3 overview question
+
+### Requirement: Non-Plan route answers ignore the round-3 overview answer
+
+When round 3 carries the overview question and the route answer is `Direct Build - Unattended`, `Manual`, or no valid route, `sai-explore` SHALL ignore the overview answer: it SHALL resolve nothing, the overview language SHALL stay unresolved for the set, and a later round 3 whose route can be Plan SHALL ask the overview question again. Direct Build and Manual SHALL never generate a change overview. Before the picker, the round-3 context SHALL state in the user's language that the overview question applies only when the route answer is `Plan - Unattended` and that Direct Build and Manual ignore it.
+
+#### Scenario: Direct Build ignores the overview answer
+- **WHEN** round 3 returns `Direct Build - Unattended` together with an overview answer of `English`
+- **THEN** no overview language is resolved and no change overview is generated
+
+#### Scenario: A later Plan round asks again
+- **WHEN** an earlier round 3 returned Manual with an overview answer and a later round 3 is presented for the same set with nothing else resolving the overview language
+- **THEN** that later round 3 carries the overview question again

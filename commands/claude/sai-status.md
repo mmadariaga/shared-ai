@@ -1,7 +1,7 @@
 ---
-description: Read-only progress panel for one OpenSpec change — the 11 sai-workflow artifacts, specs approval, implementation progress, and a next-command hint. Writes nothing.
+description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, task progress, and a next-command hint. Writes nothing.
 argument-hint: "[change-name]"
-model: sonnet
+model: haiku
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---

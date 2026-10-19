@@ -62,7 +62,6 @@ Ignored process statements: <K>
 1. <worker input statement> — <worker that reported it>
 ```
 
-Emit each count only when non-zero. The Direct Build close of `/sai-5-review`
-and `/sai-review` produces this record too. The Direct Build final-report
+Emit each count only when non-zero. The Direct Build final-report
 exception above covers the auto-answer audit only; it does not suppress these
 entries.

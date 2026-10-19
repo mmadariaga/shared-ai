@@ -43,7 +43,7 @@ When the first progress event after reset carries only the machine's first step 
 
 #### Scenario: single-id first event re-sends the pointer
 
-- **WHEN** the first progress emit on `review-standalone@1` carries only `resolve-change`
+- **WHEN** the first progress emit on `review-steps@1` carries only `review-intake`
 - **THEN** the emit succeeds without an error and its `next` equals the `establish-diff-scope` pointer the reset returned
 
 #### Scenario: two-id first event advances
@@ -95,12 +95,12 @@ The `design-standalone@1` machine SHALL name `research` as its first filed step 
 
 ### Requirement: Chained and supervised surfaces disclose the first pointer
 
-The `/sai-build` implement segment SHALL open its own post-ready task disclosure with the `collapse-implemented-steps` pointer returned by its `reset <id> implement-standalone@1`, alongside the explicit `fast_track_active=true`. The `/sai-explore` supervised pipeline SHALL open the spec worker's task disclosure with the `research` pointer from `reset <id> spec-standalone@1`. It SHALL open the chained design worker's task disclosure with the `research` pointer from `reset <id> design-standalone@1`, including on a design-phase retry after a new reset.
+The `/sai-explore` supervised pipeline SHALL open the spec worker's task disclosure with the `research` pointer from `reset <id> spec-standalone@1`. It SHALL open the chained design worker's task disclosure with the `research` pointer from `reset <id> design-standalone@1`, including on a design-phase retry after a new reset. The `/sai-build` implement segment SHALL brief each RED and GREEN worker with the pointer line returned by resetting `red-steps@1` or `green-steps@1` before each step.
 
 #### Scenario: chained implement segment
 
-- **WHEN** `/sai-build` activates its implement segment and the worker returns `event: ready`
-- **THEN** the task disclosure opens with the `collapse-implemented-steps` pointer line and carries `fast_track_active=true` separate from `arguments_value`
+- **WHEN** `/sai-build` runs its implement segment and a step starts
+- **THEN** the RED or GREEN brief opens with the `Active step:` pointer line from that role's machine reset
 
 #### Scenario: supervised spec dispatch
 
@@ -109,7 +109,7 @@ The `/sai-build` implement segment SHALL open its own post-ready task disclosure
 
 ### Requirement: The first-pointer rule is single-sourced and phase-neutral
 
-The first-pointer rule SHALL be stated once, with no per-phase exception, in three places: `sai/orchestration/command-runner.md` § Step-gated pointer delivery (coordinator side), `sai/policies/stage-machine.md` § Step machines, and `sai/orchestration/worker-core.md` § Step-machine task disclosure (worker side). Phase coordinators, workers, and `steps/common.md` files SHALL reference it. The step ids and step files of the seven machines SHALL stay unchanged, including `prereqs-and-change` and `prereqs-resolution`.
+The first-pointer rule SHALL be stated once, with no per-phase exception, in three places: `sai/orchestration/command-runner.md` § Step-gated pointer delivery (coordinator side), `sai/policies/stage-machine.md` § Step machines, and `sai/orchestration/worker-core.md` § Step-machine task disclosure (worker side). Phase coordinators and workers SHALL reference it; the `steps/common.md` files of spec, design, implement, security, performance, and accessibility SHALL also reference it, while the review worker references it from its worker contract and `sai/commands/review/steps/common.md` does not repeat it. The step ids and step files of the seven machines SHALL stay unchanged, including `prereqs-and-change` and `prereqs-resolution`.
 
 #### Scenario: step ids are unchanged
 

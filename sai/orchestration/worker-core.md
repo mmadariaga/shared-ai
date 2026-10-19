@@ -37,8 +37,16 @@ a payload carrying a legacy time field stays valid with that field ignored. A
 missing required field (not a missing time field) is malformed. No payload
 contains a continuation identifier or binding dispatch metadata. No payload
 carries artifact contents either, except where the phase contract defines a
-terminal payload that returns content for the coordinator to write: backfill's
-draft artifacts and merge's resolution region text.
+terminal payload that returns content for the coordinator to write: the
+archive reroute's corrected delta specs. Backfill's terminal payload returns
+references (`draft_references`, each `{path, sha256, destination}`) to
+worker-prepared transfer files, never the draft content. Backfill also returns
+`scenario_exception_reference: {path, sha256}` for temporary exception metadata
+under `@sai/policies/scenario-preservation.md`, separately from draft destinations.
+Merge's terminal
+payload returns only the application outcome and one `resolution_reference`
+(`{path, sha256}`) to the worker's transfer file holding the complete
+resolution result, never the resolution region text.
 
 Completion is exactly:
 
@@ -61,14 +69,6 @@ options: {label: string, value: string}[]
 
 After change resolution, `needs_input` additionally carries
 `resolved_change_name`. Pre-resolution input omits it.
-
-The implementation plan-generation step may use the validator-recognized
-`lookup_request` field on a post-resolution `needs_input` with the batch-v1
-`questions` form. This is the sole coordinator-owned bounded lookup grant:
-`lookup_request: {type: bounded-project-lookup, items: [{id, area, reason, step}]}`
-with 1–5 ordered items, distinct ids matched to yes/no questions. The validator
-checks this typed shape; no other `needs_input` can claim lookup authorization
-from its prose. Ordinary phase questions remain unchanged.
 
 Unsuccessful outcomes are exactly:
 
@@ -146,7 +146,7 @@ changed_files: string[]
 ```
 
 It carries `changed_files` like the notice. A design, spec-proposal,
-implementation-planning, review, security, performance, or accessibility worker
+security, performance, or accessibility worker
 SHALL emit one progress event for each result that makes one or more newly
 declared progress or routing steps complete, after prerequisite checks pass and
 its required change or scope resolution completes. A phase adapter with
@@ -274,8 +274,7 @@ The coordinator side lives in `@sai/orchestration/command-runner.md`
 A phase adapter MAY declare an ordered report extension carried inside the
 terminal lifecycle envelope. The extension is phase-defined: the coordinator
 validates every reported value against the phase's declared field list and
-never invents, reorders, or drops a field. The apply phase declares its fields
-in `sai/commands/apply/worker-common.md` § Report contract.
+never invents, reorders, or drops a field.
 
 ## Question Content
 

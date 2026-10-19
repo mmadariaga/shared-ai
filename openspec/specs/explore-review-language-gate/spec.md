@@ -5,22 +5,20 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Scope limited to sai-explore artifact reviews
 
-The language gate SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The gate SHALL fire only when an explore turn is a request to **review an existing OpenSpec artifact** — one of `proposal.md`, `design.md`, `tasks.md`, `specs/**/*.md`, `implementation.md`, `review.md`, `security.md`, `performance.md`, or `accessibility.md` under `openspec/changes/{name}/`, or an artifact under `openspec/specs/`, `openspec/changes/archive/`, or an equivalent existing-artifact location. The artifact MAY be identified however the user naturally refers to it — a literal path, a bare filename, or a change-name plus artifact mention (e.g. "review the oauth2-auth proposal", "qué te parecen los specs"); the specific detection heuristic is left to the implementation and is NOT fixed by this spec. Free-form debate of the original idea, exploratory discussion, and any turn that does not request a review of an existing artifact SHALL NOT trigger the gate.
+The language gate SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The gate SHALL fire only when an explore turn is a request to **review an existing OpenSpec artifact** — one of `proposal.md`, `design.md`, `tasks.md`, `specs/**/*.md`, `review.md`, `security.md`, `performance.md`, or `accessibility.md` under `openspec/changes/{name}/`, or an artifact under `openspec/specs/`, `openspec/changes/archive/`, or an equivalent existing-artifact location. The artifact MAY be identified however the user naturally refers to it — a literal path, a bare filename, or a change-name plus artifact mention (e.g. "review the oauth2-auth proposal", "qué te parecen los specs"); the specific detection heuristic is left to the implementation and is NOT fixed by this spec. Free-form debate of the original idea, exploratory discussion, and any turn that does not request a review of an existing artifact SHALL NOT trigger the gate.
 
 #### Scenario: review of an existing artifact triggers the gate path
-
 - **WHEN** a `sai-explore` turn asks the agent to review an existing artifact, identified by path, filename, or change-name-plus-artifact reference (e.g. "review the proposal", "mira el design")
 - **THEN** the agent treats the turn as an artifact review and evaluates the language gate before producing review content
 
 #### Scenario: free-form debate does not trigger the gate
-
 - **WHEN** a `sai-explore` turn discusses or debates the original idea without referencing an existing OpenSpec artifact
 - **THEN** the agent does not ask the language question and continues under the existing `remember.md` language policy
 
 #### Scenario: other sai commands are unaffected
-
 - **WHEN** any `sai-*` command other than `sai-explore` runs
 - **THEN** its behavior is unchanged and no language gate question is asked
 
@@ -108,3 +106,11 @@ The review language gate SHALL affect review chat output only. It SHALL NOT chan
 - **WHEN** the review gate resolves to any language and the session later emits a `Ready to Propose` block
 - **THEN** the review gate does not alter that block
 - **AND** the block's prose language is determined solely by the crystallization language gate
+
+### Requirement: The artifact-review gate reads no project setting
+
+The artifact-review language gate SHALL read no project setting and SHALL keep its normal question. Only the crystallization language gate, which inherits this gate's persistence rule, SHALL additionally read `explore.readyToProposeLanguage` as read-only input.
+
+#### Scenario: Configured explore language does not answer an artifact review
+- **WHEN** `explore.readyToProposeLanguage` is configured and the user starts a non-English review of an OpenSpec artifact
+- **THEN** the artifact-review gate asks its normal language question and prints no setting notice

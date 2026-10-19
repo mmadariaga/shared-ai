@@ -16,7 +16,7 @@ The design worker's instruction mass SHALL be split into exactly six step files 
 
 ### Requirement: common.md is the always-active step surface for design
 
-`sai/commands/design/steps/common.md` SHALL be fetched at dispatch and stay in force for the entire run, carrying the step-delivery meta-rule, generation scope, artifact-only scope, collaboration style, cost-and-budget discipline summary, and the glossary-format and remember policy fetches. It SHALL NOT fetch `sai/policies/sai-learnings-format.md`; that policy loads in the tasks step at its point of use.
+`sai/commands/design/steps/common.md` SHALL be fetched at dispatch and stay in force for the entire run, carrying the step-delivery meta-rule, generation scope, artifact-only scope, decision style, cost-and-budget discipline summary, and the glossary-format and remember policy fetches. It SHALL NOT fetch `sai/policies/sai-learnings-format.md`; that policy loads in the tasks step at its point of use.
 
 #### Scenario: dispatch loads common.md once
 
@@ -54,3 +54,15 @@ The design coordinator's `Continue` generation-trigger continuation SHALL begin 
 
 - **WHEN** the feedback gate proceeds with a valid `--overview-lang` and the worker was not given the `overview` pointer
 - **THEN** the generation-trigger continuation's first line names `@sai/commands/design/steps/overview.md`
+
+### Requirement: Design decision style resolves grounded choices within the existing gates
+
+`sai/commands/design/steps/common.md` SHALL carry a `## Decision style` section and no `Collaboration style` section. The section SHALL state that `proposal.md` and the specs arrive settled, with discovery, rationale, trade-offs and edge cases agreed before the phase. The design worker SHALL resolve technical choices itself when the evidence justifies them. It SHALL record any assumption that would change behavior the specs describe in `design.md` Open Questions. It SHALL ask only through the existing gates — blocking Open Questions, the explicit spec-amendment authorization, and the artifact-feedback gate — each as a `needs_input` complying with `@sai/policies/question-context.md`, with closed-choice asks presented through the native picker per `@sai/policies/remember.md`.
+
+#### Scenario: Evidence-justified choice is resolved without a question
+- **WHEN** design faces a technical choice the evidence justifies
+- **THEN** the worker resolves it itself without returning a `needs_input` outside the existing gates
+
+#### Scenario: Spec-changing assumption goes to Open Questions
+- **WHEN** design would rely on an assumption that changes behavior the specs describe
+- **THEN** the worker records it in `design.md` Open Questions for the existing Open Questions gate

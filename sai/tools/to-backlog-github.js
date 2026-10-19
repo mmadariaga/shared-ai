@@ -1,0 +1,356 @@
+'use strict';
+
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const path = require('node:path');
+
+function contains(root, target) {
+  const relative = path.relative(root, target);
+  return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+}
+
+function receiptPath(file) {
+  if (typeof file !== 'string' || !path.isAbsolute(file)) throw new Error('Receipt must be an absolute path outside the repository');
+  const cwd = fs.realpathSync(process.cwd());
+  let root = cwd;
+  // .git can be a directory or a worktree/submodule pointer file. Follow real
+  // directories so running from a nested or symlinked directory stays bounded.
+  for (let directory = cwd; ; directory = path.dirname(directory)) {
+    if (fs.existsSync(path.join(directory, '.git'))) { root = directory; break; }
+    if (directory === path.dirname(directory)) break;
+  }
+  const parent = fs.realpathSync(path.dirname(file));
+  const canonical = path.join(parent, path.basename(file));
+  if (contains(root, path.resolve(file)) || contains(root, canonical)) throw new Error('Receipt must be outside the repository');
+  function privateOwned(stat) {
+    if (process.platform !== 'win32' && ((stat.mode & 0o077) !== 0 || stat.uid !== process.getuid())) throw new Error('Receipt directory and file must be private and owned by the current user');
+  }
+  const directory = fs.statSync(parent);
+  if (!directory.isDirectory()) throw new Error('Receipt parent must be an existing private directory');
+  privateOwned(directory);
+  try {
+    const stat = fs.lstatSync(canonical);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw new Error('Receipt must be a regular, unlinked private file');
+    privateOwned(stat);
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  return canonical;
+}
+
+function api(io, query, variables) {
+  const result = JSON.parse(io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
+  if (result.errors?.length || !result.data) throw Object.assign(new Error(`GitHub query failed: ${JSON.stringify(result.errors || result)}`), { graphqlErrors: result.errors });
+  return result.data;
+}
+
+function pages(fetch, connection) {
+  const nodes = [];
+  let cursor = null;
+  const seen = new Set();
+  do {
+    const page = connection(fetch(cursor));
+    if (!page || !Array.isArray(page.nodes) || typeof page.pageInfo?.hasNextPage !== 'boolean') throw new Error('Incomplete GitHub connection');
+    nodes.push(...page.nodes.filter(Boolean));
+    if (!page.pageInfo.hasNextPage) return nodes;
+    cursor = page.pageInfo.endCursor;
+    if (!cursor || seen.has(cursor)) throw new Error('Invalid GitHub pagination cursor');
+    seen.add(cursor);
+  } while (true);
+}
+
+// The ProjectV2 `items` connection lags insertions by up to minutes, so
+// membership is only ever read directly: the item itself, or the issue's side.
+const PROJECT_ITEM_QUERY = 'query($id:ID!){node(id:$id){... on ProjectV2Item{id project{id} content{... on Issue{id}}}}}';
+const ISSUE_ITEMS_QUERY = 'query($id:ID!,$cursor:String){node(id:$id){... on Issue{projectItems(first:100,after:$cursor){nodes{id project{id}} pageInfo{hasNextPage endCursor}}}}}';
+const NO_ITEMS = { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } };
+const VERIFICATION_ATTEMPTS = 5;
+const VERIFICATION_INTERVAL_MS = 2000;
+
+// Returns the item that places the issue in the destination Project, or nothing.
+// With an item id: the direct item read, accepted only for this Project and issue.
+// Without: the issue-side read, which counts archived items and only this Project.
+function membership(io, projectId, issueId, itemId) {
+  if (itemId) {
+    const item = api(io, PROJECT_ITEM_QUERY, { id: itemId }).node;
+    return item?.project?.id === projectId && item.content?.id === issueId ? item : undefined;
+  }
+  const nodes = pages(cursor => api(io, ISSUE_ITEMS_QUERY, { id: issueId, cursor }), data => {
+    if (!data.node) return undefined;
+    // The schema made `Issue.projectItems` nullable: null means no items.
+    return data.node.projectItems === null ? NO_ITEMS : data.node.projectItems;
+  });
+  return nodes.find(item => item.project?.id === projectId);
+}
+
+// One immediate read, then up to four more two seconds apart. The wait is
+// synchronous; tests inject `io.sleep` to avoid it.
+function verifyMembership(io, projectId, issueId, itemId) {
+  const sleep = io.sleep || (ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms));
+  for (let attempt = 0; attempt < VERIFICATION_ATTEMPTS; attempt++) {
+    if (attempt) sleep(VERIFICATION_INTERVAL_MS);
+    const found = membership(io, projectId, issueId, itemId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
+  if (membership(io, projectId, issueId)) return;
+  beforeInsert();
+  let itemId;
+  try {
+    const added = api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: projectId, issue: issueId });
+    itemId = added.addProjectV2ItemById?.item?.id;
+  } catch (error) {
+    const alreadyExists = error.graphqlErrors?.length
+      ? error.graphqlErrors.every(entry => entry.message === 'Content already exists' && (!entry.path || entry.path[0] === 'addProjectV2ItemById'))
+      : /^(?:gh:\s*)*Content already exists(?: \(addProjectV2ItemById\))?$/.test(error.message.trim());
+    if (!alreadyExists) throw error;
+    // Auto-add may win after our first read. Only a fresh issue-side read
+    // can establish membership when the mutation returns no usable item id.
+  }
+  if (!verifyMembership(io, projectId, issueId, itemId)) throw new Error('Project membership not verified');
+}
+
+function repository(value) {
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value || '')) throw new Error('Repository must be owner/name on github.com');
+  return value.split('/');
+}
+
+function projectAddress(value) {
+  const match = /^https:\/\/github\.com\/(users|orgs)\/([A-Za-z0-9-]+)\/projects\/([1-9][0-9]*)\/?$/.exec(value || '');
+  if (!match) throw new Error('Project must be https://github.com/users/OWNER/projects/N or https://github.com/orgs/OWNER/projects/N');
+  return { type: match[1] === 'users' ? 'user' : 'organization', owner: match[2], number: Number(match[3]) };
+}
+
+const PROJECT_FIELDS = 'id title url closed viewerCanUpdate';
+
+function inspect(request, io) {
+  io.run('gh', ['--version']);
+  io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
+  const [owner, name] = repository(request.repository);
+  const data = api(io, 'query($owner:String!,$name:String!){viewer{login} repository(owner:$owner,name:$name){id nameWithOwner url visibility hasIssuesEnabled isArchived}}', { owner, name });
+  const repo = data.repository;
+  if (!repo || !repo.hasIssuesEnabled || repo.isArchived) throw new Error('Repository is inaccessible, archived, or has issues disabled');
+  let projects;
+  if (request.project) {
+    const project = projectAddress(request.project);
+    const data = api(io, `query($owner:String!,$number:Int!){${project.type}(login:$owner){projectV2(number:$number){${PROJECT_FIELDS}}}}`, { owner: project.owner, number: project.number });
+    const found = data[project.type]?.projectV2;
+    if (!found || found.closed || !found.viewerCanUpdate) throw new Error('Selected Project is inaccessible, closed, or not writable');
+    projects = [found];
+  } else {
+    projects = pages(cursor => api(io, `query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){projectsV2(first:100,after:$cursor){nodes{${PROJECT_FIELDS}} pageInfo{hasNextPage endCursor}}}}`, { owner, name, cursor }), data => data.repository?.projectsV2)
+      .filter(project => !project.closed && project.viewerCanUpdate);
+  }
+  return { repo, projects, actor: data.viewer.login };
+}
+
+function content(request) {
+  if (typeof request.title !== 'string' || !request.title.trim() || typeof request.description !== 'string') throw new Error('A nonempty title and string description are required');
+  return { title: request.title, description: request.description };
+}
+
+function digest(proposal) {
+  return crypto.createHash('sha256').update(JSON.stringify(proposal)).digest('hex');
+}
+
+function query(request, io) {
+  const { repo, projects } = inspect(request, io);
+  if (projects.length !== 1) return { status: 'needs_input', reason: projects.length ? 'project-ambiguous' : 'project-required', repository: repo.nameWithOwner, projects };
+  const proposal = { provider: 'github', repository: repo.nameWithOwner, repositoryId: repo.id, visibility: repo.visibility, project: projects[0], ...content(request) };
+  return { status: 'ready', proposal, confirmation: digest(proposal) };
+}
+
+function issues(receipt, io) {
+  const [owner, name] = repository(receipt.proposal.repository);
+  return pages(cursor => api(io, 'query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){issues(first:100,after:$cursor){nodes{id number url title body author{login}} pageInfo{hasNextPage endCursor}}}}', { owner, name, cursor }), data => data.repository?.issues);
+}
+
+function save(file, receipt) {
+  file = receiptPath(file);
+  // Atomic replacement keeps the previous conservative state on interruption.
+  const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(receipt), { mode: 0o600, flag: 'wx' });
+  // Windows scanners can briefly hold the destination after a verified read.
+  // Retry the same atomic rename; never delete the previous durable receipt.
+  for (let attempt = 0; ; attempt++) {
+    try { fs.renameSync(temporary, file); break; }
+    catch (error) {
+      if (attempt >= 4 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
+}
+
+function report(receipt, message) {
+  return { status: receipt.stage === 'complete' ? 'complete' : receipt.issue ? 'partial_failure' : 'uncertain', issue: receipt.issue || null, project: receipt.proposal.project.url, message };
+}
+
+function insert(receipt, file, io) {
+  try {
+    file = receiptPath(file);
+    const state = inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
+    if (state.actor !== receipt.actor || state.repo.id !== receipt.proposal.repositoryId || state.projects[0].id !== receipt.proposal.project.id) throw new Error('Recovery identity or destination changed');
+    if (state.repo.visibility !== receipt.proposal.visibility) throw new Error('Repository visibility changed; fresh review is required before insertion');
+    const current = issues(receipt, io).find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
+    if (!current) throw new Error('Created issue could not be verified');
+    if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before insertion');
+    ensureMembership(io, receipt.proposal.project.id, receipt.issue.id, () => {
+      receipt.stage = 'insertion_pending';
+      save(file, receipt);
+    });
+    receipt.stage = 'complete';
+    save(file, receipt);
+    return report(receipt);
+  } catch (error) { return { ...report(receipt, error.message), status: 'partial_failure' }; }
+}
+
+function publish(request, io) {
+  let receipt;
+  try {
+    request = { ...request, receipt: receiptPath(request.receipt) };
+    const ready = query(request, io);
+    if (ready.status !== 'ready') return ready;
+    if (request.confirmation !== ready.confirmation) throw new Error('Exact content and destination confirmation is required; review the current proposal again');
+    const actor = api(io, 'query{viewer{login}}', {}).viewer.login;
+    receipt = { proposal: ready.proposal, actor, stage: 'prepared' };
+    receipt.baseline = issues(receipt, io).map(issue => issue.id);
+    // An existing receipt is never overwritten to start a second creation.
+    fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
+  } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
+  try {
+    receipt.stage = 'creation_pending';
+    save(request.receipt, receipt);
+    const data = api(io, 'mutation($repo:ID!,$title:String!,$body:String!){createIssue(input:{repositoryId:$repo,title:$title,body:$body}){issue{id number url}}}', { repo: receipt.proposal.repositoryId, title: receipt.proposal.title, body: receipt.proposal.description });
+    const issue = data.createIssue?.issue;
+    if (!issue?.id || !issue.url || !issue.number) throw new Error('Issue creation response is incomplete');
+    receipt.issue = issue;
+    receipt.stage = 'issue_created';
+    save(request.receipt, receipt);
+  } catch (error) { return report(receipt, error.message); }
+  return insert(receipt, request.receipt, io);
+}
+
+function recover(request, io) {
+  let receipt;
+  try {
+    request = { ...request, receipt: receiptPath(request.receipt) };
+    receipt = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
+    if (receipt.proposal?.provider !== 'github' || !Array.isArray(receipt.baseline)) throw new Error('Invalid publication receipt');
+    // Recovery performs queries first and never creates an issue.
+    const state = inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
+    if (state.actor !== receipt.actor || state.repo.id !== receipt.proposal.repositoryId || state.projects[0].id !== receipt.proposal.project.id) throw new Error('Recovery identity or destination changed');
+    if (state.repo.visibility !== receipt.proposal.visibility) throw new Error('Repository visibility changed; fresh review is required before recovery');
+    const all = issues(receipt, io);
+    if (!receipt.issue) {
+      const matches = all.filter(issue => !receipt.baseline.includes(issue.id) && issue.title === receipt.proposal.title && issue.body === receipt.proposal.description && issue.author?.login === receipt.actor);
+      // User identifies the verified issue; a similar concurrent issue is not proof.
+      const chosen = matches.find(issue => issue.url === request.issueUrl);
+      if (!chosen) return { ...report(receipt, 'Verify the creation outcome and supply the confirmed issueUrl; recovery will not recreate it.'), candidates: matches.map(({ id, number, url }) => ({ id, number, url })) };
+      receipt.issue = { id: chosen.id, number: chosen.number, url: chosen.url };
+    } else {
+      const current = all.find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
+      if (!current) throw new Error('Created issue could not be verified');
+      if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before recovery');
+    }
+    save(request.receipt, receipt);
+    const present = !!membership(io, receipt.proposal.project.id, receipt.issue.id);
+    receipt.stage = present ? 'complete' : 'insertion_pending';
+    save(request.receipt, receipt);
+    if (present) return report(receipt);
+    const continuation = digest(receipt);
+    if (request.confirmation !== continuation) {
+      if (request.automatic_retry === true) throw new Error('Exact verified pending insertion confirmation is required');
+      return { ...report(receipt), continuation };
+    }
+    require('./backlog-publication-retry').authorize(request, receipt, request.receipt, save);
+    return insert(receipt, request.receipt, io);
+  } catch (error) {
+    return receipt?.proposal ? { ...report(receipt, error.message), status: receipt.issue ? 'partial_failure' : 'uncertain' } : { status: 'failure_before_publication', message: error.message };
+  }
+}
+
+const sourceIssue = require('./from-backlog-github');
+
+function readUpdate(request, io) {
+  io.run('gh', ['--version']);
+  io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
+  const reference = sourceIssue.normalize(request.reference);
+  const item = sourceIssue.readIssue(reference, io);
+  const [owner, name] = repository(item.repository);
+  const data = api(io, 'query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){visibility issue(number:$number){id url viewerCanUpdate title body}}}', { owner, name, number: item.number });
+  const issue = data.repository?.issue;
+  if (item.repository_archived || !issue?.viewerCanUpdate) throw new Error('Originating issue is inaccessible, archived, or not editable; no replacement will be created');
+  if (!issue.id || issue.url !== item.url || typeof issue.title !== 'string' || typeof issue.body !== 'string' || typeof data.viewer?.login !== 'string' || typeof data.repository.visibility !== 'string') throw new Error('Incomplete issue update response');
+  return { status: 'complete', issue: { id: issue.id, number: item.number, url: item.url }, repository: item.repository, visibility: data.repository.visibility, actor: data.viewer.login, baseline: { title: issue.title, description: issue.body } };
+}
+
+function queryUpdate(request, io) {
+  const current = readUpdate(request, io);
+  if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
+  const proposal = { provider: 'github', operation: 'update', issue: current.issue, repository: current.repository, visibility: current.visibility, actor: current.actor, baseline: current.baseline, ...content(request) };
+  if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue, message: 'No update is necessary' };
+  return { status: 'ready', proposal, confirmation: digest(proposal) };
+}
+
+function updateOutcome(receipt, io) {
+  const current = readUpdate({ reference: receipt.proposal.issue.url }, io);
+  const proposal = receipt.proposal;
+  if (current.repository !== proposal.repository || current.actor !== proposal.actor || current.issue.id !== proposal.issue.id || current.visibility !== proposal.visibility) throw new Error('Update identity or destination changed; fresh review is required');
+  const final = { title: proposal.title, description: proposal.description };
+  if (digest(current.baseline) === digest(final)) return { status: 'complete', issue: current.issue, message: 'Remote title and description match the approved update' };
+  if (digest(current.baseline) === digest(proposal.baseline)) return { status: 'pending', issue: current.issue, message: 'Remote content still matches the baseline. Renew review and explicit confirmation before retrying; recovery does not mutate.' };
+  return { status: 'divergent', issue: current.issue, current, message: 'Remote content differs from both baseline and proposal; reread, reconcile, and obtain fresh approval' };
+}
+
+function update(request, io) {
+  let receipt;
+  try {
+    request = { ...request, receipt: receiptPath(request.receipt) };
+    // Re-read immediately before execution; the token binds target, actor,
+    // visibility, baseline and exact final content, not merely the new text.
+    const ready = queryUpdate(request, io);
+    if (ready.status !== 'ready') return ready;
+    if (request.confirmation !== ready.confirmation) throw new Error('Exact issue, baseline and content confirmation is required; review again');
+    receipt = { proposal: ready.proposal, stage: 'update_pending' };
+    fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
+  } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
+  let submissionError;
+  try {
+    api(io, 'mutation($id:ID!,$title:String!,$body:String!){updateIssue(input:{id:$id,title:$title,body:$body}){issue{id url}}}', { id: receipt.proposal.issue.id, title: receipt.proposal.title, body: receipt.proposal.description });
+  } catch (error) { submissionError = error.message; }
+  try {
+    const result = updateOutcome(receipt, io);
+    receipt.stage = result.status;
+    save(request.receipt, receipt);
+    return { ...result, ...(submissionError ? { submission_error: submissionError } : {}) };
+  } catch (error) { return { status: 'uncertain', issue: receipt.proposal.issue, message: error.message, ...(submissionError ? { submission_error: submissionError } : {}) }; }
+}
+
+function recoverUpdate(request, io) {
+  try {
+    const file = receiptPath(request.receipt);
+    const receipt = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (receipt.proposal?.provider !== 'github' || receipt.proposal.operation !== 'update' || !receipt.proposal.issue?.url || typeof receipt.proposal.baseline?.title !== 'string' || typeof receipt.proposal.baseline?.description !== 'string') throw new Error('Invalid update receipt');
+    const result = updateOutcome(receipt, io);
+    receipt.stage = result.status;
+    save(file, receipt);
+    return result;
+  } catch (error) { return { status: 'uncertain', message: error.message }; }
+}
+
+const set = require('./backlog-set-github');
+const assignment = require('./backlog-assignment-github');
+function lookupSlice(request, io) {
+  const state = inspect(request, io);
+  const identity = require('./backlog-slice-identity');
+  const candidates = issues({ proposal: { repository: state.repo.nameWithOwner } }, io).flatMap(issue => {
+    const value = identity.decode(issue.body);
+    return value?.role === 'child' && value.change_name === request.change_name && value.slices.find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
+  });
+  return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
+}
+module.exports = { query, publish, recover, pages, membership, verifyMembership, ensureMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
+  'lookup-slice': lookupSlice,
+  'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
+  'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };

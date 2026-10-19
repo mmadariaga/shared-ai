@@ -7,7 +7,7 @@ TBD - created by archiving change generalize-unattended-recovery. Update Purpose
 
 ### Requirement: One resilience rule decides every non-clean outcome of an unattended lane
 
-The unattended lanes (Explore Plan - Unattended, Explore Direct Build - Unattended, and the Direct Build close of `/sai-5-review` and `/sai-review`) SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane by a pointer.
+The unattended lanes (Explore Plan - Unattended and Explore Direct Build - Unattended) SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane by a pointer.
 
 #### Scenario: An unforeseen failure is corrected
 
@@ -45,7 +45,7 @@ An automatic correction SHALL be allowed only while every invariant holds, and t
 
 ### Requirement: One-shot operations are verified before any retry
 
-Immediately before sending any execute order (a closed order whose effects are harmful to apply twice, such as a draft write, a spec sync, the move into `archive/`, or a commit), the coordinator SHALL take an order snapshot listing the order's target paths and hold it as `order_snapshot`. When an execute order fails, the coordinator SHALL run the no-effect check of `sai/policies/slice-path-scope.md` before anything else. When the check verifies that the order changed nothing, the step SHALL be a failed step like any other: its cause is corrected through the recovery path and a new order is issued to the step's owner. When the mutation completed, part of it landed, or the check returns `n/a`, the coordinator SHALL issue no order and SHALL stop, reporting the exact state. An order that succeeded SHALL be consumed and SHALL never be issued again.
+Immediately before sending any execute order (a closed order whose effects are harmful to apply twice, such as a draft write, a spec sync, the move into `archive/`, or a commit), the coordinator SHALL take an order snapshot listing the order's target paths and hold it as `order_snapshot`. When an execute order fails, the coordinator SHALL first restore any pending foreign index entries under `sai/policies/foreign-index-preservation.md` § Recovery; a restore that stops SHALL end recovery and SHALL be reported. The coordinator SHALL then run the no-effect check of `sai/policies/slice-path-scope.md` before anything else. When the check verifies that the order changed nothing, the step SHALL be a failed step like any other: its cause is corrected through the recovery path and a new order is issued to the step's owner. When the mutation completed, part of it landed, or the check returns `n/a`, the coordinator SHALL issue no order and SHALL stop, reporting the exact state. An order that succeeded SHALL be consumed and SHALL never be issued again.
 
 #### Scenario: The outcome of a one-shot operation can be established
 
@@ -57,13 +57,18 @@ Immediately before sending any execute order (a closed order whose effects are h
 - **WHEN** the no-effect check after a failed execute order returns `n/a` or reports a completed or partial mutation
 - **THEN** the run stops and reports the exact state without issuing another order
 
+#### Scenario: Pending foreign index entries are restored first
+
+- **WHEN** an execute order fails and a foreign-index record is pending
+- **THEN** the coordinator restores the pending foreign entries before the no-effect check, and ends recovery with a report when that restore stops
+
 ### Requirement: Corrections consume the existing budget and add no loop rounds
 
-Each failed step SHALL allow three attempts, shared between the two recovery paths, where an attempt is one correction sent through either path. Attempts SHALL be counted on the counter the route already keeps in conversation state and SHALL be charged immediately before the attempt is sent; a delivery failure, repeated error, or malformed result SHALL NOT refund or reset the charge. The Direct Build close of `/sai-5-review` and `/sai-review`, which keeps no diagnosis counter, SHALL count the three attempts per close in conversation. An attempt SHALL add no round to a loop that already has a cap, including the three review-fix rounds. The run SHALL stop when the counter reaches three with the step still failing, or when the budget agent returns the diagnosis the previous attempt already returned.
+Each route SHALL keep one budget per scope, shared between the two recovery paths, where an attempt is one correction sent through either path: Plan - Unattended SHALL allow one diagnosis round per phase, and Direct Build - Unattended SHALL allow three attempts per failed step. Attempts SHALL be counted on the counter the route already keeps in conversation state and SHALL be charged immediately before the attempt is sent; a delivery failure, repeated error, or malformed result SHALL NOT refund or reset the charge. Plan - Unattended SHALL charge `diagnosis_rounds.spec` or `diagnosis_rounds.design` for the active phase, and the Explore Diagnosis Round with its Bounded Recovery continuation SHALL form that one round, charged once. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), and a step's attempts SHALL never draw on another step's key. The Direct Build close of `/sai-5-review` and `/sai-review`, which keeps no diagnosis counter, SHALL count the three attempts per close in conversation. An attempt SHALL add no round to a loop that already has a cap, including the three review-fix rounds. The run SHALL stop when the Plan phase's diagnosis round is used with the step still failing, when a Direct Build step's counter reaches three with that step still failing, or when the budget agent returns the diagnosis the previous attempt already returned.
 
 #### Scenario: The budget is exhausted
 
-- **WHEN** a step still fails after its three attempts have been charged
+- **WHEN** a Direct Build step still fails after its three attempts have been charged
 - **THEN** the run stops without another automatic correction
 
 #### Scenario: A correction occurs inside a capped loop
@@ -76,14 +81,36 @@ Each failed step SHALL allow three attempts, shared between the two recovery pat
 - **WHEN** the budget agent returns the diagnosis that the previous attempt already returned
 - **THEN** the run stops with the stop notice
 
+#### Scenario: A Plan phase uses its one diagnosis round
+
+- **WHEN** a Plan - Unattended spec or design phase still fails after its one diagnosis round was charged
+- **THEN** the run stops with that phase's guidance, the change stays retryable, and only a new Plan selection resets the counters
+
+#### Scenario: Each failed Direct Build step has its own attempts
+
+- **WHEN** a Direct Build step fails after an earlier step used attempts in the same slice
+- **THEN** the failed step is charged on its own key with three attempts, and the counters persist across a same-slice resume and reset only with a new slice
+
 ### Requirement: The stop notice is defined once
 
-When the rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it. Earlier completed steps SHALL be preserved, the stopped step SHALL stay pending, and retrying a stopped slice SHALL still require a fresh route picker answer.
+When the resilience rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it.
+
+Earlier accepted steps SHALL be preserved and the stopped step SHALL stay pending. A stopped Plan slice SHALL still require a fresh route picker answer. A pending Direct Build execution in the same conversation SHALL use the pending-execution decision in `route-selector.md` and the retained state in `pipeline-direct-build.md`. Resumption SHALL preserve existing attempts and execute-order checks and SHALL grant no extra attempt.
 
 #### Scenario: A stop reports the blocking limit
 
 - **WHEN** an unattended lane stops because an invariant blocks the correction
 - **THEN** the notice names what failed, what is done and pending, the blocking invariant, and the decision the user must make
+
+#### Scenario: Direct Build resumes within the existing budget
+
+- **WHEN** pending Direct Build work resumes in the same conversation
+- **THEN** it uses retained recovery counters and existing execute-order checks rather than a new route selection or renewed attempt budget
+
+#### Scenario: Plan retains its selection gate
+
+- **WHEN** a stopped Plan slice is retried
+- **THEN** the existing fresh route picker answer remains required
 
 ### Requirement: The per-worker recovery allowlist is retired
 

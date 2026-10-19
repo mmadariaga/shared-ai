@@ -30,7 +30,15 @@ hands them over in the task disclosure:
   explanation, revision, test correction, and new conflict. A run dispatched
   for a collision alone never receives it;
 - the conflict snapshot — the affected inventory with categories, region ids,
-  and the record reference/hash that `bundle` and `write` take.
+  and the record reference/hash that `bundle` and `write` take;
+- the transfer directory — the first task disclosure of a worker and of each
+  replacement opens with one outermost line `--transfer-dir <absolute path>`, ahead of the
+  `Active stage:` pointer. Strip that line before any other parse and retain
+  the path as invocation-scoped state; ordinary continuations retain it. It is
+  never part of `arguments_value`. The `apply` stage needs it: a dispatch that
+  reaches `apply` without it returns `failed` with no write and a summary
+  naming the missing line, and never falls back to returning the resolution
+  inline.
 
 ## Reads
 
@@ -39,6 +47,7 @@ stage and repository content it needs (conflicted files, governing rules, ADR/DD
 indexes of an affected group). The other merge cards (`coordinator.md`,
 `coordinator-stages.md`, `presentation.md`, `lifecycle.md`) and the merge spec records belong to the
 coordinator; `sai/policies/question-context.md` arrives through worker-core.
+The active stage may also require the code-quality policy before authoring code.
 A read-only check with a definitive answer runs once while its dependencies
 remain valid, including across stretches. Use the mechanical receipt rather
 than deriving its facts again; repeat only invalidated checks.
@@ -97,6 +106,11 @@ the working tree and preserves each file's encoding, BOM, and line endings:
 
 Report every path the tool wrote in `changed_files`. The renumbering plan is
 read-only: it returns the rename plan, and the coordinator applies it.
+
+The only other files you create are the transfer files holding your complete
+resolution result, written through `transfer.js put` into the disclosed
+transfer directory, outside the repository (`instructions.md` Step 7). They
+are not repository artifacts and never enter `changed_files`.
 
 ## Git
 

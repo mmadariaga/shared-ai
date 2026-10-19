@@ -3,15 +3,22 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Canonical worker matrix contents
 
-The canonical worker matrix SHALL define exactly fifteen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, and one `/sai-review` fix identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
+The canonical worker matrix SHALL define exactly thirteen entries: the nine canonical phase identities (spec, design, security, performance, accessibility, commit, archive, backfill, merge), followed by one Direct Build implementer identity, the RED then GREEN `/sai-3-implement` identities, and the `/sai-4-review` identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The implement RED identity SHALL be `sai-3-red-worker`, use phase and binding stem `red`, and use contract `sai/commands/implement/red-worker.md`; the implement GREEN identity SHALL be `sai-3-green-worker`, use phase and binding stem `green`, and use contract `sai/commands/implement/green-worker.md`. The review identity SHALL be `sai-4-review-worker`, use phase and binding stem `review`, and use contract `sai/commands/review/worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
 
-#### Scenario: Manifest expansion yields the fifteen-worker roster
+#### Scenario: Manifest expansion yields the seventeen-worker roster
 
 - **WHEN** the install manifest expands for either harness
-- **THEN** exactly fifteen active worker bindings and fifteen managed agents materialize, with the merge phase bound to `sai-merge-worker` and the Direct Build phase bound to `sai-direct-build-worker`.
+- **THEN** the roster holds thirteen worker bindings, not seventeen, and no retired identity such as `sai-4-red-worker`, `sai-4-green-worker`, `sai-3-implementation-worker`, or `sai-5-review-worker` materializes
+
+#### Scenario: Manifest expansion yields the thirteen-worker roster
+
+- **WHEN** the install manifest expands for either harness
+- **THEN** exactly thirteen active worker bindings and thirteen managed agents materialize, with the merge phase bound to `sai-merge-worker`, the Direct Build phase bound to `sai-direct-build-worker`, and the `red` and `green` phases bound to `sai-3-red-worker` and `sai-3-green-worker`.
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
@@ -29,8 +36,13 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 #### Scenario: Worker continuation and replacement remain bounded
 
-- **WHEN** a worker result requests continuation or a coordinator reconstructs a replacement worker
+- **WHEN** a worker of the shared orchestration requests continuation or its coordinator reconstructs a replacement worker
 - **THEN** the binding continues the captured handle with the runner's continuation payload, reuses its single dispatch call for the replacement, and defers the bounded worker/replacement lifecycle to `sai/orchestration/command-runner.md`.
+
+#### Scenario: Standalone bindings leave the lifecycle to their coordinator
+
+- **WHEN** the `red`, `green`, or `review` binding is materialized for either harness
+- **THEN** it renders from that harness's `standalone-worker-template.md`, carries only the create and continue calls, and names neither `sai/orchestration/command-runner.md`, guard windows, nor `replacement_reconstruction_fields`.
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements
 
@@ -48,7 +60,7 @@ The manifest and expansion layer SHALL represent the parameterized templates as 
 
 ### Requirement: Canonical tests enforce cross-harness matrix parity
 
-The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the fifteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the review-fix phase, `sai-review-fix-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
+The test suite SHALL verify every routed phase and both implement workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the thirteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the `red` and `green` phases with `sai-3-red-worker` and `sai-3-green-worker`, the `review` phase with `sai-4-review-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
 
 #### Scenario: Matrix regression is detected before installation
 

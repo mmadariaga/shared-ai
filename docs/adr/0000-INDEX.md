@@ -30,6 +30,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172c-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
 - [0189 — The first step pointer travels with the task disclosure](./0189-first-step-pointer-travels-with-the-task.md) — **Amends** 0172c, Refs 0188
+- [0191 — Spec instruction restatements need a decision record or an observed failure](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) — **Amends** 0172c, Refs ddr:0156a
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -148,6 +149,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0183 — Apply self-gating via standalone state machine](./0183-apply-self-gating-via-standalone-state-machine.md) — Refs 0172c
 - [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
+- [0192 — Apply recovery is disclosed on failure, and the Coverage Signature is an invariant](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) — **Amends** 0161a, Refs 0160a, Refs 0172c
+- [0193 — The apply Step routing mode is computed by `apply-step.js route`](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) — **Amends** 0183
 
 ### `/sai-5-review`
 
@@ -212,6 +215,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0175b — The auto-fast implementer's writable surface is a closed exclusion list, not a defined "production code" term](./0175b-autofast-closed-exclusion-write-scope.md) — Refs 0172d
 - [0185 — Remove hang rationale from sibling dispatch, keep recovery isolation](./0185-remove-hang-rationale-from-sibling-dispatch.md) — **Amends** 0172d
 - [0188 — Subagents open with a ready handshake and live per role](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) — Refs 0025, Refs 0076, Refs 0077
+- [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
+- [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
 
 ### `/sai-backfill`
 
@@ -241,6 +246,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0173b — Build composition inherits pointer delivery with no opt-out special case](./0173b-build-composition-inherits-pointer-delivery.md) — Refs 0172c, Refs 0163, Refs 0156
 - [0174 — Relax the artifact-content-inference prohibition in chained composition successor activation](./0174-relax-composition-successor-inference-prohibition.md) — Refs 0147a, Refs 0151, Refs 0152b, Refs 0173b
 - [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
+
+### `/sai-build-new`, `/sai-3-implement-new`, and `/sai-4-review-new`
+
+- [0194 — `/sai-3-implement-new` runs outside the shared orchestration](./0194-implement-new-runs-outside-the-shared-orchestration.md) — **Amends** 0188, Refs 0163, Refs 0187
+- [0195 — `/sai-4-review-new` is a review-only command of the `-new` family](./0195-review-new-is-a-review-only-command-of-the-new-family.md) — **Amends** 0194
+- [0198 — `/sai-build-new` selects and fixes the findings of its own review](./0198-build-new-selects-and-fixes-findings-after-its-review.md) — **Amends** 0195
 
 ### `/sai-merge`
 
@@ -502,6 +513,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159a — Recovery budget is a three-slot distinct-diagnosis ledger](./0159a-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150a
 - [0160a — Apply Known-False Report Recovery branches by locus with five-part recovery content](./0160a-known-false-report-recovery-branches-by-locus.md) — Refs 0159a, Refs 0161a
 - [0161a — Bounded coordinator-owned plan-artifact repair with Coverage Signature](./0161a-bounded-plan-artifact-repair-coverage-signature.md) — Refs 0160a
+- [0192 — Apply recovery is disclosed on failure, and the Coverage Signature is an invariant](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) — **Amends** 0161a, Refs 0160a, Refs 0172c
 - [0162a — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162a-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151b, Refs ddr:0152
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151b, Refs ddr:0152
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
@@ -558,6 +570,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159c — Path-specific next-step lives only on Manual/unmapped after the selector](./0159c-path-specific-next-step-after-manual-selector.md) — **Amends** 0158a, Refs 0146a
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
 - [0161b — Capability deltas stay change-local until archive sync](./0161b-capability-deltas-stay-change-local-until-archive.md) — Refs 0158c
+- [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
+- [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
 
 ### Artifact metadata & routing tokens
 
@@ -627,6 +641,14 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0189](./0189-first-step-pointer-travels-with-the-task.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | supersedes | [0012](./0012-mutation-analysis-as-dedicated-protocol-section.md) |
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | amends | [0107b](./0107b-unified-audit-severity-vocabulary.md) |
+| [0191](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
+| [0192](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) | amends | [0161a](./0161a-bounded-plan-artifact-repair-coverage-signature.md) |
+| [0193](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) | amends | [0183](./0183-apply-self-gating-via-standalone-state-machine.md) |
+| [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) | amends | [0188](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) |
+| [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
+| [0196](./0196-empty-implementation-details-needs-user-confirmation.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
+| [0197](./0197-next-step-is-the-only-stage-advancement-keyword.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
+| [0198](./0198-build-new-selects-and-fixes-findings-after-its-review.md) | amends | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

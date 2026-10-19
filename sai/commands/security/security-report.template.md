@@ -1,47 +1,19 @@
-
 ```markdown
 # Security Report — {Feature Name}
 
-**Change:** `openspec/changes/{change-name}/`
-**Scan type:** {SAST | SCA | SAST+SCA}
-**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}
-**Branch:** `{current-branch}`
-**Languages detected:** {list}
-**Modules in scope:** {list}
-**Date:** {YYYY-MM-DD}
+**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`} · **Scan type:** {SAST | SCA | SAST+SCA} · **Date:** {YYYY-MM-DD}
+
+{Write a section only when it has content: omit every section with nothing to record instead of filling it with "N/A" or an empty table.}
 
 ## Not Applicable
 
-{Keep this section only when the change has no security surface (no
-auth/input/crypto/HTTP/deps touched): justify it here and omit every findings
-section. Otherwise delete this heading entirely — /sai-status and /sai-archive
-read its presence as "audit not applicable".}
+{Keep this section only when the selected scope has no attack surface and the
+SCA gate admits no manifest: the report is then the title, the provenance line,
+and this section, with no findings sections and no tally line. Otherwise delete
+this heading entirely — /sai-status and /sai-archive read its presence as
+"audit not applicable".}
 
-**Justification:** {Why this change has no security surface}
-
----
-
-## Executive Summary
-
-| Severity | Count |
-|----------|-------|
-| Critical | {n} |
-| High | {n} |
-| Medium | {n} |
-| Low | {n} |
-| **Total** | **{n}** |
-
-**Risk posture:** {one-sentence overall assessment}
-
-**Verdict:** {Block release | Release after Critical/High fixed | Acceptable risk}
-
----
-
-## Module Summary
-
-| Module | Files | Highest Severity |
-|--------|-------|------------------|
-| {module} | {n} | {severity} |
+**Justification:** {Why the selected scope has no attack surface and the SCA gate admits no manifest}
 
 ---
 
@@ -70,8 +42,6 @@ read its presence as "audit not applicable".}
 
 ## SCA Findings
 
-> Include this section **only** if SCA ran.
-
 ### H1 [SEVERITY] {CVE-ID} — {package}@{version}
 
 - **Package:** `{name}@{version}`
@@ -82,71 +52,17 @@ read its presence as "audit not applicable".}
 - **CVSS:** {score} ({vector})
 - **Vulnerability:** {brief description}
 - **Fix version:** `{version}` (available: yes/no)
-- **License:** {SPDX} ({Low/Medium/High risk})
 - **Remediation:** Upgrade to `{name}@{fix}` / replace with `{alternative}` / pin transitive override
-
----
-
-## Supply Chain Hygiene
-
-> Include this section **only** if SCA ran.
-
-- **Lock files present:** {yes/no — list missing}
-- **GitHub Actions pinned to SHA:** {yes/no — list violations}
-- **Typosquatting / dependency confusion suspects:** {none / list}
-- **Abandoned dependencies:** {none / list}
-
----
-
-## License Risk
-
-> Include this section **only** if SCA ran.
-
-| Package | License | Risk | Commercial Use |
-|---------|---------|------|----------------|
-| {name} | {SPDX} | {Low/Medium/High} | {Permitted/Restricted/Prohibited} |
-
----
-
-## Policy Compliance
-
-> Include this section **only** if SCA ran OR if SAST findings map directly to a policy control.
-
-| Policy | Status | Notes |
-|--------|--------|-------|
-| OWASP Top 10 2025 | PASS/FAIL | {categories} |
-| PCI-DSS v4.0 | PASS/FAIL/N/A | {requirements} |
-| SANS/CWE Top 25 | PASS/FAIL | {CWEs} |
-| GDPR | PASS/FAIL/N/A | {gaps} |
 
 ---
 
 ## Acknowledged Trade-offs (from change artifacts)
 
-> Optional. Include only if `proposal.md` or `design.md` contain explicit security decisions you evaluated and accepted.
+> Optional. Include only the accepted trade-offs you evaluated and relied on.
 
 - {Item with artifact and section reference}
 
 ---
-
-## Prioritized Remediation Plan
-
-### Block release (Critical / High)
-1. **{flaw}** (`{file}:{line}`) — {one-line fix action}
-
-### Next sprint (Medium)
-1. **{flaw}** (`{file}:{line}`) — {one-line fix action}
-
-### Backlog (Low)
-1. **{flaw}** (`{file}:{line}`) — {one-line fix action}
-
----
-
-## Metrics
-
-- **Files scanned:** {n}
-- **Flaw density:** {flaws per 1000 LOC scanned}
-- **Est. remediation effort:** {hours}
 
 Summary: Critical={n} High={n} Medium={n} Low={n}
 ```

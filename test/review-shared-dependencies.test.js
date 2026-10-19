@@ -7,7 +7,6 @@ const path = require('node:path');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const phases = [
-  ['review', 'resolve-change', 'establish-diff-scope'],
   ['security', 'resolve-security-scope', 'discover-module-map'],
   ['performance', 'resolve-performance-scope', 'map-stack-hot-paths'],
   ['accessibility', 'resolve-accessibility-scope', 'map-ui-framework'],
@@ -16,7 +15,8 @@ const phases = [
 test('review and audits keep proposal gates without environment prerequisite startup', () => {
   for (const [phase, startup, firstFiled] of phases) {
     const worker = read(`sai/commands/${phase}/worker.md`);
-    assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
+    // Review, security, and performance no longer carry the prerequisite sentence (the rule belongs to /sai-explore alone).
+    if (phase !== 'review' && phase !== 'security' && phase !== 'performance') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
     assert.doesNotMatch(worker, /startup act \(prerequisite checks|the three steps above/);
     assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
     assert.ok(worker.includes(`first delivered pointer targets \`${firstFiled}\``)
@@ -29,12 +29,15 @@ test('review and audits keep proposal gates without environment prerequisite sta
     for (const content of [worker, common]) {
       assert.doesNotMatch(content, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
     }
-    assert.ok(common.includes(`report \`${startup}\` and \`${firstFiled}\` together`));
+    // Review, security, and performance own the pointer rule in their worker card; the others keep it in common.md.
+    if (phase === 'review') assert.ok(worker.includes(`reports together with \`${firstFiled}\``));
+    else if (phase === 'security' || phase === 'performance') assert.ok(worker.includes(`\`${startup}\``) && worker.includes(`together with \`${firstFiled}\``));
+    else assert.ok(common.includes(`report \`${startup}\` and \`${firstFiled}\` together`));
   }
 });
 
-test('meta-review retains the artifact table without a preflight', () => {
-  const coordinator = read('sai/commands/meta-review/coordinator.md');
+test('deep-review retains the artifact table without a preflight', () => {
+  const coordinator = read('sai/commands/deep-review/coordinator.md');
   assert.match(coordinator, /## Artifact paths/);
   assert.match(coordinator, /runs no OpenSpec prerequisite check/);
   assert.match(coordinator, /Fetch @sai\/policies\/prereqs-paths\.md/);

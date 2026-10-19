@@ -17,7 +17,7 @@ project and never travels in a request or a response.
 
 A session file takes one writer at a time: run `emit` and `reset` calls against
 the same session id one after another, even while workers run in parallel. The
-meta-review audit batch emits in fixed order security → performance →
+deep-review audit batch emits in fixed order security → performance →
 accessibility.
 
 ## Verbs
@@ -58,21 +58,70 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   time.
 - **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
   reads the complete `Ready to Propose` block set as text from stdin instead of
-  a hand-composed event, in the style of the progress emit. It validates the
-  set with the strict profile of `sai/tools/ready-to-propose.js` before any
-  session, machine, or registry read; on a valid verdict it derives
-  `{"recordedList": [...]}` from the extracted `**Change name**` values in
-  display order and advances the machine. The set is validated as a whole: an
-  invalid verdict records no name and leaves the machine untouched. It always
-  returns `received_at` and `validation: {ok, profile, blocks: [{index, line,
-  violations}], violations}` (change names stay off the wire), plus the
-  ordinary emit fields on a valid verdict. An invalid verdict exits 1. Empty
-  stdin, stdin with no block heading, or a final block cut off before its
-  `---` line is a delivery failure instead (`INVALID_EVENT` with
-  `reason: "EVENT_UNPARSEABLE"`, exit 1). On any other machine, or combined with
-  `--progress` or `--with-overview`, the option is a usage error (exit 2). A
-  detector module found in neither location relative to the CLI exits 2
-  naming the tried paths.
+  a hand-composed event, in the style of the progress emit. The stdin may end
+  with a line equal to `<<<VERDICTS>>>` followed by the bounded-judgment
+  verdicts as a JSON array (`@sai/policies/block-hygiene-judgment.md`). It
+  validates the set with the `dispatchable` profile of
+  `sai/tools/ready-to-propose.js` before any session, machine, or registry
+  read; the set is dispatchable when it is structurally valid and every line
+  the lexical pre-filter flagged carries a `context` verdict. On a dispatchable
+  verdict it derives `{"recordedList": [...]}` from the extracted
+  `**Change name**` values in display order, advances the machine, and stores in
+  the session file, per change name, each block's text, its sha256 hash, and
+  the verdicts of its flagged lines, in the same session-file write as the
+  inventory; a later successful block emit replaces the stored blocks together
+  with the inventory. When the stored blocks cannot be confirmed after the emit,
+  the response carries `warnings: ["BLOCKS_NOT_STORED"]`, the inventory stays
+  recorded, and no earlier emit's blocks are left in place. The set is validated as a whole: a
+  structural violation, a flagged line without a verdict, or a `violation`
+  verdict records nothing and leaves the machine untouched. It always
+  returns `received_at` and `validation: {ok, structural_ok, profile, blocks:
+  [{index, line, violations, flagged}], violations, flagged, judgment: {ok,
+  pending, violations, unknown, invalid}}` (change names stay off the wire;
+  `ok` is true only for a dispatchable set), plus the ordinary emit fields on a
+  dispatchable verdict. A non-dispatchable verdict exits 1; `judgment.pending`
+  lists the lines awaiting a verdict. Empty stdin, stdin with no block heading,
+  or a final block cut off before its `---` line is a delivery failure instead
+  (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`, exit 1). A dispatchable
+  set is accepted only while `explore-idea@1` in the same session is at its
+  `crystallize` stage (an absent state counts as `explore-change`); at any
+  other stage nothing is recorded and the response is `INVALID_EVENT` with
+  `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1`
+  pointer (exit 1). `--amend` is outside this check. On any other
+  machine, or combined with `--progress` or `--with-overview`, the option is a
+  usage error (exit 2). A detector module found in neither location relative to
+  the CLI exits 2 naming the tried paths.
+- **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -`
+  reads exactly one `Ready to Propose` block as text from stdin, in the block
+  emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix. It
+  validates the block with the `dispatchable` profile exactly as the block emit
+  does, then requires the block's `**Change name**` to equal `<change-name>`
+  (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the stdin
+  to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
+  then accepts the amendment for a pending or stopped slice only: a slice that
+  is completed (`rejected: "SLICE_COMPLETED"`), running
+  (`rejected: "SLICE_RUNNING"`), or not in the recorded inventory
+  (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0 and nothing stored. An
+  accepted amendment replaces only that slice's stored text, hash, and verdicts
+  in the session file; the inventory order, the other slices' stored entries,
+  the completed slices, and every parked cursor stay unchanged. It returns the
+  block emit's `validation` block plus the ordinary emit fields, and the
+  `BLOCKS_NOT_STORED` warning when the replacement cannot be confirmed (the
+  previous entry then remains stored). A non-dispatchable block returns
+  `validation` alone, exits 1, and replaces nothing. The option is accepted
+  only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
+  error (exit 2).
+  Both registration and amendment also accept `--block-file <path> --verdicts-file <path>` instead of stdin and the `-` positional marker. This invokes `ready-to-propose.js`'s shared composer before validation or state reads, inserting the required newline boundary without changing the hashed block. Invalid/missing files, incomplete blocks, or invalid verdicts return `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"` (exit 1), with no transition or write. Use this file form for stored-block amendments and registration with verdicts in both harnesses.
+- **Block**: `sai-state block <id> <change-name>` returns
+  `{received_at, hash, text}` for one recorded slice: the exact validated block
+  text and its sha256 hash as the block emit (or the latest amendment) stored
+  them. When the session, the stored blocks, or that change name is absent it
+  returns `{received_at, error: "BLOCK_NOT_FOUND"}` and exits 1, with no text.
+  Plan and Direct Build dispatches, and every later reading of a slice's block
+  by an Explore route, take block text only from this verb, never from
+  conversation. The receiving worker runs `verify-file` on the exported
+  `block_file` (`@sai/policies/ready-to-propose-format.md` § Stored block
+  transport). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, block_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing block still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the stored-block transport policy.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
@@ -89,7 +138,7 @@ without re-spelling the verbs):
 
 ```text
 sai-state spawn --key <stable-key>
-sai-state reset <id> review-standalone@1
+sai-state reset <id> security-standalone@1
 echo '{"intent":"next-step"}' | node <tool-path> emit <id> explore-idea@1 -
 sai-state close <id>
 ```
@@ -105,6 +154,9 @@ A machine error exits 1 with `{error, next}` and one closed literal:
   no transition occurs.
 - `UNKNOWN_MACHINE`: an unknown base name.
 - `VERSION_MISMATCH`: a known base name with the wrong version.
+
+The `block` verb alone answers a missing block with `{error: "BLOCK_NOT_FOUND"}`
+(exit 1), without `next`.
 
 A `rejected` field (exit 0) means the machine did not advance, for example an
 intent-less advance or `ALREADY_RUNNING`: fetch nothing and give the
@@ -151,6 +203,8 @@ SAI_BLOCKS
 <block set>
 '@ | node <tool-path> emit <id> explore-slice@1 --ready-to-propose -
 ```
+
+When the hygiene judgment supplies verdicts, they follow the block set inside the same text, after a `<<<VERDICTS>>>` line, as one JSON array (the here-string and heredoc carry the quotes unchanged). The displayed set excludes that line and everything after it.
 
 The PowerShell closing `'@` starts its own line. A re-encoded non-ASCII
 character in the prose does not change the verdict: the labels are English and

@@ -8,7 +8,7 @@ TBD
 
 ### Requirement: Stable ideas trigger one edge-case review
 
-When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), or explicitly asks to crystallize before the review has reached agreement (`explore-edge-case-gate`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
+When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state (the ordered proposed list and its agreement state, with no pending crystallization request) in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
 
 #### Scenario: A stage advance starts the review
 
@@ -17,8 +17,8 @@ When the user advances to the `Review edge cases` stage of the pre-crystallizati
 
 #### Scenario: A premature crystallize request starts the review with no skip path
 
-- **WHEN** the user explicitly asks to crystallize while the edge-case review has not reached agreement
-- **THEN** `sai-explore` runs the edge-case review with no skip option and emits the requested crystallization only after agreement
+- **WHEN** the user asks to crystallize while the edge-case review has not reached agreement
+- **THEN** the request is not a defined trigger for the review or for crystallization, no pending request is recorded, and no `Ready to Propose` block is emitted before agreement
 
 #### Scenario: A stable idea does not repeat the review
 
@@ -99,10 +99,34 @@ When the user advances to the `Review edge cases` stage and no behavior bounds t
 
 #### Scenario: A premature crystallize request resumes after the empty-list agreement
 
-- **WHEN** the user explicitly asks to crystallize before the edge-case review has reached agreement and no in-scope edge case bounds the proposed change
-- **THEN** the empty list is recorded as agreed by the empty-set rule and the pending crystallization request proceeds through the slicing assessment and both language gates
+- **WHEN** the user advances into `Review edge cases` and no in-scope edge case bounds the proposed change
+- **THEN** the empty list is recorded as agreed by the empty-set rule, no pending crystallization request exists to resume, and crystallization starts only when the progression enters `Crystallize`
 
 #### Scenario: The empty-set rule never weakens the gate
 
 - **WHEN** the user advances into `Review edge cases` with an empty in-scope list while `--fast-track` is active
 - **THEN** the same deterministic empty-set advancement runs with no probes, and no gate or questionnaire is skipped or weakened by the fast-track signal
+
+### Requirement: The edge-case list wording uses writing-for-agents when available
+
+Before drafting the `E` list, the edge-case review SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. The list SHALL follow the shared sequence in `sai/commands/explore/list-writing.md`: draft the list with the skill, finish the lightweight probes and their private corrections, run the review pass, then emit the one message. The review pass SHALL be a second pass of the skill over the complete list, run inline in the same Explore session with the already-loaded skill, and it SHALL be silent: the user sees only the reviewed list, with no change marks and no review notes. After every user adjustment, the review pass SHALL run again over the complete updated list before it is displayed. An empty list SHALL be displayed directly as `- None` and SHALL skip the review pass. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is shown without its review.` once per `/sai-explore` invocation, skip the review pass, and display the list under the existing rules. The draft and the review pass SHALL change phrasing only: the item set, each item's meaning, and the `E` numbering SHALL stay as drafted, and neither pass SHALL add an item, a technical decision, or a behavior. Scope, numbering, probes, agreement, and the `- None` rule SHALL stay as the edge-case review defines them.
+
+#### Scenario: Skill available
+
+- **WHEN** the edge-case list is drafted and `writing-for-agents` loads
+- **THEN** the review pass runs after the probes' private corrections and before the one-message emission, and the displayed list keeps the drafted items, meaning, and `E` numbering
+
+#### Scenario: Revised list
+
+- **WHEN** the user requests additions, removals, or changes to the displayed edge-case list
+- **THEN** the review pass runs again over the complete updated list, reusing the loaded skill, before the updated list is displayed
+
+#### Scenario: Empty list
+
+- **WHEN** no in-scope edge case bounds the proposed change
+- **THEN** the list is displayed directly as `- None` and the review pass is skipped
+
+#### Scenario: Skill unavailable
+
+- **WHEN** the edge-case list is drafted and `writing-for-agents` is absent or denied
+- **THEN** `sai-explore` prints `Warning: the writing-for-agents skill is unavailable, so the list is shown without its review.` once in the invocation, skips the review pass, and displays the list under the existing rules

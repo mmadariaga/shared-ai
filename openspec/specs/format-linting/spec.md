@@ -81,9 +81,9 @@ The `lint.js ready-to-propose` check SHALL treat `**Out of scope Implementation 
 - **WHEN** the ready-to-propose check runs on a block whose `**Out of scope Implementation Details**` is exactly `- None` after `**Implementation Details**`
 - **THEN** the check exits 0
 
-### Requirement: Ready-to-propose check delegates to the detector strict profile
+### Requirement: Ready-to-propose check delegates to the detector dispatchable profile
 
-The `lint.js ready-to-propose` check SHALL obtain its verdict from the `strict` profile of `sai/tools/ready-to-propose.js` and MUST NOT carry a section list of its own. It SHALL report each detector violation as a lint finding with its line, problem, and detail.
+The `lint.js ready-to-propose` check SHALL obtain its verdict from the deterministic checks of the `dispatchable` profile of `sai/tools/ready-to-propose.js` and MUST NOT carry a section list of its own. It SHALL report each set-level and block-level detector violation as a lint finding with its line, problem, and detail. Hygiene pre-filter flags and their judgment SHALL NOT be lint findings.
 
 #### Scenario: Missing Change name fails through delegation
 - **WHEN** the ready-to-propose check runs on a block that has every other canonical field but no `**Change name**`
@@ -92,3 +92,7 @@ The `lint.js ready-to-propose` check SHALL obtain its verdict from the `strict` 
 #### Scenario: lint.js holds no section list
 - **WHEN** the `sai/tools/lint.js` source is read
 - **THEN** it requires `./ready-to-propose.js` and contains no list of block section labels
+
+#### Scenario: Empty implementation section is a lint finding
+- **WHEN** the check runs on a block whose `**Implementation Details**` is exactly `- None`
+- **THEN** the report carries `NO_IMPLEMENTATION_ITEM`

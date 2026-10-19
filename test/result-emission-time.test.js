@@ -189,10 +189,9 @@ test('every routed surface restating the progress shape is timeless with no time
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
-    'sai/commands/apply/coordinator.md',
-    'sai/commands/apply/runner.md',
-    'sai/commands/apply/red-worker.md',
-    'sai/commands/apply/green-worker.md'
+    'sai/commands/deep-review/coordinator.md',
+    'sai/commands/implement/red-worker.md',
+    'sai/commands/implement/green-worker.md'
   ];
 
   for (const relativePath of surfaces) {
