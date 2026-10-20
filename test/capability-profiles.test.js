@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const manifest = require('../sai/install-manifest.json');
+const { harnessRoot } = require('../sai/tools/temp-root');
 const { resolveProfile, translate, validateRegistry, projectSource } = require('../bin/capabilities');
 const { expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest');
 const { verifyAccess, missingNotices } = require('../sai/tools/tool-access');
@@ -74,6 +75,9 @@ test('contract-specific web, auxiliary and delegation access is translated separ
   }
   assert.ok(!research.permissions.some(rule => ['edit', 'subagent', 'new_tool'].includes(rule.action) && rule.effect === 'allow'));
   assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.resource.endsWith('/opencode/tool-output/*') && rule.effect === 'allow'));
+  const saiTempRoot = path.join(harnessRoot('opencode'), 'sai').split(path.sep).join('/');
+  assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.effect === 'allow'
+    && (rule.resource === `${saiTempRoot}/*` || (saiTempRoot.startsWith('/tmp/opencode/') && rule.resource === '/tmp/opencode/*'))), 'a grant covers the resolved SAI temp root');
 });
 
 test('commands have independent requirements without inventing opencode command permissions', () => {

@@ -7,35 +7,35 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: Harness temp root resolution
 
-The shared module `sai/tools/temp-root.js` SHALL resolve the harness temp root as `/tmp/opencode` for opencode on Linux and as `os.tmpdir()` for every other harness and platform pair, and SHALL reject any harness other than `claude` or `opencode`. The resolved root MUST be an existing directory that is not a symbolic link; the module SHALL NOT create, repair, or change the permissions of the root, and a missing root SHALL be reported as a concrete blocker.
+`sai/tools/transfer.js` SHALL place every transfer directory under the SAI temp root that the shared module `sai/tools/temp-root.js` resolves: `/tmp/opencode/sai` for opencode and `/tmp/claude-{uid}/sai` for Claude Code on Linux, and `<os.tmpdir()>/<harness>/sai` on Windows and macOS. It SHALL reject any harness other than `claude` or `opencode` and SHALL keep no root logic of its own. On Linux a missing harness root SHALL NOT be created and SHALL be reported as a concrete blocker; the harness root and `sai/` MUST be existing directories that are not symbolic links.
 
 #### Scenario: opencode on Linux uses its fixed root
 
 - **WHEN** the root is resolved for opencode on Linux
-- **THEN** the module returns `/tmp/opencode`, and every other harness and platform pair returns `os.tmpdir()`
+- **THEN** transfer directories live under `/tmp/opencode/sai`, and Claude Code on Linux uses `/tmp/claude-{uid}/sai`
 
 #### Scenario: A missing root is never created
 
-- **WHEN** the resolved root does not exist
+- **WHEN** the harness root does not exist on Linux
 - **THEN** the module raises a blocker naming the root and creates nothing
 
 #### Scenario: A symbolic-link or file root is rejected
 
-- **WHEN** the resolved root is a symbolic link or a regular file
+- **WHEN** the harness root or its `sai/` folder is a symbolic link or a regular file
 - **THEN** the module rejects it as not an existing non-link directory
 
 ### Requirement: Open creates one private per-invocation transfer directory
 
-`transfer.js open --harness <claude|opencode>` SHALL create one unique directory named `sai-transfer-XXXXXX` under the harness temp root, set its mode to `0700` on POSIX, write a `.sai-transfer` marker file inside it, and return its absolute real path as `dir`. When the temp root is missing or unusable, `open` SHALL exit 2 with the blocker message and create nothing.
+`transfer.js open --harness <claude|opencode>` SHALL create one unique directory named `sai-transfer-XXXXXX` under the SAI temp root through `temp-root.js`, set its mode to `0700` on POSIX, write a `.sai-transfer` marker file inside it, and return its absolute real path as `dir`. When the temp root is missing or unusable, `open` SHALL exit 2 with the blocker message and create nothing.
 
 #### Scenario: Open returns a private directory
 
 - **WHEN** `open` runs with an existing temp root on POSIX
-- **THEN** it returns the absolute path of a new `sai-transfer-` directory with mode `0700` that contains the marker file
+- **THEN** it returns the absolute path of a new `sai-transfer-` directory under the SAI temp root with mode `0700` that contains the marker file
 
 #### Scenario: Open stops on a missing root
 
-- **WHEN** `open` runs and the harness temp root is missing
+- **WHEN** `open` runs and the Linux harness temp root is missing
 - **THEN** it exits 2 with the blocker message and no directory is created
 
 ### Requirement: Transfer directory identity

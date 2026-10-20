@@ -23,12 +23,17 @@ The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-ru
 
 ### Requirement: Free text lives in run directory files
 
-The coordinator SHALL create a run directory inside the repository at `.tmp/{name}/run-{unique-suffix}/` and SHALL keep the free text of the run there: the dirty and failure baselines, deviations, overrides, worker reports, findings, and hand-over summaries. No store event SHALL carry free text; the coordinator SHALL emit `record` with the file's path instead. When an emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue the run.
+The coordinator SHALL create a run directory outside the repository as a private child of the SAI temp root with `temp-root.js mkdtemp --harness <claude|opencode> --prefix implement-{name}-`, SHALL emit `start` with the `dir` it returns, and SHALL keep the free text of the run there: the dirty and failure baselines, deviations, overrides, worker reports, findings, and hand-over summaries. When the tool reports `ok: false`, the coordinator SHALL print its `error` and end the run, writing nothing. No store event SHALL carry free text; the coordinator SHALL emit `record` with the file's path instead. When an emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue the run.
 
 #### Scenario: A deviation is recorded by path
 
 - **WHEN** the coordinator records the first deviation of a run
 - **THEN** it writes the deviation to `deviations.md` in the run directory and emits `record` with that path, not the deviation text.
+
+#### Scenario: A missing harness root ends the run before work
+
+- **WHEN** `temp-root.js mkdtemp` reports `ok: false` at start
+- **THEN** the coordinator prints the tool's `error` and ends the run without writing anything
 
 ### Requirement: Per-obstacle attempt budget
 
@@ -64,7 +69,7 @@ A worker that returns no ready, whose report cannot be read, that stays silent p
 
 ### Requirement: Resumption after compaction or in another session
 
-At start, a `status` response with a `running` or `escalated` stage and a run directory SHALL be treated as an interrupted run. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log`, the `tasks.md` checkboxes, and the fixed marks in the audit reports, let commits, checkboxes, and marks win over the store, and continue at the first step with an unchecked task or, once every task is checked, an open fixable finding, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. When the store is gone (another machine, or a cleared temporary directory), it SHALL rebuild progress from `git log`, `tasks.md`, and the fixed marks with every counter at zero, carry the deviations, overrides, and findings of an earlier run directory into the new one, and treat uncommitted paths it did not make as the dirty baseline.
+At start, a `status` response with a `running` or `escalated` stage and a run directory inside the SAI temp root (the `root` that `temp-root.js resolve` returns) SHALL be treated as an interrupted run. A `running` or `escalated` stage whose run directory lies elsewhere, such as an in-repository `.tmp/{name}/run-*/` folder of an earlier layout, SHALL NOT resume: the coordinator SHALL emit `close` with outcome `stopped`, leave that folder untouched without reading or deleting it, and start fresh. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log`, the `tasks.md` checkboxes, and the fixed marks in the audit reports, let commits, checkboxes, and marks win over the store, and continue at the first step with an unchecked task or, once every task is checked, an open fixable finding, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. When the store is gone (another machine, or a cleared temporary directory), it SHALL rebuild progress from `git log`, `tasks.md`, and the fixed marks with every counter at zero, carry nothing over from an earlier run directory, which shares the store's lifetime, and treat uncommitted paths it did not make as the dirty baseline.
 
 #### Scenario: Resuming without the store
 
@@ -75,3 +80,27 @@ At start, a `status` response with a `running` or `escalated` stage and a run di
 
 - **WHEN** an interrupted run resumes after every task is checked and some audit findings carry the fixed mark
 - **THEN** the coordinator continues at the first open fixable finding and runs no step for a marked finding
+
+#### Scenario: A run directory in the old in-repository location starts fresh
+
+- **WHEN** the store holds a `running` or `escalated` run whose run directory is a `.tmp/{name}/run-*/` folder inside the repository
+- **THEN** the coordinator closes that run as `stopped`, leaves the folder untouched, and starts a fresh run under the SAI temp root
+
+### Requirement: Run directory removal at a completed close
+
+When a run closes `completed`, the coordinator SHALL remove its run directory with `temp-root.js remove` after the closing record is composed. A stopped run, a blocked run, and an unanswered escalation SHALL keep their run directory. A failed removal SHALL fail nothing: the closing report SHALL say the run directory was left at its path.
+
+#### Scenario: A completed run removes its run directory
+
+- **WHEN** a run closes with every task checked and every open fixable finding handled
+- **THEN** the coordinator removes the run directory through `temp-root.js remove`
+
+#### Scenario: A stopped run keeps its run directory
+
+- **WHEN** a run stops or ends with an unanswered escalation
+- **THEN** its run directory stays in place so the run can resume
+
+#### Scenario: A failed removal is reported
+
+- **WHEN** the removal of a completed run's directory fails
+- **THEN** the closing report names the run directory left at its path and the run does not fail
