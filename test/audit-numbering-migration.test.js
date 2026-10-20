@@ -10,8 +10,16 @@ const uninstall = require('../bin/uninstall-flow');
 const { AUDIT_RENAMES, migratePreset } = require('../bin/audit-name-migration');
 const { recognizedRetirement } = require('../bin/retirement-identity');
 
+// Generated opencode agent bodies carry the platform-resolved SAI temp root; the
+// pinned hashes were taken on Linux, so projection runs as Linux.
+function asLinux(action) {
+  const original = Object.getOwnPropertyDescriptor(process, 'platform');
+  Object.defineProperty(process, 'platform', { value: 'linux' });
+  try { return action(); } finally { Object.defineProperty(process, 'platform', original); }
+}
+
 for (const harness of ['claude', 'opencode']) {
-  const install = base => harness === 'claude' ? flow.installClaude(base) : flow.installOpencode(base);
+  const install = base => asLinux(() => harness === 'claude' ? flow.installClaude(base) : flow.installOpencode(base));
   const enumerate = base => harness === 'claude' ? uninstall.enumerateClaude(base) : uninstall.enumerateOpencode(base);
   function fixture(t) {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-audit-renumber-'));

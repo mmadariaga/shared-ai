@@ -27,9 +27,20 @@ function cli(args, { input, env, cwd } = {}) {
   return { status: result.status, json: result.stdout ? JSON.parse(result.stdout) : null, stderr: result.stderr };
 }
 
+// Linux ignores the temp environment: the Claude Code root is /tmp/claude-{uid},
+// which the harness owns. Stand in for it the way the CI workflow does for
+// /tmp/opencode, and leave it in place.
+function saiRoot(box) {
+  if (process.platform !== 'linux') return path.join(fs.realpathSync(box.tmp), 'claude', 'sai');
+  const harness = `/tmp/claude-${process.getuid()}`;
+  if (!fs.existsSync(harness)) fs.mkdirSync(harness, { mode: 0o700 });
+  return path.join(harness, 'sai');
+}
+
 function open(box) {
   const result = cli(['open', '--harness', 'claude'], { env: { TMPDIR: box.tmp, TEMP: box.tmp, TMP: box.tmp } });
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(path.dirname(result.json.dir), saiRoot(box));
   return result.json.dir;
 }
 
@@ -39,7 +50,7 @@ test('open creates one unique private directory under the harness temp root', ()
     const first = open(box);
     const second = open(box);
     assert.notEqual(first, second);
-    assert.equal(path.dirname(fs.realpathSync(first)), fs.realpathSync(box.tmp));
+    assert.equal(path.dirname(fs.realpathSync(first)), saiRoot(box));
     assert.match(path.basename(first), /^sai-transfer-[A-Za-z0-9]{6}$/);
     if (POSIX) assert.equal(fs.statSync(first).mode & 0o777, 0o700);
   } finally {
@@ -47,7 +58,7 @@ test('open creates one unique private directory under the harness temp root', ()
   }
 });
 
-test('open reports a concrete blocker when the temp root is missing and creates nothing', () => {
+test('open reports a concrete blocker when the temp base is missing and creates nothing', { skip: process.platform === 'linux' }, () => {
   const box = sandbox();
   try {
     const missing = path.join(box.base, 'absent');

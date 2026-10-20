@@ -62,4 +62,3 @@ changed_files: string[]
 - Write only `openspec/changes/{change-name}/review.md`. Fix no finding and touch no other file.
 - Run no git command that changes the repository, create no commit, and run no `openspec` command.
 - Dispatch only `budget-explorer`, for the lookups and the adversary challenge the steps name; the review shares a cap of eight dispatches. Every other dispatch is outside your role. When a dispatch fails, times out, or returns a malformed report, go on with your own reading.
-- Scratch lives under `.tmp/{change-name}/`; leave the `.tmp/` parent in place.

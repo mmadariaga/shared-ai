@@ -1,0 +1,43 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+`/sai-3-implement` wrote its run directory to `.tmp/{change}/run-*/` inside the target repository and assumed that folder was already ignored, which only holds in shared-ai. In real target repositories `.tmp/` showed up as untracked and run directories accumulated with nothing cleaning them. SAI also had no single resolver for a private temporary root: `sai/tools/temp-root.js` returned `/tmp/opencode` for opencode on Linux and the shared `os.tmpdir()` everywhere else, with only a symbolic-link check.
+
+## What Changes
+
+- `sai/tools/temp-root.js` becomes the resolver of one private, per-harness, per-platform SAI temp root. The harness root is `/tmp/claude-{uid}` (Claude Code) or `/tmp/opencode` (opencode) on Linux, and `os.tmpdir()/<harness>` on Windows and macOS. The SAI temp root is its `sai/` folder.
+- On Linux SAI never creates the harness root, and a missing one is a blocker naming the path. On Windows and macOS SAI creates `<harness>/sai/` when missing. `sai/` is created with mode 0700, with no chmod on Windows.
+- On POSIX the harness root and `sai/` must be real directories (no symbolic links), owned by the current user (the harness root may also be owned by root), and not writable by group or others unless the sticky bit is set. An unsafe root is a blocker and nothing is repaired.
+- `temp-root.js` gains a JSON CLI: `resolve`, `mkdtemp` (a private 0700 child of the SAI temp root with a validated prefix), and `remove` (deletes only a directory strictly inside the SAI temp root and rejects every other path).
+- `sai/tools/transfer.js open` creates its `sai-transfer-` directory through `temp-root.js` under the SAI temp root.
+- The `/sai-3-implement` coordinator creates its run directory with `temp-root.js mkdtemp` outside the repository, removes it with `temp-root.js remove` when a run completes, and keeps it for a stopped, blocked, or unanswered run. A failed removal is reported in the closing report and fails nothing.
+- An interrupted run whose recorded run directory lies outside the SAI temp root (the old `.tmp/{name}/run-*/` folder) does not resume: the coordinator closes it as `stopped`, leaves the old folder untouched, and starts fresh. A run whose store is gone carries nothing over from an earlier run directory.
+- The implement worker scratch rule points to the run directory the brief names; the review worker's `.tmp/{change-name}/` scratch rule is removed.
+- `bin/capabilities.js` adds an opencode `external_directory` grant for the resolved SAI temp root when the literal `/tmp/opencode/*` grant does not already cover it.
+- `sai/policies/tool-resolution.md` lists `temp-root.js` among the resolved tools; `AGENTS.md` and `docs/commands/sai-3-implement.md` describe the new run directory location and lifetime.
+- Tests are updated for the resolver, the transfer tool, the implement family and run machine, the capability profiles, and the projection hash fixtures, which now project as Linux because generated opencode agent bodies carry the platform-resolved SAI temp root.
+
+## Capabilities
+
+### New Capabilities
+
+- `sai-temp-root`: the per-harness, per-platform SAI temp root resolver, its safety checks, and its `resolve`, `mkdtemp`, and `remove` CLI.
+- `opencode-temp-access-grant`: the generated opencode `external_directory` grant covers the resolved SAI temp root.
+
+### Modified Capabilities
+
+- `transfer-file-transport`: transfer directories live under the SAI temp root resolved by `temp-root.js`.
+- `implement-new-resilience`: the run directory lives under the SAI temp root, is removed at a completed close, and a run directory outside it never resumes.
+- `implement-new-workers`: the worker report lives in the run directory the brief names, outside the repository.
+
+## Impact
+
+- Modified: `sai/tools/temp-root.js`, `sai/tools/transfer.js`, `bin/capabilities.js`, `sai/commands/implement/coordinator.md`, `sai/commands/implement/worker-common.md`, `sai/commands/review/worker.md`, `sai/policies/tool-resolution.md`, `AGENTS.md`, `docs/commands/sai-3-implement.md`.
+- Modified tests: `test/temp-root.test.js`, `test/transfer-tool.test.js`, `test/implement-family.test.js`, `test/implement-run-machine.test.js`, `test/capability-profiles.test.js`, `test/audit-numbering-migration.test.js`, `test/claude-default-preset-alignment.test.js`.
+- Not changed in this slice: the other temp writers (`bin/sai-state.js`, `sai/tools/to-pr.js`, `sai/tools/azure-publication.js`, `sai/tools/slice-path-scope.js`, `skills/universal/to-backlog/scripts/prepare-temp.js`) keep their current roots, and `build-log.md` stays. `.tmp/` folders that earlier runs left in repositories are neither read nor deleted. The installer's repo-local `.tmp/` build scratch is out of scope.
+- Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
+
+## Request Additional Notes
+
+This slice changes `temp-root.js` and the implement run directory only; the other temp writers keep their current roots until slice `migrate-tools-to-temp-root`, and `build-log.md` stays until slice `drop-implement-build-log`. Not verified during exploration: where Claude Code places its own temp folder on macOS.
