@@ -3,6 +3,7 @@
 // Capability grants describe access, not operation or file-write authorization.
 const fs = require('fs');
 const path = require('path');
+const { harnessRoot, SAI_DIR } = require('../sai/tools/temp-root');
 const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message'];
 const LISTS = ['shell', 'skills', 'delegate'];
 const AGENTS = {
@@ -105,6 +106,9 @@ function translate(registry, name, harness) {
     grant('external_directory', '*', 'ask');
     grant('external_directory', '~/.config/opencode/*');
     grant('external_directory', '/tmp/opencode/*');
+    // On Linux the literal grant above already covers the SAI temp root; other platforms need their resolved root.
+    const saiGrant = `${saiTempRoot().split(path.sep).join('/')}/*`;
+    if (!saiGrant.startsWith('/tmp/opencode/')) grant('external_directory', saiGrant);
     const dataRoot = process.env.XDG_DATA_HOME || '~/.local/share';
     grant('external_directory', `${dataRoot}/opencode/tool-output/*`);
     grant('external_directory', `${dataRoot}/opencode/shell/*`);
@@ -125,6 +129,11 @@ function translate(registry, name, harness) {
     ...(harness === 'claude' ? { nativeTools, tools: [...new Set(tools)].join(', '), allowedTools: [...new Set(allowed)].join(', ') }
       : { nativeActions: nativeTools, permissions: rules }),
   };
+}
+
+// The SAI temp root opencode resolves on this platform (computed, never created).
+function saiTempRoot() {
+  return path.join(harnessRoot('opencode'), SAI_DIR);
 }
 
 function permissionYaml(rules) {

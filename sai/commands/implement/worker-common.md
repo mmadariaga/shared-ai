@@ -52,4 +52,4 @@ notes: string
 - Run no git command that changes the repository, and create no commit.
 - Leave `tasks.md`, `interfaces.md`, `proposal.md`, `design.md`, `specs/`, the audit reports (`review.md`, `security.md`, `performance.md`, `accessibility.md`), every checkbox, and every fixed mark to the coordinator.
 - Run no `openspec` command and dispatch no subagent.
-- Scratch lives under `.tmp/{change-name}/`; leave the `.tmp/` parent in place and list no scratch path in `changed_files`. The report file, in the run directory `.tmp/{change-name}/run-*/`, is the only write you make there.
+- Scratch lives in the run directory the brief names, outside the repository; list no scratch path in `changed_files`. The report file, in that run directory, is the only write you make there.

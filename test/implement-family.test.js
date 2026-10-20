@@ -257,7 +257,10 @@ test('the coordinator carries the resilience contract: attempt budget, escalatio
   assert.match(source, /one that stops the run/);
   assert.match(source, /a new worker/);
   assert.match(source, /handover-\{role\}-\{k\}\.md/);
-  assert.match(source, /\.tmp\/\{name\}\/run-\{unique-suffix\}\//);
+  assert.match(source, /mkdtemp --harness <claude\|opencode> --prefix implement-\{name\}-/);
+  assert.doesNotMatch(source, /create the run directory inside the repository/);
+  assert.match(source, /remove --harness <claude\|opencode> --dir \{run directory\}/);
+  assert.match(source, /`dir` lies elsewhere, such as the `\.tmp\/\{name\}\/run-\*\/` folder[^]*does not resume: emit `close` with outcome `stopped`[^]*leave its old folder untouched/);
   assert.doesNotMatch(source, /system temp directory/);
   assert.match(source, /the run never stages it/);
   assert.doesNotMatch(source, /user commits it/);
@@ -273,7 +276,8 @@ test('workers return the path of a report file and the store event keeps free te
   const common = read('sai/commands/implement/worker-common.md');
   assert.match(common, /return only that path/);
   assert.match(common, /hand-over summary/);
-  assert.match(common, /run directory `\.tmp\/\{change-name\}\/run-\*\/`/);
+  assert.doesNotMatch(common, /\.tmp\//);
+  assert.match(common, /run directory the brief names, outside the repository/);
   const coordinator = read(COORDINATORS[0]);
   assert.match(coordinator, /Free text never goes into an event/);
   assert.ok(registry.has('implement-run@1'));

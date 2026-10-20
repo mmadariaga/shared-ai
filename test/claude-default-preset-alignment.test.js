@@ -25,12 +25,20 @@ function settings(text) {
   return result;
 }
 
+// Generated opencode agent bodies carry the platform-resolved SAI temp root; the
+// pinned hashes were taken on Linux, so projection runs as Linux.
+function asLinux(action) {
+  const original = Object.getOwnPropertyDescriptor(process, 'platform');
+  Object.defineProperty(process, 'platform', { value: 'linux' });
+  try { return action(); } finally { Object.defineProperty(process, 'platform', original); }
+}
+
 function projections(harness) {
   const base = path.join(repoRoot, '.tmp', 'align-claude-defaults-opus-preset', harness);
   const destinationRoot = Object.fromEntries(
     ['agents', 'commands', 'config', 'sai', 'skills', 'root'].map(key => [key, path.join(base, key)]),
   );
-  return { base, entries: expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) };
+  return { base, entries: asLinux(() => expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })) };
 }
 
 test('all 33 Claude shipped roles match the audit-renumbered OPUS preset exactly', () => {

@@ -20,7 +20,7 @@ function run(...events) {
   return result;
 }
 
-const start = { kind: 'start', dir: '.tmp/demo/run-1a2b' };
+const start = { kind: 'start', dir: '/tmp/claude-1000/sai/implement-demo-1a2b' };
 
 test('implement-run@1 is registered and declares the machine contract', () => {
   assert.ok(registry.has('implement-run@1'));
@@ -93,12 +93,12 @@ test('an answer without an open escalation changes nothing', () => {
 test('steps and references are recorded as identifiers and paths without duplicates', () => {
   const result = run(start,
     { kind: 'step-start', step: 'step-1' },
-    { kind: 'record', ref: 'report', path: '.tmp/demo/run-1a2b/reports/step-1-red.yaml' },
-    { kind: 'record', ref: 'report', path: '.tmp/demo/run-1a2b/reports/step-1-red.yaml' },
-    { kind: 'record', ref: 'deviation', path: '.tmp/demo/run-1a2b/deviations.md' },
-    { kind: 'record', ref: 'override', path: '.tmp/demo/run-1a2b/overrides.md' },
-    { kind: 'record', ref: 'finding', path: '.tmp/demo/run-1a2b/findings.md' },
-    { kind: 'record', ref: 'baseline', path: '.tmp/demo/run-1a2b/baseline.md' },
+    { kind: 'record', ref: 'report', path: '/tmp/claude-1000/sai/implement-demo-1a2b/reports/step-1-red.yaml' },
+    { kind: 'record', ref: 'report', path: '/tmp/claude-1000/sai/implement-demo-1a2b/reports/step-1-red.yaml' },
+    { kind: 'record', ref: 'deviation', path: '/tmp/claude-1000/sai/implement-demo-1a2b/deviations.md' },
+    { kind: 'record', ref: 'override', path: '/tmp/claude-1000/sai/implement-demo-1a2b/overrides.md' },
+    { kind: 'record', ref: 'finding', path: '/tmp/claude-1000/sai/implement-demo-1a2b/findings.md' },
+    { kind: 'record', ref: 'baseline', path: '/tmp/claude-1000/sai/implement-demo-1a2b/baseline.md' },
     { kind: 'step-done', step: 'step-1' },
     { kind: 'step-done', step: 'step-1' });
   assert.deepEqual(result.run.committed, ['step-1']);
@@ -141,11 +141,11 @@ test('the sai-state store carries the run view and resumes it after the coordina
     const emit = event => call(['emit', id, 'implement-run@1', '-'], JSON.stringify(event));
     assert.equal(emit(start).payload.stage, 'running');
     emit({ kind: 'attempt', obstacle: 'step-1' });
-    emit({ kind: 'record', ref: 'deviation', path: '.tmp/demo/run-1a2b/deviations.md' });
+    emit({ kind: 'record', ref: 'deviation', path: '/tmp/claude-1000/sai/implement-demo-1a2b/deviations.md' });
     const status = emit({ kind: 'status' }).payload;
     assert.equal(status.stage, 'running');
     assert.equal(status.run.dir, start.dir);
-    assert.deepEqual(status.run.deviations, ['.tmp/demo/run-1a2b/deviations.md']);
+    assert.deepEqual(status.run.deviations, ['/tmp/claude-1000/sai/implement-demo-1a2b/deviations.md']);
     assert.deepEqual(status.budgets['step-1'], { spent: 1, limit: 3 });
     assert.equal(status.next.follow, 'none');
     assert.equal(emit({ kind: 'bogus' }).status, 1);
@@ -155,7 +155,7 @@ test('the sai-state store carries the run view and resumes it after the coordina
 });
 
 test('a finished run does not block the next start; an interrupted one still resumes', () => {
-  const next = { kind: 'start', dir: '.tmp/demo/run-3c4d' };
+  const next = { kind: 'start', dir: '/tmp/claude-1000/sai/implement-demo-3c4d' };
   for (const outcome of ['completed', 'stopped']) {
     const finished = run(start, { kind: 'step-start', step: 'step-1' }, { kind: 'attempt', obstacle: 'step-1' },
       { kind: 'step-done', step: 'step-1' }, { kind: 'close', outcome });

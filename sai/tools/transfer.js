@@ -9,12 +9,12 @@
  * `{path, sha256, destination}` to a transfer file instead of a message body.
  * This CLI creates, writes, verifies, materializes, and removes those files.
  * Every transfer file lives in one private per-invocation directory under the
- * harness temp root (`temp-root.js`), never inside the repository.
+ * SAI temp root (`temp-root.js`), never inside the repository.
  *
  * Sub-commands (JSON on stdout, one object per call):
  *   open --harness <claude|opencode>
- *       Create one unique private directory (mode 0700 on POSIX) under the
- *       harness temp root and return its absolute path as `dir`.
+ *       Create one unique private directory (mode 0700 on POSIX) under the SAI
+ *       temp root and return its absolute path as `dir`.
  *   put --dir <dir> --path <relative>            (content on stdin)
  *       Write stdin to `<relative>` inside `<dir>`; return {path, sha256} with
  *       the absolute path. Writing the same path again replaces the file.
@@ -36,13 +36,13 @@
  *
  * Exit codes: 0 = success; 1 = check failure (missing, outside, symbolic
  * link, sha256 mismatch, invalid directory); 2 = usage error or IO failure,
- * including a missing harness temp root (never created or repaired).
+ * including a missing Linux harness root (never created or repaired).
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { resolveTempRoot, TempRootError } = require('./temp-root');
+const { makeTempDir, TempRootError } = require('./temp-root');
 
 const MARKER = '.sai-transfer';
 const DIR_PREFIX = 'sai-transfer-';
@@ -86,19 +86,17 @@ function checkTransferDir(dir, { io = fs, uid = process.getuid?.() } = {}) {
   return resolved;
 }
 
-/** Create one unique private transfer directory under the harness temp root. */
+/** Create one unique private transfer directory under the SAI temp root. */
 function open(harness, options = {}) {
-  const { io = fs, platform = process.platform, tmpdir } = options;
-  let root;
+  const { io = fs } = options;
+  let dir;
   try {
-    root = resolveTempRoot(harness, { io, platform, ...(tmpdir ? { tmpdir } : {}) });
+    dir = makeTempDir(harness, DIR_PREFIX, options);
   } catch (error) {
     throw error instanceof TempRootError ? new UsageError(error.message) : error;
   }
-  const created = io.mkdtempSync(path.join(root, DIR_PREFIX));
-  if (platform !== 'win32') io.chmodSync(created, 0o700);
-  io.writeFileSync(path.join(created, MARKER), '', { mode: 0o600 });
-  return { dir: io.realpathSync(created) };
+  io.writeFileSync(path.join(dir, MARKER), '', { mode: 0o600 });
+  return { dir };
 }
 
 /** Normalize a worker-supplied relative path; reject anything that escapes. */

@@ -15,7 +15,7 @@ candidate below that exists**, copied **verbatim**, exactly as written.
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`) for `<name>` below.
+`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`, `temp-root.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 
