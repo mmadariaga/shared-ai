@@ -97,6 +97,8 @@ function activeSurfaceFiles(root) {
       const relativePath = path.relative(root, fullPath).split(path.sep).join('/');
       if (IMMUTABLE_HISTORY.some(pattern => pattern.test(relativePath))) continue;
       if (entry.isDirectory()) {
+        // Stryker's root sandbox contains generated copies, not active contracts.
+        if (relativePath === '.stryker-tmp') continue;
         if (['.git', 'node_modules', '.tmp', 'test', 'fixtures'].includes(entry.name)) continue;
         visit(fullPath);
       } else if (entry.isFile() && /\.(?:md|js|cjs|mjs|json|jsonc|ya?ml|sh|ps1|cmd|bat|txt)$/.test(entry.name)) {
@@ -203,6 +205,37 @@ test('active contract prose rejects wrapper_echo_value while excluding immutable
 
   assert.deepEqual(activeWrapperEchoReferences(repoRoot), [],
     'active production and contract surfaces must not define wrapper_echo_value');
+});
+
+test('mutation-test sandbox exclusion preserves detection in real active contract paths', t => {
+  // Model the generated directory without touching the user's mutation sandboxes.
+  const root = path.join(repoRoot, 'virtual-active-contract-scan');
+  const directory = name => ({ name, isDirectory: () => true });
+  const file = name => ({ name, isDirectory: () => false, isFile: () => true });
+  const tree = new Map([
+    ['', [directory('.stryker-tmp'), directory('sai'), directory('bin'), file('.stryker-tmp-contract.md')]],
+    ['sai', [file('active.md'), directory('.stryker-tmp')]],
+    ['sai/.stryker-tmp', [file('active.md')]],
+    ['bin', [file('active.js')]],
+  ]);
+  t.mock.method(fs, 'readdirSync', fullPath => {
+    const relativePath = path.relative(root, fullPath).split(path.sep).join('/');
+    assert.notEqual(relativePath.split('/')[0], '.stryker-tmp',
+      'the generated root sandbox must not be traversed');
+    assert.ok(tree.has(relativePath), `unexpected scan directory: ${relativePath}`);
+    return tree.get(relativePath);
+  });
+  t.mock.method(fs, 'readFileSync', fullPath => {
+    assert.ok(path.relative(root, fullPath).split(path.sep)[0] !== '.stryker-tmp',
+      'generated sandbox contents must not be read');
+    return 'wrapper_echo_value: ""\n';
+  });
+  assert.deepEqual(activeWrapperEchoReferences(root), [
+    { file: 'sai/active.md', line: 1 },
+    { file: 'sai/.stryker-tmp/active.md', line: 1 },
+    { file: 'bin/active.js', line: 1 },
+    { file: '.stryker-tmp-contract.md', line: 1 },
+  ]);
 });
 
 const HARNESS_FETCH = {
@@ -426,9 +459,9 @@ test('wrapper and generic-agent frontmatter values stay valid plain YAML scalars
     'agents/claude/budget-executor.md',
     'agents/claude/budget-explorer.md',
     'agents/claude/budget-subagent.md',
-    'agents/opencode/budget.md',
-    'agents/opencode/executor.md',
-    'agents/opencode/explore.md',
+    'agents/opencode/budget-subagent.md',
+    'agents/opencode/budget-executor.md',
+    'agents/opencode/budget-explorer.md',
   ];
   for (const relativePath of files) {
     const source = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8').replaceAll('\r\n', '\n');

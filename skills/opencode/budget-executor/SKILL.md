@@ -1,7 +1,7 @@
 ---
 name: budget-executor
 description: >
-  Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via the executor agent file's model frontmatter (installed under ~/.config/opencode/agents/executor.md) — not hardcoded in here. Enforces execute-only, minimal-output, structured-failure-report discipline.
+  Binds "executor subagent" to the OpenCode budget-executor agent keyword. Model resolved via the budget-executor agent file's model frontmatter (installed under ~/.config/opencode/agents/budget-executor.md) — not hardcoded in here. Enforces execute-only, minimal-output, structured-failure-report discipline.
   TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: opencode
@@ -14,7 +14,7 @@ Fetch @sai/policies/executor-agent.md
 
 ## OpenCode Binding
 
-- **Agent keyword**: `executor` (lowercase)
+- **Agent keyword**: `budget-executor` (lowercase)
 - **Tool-call cap**: none.
 
 ## Spawn prompt
@@ -27,7 +27,7 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 ## Model resolution
 
-The model for `executor` subagents is controlled by the `model` frontmatter of the executor agent file (`~/.config/opencode/agents/executor.md`), seeded by the installer under the `tunable-seed` lifecycle. This file contains no hardcoded model identifier.
+The model for `budget-executor` subagents is controlled by the `model` frontmatter of the budget-executor agent file (`~/.config/opencode/agents/budget-executor.md`), seeded by the installer under the `tunable-seed` lifecycle. This file contains no hardcoded model identifier.
 
 ## Cost model
 

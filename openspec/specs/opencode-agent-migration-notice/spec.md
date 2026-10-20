@@ -22,13 +22,12 @@ When the opencode-config path processes an existing `opencode.json` or `opencode
 
 ### Requirement: Notice states the precedence and the migration path
 
-The notice SHALL state that the projected agent files (`~/.config/opencode/agents/explore.md`, `executor.md`, and `budget.md`) now take precedence for the keys they declare — including `model` — so a tuned model in the config is no longer effective; SHALL state that config-only keys the files do not declare (for example `tools` or `options`) still apply; SHALL point the user to the agent file's `model` frontmatter line as the tuning surface, noting that the `tunable-seed` lifecycle preserves it; and SHALL leave the decision to remove the now-redundant config keys to the user.
+The installer notice SHALL identify `budget-explorer.md`, `budget-executor.md`, and `budget-subagent.md` as the active generic agent files. It SHALL instruct users to review legacy configuration settings and migrate needed options manually, warn that `agent.explore` can still override OpenCode's built-in explore, and identify the new files' model and optional variant as tuning settings preserved by the tunable-seed lifecycle. The installer SHALL never edit those legacy configuration keys.
 
 #### Scenario: notice explains the file-wins precedence
 
 - **WHEN** the installer detects `agent.explore` with a user-tuned model in an existing config
-- **THEN** the notice states that the `explore.md` agent file's `model` line takes precedence over the config's `model` value
-- **AND** the notice directs the user to edit the `model` line in `~/.config/opencode/agents/explore.md` to keep their tuning
+- **THEN** it identifies the new agent files and manual migration path rather than claiming that a differently named file overrides the legacy entry, warns about the built-in explore override, and explains preserved model and optional variant tuning
 
 #### Scenario: notice does not instruct an automatic config edit
 

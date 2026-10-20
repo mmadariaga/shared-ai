@@ -7,12 +7,11 @@ Declares the install strategy contract for managed agent projections: each of th
 
 ### Requirement: Install manifest declares tunable-seed strategy for each of the 20 managed agent projections
 
-The manifest MUST declare exactly one tunable-seed strategy for every current managed agent projection. Inventory SHALL derive from the current worker matrix and Generic Agent projections, not the historical count embedded in this requirement's name. It SHALL include all current managed workers in both harnesses, the Claude Generic Agents budget-explorer, budget-executor, and budget-subagent, and the opencode Generic Agents explore, executor, and budget. No managed agent projection SHALL declare owned-copy.
+The manifest MUST declare exactly one tunable-seed strategy for every current managed agent projection. Inventory SHALL derive from the current worker matrix and Generic Agent projections, not the historical count embedded in this requirement's name. It SHALL include all current managed workers in both harnesses, the Claude Generic Agents budget-explorer, budget-executor, and budget-subagent, and the opencode Generic Agents budget-explorer, budget-executor, and budget-subagent. No managed agent projection SHALL declare owned-copy.
 
 #### Scenario: manifest declares 20 tunable-seed agent projections
 - **WHEN** managed agent projections are enumerated from the manifest and worker matrix
-- **THEN** every current managed worker and Generic Agent has exactly one agents destination using tunable-seed for each supported harness
-- **AND** both sets of three Generic Agent filenames remain included
+- **THEN** every current managed worker and Generic Agent has exactly one agents destination using tunable-seed for each supported harness; both sets of three Generic Agent filenames remain included
 
 #### Scenario: no managed agent projection declares owned-copy
 - **WHEN** the install manifest is loaded

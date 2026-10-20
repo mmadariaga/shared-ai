@@ -67,7 +67,7 @@ The Claude Code design coordinator SHALL use the `model` and `effort` frontmatte
 - **THEN** the wrapper's staged coordinator model and effort are preserved separately from the worker's technical I/O and continuation contract.
 
 ### Requirement: opencode uses separate wrapper and worker declarations
-The opencode design wrapper and worker projection SHALL use the staged opencode coordinator and worker declarations, with the wrapper's declared model and variant remaining the source of coordinator routing and the projected worker retaining its binding-owned task continuation. The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent with technical I/O permissions and `permission.task` denying all targets before allowing `explore` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
+The opencode design wrapper and worker projection SHALL use the staged opencode coordinator and worker declarations, with the wrapper's declared model and variant remaining the source of coordinator routing and the projected worker retaining its binding-owned task continuation. The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent with technical I/O permissions and `permission.task` denying all targets before allowing `budget-explorer` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
 
 #### Scenario: opencode dispatches and resumes design work
 - **WHEN** `/sai-2-design` starts in opencode and the worker later requests input
@@ -79,8 +79,7 @@ The opencode design wrapper and worker projection SHALL use the staged opencode 
 
 #### Scenario: The projected design-worker agent carries the canonical definition
 - **WHEN** a fresh opencode installation projects `sai-2-design-worker.md`
-- **THEN** the file SHALL declare `mode: subagent`, model and variant tunables seeded from the design worker-matrix entry, and `permission.task` denying all targets before allowing `explore`
-- **AND** the canonical opencode configuration sample SHALL NOT define the design worker entry
+- **THEN** the file SHALL declare `mode: subagent`, model and variant tunables seeded from the design worker-matrix entry, and `permission.task` denying all targets before allowing `budget-explorer`; the canonical opencode configuration sample SHALL NOT define the design worker entry
 
 #### Scenario: Claude acknowledges a design notice
 - **WHEN** a design worker notice is returned with a binding-captured agent ID
@@ -99,7 +98,7 @@ Activation SHALL include structural tests for Claude Code and opencode coordinat
 
 #### Scenario: opencode permission probe runs
 - **WHEN** the opencode routed definitions are ready for activation
-- **THEN** a live probe SHALL verify coordinator question access, coordinator task restriction to both named planning workers, design-worker `explore` dispatch, returned-task-ID continuation, reconstruction with interaction history, and explicit-envelope implementation-worker dispatch under restrictive top-level permissions
+- **THEN** a live probe SHALL verify coordinator question access, coordinator task restriction to both named planning workers, design-worker `budget-explorer` dispatch, returned-task-ID continuation, reconstruction with interaction history, and explicit-envelope implementation-worker dispatch under restrictive top-level permissions
 
 #### Scenario: Claude routed smoke runs
 - **WHEN** the Claude routed definitions are ready for activation

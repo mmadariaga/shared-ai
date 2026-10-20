@@ -42,9 +42,14 @@ for (const harness of ['claude', 'opencode']) {
         index++;
         for (const [folder, suffix] of [['commands', ''], ['agents', '-worker']]) {
           const destination = path.join(base, folder, `${newName}${suffix}.md`);
-          const source = fs.readFileSync(destination, 'utf8').replaceAll(newName, oldName);
+          // A pre-renumbering definition also used the legacy opencode helper
+          // grants. Keep this a historical fixture, not a hypothetical hybrid.
+          const source = fs.readFileSync(destination, 'utf8').replaceAll(newName, oldName)
+            .replaceAll('resource: "budget-explorer"', 'resource: "explore"')
+            .replaceAll('resource: "budget-subagent"', 'resource: "budget"');
           const tunable = harness === 'claude' ? 'effort: high' : folder === 'agents' ? 'variant: custom' : '';
-          const customized = source.replace(/^model:.*$/m, `model: role-${index}${harness === 'opencode' && folder === 'commands' ? '#custom' : ''}${tunable ? '\n' + tunable : ''}`);
+          const customized = source.replace(/^(?:effort|variant):.*\r?\n/gm, '')
+            .replace(/^model:.*$/m, `model: role-${index}${harness === 'opencode' && folder === 'commands' ? '#custom' : ''}${tunable ? '\n' + tunable : ''}`);
           fs.writeFileSync(path.join(base, folder, `${oldName}${suffix}.md`), customized);
           if (!destinationExists) fs.unlinkSync(destination);
           else fs.writeFileSync(destination, source.replaceAll(oldName, newName).replace(/^model:.*$/m, 'model: destination-owned'));

@@ -6,9 +6,9 @@ const path = require('path');
 const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message'];
 const LISTS = ['shell', 'skills', 'delegate'];
 const AGENTS = {
-  explorer: { claude: 'budget-explorer', opencode: 'explore' },
-  executor: { claude: 'budget-executor', opencode: 'executor' },
-  budget: { claude: 'budget-subagent', opencode: 'budget' },
+  explorer: { claude: 'budget-explorer', opencode: 'budget-explorer' },
+  executor: { claude: 'budget-executor', opencode: 'budget-executor' },
+  budget: { claude: 'budget-subagent', opencode: 'budget-subagent' },
 };
 
 function resolveProfile(registry, name, ancestors = []) {

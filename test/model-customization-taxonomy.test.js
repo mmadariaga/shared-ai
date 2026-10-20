@@ -18,7 +18,7 @@ function fixtureManifest() {
       ...['budget-subagent', 'budget-executor', 'budget-explorer'].map(name => ({
         destination: { class: 'agents', path: `${name}.md` }, harnesses: ['claude'],
       })),
-      ...['budget', 'executor', 'explore'].map(name => ({
+      ...['budget-executor', 'budget-explorer', 'budget-subagent'].map(name => ({
         destination: { class: 'agents', path: `${name}.md` }, harnesses: ['opencode'],
       })),
       { source: 'commands/claude', destination: { class: 'commands', path: '.' }, harnesses: ['claude'] },
@@ -71,13 +71,10 @@ test('target profiles carry a context estimate and a difficulty per family-quali
     assert.equal(customization.taskContextFor({ value }), 'Unknown', value);
     assert.equal(customization.taskDifficultyFor({ value }), 'Unknown', value);
   }
-  assert.equal(customization.taskContextFor({ value: 'agent:budget' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'agent:executor' }), 'Small');
+  assert.equal(customization.taskContextFor({ value: 'agent:budget-subagent' }), 'Medium');
   assert.equal(customization.taskContextFor({ value: 'agent:budget-executor' }), 'Small');
-  assert.equal(customization.taskContextFor({ value: 'agent:explore' }),
-    customization.taskContextFor({ value: 'agent:budget-explorer' }));
-  assert.equal(customization.taskContextFor({ value: 'agent:budget' }),
-    customization.taskContextFor({ value: 'agent:budget-subagent' }));
+  assert.equal(customization.taskContextFor({ value: 'agent:budget-explorer' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'agent:explore' }), 'Unknown');
 });
 
 test('context estimates distinguish fresh Step workers from cumulative orchestration', () => {
@@ -91,7 +88,7 @@ test('context estimates distinguish fresh Step workers from cumulative orchestra
 
 test('difficulty is keyed by complete family-qualified target identity', () => {
   assert.equal(customization.taskDifficultyFor({ value: 'worker:sai-2-design-worker' }), '↑↑↑');
-  assert.equal(customization.taskDifficultyFor({ value: 'agent:budget' }), '↑');
+  assert.equal(customization.taskDifficultyFor({ value: 'agent:budget-subagent' }), '↑');
   assert.equal(customization.taskDifficultyFor({ value: 'command:sai-2-design' }), '↑↑');
   assert.equal(customization.taskDifficultyFor({ value: 'utility:sai-retire-docs' }), '↑↑');
   assert.equal(customization.TARGET_PROFILE.budget, undefined);

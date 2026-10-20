@@ -221,7 +221,7 @@ test('matrix expansion yields exactly thirteen worker bindings and thirteen mana
       assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), false,
         'claude must keep its thirteen matrix agents only');
     } else {
-      assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
+      assert.equal(['budget-explorer', 'budget-executor', 'budget-subagent'].every(name => allAgentNames.includes(name)), true,
         'opencode should keep its three support agents beside the matrix agents');
     }
 

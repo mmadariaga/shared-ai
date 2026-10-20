@@ -10,7 +10,7 @@ const repoRoot = path.join(__dirname, '..');
 const { readProjected } = require('./helpers/capability-source');
 const { translate } = require('../bin/capabilities');
 const registry = require('../sai/install-manifest.json').capabilities;
-const source = readProjected('agents/opencode/explore.md');
+const source = readProjected('agents/opencode/budget-explorer.md');
 
 // Check the ordered permission declarations, not OpenCode's shell scanner.
 function permissionRules(text) {
@@ -56,7 +56,7 @@ test('the managed OpenCode explore projection carries the permission fix', () =>
   );
   const projection = expandInstallManifest(loadInstallManifest(repoRoot), {
     harness: 'opencode', repoRoot, destinationRoot,
-  }).find(item => item.destinationPath === path.join(destinationRoot.agents, 'explore.md'));
+  }).find(item => item.destinationPath === path.join(destinationRoot.agents, 'budget-explorer.md'));
   assert.ok(projection, 'the canonical explore agent must remain installable');
   assert.equal(projection.strategy, 'tunable-seed');
   const projected = projection.sourceText !== undefined

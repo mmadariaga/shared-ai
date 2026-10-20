@@ -24,7 +24,7 @@ The worker owns the change's overview lifecycle for `change-overview.md`:
 - A successful materialization or reconciliation commits `overview.state: current` and clears both diagnostic keys.
 - **First materialization** — at the feedback gate's `Continue` processing, after `design.md`, `tasks.md`, and `interfaces.md` verify successfully, set `overview.state: materializing`.
 - Clear both diagnostic keys immediately before dispatch and dispatch the budget-routed generation subagent.
-- The dispatch names the budget-subagent binding of the active harness explicitly: Claude Code dispatches `Agent(subagent_type: budget-subagent)` and opencode dispatches `task(subagent_type: budget)`.
+- The dispatch names the budget-subagent binding of the active harness explicitly: Claude Code dispatches `Agent(subagent_type: budget-subagent)` and opencode dispatches `task(subagent_type: budget-subagent)`.
 - The dispatch prompt carries exactly three elements: (1) the resolved change name, (2) the current invocation's `overview_language` value, and (3) the Fetch directive — instruct the subagent to Fetch @sai/commands/design/change-overview.md and follow it exactly.
 - The prompt SHALL NOT enumerate the source mappings, content requirements, faithful-copy rule, pre-write validation rules, or any other normative body of the shared contract; the subagent loads the contract itself.
 - First materialization and regeneration use the same transport, binding, Fetch, and minimal prompt shape.

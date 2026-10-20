@@ -22,7 +22,7 @@ Trigger phrases (the same set as the Claude Code variant, following the budget-f
 The `description` field format SHALL be:
 
     description: >
-      Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via the executor agent file's model frontmatter (installed under ~/.config/opencode/agents/executor.md) — not hardcoded in here. Enforces execute-only, minimal-output, structured-failure-report discipline.
+      Binds "executor subagent" to the OpenCode budget-executor agent keyword. Model resolved via the budget-executor agent file's model frontmatter (installed under ~/.config/opencode/agents/budget-executor.md) — not hardcoded in here. Enforces execute-only, minimal-output, structured-failure-report discipline.
       TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 
 #### Scenario: User asks for budget mode in an OpenCode session
@@ -33,4 +33,4 @@ The `description` field format SHALL be:
 #### Scenario: Model resolution names the executor agent file
 
 - **WHEN** the SKILL.md is loaded
-- **THEN** the model is resolved from the `model` frontmatter of `~/.config/opencode/agents/executor.md`, not hardcoded and not via `agent.executor.model` in `opencode.jsonc`
+- **THEN** the model is resolved from the `model` frontmatter of `~/.config/opencode/agents/budget-executor.md`, not hardcoded and not via `agent.executor.model` in `opencode.jsonc`

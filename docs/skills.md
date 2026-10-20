@@ -22,10 +22,29 @@ skills below directly in your prompts for cost discipline or guarded operations.
 | `budget` | Loads the three budget subagent bindings together (`budget-explorer` + `budget-executor` + `budget-subagent`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
 | `budget-ro` | Loads only read-only exploration and the language contract, without executor or writable task delegation. | `"budget read-only"`, `"budget ro"` |
 
-Helper models come from the configured agent files, not each skill: Claude Code
-uses `budget-explorer`, `budget-executor`, and `budget-subagent`; opencode uses
-`explore`, `executor`, and `budget`. Customize them through project `setup` or
-the corresponding agent overrides.
+Helper models come from the configured agent files, not each skill. Claude Code
+and opencode both use `budget-explorer`, `budget-executor`, and `budget-subagent`.
+Customize them through project `setup` or the corresponding agent overrides.
+
+### Migrating existing opencode agents
+
+Global installation migrates SAI-owned `explore.md`, `executor.md`, and `budget.md`
+to the matching `budget-*` names, preserving the configured model and optional
+variant (including an absent variant). If the new name already exists, its
+settings win; the installer reports conflicting legacy settings. It removes a
+SAI-owned predecessor only after installing its replacement. Modified or unrelated
+legacy files remain in place, with a notice. Reinstallation creates no aliases.
+Claude Code's existing names do not change.
+
+Project-local `.opencode/agents/` definitions are never rewritten by global
+installation. Manually move each needed override to the corresponding new name,
+update external dispatch references, permissions, and saved custom preset targets,
+and review old definitions
+before removing them. A retained global or project-local `explore.md` (or an
+`agent.explore` config entry) can still override OpenCode's built-in explore.
+Review legacy config entries manually; SAI never rewrites them. Restart the
+harness after migration. Doctor and uninstall use the new names and retain
+their managed-content protections for user files.
 
 ## Optional third-party skill
 

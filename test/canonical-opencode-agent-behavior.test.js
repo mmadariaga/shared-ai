@@ -154,7 +154,8 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
   };
 
   for (const name of Object.keys(descriptions)) {
-    const source = readProjected(`agents/opencode/${name}.md`)
+    const agentName = { budget: 'budget-subagent', executor: 'budget-executor', explore: 'budget-explorer' }[name];
+    const source = readProjected(`agents/opencode/${agentName}.md`)
       .replaceAll('\r\n', '\n');
     const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/);
     assert.ok(frontmatter, `${name} should contain one YAML frontmatter block`);
@@ -290,7 +291,7 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
   const projectPath = path.join(scratch, 'project');
   const globalAgentRoot = path.join(scratch, 'agents');
   const globalPolicyPath = path.join(scratch, 'sai', 'policies', 'explore-agent.md');
-  const localAgentPath = path.join(projectPath, '.opencode', 'agents', 'explore.md');
+  const localAgentPath = path.join(projectPath, '.opencode', 'agents', 'budget-explorer.md');
   const localPolicyPath = path.join(projectPath, '.opencode', 'sai', 'policies', 'explore-agent.md');
   const fetchLine = 'Fetch @sai/policies/explore-agent.md';
   const localExtension = 'PROJECT_LOCAL_EXTENSION_MARKER';
@@ -306,7 +307,7 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
       packageRoot: scratch,
       globalAgentRoot,
     });
-    const result = adapter.createLocalOverride('explore', {
+    const result = adapter.createLocalOverride('budget-explorer', {
       model: 'opencode-go/glm-5.2',
       variant: 'high',
     });
@@ -346,13 +347,13 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
 const OPENCODE_BUDGET_SKILL_CONTRACTS = [
   {
     skillName: 'budget-subagent',
-    agentName: 'budget',
+    agentName: 'budget-subagent',
     fetchTarget: '@sai/policies/budget-agent.md',
     forbidden: [/^## Universal Behavior$/m],
     markers: [
-      /agent keyword[\s\S]{0,80}`budget` \(lowercase\)/i,
+      /agent keyword[\s\S]{0,80}`budget-subagent` \(lowercase\)/i,
       /synchronously/i,
-      /`model` frontmatter of the budget agent file/i,
+      /`model` frontmatter of the budget-subagent agent file/i,
       /structured completion report/i,
       /permission-block abort/i,
       /approximately 30-call behavioral limit/i,
@@ -362,26 +363,26 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
   },
   {
     skillName: 'budget-executor',
-    agentName: 'executor',
+    agentName: 'budget-executor',
     fetchTarget: '@sai/policies/executor-agent.md',
     forbidden: [/^## Universal Behavior$/m],
     markers: [
-      /agent keyword[\s\S]{0,80}`executor` \(lowercase\)/i,
+      /agent keyword[\s\S]{0,80}`budget-executor` \(lowercase\)/i,
       /synchronously/i,
-      /`model` frontmatter of the executor agent file/i,
+      /`model` frontmatter of the budget-executor agent file/i,
       /tool[- ]call\s+cap[\s\S]{0,20}\bnone\b/i,
       /## Cost model/i,
     ],
   },
   {
     skillName: 'budget-explorer',
-    agentName: 'explore',
+    agentName: 'budget-explorer',
     fetchTarget: '@sai/policies/explore-agent.md',
     forbidden: [/^## Output contract$/m, /Every subagent spawn MUST declare/i],
     markers: [
-      /`explore` \(lowercase\)[\s\S]{0,100}keyword/i,
+      /`budget-explorer` \(lowercase\)[\s\S]{0,100}keyword/i,
       /synchronously/i,
-      /`model` frontmatter of the explore agent file/i,
+      /`model` frontmatter of the budget-explorer agent file/i,
       /40 tool calls/i,
       /output contract/i,
       /explore-agent\.md/i,

@@ -303,7 +303,7 @@ test('a body-divergent managed destination is kept as a project-local override',
 });
 
 test('Claude and opencode uninstall enumerate their managed agent destinations', () => {
-  const genericNames = ['explore', 'executor', 'budget'];
+  const genericNames = ['budget-explorer', 'budget-executor', 'budget-subagent'];
   const applyNames = ['sai-3-red-worker', 'sai-3-green-worker',
     'sai-direct-build-worker', 'sai-4-review-worker'];
   for (const [harness, install, enumerate, expectedCount] of [

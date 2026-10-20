@@ -35,17 +35,15 @@ Installer flow SHALL define the numbered Claude review-worker agent filename con
 
 ### Requirement: opencode worker registration is preserved and configurable
 
-The installer SHALL register the numbered opencode review worker using the established namespaced agent policy, including permission to dispatch the read-only `explore` branch and write-capable `budget` branch as required by the binding. An existing user-owned entry SHALL be preserved according to the established opencode agent-preservation policy.
+The installer SHALL register the numbered opencode review worker using the established namespaced agent policy, including permission to dispatch the read-only `budget-explorer` branch and write-capable `budget-subagent` branch as required by the binding. An existing user-owned entry SHALL be preserved according to the established opencode agent-preservation policy.
 
 #### Scenario: opencode review worker is absent
 - **WHEN** installation finds no `sai-4-review-worker` entry
-- **THEN** it adds the canonical managed definition with both nested branch permissions
-- **AND** the wrapper dispatch target resolves to that name
+- **THEN** it adds the canonical managed definition with both nested branch permissions; the wrapper dispatch target resolves to that name
 
 #### Scenario: opencode review worker is customized
 - **WHEN** an existing `sai-4-review-worker` entry is valid but customized
-- **THEN** installation preserves the entry unchanged
-- **AND** dispatch uses the existing entry's configured runtime and permissions
+- **THEN** installation preserves the entry unchanged; dispatch uses the existing entry's configured runtime and permissions
 
 ### Requirement: Routed wrappers load the coordinator and matching binding
 

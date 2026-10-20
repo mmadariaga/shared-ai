@@ -52,14 +52,12 @@ The automated test suite SHALL cover installation and doctor behavior: customize
 - **AND** no config-agent validation is performed
 
 ### Requirement: Opencode collision-policy documentation matches ownership semantics
-The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the seven projected opencode worker agent files and the three projected generic agent files (`explore`, `executor`, `budget`), the `tunable-seed` lifecycle (create when absent with the shipped tunables, overwrite body and non-tunable frontmatter on subsequent installs while preserving the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`, emit a console notice when a body overwrite occurs), and the body-and-non-tunable identity rule used by doctor and uninstall; SHALL describe the configuration merge as covering only the external-directory permission; and SHALL avoid stating that customized opencode worker definitions are preserved by name in the configuration. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.
+Current documentation in `docs/skills.md` SHALL describe the projected generic agents as `budget-explorer`, `budget-executor`, and `budget-subagent`, the tunable-seed lifecycle, and the managed-content protections used by doctor and uninstall. Global installation SHALL leave project-local definitions and legacy configuration keys unchanged and document their manual migration. Historical decision records SHALL remain historical evidence rather than being rewritten for the rename.
 
 #### Scenario: Affected ADRs describe current opencode ownership
-- **WHEN** the affected ADRs are read after this change is applied
-- **THEN** their opencode sections SHALL refer to the projected worker and generic agent files
-- **AND** SHALL state the tunable-seed lifecycle and the body-and-non-tunable identity rule
-- **AND** SHALL describe the configuration merge as covering only the external-directory permission, not any agent entries
+- **WHEN** current migration documentation and the affected historical ADRs are read after this change is applied
+- **THEN** current documentation SHALL refer to the renamed projected generic agent files and historical ADRs SHALL retain their historical content; SHALL state the tunable-seed lifecycle and the body-and-non-tunable identity rule; SHALL describe the configuration merge as covering only the external-directory permission, not any agent entries
 
 #### Scenario: Non-opencode safety policy remains documented
-- **WHEN** the affected ADRs describe Claude worker files or ordinary managed destinations
+- **WHEN** historical ADRs describe Claude worker files or ordinary managed destinations
 - **THEN** they SHALL continue to document collision protection, no-overwrite behavior, and guarded ownership handling for those surfaces
