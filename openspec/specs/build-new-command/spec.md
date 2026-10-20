@@ -21,7 +21,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Build-new closing line
 
-After the last segment that ran ends, `/sai-build` SHALL print the report of each segment, replacing each segment's own closing line with its own. When segment 2 completed or found no changes against the parent branch, it SHALL end with exactly `Build done.`. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, it SHALL print that report, name `build-log.md` when the segment wrote one, end without a closing line, and start no later segment. When segment 2 fails, is stopped, or cannot start, it SHALL print both segment reports and end without a closing line.
+After the last segment that ran ends, `/sai-build` SHALL print the report of each segment, replacing each segment's own closing line with its own. When segment 2 completed or found no changes against the parent branch, it SHALL end with exactly `Build done.`. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, it SHALL print that report, end without a closing line, and start no later segment; the report SHALL NOT name `build-log.md`. When segment 2 fails, is stopped, or cannot start, it SHALL print both segment reports and end without a closing line.
 
 #### Scenario: Segment stops
 
@@ -31,7 +31,7 @@ After the last segment that ran ends, `/sai-build` SHALL print the report of eac
 #### Scenario: Fix segment stops
 
 - **WHEN** segment 3 ends blocked, stopped, or with a failed precondition
-- **THEN** `/sai-build` prints its report, names `build-log.md`, and prints no `Build done.` line.
+- **THEN** `/sai-build` prints its report without naming `build-log.md` and prints no `Build done.` line.
 
 #### Scenario: Review segment is stopped
 
