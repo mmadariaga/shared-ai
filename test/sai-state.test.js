@@ -8,11 +8,8 @@ const path = require('path');
 const { execSync, spawnSync } = require('child_process');
 const crypto = require('crypto');
 
+const { resolveTempRoot } = require('../sai/tools/temp-root.js');
 const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome, normalizeEventText } = require('../bin/sai-state.js');
-
-function tmpBase() {
-  return process.env.TMPDIR || os.tmpdir();
-}
 
 function cleanup(ids) {
   for (const id of ids) {
@@ -404,6 +401,48 @@ test('sessionDir and sessionFile utilities work correctly', () => {
   assert.ok(file.includes(id), 'sessionFile should contain id');
   assert.ok(file.includes('.json'), 'sessionFile should end with .json');
   assert.ok(file.startsWith(dir), 'sessionFile should be under sessionDir');
+});
+
+test('sessions live in the SAI temp root of the harness', () => {
+  assert.equal(sessionDir(), path.join(resolveTempRoot('claude'), 'sai-state'));
+});
+
+// Linux ignores the temp environment; Windows and macOS root the SAI temp root in it.
+test('on Linux the temp environment receives no session', { skip: process.platform !== 'linux' }, () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-state-env-'));
+  try {
+    const env = { ...process.env, TMPDIR: tmp, TEMP: tmp, TMP: tmp };
+    const result = spawnSync(process.execPath, [SAI_STATE_TOOL, 'spawn', '--key', 'test-sessions-root'], { encoding: 'utf8', env });
+    assert.equal(result.status, 0, result.stderr);
+    const id = JSON.parse(result.stdout).id;
+    cleanup([id]);
+    assert.deepEqual(fs.readdirSync(tmp), [], 'the temp environment receives nothing');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('a copy installed under an opencode root stores its sessions in the opencode SAI temp root', { skip: process.platform === 'linux' && !fs.existsSync('/tmp/opencode') }, () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-state-opencode-'));
+  try {
+    const sai = path.join(base, 'opencode', 'sai');
+    const repo = path.join(__dirname, '..');
+    fs.mkdirSync(path.join(sai, 'bin'), { recursive: true });
+    fs.copyFileSync(SAI_STATE_TOOL, path.join(sai, 'bin', 'sai-state.js'));
+    fs.cpSync(path.join(repo, 'sai-state'), path.join(sai, 'sai-state'), { recursive: true });
+    fs.cpSync(path.join(repo, 'sai', 'tools'), path.join(sai, 'tools'), { recursive: true });
+    const result = spawnSync(process.execPath, [path.join(sai, 'bin', 'sai-state.js'), 'spawn', '--key', 'test-sessions-opencode'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const id = JSON.parse(result.stdout).id;
+    const file = path.join(resolveTempRoot('opencode'), 'sai-state', id + '.json');
+    try {
+      assert.ok(fs.existsSync(file), 'the session file sits in the opencode root');
+    } finally {
+      fs.rmSync(file, { force: true });
+    }
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });
 
 test('CLI: reset clears one machine state in a fresh session', () => {

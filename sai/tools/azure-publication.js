@@ -3,9 +3,9 @@
 // Shared Services-only identity and CLI transport. The import reader owns URL
 // interpretation; all Azure execution uses its authenticated Windows-safe path.
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { address, segment } = require('./from-backlog-azuredevops');
+const { makeTempDir, harnessFromInstalledPath } = require('./temp-root');
 
 function repositoryAddress(value) {
   if (typeof value !== 'string') return null;
@@ -92,8 +92,7 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
   if (Object.keys(query).length) args.push('--query-parameters', ...Object.entries(query).map(([key, value]) => `${key}=${value}`));
   if (body !== undefined) {
     // invoke accepts a JSON file, not stdin. Keep payloads private and outside Git.
-    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'azure-publication-'));
-    if (process.platform !== 'win32') fs.chmodSync(directory, 0o700);
+    directory = makeTempDir(harnessFromInstalledPath(__filename), 'azure-publication-');
     file = path.join(directory, 'payload.json');
     fs.writeFileSync(file, JSON.stringify(body), { mode: 0o600, flag: 'wx' });
     args.push('--in-file', file, '--encoding', 'utf-8', '--media-type', patch ? 'application/json-patch+json' : 'application/json');

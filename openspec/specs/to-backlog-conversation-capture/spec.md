@@ -123,16 +123,16 @@ The explicitly invoked to-backlog skill SHALL select its publication mode before
 
 ### Requirement: Confirmed Linux publication preparation
 
-For a separately confirmed new creation or update on Linux, the common to-backlog skill SHALL load `prepare-temp.md` beside the selected installed skill and invoke that skill's `scripts/prepare-temp.js` with the matching harness argument from the target repository directory before publication. It SHALL require exit code zero and JSON containing an absolute `directory`, use `receipt.json` within that directory, and retain the exact receipt path in conversation state. This preparation SHALL NOT replace explicit approval of the current publication proposal.
+For a separately confirmed new creation or update on every platform, the common to-backlog skill SHALL load `prepare-temp.md` beside the selected installed skill and invoke that skill's `scripts/prepare-temp.js` with the matching harness argument from the target repository directory before publication. It SHALL require exit code zero and JSON containing an absolute `directory`, use `receipt.json` within that directory, and retain the exact receipt path in conversation state. The GitHub, GitHub update, and Azure DevOps provider workflows SHALL use that prepared receipt path instead of a provider-specific or Windows-specific temporary directory. This preparation SHALL NOT replace explicit approval of the current publication proposal.
 
 #### Scenario: Approved Linux creation
 
-- **WHEN** the user explicitly approves a new creation on Linux
+- **WHEN** the user explicitly approves a new creation on Linux, Windows, or macOS
 - **THEN** the skill completes verified preparation before invoking publication with the prepared receipt path.
 
 #### Scenario: Approved Linux update
 
-- **WHEN** the user explicitly approves a new update on Linux
+- **WHEN** the user explicitly approves a new update on Linux, Windows, or macOS
 - **THEN** the skill completes verified preparation before invoking the update with the prepared receipt path.
 
 ### Requirement: Preparation failure and recovery boundaries
@@ -148,12 +148,3 @@ If preparation fails or access is denied, the skill SHALL stop before publicatio
 
 - **WHEN** the user requests recovery of an existing creation or update attempt
 - **THEN** the skill uses the original receipt through provider recovery rather than preparing a replacement receipt directory.
-
-### Requirement: Linux-only preparation activation
-
-The skill SHALL activate the new preparation helper only on Linux. On Windows it SHALL retain the selected provider's existing temporary-directory workflow and SHALL NOT claim a new verified Windows privacy guarantee.
-
-#### Scenario: Windows publication workflow
-
-- **WHEN** the selected creation or update workflow runs on Windows
-- **THEN** it retains the provider's existing temporary-directory workflow without invoking the Linux-only helper or asserting newly verified Windows privacy.

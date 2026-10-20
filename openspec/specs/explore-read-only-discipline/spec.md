@@ -25,11 +25,11 @@ The shared exploration guidance SHALL state that emitting a Ready to Propose blo
 
 ### Requirement: Scoped confirmed backlog capture exception
 
-During `/sai-explore`, a user-invoked to-backlog capture SHALL be a separate scoped exception to the repository read-only boundary only after the skill's explicit publication confirmation. On Linux this exception SHALL permit the concrete installed `scripts/prepare-temp.js` invocation and the capture's receipt/publication operations, with private temporary preparation and receipt retention outside the repository. It SHALL NOT authorize repository edits or omission of publication confirmation. Claude Code SHALL use its installed skill and command grants; OpenCode SHALL use its installed skill with the active primary agent's applicable command requirements. Preparation failure SHALL stop publication, and recovery SHALL retain the original receipt.
+During `/sai-explore`, a user-invoked to-backlog capture SHALL be a separate scoped exception to the repository read-only boundary only after the skill's explicit publication confirmation. On every platform this exception SHALL permit the concrete installed `scripts/prepare-temp.js` invocation and the capture's receipt/publication operations, with private temporary preparation and receipt retention outside the repository. It SHALL NOT authorize repository edits or omission of publication confirmation. Claude Code SHALL use its installed skill and command grants; OpenCode SHALL use its installed skill with the active primary agent's applicable command requirements. Preparation failure SHALL stop publication, and recovery SHALL retain the original receipt.
 
 #### Scenario: Confirmed capture during exploration
 
-- **WHEN** the user invokes to-backlog during exploration and explicitly confirms its publication proposal on Linux
+- **WHEN** the user invokes to-backlog during exploration and explicitly confirms its publication proposal on any platform
 - **THEN** the scoped exception permits concrete temporary preparation and receipt/publication operations outside the repository without permitting repository edits.
 
 #### Scenario: Unconfirmed capture

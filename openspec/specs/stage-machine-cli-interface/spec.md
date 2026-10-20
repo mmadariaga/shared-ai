@@ -24,12 +24,12 @@ The `spawn --key <stable-key>` verb SHALL derive a well-formed UUIDv4 from the s
 
 ### Requirement: Session file store on local filesystem
 
-The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-state/<id>.json` (or platform equivalent) with owner-only permissions (0600 semantics, closest Windows equivalent). File writes SHALL be atomic using temp-file-plus-rename so a process crash mid-write never leaves a truncated session file.
+The store SHALL persist each session's state in a JSON file `sai-state/<id>.json` under the SAI temp root that `sai/tools/temp-root.js` resolves for the harness whose installed root holds the running `bin/sai-state.js` copy (Claude Code for a source checkout), with owner-only permissions (0600 semantics, closest Windows equivalent). It SHALL NOT read `TMPDIR`, `TEMP`, `TMP`, or `os.tmpdir()` itself, and sessions stored in an earlier location SHALL NOT be found. A missing or unsafe SAI temp root SHALL make the CLI print `sai-state: <message>` on stderr and exit 2. File writes SHALL be atomic using temp-file-plus-rename so a process crash mid-write never leaves a truncated session file.
 
 #### Scenario: Session file stores persisted machine state
 
 - **WHEN** `emit` applies a transition and persists the outcome
-- **THEN** the session file contains the per-machine ledger and state in JSON form `{createdAt, stateVersion, stateByMachine: {machineId: {state, rev, lastEventId, lastOutcome}}}`
+- **THEN** the session file under the harness SAI temp root contains the per-machine ledger and state in JSON form `{createdAt, stateVersion, stateByMachine: {machineId: {state, rev, lastEventId, lastOutcome}}}`
 
 #### Scenario: Reset atomically updates machine state
 
@@ -40,6 +40,16 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 - **WHEN** `close <id>` is invoked
 - **THEN** the session file is deleted from the store directory
+
+#### Scenario: An opencode copy stores sessions in the opencode root
+
+- **WHEN** a `bin/sai-state.js` copy installed under an opencode root runs `spawn`
+- **THEN** the session file is created in `sai-state/` under the opencode SAI temp root
+
+#### Scenario: The temp environment receives no session on Linux
+
+- **WHEN** `spawn` runs on Linux with `TMPDIR`, `TEMP`, and `TMP` pointing at another directory
+- **THEN** that directory receives no file
 
 ### Requirement: Closed error vocabulary via JSON error field
 

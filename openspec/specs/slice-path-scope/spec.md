@@ -7,16 +7,21 @@ Defines the read-only tool and policy that record the files already modified bef
 
 ### Requirement: Snapshot records the already-modified files
 
-The `snapshot` sub-command of `sai/tools/slice-path-scope.js` SHALL record every path that `git status` reports as modified, with its status and content identity, together with HEAD, and SHALL return an opaque snapshot reference and the sorted list of recorded paths with verdict `clean`.
+The `snapshot` sub-command of `sai/tools/slice-path-scope.js` SHALL record every path that `git status` reports as modified, with its status and content identity, together with HEAD, and SHALL return an opaque snapshot reference and the sorted list of recorded paths with verdict `clean`. The reference SHALL be the name of the record's own private directory, `slice-path-scope-` followed by six letters or digits, so two snapshots of the same state receive different references and records.
 
 #### Scenario: Repository with one earlier user edit
 
 - **WHEN** `snapshot` runs in a repository whose only modified file is `notes.txt`
-- **THEN** the payload carries verdict `clean`, a 64-character hexadecimal `snapshot` reference, and `modified` equal to `notes.txt`
+- **THEN** the payload carries verdict `clean`, a `snapshot` reference matching `slice-path-scope-` plus six letters or digits, and `modified` equal to `notes.txt`
+
+#### Scenario: Simultaneous snapshots do not collide
+
+- **WHEN** `snapshot` runs twice against the same unchanged repository
+- **THEN** the two references differ, each names its own `record.json` under the SAI temp root, and `verify` returns `clean` for both
 
 ### Requirement: The tool only reads the repository
 
-The tool SHALL NOT mutate the repository: neither sub-command changes the working tree, the index, or HEAD, and the snapshot record SHALL be stored in the OS temporary directory, outside the repository.
+The tool SHALL NOT mutate the repository: neither sub-command changes the working tree, the index, or HEAD, and each snapshot record SHALL be stored as `record.json` in a private directory (mode 0700 outside Windows) under the SAI temp root that `sai/tools/temp-root.js` resolves for the harness the tool is installed under, outside the repository.
 
 #### Scenario: Snapshot and verify leave the repository untouched
 

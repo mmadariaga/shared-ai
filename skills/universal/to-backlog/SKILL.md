@@ -125,11 +125,9 @@ different question is not confirmation.
 
 ## 4. Publish and report
 
-For a confirmed new creation or update on Linux, read `prepare-temp.md` beside
-this skill and complete its preparation before publication. Recovery uses the
-saved receipt, without preparing another directory. On Windows, retain the
-selected provider's existing temporary-directory workflow; this change adds no
-Windows privacy guarantee. Activate the new script only on Linux.
+For a confirmed new creation or update, read `prepare-temp.md` beside this
+skill and complete its preparation before publication. Recovery uses the
+saved receipt, without preparing another directory.
 
 Use the selected branch's publication operation once, passing structured data
 for the exact approved title, description, and destination. Keep its durable

@@ -29,9 +29,7 @@ when the outgoing proposal and unchanged token have explicit approval.
 ## Write once and recover
 
 `publish` takes the same source fields, unchanged `confirmation` and a new private
-absolute `receipt` from common temporary preparation. On Windows use the active
-harness's permitted local temporary directory (Claude Code or opencode), without
-a new Windows privacy claim. The helper stores authorized content, destination,
+absolute `receipt` from common temporary preparation. The helper stores authorized content, destination,
 identity and pre-creation IDs before one rules-enforced write.
 
 `complete` requires a remotely verified URL. `failure_before_publication` means

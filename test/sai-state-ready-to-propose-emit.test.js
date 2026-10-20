@@ -642,30 +642,37 @@ test('block emit: a later successful emit replaces the stored blocks', () => {
   }
 });
 
-test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', { skip: process.platform === 'win32' || (typeof process.getuid === 'function' && process.getuid() === 0) }, () => {
+test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', () => {
   const os = require('os');
+  // The session directory is the shared SAI temp root, so the write is made to
+  // fail by a preloaded stub instead of by changing the directory's permissions.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-blocks-'));
-  const env = Object.assign({}, process.env, { TMPDIR: tmp, TEMP: tmp, TMP: tmp });
-  const run = (argv, input) => spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], { encoding: 'utf8', input: input || '', env });
-  const stateDir = path.join(tmp, 'sai-state');
+  const stub = path.join(tmp, 'fail-session-write.js');
+  fs.writeFileSync(stub, [
+    "const fs = require('fs');",
+    'const rename = fs.renameSync;',
+    "fs.renameSync = (from, to) => { if (process.env.SAI_TEST_FAIL_SESSION_WRITE) throw Object.assign(new Error('EACCES: injected'), { code: 'EACCES' }); return rename(from, to); };",
+    '',
+  ].join('\n'));
+  const run = (argv, input, env = {}) => spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], { encoding: 'utf8', input: input || '', env: Object.assign({}, process.env, { NODE_OPTIONS: `--require ${JSON.stringify(stub)}` }, env) });
+  let id;
   try {
     const spawned = run(['spawn', '--key', `rtp-unwritable-${process.pid}-${Date.now()}`]);
     assert.equal(spawned.status, 0, spawned.stderr);
-    const id = JSON.parse(spawned.stdout).id;
+    id = JSON.parse(spawned.stdout).id;
     // The block emit is accepted only at the crystallize stage, so reach it
-    // while the state directory is still writable.
+    // while the session file is still writable.
     for (let i = 0; i < 3; i++) {
       const advanced = run(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
       assert.equal(advanced.status, 0, advanced.stderr);
     }
-    fs.chmodSync(stateDir, 0o500);
-    const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'));
+    const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'), { SAI_TEST_FAIL_SESSION_WRITE: '1' });
     assert.equal(result.status, 0, result.stderr);
     const json = JSON.parse(result.stdout);
     assert.ok(json.warnings.includes('BLOCKS_NOT_STORED'));
     assert.equal(json.validation.ok, true);
   } finally {
-    try { fs.chmodSync(stateDir, 0o700); } catch { /* best-effort */ }
+    if (id) fs.rmSync(sessionFile(id), { force: true });
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });

@@ -54,12 +54,12 @@ Regression tests SHALL retain creation coverage for resolution precedence, ambig
 
 ### Requirement: Linux preparation regression coverage
 
-Regression tests SHALL cover distinct and concurrent receipt-directory creation, current-user ownership, mode `0700`, symbolic-link rejection, outside-repository boundaries, creation and verification failures, unsafe root ownership and shared-write permissions, final root rechecks, and missing-root failures without fallback. Tests SHALL verify receipt retention, mirrored helper installation, concrete preparation invocation declarations for both harnesses, unchanged research preparation access, confirmation-before-preparation order, and consistent exploration reminders that preserve the repository-write prohibition and separately confirmed outside-repository capture exception. Existing creation and update regression fixtures SHALL use the helper for approved receipt directories on Linux.
+Regression tests SHALL cover distinct and concurrent receipt-directory creation under the SAI temp root on every platform, current-user ownership, mode `0700`, outside-repository boundaries, harness derivation from the installed root, invalid invocations, and, on Linux, unusable roots and missing-root failures without creation, repair, or fallback. Tests SHALL verify receipt retention, mirrored helper installation, concrete preparation invocation declarations for both harnesses, unchanged research preparation access, confirmation-before-preparation order on every platform, and consistent exploration reminders that preserve the repository-write prohibition and separately confirmed outside-repository capture exception. Existing creation and update regression fixtures SHALL use the helper for approved receipt directories.
 
 #### Scenario: Filesystem preparation regression
 
-- **WHEN** Linux preparation tests exercise normal creation and injected filesystem failures
-- **THEN** they verify private unique directories and reject unsafe or missing locations without changing existing directory permissions or deleting retained receipts.
+- **WHEN** preparation tests exercise normal creation on every platform and, on Linux, unusable and missing roots
+- **THEN** they verify private unique directories under the SAI temp root and reject unsafe or missing locations without changing existing directory permissions or deleting retained receipts.
 
 #### Scenario: Installation and access regression
 
