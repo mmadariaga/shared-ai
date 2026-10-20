@@ -15,8 +15,6 @@ Without a change name, the command takes the only active change that has a `prop
 
 A fresh `sai-4-review-worker` reads the change artifacts and the diff, and applies the eleven review passes: domain alignment, correctness, security, performance, and accessibility triage, maintainability, testing, consistency, domain language, documentation and migrations, and resilience. Large diffs (over 500 changed lines) are inspected in groups through `budget-explorer` subagents. A `budget-explorer` adversary challenges the draft to discard false positives and correct severities. The findings follow the shared artifact review format, which `/sai-3-implement` reads.
 
-When `openspec/changes/{change}/build-log.md` lists pending findings from an earlier implementation run, the worker treats them as leads: it checks each against the current diff and writes into `review.md` only the ones that still hold.
-
 An empty diff prints `No changes detected against {parent-branch}. Nothing to review.`, writes no report, commits nothing, and ends with `Review done.`.
 
 The command checks the finished `review.md` itself: every finding has an identifier, the three triage fields are present, and the closing `Summary:` tally matches the findings. When the worker cannot produce a valid report, the command tries up to 3 different approaches and then asks you how to continue, with an option to stop.

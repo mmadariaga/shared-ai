@@ -97,11 +97,11 @@ test('the review keeps the eleven passes, the severities, the adversary challeng
   assert.match(scope, /`--parent-branch` value/);
 });
 
-test('pending findings of build-log.md are leads that must still hold, and the report format has one source', () => {
+test('the review never reads build-log.md, and the report format has one source', () => {
   const common = read('sai/commands/review/steps/common.md');
-  assert.match(common, /`build-log\.md`[\s\S]{0,80}pending findings, read them as leads/);
-  assert.match(common, /Write into `review\.md` only the ones that still hold/);
-  assert.match(read(STEPS['resolve-review-analysis']), /every pending finding of `build-log\.md` verified/);
+  for (const file of [common, read(STEPS['establish-diff-scope']), read(STEPS['resolve-review-analysis']), read('sai/commands/review/worker.md')]) {
+    assert.doesNotMatch(file, /build-log\.md/);
+  }
   assert.match(read(STEPS['close-review-outcome']), /Fetch @sai\/commands\/review\/review-report\.template\.md/);
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/review-report.template.md')));
 });

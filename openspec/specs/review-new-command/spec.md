@@ -68,15 +68,6 @@ The review SHALL apply eleven passes to every changed file: domain alignment, co
 - **WHEN** the diff against the parent branch exceeds 500 changed lines
 - **THEN** the worker keeps the full diff out of its context and inspects at most eight file groups through `budget-explorer` subagents.
 
-### Requirement: Pending findings of build-log.md are leads
-
-When `openspec/changes/{name}/build-log.md` lists pending findings, the worker SHALL read them as leads, verify each against the current diff and the code on disk, and write into `review.md` only the ones that still hold, as ordinary findings under its own identifiers and severities.
-
-#### Scenario: A pending finding no longer holds
-
-- **WHEN** `build-log.md` lists a pending finding that the current code no longer exhibits
-- **THEN** `review.md` does not contain that finding.
-
 ### Requirement: Single report format and full regeneration
 
 The worker SHALL write `review.md` in the format of `sai/commands/review/review-report.template.md`, read in place as the single format source, with an identifier on every finding, the three `Surface touched` lines, a `## Recommended Audits` block, and a closing `Summary:` tally. A new review SHALL regenerate `review.md` completely, replacing earlier findings together with their ` (FIXED)` marks and the user's deletions, without reading the earlier report.
@@ -121,3 +112,12 @@ The `/sai-4-review` command SHALL be installed on Claude Code and opencode from 
 
 - **WHEN** the installer runs for Claude Code and for opencode
 - **THEN** each harness receives the `sai-4-review` command wrapper and a `sai-4-review-worker` agent, and the worker roster validates.
+
+### Requirement: Review reads no build log
+
+The `/sai-4-review` worker SHALL NOT read `openspec/changes/{name}/build-log.md` and SHALL NOT take pending findings of an earlier implementation run as leads; it SHALL derive its findings from the current diff and the code on disk.
+
+#### Scenario: A change with an earlier build log
+
+- **WHEN** the reviewed change holds a `build-log.md` that lists pending findings
+- **THEN** the review does not read the file, and `review.md` contains only findings the worker derived from the current diff and code.

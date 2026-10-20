@@ -14,7 +14,6 @@ Read under `openspec/changes/{change-name}/`:
 - `proposal.md` — the feature goal and the accepted and discarded decisions.
 - `design.md` — architecture decisions and trade-offs; a backfilled change may lack it, and the review proceeds without it.
 - `specs/**/*.md` — per-capability acceptance criteria. List the directory first: it holds zero or more files.
-- `build-log.md` — when it exists and lists pending findings, read them as leads, never as findings: verify each against the current diff and the code on disk. Write into `review.md` only the ones that still hold, as ordinary findings under your own identifiers and severities; discard the rest without a trace.
 
 Together they anchor every finding to the agreed goals and decisions.
 

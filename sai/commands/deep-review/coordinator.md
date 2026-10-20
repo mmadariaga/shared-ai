@@ -222,8 +222,7 @@
      the baseline it recorded. Its closing line `Implement done.` is replaced by
      this command's close. When it ends blocked (an escalation the user did not
      resolve), stopped, or with a failed precondition, print its report and end
-     the run without a standard close; a blocked or stopped segment has already
-     written `build-log.md`, and the report names it.
+     the run without a standard close.
   5. **Close.** After the fix segment completes, print its closing report, then
      the run-specific standard close.
 

@@ -88,7 +88,7 @@ At start, a `status` response with a `running` or `escalated` stage and a run di
 
 ### Requirement: Run directory removal at a completed close
 
-When a run closes `completed`, the coordinator SHALL remove its run directory with `temp-root.js remove` after the closing record is composed. A stopped run, a blocked run, and an unanswered escalation SHALL keep their run directory. A failed removal SHALL fail nothing: the closing report SHALL say the run directory was left at its path.
+When a run closes `completed`, the coordinator SHALL remove its run directory with `temp-root.js remove` once the closing report content is read from it. A stopped run, a blocked run, and an unanswered escalation SHALL keep their run directory. A failed removal SHALL fail nothing: the closing report SHALL say the run directory was left at its path.
 
 #### Scenario: A completed run removes its run directory
 
