@@ -2,7 +2,6 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const crypto = require('crypto');
 const registry = require('../sai-state/registry.js');
 const envelope = require('../sai-state/envelope.js');
@@ -22,6 +21,9 @@ const DETECTOR_CANDIDATES = [
   path.join(__dirname, '..', 'sai', 'tools', 'ready-to-propose.js'),
 ];
 
+// Installed and source layouts both put temp-root beside the detector.
+const TEMP_ROOT_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'temp-root.js'));
+
 let receivedAt = null;
 
 // Every stdout JSON response goes through here so `received_at` is its first key.
@@ -34,6 +36,13 @@ function loadValidator() {
     if (fs.existsSync(candidate)) return require(candidate);
   }
   return null;
+}
+
+function loadTempRoot() {
+  for (const candidate of TEMP_ROOT_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  throw new Error('sai-state could not load temp-root.js; tried: ' + TEMP_ROOT_CANDIDATES.join(', '));
 }
 
 function loadDetector() {
@@ -90,9 +99,12 @@ function machineLookupError(machineId) {
   return 'UNKNOWN_MACHINE';
 }
 
+// Sessions live in the SAI temp root of the harness this copy is installed
+// under (`temp-root.js` resolves and checks it); a source checkout counts as
+// Claude Code.
 function sessionDir() {
-  const base = process.env.TMPDIR || process.env.TEMP || process.env.TMP || os.tmpdir();
-  return path.join(base, 'sai-state');
+  const tempRoot = loadTempRoot();
+  return path.join(tempRoot.resolveTempRoot(tempRoot.harnessFromInstalledPath(__filename)), 'sai-state');
 }
 
 const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
@@ -1085,4 +1097,13 @@ function main(argv) {
 }
 
 module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, normalizeEventText };
-if (require.main === module) { main(process.argv.slice(2)); }
+if (require.main === module) {
+  try {
+    main(process.argv.slice(2));
+  } catch (err) {
+    // A missing or unsafe temp root is a blocker with its own message, not a crash.
+    if (!(err && err.code && /^TEMP_ROOT_/.test(err.code))) throw err;
+    process.stderr.write('sai-state: ' + err.message + '\n');
+    process.exitCode = 2;
+  }
+}

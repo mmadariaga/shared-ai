@@ -2,26 +2,16 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const os = require('node:os');
 const crypto = require('node:crypto');
 const backlog = require('./to-backlog');
+const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules } = require('./lint');
 const projectSettings = require('./project-settings');
 const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
-function prepare(request, { filesystem = fs, platform = process.platform } = {}) {
-  if (!['claude', 'opencode'].includes(request.harness)) throw new Error('Expected harness: claude or opencode');
-  const root = platform === 'linux' && request.harness === 'opencode' ? '/tmp/opencode' : os.tmpdir();
-  let stat;
-  try { stat = filesystem.lstatSync(root); }
-  catch (error) {
-    if (error.code === 'ENOENT') throw new Error(`Required existing temporary root ${root} is missing; restore the permitted temporary location before retrying. Preparation does not create or repair shared roots`);
-    throw error;
-  }
-  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Existing temporary root must be a directory without symbolic links');
-  const directory = filesystem.mkdtempSync(path.join(root, 'to-pr-'));
-  if (platform !== 'win32') filesystem.chmodSync(directory, 0o700);
+function prepare(request, options = {}) {
+  const directory = makeTempDir(request.harness, 'to-pr-', options);
   return { status: 'ready', receipt: path.join(directory, 'receipt.json') };
 }
 function receiptPath(file) {

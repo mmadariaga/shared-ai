@@ -52,7 +52,7 @@ dispatches nothing and offers stop options that include emitting the block again
 To correct one slice that is pending or stopped, Explore validates the corrected
 block and replaces only that slice's stored block; completed and running slices cannot
 be amended. Manual has no store and no hash check. Block text is kept in the chat's
-session file under the system temp directory, never in the project.
+session file under the SAI temp root, never in the project.
 An amendment gets a fresh file/hash reference; prior files remain available while
 continuation or recovery may need them. Registration and amendment attach hygiene
 verdicts mechanically, including when the stored separator has no final newline.

@@ -12,7 +12,7 @@ fetch line to this file.
 `bin/sai-state.js` is a local per-chat CLI store. One session id hosts several
 machines (a `stateByMachine` map), each with its own stages, routing, and
 progression. The session persists as a durable store in one file under the
-system temp directory and reloads on every invocation; state never enters the
+SAI temp root of the harness and reloads on every invocation; state never enters the
 project and never travels in a request or a response.
 
 A session file takes one writer at a time: run `emit` and `reset` calls against

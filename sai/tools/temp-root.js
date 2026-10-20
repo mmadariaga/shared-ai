@@ -66,6 +66,22 @@ function harnessRoot(harness, { platform = process.platform, tmpdir = os.tmpdir,
   return path.join(tmpdir(), harness);
 }
 
+/**
+ * The harness whose installed root contains `file`: opencode when the nearest
+ * harness folder above it is `.opencode` (project-local) or `opencode` (user
+ * config), Claude Code otherwise (`.claude`, or a source checkout that is not
+ * installed under either harness). Tools that receive no `--harness` resolve
+ * their harness through this.
+ */
+function harnessFromInstalledPath(file) {
+  for (let directory = path.dirname(path.resolve(file)); ; directory = path.dirname(directory)) {
+    const name = path.basename(directory);
+    if (name === '.claude') return 'claude';
+    if (name === '.opencode' || name === 'opencode') return 'opencode';
+    if (directory === path.dirname(directory)) return 'claude';
+  }
+}
+
 function lstatOrNull(target, io) {
   try {
     return io.lstatSync(target);
@@ -128,16 +144,63 @@ function resolveTempRoot(harness, options = {}) {
   return saiPath;
 }
 
-/** Create one private child of the SAI temp root and return its real path. */
+/** The directory the SAI temp root must really be: a symbolic link anywhere on its path is a blocker. */
+function checkRootPath(root, io) {
+  if (io.realpathSync(root) !== root) {
+    throw new TempRootError(`SAI temporary root ${root} must be reachable through no symbolic link`);
+  }
+}
+
+/** Fail unless `stat` describes a private (0700) directory owned by `uid`. */
+function checkPrivateChild(target, stat, uid) {
+  if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== uid || (stat.mode & 0o077)) {
+    throw new TempRootError(`Created directory ${target} must be a directory, not a symbolic link, owned by the current user with mode 0700`);
+  }
+}
+
+/**
+ * Create one private child of the SAI temp root and return its real path. On
+ * POSIX the child is verified before it is used (directory, no symbolic link,
+ * current user, no group or other bits), fixed to 0700 through a no-follow
+ * descriptor so a replaced symbolic link is never chmodded, and the root and
+ * child must be unchanged when verification ends.
+ */
 function makeTempDir(harness, prefix = DEFAULT_PREFIX, options = {}) {
-  const { platform = process.platform, io = fs } = options;
+  const { platform = process.platform, io = fs, uid = defaultUid() } = options;
   if (typeof prefix !== 'string' || !PREFIX.test(prefix)) {
     throw new TempRootError('Prefix must start with a letter or digit and use only letters, digits, ".", "_" and "-" (at most 64 characters)', 'USAGE');
   }
   const root = resolveTempRoot(harness, options);
+  if (platform === 'win32') return io.realpathSync(io.mkdtempSync(path.join(root, prefix)));
+
+  const realRoot = io.realpathSync(root);
+  if (platform === 'linux') checkRootPath(root, io);
+  const rootStat = io.lstatSync(root);
   const created = io.mkdtempSync(path.join(root, prefix));
-  if (platform !== 'win32') io.chmodSync(created, 0o700);
-  return io.realpathSync(created);
+  if (!path.isAbsolute(created) || path.dirname(created) !== root) {
+    throw new TempRootError('Created directory is outside the SAI temp root');
+  }
+  const first = io.lstatSync(created);
+  checkPrivateChild(created, first, uid);
+  const fd = io.openSync(created, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+  try {
+    const opened = io.fstatSync(fd);
+    if (opened.dev !== first.dev || opened.ino !== first.ino) throw new TempRootError('Created directory changed during preparation');
+    io.fchmodSync(fd, 0o700);
+    checkPrivateChild(created, io.fstatSync(fd), uid);
+    const verified = io.lstatSync(created);
+    checkPrivateChild(created, verified, uid);
+    const currentRoot = io.lstatSync(root);
+    checkDirectory('SAI temporary root', root, currentRoot, { platform, uid, owners: [uid] });
+    const real = io.realpathSync(created);
+    if (verified.dev !== first.dev || verified.ino !== first.ino || currentRoot.dev !== rootStat.dev || currentRoot.ino !== rootStat.ino ||
+        real !== path.join(realRoot, path.basename(created))) {
+      throw new TempRootError('Temporary location changed during preparation');
+    }
+    return real;
+  } finally {
+    io.closeSync(fd);
+  }
 }
 
 /**
@@ -213,4 +276,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { HARNESSES, SAI_DIR, TempRootError, harnessRoot, resolveTempRoot, makeTempDir, removeInside };
+module.exports = { HARNESSES, SAI_DIR, TempRootError, harnessRoot, harnessFromInstalledPath, resolveTempRoot, makeTempDir, removeInside };

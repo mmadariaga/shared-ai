@@ -182,3 +182,104 @@ test('the CLI creates and removes a run directory and reports usage errors', { s
     box.cleanup();
   }
 });
+
+const { harnessFromInstalledPath } = require(TOOL);
+
+test('the harness derives from the installed root a tool runs from', () => {
+  const claude = ['.claude', 'sai', 'tools', 'x.js'];
+  const opencode = ['.opencode', 'sai', 'tools', 'x.js'];
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'home', 'u', ...claude)), 'claude');
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'home', 'u', ...opencode)), 'opencode');
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'home', 'u', '.config', 'opencode', 'sai', 'bin', 'sai-state.js')), 'opencode');
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'project', '.opencode', 'skills', 'to-backlog', 'scripts', 'prepare-temp.js')), 'opencode');
+  // The nearest harness folder wins, and a source checkout counts as Claude Code.
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'opencode', 'work', '.claude', 'sai', 'tools', 'x.js')), 'claude');
+  assert.equal(harnessFromInstalledPath(path.join(path.sep, 'src', 'shared-ai', 'sai', 'tools', 'x.js')), 'claude');
+});
+
+test('no tool keeps its own temp-root computation', () => {
+  const root = path.join(__dirname, '..');
+  const files = [
+    ...fs.readdirSync(path.join(root, 'sai', 'tools')).filter(name => name.endsWith('.js') && name !== 'temp-root.js').map(name => path.join(root, 'sai', 'tools', name)),
+    path.join(root, 'bin', 'sai-state.js'),
+    path.join(root, 'skills', 'universal', 'to-backlog', 'scripts', 'prepare-temp.js'),
+  ];
+  for (const file of files) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /os\.tmpdir\(\)|\bTMPDIR\b|['"]\/tmp\b/, `${path.relative(root, file)} must resolve temp paths through temp-root.js`);
+  }
+});
+
+// POSIX verification of the created child, exercised with an injected file system
+// so it runs on every host: the checks moved here from the to-backlog helper.
+function posixFake(overrides = {}) {
+  const harness = '/tmp/opencode';
+  const sai = path.join(harness, 'sai');
+  const child = path.join(sai, 'run-ABCDEF');
+  const dir = (ino, extra = {}) => ({ isDirectory: () => true, isSymbolicLink: () => false, uid: 1000, mode: 0o40700, dev: 1, ino, ...extra });
+  const calls = { fchmod: [], closed: [], mkdtemp: 0 };
+  const reads = { sai: 0, child: 0 };
+  const io = {
+    lstatSync(target) {
+      if (target === harness) return dir(1);
+      if (target === sai) return (overrides.sai || (() => dir(2)))(++reads.sai);
+      if (target === child) return (overrides.child || (() => dir(3)))(++reads.child);
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    },
+    realpathSync: target => (overrides.realpath || (value => value))(target),
+    mkdtempSync(prefix) { calls.mkdtemp++; return `${prefix}ABCDEF`; },
+    openSync: () => 7,
+    fstatSync: () => (overrides.fd || (() => dir(3)))(),
+    fchmodSync(fd, mode) { calls.fchmod.push([fd, mode]); },
+    closeSync(fd) { calls.closed.push(fd); },
+    mkdirSync() { throw new Error('must not create'); },
+    chmodSync() { throw new Error('must not chmod a path'); },
+  };
+  const options = { platform: 'linux', uid: 1000, io };
+  return { io, calls, options, dir, child };
+}
+
+test('makeTempDir fixes the verified child to 0700 through its descriptor and closes it', () => {
+  const fake = posixFake();
+  assert.equal(makeTempDir('opencode', 'run-', fake.options), fake.child);
+  assert.deepEqual(fake.calls.fchmod, [[7, 0o700]]);
+  assert.deepEqual(fake.calls.closed, [7]);
+});
+
+test('makeTempDir rejects a changed root and leaves nothing repaired', () => {
+  for (const [change, message] of [
+    [{ sai: n => (n === 3 ? posixFake().dir(9) : posixFake().dir(2)) }, /changed during preparation/],
+    [{ sai: n => posixFake().dir(2, n === 3 ? { mode: 0o40777 } : {}) }, /without the sticky bit/],
+    [{ sai: n => posixFake().dir(2, n === 3 ? { uid: 2000 } : {}) }, /owned by another user/],
+  ]) {
+    const fake = posixFake(change);
+    assert.throws(() => makeTempDir('opencode', 'run-', fake.options), message);
+    assert.deepEqual(fake.calls.closed, [7]);
+  }
+});
+
+test('makeTempDir rejects a root reached through a symbolic link before creating anything', () => {
+  const fake = posixFake({ realpath: () => path.join('/elsewhere', 'sai') });
+  assert.throws(() => makeTempDir('opencode', 'run-', fake.options), /no symbolic link/);
+  assert.equal(fake.calls.mkdtemp, 0);
+});
+
+test('makeTempDir rejects a child that fails verification or changes underneath it', () => {
+  const fake0 = posixFake();
+  const bad = [
+    [{ child: () => fake0.dir(3, { isSymbolicLink: () => true }) }, /Created directory/],
+    [{ child: () => fake0.dir(3, { isDirectory: () => false }) }, /Created directory/],
+    [{ child: () => fake0.dir(3, { uid: 2000 }) }, /Created directory/],
+    [{ child: () => fake0.dir(3, { mode: 0o40755 }) }, /Created directory/],
+    [{ fd: () => fake0.dir(8) }, /changed during preparation/],
+    [{ child: n => fake0.dir(n === 2 ? 8 : 3) }, /changed during preparation/],
+    [{ child: n => fake0.dir(3, n === 2 ? { isSymbolicLink: () => true } : {}) }, /Created directory/],
+    [{ realpath: value => (value.endsWith('ABCDEF') ? path.join('/elsewhere', 'run-ABCDEF') : value) }, /changed during preparation/],
+  ];
+  for (const [change, message] of bad) {
+    const fake = posixFake(change);
+    assert.throws(() => makeTempDir('opencode', 'run-', fake.options), message);
+    assert.deepEqual(fake.calls.fchmod.length <= 1, true);
+    assert.deepEqual(fake.calls.closed.length <= 1, true);
+  }
+});

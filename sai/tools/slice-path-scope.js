@@ -15,9 +15,10 @@
  *   uncovered   Which slice paths lie outside a second, covering list (for
  *               example the owned paths of a commit order)?
  *
- * It only reads the repository. The snapshot record is written to the OS
- * temporary directory, outside the repository, and addressed by the opaque
- * reference the caller holds in conversation state.
+ * It only reads the repository. Each snapshot record is written to its own
+ * private directory under the SAI temp root (`temp-root.js`), outside the
+ * repository, and addressed by the opaque reference the caller holds in
+ * conversation state: the name of that directory.
  *
  * Sub-commands:
  *   snapshot    Record every path `git status` reports as modified, with its
@@ -49,15 +50,20 @@
 
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const { makeTempDir, resolveTempRoot, harnessFromInstalledPath } = require('./temp-root');
 
 /** The literal reference recorded when no snapshot could be taken. */
 const N_A = 'n/a';
 
-/** A snapshot reference is the hex digest of its record, or the literal `n/a`. */
-const REF_RE = /^[0-9a-f]{64}$/;
+/** A snapshot reference is the name of its record directory, or the literal `n/a`. */
+const REF_PREFIX = 'slice-path-scope-';
+const REF_RE = /^slice-path-scope-[A-Za-z0-9]{6}$/;
+
+const RECORD_FILE = 'record.json';
+
+const harness = () => harnessFromInstalledPath(__filename);
 
 /** The stdin line that separates the slice paths from the covering list. */
 const SEPARATOR = '---';
@@ -156,7 +162,7 @@ function scanTargets(root, targets) {
 }
 
 function recordPath(ref) {
-  return path.join(fs.realpathSync(os.tmpdir()), `sai-slice-path-scope-${ref}.json`);
+  return path.join(resolveTempRoot(harness()), ref, RECORD_FILE);
 }
 
 /** Snapshot: record the modified paths and HEAD, and hand back the reference. */
@@ -168,8 +174,9 @@ function snapshot(cwd, targets = []) {
   const entries = scan(state.root);
   const watched = scanTargets(state.root, targets);
   const body = JSON.stringify({ root: state.root, head: state.head, entries, targets, watched });
-  const ref = crypto.createHash('sha256').update(body).digest('hex');
-  fs.writeFileSync(recordPath(ref), body);
+  const directory = makeTempDir(harness(), REF_PREFIX);
+  const ref = path.basename(directory);
+  fs.writeFileSync(path.join(directory, RECORD_FILE), body, { mode: 0o600 });
   return { action: 'snapshot', verdict: 'clean', snapshot: ref, reason: null, modified: Object.keys(entries).sort(), targets };
 }
 

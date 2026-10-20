@@ -117,19 +117,23 @@ A publication `query` result of `no_changes` SHALL end the flow without mutation
 
 ### Requirement: Private publication receipts and safe preparation
 
-Publication SHALL record its proposal in a new receipt outside the repository before the remote mutation. Receipt paths SHALL reject repository containment, symlinked paths, and existing files that are not regular single-link files; POSIX receipt directories and files SHALL be private and owned by the current user. Preparation SHALL use an existing nonsymlink temporary root, use `/tmp/opencode` for OpenCode on Linux and the operating system temporary directory otherwise, and create a private child directory on POSIX. Missing roots SHALL produce a concrete blocker without root creation or repair.
+Publication SHALL record its proposal in a new receipt outside the repository before the remote mutation. Receipt paths SHALL reject repository containment, symlinked paths, and existing files that are not regular single-link files; POSIX receipt directories and files SHALL be private and owned by the current user. Preparation SHALL create a private `to-pr-` child directory of the SAI temp root that `sai/tools/temp-root.js` resolves for the request's harness, with that resolver's root checks: `/tmp/claude-{uid}/sai` for Claude Code and `/tmp/opencode/sai` for OpenCode on Linux, and `<os.tmpdir()>/<harness>/sai` on Windows and macOS. A missing Linux harness root SHALL produce a concrete blocker without root creation or repair.
 
 #### Scenario: Unsafe receipt path
 - **WHEN** publication or recovery receives an unsafe receipt path
 - **THEN** receipt validation rejects it before publication mutation or recovery provider contact.
 
 #### Scenario: Required temporary root is missing
-- **WHEN** preparation cannot find its required temporary root
+- **WHEN** preparation cannot find its required harness temporary root
 - **THEN** it reports the missing root and restoration guidance without creating, replacing, or repairing that root.
 
 #### Scenario: Existing receipt would be reused
 - **WHEN** publication attempts to create a receipt at an existing file
 - **THEN** exclusive receipt creation prevents overwriting it and no publication mutation follows.
+
+#### Scenario: Prepared receipt lies under the SAI temp root
+- **WHEN** preparation succeeds
+- **THEN** the returned receipt path lies in a `to-pr-` child directly inside the harness SAI temp root.
 
 ### Requirement: Verified publication and read-only uncertain-outcome recovery
 

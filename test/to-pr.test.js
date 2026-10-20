@@ -7,6 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { execFileSync, spawnSync } = require('node:child_process');
 const tool = require('../sai/tools/to-pr');
+const { resolveTempRoot } = require('../sai/tools/temp-root');
 const registry = require('../skills/universal/to-pr/providers/registry.json');
 
 function fixture(provider, existing = false) {
@@ -207,13 +208,15 @@ test('I1 / I10: CLI operations honor the supplied registry rather than a fixed a
   assert.deepEqual(JSON.parse(result.stdout), { status: 'blocked', message: 'Unsupported provider' });
 });
 
-test('temporary preparation returns a private local receipt path and rejects an unknown harness', t => {
+test('temporary preparation returns a private receipt path under the SAI temp root and rejects an unknown harness', t => {
   assert.throws(() => tool.prepare({ harness: 'unknown' }), /Expected harness/);
   const result = tool.prepare({ harness: 'claude' });
   const directory = path.dirname(result.receipt);
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   assert.equal(result.status, 'ready');
   assert.ok(path.isAbsolute(result.receipt));
+  assert.equal(path.dirname(directory), fs.realpathSync(resolveTempRoot('claude')));
+  assert.match(path.basename(directory), /^to-pr-/);
   if (process.platform !== 'win32') assert.equal(fs.statSync(directory).mode & 0o777, 0o700);
 });
 
@@ -221,12 +224,14 @@ test('missing required OpenCode temporary root gives a concrete blocker without 
   const reads = [];
   assert.throws(() => tool.prepare({ harness: 'opencode' }, {
     platform: 'linux',
-    filesystem: {
+    uid: 1000,
+    io: {
       lstatSync(file) { reads.push(file); throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); },
+      mkdirSync() { assert.fail('Must not create the shared root'); },
       mkdtempSync() { assert.fail('Must not create a replacement temporary directory'); },
       chmodSync() { assert.fail('Must not repair the shared root'); },
     },
-  }), /Required existing temporary root \/tmp\/opencode is missing; restore the permitted temporary location/);
+  }), /Required harness temporary root \/tmp\/opencode is missing/);
   assert.deepEqual(reads, ['/tmp/opencode']);
 });
 

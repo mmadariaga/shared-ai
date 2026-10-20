@@ -80,3 +80,55 @@ The harness root and `sai/` SHALL each be a directory that is not a symbolic lin
 
 - **WHEN** `mkdtemp` receives a prefix containing a path separator
 - **THEN** it prints `ok: false` and exits 2 without creating a directory
+
+### Requirement: Harness derivation from the installed path
+
+`sai/tools/temp-root.js` SHALL export `harnessFromInstalledPath(file)`, which SHALL return `opencode` when the nearest harness folder above `file` is `.opencode` or `opencode`, and `claude` when it is `.claude` or when no harness folder lies above `file`. A tool that receives a `--harness` argument SHALL use it; a tool that receives none SHALL take its harness from this derivation applied to its own installed path.
+
+#### Scenario: Installed roots decide the harness
+
+- **WHEN** the derivation receives a path under `.claude/sai/tools/`, `.opencode/sai/tools/`, or `.config/opencode/sai/bin/`
+- **THEN** it returns `claude`, `opencode`, and `opencode` respectively
+
+#### Scenario: The nearest harness folder wins
+
+- **WHEN** the path lies under a `.claude` folder that is itself inside an `opencode` folder
+- **THEN** the derivation returns `claude`
+
+#### Scenario: A source checkout counts as Claude Code
+
+- **WHEN** the path lies in a source checkout with no harness folder above it
+- **THEN** the derivation returns `claude`
+
+### Requirement: Verified private child creation
+
+On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. On Linux the SAI temp root's real path SHALL equal its resolved path. The new child SHALL be a direct child of the SAI temp root, and SHALL be a directory, not a symbolic link, owned by the current user with no group or other permission bits. Its mode SHALL be set to 0700 through a no-follow directory descriptor whose identity matches the created child, and it SHALL be verified again through that descriptor and by path. When verification ends, the SAI temp root SHALL still pass its safety checks with an unchanged device and inode, the child SHALL keep its device and inode, and the child's real path SHALL lie directly inside the root's real path. A failed check SHALL raise a blocker, and the child SHALL NOT be returned as usable. On Windows the resolver SHALL create the child and return its real path without these POSIX checks. Every caller of `makeTempDir` SHALL receive this verification.
+
+#### Scenario: Verified child is returned
+
+- **WHEN** `makeTempDir` runs on POSIX with a usable root and every check passes
+- **THEN** it returns the real path of a new current-user-owned, non-symbolic-link child with mode 0700 directly inside the SAI temp root
+
+#### Scenario: Child identity changes during creation
+
+- **WHEN** the created child's descriptor or later lstat identity differs from the identity first observed, or the child is not private
+- **THEN** `makeTempDir` raises a blocker and returns no directory
+
+#### Scenario: Root changes during creation
+
+- **WHEN** the SAI temp root's device, inode, or safety checks differ after the child is created
+- **THEN** `makeTempDir` raises a blocker and returns no directory
+
+### Requirement: Every SAI temp writer uses the shared resolver
+
+`bin/sai-state.js`, `sai/tools/to-pr.js`, `sai/tools/azure-publication.js`, `sai/tools/slice-path-scope.js`, and the to-backlog `scripts/prepare-temp.js` SHALL resolve every temporary path through `temp-root.js` and its checks, and no SAI tool other than `temp-root.js` SHALL compute a temporary root from `os.tmpdir()`, `TMPDIR`, or a literal `/tmp` path. Claude Code and opencode SHALL follow the same rules.
+
+#### Scenario: Source guard over the tools
+
+- **WHEN** the test suite scans `bin/sai-state.js`, the to-backlog `prepare-temp.js`, and every `sai/tools/*.js` except `temp-root.js`
+- **THEN** none of them contains `os.tmpdir()`, `TMPDIR`, or a `/tmp` string literal
+
+#### Scenario: Azure payloads use the SAI temp root
+
+- **WHEN** an Azure publication call sends a JSON body
+- **THEN** the payload file is written in a private `azure-publication-` child of the SAI temp root
