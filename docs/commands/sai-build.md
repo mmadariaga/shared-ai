@@ -12,7 +12,7 @@ Runs a change's build in one invocation. It chains [`/sai-3-implement`](sai-3-im
 
 The command runs the implementation segment, the review segment, and the fix segment in the same session, with no approval between segments. The behavior, preconditions, checks, and stops of each segment are the ones described in [`/sai-3-implement`](sai-3-implement.md) and [`/sai-4-review`](sai-4-review.md).
 
-Each segment starts only when the previous one completes, including an implementation segment that found no new work. When the implementation segment or the fix segment is blocked, stopped, or fails its preconditions, the command prints that report, names `build-log.md` when the segment wrote one, ends without the closing line, and starts no later segment.
+Each segment starts only when the previous one completes, including an implementation segment that found no new work. When the implementation segment or the fix segment is blocked, stopped, or fails its preconditions, the command prints that report, ends without the closing line, and starts no later segment.
 
 The command runs exactly one review pass per run. Right after it, the command assesses each fixable finding of `review.md` itself and decides whether to fix it. It has no fixed rule, threshold, or severity cutoff: impact, the cost of the correction, and the risk of the correction are things it may weigh. It appends ` (EXCLUDED: <reason>)` to the heading of each finding it will not fix, never to a Question, and commits `review.md` alone when the project does not ignore it. The fix segment then applies the remaining findings and marks each one ` (FIXED)`. No review runs after the fixes. With no fixable finding, or when every fixable finding is excluded, the fix segment does not run.
 

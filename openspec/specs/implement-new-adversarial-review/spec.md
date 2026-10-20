@@ -41,12 +41,12 @@ A round with findings SHALL send them as one ordered list to the worker that own
 
 ### Requirement: Bounded fix rounds leave pending findings
 
-Step review fix rounds SHALL NOT be attempts and SHALL spend no obstacle budget. The coordinator SHALL run at most 3 fix rounds per step and then read the diff once more; a round with no findings SHALL converge the review. Findings that remain after the third fix round SHALL be neither a failure nor an obstacle and SHALL NOT escalate: the coordinator SHALL write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, SHALL emit `record` (`finding`) the first time the file is written, and SHALL continue to the step commit. These pending findings SHALL be carried into `build-log.md` at run close. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) SHALL be an ordinary obstacle of the step.
+Step review fix rounds SHALL NOT be attempts and SHALL spend no obstacle budget. The coordinator SHALL run at most 3 fix rounds per step and then read the diff once more; a round with no findings SHALL converge the review. Findings that remain after the third fix round SHALL be neither a failure nor an obstacle and SHALL NOT escalate: the coordinator SHALL write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, SHALL emit `record` (`finding`) the first time the file is written, and SHALL continue to the step commit. These pending findings SHALL be listed in the closing report at run close and SHALL NOT be written to any file outside the run directory. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) SHALL be an ordinary obstacle of the step.
 
 #### Scenario: Findings survive the third round
 
 - **WHEN** the diff still has findings after the third fix round of a step
-- **THEN** the coordinator writes them to `findings.md`, emits `record` (`finding`) on the first write, commits the step, and does not escalate.
+- **THEN** the coordinator writes them to `findings.md`, emits `record` (`finding`) on the first write, commits the step, does not escalate, and lists them in the closing report.
 
 #### Scenario: A round converges
 

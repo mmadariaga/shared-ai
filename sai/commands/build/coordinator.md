@@ -13,7 +13,7 @@ You chain the segments of one build run in a single session. The invocation carr
 
 No review runs after segment 3: one review pass runs per run, and the next `/sai-build` run reviews again.
 
-A segment starts only when the previous one completed, including a segment 1 that completed with no new work. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment. A blocked or stopped segment has already written `build-log.md`; the report names it.
+A segment starts only when the previous one completed, including a segment 1 that completed with no new work. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
 
 ## Assessment pass
 

@@ -143,7 +143,7 @@ test('the implement coordinator reuses the design context and promotes learnings
   assert.match(source, /`## Required Documentation` entries relevant to the step/);
   assert.match(source, /every subsection is `None`/);
   const close = source.slice(source.indexOf('## Close'));
-  assert.match(close, /Promote learnings, before the build log/);
+  assert.match(close, /Promote learnings, before the report/);
   assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
   assert.match(close, /Fetch @sai\/policies\/sai-learnings-format\.md/);
   assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
@@ -245,7 +245,7 @@ test('the three commands have usage pages that the references link', () => {
   }
 });
 
-test('the coordinator carries the resilience contract: attempt budget, escalation, replacement, resumption, build log', () => {
+test('the coordinator carries the resilience contract: attempt budget, escalation, replacement, resumption, closing report', () => {
   const source = read(COORDINATORS[0]);
   assert.match(source, /implement-run@1/);
   assert.match(source, /budget of 3 attempts/);
@@ -262,14 +262,14 @@ test('the coordinator carries the resilience contract: attempt budget, escalatio
   assert.match(source, /remove --harness <claude\|opencode> --dir \{run directory\}/);
   assert.match(source, /`dir` lies elsewhere, such as the `\.tmp\/\{name\}\/run-\*\/` folder[^]*does not resume: emit `close` with outcome `stopped`[^]*leave its old folder untouched/);
   assert.doesNotMatch(source, /system temp directory/);
-  assert.match(source, /the run never stages it/);
   assert.doesNotMatch(source, /user commits it/);
   assert.match(source, /## Resuming/);
   assert.match(source, /git log/);
-  assert.match(source, /openspec\/changes\/\{name\}\/build-log\.md/);
-  for (const part of ['work done', 'deviations', 'overrides', 'pending findings', 'blocker']) {
-    assert.ok(source.includes(part), `build-log.md must name ${part}`);
-  }
+  assert.doesNotMatch(source, /build-log\.md/);
+  const close = source.slice(source.indexOf('## Close'));
+  assert.match(close, /Print the closing report:.*deviations each with its reason.*pending findings/);
+  assert.match(close, /when there are none, say so explicitly/);
+  assert.match(close, /closing report is the only record/);
 });
 
 test('workers return the path of a report file and the store event keeps free text out', () => {
@@ -287,7 +287,7 @@ test('/sai-build starts no later segment after a blocked or stopped segment', ()
   const build = read(COORDINATORS[1]);
   assert.match(build, /blocked/);
   assert.match(build, /do not start any later segment/);
-  assert.match(build, /build-log\.md/);
+  assert.doesNotMatch(build, /build-log\.md/);
 });
 
 test('the coordinator reviews each step adversarially with bounded fix rounds and pending findings', () => {
