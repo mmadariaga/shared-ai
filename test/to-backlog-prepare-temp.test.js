@@ -7,6 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
+const { resolveTempRoot } = require('../sai/tools/temp-root');
 const { expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
 const manifest = require('../sai/install-manifest.json');
@@ -15,108 +16,89 @@ const linux = process.platform === 'linux';
 const script = path.join(repoRoot, 'skills/universal/to-backlog/scripts/prepare-temp.js');
 const options = { cwd: repoRoot };
 
-test('Linux creates unique private directories outside the repository and preserves receipts', { skip: !linux }, () => {
+// Linux ignores the temp environment: the Claude Code root is /tmp/claude-{uid},
+// which the harness owns. Stand in for it the way the CI workflow does, and
+// leave it in place.
+function ensureLinuxRoots() {
+  if (!linux) return;
+  const harness = `/tmp/claude-${process.getuid()}`;
+  if (!fs.existsSync(harness)) fs.mkdirSync(harness, { mode: 0o700 });
+}
+
+test('every platform creates unique private directories under the SAI temp root, outside the repository, and preserves receipts', () => {
+  ensureLinuxRoots();
   for (const harness of ['claude', 'opencode']) {
-    const root = harness === 'claude' ? '/tmp' : '/tmp/opencode';
-    const before = fs.lstatSync(root);
+    if (linux && harness === 'opencode' && !fs.existsSync('/tmp/opencode')) continue;
+    const root = fs.realpathSync(resolveTempRoot(harness));
     const results = Array.from({ length: 4 }, () => prepareTemp(harness, options).directory);
     assert.equal(new Set(results).size, results.length);
     for (const directory of results) {
       const stat = fs.lstatSync(directory);
       assert.equal(path.dirname(directory), root);
-      assert.equal(stat.uid, process.getuid());
-      assert.equal(stat.mode & 0o7777, 0o700);
+      assert.match(path.basename(directory), /^to-backlog-/);
       assert.equal(stat.isSymbolicLink(), false);
-      assert.ok(!directory.startsWith(`${repoRoot}/`));
+      assert.ok(!directory.startsWith(`${repoRoot}${path.sep}`));
+      if (process.platform !== 'win32') {
+        assert.equal(stat.uid, process.getuid());
+        assert.equal(stat.mode & 0o7777, 0o700);
+      }
     }
     const receipt = path.join(results[0], 'receipt.json');
     fs.writeFileSync(receipt, '{"stage":"partial_failure"}', { mode: 0o600 });
     prepareTemp(harness, options);
     assert.equal(fs.readFileSync(receipt, 'utf8'), '{"stage":"partial_failure"}');
-    const after = fs.lstatSync(root);
-    assert.equal(after.mode, before.mode);
-    assert.equal(after.uid, before.uid);
   }
 });
 
-test('concurrent CLI calls return distinct JSON locations', { skip: !linux }, async () => {
+test('without a harness the installed root decides it, and the Linux-only refusal is gone', () => {
+  ensureLinuxRoots();
+  assert.equal(path.dirname(prepareTemp(undefined, options).directory), fs.realpathSync(resolveTempRoot('claude')));
+  for (const [platform, harness] of [['win32', 'opencode'], ...(process.platform === 'win32' ? [] : [['darwin', 'claude']])]) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'prepare-temp-platform-'));
+    try {
+      const { directory } = prepareTemp(harness, { ...options, platform, tmpdir: () => base });
+      assert.equal(path.dirname(directory), fs.realpathSync(path.join(base, harness, 'sai')));
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});
+
+test('concurrent CLI calls return distinct JSON locations', async () => {
+  ensureLinuxRoots();
+  if (linux && !fs.existsSync('/tmp/opencode')) return;
   const { execFile } = require('node:child_process');
   const run = () => new Promise((resolve, reject) => execFile(process.execPath, [script, 'opencode'], { cwd: repoRoot }, (error, stdout) => error ? reject(error) : resolve(JSON.parse(stdout).directory)));
   const directories = await Promise.all([run(), run(), run()]);
   assert.equal(new Set(directories).size, 3);
 });
 
-test('unsupported systems and invalid invocations fail without a usable path', () => {
-  for (const platform of ['win32', 'darwin']) {
-    assert.throws(() => prepareTemp('opencode', { platform }), /Linux only/);
-  }
+test('invalid invocations fail without a usable path', () => {
   const result = spawnSync(process.execPath, [script, 'opencode', '--root', repoRoot], { encoding: 'utf8' });
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(JSON.parse(result.stderr).error, /Usage/);
+  const unknown = spawnSync(process.execPath, [script, 'vscode'], { encoding: 'utf8' });
+  assert.equal(unknown.status, 1);
+  assert.equal(unknown.stdout, '');
+  assert.match(JSON.parse(unknown.stderr).error, /Expected harness: claude or opencode/);
 });
 
-test('creation and verification errors are terminal, without chmod of existing paths', { skip: !linux }, () => {
-  for (const operation of ['mkdtempSync', 'openSync', 'fchmodSync', 'fstatSync']) {
-    const io = { ...fs, [operation]: () => { throw new Error(`injected ${operation} failure`); } };
-    assert.throws(() => prepareTemp('opencode', { ...options, io }), new RegExp(operation));
+test('a temporary location inside the repository is rejected', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'prepare-temp-repository-'));
+  try {
+    fs.mkdirSync(path.join(base, '.git'));
+    assert.throws(() => prepareTemp('claude', { cwd: base, platform: 'win32', tmpdir: () => base }), /outside the repository/);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
   }
-  assert.throws(() => prepareTemp('opencode', { cwd: '/tmp' }), /outside the repository/);
-  const nested = prepareTemp('opencode', options).directory;
-  assert.throws(() => prepareTemp('opencode', { cwd: nested, io: { ...fs, existsSync: file => file === '/tmp/opencode/.git' } }), /outside the repository/);
-  assert.throws(() => prepareTemp('opencode', { ...options, io: { ...fs, lstatSync: () => { throw new Error('ENOENT: missing root'); } } }), /missing root/);
-  const io = { ...fs, chmodSync: () => assert.fail('path chmod forbidden'), mkdtempSync: () => '/tmp/opencode/incidental' };
-  io.lstatSync = file => file.endsWith('/incidental')
-    ? { isDirectory: () => false, isSymbolicLink: () => true, uid: process.getuid(), mode: 0o700 }
-    : fs.lstatSync(file);
-  assert.throws(() => prepareTemp('opencode', { ...options, io }), /unsafe ownership, permissions or type/);
-  io.lstatSync = file => file.endsWith('/incidental')
-    ? { isDirectory: () => true, isSymbolicLink: () => false, uid: process.getuid() + 1, mode: 0o700 }
-    : fs.lstatSync(file);
-  assert.throws(() => prepareTemp('opencode', { ...options, io }), /unsafe ownership/);
-  io.lstatSync = file => file.endsWith('/incidental')
-    ? { isDirectory: () => true, isSymbolicLink: () => false, uid: process.getuid(), mode: 0o755 }
-    : fs.lstatSync(file);
-  assert.throws(() => prepareTemp('opencode', { ...options, io }), /unsafe ownership/);
 });
 
-test('root symbolic links, unsafe roots and changed final verification are rejected', { skip: !linux }, () => {
-  for (const change of [
-    { isSymbolicLink: () => true },
-    { uid: process.getuid() + 1 },
-    { mode: 0o777 },
-  ]) {
-    const io = { ...fs, lstatSync: file => ({ ...fs.lstatSync(file), isDirectory: () => true, isSymbolicLink: () => false, ...change }) };
-    assert.throws(() => prepareTemp('opencode', { ...options, io }), /Temporary root/);
-  }
-  let created;
-  const io = { ...fs, mkdtempSync: prefix => { created = fs.mkdtempSync(prefix); return created; } };
-  let reads = 0;
-  io.lstatSync = file => {
-    const stat = fs.lstatSync(file);
-    if (file === created && ++reads === 2) stat.isSymbolicLink = () => true;
-    return stat;
-  };
-  assert.throws(() => prepareTemp('opencode', { ...options, io }), /non-symbolic-link/);
-});
-
-test('final root checks reject changed mode or owner without repairing the root', { skip: !linux }, () => {
-  for (const change of [{ mode: 0o777 }, { uid: process.getuid() + 1 }]) {
-    let rootReads = 0;
-    const io = { ...fs,
-      lstatSync: file => {
-        const stat = fs.lstatSync(file);
-        if (file === '/tmp/opencode' && ++rootReads === 2) {
-          if (change.mode !== undefined) stat.mode = (stat.mode & ~0o7777) | change.mode;
-          if (change.uid !== undefined) stat.uid = change.uid;
-        }
-        return stat;
-      },
-      chmodSync: () => assert.fail('existing paths must not be chmodded'),
-      mkdirSync: () => assert.fail('existing root must not be created'),
-    };
-    assert.throws(() => prepareTemp('opencode', { ...options, io }), /Temporary root has unsafe ownership or shared-write permissions/);
-    assert.equal(rootReads, 2);
+test('an unusable root is terminal and is neither created nor repaired', { skip: !linux }, () => {
+  for (const change of [{ isSymbolicLink: () => true }, { uid: process.getuid() + 1 }, { mode: 0o777 }]) {
+    const io = { ...fs, lstatSync: file => ({ ...fs.lstatSync(file), isDirectory: () => true, isSymbolicLink: () => false, ...change }),
+      mkdirSync: () => assert.fail('existing root must not be created'), chmodSync: () => assert.fail('existing root must not be repaired') };
+    assert.throws(() => prepareTemp('opencode', { ...options, io }), /temporary root/i);
   }
 });
 
@@ -139,7 +121,7 @@ test('absent-root CLI failure names the prerequisite and returns no usable path 
   assert.equal(result.stdout, '');
   const error = JSON.parse(result.stderr);
   assert.deepEqual(Object.keys(error), ['error']);
-  assert.match(error.error, /Required existing temporary root \/tmp\/opencode is missing/);
+  assert.match(error.error, /Required harness temporary root \/tmp\/opencode is missing/);
   assert.match(error.error, /before retrying/);
   assert.doesNotMatch(error.error, /Forbidden fallback/);
   const instructions = fs.readFileSync(path.join(repoRoot, 'skills/universal/to-backlog/prepare-temp.md'), 'utf8');
@@ -174,11 +156,11 @@ test('both harnesses install the same skill-owned script and declare only its co
   }
 });
 
-test('confirmation precedes Linux preparation, recovery reuses receipts and Explore remains repository read-only', () => {
+test('confirmation precedes preparation on every platform, recovery reuses receipts and Explore remains repository read-only', () => {
   const skill = fs.readFileSync(path.join(repoRoot, 'skills/universal/to-backlog/SKILL.md'), 'utf8');
   assert.ok(skill.indexOf('## 3. Review and confirm') < skill.indexOf('read `prepare-temp.md`'));
   assert.match(skill, /Recovery uses the\s+saved receipt/);
-  assert.match(skill, /On Windows, retain/);
+  assert.doesNotMatch(skill, /on Linux|Activate the new script only/i);
   const explore = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
   assert.match(explore, /user-invoked `to-backlog`/);
   assert.match(explore, /never repository edits or omission of publication confirmation/);

@@ -212,25 +212,30 @@ Before every update approval, including renewed approval, the skill SHALL presen
 
 ### Requirement: Deterministic Linux receipt directory preparation
 
-The skill-owned `scripts/prepare-temp.js` helper SHALL accept exactly one harness argument, `claude` or `opencode`, and support Linux only. It SHALL use native Node filesystem operations to create a unique new directory under `/tmp` for Claude Code or `/tmp/opencode` for OpenCode. It SHALL return JSON containing an absolute `directory` only after successful verification. Invalid arguments, unsupported platforms, or preparation errors SHALL produce a nonzero exit and a concrete error without a usable directory result. The CLI SHALL NOT accept a temporary-root override or execute shell directory commands.
+The skill-owned `scripts/prepare-temp.js` helper SHALL accept at most one harness argument, `claude` or `opencode`, and SHALL derive the harness from the installed root it runs from when the argument is absent. It SHALL run on Linux, Windows, and macOS, and SHALL create a unique new `to-backlog-` directory inside the SAI temp root through `sai/tools/temp-root.js`, which it loads from the SAI tools installed beside the skill (or from the source checkout). It SHALL keep no temporary-root computation of its own. It SHALL return JSON containing an absolute `directory` only after successful verification. Invalid arguments or preparation errors SHALL produce a nonzero exit and a concrete error without a usable directory result. The CLI SHALL NOT accept a temporary-root override or execute shell directory commands.
 
 #### Scenario: Separate confirmed operations
 
-- **WHEN** independent Linux helper invocations prepare directories for either supported harness
-- **THEN** each successful invocation returns a distinct absolute directory directly within that harness's permitted temporary root.
+- **WHEN** independent helper invocations prepare directories for either supported harness on any supported platform
+- **THEN** each successful invocation returns a distinct absolute directory directly within that harness's SAI temp root.
 
 #### Scenario: Unsupported invocation
 
-- **WHEN** the helper receives an unsupported platform, invalid harness, or extra CLI arguments
+- **WHEN** the helper receives an invalid harness or more than one CLI argument
 - **THEN** it fails without returning a usable directory path.
+
+#### Scenario: Harness derived from the installed root
+
+- **WHEN** the helper runs with no harness argument
+- **THEN** it prepares the directory under the SAI temp root of the harness whose installed root holds the script.
 
 ### Requirement: Existing temporary root safety
 
-The helper SHALL require an existing non-symbolic-link temporary root whose canonical path equals its configured path and whose owner is root or the current user. A root with group-write or other-write permission SHALL require the sticky bit. The helper SHALL check these safety conditions before creation and again before returning the directory, and SHALL reject a detected root identity change. It SHALL NOT create, repair, or change permissions on the shared root. A missing root SHALL produce an error identifying the required path and the prerequisite to restore it before retrying.
+The helper SHALL apply the root checks of `sai/tools/temp-root.js`. The harness root and its `sai/` folder SHALL be non-symbolic-link directories. On POSIX the harness root SHALL be owned by root or the current user and `sai/` by the current user, and a root with group-write or other-write permission SHALL require the sticky bit. On Linux the SAI temp root's canonical path SHALL equal its resolved path. The resolver SHALL check the SAI temp root before creating the child and again before returning it, and SHALL reject a detected root identity change. The helper SHALL reject a SAI temp root inside the target repository. It SHALL NOT create, repair, or change permissions on the Linux harness root. A missing Linux harness root SHALL produce an error identifying the required path and the prerequisite to restore it before retrying.
 
 #### Scenario: Missing temporary root
 
-- **WHEN** the configured temporary root does not exist
+- **WHEN** the Linux harness temporary root does not exist
 - **THEN** preparation fails with the required root path and restoration prerequisite, without creating the root or choosing another location.
 
 #### Scenario: Unsafe shared root
@@ -240,31 +245,31 @@ The helper SHALL require an existing non-symbolic-link temporary root whose cano
 
 #### Scenario: Root changes during preparation
 
-- **WHEN** final checks detect changed root identity, unsafe ownership, or unsafe shared-write permissions after child creation
+- **WHEN** the resolver's final checks find a changed SAI temp root identity, unsafe ownership, or unsafe shared-write permissions after the child is created
 - **THEN** preparation fails without returning the created directory as usable.
 
 ### Requirement: Verified private child directory
 
-Before returning a directory, the helper SHALL verify that it is a direct child of the configured temporary root and outside the target repository discovered from the canonical working directory and its ancestors. The new directory SHALL belong to the current user, SHALL NOT be a symbolic link, and SHALL have mode `0700`. The helper SHALL use a no-follow directory descriptor to set permissions only on the newly created directory and compare directory identity during verification. It SHALL reject detected substitutions or canonical-path changes and SHALL NOT reuse an incidental existing directory.
+Before returning a directory, the helper SHALL create it through `sai/tools/temp-root.js` `makeTempDir` as a direct child of the SAI temp root. It SHALL verify that the SAI temp root lies outside the target repository discovered from the canonical working directory and its ancestors. On POSIX the new directory SHALL belong to the current user, SHALL NOT be a symbolic link, and SHALL have mode `0700`. The resolver SHALL set that mode through a no-follow directory descriptor and SHALL compare directory identity during verification. It SHALL reject detected substitutions or real-path changes and SHALL NOT reuse an incidental existing directory.
 
 #### Scenario: Verified private directory
 
-- **WHEN** creation and all descriptor, path, ownership, and permission checks succeed
+- **WHEN** creation and every resolver root and child check succeed
 - **THEN** the helper returns the new current-user-owned non-symbolic-link directory with mode `0700` outside the repository.
 
 #### Scenario: Repository-contained location
 
-- **WHEN** the configured root or created directory would be within the discovered target repository
+- **WHEN** the SAI temp root would be within the discovered target repository
 - **THEN** preparation fails without returning a usable directory.
 
 #### Scenario: Child verification failure
 
-- **WHEN** child verification detects unsafe ownership, permissions, type, changed identity, or a symbolic-link substitution
+- **WHEN** the resolver's child verification finds unsafe ownership, unsafe permissions, the wrong type, a changed identity, or a symbolic-link substitution
 - **THEN** preparation fails without presenting that directory as usable.
 
 ### Requirement: Preparation-only mutation scope
 
-The helper SHALL create only its unique temporary child and set permissions only on that new directory. It SHALL NOT publish a work item, write repository files, delete receipts, or change permissions on existing directories. Subsequent preparation SHALL leave previously retained receipts intact, and failures SHALL NOT trigger automatic cleanup or insecure fallback.
+The helper SHALL create only a missing `sai/` folder of the SAI temp root (and, on Windows and macOS, a missing harness folder) and its unique temporary child, and set permissions only on those new directories. It SHALL NOT publish a work item, write repository files, delete receipts, or change permissions on existing directories. Subsequent preparation SHALL leave previously retained receipts intact, and failures SHALL NOT trigger automatic cleanup or insecure fallback.
 
 #### Scenario: Existing receipt retention
 
@@ -273,7 +278,7 @@ The helper SHALL create only its unique temporary child and set permissions only
 
 #### Scenario: Filesystem operation fails
 
-- **WHEN** creation, descriptor access, permission setting, or verification fails
+- **WHEN** root resolution, creation, descriptor access, permission setting, or verification fails
 - **THEN** the helper reports the failure without publishing, deleting receipts, or repairing existing paths.
 
 ### Requirement: Direct GitHub Project membership verification

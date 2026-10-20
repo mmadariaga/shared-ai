@@ -8,6 +8,7 @@ const fs = require('fs');
 const { spawnSync } = require('child_process');
 
 const { snapshot, verify, parseLists, within, N_A, REF_RE } = require('../sai/tools/slice-path-scope.js');
+const { resolveTempRoot } = require('../sai/tools/temp-root.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'slice-path-scope.js');
@@ -73,6 +74,22 @@ test('snapshot records the already-modified files and returns a reference', () =
     assert.equal(payload.verdict, 'clean');
     assert.ok(REF_RE.test(payload.snapshot));
     assert.deepEqual(payload.modified, ['notes.txt']);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('two snapshots of the same state get different records under the SAI temp root', () => {
+  const root = makeRepo();
+  try {
+    const first = snapshot(root).snapshot;
+    const second = snapshot(root).snapshot;
+    assert.notEqual(first, second);
+    const saiRoot = resolveTempRoot('claude');
+    for (const ref of [first, second]) {
+      assert.ok(fs.statSync(path.join(saiRoot, ref, 'record.json')).isFile());
+      assert.equal(verify(ref, '', root).verdict, 'clean');
+    }
   } finally {
     cleanup(root);
   }
@@ -384,7 +401,7 @@ test('outside a repository snapshot and verify resolve n/a and exit 0', () => {
 });
 
 test('usage and IO errors exit 2 and never print a verdict', () => {
-  const unknownRef = 'f'.repeat(64);
+  const unknownRef = 'slice-path-scope-ZZZZZZ';
   for (const [args, input] of [
     [['bogus', '--json'], ''],
     [['verify', '--json'], ''],

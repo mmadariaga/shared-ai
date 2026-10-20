@@ -26,8 +26,8 @@ test('CI keeps both Node 22 platforms, interpreter preflight, tests, and package
   assert.match(workflow, /npm pack --dry-run --json \| node \.github\/scripts\/verify-package\.cjs/);
 });
 
-test('CI provisions the required private OpenCode temporary root on Linux before tests', () => {
-  const setup = "- name: Prepare Linux temporary root for OpenCode tests\n        if: runner.os == 'Linux'\n        run: mkdir -m 700 /tmp/opencode";
+test('CI provisions the required private Claude Code and OpenCode temporary roots on Linux before tests', () => {
+  const setup = "- name: Prepare Linux temporary roots for Claude Code and OpenCode tests\n        if: runner.os == 'Linux'\n        run: mkdir -m 700 \"/tmp/claude-$(id -u)\" /tmp/opencode";
   assert.ok(workflow.includes(setup));
   assert.ok(workflow.indexOf(setup) < workflow.indexOf('- run: npm test'));
 });
