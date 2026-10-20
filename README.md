@@ -293,6 +293,11 @@ To pre-answer the language, backlog provider, and PR provider questions, run `se
 
 ### Default opencode models
 
+Both Claude Code and opencode name the generic helpers `budget-explorer`,
+`budget-executor`, and `budget-subagent`. Existing opencode users should review
+the [agent migration instructions](docs/skills.md#migrating-existing-opencode-agents),
+especially project-local overrides and external dispatch references.
+
 The default mix uses Muse Spark for coordination, DeepSeek Flash for most
 implementation work, GPT Luna for code review, and free models for helpers.
 It aims for reliable results at moderate cost. See the

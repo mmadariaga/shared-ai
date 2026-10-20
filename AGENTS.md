@@ -90,9 +90,9 @@ The pipeline depends on the OpenSpec CLI:
 | `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — dispatch uses the matching `budget-explorer` agent file, whose `model` and `effort` frontmatter is user-owned; a 40-call ceiling per execution segment and output contracts. Loaded via `@skills/budget/SKILL.md`, not from wrappers. |
 | `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — dispatch uses the matching `budget-executor` agent file, whose `model` and `effort` frontmatter is user-owned; execute-only discipline. Loaded via `@skills/budget/SKILL.md`, not from wrappers. |
 | `skills/claude/budget-subagent/SKILL.md` | Task subagent rules for Claude Code — dispatch uses the matching `budget-subagent` agent file, whose `model` and `effort` frontmatter is user-owned; single-task scope with an approximate 30-call soft limit. Loaded via `@skills/budget/SKILL.md`, not from wrappers. |
-| `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`). |
-| `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved from the executor agent file's `model` frontmatter (`~/.config/opencode/agents/executor.md`). |
-| `skills/opencode/budget-subagent/SKILL.md` | Task subagent rules for opencode — `budget` keyword binding, single-task scope. Model resolved from the budget agent file's `model` frontmatter (`~/.config/opencode/agents/budget.md`). |
+| `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — budget-explorer keyword binding, cap rules, output contracts. Model resolved from the agent file's `model` frontmatter (`~/.config/opencode/agents/budget-explorer.md`). |
+| `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — budget-executor keyword binding, execute-only discipline. Model resolved from the agent file's `model` frontmatter (`~/.config/opencode/agents/budget-executor.md`). |
+| `skills/opencode/budget-subagent/SKILL.md` | Task subagent rules for opencode — `budget-subagent` keyword binding, single-task scope. Model resolved from the agent file's `model` frontmatter (`~/.config/opencode/agents/budget-subagent.md`). |
 | `skills/claude/fetch/SKILL.md` | Fetch @ path resolver for Claude Code, kept beside the opencode one so both harnesses resolve `@sai/` and `@skills/` paths through the same contract. |
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode, mirroring the Claude Code one. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`, and `allowed-tools` where the command scopes its tools) + fetch to `sai/adapters/claude/boot.md` + fetch to `sai/commands/{name}/command-bootstrap.md`. |
@@ -234,7 +234,7 @@ to command questions live in `.sai/settings.jsonc`; the `setup` menu's
 
 ### Managed agent files (tunable-seed lifecycle)
 
-Both harnesses install their routed workers and Generic Agents as **managed agent files** — Claude Code under `~/.claude/agents/`, opencode under `~/.config/opencode/agents/` — materialized from `agents/{harness}/worker-template.md` plus the manifest's `worker-matrix`. Opencode additionally names its Generic Agents differently for parity: `explore.md`, `executor.md`, and `budget.md`.
+Both harnesses install their routed workers and Generic Agents as **managed agent files** — Claude Code under `~/.claude/agents/`, opencode under `~/.config/opencode/agents/`. Both use `budget-explorer.md`, `budget-executor.md`, and `budget-subagent.md` for Generic Agents. Routed workers are materialized from `agents/{harness}/worker-template.md` plus the manifest's `worker-matrix`.
 
 All of them follow the same **tunable-seed lifecycle**:
 
@@ -304,7 +304,7 @@ Never include `Generated with Claude Code` or any equivalent Claude Code attribu
 Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `body.md`, the implement and review coordinators, backfill `worker.md`, and `steps/common.md` for design; spec/review/security/performance/accessibility fetch `@skills/budget-ro/SKILL.md`, explorer-only). Wrappers do not fetch budget skills. The main agent reasons and synthesizes. Subagents do I/O. Key rules:
 - Claude Code dispatches a single explorer tier through the matching `budget-explorer` agent file — `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)` with no per-spawn model; the resolved `budget-explorer.md` agent file's `model` and `effort` frontmatter (user-owned) selects the model, and the tool-call ceiling is 40 per execution segment.
 - Multi-step synthesis stays with the main agent; speculative exploration ("look around") is allowed only in the explorer tier.
-- Opencode retains its own mechanism: the `explore` keyword binds the explore agent, and the model comes from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`).
+- Opencode retains its own mechanism: the `budget-explorer` keyword binds the budget-explorer agent, and the model comes from the agent file's `model` frontmatter (`~/.config/opencode/agents/budget-explorer.md`).
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Direct web consultation follows the owning contract and capability profile on both harnesses. For example, Implement's initial documentation URL read is direct, while Design delegates web research. Do not impose a blanket worker-web exclusion over a contractual requirement; consult `sai/policies/tool-access.md` when access is rejected.
 

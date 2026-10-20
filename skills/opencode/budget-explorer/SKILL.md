@@ -1,7 +1,7 @@
 ---
 name: budget-explorer
 description: >
-  Binds cheap research subagent to the opencode explore agent keyword. Model resolved via the explore agent file's model frontmatter (installed under ~/.config/opencode/agents/explore.md) — not hardcoded in here.
+  Binds cheap research subagent to the opencode budget-explorer agent keyword. Model resolved via the budget-explorer agent file's model frontmatter (installed under ~/.config/opencode/agents/budget-explorer.md) — not hardcoded in here.
   TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: opencode
@@ -14,7 +14,7 @@ Fetch @sai/policies/explore-agent.md
 
 ## Subagent binding
 
-"cheap research subagent" → `explore` (lowercase) when invoked as an OpenCode agent keyword.
+"cheap research subagent" → `budget-explorer` (lowercase) when invoked as an OpenCode agent keyword.
 
 ## Spawn prompt
 
@@ -26,18 +26,18 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 ## Model resolution
 
-The model for `explore` subagents is controlled by the `model` frontmatter of the explore agent file (`~/.config/opencode/agents/explore.md`), seeded by the installer under the `tunable-seed` lifecycle. This file contains no hardcoded model identifier.
+The model for `budget-explorer` subagents is controlled by the `model` frontmatter of the budget-explorer agent file (`~/.config/opencode/agents/budget-explorer.md`), seeded by the installer under the `tunable-seed` lifecycle. This file contains no hardcoded model identifier.
 
 ## Cost model
 
-This subagent runs on a commodity model. Its tier is controlled by the `model` frontmatter of the explore agent file (`~/.config/opencode/agents/explore.md`) — that setting is the only lever to change the cost of delegation.
+This subagent runs on a commodity model. Its tier is controlled by the `model` frontmatter of the budget-explorer agent file (`~/.config/opencode/agents/budget-explorer.md`) — that setting is the only lever to change the cost of delegation.
 
 **Why delegate:**
 - **Cost:** Bulk I/O (reads, searches, and documentation lookup) is processed at a cheaper per-token rate than the main agent's model.
 - **Context hygiene:** The subagent starts with a clean context — no task instructions or conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
 
 **When to use:**
-- Use `explore` for read-only lookups, searches, and documentation reads that fit the caller-declared output contract. Reserve synthesis and judgment for the main agent.
+- Use `budget-explorer` for read-only lookups, searches, and documentation reads that fit the caller-declared output contract. Reserve synthesis and judgment for the main agent.
 
 ## Tool-call ceiling
 

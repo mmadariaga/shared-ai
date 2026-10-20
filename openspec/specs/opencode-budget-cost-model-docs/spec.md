@@ -12,19 +12,18 @@ The `skills/opencode/budget-explorer/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating research tasks to subagents
-- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the explore agent file (`~/.config/opencode/agents/explore.md`), seeded by the installer under the `tunable-seed` lifecycle
+- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the budget-explorer agent file (`~/.config/opencode/agents/budget-explorer.md`), seeded by the installer under the `tunable-seed` lifecycle
 - **When to use**: Guidance on when to invoke this skill based on budget constraints
 
 #### Scenario: Agent loads opencode budget-explorer and reads rationale
 
 - **WHEN** an agent loads `skills/opencode/budget-explorer/SKILL.md`
-- **THEN** it finds the `## Cost model` section clearly positioned after `## Model resolution`
-- **AND** it understands the rationale for delegating research to subagents
+- **THEN** it finds the `## Cost model` section clearly positioned after `## Model resolution`; it understands the rationale for delegating research to subagents
 
 #### Scenario: Model resolution names the explore agent file
 
 - **WHEN** the cost model section documents model selection
-- **THEN** it explicitly states that the model is resolved via the `model` frontmatter of `~/.config/opencode/agents/explore.md`, not via `agent.explore.model` in `opencode.jsonc` and not hardcoded in the SKILL.md
+- **THEN** it explicitly states that the model is resolved via the `model` frontmatter of `~/.config/opencode/agents/budget-explorer.md`, not via `agent.explore.model` in `opencode.jsonc` and not hardcoded in the SKILL.md
 
 ---
 
@@ -51,14 +50,13 @@ The `skills/opencode/budget-subagent/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating general tasks to subagents, particularly for scoped work that benefits from fresh context
-- **Cost lever**: that the `model` frontmatter of the budget agent file named in the `## OpenCode Binding` section is the only lever on the cost of delegation, citing the binding instead of restating the resolution
+- **Cost lever**: that the `model` frontmatter of the budget-subagent agent file named in the `## OpenCode Binding` section is the only lever on the cost of delegation, citing the binding instead of restating the resolution
 - **Scope boundaries**: How clear task boundaries enable effective subagent delegation and cost control
 
 #### Scenario: Agent loads opencode budget-subagent and understands cost model
 
 - **WHEN** an agent loads `skills/opencode/budget-subagent/SKILL.md`
-- **THEN** it finds the `## Cost model` section positioned after `## OpenCode Binding`
-- **AND** it understands the rationale for delegating scoped tasks to subagents
+- **THEN** it finds the `## Cost model` section positioned after `## OpenCode Binding`; it understands the rationale for delegating scoped tasks to subagents
 
 ---
 

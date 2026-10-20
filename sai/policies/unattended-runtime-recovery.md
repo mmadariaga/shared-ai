@@ -37,7 +37,7 @@ Definitions used below.
   what order, is fixed.
 - **Current subagent**: the worker that was executing the step that failed.
 - **Budget agent**: the generic single-task subagent, `budget-subagent` on
-  Claude Code and `budget` on opencode.
+  Claude Code and `budget-subagent` on opencode.
 - **Step check**: the command or validation that decides whether the failed
   step now passes.
 - **Slice paths**: the paths the active change may write. Direct Build uses
@@ -162,7 +162,7 @@ parts, in this order, and carries no procedure:
 
 Dispatch it through the budget task binding of the active harness — Fetch
 @skills/budget/SKILL.md when the route has not loaded it: `budget-subagent` on
-Claude Code, `budget` on opencode — opening with the two-phase startup like
+Claude Code, `budget-subagent` on opencode — opening with the two-phase startup like
 every other dispatch. Guard the dispatch with its own window of
 `@sai/policies/no-commit-guard.md` § Window pairing, never carrying
 `allow_commit`; a `violation` verdict follows that policy's remediation

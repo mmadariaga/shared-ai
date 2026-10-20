@@ -150,7 +150,7 @@ test('install and uninstall inventories are exact and deterministic for every su
          assert.equal(rawActive.some(destination => /^agents\/(?:budget|executor|explore)\.md$/.test(destination)), false,
            'claude must not project support agents');
        } else {
-         assert.equal(['budget', 'executor', 'explore'].every(name =>
+         assert.equal(['budget-explorer', 'budget-executor', 'budget-subagent'].every(name =>
            rawActive.includes(`agents/${name}.md`)), true,
          'opencode should keep its three support agents in the active inventory');
        }

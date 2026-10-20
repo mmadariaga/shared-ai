@@ -39,7 +39,7 @@ test('opencode native effective access survives inherited allow/deny and keeps e
   fs.writeFileSync(path.join(root, 'opencode.json'), JSON.stringify({ permissions, agents }));
   fs.mkdirSync(path.join(root, '.opencode', 'agents'), { recursive: true });
   fs.writeFileSync(path.join(root, '.opencode', 'agents', 'sai-generic-probe.md'), projectSource(
-    fs.readFileSync(path.join(__dirname, '..', 'agents', 'opencode', 'explore.md'), 'utf8'), registry, 'agents', 'explore', 'opencode'));
+    fs.readFileSync(path.join(__dirname, '..', 'agents', 'opencode', 'budget-explorer.md'), 'utf8'), registry, 'agents', 'budget-explorer', 'opencode'));
   fs.writeFileSync(path.join(root, 'fixture.txt'), 'read-only fixture\n');
   const config = api('get', '/api/config', undefined, root);
   assert.ok(config.some(document => document.info?.agents?.['sai-probe-boot']), 'fixture configuration must be loaded before registration is tested');

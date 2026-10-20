@@ -31,9 +31,9 @@ const {
 const REPO_ROOT = path.join(__dirname, '..');
 
 const OPENCODE_AGENTS = [
-  'budget',
-  'executor',
-  'explore',
+  'budget-executor',
+  'budget-explorer',
+  'budget-subagent',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-3-green-worker',
@@ -179,9 +179,9 @@ const COMBINED_BOTH_FULL = [
   'worker:sai-archive-worker',
   'command:sai-commit',
   'worker:sai-commit-worker',
-  'worker:budget',
-  'worker:executor',
-  'worker:explore',
+  'worker:budget-executor',
+  'worker:budget-explorer',
+  'worker:budget-subagent',
   'worker:sai-merge-worker',
   'utility:sai-retire-docs',
   'utility:sai-status',
@@ -539,7 +539,7 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   const claude = createClaudeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
-  assert.deepEqual(opencode.agent, ['budget', 'executor', 'explore']);
+  assert.deepEqual(opencode.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
   assert.equal(claude.worker.length, 13);
   assert.equal(opencode.worker.length, 13);
 });
@@ -3766,7 +3766,7 @@ test('customization inventory is matrix-derived: exactly thirteen worker agents 
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {
-        assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
+        assert.equal(['budget-explorer', 'budget-executor', 'budget-subagent'].every(name => allAgentNames.includes(name)), true,
           'opencode customization inventory should keep its three support agents beside the matrix agents');
       }
     } finally {

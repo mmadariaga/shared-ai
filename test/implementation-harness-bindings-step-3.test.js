@@ -311,7 +311,7 @@ test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe guarded uninstall');
   assert.match(documentation, /permission-only/i,
     'specs/opencode-agent-preservation/spec.md: the opencode config merge should be described as permission-only');
-  assert.match(documentation, /~\/\.config\/opencode\/agents\/(?:explore|executor|budget)\.md/,
+  assert.match(documentation, /~\/\.config\/opencode\/agents\/budget-(?:explorer|executor|subagent)\.md/,
     'specs/opencode-agent-preservation/spec.md: the three generic agent files should be named as projected agents');
   assert.match(documentation, /permission/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the permission merge');

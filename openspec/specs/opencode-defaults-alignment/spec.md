@@ -7,7 +7,7 @@ TBD - created by archiving change update-opencode-defaults-to-go-zen. Update Pur
 
 ### Requirement: Generic opencode agents declare the free model with xhigh variant
 
-Each of `agents/opencode/explore.md`, `agents/opencode/executor.md`, and `agents/opencode/budget.md` MUST declare `model: opencode/muse-spark-1.3-contributor-free` and `variant: xhigh` on separate frontmatter lines while retaining its description, mode, and permissions.
+Each of `agents/opencode/budget-explorer.md`, `agents/opencode/budget-executor.md`, and `agents/opencode/budget-subagent.md` MUST declare `model: opencode/muse-spark-1.3-contributor-free` and `variant: xhigh` on separate frontmatter lines while retaining its description, mode, and permissions.
 
 #### Scenario: Generic agent frontmatter uses free xhigh
 
