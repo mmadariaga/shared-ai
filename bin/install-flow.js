@@ -1226,7 +1226,7 @@ function installProjection(projection, targetPath, notices) {
     return;
   }
   if (projection.strategy === 'tunable-seed') {
-    tunableSeedInstaller(projection);
+    installRenamedGenericAgent(projection, notices);
     return;
   }
   if (require('./audit-name-migration').isAuditCommand(projection.destinationPath)
@@ -1256,6 +1256,57 @@ function installProjection(projection, targetPath, notices) {
     return;
   }
   copy(projection.sourcePath, projection.destinationPath);
+}
+
+// Only the global install's exact managed predecessor is eligible for cleanup.
+function installRenamedGenericAgent(projection, notices) {
+  const legacyNames = {
+    'budget-explorer.md': 'explore.md',
+    'budget-executor.md': 'executor.md',
+    'budget-subagent.md': 'budget.md',
+  };
+  const legacyName = projection.harness === 'opencode' && legacyNames[path.basename(projection.destinationPath)];
+  if (legacyName) {
+    let destinationStat;
+    try {
+      // lstat also sees dangling links, which existsSync treats as absent.
+      destinationStat = fs.lstatSync(projection.destinationPath);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (destinationStat && !destinationStat.isFile()) {
+      emitInstallerNotice(notices, `Skipped generic agent installation: ${projection.destinationPath} is a symbolic link or other non-regular destination. The destination and any legacy predecessor were left unchanged. Review this path manually and provide a regular agent file or an absent destination before reinstalling.`);
+      return 'skipped';
+    }
+  }
+  const legacyPath = legacyName && path.join(path.dirname(projection.destinationPath), legacyName);
+  if (!legacyPath || !fs.existsSync(legacyPath)) return tunableSeedInstaller(projection);
+  const source = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
+  // A symlink can name an unrelated definition outside this install.
+  const regular = fs.lstatSync(legacyPath).isFile();
+  const previous = regular ? fs.readFileSync(legacyPath, 'utf8') : null;
+  const owned = regular && stripTunableLines(Buffer.from(source), OPENCODE_TUNABLE_KEYS)
+    .equals(stripTunableLines(Buffer.from(previous), OPENCODE_TUNABLE_KEYS));
+  const destinationExists = fs.existsSync(projection.destinationPath);
+  if (previous !== null && destinationExists) {
+    const current = fs.readFileSync(projection.destinationPath, 'utf8');
+    if (preserveAgentTunables(source, previous, OPENCODE_TUNABLE_KEYS)
+        !== preserveAgentTunables(source, current, OPENCODE_TUNABLE_KEYS)) {
+      emitInstallerNotice(notices, `Conflicting legacy agent settings in ${legacyPath}; settings in ${projection.destinationPath} take precedence.`);
+    }
+  }
+  const migrated = owned && !destinationExists
+    ? { ...projection, sourceText: preserveAgentTunables(source, previous, OPENCODE_TUNABLE_KEYS) }
+    : projection;
+  const outcome = tunableSeedInstaller(migrated);
+  // Installation must succeed before any predecessor is removed. Recheck identity
+  // after writing so a concurrently modified predecessor is protected as well.
+  if (owned && fs.lstatSync(legacyPath).isFile() && fs.readFileSync(legacyPath, 'utf8') === previous) {
+    fs.unlinkSync(legacyPath);
+  } else {
+    emitInstallerNotice(notices, `Preserved legacy agent ${legacyPath}; migrate it manually. A retained explore.md can still override OpenCode's built-in explore.`);
+  }
+  return outcome;
 }
 
 function expandForInstall(harness, roots) {
@@ -1379,6 +1430,13 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } 
   cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of projections) installProjection(projection, targetPath, notices);
 
+  for (const name of ['explore', 'executor', 'budget']) {
+    const local = path.resolve('.opencode', 'agents', `${name}.md`);
+    if (fs.existsSync(local)) {
+      emitInstallerNotice(notices, `Preserved project-local legacy agent ${local}; migrate its settings and references manually to the matching budget-* name. A retained explore.md can still override OpenCode's built-in explore.`);
+    }
+  }
+
   writeVersionMarker(targetPath);
 }
 
@@ -1391,7 +1449,7 @@ function printOpencodeConfigMessage(base, opencodeBaseForPattern, notices) {
     '    "subagent_depth": 2',
     '  }',
     `See ${examplePath} for a reference example.`,
-    `The installer only ensures experimental.subagent_depth = 2 in an existing config and leaves everything else untouched. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`,
+    `The installer only ensures experimental.subagent_depth = 2 in an existing config and leaves everything else untouched. The generic agents (budget-explorer, budget-executor, budget-subagent) are managed agent files under ${agentsDisplay} and need no config entry.`,
   ];
   if (Array.isArray(notices)) {
     for (const line of lines) notices.push(line);
@@ -1584,7 +1642,7 @@ function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawn
   }
   if (merged.redundantKeys.length > 0) {
     const agentsDisplay = opencodeAgentsDisplayFor(patternBase);
-    emitInstallerNotice(notices, `Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ${agentsDisplay} now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (${agentsDisplay}{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
+    emitInstallerNotice(notices, `Migration notice: legacy opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. SAI now uses ${agentsDisplay}{budget-explorer,budget-executor,budget-subagent}.md. Review legacy settings and migrate needed options manually; an agent.explore entry can still override OpenCode's built-in explore. Tune model and optional variant in the matching new agent file; the tunable-seed lifecycle preserves them. The installer never edits these config keys.`);
   }
   for (const message of merged.messages) emitInstallerNotice(notices, message);
 }

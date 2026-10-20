@@ -10,7 +10,7 @@ Route overview generation to a budget-routed subagent executing a shared overvie
 
 Overview generation SHALL run in a budget-routed subagent executing `sai/commands/design/change-overview.md` as the single shared generation contract. It SHALL NOT introduce a numbered phase, worker lifecycle, question loop, or feedback loop.
 
-Dispatch SHALL name `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget)` for opencode. Its prompt SHALL carry exactly the resolved change name, current invocation's `overview_language`, and the directive to Fetch `@sai/commands/design/change-overview.md` and follow it exactly. The generator SHALL load the contract itself. The prompt SHALL NOT enumerate source mappings, content requirements, the faithful-copy rule, validation rules, or other normative contract content. First materialization and regeneration SHALL share the same transport and minimal prompt shape.
+Dispatch SHALL name `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget-subagent)` for opencode. Its prompt SHALL carry exactly the resolved change name, current invocation's `overview_language`, and the directive to Fetch `@sai/commands/design/change-overview.md` and follow it exactly. The generator SHALL load the contract itself. The prompt SHALL NOT enumerate source mappings, content requirements, the faithful-copy rule, validation rules, or other normative contract content. First materialization and regeneration SHALL share the same transport and minimal prompt shape.
 
 Fetch SHALL use active-harness project-local-before-global precedence. A project-local override SHALL be accepted without detecting or repairing its staleness.
 
@@ -28,7 +28,7 @@ The schema's non-empty overview instruction SHALL remain an informative referenc
 
 #### Scenario: dispatch names the budget binding per harness
 - **WHEN** overview generation runs under either supported harness
-- **THEN** Claude Code uses `Agent(subagent_type: budget-subagent)` and opencode uses `task(subagent_type: budget)`
+- **THEN** Claude Code uses `Agent(subagent_type: budget-subagent)` and opencode uses `task(subagent_type: budget-subagent)`
 
 #### Scenario: contract is transported by Fetch on dispatch
 - **WHEN** the design worker dispatches the generator
@@ -195,11 +195,9 @@ The design worker's overview-generation dispatch clause SHALL name both harness 
 #### Scenario: both harness bindings are named in the worker dispatch clause
 
 - **WHEN** the design worker contract describes overview-generation dispatch
-- **THEN** it names `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget)` for opencode
-- **AND** naming only one harness leaves the dispatch incomplete against this parity requirement
+- **THEN** it names `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget-subagent)` for opencode; naming only one harness leaves the dispatch incomplete against this parity requirement
 
 #### Scenario: contract transport is mirrored
 
 - **WHEN** overview generation is dispatched on either supported harness
-- **THEN** the subagent is instructed to Fetch `@sai/commands/design/change-overview.md` and follow it exactly
-- **AND** the minimal prompt shape and contract-load failure classification are the same on both harnesses
+- **THEN** the subagent is instructed to Fetch `@sai/commands/design/change-overview.md` and follow it exactly; the minimal prompt shape and contract-load failure classification are the same on both harnesses

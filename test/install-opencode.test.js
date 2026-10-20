@@ -680,7 +680,7 @@ test('copyOpencodeConfig is idempotent when fully configured with helper agents 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig prints a migration notice naming every redundant agent key and never the retired add-notice', () => {
+test('copyOpencodeConfig reports legacy agent keys for manual migration without rewriting config', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {}, subagent_depth: 2, experimental: { subagent_depth: 2 } };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
@@ -698,18 +698,16 @@ test('copyOpencodeConfig prints a migration notice naming every redundant agent 
   for (const key of AGENT_KEYS) {
     assert.ok(first.includes(key), `specs/opencode-agent-migration-notice/spec.md: the notice should name ${key}`);
   }
-  assert.match(first, /agent files? take precedence[\s\S]{0,200}\bmodel\b/i,
-    'specs/opencode-agent-migration-notice/spec.md: the notice should state the agent files take precedence for declared keys incl. model');
-  assert.match(first, /config-only[\s\S]{0,120}(?:tools|options)/i,
-    'specs/opencode-agent-migration-notice/spec.md: the notice should say config-only keys (tools/options) still apply');
+  assert.match(first, /budget-explorer,budget-executor,budget-subagent/);
+  assert.match(first, /migrate needed options manually/i);
+  assert.match(first, /agent\.explore[\s\S]{0,100}built-in explore/i);
   assert.match(first, /tunable-seed/i,
     'specs/opencode-agent-migration-notice/spec.md: the notice should name the tunable-seed tuning surface');
-  assert.match(first, /remov\w*[\s\S]{0,120}decision/i,
-    'specs/opencode-agent-migration-notice/spec.md: the notice should leave removal to the user');
+  assert.match(first, /installer never edits these config keys/i);
   assert.doesNotMatch(first, /Added opencode agent keys/,
     'specs/install-command-overwrite/spec.md: the retired add-notice must never be printed');
-  assert.match(second, /agent files? take precedence/i,
-    'specs/opencode-agent-migration-notice/spec.md: the notice should print on every detecting run');
+  assert.match(second, /legacy opencode agent keys/i,
+    'the notice should print on every detecting run');
   assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.json')), beforeBytes,
     'the file should be left byte-for-byte unchanged');
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1446,7 +1444,7 @@ test('Step 2 fresh install seeds the generic opencode agent files from their sou
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-generic-agents-'));
   try {
     installOpencode(tmpDir);
-    for (const name of AGENT_KEYS) {
+    for (const name of ['budget-explorer', 'budget-executor', 'budget-subagent']) {
       const agentPath = path.join(tmpDir, 'agents', `${name}.md`);
       const repoAgentPath = path.join(__dirname, '..', 'agents', 'opencode', `${name}.md`);
       assert.ok(fs.existsSync(repoAgentPath),
@@ -1568,7 +1566,7 @@ test('opencode installer consumes exactly the thirteen matrix worker bindings an
     const allAgentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
+    assert.equal(['budget-explorer', 'budget-executor', 'budget-subagent'].every(name => allAgentNames.includes(name)), true,
       'opencode should keep its three support agents beside the matrix agents');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1726,8 +1724,8 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
   const skills = [
     {
       name: 'budget-explorer',
-      file: 'explore.md',
-      keyword: 'explore',
+      file: 'budget-explorer.md',
+      keyword: 'budget-explorer',
       triggers: [
         'budget explorer',
         'cheap explorer',
@@ -1737,8 +1735,8 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
     },
     {
       name: 'budget-executor',
-      file: 'executor.md',
-      keyword: 'executor',
+      file: 'budget-executor.md',
+      keyword: 'budget-executor',
       triggers: [
         'budget executor',
         'cheap executor',
@@ -1748,8 +1746,8 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
     },
     {
       name: 'budget-subagent',
-      file: 'budget.md',
-      keyword: 'budget',
+      file: 'budget-subagent.md',
+      keyword: 'budget-subagent',
       triggers: [],
     },
   ];

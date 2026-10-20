@@ -22,7 +22,7 @@ Trigger phrases (the same set as the Claude Code variant, following the budget-f
 The `description` field format SHALL be:
 
     description: >
-      Binds cheap research subagent to the opencode explore agent keyword. Model resolved via the explore agent file's model frontmatter (installed under ~/.config/opencode/agents/explore.md) — not hardcoded in here.
+      Binds cheap research subagent to the opencode budget-explorer agent keyword. Model resolved via the budget-explorer agent file's model frontmatter (installed under ~/.config/opencode/agents/budget-explorer.md) — not hardcoded in here.
       TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 
 #### Scenario: User asks for budget mode in an OpenCode session
@@ -33,4 +33,4 @@ The `description` field format SHALL be:
 #### Scenario: Model resolution names the explore agent file
 
 - **WHEN** the SKILL.md is loaded
-- **THEN** the model is resolved from the `model` frontmatter of `~/.config/opencode/agents/explore.md`, not hardcoded and not via `agent.explore.model` in `opencode.jsonc`
+- **THEN** the model is resolved from the `model` frontmatter of `~/.config/opencode/agents/budget-explorer.md`, not hardcoded and not via `agent.explore.model` in `opencode.jsonc`

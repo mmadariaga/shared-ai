@@ -39,9 +39,9 @@
     },
     "assignments": {
       "agents": {
-        "budget-explorer": "research", "explore": "research",
-        "budget-executor": "executor", "executor": "executor",
-        "budget-subagent": "task", "budget": "task",
+        "budget-explorer": "research",
+        "budget-executor": "executor",
+        "budget-subagent": "task",
         "sai-1-spec-proposal-worker": "worker-research",
         "sai-2-design-worker": "worker-design",
         "sai-5-security-worker": "worker-research",
@@ -1269,11 +1269,11 @@
       }
     },
     {
-      "id": "opencode-explore",
-      "source": "agents/opencode/explore.md",
+      "id": "opencode-budget-explorer",
+      "source": "agents/opencode/budget-explorer.md",
       "destination": {
         "class": "agents",
-        "path": "explore.md"
+        "path": "budget-explorer.md"
       },
       "harnesses": [
         "opencode"
@@ -1284,11 +1284,11 @@
       "drift": "content"
     },
     {
-      "id": "opencode-executor",
-      "source": "agents/opencode/executor.md",
+      "id": "opencode-budget-executor",
+      "source": "agents/opencode/budget-executor.md",
       "destination": {
         "class": "agents",
-        "path": "executor.md"
+        "path": "budget-executor.md"
       },
       "harnesses": [
         "opencode"
@@ -1299,11 +1299,11 @@
       "drift": "content"
     },
     {
-      "id": "opencode-budget",
-      "source": "agents/opencode/budget.md",
+      "id": "opencode-budget-subagent",
+      "source": "agents/opencode/budget-subagent.md",
       "destination": {
         "class": "agents",
-        "path": "budget.md"
+        "path": "budget-subagent.md"
       },
       "harnesses": [
         "opencode"

@@ -59,7 +59,8 @@ test('all 33 Claude shipped roles match the audit-renumbered OPUS preset exactly
 });
 
 test('generated opencode agents, command wrappers, and configuration match the audit-renumbered snapshot', () => {
-  // Fingerprint captured before the Claude-only defaults alignment; refreshed for the explore load-receipt pointer, the review and audit wrapper descriptions (options) and the -new family wrappers and workers (including /sai-4-review-new).
+  // Includes the shared budget-* generic-agent filenames and dispatch grants;
+  // reversing only those names reproduces the previous snapshot fingerprint.
   const { base, entries } = projections('opencode');
   const output = entries.map(entry => [
     path.relative(base, entry.destinationPath).split(path.sep).join('/'),
@@ -67,5 +68,5 @@ test('generated opencode agents, command wrappers, and configuration match the a
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 38);
-  assert.equal(hash(JSON.stringify(output)), '6202b86e80505ada1c4a40c4197784990befd5097a75b3e5131e3b887eb04a19');
+  assert.equal(hash(JSON.stringify(output)), 'dbb8b9c2a8ca5822002a9319dc587e7a76b1c120e867909f11ae9ee73bc83361');
 });

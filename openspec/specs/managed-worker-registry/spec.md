@@ -107,25 +107,23 @@ Tunable-seed projection SHALL install its declared harness-specific source conte
 - **AND** installation creates no ownership sidecar
 
 ### Requirement: The canonical opencode configuration sample defines no agent
-The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key — neither the seven managed opencode worker agent keys nor the three helper-agent keys (`explore`, `executor`, `budget`). It SHALL retain `$schema`, `experimental.subagent_depth`, and `permission` (including the `~/.config/opencode/sai/**` external-directory allow rule). The fresh-install configuration therefore carries no agent registration at all; all agents register through the projected markdown agent files — the seven workers and the three generic agents.
+The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key — neither the seven managed opencode worker agent keys nor the three helper-agent keys (`budget-explorer`, `budget-executor`, `budget-subagent`). It SHALL retain `$schema`, `experimental.subagent_depth`, and `permission` (including the `~/.config/opencode/sai/**` external-directory allow rule). The fresh-install configuration therefore carries no agent registration at all; all agents register through the projected markdown agent files — the seven workers and the three generic agents.
 
 #### Scenario: The sample config contains no agent keys
 - **WHEN** `configs/opencode.jsonc` is read after the change
-- **THEN** none of `sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `explore`, `executor`, or `budget` appears under any `agent` key
-- **AND** `$schema`, `experimental.subagent_depth`, and `permission` remain present
+- **THEN** none of `sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `budget-explorer`, `budget-executor`, or `budget-subagent` appears under any `agent` key; `$schema`, `experimental.subagent_depth`, and `permission` remain present
 
 #### Scenario: Fresh-install merge does not add agent keys
 - **WHEN** the installer copies `configs/opencode.jsonc` to a fresh destination and applies the configuration merge
-- **THEN** the resulting configuration contains no `agent` key
-- **AND** the merged configuration retains `permission.external_directory["~/.config/opencode/sai/**"]`
+- **THEN** the resulting configuration contains no `agent` key; the merged configuration retains `permission.external_directory["~/.config/opencode/sai/**"]`
 
 ### Requirement: Delegating managed workers grant subagent dispatch on both harnesses
 
-Every worker-matrix entry whose contract, transitive SAI Fetch closure, or sibling steps load a budget delegation skill SHALL receive Agent in its derived Claude tools and opencode V2 subagent grants for the targets its contract requires. A prose mention without a Fetch SHALL NOT classify a worker as delegating. Skill loading alone SHALL NOT require every Generic Agent target: Backfill and audit/spec workers require explore, while Design and Implement additionally require budget. The regression guard SHALL remain one-directional and SHALL NOT independently forbid Agent on non-delegating entries or require executor. It MUST inspect repository sources rather than installed copies, evaluate each entry using its workerContract, and fail for an empty delegating set or one omitting Backfill.
+Every worker-matrix entry whose contract, transitive SAI Fetch closure, or sibling steps load a budget delegation skill SHALL receive Agent in its derived Claude tools and opencode V2 subagent grants for the targets its contract requires. A prose mention without a Fetch SHALL NOT classify a worker as delegating. Skill loading alone SHALL NOT require every Generic Agent target: Backfill and audit/spec workers require budget-explorer, while Design and Implement additionally require budget-subagent. The regression guard SHALL remain one-directional and SHALL NOT independently forbid Agent on non-delegating entries or require budget-executor. It MUST inspect repository sources rather than installed copies, evaluate each entry using its workerContract, and fail for an empty delegating set or one omitting Backfill.
 
 #### Scenario: Backfill worker can dispatch its budget-explorer conflict scan
 - **WHEN** Backfill is materialized from its entry whose worker card loads the budget skill
-- **THEN** its derived Claude tools include Agent, Edit, and Write and its opencode permissions grant the explore subagent target required for conflict scanning
+- **THEN** its derived Claude tools include Agent, Edit, and Write and its opencode permissions grant the budget-explorer subagent target required for conflict scanning
 
 #### Scenario: A delegating worker without dispatch capability fails the guard test
 - **WHEN** a worker loaded instructions require budget delegation but its derived grants omit Agent or its required opencode target
@@ -137,4 +135,4 @@ Every worker-matrix entry whose contract, transitive SAI Fetch closure, or sibli
 
 #### Scenario: Contract-specific target grants do not become blanket delegation
 - **WHEN** current RED, GREEN, direct implementation, and review profiles are translated
-- **THEN** they receive no delegation grant, while Design and Implement receive their additional budget target
+- **THEN** they receive no delegation grant, while Design and Implement receive their additional budget-subagent target

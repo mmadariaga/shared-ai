@@ -1,13 +1,13 @@
 {
-  "agent:budget": {
+  "agent:budget-subagent": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
-  "agent:executor": {
+  "agent:budget-executor": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
-  "agent:explore": {
+  "agent:budget-explorer": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },

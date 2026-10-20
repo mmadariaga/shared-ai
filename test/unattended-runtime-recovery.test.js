@@ -91,7 +91,7 @@ test('the hand-off has one fixed four-part shape and a guarded two-phase dispatc
   assert.ok(parts.every((index, i) => index >= 0 && (i === 0 || index > parts[i - 1])), 'state, failure evidence, goal, invariants, in order');
   assert.match(handOff, /carries no procedure/);
   assert.match(handOff, /the step check, as the exact command or validation to make pass/);
-  assert.match(handOff, /`budget-subagent` on Claude Code, `budget` on opencode/);
+  assert.match(handOff, /`budget-subagent` on Claude Code, `budget-subagent` on opencode/);
   assert.match(handOff, /two-phase startup/);
   assert.match(handOff, /its own window of `@sai\/policies\/no-commit-guard\.md` § Window pairing, never carrying `allow_commit`/);
   assert.match(compact(read('sai/policies/no-commit-guard.md')), /\*\*Recovery hand-off isolation\*\* — a recovery hand-off to the budget agent \(`@sai\/policies\/unattended-runtime-recovery\.md` § Hand-off\) opens its own window the same way and never carries `allow_commit`/);

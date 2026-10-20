@@ -94,10 +94,10 @@ test('every worker that delegates to a budget subagent carries dispatch capabili
       `${entry.workerName} loads a budget skill (Fetch in ${source}) but claudeAgent.tools lacks Agent`,
     );
 
-    assert.match(entry.opencodeAgent.permissionBlock, /action: "subagent"\n\s+resource: "explore"\n\s+effect: allow/,
+    assert.match(entry.opencodeAgent.permissionBlock, /action: "subagent"\n\s+resource: "budget-explorer"\n\s+effect: allow/,
       `${entry.workerName} must grant its contract's explorer target`);
     if (['design', 'implementation'].includes(entry.phase)) {
-      assert.match(entry.opencodeAgent.permissionBlock, /action: "subagent"\n\s+resource: "budget"\n\s+effect: allow/);
+      assert.match(entry.opencodeAgent.permissionBlock, /action: "subagent"\n\s+resource: "budget-subagent"\n\s+effect: allow/);
     }
   }
 

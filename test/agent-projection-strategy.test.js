@@ -152,7 +152,7 @@ test('the manifest declares exactly 32 tunable-seed agent projections, exactly 1
     'exactly 16 tunable-seed agent-class projections should target opencode');
 });
 
-test('the three new Claude generic-agent projections are Claude-only, destination-unique, and tunable-seed', () => {
+test('Claude generic-agent projections are destination-unique within their harness and tunable-seed', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const agentRules = manifest.projections
     .filter(projection => projection.destination && projection.destination.class === 'agents');
@@ -160,8 +160,8 @@ test('the three new Claude generic-agent projections are Claude-only, destinatio
   const claudeBasenames = claudeAgentRules.map(projection => path.basename(projection.destination.path, '.md'));
   for (const name of CLAUDE_GENERIC_AGENTS) {
     assert.equal(
-      agentRules.filter(projection => path.basename(projection.destination.path, '.md') === name).length, 1,
-      `the ${name} Claude destination basename should occur exactly once across the manifest`);
+      claudeAgentRules.filter(projection => path.basename(projection.destination.path, '.md') === name).length, 1,
+      `the ${name} Claude destination basename should occur exactly once within its harness`);
     assert.ok(claudeBasenames.includes(name), `Claude should declare a ${name} agent projection`);
   }
   for (const rule of claudeAgentRules) {
@@ -196,7 +196,7 @@ test('no managed agent projection declares owned-copy', () => {
   assert.equal(
     matrixAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 13,
     'opencode should declare exactly thirteen matrix agent projections');
-  for (const name of ['explore', 'executor', 'budget']) {
+  for (const name of ['budget-explorer', 'budget-executor', 'budget-subagent']) {
     assert.ok(agentRules.some(projection => projection.destination.path.endsWith(`${name}.md`)),
       `opencode should retain its regular ${name} support agent projection`);
   }
@@ -336,7 +336,7 @@ test('fresh OpenCode install separates every managed agent model from its varian
       model: entry.opencodeAgent.model,
       variant: entry.opencodeAgent.variant,
     }));
-    expected.push(...['budget', 'executor', 'explore'].map(name => ({
+    expected.push(...['budget-executor', 'budget-explorer', 'budget-subagent'].map(name => ({
       name, model: 'opencode/muse-spark-1.3-contributor-free', variant: 'xhigh',
     })));
     for (const { name, model, variant } of expected) {
@@ -354,7 +354,7 @@ test('installing global OpenCode agents leaves existing project-local agent defi
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-agent-local-preservation-'));
   const priorCwd = process.cwd();
   const project = path.join(root, 'project');
-  const local = path.join(project, '.opencode', 'agents', 'explore.md');
+  const local = path.join(project, '.opencode', 'agents', 'budget-explorer.md');
   const legacy = Buffer.from('---\nmode: subagent\nmodel: custom/provider#high\n---\n\nLocal instructions.\n');
   try {
     fs.mkdirSync(path.dirname(local), { recursive: true });
