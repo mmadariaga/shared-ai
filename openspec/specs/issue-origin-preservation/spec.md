@@ -23,7 +23,7 @@ Claude Code and opencode SHALL carry the selected change's verified issue URL as
 
 ### Requirement: Amend stored origin through validated block transport
 
-An origin attached to a stored block SHALL use validated amendment, dispatchable checking, bounded hygiene judgment, refreshed hashes, and readback. Published slice sets SHALL export each original block, send verified `block_files: [{block_file, hash}]` with complete child correspondence to `attach-origin --harness <claude|opencode>`, and receive new private file/hash references rather than amended message text. The tool SHALL verify input files and preserve other block bytes, dependencies, scope, and E/I items. It SHALL refuse conflicting origins or incomplete correspondence. Callers SHALL validate the amended files, emit each through the file-backed amendment form, export again, and mechanically compare bytes/hash and selected origin before dispatch. For an imported single issue attached to an already prepared block, the readback SHALL be `sai-state block <id> <change-name> --export --harness <claude|opencode>`, the check SHALL use the `hash` that export returns, and an export returning `BLOCK_EXPORT_FAILED` or `BLOCK_NOT_FOUND` SHALL stop the workflow before dispatch. Transfer directories SHALL remain until recovery cannot need them. Workflows SHALL NOT patch storage directly, reuse an old hash, or add a second origin envelope.
+An origin attached to a stored block SHALL use validated amendment, dispatchable checking, bounded hygiene judgment, refreshed hashes, and readback. Published slice sets SHALL export each original block, send verified `block_files: [{block_file, hash}]` with complete child correspondence to `attach-origin --harness <claude|opencode>`, and receive new private file/hash references rather than amended message text. The tool SHALL verify input files and preserve other block bytes, dependencies, scope, and E/I items. A block whose existing origin equals the published set's parent (an adopted originating issue) SHALL receive its child's URL in place of that origin. It SHALL refuse any other conflicting origin or incomplete correspondence. Callers SHALL validate the amended files, emit each through the file-backed amendment form, export again, and mechanically compare bytes/hash and selected origin before dispatch. For an imported single issue attached to an already prepared block, the readback SHALL be `sai-state block <id> <change-name> --export --harness <claude|opencode>`, the check SHALL use the `hash` that export returns, and an export returning `BLOCK_EXPORT_FAILED` or `BLOCK_NOT_FOUND` SHALL stop the workflow before dispatch. Transfer directories SHALL remain until recovery cannot need them. Workflows SHALL NOT patch storage directly, reuse an old hash, or add a second origin envelope.
 
 #### Scenario: Attach an imported issue after block preparation
 - **WHEN** a verified issue origin is attached to an already stored block
@@ -42,6 +42,11 @@ An origin attached to a stored block SHALL use validated amendment, dispatchable
 
 - **WHEN** the export that re-reads an amended imported-issue block returns `BLOCK_EXPORT_FAILED` or `BLOCK_NOT_FOUND`
 - **THEN** the workflow stops before dispatch and does not reuse a pre-amendment hash
+
+#### Scenario: Block crystallized from the adopted origin
+
+- **WHEN** a block's `Backlog origin` equals the parent of the published set because the set was published under that originating issue
+- **THEN** attachment replaces that origin with the block's child URL, while a block naming any other issue is refused.
 
 ### Requirement: Backfill accepts origin independently of intent
 

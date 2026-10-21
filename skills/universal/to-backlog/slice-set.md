@@ -1,12 +1,40 @@
 # Crystallized slice publication
 
-Reach this branch only for create with an explicitly crystallized slice
-set, including a one-slice set. An ordinary request without slices follows the
-existing one-item branch. Load the selected provider's mechanics for its relationship
+Reach this branch only for an explicitly crystallized slice set, including a
+one-slice set: with no origin it creates the parent, with an originating issue
+it adopts that issue as the parent. An ordinary request without slices follows
+the existing one-item branch (an origin without slices keeps update mode).
+Load the selected provider's mechanics for its relationship
 representation, content format and invocation-scoped type requirements.
-An originating issue retains update mode; never create a replacement parent.
 Updating a previously published set retains its correspondence and children;
 this branch grants no additional child creation on update.
+
+## Originating issue
+
+With an unambiguous originating issue (`SKILL.md` section 1) the origin is the
+parent of the set: never create a replacement parent, never close the origin or
+mark it superseded, and offer no new-parent option. Read it as `update.md`
+does (`resolve-origin`, then `read-update`) and pass the canonical URL as
+`origin` and the returned baseline as `origin_baseline` in `query-set` and
+`publish-set`; the destination derives from the origin, and `repository`,
+when supplied, must be the origin's own. The whole-objective `description`
+becomes the origin's new description (its title is kept) and appears in the
+proposal beside the origin's current description, its existing children, and
+the children to create; the single publication confirmation covers all of it.
+The origin is rewritten last, after every child exists and is linked, so an
+interrupted publication leaves its original text and `continue-set` resumes with
+the same origin as parent. Existing children without a SAI marker stay linked
+and are listed. An origin that is itself a published child keeps its parent link
+and its earlier correspondence (the marker's `child_of`, plus `Parent:` and
+`Depends on:` lines), and its new slices become its children. `query-set` answers `blocked` before any write, with a `reason`,
+when the origin already carries a `sai-backlog-slices@1` parent marker
+(`origin-already-published`), is closed (`origin-closed`), cannot be read or
+is not editable by the authenticated user (`origin-unavailable`; checked by a
+read-only permission query on every provider), or belongs to another provider or destination
+than the configured one (`origin-destination-mismatch`); report the state and
+stop. `needs_input` with `stale-baseline` means the origin changed since it was
+read: read it again, prepare, and ask for approval again. A user who wants a new
+parent publishes without an origin.
 
 Use the existing whole-objective parent title/description and every agreed
 slice block verbatim. There is no second decomposition or breakdown approval.

@@ -272,7 +272,7 @@ function recover(request, io) {
 
 const sourceIssue = require('./from-backlog-github');
 
-function readUpdate(request, io) {
+function readEditable(request, io) {
   io.run('gh', ['--version']);
   io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
   const reference = sourceIssue.normalize(request.reference);
@@ -282,7 +282,23 @@ function readUpdate(request, io) {
   const issue = data.repository?.issue;
   if (item.repository_archived || !issue?.viewerCanUpdate) throw new Error('Originating issue is inaccessible, archived, or not editable; no replacement will be created');
   if (!issue.id || issue.url !== item.url || typeof issue.title !== 'string' || typeof issue.body !== 'string' || typeof data.viewer?.login !== 'string' || typeof data.repository.visibility !== 'string') throw new Error('Incomplete issue update response');
-  return { status: 'complete', issue: { id: issue.id, number: item.number, url: item.url }, repository: item.repository, visibility: data.repository.visibility, actor: data.viewer.login, baseline: { title: issue.title, description: issue.body } };
+  return { status: 'complete', issue: { id: issue.id, number: item.number, url: item.url }, repository: item.repository, visibility: data.repository.visibility, actor: data.viewer.login, baseline: { title: issue.title, description: issue.body }, state: item.state };
+}
+
+function readUpdate(request, io) {
+  const { state, ...result } = readEditable(request, io);
+  return result;
+}
+
+// The origin as set parent: its open state and the sub-issues it already has.
+function readOrigin(request, io) {
+  const { state, ...current } = readEditable({ reference: request.origin }, io);
+  const children = () => {
+    const read = sourceIssue.readChildren({ url: current.issue.url }, io);
+    if (read.status !== 'complete') throw new Error(read.message || 'Sub-issues of the originating issue could not be read');
+    return read.children.map(child => child.url);
+  };
+  return { issue: current.issue, repository: current.repository, baseline: current.baseline, closed: state === 'CLOSED', children };
 }
 
 function queryUpdate(request, io) {
@@ -345,12 +361,12 @@ function lookupSlice(request, io) {
   const state = inspect(request, io);
   const identity = require('./backlog-slice-identity');
   const candidates = issues({ proposal: { repository: state.repo.nameWithOwner } }, io).flatMap(issue => {
-    const value = identity.decode(issue.body);
-    return value?.role === 'child' && value.change_name === request.change_name && value.slices.find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
+    const value = identity.upper(identity.decode(issue.body));
+    return value && value.change_name === request.change_name && value.slices.find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
   });
   return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
 }
-module.exports = { query, publish, recover, pages, membership, verifyMembership, ensureMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
+module.exports = { query, publish, recover, pages, membership, verifyMembership, ensureMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'read-origin': readOrigin, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
   'lookup-slice': lookupSlice,
   'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
   'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };

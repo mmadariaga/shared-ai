@@ -150,9 +150,28 @@ function recover(request, io) {
   } catch (error) { return { status: 'uncertain', message: error.message }; }
 }
 const sliceIdentity = require('./backlog-slice-identity');
+const CLOSED = ['Closed', 'Done', 'Removed'];
+// Azure DevOps exposes no direct per-item permission read. A validate-only update (a revision test, nothing saved) is
+// evaluated by the same service-side authorization as a real update and persists nothing, so a refusal is read before any write.
+function requireEditable(current, io) {
+  try {
+    azure.api(current, 'wit', 'workitems', { project: current.project, id: current.issue.number }, io, 'PATCH', [{ op: 'test', path: '/rev', value: current.baseline.rev }], { validateOnly: 'true' }, true);
+  } catch (error) {
+    throw new Error(`Originating work item is not editable or its edit permission could not be verified (${error.message}); no replacement will be created`);
+  }
+}
+// The origin as set parent: its state and the native children it already has.
+function readOrigin(request, io) {
+  const current = readUpdate({ reference: request.origin }, io);
+  requireEditable(current, io);
+  const ref = source.resolve(request.origin, io);
+  const found = source.nativeRelations({ ...ref, project: ref.project }, io);
+  return { issue: current.issue, repository: current.repository, baseline: current.baseline, closed: CLOSED.includes(found.row.fields['System.State']), children: () => found.children };
+}
 function setRead(p, item, io) {
   const row = readItem(p, item.number, io);
-  if (row.type !== p.type) throw new Error('Work-item type changed');
+  // An originating work item keeps its own type; only the published children share the configured one.
+  if (row.type !== p.type && row.issue.url !== p.origin?.issue.url) throw new Error('Work-item type changed');
   return { issue: row.issue, title: row.baseline.title, description: row.baseline.description, version: row.baseline.rev, actor: row.actor };
 }
 const relationType = kind => kind === 'parent' ? 'System.LinkTypes.Hierarchy-Reverse' : 'System.LinkTypes.Dependency-Reverse';
@@ -166,7 +185,7 @@ function hasRelation(p, item, other, kind, io) {
   return (relationRow(p, item, io).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
 }
 const set = require('./backlog-provider-set').bind('azuredevops', {
-  query, equivalent, representation: { hierarchy: 'native', dependencies: 'native' },
+  query, equivalent, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
   // Preserve every character of the agreed block, including the Markdown separator.
   renderBlock: text => `<pre>${sliceIdentity.escape(text)}</pre>`,
   append: (description, links, value) => `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,

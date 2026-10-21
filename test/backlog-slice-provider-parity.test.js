@@ -36,7 +36,7 @@ function fixture(platform) {
       if (args[0] === 'repo') return JSON.stringify({ id: 1, path_with_namespace: 'group/repo', archived: false, visibility: 'private', issues_enabled: true, web_url: repository });
       const endpoint = args[1], method = args[args.indexOf('--method') + 1];
       if (endpoint === 'user') return JSON.stringify({ id: actor });
-      if (endpoint === 'graphql') return JSON.stringify(state.graphql ? state.graphql(JSON.parse(input)) : { data: { namespace: { workItem: { widgets: [{ type: 'ASSIGNEES' }, { type: 'HIERARCHY', parent: null, children: { nodes: [] } }] } } } });
+      if (endpoint === 'graphql') return JSON.stringify(state.graphql ? state.graphql(JSON.parse(input)) : { data: { namespace: { workItem: { userPermissions: { updateWorkItem: !state.cannotEdit }, widgets: [{ type: 'ASSIGNEES' }, { type: 'HIERARCHY', parent: null, children: { nodes: [] } }] } } } });
       if (endpoint.includes('/links')) {
         const number = Number(/issues\/(\d+)/.exec(endpoint)[1]);
         if (state.failLinkRead && method === 'GET') throw new Error(state.failLinkRead);
@@ -80,6 +80,8 @@ function fixture(platform) {
         return JSON.stringify(row);
       }
       const row = show(route.id);
+      // A validate-only update is evaluated like a real one and saves nothing.
+      if (method === 'PATCH' && request.query?.validateOnly) return state.cannotEdit ? JSON.stringify({ sdk_error: 'TF401232: no permission to edit', status_code: 403 }) : JSON.stringify(row);
       if (method === 'PATCH') {
         state.writes.push({ method, body });
         assert.equal(body[0].path, '/rev'); assert.equal(body[0].value, row.rev);
@@ -114,7 +116,7 @@ function fixture(platform) {
     }
     throw new Error(`Unexpected transport ${command} ${args.join(' ')}`);
   } };
-  return { platform, adapter, source, state, io, actor, url, request: { provider: platform, repository, ...(azure ? { type: 'Task' } : {}), title: 'Whole objective', description: 'Full parent α', blocks: block('dependent', 'blocker') + '\n' + block('blocker') } };
+  return { platform, adapter, source, state, io, actor, url, create, request: { provider: platform, repository, ...(azure ? { type: 'Task' } : {}), title: 'Whole objective', description: 'Full parent α', blocks: block('dependent', 'blocker') + '\n' + block('blocker') } };
 }
 function publish(t, fixture) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-parity-')); fs.chmodSync(directory, 0o700);
@@ -542,3 +544,116 @@ test('the start gate offers Skip identically for every provider and keeps step 2
     assert.ok(!/Skip/.test(doc), `${provider} adapter doc must not diverge from the shared gate`);
   }
 });
+
+// An originating issue becomes the set parent on every provider; nothing replaces it.
+function seedOrigin(f, description = 'Old origin text') {
+  const row = f.create('Origin title', description);
+  const url = f.url(row.iid ?? row.id);
+  const baseline = f.adapter['read-update']({ reference: url }, f.io).baseline;
+  Object.assign(f.request, { origin: url, origin_baseline: baseline, description: 'Agreed whole objective' });
+  return { row, url };
+}
+const text = (f, row) => f.platform === 'azuredevops' ? row.fields['System.Description'] : row.description;
+const setClosed = (f, row) => { if (f.platform === 'azuredevops') row.fields['System.State'] = 'Closed'; else row.state = 'closed'; };
+const sets = f => f.state.writes.filter(write => write.method !== 'GET');
+for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: a set under an originating issue reuses it as the parent and rewrites it last`, t => {
+    const f = fixture(platform), { row, url } = seedOrigin(f);
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-origin-')); fs.chmodSync(directory, 0o700);
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const file = path.join(directory, 'receipt.json'), ready = f.adapter['query-set'](f.request, f.io);
+    assert.equal(ready.status, 'ready', JSON.stringify(ready));
+    assert.equal(ready.proposal.origin.issue.url, url);
+    assert.deepEqual(ready.proposal.origin.children, []);
+    const result = f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, f.io);
+    assert.equal(result.status, 'complete', JSON.stringify(result));
+    assert.equal(f.state.rows.length, 3);
+    assert.equal(result.created.length, 2);
+    assert.equal(result.correspondence.parent, url);
+    const title = f.platform === 'azuredevops' ? row.fields['System.Title'] : row.title;
+    assert.equal(title, 'Origin title');
+    const body = text(f, row);
+    assert.ok(body.includes('Agreed whole objective') && !body.includes('Old origin text'));
+    assert.ok(body.includes('Child: blocker'));
+    assert.equal(identity.decode(body).role, 'parent');
+    for (const child of f.state.rows.slice(1)) assert.ok(text(f, child).includes(`Parent: ${url}`));
+    // Every child exists and is linked before the origin is touched, and the origin is never recreated.
+    const creations = sets(f).filter(write => f.platform === 'azuredevops' ? write.body.some(part => part.path === '/fields/System.Title') && !write.body.some(part => part.path === '/rev') : write.method === 'POST' && write.body.title);
+    assert.equal(creations.length, 2);
+    if (f.platform === 'azuredevops') {
+      const last = sets(f).at(-1);
+      assert.ok(last.body.some(part => part.path === '/fields/System.Description'));
+      assert.equal(last.body[0].value, f.state.rows[0].rev - 1);
+      for (const child of f.state.rows.slice(1)) assert.ok(child.relations.some(link => link.rel === 'System.LinkTypes.Hierarchy-Reverse' && link.url.endsWith('/1')));
+    }
+    assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
+  });
+  test(`${platform}: an origin that cannot take children stops before any write`, () => {
+    const stop = (mutate, status, reason) => {
+      const f = fixture(platform), seeded = seedOrigin(f);
+      mutate(f, seeded.row, seeded);
+      const result = f.adapter['query-set'](f.request, f.io);
+      assert.equal(result.status, status, JSON.stringify(result));
+      assert.equal(result.reason, reason);
+      assert.equal(sets(f).length, 0);
+      assert.equal(f.state.rows.length, 1);
+    };
+    stop((f, row) => setClosed(f, row), 'blocked', 'origin-closed');
+    stop(f => { f.state.cannotEdit = true; }, 'blocked', 'origin-unavailable');
+    stop((f, row, seeded) => {
+      const value = { version: 1, platform: f.platform, role: 'parent', parent: seeded.url, slices: [{ change_name: 'one', issue: f.url(9), depends_on: [] }] };
+      const description = `Earlier\n${f.platform === 'azuredevops' ? identity.encodeHtml(value) : identity.encode(value)}`;
+      if (f.platform === 'azuredevops') row.fields['System.Description'] = description; else row.description = description;
+      f.request.origin_baseline = f.adapter['read-update']({ reference: seeded.url }, f.io).baseline;
+    }, 'blocked', 'origin-already-published');
+    stop((f, row) => { if (f.platform === 'azuredevops') row.rev++; else row.updated_at = 'v2'; }, 'needs_input', 'stale-baseline');
+    stop((f, row, seeded) => { f.request.origin = f.platform === 'azuredevops' ? 'https://gitlab.example/group/repo/-/issues/1' : 'https://github.com/owner/repo/issues/1'; }, 'blocked', 'origin-destination-mismatch');
+  });
+  test(`${platform}: an interrupted origin publication leaves the origin text and resumes with the same parent`, t => {
+    const f = fixture(platform), { row, url } = seedOrigin(f);
+    f.state.failRelation = true;
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-origin-')); fs.chmodSync(directory, 0o700);
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const file = path.join(directory, 'receipt.json'), ready = f.adapter['query-set'](f.request, f.io);
+    const result = f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, f.io);
+    assert.equal(result.status, 'partial_failure');
+    assert.equal(text(f, row), 'Old origin text');
+    assert.equal(JSON.parse(fs.readFileSync(file)).items[0].issue.url, url);
+    f.state.failRelation = false;
+    const verified = f.adapter['recover-set']({ receipt: file }, f.io);
+    assert.equal(f.adapter['continue-set']({ receipt: file, confirmation: verified.continuation }, f.io).status, 'complete');
+    assert.equal(f.state.rows.length, 3);
+    assert.equal(identity.decode(text(f, row)).parent, url);
+  });
+}
+
+for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: an origin that is a published child takes a set and keeps its earlier correspondence`, t => {
+    const f = fixture(platform), first = publish(t, f);
+    assert.equal(first.result.status, 'complete');
+    const url = f.url(2), parent = f.url(1);
+    const row = f.state.rows[1];
+    const request = { ...f.request, blocks: block('sub-one'), origin: url, origin_baseline: f.adapter['read-update']({ reference: url }, f.io).baseline, description: 'Agreed sub objective' };
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-origin-')); fs.chmodSync(directory, 0o700);
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const ready = f.adapter['query-set'](request, f.io);
+    assert.equal(ready.status, 'ready', JSON.stringify(ready));
+    const result = f.adapter['publish-set']({ ...request, receipt: path.join(directory, 'receipt.json'), confirmation: ready.confirmation }, f.io);
+    assert.equal(result.status, 'complete', JSON.stringify(result));
+    assert.equal(f.state.rows.length, 4);
+    const marker = identity.decode(text(f, row));
+    assert.equal(marker.role, 'parent');
+    assert.equal(marker.parent, url);
+    assert.equal(marker.child_of.change_name, 'blocker');
+    assert.equal(marker.child_of.parent, parent);
+    assert.ok(text(f, row).includes(`Parent: ${parent}`));
+    // The earlier set still resolves the origin as its child, and the origin imports with both neighbours.
+    const found = f.adapter['lookup-slice']({ ...f.request, change_name: 'blocker' }, f.io);
+    assert.equal(found.issue, url); assert.equal(found.parent, parent);
+    assert.equal(f.adapter['lookup-slice']({ ...f.request, change_name: 'sub-one' }, f.io).issue, f.url(4));
+    const imported = f.source.readSet(f.source.resolve(url, f.io), f.io);
+    assert.equal(imported.status, 'complete', imported.message);
+    assert.deepEqual(imported.sources.map(source => source.role), ['selected', 'parent-context', 'child']);
+    assert.equal(imported.item.parent, parent);
+  });
+}

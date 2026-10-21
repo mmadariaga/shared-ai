@@ -105,7 +105,8 @@ function readSet(reference, io) {
       } while (true);
       const correspondence = identity.decode(result.item.description);
       if (correspondence && (correspondence.role === 'parent' ? correspondence.parent !== ref.url : correspondence.slices.find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw fault('incomplete-response', 'Slice correspondence does not identify its containing issue');
-      let parent = correspondence?.role === 'child' ? correspondence.parent : null;
+      const upper = identity.upper(correspondence);
+      let parent = upper ? upper.parent : null;
       let children = correspondence?.role === 'parent' ? correspondence.slices.map(slice => slice.issue) : [];
       if (native) {
         const issue = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url}}}}', { owner, name, number: ref.number }).repository?.issue;
@@ -115,7 +116,7 @@ function readSet(reference, io) {
         parent = nativeParent || parent;
         children = [...new Set([...children, ...connection(io, ref, 'subIssues')])];
       }
-      const dependencies = correspondence?.role === 'child' ? correspondence.slices.find(slice => slice.change_name === correspondence.change_name).depends_on.map(name => correspondence.slices.find(slice => slice.change_name === name).issue) : [];
+      const dependencies = upper ? upper.slices.find(slice => slice.change_name === upper.change_name).depends_on.map(name => upper.slices.find(slice => slice.change_name === name).issue) : [];
       if (fields.some(field => field.name === 'blockedBy')) dependencies.push(...connection(io, ref, 'blockedBy'));
       return { ...result, item: { ...result.item, assignees, parent, children, dependencies: [...new Set(dependencies)], correspondence } };
     };

@@ -112,7 +112,9 @@ const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) =>
   try {
   const row = issue(ref.target, ref.number, io);
   if (!Array.isArray(row.assignees) || row.assignees.some(actor => !Number.isSafeInteger(actor.id) || actor.id < 1)) throw fault('Incomplete GitLab assignees');
-  const correspondence = require('./backlog-slice-identity').decode(result.item.description);
+  const identity = require('./backlog-slice-identity'), written = identity.decode(result.item.description);
+  // Native blockers belong to the set the issue is a child of.
+  const correspondence = identity.upper(written) ?? written;
   let blockers, limitation;
   try { blockers = dependencies(ref.target, ref.number, io); }
   catch (error) {
