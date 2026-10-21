@@ -73,3 +73,32 @@ Merge-base: `<merge_base>` | Code fingerprint: `<fingerprint>`
 | Blast radius | low/medium/high | <one line with `path:line`> |
 <!-- sai-inherent-risk:end -->
 ```
+
+## Stored block
+
+A fix round, a `/sai-3-implement` run that marks at least one report finding fixed,
+stores the block in the change's `review.md`: after the report's title lines (the title
+and its `**Reviewed:**` line), before the first triage section, replacing any previous
+block entirely. The parent branch of its computation is the one the `**Reviewed:**` line
+names, so the ratings describe the diff that was reviewed. A review that runs again
+regenerates the report with no block, which matches the tree before the fixes.
+
+`risk-signals.js` checks a stored block against the current code:
+
+```
+node <tool-path> validate --parent <branch> --file <review.md> [--cwd <project-root>]
+```
+
+It prints `status: ok` with a `state`, and with the `block` text when the state is
+`fresh`:
+
+- `fresh`: the stored merge-base and code fingerprint equal the ones computed now for
+  `<branch>`, and no stored level is below its floor computed now.
+- `stale`: the merge-base or the code fingerprint no longer matches, as after later
+  commits, a rebase, a merge of the parent, or a different `<branch>`.
+- `absent`: the file or the block is missing, or the block is invalid: a missing or
+  repeated marker, a missing merge-base, fingerprint, or rating row, a level outside
+  the scale, or a level below its floor.
+
+Only a `fresh` block is published as stored. For `stale` and `absent`, compute the
+ratings as described above.

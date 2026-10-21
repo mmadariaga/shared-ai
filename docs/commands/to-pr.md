@@ -44,8 +44,13 @@ The description carries an **Inherent Risk** block: four independent ratings
 `high`, with a one-line justification citing `path:line`. They measure how risky the
 change is by its nature, as a signal for the human reviewer; they change no review
 depth and start no audit, and fixing findings or hardening code lowers no level. The
-skill computes them on every run from the committed diff against the target, with or
-without an OpenSpec change, following `sai/policies/inherent-risk.md`. The deterministic
+skill publishes the block that a [`/sai-3-implement`](sai-3-implement.md) fix round stored
+in the change's `review.md` as it is, without computing anything, while its merge-base and
+code fingerprint still match the pull request's base and the committed code. In every other
+case (no block, a malformed block, a level below the deterministic floor, later commits, a
+rebase, a merge of the parent, a pull request that targets another branch than the review
+used, or no `review.md` at all) it computes the ratings from the committed diff against the
+target, with or without an OpenSpec change, following `sai/policies/inherent-risk.md`. The deterministic
 script `sai/tools/risk-signals.js` sets a floor for security, reversibility, and blast
 radius from path, extension, and diff-size signals (and CodeGraph dependents when an
 index exists); the published level is never below its floor, and without an index the

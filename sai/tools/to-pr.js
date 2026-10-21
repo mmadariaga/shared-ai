@@ -8,6 +8,7 @@ const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules } = require('./lint');
 const projectSettings = require('./project-settings');
+const riskSignals = require('./risk-signals');
 const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, options = {}) {
@@ -70,6 +71,15 @@ function ref(value) {
   if (typeof value !== 'string' || !value || value.startsWith('-') || /[\s~^:?*\[\\]/.test(value) || value.includes('..') || value.includes('@{')) throw new Error('Invalid branch or remote');
   return value;
 }
+// The ratings block stored in the change's review.md, checked against the merge-base of HEAD with the request's
+// base: `fresh` carries the block to publish as is; `stale` and `absent` (including a block that cannot be
+// checked) leave the ratings to be computed.
+function inherentRisk(review, base, cwd) {
+  try {
+    const { state, block } = riskSignals.validate({ parent: base, text: review }, cwd);
+    return state === 'fresh' ? { state, block } : { state };
+  } catch { return { state: 'absent' }; }
+}
 function collect(request, io) {
   const git = args => io.run('git', args).trim();
   const source = ref(git(['symbolic-ref', '--quiet', '--short', 'HEAD']));
@@ -87,7 +97,7 @@ function collect(request, io) {
       try { context[name] = fs.readFileSync(file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
   }
-  return { ...state, base, commits: git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: git(['diff', `${base}...HEAD`]), diffStats: git(['diff', '--stat', `${base}...HEAD`]), context };
+  return { ...state, base, inherent_risk: inherentRisk(context.review, base, io.cwd || process.cwd()), commits: git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: git(['diff', `${base}...HEAD`]), diffStats: git(['diff', '--stat', `${base}...HEAD`]), context };
 }
 function destination(request, io) {
   const provider = adapter(request.provider, io);

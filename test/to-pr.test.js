@@ -132,6 +132,47 @@ for (const provider of ['github', 'gitlab']) {
   });
 }
 
+test('collect reports the stored inherent-risk block as fresh, stale, or absent against the base', t => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'to-pr-risk-'));
+  t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  git('init', '-b', 'main');
+  git('config', 'user.name', 'Test');
+  git('config', 'user.email', 'test@example.invalid');
+  fs.writeFileSync(path.join(cwd, 'keep.txt'), 'keep\n');
+  git('add', '.');
+  git('commit', '-m', 'base');
+  git('checkout', '-b', 'feature');
+  fs.mkdirSync(path.join(cwd, 'src'));
+  fs.writeFileSync(path.join(cwd, 'src/a.js'), 'a\n');
+  git('add', '.');
+  git('commit', '-m', 'change');
+  const computed = JSON.parse(execFileSync('node', [path.join(__dirname, '../sai/tools/risk-signals.js'), 'compute', '--parent', 'main', '--cwd', cwd], { encoding: 'utf8' }));
+  const stored = ['<!-- sai-inherent-risk:start -->', '## Inherent Risk', '', `Merge-base: \`${computed.merge_base}\` | Code fingerprint: \`${computed.fingerprint}\``, '', '| Rating | Level | Justification |', '|--------|-------|---------------|',
+    ...['Security', 'Reversibility', 'Critical sections', 'Blast radius'].map(name => `| ${name} | low | src/a.js:1 |`), '<!-- sai-inherent-risk:end -->'].join('\n');
+  const review = path.join(cwd, 'openspec/changes/risky/review.md');
+  fs.mkdirSync(path.dirname(review), { recursive: true });
+  const io = { cwd, run: (command, args) => {
+    if (args[0] === 'symbolic-ref') return 'feature\n';
+    if (args[0] === 'remote') return '';
+    if (args[0] === 'status') return '';
+    if (args[0] === 'diff') return 'committed diff';
+    return execFileSync(command, args, { cwd, encoding: 'utf8' });
+  } };
+  const inherent = () => tool.collect({ base: 'main', change: 'risky' }, io).inherent_risk;
+  assert.deepEqual(inherent(), { state: 'absent' });
+  fs.writeFileSync(review, `# Code Review\n\n${stored}\n\nSummary: Critical=0 High=0 Medium=0 Low=0 Questions=0\n`);
+  assert.deepEqual(inherent(), { state: 'fresh', block: stored });
+  assert.deepEqual(tool.collect({ base: 'main' }, io).inherent_risk, { state: 'absent' });
+  fs.writeFileSync(review, '# Code Review\n\n<!-- sai-inherent-risk:start -->\nbroken\n');
+  assert.deepEqual(inherent(), { state: 'absent' });
+  fs.writeFileSync(review, `# Code Review\n\n${stored}\n`);
+  fs.writeFileSync(path.join(cwd, 'src/b.js'), 'b\n');
+  git('add', '.');
+  git('commit', '-m', 'later');
+  assert.deepEqual(inherent(), { state: 'stale' });
+});
+
 test('resolution uses backlog precedence, asks on ambiguity and supports explicit self-hosted GitLab', () => {
   const { io } = fixture('gitlab');
   assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: [] }, registry, io).status, 'needs_input');
