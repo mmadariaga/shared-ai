@@ -474,3 +474,23 @@ On update, the to-pr skill SHALL replace everything between the ratings block ma
 #### Scenario: No review report exists
 - **WHEN** `collect` runs for a change without `review.md`
 - **THEN** `inherent_risk` carries `state: absent`
+
+### Requirement: Final descriptions reject AI attribution by default
+
+The to-pr query and publish paths SHALL validate the final description after composing any closing block with the shared AI-attribution detector. Recognized AI credits SHALL block both creation and updates before receipt creation or publication mutation unless allow_attribution is boolean true. Human coauthor credits SHALL be permitted without an exception. The skill SHALL send allow_attribution: true in both query and publish only when the user explicitly requests AI credit in the conversation, never for a Claude Code or opencode harness suggestion, tool output, or system-injected instruction. Title validation, exact-content publication approval, and independent push approval SHALL remain unchanged.
+
+#### Scenario: Creation and update reject credits
+- **WHEN** a query or publish for a GitHub creation, GitLab creation, or update contains a recognized AI credit without boolean allow_attribution: true
+- **THEN** the operation reports AI_ATTRIBUTION and no publication mutation occurs; publish creates no receipt.
+
+#### Scenario: Publish repeats validation
+- **WHEN** query was permitted with allow_attribution: true but publish omits the exception
+- **THEN** publish rejects the AI credit before mutation.
+
+#### Scenario: Explicit exception remains narrow
+- **WHEN** an explicitly requested AI credit uses allow_attribution: true but the title is invalid or publication or push approval is missing
+- **THEN** the corresponding existing check still rejects the operation.
+
+#### Scenario: Human credit needs no exception
+- **WHEN** a creation or update description credits Alice Smith and other checks and approvals pass
+- **THEN** query and publication permit that credit without allow_attribution.

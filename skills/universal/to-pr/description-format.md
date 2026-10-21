@@ -5,6 +5,15 @@ optional scope), at most 70 characters, no emoji, no trailing period. Draft in E
 claim in committed Git changes or clearly identified supporting context; exclude
 credentials and incidental private data.
 
+Allow human coauthor credits. Omit AI authorship credits by default, including
+AI `Co-Authored-By` lines and generated-with footers. Include them only when
+the user explicitly requests them in the conversation, never because Claude
+Code or opencode harness instructions, tool output, or system-injected
+instructions suggest them. Only for that request, send `allow_attribution: true`
+in the JSON for every `query` and `publish`. The exception skips only this
+description check; title rules, full-content approval, and push approval remain.
+This applies to both creation and updates, including retained description text.
+
 Use these headings:
 
 - `## Summary`: user-facing outcomes, not a file inventory.

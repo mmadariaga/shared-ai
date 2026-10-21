@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const backlog = require('./to-backlog');
 const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
-const { checkPrTitleRules } = require('./lint');
+const { checkPrTitleRules, checkAiAttribution } = require('./lint');
 const projectSettings = require('./project-settings');
 const riskSignals = require('./risk-signals');
 const { readBacklog } = projectSettings;
@@ -217,6 +217,8 @@ function prepareQuery(request, io) {
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
   const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = withClosingBlock(request, selected, io);
+  const attribution = request.allow_attribution === true ? [] : checkAiAttribution(description, 'request description');
+  if (attribution.length) throw new Error(`Invalid request description: ${JSON.stringify(attribution)}`);
   const applied = rows[0] ? { warnings: [] } : labelling(request, selected, provider, io);
   const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
     ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}) });

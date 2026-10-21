@@ -21,6 +21,8 @@ Nothing is required beyond staged changes. Optional flags in `$ARGUMENTS`:
 - `--type {type}` — force the type (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`/`perf`/`style`/`build`/`ci`/`revert`);
 - `--no-body` — subject only;
 - `--amend` — a message for `git commit --amend`.
+- `--allow-attribution` — an AI credit only when explicitly requested by the user
+  in the conversation, per `commit-rules.md` § Attribution; human credits need no flag.
 
 ---
 
@@ -100,6 +102,6 @@ On the forwarded answer:
 
 - `yes` or `Allow on this session` → return `completed` whose summary holds the
   exact authorized message, whether it is an amend, and the sensitive-file list
-  confirmed at Step 1 (if any).
+   confirmed at Step 1 (if any), and whether the user explicitly requested AI attribution.
 - `no` → return `completed` stating that the message is ready to copy from
   above and nothing was committed.

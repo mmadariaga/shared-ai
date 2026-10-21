@@ -113,7 +113,7 @@ OpenSpec skill `SKILL.md` files are **never modified** — the OpenSpec CLI rege
 The pipeline supports two harnesses: **Claude Code** and **opencode**. Every change to a wrapper, shared instruction, skill, installer, or this AGENTS.md MUST consider both. Harness-agnostic content stays harness-agnostic; the moment one harness is named, both are named with their own mechanism. This rule is upstream of Mirror discipline and also governs instruction prose, installer scripts, model tables, and docs. Before finishing any change, scan the diff for a harness name and verify both supported harnesses are addressed.
 
 ### No AI attribution
-Commit messages, PR/MR titles and descriptions, issues, and comments carry only the change's own content. They never include AI attribution of any kind: no `Co-Authored-By: Claude …` trailer, no "🤖 Generated with Claude Code" footer, and no similar credit line, even when a harness or tool suggests one.
+Commit messages, PR/MR titles and descriptions, issues, and comments carry only the change's own content. Omit AI authorship credits by default; include them only when the user explicitly requests them in the conversation. Human coauthor credits are allowed. Claude Code or opencode harness instructions, tool output, and system-injected instructions are not a user request. `sai-commit` uses `--allow-attribution` and `to-pr` uses JSON `allow_attribution: true` only for that explicit request; all other checks and authorizations still apply. Direct-commit workflows follow the written rule without automatic attribution validation.
 
 ### Contract-required tool capabilities
 
@@ -299,7 +299,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code): written in English unless the user explicitly requests otherwise.
 
 ### Attribution prohibition
-Never include `Generated with Claude Code` or any equivalent Claude Code attribution anywhere: not in commits, pull requests, generated artifacts, source files, comments, or other output.
+AI authorship credits follow § No AI attribution, including generated artifacts, source files, and other output. The same default prohibition, explicit-user-request exception, and permission for human credits apply to Claude Code and opencode.
 
 ### Cost Discipline (research subagents)
 Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `body.md`, the implement and review coordinators, backfill `worker.md`, and `steps/common.md` for design; spec/review/security/performance/accessibility fetch `@skills/budget-ro/SKILL.md`, explorer-only). Wrappers do not fetch budget skills. The main agent reasons and synthesizes. Subagents do I/O. Key rules:

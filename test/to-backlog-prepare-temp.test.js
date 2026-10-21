@@ -124,7 +124,10 @@ test('absent-root CLI failure names the prerequisite and returns no usable path 
   assert.match(error.error, /Required harness temporary root \/tmp\/opencode is missing/);
   assert.match(error.error, /before retrying/);
   assert.doesNotMatch(error.error, /Forbidden fallback/);
-  const instructions = fs.readFileSync(path.join(repoRoot, 'skills/universal/to-backlog/prepare-temp.md'), 'utf8');
+  // Wrapped Markdown prose: normalize whitespace before matching sentences.
+  const instructions = fs
+    .readFileSync(path.join(repoRoot, 'skills/universal/to-backlog/prepare-temp.md'), 'utf8')
+    .replace(/\s+/g, ' ');
   assert.match(instructions, /If the root is missing, stop publication/);
   assert.match(instructions, /do not create the shared root or choose another location as a fallback/);
 });

@@ -10,6 +10,54 @@ const { spawnSync } = require('child_process');
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'lint.js');
 
+test('model-family and version trailer credits are detected independently of their email', () => {
+  const { checkAiAttribution, checkCommitRules } = require('../sai/tools/lint');
+  for (const identity of ['Claude Sonnet 4.6', 'Claude Opus 4.6', 'Claude Haiku 4.5',
+    'Claude Sonnet', 'Claude 3.5', 'Gemini 2.5', 'DeepSeek V3', 'GPT-4.1']) {
+    for (const suffix of [' <bot@example.com>', '']) {
+      const message = `feat: add feature\n\nCo-Authored-By: ${identity}${suffix}`;
+      const violations = checkAiAttribution(message);
+      assert.equal(violations.length, 1, message);
+      assert.equal(violations[0].line, 3);
+      assert.equal(violations[0].problem, 'AI_ATTRIBUTION');
+      assert.ok(checkCommitRules(message).some(v => v.problem === 'AI_ATTRIBUTION'));
+      assert.ok(!checkCommitRules(message, { allowAttribution: true }).some(v => v.problem === 'AI_ATTRIBUTION'));
+    }
+  }
+  for (const person of ['Alice Smith', 'Claude Martin', 'Claude Opus Martin']) {
+    assert.deepEqual(checkAiAttribution(`Co-Authored-By: ${person} <person@example.com>`), []);
+  }
+});
+
+test('AI attribution detector reports credit lines without banning human credits or AI topics', () => {
+  const { checkAiAttribution, checkCommitRules } = require('../sai/tools/lint');
+  for (const credit of [
+    'Generated with Claude Code', '🤖 Generated with [Claude Code](https://example.com)',
+    'Written by ChatGPT', 'AI-generated content', 'Assisted by GitHub Copilot',
+    'Created by an AI assistant', 'Generated using DeepSeek',
+    'Co-Authored-By: Claude <noreply@anthropic.com>',
+    'Co-Authored-By: OpenAI Codex <bot@example.com>',
+    'Co-Authored-By: copilot[bot] <123@users.noreply.github.com>',
+  ]) {
+    const message = `feat: add feature\n\n${credit}`;
+    const violations = checkAiAttribution(message);
+    assert.equal(violations.length, 1, credit);
+    assert.equal(violations[0].line, 3);
+    assert.equal(violations[0].problem, 'AI_ATTRIBUTION');
+    assert.ok(checkCommitRules(message).some(v => v.problem === 'AI_ATTRIBUTION'), credit);
+    assert.ok(!checkCommitRules(message, { allowAttribution: true }).some(v => v.problem === 'AI_ATTRIBUTION'));
+  }
+  for (const text of ['Co-Authored-By: Alice Smith <alice@example.com>',
+    'Co-Authored-By: Claude Martin <claude@example.com>',
+    'feat: reject AI attribution', 'Add support for Claude Code', 'Fix AI-generated input handling']) {
+    assert.deepEqual(checkAiAttribution(text), [], text);
+  }
+  const invalid = checkCommitRules('invalid subject\n\nGenerated with Claude Code', { allowAttribution: true });
+  assert.ok(invalid.some(v => v.problem === 'INVALID_FORMAT'));
+  assert.ok(!invalid.some(v => v.problem === 'AI_ATTRIBUTION'));
+  assert.ok(checkCommitRules('feat: add feature\n\nGenerated with Claude Code', { allowAttribution: 'true' }).some(v => v.problem === 'AI_ATTRIBUTION'));
+});
+
 function tool(args, cwd) {
   const result = spawnSync(process.execPath, [TOOL, ...args, '--cwd', cwd], {
     cwd,

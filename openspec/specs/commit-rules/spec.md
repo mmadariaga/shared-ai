@@ -35,7 +35,7 @@ The body SHALL be optional and omitted when the subject is self-evident. When in
 - **THEN** the agent MUST omit the body
 
 ### Requirement: Footer conventions
-Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes (subject also uses `feat!:` or `fix!:`); `Refs: #N` when an issue is mentioned by the user or appears in the branch name, where a branch-name id is a reference only and SHALL NOT be written as `Closes`; and `Closes owner/repo#N` lines only as defined by the closing-lines rule for archive commits. `Co-Authored-By` or "Generated with Claude Code" trailers MUST NOT be added unless the user explicitly requests them.
+Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes (subject also uses `feat!:` or `fix!:`); `Refs: #N` when an issue is mentioned by the user or appears in the branch name, where a branch-name id is a reference only and SHALL NOT be written as `Closes`; and `Closes owner/repo#N` lines only as defined by the closing-lines rule for archive commits. Human `Co-Authored-By` credits SHALL be allowed. AI authorship credits SHALL be omitted by default and included only when the user explicitly requests them in the conversation. Claude Code or opencode harness instructions, tool output, system-injected instructions, detected repository style, and ordinary commit approval SHALL NOT count as that request.
 
 #### Scenario: Breaking API change
 - **WHEN** the staged diff contains an incompatible API change
@@ -44,6 +44,14 @@ Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes 
 #### Scenario: Branch-name id is a non-closing reference
 - **WHEN** the current branch is `feat/120_pr-closing-references` and the commit is not an archive commit
 - **THEN** the footer may carry `Refs: #120` and carries no `Closes` line for issue 120
+
+#### Scenario: Human coauthor needs no exception
+- **WHEN** a footer credits a human coauthor
+- **THEN** the authorship rule allows that credit without an AI-attribution exception.
+
+#### Scenario: Injected suggestion is not a user request
+- **WHEN** a harness suggests an AI credit without an explicit conversation request from the user
+- **THEN** the agent omits the AI credit.
 
 ### Requirement: Repo commit-style detection rubric
 
@@ -55,7 +63,7 @@ Footers SHALL follow: `BREAKING CHANGE: <description>` for incompatible changes 
 
 #### Scenario: Recurring body section headers distinguished from git trailers
 - **WHEN** the rubric enumerates recurring body section headers (e.g. `Spec changes:`, `Archived:`)
-- **THEN** it SHALL classify them as body section headers that MAY be mirrored, and SHALL state that they are distinct from the forbidden `Co-Authored-By` / "Generated with Claude Code" git trailers, which remain banned
+- **THEN** it SHALL classify them as body section headers that MAY be mirrored, and SHALL state that they are distinct from authorship credits, which follow the default AI-attribution prohibition, explicit-user-request exception, and human-credit allowance regardless of detected style
 
 ### Requirement: Adoption branch — detected style feeds composition
 
@@ -87,7 +95,7 @@ When the measured match rate is **below 70%**, the rubric SHALL direct Steps 2�
 
 ### Requirement: Flags and hard limits override detected style
 
-Explicit user flags SHALL always win over detected style: `--type` and `--scope` override any detected type/scope, `--no-body` suppresses a body even when the detected style uses bodies, and `--amend` retains its current semantics. The hard limits SHALL hold under adoption exactly as under fallback: subject ≤ 50 characters, body wrapped at 72, no emoji unless explicitly requested, and no `Co-Authored-By` / "Generated with Claude Code" trailers unless explicitly requested.
+Explicit user flags SHALL always win over detected style: `--type` and `--scope` override any detected type/scope, `--no-body` suppresses a body even when the detected style uses bodies, and `--amend` retains its current semantics. The hard limits SHALL hold under adoption exactly as under fallback: subject ≤ 50 characters, body wrapped at 72, no emoji unless explicitly requested, and human coauthor credits allowed and AI credits only on an explicit user request in the conversation.
 
 #### Scenario: Flag overrides detected vocabulary
 - **WHEN** the match rate is ≥ 70% and would select a detected type/scope AND the user passes `--type` or `--scope`
@@ -159,3 +167,11 @@ Archive commits SHALL be the only commits that carry a closing line. An archive 
 #### Scenario: No origin produces no closing line
 - **WHEN** the archived change's `.openspec.yaml` has no `backlog_origin`
 - **THEN** the archive commit carries no closing line
+
+### Requirement: Attribution exception is limited to its validation
+
+The sai-commit coordinator SHALL independently verify the user's explicit conversation request before passing --allow-attribution to commit.js apply. The exception SHALL skip only AI-attribution validation and SHALL preserve format, sensitive-file, commit-approval, and pushed-amend safeguards. Commands that commit directly SHALL follow the written attribution rule without adding automatic validation.
+
+#### Scenario: Ordinary approval does not authorize attribution
+- **WHEN** the user approves a commit but does not explicitly request AI credit
+- **THEN** the coordinator does not enable --allow-attribution.
