@@ -7,7 +7,7 @@ Support a GitHub-first lifecycle for agreed crystallized slices through faithful
 
 ### Requirement: GitHub slice publication preserves agreed work
 
-GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. Each child's original block SHALL remain intact before appended relationship references, with lossless escaping when the provider stores HTML. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, applicable Project or work-item type, and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests and origin updates SHALL retain their existing paths.
+GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. Each child's original block SHALL remain intact before appended relationship references, with lossless escaping when the provider stores HTML. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, applicable Project or work-item type, and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests and non-sliced origin updates SHALL retain their existing paths. A crystallized slice set with an originating issue SHALL publish under that issue as its parent instead of creating a new parent.
 
 #### Scenario: One agreed slice
 
@@ -21,7 +21,7 @@ GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set
 
 #### Scenario: Origin update
 
-- **WHEN** the request updates an originating issue
+- **WHEN** the request updates an originating issue without a crystallized slice set
 - **THEN** the existing origin-update path remains authoritative without replacement-parent creation.
 
 ### Requirement: Relationship operations are separately verified and truthfully represented
@@ -413,3 +413,70 @@ On GitLab and Azure DevOps, `verify-assignment` SHALL report `verified: true` on
 
 - **WHEN** an approved GitLab standalone leaf is assigned to the authenticated user
 - **THEN** `assign` verifies with `expected_parent: null` and reports `verified: true` with `parent: null`.
+
+### Requirement: Slice-set publication adopts the originating issue as the parent
+
+On GitHub, GitLab and Azure DevOps, set publication with an originating issue SHALL take the origin's canonical URL as an explicit `origin` request field, normalized by `backlog-slice-identity.normalize`, together with the `origin_baseline` read by the update read, and SHALL derive the target provider and repository or project from the origin. The receipt SHALL record the origin as item 0 before any creation, and publication and resumption SHALL never create item 0 or a replacement parent. Each child SHALL be linked to the origin with the mechanism its provider already uses for a new parent: a sub-issue link on GitHub, a `Hierarchy-Reverse` relation on Azure DevOps, and written `Parent:` references on GitLab. The proposal and its single confirmation digest SHALL cover the origin, its current baseline, its existing children, the children to create, and the origin's proposed new description. The origin's description SHALL be rewritten with the agreed whole-objective content, the `Child:` lines and a `sai-backlog-slices@1` marker with role `parent` as the last publication step, after every child exists and is linked; its title and state SHALL remain unchanged, and it SHALL never be closed, reopened or marked superseded. Existing children without a SAI marker SHALL stay linked and unchanged and SHALL be listed in the proposal. The completion report SHALL name the origin separately from created issues. A provider binding without origin support SHALL answer `blocked` with reason `origin-unsupported`.
+
+#### Scenario: Origin becomes the set parent
+
+- **WHEN** a crystallized slice set with an originating issue receives exact publication approval
+- **THEN** the children are created and linked to the origin, the origin's description is rewritten last with the agreed objective, `Child:` lines and parent marker, and no new parent is created.
+
+#### Scenario: Existing native children stay linked
+
+- **WHEN** the originating issue already has children without a SAI marker
+- **THEN** the proposal lists them, they stay linked and unchanged, and the new slices are added beside them.
+
+#### Scenario: Interrupted publication keeps the origin text
+
+- **WHEN** publication fails after some children were created and before the origin is rewritten
+- **THEN** the origin keeps its original description, and resumption uses the same origin as item 0 without creating a replacement parent.
+
+#### Scenario: Set without an origin
+
+- **WHEN** a crystallized slice set has no originating issue
+- **THEN** publication creates a new parent as before.
+
+### Requirement: An originating issue that cannot take a set stops publication before any write
+
+Before any write, set publication with an originating issue SHALL answer `blocked` with a `reason` when the origin already carries a `sai-backlog-slices@1` parent marker (`origin-already-published`, reporting the children already linked), is closed (`origin-closed`), cannot be read or is not editable by the authenticated user (`origin-unavailable`), or belongs to another provider or destination than the configured one (`origin-destination-mismatch`). Editability SHALL be verified on every provider by a read-only check before any write: the update read's `viewerCanUpdate` and archived-repository checks on GitHub, the work item's `userPermissions.updateWorkItem` query on GitLab, and a validate-only revision-test update that saves nothing on Azure DevOps; a check whose result cannot be verified SHALL count as not editable. When the origin's content differs from the supplied `origin_baseline`, or no baseline is supplied, publication SHALL answer `needs_input` (`stale-baseline` or `origin-baseline-required`) before any write.
+
+#### Scenario: Origin already carries a published set
+
+- **WHEN** the originating issue carries a `sai-backlog-slices@1` parent marker from an earlier publication
+- **THEN** publication stops before any write, reports the children already linked, and writes no second marker or set of children.
+
+#### Scenario: Closed origin
+
+- **WHEN** the originating issue is closed
+- **THEN** publication stops before any write, reports the state, and does not reopen the issue.
+
+#### Scenario: Origin not editable
+
+- **WHEN** the authenticated user cannot edit the originating issue on GitHub, GitLab or Azure DevOps, its GitHub repository is archived, or its edit permission cannot be verified
+- **THEN** publication stops before any write with reason `origin-unavailable`.
+
+#### Scenario: Configured destination differs from the origin
+
+- **WHEN** the configured target differs from the originating issue's provider, repository or project
+- **THEN** publication stops before any write with reason `origin-destination-mismatch`.
+
+#### Scenario: Origin changed since it was read
+
+- **WHEN** the originating issue's content no longer matches the supplied baseline
+- **THEN** publication answers `stale-baseline` before any write and requires a new proposal and approval.
+
+### Requirement: An adopted origin that is itself a published child keeps its earlier correspondence
+
+When the originating issue carries a `sai-backlog-slices@1` marker with role `child`, set publication SHALL accept it as the new set's parent and SHALL keep its own parent link unchanged, so the new slices become grandchildren of that parent. The origin's new parent marker SHALL carry the earlier child correspondence as `child_of`, and its rewritten description SHALL keep the earlier `Parent:` and `Depends on:` lines. Correspondence validation SHALL accept `child_of` only on a parent marker, only as a child correspondence of the same platform that identifies the same issue and carries no `child_of` of its own. Import, recovery and slice lookup SHALL read an issue's child-role correspondence from its own child marker or from the `child_of` of its parent marker.
+
+#### Scenario: Origin is a published child
+
+- **WHEN** a slice set is published under an originating issue that is itself a published slice of another set
+- **THEN** the origin keeps its parent link and earlier correspondence in `child_of`, and the new slices become its children.
+
+#### Scenario: Earlier child identity stays recoverable
+
+- **WHEN** a later import or slice lookup reads an origin whose parent marker carries `child_of`
+- **THEN** it resolves the issue's earlier parent, dependencies and change name from that `child_of` correspondence.

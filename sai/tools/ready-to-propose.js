@@ -444,8 +444,11 @@ function attachBacklogOrigins(text, correspondence) {
   const blocks = validation.blocks.map((block, index) => {
     const slice = association.slices.find(slice => slice.change_name === block.name);
     if (!slice || JSON.stringify(slice.depends_on.slice().sort()) !== JSON.stringify(block.dependencies.slice().sort())) throw new Error('Publication correspondence differs from the agreed slice dependencies');
-    if (block.backlog_origin && block.backlog_origin !== slice.issue) throw new Error('Existing selected issue origin conflicts with publication; obtain a user decision');
-    const updated = block.backlog_origin ? originals[index] : originals[index].replace(/^\*\*What\*\*:/m, `**Backlog origin**: ${slice.issue}\n**What**:`);
+    // A block crystallized from the adopted origin names it; that issue is now the set parent, so the child takes its place.
+    const adopted = block.backlog_origin === association.parent;
+    if (block.backlog_origin && !adopted && block.backlog_origin !== slice.issue) throw new Error('Existing selected issue origin conflicts with publication; obtain a user decision');
+    const updated = adopted ? originals[index].replace(/^\*\*Backlog origin\*\*:.*$/m, () => `**Backlog origin**: ${slice.issue}`)
+      : block.backlog_origin ? originals[index] : originals[index].replace(/^\*\*What\*\*:/m, `**Backlog origin**: ${slice.issue}\n**What**:`);
     return { name: block.name, text: updated, hash: hashBlock(updated), backlog_origin: slice.issue };
   });
   return { ok: true, order: validation.order, blocks };

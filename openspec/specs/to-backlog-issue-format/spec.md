@@ -63,7 +63,7 @@ Maturity SHALL identify the highest cumulative agreement level supported by the 
 
 ### Requirement: Update preservation and invalidated agreement
 
-Updates SHALL apply the agreed refinement to the current baseline and preserve unaffected description content verbatim, including section structure outside the edit boundary. The format SHALL NOT trigger migration or normalization of historical issues. An unclear edit boundary SHALL require clarification before modification. If a refinement invalidates an earlier agreement, affected content SHALL be revisited and Maturity SHALL be lowered to the highest still-supported level while unaffected content remains unchanged.
+Updates SHALL apply the agreed refinement to the current baseline and preserve unaffected description content verbatim, including section structure outside the edit boundary. The format SHALL NOT trigger migration or normalization of historical issues. An unclear edit boundary SHALL require clarification before modification. If a refinement invalidates an earlier agreement, affected content SHALL be revisited and Maturity SHALL be lowered to the highest still-supported level while unaffected content remains unchanged. Slice-set publication under an originating issue is not an update: its approved whole-objective content, `Child:` lines and parent marker SHALL replace the origin's description only after the user confirms the proposal that shows the origin's current and new description.
 
 #### Scenario: Limited refinement
 
@@ -74,6 +74,11 @@ Updates SHALL apply the agreed refinement to the current baseline and preserve u
 
 - **WHEN** a refinement invalidates agreement needed for the recorded maturity level
 - **THEN** affected content is revised and Maturity is recomputed from the remaining supported cumulative agreement.
+
+#### Scenario: Origin adopted as a set parent
+
+- **WHEN** a confirmed slice-set publication adopts an originating issue as its parent
+- **THEN** the origin's description is replaced by the confirmed whole-objective content with its `Child:` lines and parent marker, and its title is kept.
 
 ### Requirement: Stable identifiers and retained counters
 

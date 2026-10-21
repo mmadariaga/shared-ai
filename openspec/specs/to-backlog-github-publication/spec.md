@@ -26,7 +26,7 @@ For creation, the adapter SHALL check gh availability and github.com authenticat
 
 ### Requirement: Faithful confirmed issue publication
 
-Ordinary creation publication SHALL re-query the proposal and reject a missing or mismatched confirmation token before attempting issue creation. The creation token SHALL bind content, repository, Project, and visibility. The adapter SHALL invoke gh with separate arguments, no shell interpretation, and structured JSON input; it SHALL preserve the approved title and description exactly, create one repository issue, and then add it to the verified Project. Explicitly crystallized sliced-set creation SHALL instead publish the approved whole-objective parent and one child per agreed slice through the separate set-publication operations, with exact confirmation binding the parent, slices, destination and relationship recipe. Set publication SHALL preserve agreed source content and append only reviewed relationship references and structured correspondence. Creation SHALL NOT automatically add labels, assignees, priority, estimates, sprints, create Projects, install tools, or change authentication. Separately authorized implementation-start assignment SHALL remain a distinct operation rather than a creation or title-and-description update side effect. Origin-issue updates SHALL use the separate restricted update operation instead of creation or insertion and SHALL NOT create replacement parents or additional children.
+Ordinary creation publication SHALL re-query the proposal and reject a missing or mismatched confirmation token before attempting issue creation. The creation token SHALL bind content, repository, Project, and visibility. The adapter SHALL invoke gh with separate arguments, no shell interpretation, and structured JSON input; it SHALL preserve the approved title and description exactly, create one repository issue, and then add it to the verified Project. Explicitly crystallized sliced-set creation SHALL instead publish the approved whole-objective parent and one child per agreed slice through the separate set-publication operations, with exact confirmation binding the parent, slices, destination and relationship recipe. An explicitly crystallized sliced set with an originating issue SHALL publish through the same set operations with that origin as the parent: it SHALL create and link only the agreed children, take its destination from the origin's repository, keep the origin's own Project membership, and rewrite the origin's description last without creating a replacement parent. Set publication SHALL preserve agreed source content and append only reviewed relationship references and structured correspondence. Creation SHALL NOT automatically add labels, assignees, priority, estimates, sprints, create Projects, install tools, or change authentication. Separately authorized implementation-start assignment SHALL remain a distinct operation rather than a creation or title-and-description update side effect. Origin-issue updates without a crystallized slice set SHALL use the separate restricted update operation instead of creation or insertion and SHALL NOT create replacement parents or additional children.
 
 #### Scenario: Content or visibility changes before publication
 
@@ -45,8 +45,13 @@ Ordinary creation publication SHALL re-query the proposal and reject a missing o
 
 #### Scenario: Existing origin update
 
-- **WHEN** the workflow refines a previously published originating issue
+- **WHEN** the workflow refines a previously published originating issue without a crystallized slice set
 - **THEN** it retains restricted update mode without creating a replacement parent or additional children.
+
+#### Scenario: Sliced set under an originating issue
+
+- **WHEN** an approved GitHub request carries an agreed crystallized slice set and an originating issue
+- **THEN** the set operations create one sub-issue of the origin per slice and rewrite the origin's description last, without creating a replacement parent.
 
 ### Requirement: Private bounded publication receipts
 

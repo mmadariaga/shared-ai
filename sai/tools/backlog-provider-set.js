@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const blocks = require('./ready-to-propose');
 const identity = require('./backlog-slice-identity');
 const { digest, receiptPath, save } = require('./to-backlog-github');
+const origin = require('./backlog-set-origin');
 
 // The workflow is shared; adapters own destination, content and remote mechanics.
 function bind(provider, mechanics) {
@@ -13,7 +14,13 @@ function bind(provider, mechanics) {
   function query(request, io) {
     const validation = blocks.validateDependencySet(request.blocks);
     if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
-    const ready = mechanics.query(request, io);
+    let ready = request.origin ? undefined : mechanics.query(request, io), existing;
+    if (request.origin) {
+      if (!mechanics.origin) return { status: 'blocked', reason: 'origin-unsupported', message: 'Provider cannot publish a set under an originating issue' };
+      const prepared = origin.prepare(provider, request, io, mechanics);
+      if (prepared.status !== 'ready') return prepared;
+      ({ ready, origin: existing } = prepared);
+    }
     if (ready.status !== 'ready') return ready;
     const texts = blocks.extractBlockTexts(request.blocks);
     const slices = validation.order.map(name => {
@@ -21,24 +28,26 @@ function bind(provider, mechanics) {
       return { change_name: name, title: name, description: mechanics.renderBlock(texts[index]), depends_on: validation.blocks[index].dependencies };
     });
     const representation = mechanics.representation;
-    const proposal = { ...ready.proposal, operation: 'set', slices, ...representation,
-      relations: 'Separate verified creations, written correspondence and supported native relations; assignment is unchanged' };
+    const proposal = { ...ready.proposal, operation: 'set', ...(existing ? { origin: existing } : {}), slices, ...representation,
+      relations: existing ? origin.RELATIONS : 'Separate verified creations, written correspondence and supported native relations; assignment is unchanged' };
     return { status: 'ready', proposal, confirmation: digest(proposal) };
   }
   function body(receipt, index) {
     const slices = receipt.proposal.slices.map((slice, i) => ({ change_name: slice.change_name, issue: receipt.items[i + 1].issue.url, depends_on: slice.depends_on }));
+    const upper = index ? null : receipt.proposal.origin?.child_of;
     const value = { version: 1, platform: provider, role: index ? 'child' : 'parent', parent: receipt.items[0].issue.url, slices,
       hierarchy: receipt.proposal.hierarchy, dependency_representation: receipt.proposal.dependencies,
-      ...(index ? { change_name: slices[index - 1].change_name } : {}) };
+      ...(index ? { change_name: slices[index - 1].change_name } : {}), ...(upper ? { child_of: upper } : {}) };
     const links = index ? [`Parent: ${value.parent}`, ...slices[index - 1].depends_on.map(name => `Depends on: ${slices.find(slice => slice.change_name === name).issue}`)]
-      : slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`);
+      : [...slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`), ...(upper ? origin.upperLinks(upper) : [])];
     return mechanics.append(receipt.items[index].description, links, value);
   }
   function report(receipt, message) {
     const pending = receipt.items.flatMap((item, index) => [!item.issue && `create:${index}`, !item.references && `references:${index}`,
       index && receipt.proposal.hierarchy === 'native' && !item.hierarchy && `hierarchy:${index}`,
       ...(index && receipt.proposal.dependencies === 'native' ? receipt.proposal.slices[index - 1].depends_on.filter(name => !item.dependencies?.includes(name)).map(name => `dependency:${index}:${name}`) : [])].filter(Boolean));
-    return { status: pending.length || message ? 'partial_failure' : 'complete', created: receipt.items.filter(item => item.issue).map(item => item.issue), pending,
+    const adopted = receipt.items.find(item => item.origin);
+    return { status: pending.length || message ? 'partial_failure' : 'complete', created: receipt.items.filter(item => item.issue && !item.origin).map(item => item.issue), ...(adopted ? { origin: adopted.issue } : {}), pending,
       representation: { hierarchy: receipt.proposal.hierarchy, dependencies: receipt.proposal.dependencies },
       correspondence: pending.length || message ? null : identity.decode(body(receipt, 0)), ...(message ? { message } : {}) };
   }
@@ -48,6 +57,7 @@ function bind(provider, mechanics) {
     return { file, receipt };
   }
   function check(receipt, io) {
+    if (receipt.proposal.origin) return origin.checkDestination(receipt, mechanics.query, io);
     const ready = query(receipt.request, io);
     if (ready.status !== 'ready' || digest(ready.proposal) !== receipt.original_confirmation) throw new Error('Publication destination, content, type or authenticated identity changed; renew review');
   }
@@ -68,7 +78,7 @@ function bind(provider, mechanics) {
       if (!item.issue) continue;
       const current = mechanics.read(receipt.proposal, item.issue, io);
       const expected = receipt.items.every(row => row.issue) ? body(receipt, index) : item.description;
-      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !accepted([item.description, expected, item.previous_body], current.description)) throw new Error('Existing result diverged; no continuation is authorized');
+      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !accepted(origin.bodies(item, expected), current.description)) throw new Error('Existing result diverged; no continuation is authorized');
       item.references = same(expected, current.description) && expected !== item.description;
       if (index && receipt.items[0].issue) {
         try {
@@ -113,10 +123,13 @@ function bind(provider, mechanics) {
         const current = mechanics.read(receipt.proposal, item.issue, io);
         if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !same(item.description, current.description)) throw new Error('Creation identity or complete content not verified');
       }
-      for (let index = 0; index < receipt.items.length; index++) {
+      // An origin is rewritten last, so an interrupted publication never lists children that do not exist.
+      const order = receipt.items.map((row, index) => index);
+      if (receipt.items[0].origin) order.push(order.shift());
+      for (const index of order) {
         const item = receipt.items[index], expected = body(receipt, index);
         const current = mechanics.read(receipt.proposal, item.issue, io);
-        if (current.title !== item.title || !accepted([expected, item.description, item.previous_body], current.description)) throw new Error('Content diverged; renew approval');
+        if (current.title !== item.title || !accepted(origin.bodies(item, expected), current.description)) throw new Error('Content diverged; renew approval');
         if (!same(expected, current.description)) mechanics.writeReferences(receipt.proposal, current, expected, io);
         if (!same(expected, mechanics.read(receipt.proposal, item.issue, io).description)) throw new Error('Written references not verified');
         item.references = true; save(file, receipt);
@@ -148,7 +161,7 @@ function bind(provider, mechanics) {
       if (ready.confirmation !== request.confirmation) throw new Error('Exact parent, children, destination and relations approval required');
       const { receipt: ignoredReceipt, confirmation: ignoredConfirmation, ...input } = request;
       receipt = { version: 1, request: input, original_confirmation: ready.confirmation, proposal: ready.proposal,
-        items: [{ title: ready.proposal.title, description: ready.proposal.description }, ...ready.proposal.slices.map(slice => ({ title: slice.title, description: slice.description }))] };
+        items: [ready.proposal.origin ? origin.item(ready.proposal) : { title: ready.proposal.title, description: ready.proposal.description }, ...ready.proposal.slices.map(slice => ({ title: slice.title, description: slice.description }))] };
       fs.writeFileSync(file, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
     } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
     return perform(receipt, file, io);
@@ -172,8 +185,8 @@ function bind(provider, mechanics) {
     if (ready.status !== 'ready') return ready;
     const rows = mechanics.inventory(ready.proposal, io);
     const candidates = rows.flatMap(row => {
-      const value = identity.decode(row.description);
-      if (!value || value.platform !== provider || value.role !== 'child' || value.change_name !== request.change_name || value.slices.find(slice => slice.change_name === value.change_name)?.issue !== row.issue.url) return [];
+      const value = identity.upper(identity.decode(row.description));
+      if (!value || value.platform !== provider || value.change_name !== request.change_name || value.slices.find(slice => slice.change_name === value.change_name)?.issue !== row.issue.url) return [];
       const parentRow = rows.find(row => row.issue.url === value.parent);
       const parent = parentRow && identity.decode(parentRow.description);
       if (!parent || parent.role !== 'parent' || parent.platform !== provider || parent.parent !== value.parent || digest(parent.slices) !== digest(value.slices)) throw new Error('Parent does not confirm recovered slice correspondence');

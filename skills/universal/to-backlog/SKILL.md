@@ -24,7 +24,8 @@ state, separately from incidental links. If several origins are possible or the
 starting context is incomplete, ask for clarification and wait; do not guess or
 silently select creation. With an unambiguous origin, select **update**. With no
 origin, select **create**. An inaccessible origin remains an update blocker,
-never a reason to create a replacement issue.
+never a reason to create a replacement issue. An origin with an agreed
+crystallized slice set is the parent of that set (section 2).
 
 This skill's directory is the one holding this `SKILL.md`. Locate
 `sai/tools/to-backlog.js` per `sai/policies/tool-resolution.md` § `sai/tools/*.js`
@@ -45,9 +46,9 @@ and its branch-specific prerequisites are satisfied before content extraction.
 
 ## 2. Prepare one item
 
-For create with an agreed crystallized slice set (even one slice), read
-`slice-set.md` and complete that branch instead of sections 2–4 below. Without
-slices, and for origin updates, keep these sections.
+For an agreed crystallized slice set (even one slice), create or with an
+originating issue, read `slice-set.md` and complete that branch instead of
+sections 2–4 below. Without slices, keep these sections.
 A single ordinary non-sliced proposal is not a slice set: keep one-issue capture
 unless the crystallized context explicitly identifies it as a sliced set.
 

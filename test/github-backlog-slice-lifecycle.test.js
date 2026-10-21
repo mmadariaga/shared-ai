@@ -51,6 +51,10 @@ function fake({ native = false } = {}) {
         const own = seen(v.id) ? [{ id: `member-${v.id}`, project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
         data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'other', project: { id: 'P2' } }, ...own] : own) } };
       }
+      else if (query.includes('viewerCanUpdate') && query.includes('issue(number')) {
+        const issue = state.issues.find(row => row.number === v.number);
+        data = { viewer: { login: 'actor' }, repository: { visibility: repo.visibility, issue: { id: issue.id, url: issue.url, viewerCanUpdate: state.viewerCanUpdate !== false, title: issue.title, body: issue.body } } };
+      }
       else if (query.includes('issues(first')) data = { repository: { issues: page(state.issues) } };
       else if (query.includes('issueOrPullRequest')) data = { repository: { ...repo, issueOrPullRequest: { __typename: 'Issue', ...state.issues.find(row => row.number === v.number) } } };
       else if (query.includes('comments(first')) data = { repository: { issue: { comments: page([{ id: `C${v.number}`, url: `comment-${v.number}`, body: 'Full comment', author: { login: 'author' } }]) } } };
@@ -610,4 +614,155 @@ test('the shared branch strategy reuses one initial branch, and the chain tracks
   assert.match(text, /originating principal issue's identity for `shared`; reuse an already-prepared initial branch/);
   assert.match(text, /`shared` creates nothing more/);
   assert.match(text, /Keep `branch_strategy` in conversation state/);
+});
+
+// An originating issue becomes the set parent; nothing replaces it.
+function withOrigin(fixture, body = 'Old origin text') {
+  const origin = { id: 'O1', number: 1, url: 'https://github.com/owner/repo/issues/1', title: 'Origin title', body, author: { login: 'actor' }, assignees: [], state: 'OPEN' };
+  fixture.state.issues.push(origin);
+  const baseline = github['read-update']({ reference: origin.url }, fixture.io).baseline;
+  Object.assign(fixture.request, { origin: origin.url, origin_baseline: baseline, description: 'Agreed whole objective' });
+  delete fixture.request.repository;
+  return origin;
+}
+const writes = fixture => fixture.state.calls.filter(call => call.input?.includes('mutation('));
+for (const native of [false, true]) test(`origin set publication reuses the origin as parent: ${native ? 'native' : 'written'} hierarchy`, t => {
+  const fixture = fake({ native }), origin = withOrigin(fixture);
+  const ready = github['query-set'](fixture.request, fixture.io);
+  assert.equal(ready.status, 'ready', JSON.stringify(ready));
+  assert.equal(ready.proposal.origin.issue.url, origin.url);
+  assert.equal(ready.proposal.title, 'Origin title');
+  const file = receipt(t);
+  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(fixture.state.issues.length, 3);
+  assert.equal(result.created.length, 2);
+  assert.equal(result.origin.url, origin.url);
+  assert.equal(result.correspondence.parent, origin.url);
+  assert.equal(origin.title, 'Origin title');
+  assert.ok(origin.body.startsWith('Agreed whole objective\n\nChild: blocker'));
+  assert.equal(identity.decode(origin.body).role, 'parent');
+  assert.ok(fixture.state.issues[2].body.includes(`Parent: ${origin.url}`));
+  if (native) assert.deepEqual([...fixture.state.parents], [[2, 1], [3, 1]]);
+  // The origin is rewritten after every child exists and is linked, and is never closed.
+  const updates = writes(fixture).filter(call => call.input.includes('updateIssue('));
+  assert.equal(JSON.parse(updates.at(-1).input).variables.id, 'O1');
+  assert.equal(origin.state, 'OPEN');
+  assert.equal(writes(fixture).filter(call => call.input.includes('createIssue(')).length, 2);
+  assert.equal(github['recover-set']({ receipt: file }, fixture.io).status, 'complete');
+});
+test('origin set publication lists existing native children and leaves them linked', t => {
+  const fixture = fake({ native: true }), origin = withOrigin(fixture);
+  fixture.state.issues.push({ id: 'X', number: 2, url: 'https://github.com/owner/repo/issues/2', title: 'Native child', body: 'kept', author: { login: 'actor' }, assignees: [], state: 'OPEN' });
+  fixture.state.parents.set(2, 1);
+  const ready = github['query-set'](fixture.request, fixture.io);
+  assert.deepEqual(ready.proposal.origin.children, ['https://github.com/owner/repo/issues/2']);
+  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(fixture.state.issues[1].body, 'kept');
+  assert.equal(fixture.state.parents.get(2), 1);
+  assert.equal(fixture.state.parents.size, 3);
+  assert.ok(origin.body.includes('Child: blocker'));
+});
+test('origin set publication stops before any write when the origin cannot take children', () => {
+  const stop = (mutate, reason) => {
+    const fixture = fake(), origin = withOrigin(fixture);
+    mutate(fixture, origin);
+    const result = github['query-set'](fixture.request, fixture.io);
+    assert.equal(result.status, reason === 'stale-baseline' ? 'needs_input' : 'blocked', JSON.stringify(result));
+    assert.equal(result.reason, reason, result.message);
+    assert.equal(writes(fixture).length, 0);
+    assert.equal(fixture.state.issues.length, 1);
+  };
+  stop((f, o) => { o.state = 'CLOSED'; }, 'origin-closed');
+  stop((f, o) => {
+    o.body = `Earlier\n${identity.encode({ version: 1, platform: 'github', role: 'parent', parent: o.url, slices: [{ change_name: 'one', issue: 'https://github.com/owner/repo/issues/9', depends_on: [] }] })}`;
+    f.request.origin_baseline = { title: o.title, description: o.body };
+  }, 'origin-already-published');
+  stop((f, o) => { o.body = 'edited after reading'; }, 'stale-baseline');
+  stop((f, o) => { f.state.viewerCanUpdate = false; }, 'origin-unavailable');
+  stop((f, o) => { f.request.origin = 'https://gitlab.example/group/repo/-/issues/1'; }, 'origin-destination-mismatch');
+});
+test('origin set publication stops on a configured destination that differs from the origin', () => {
+  const fixture = fake(); withOrigin(fixture);
+  const run = fixture.io.run;
+  fixture.io.run = (command, args, input) => {
+    const out = run(command, args, input);
+    if (!input?.includes('"owner":"other"')) return out;
+    const data = JSON.parse(out); data.data.repository.id = 'R2'; data.data.repository.nameWithOwner = 'other/repo';
+    return JSON.stringify(data);
+  };
+  fixture.request.repository = 'other/repo';
+  const result = github['query-set'](fixture.request, fixture.io);
+  assert.equal(result.reason, 'origin-destination-mismatch');
+  assert.equal(writes(fixture).length, 0);
+});
+test('interrupted origin publication keeps the origin text and resumes with the same parent', t => {
+  const fixture = fake({ native: true }), origin = withOrigin(fixture);
+  const ready = github['query-set'](fixture.request, fixture.io);
+  fixture.state.failNative = true;
+  const file = receipt(t);
+  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
+  assert.equal(result.status, 'partial_failure');
+  assert.equal(origin.body, 'Old origin text');
+  assert.equal(fixture.state.issues.length, 3);
+  assert.equal(JSON.parse(fs.readFileSync(file)).items[0].issue.url, origin.url);
+  fixture.state.failNative = false;
+  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io).status, 'complete');
+  assert.equal(fixture.state.issues.length, 3);
+  assert.equal(identity.decode(origin.body).parent, origin.url);
+  assert.equal(writes(fixture).filter(call => call.input.includes('createIssue(')).length, 2);
+});
+test('a set without an origin keeps creating a new parent', t => {
+  const fixture = fake();
+  assert.equal(publish(t, fixture).result.status, 'complete');
+  assert.equal(fixture.state.issues.length, 3);
+});
+
+for (const native of [false, true]) test(`an origin that is a published child takes a set and keeps its earlier correspondence: ${native ? 'native' : 'written'} hierarchy`, t => {
+  const fixture = fake({ native }), first = publish(t, fixture);
+  assert.equal(first.result.status, 'complete');
+  const origin = fixture.state.issues[1], parent = fixture.state.issues[0].url;
+  const baseline = github['read-update']({ reference: origin.url }, fixture.io).baseline;
+  const request = { ...fixture.request, blocks: block('sub-one'), origin: origin.url, origin_baseline: baseline, description: 'Agreed sub objective' };
+  const ready = github['query-set'](request, fixture.io);
+  assert.equal(ready.status, 'ready', JSON.stringify(ready));
+  const result = github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(fixture.state.issues.length, 4);
+  const marker = identity.decode(origin.body);
+  assert.equal(marker.role, 'parent');
+  assert.equal(marker.child_of.change_name, 'blocker');
+  assert.equal(marker.child_of.parent, parent);
+  assert.ok(origin.body.includes(`Parent: ${parent}`));
+  if (native) { assert.equal(fixture.state.parents.get(2), 1); assert.equal(fixture.state.parents.get(4), 2); }
+  assert.equal(github['lookup-slice']({ ...fixture.request, change_name: 'blocker' }, fixture.io).candidates[0].correspondence.parent, parent);
+  assert.equal(github['lookup-slice']({ ...fixture.request, change_name: 'sub-one' }, fixture.io).status, 'complete');
+  if (native) {
+    const imported = source.readSet(source.normalize(origin.url), fixture.io);
+    assert.equal(imported.status, 'complete', imported.message);
+    assert.deepEqual(imported.sources.map(row => row.role), ['selected', 'parent-context', 'child']);
+    assert.equal(imported.item.parent, parent);
+  }
+});
+test('origin transport replaces the adopted origin in slice blocks with the child URL and refuses other origins', t => {
+  const fixture = fake(), origin = withOrigin(fixture);
+  const named = text => text.replace('**What**:', `**Backlog origin**: ${origin.url}\n**What**:`);
+  const blocks = named(block('dependent', 'blocker')) + '\n' + named(block('blocker'));
+  const request = { ...fixture.request, blocks };
+  const ready = github['query-set'](request, fixture.io);
+  const result = github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  const attached = detector.attachBacklogOrigins(blocks, result.correspondence);
+  for (const entry of attached.blocks) {
+    const slice = result.correspondence.slices.find(row => row.change_name === entry.name);
+    assert.equal(entry.backlog_origin, slice.issue);
+    assert.equal(detector.checkStrict(entry.text).ok, true);
+    assert.equal(detector.checkStrict(entry.text).blocks[0].backlog_origin, slice.issue);
+    assert.ok(!entry.text.includes(origin.url));
+    assert.equal(detector.hashBlock(entry.text), entry.hash);
+  }
+  const other = named(block('blocker')).replace(origin.url, 'https://github.com/owner/repo/issues/77');
+  assert.throws(() => detector.attachBacklogOrigins(block('dependent', 'blocker') + '\n' + other, result.correspondence), /conflicts with publication/);
 });

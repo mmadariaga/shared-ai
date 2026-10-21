@@ -21,7 +21,9 @@ Fetch @sai/policies/block-hygiene-judgment.md for amendment validation.
    references with their `transfer_dir`, not amended text for model copying.
    Require `ok: true`. The tool inserts only each actual child URL as
    `**Backlog origin**`; it preserves the other bytes, dependencies, E/I items,
-   constraints and scope. It refuses incomplete mappings or conflicting origins.
+   constraints and scope. A block whose origin is the set's parent (an adopted
+   originating issue) gets its child URL in that place. It refuses incomplete
+   mappings or any other conflicting origin.
 3. Validate each returned file with the dispatchable contract and bounded
    hygiene judgment. Save its verdicts in a separate JSON-array file and use
    `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <name> --block-file <new path> --verdicts-file <path>`

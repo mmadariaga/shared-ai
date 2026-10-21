@@ -190,3 +190,17 @@ The expected branch of a slice SHALL be the name that the `new-change-branch` `n
 
 - **WHEN** a slice's expected branch exists but the conversation did not prepare it
 - **THEN** Explore asks whether to reuse it or give a corrected name and preserves the existing branch in both cases
+
+### Requirement: Hand the originating issue to slice-set publication
+
+When a `sai-explore` conversation started from an existing backlog issue and the crystallized feature is sliced, the backlog action SHALL name that originating issue to the accepted `to-backlog` owner together with the recorded block set and the whole-objective content, so `to-backlog` publishes the slices as the origin's children and rewrites its description instead of creating a replacement parent. Without an originating issue, the action SHALL hand over the whole-objective parent content as before.
+
+#### Scenario: Sliced feature from an existing issue
+
+- **WHEN** the backlog action runs for a sliced crystallized set whose conversation started from an existing backlog issue
+- **THEN** Explore names that originating issue to `to-backlog` as the parent of the set publication.
+
+#### Scenario: Sliced feature without an originating issue
+
+- **WHEN** the backlog action runs for a sliced crystallized set with no originating issue
+- **THEN** Explore hands over the whole-objective parent content for a new parent as before.

@@ -4,12 +4,18 @@ const fs = require('node:fs');
 const blocks = require('./ready-to-propose');
 const identity = require('./backlog-slice-identity');
 const { rest } = require('./backlog-assignment-github');
+const origin = require('./backlog-set-origin');
 function adapter() { return require('./to-backlog-github'); }
 
 function query(request, io) {
   const validation = blocks.validateDependencySet(request.blocks);
   if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
-  const ready = adapter().query(request, io);
+  let ready = request.origin ? undefined : adapter().query(request, io), existing;
+  if (request.origin) {
+    const prepared = origin.prepare('github', request, io, { origin: adapter()['read-origin'], query: adapter().query });
+    if (prepared.status !== 'ready') return prepared;
+    ({ ready, origin: existing } = prepared);
+  }
   if (ready.status !== 'ready') return ready;
   const fields = adapter().api(io, 'query{__type(name:"Issue"){fields{name}}}', {}).__type?.fields;
   if (!Array.isArray(fields)) throw new Error('Hierarchy capability inspection is incomplete');
@@ -20,7 +26,7 @@ function query(request, io) {
     return { change_name: name, title: name, description: texts[index], depends_on: validation.blocks[index].dependencies };
   });
   const dependencies = fields.some(field => field.name === 'blockedBy') ? 'native' : 'written';
-  const proposal = { ...ready.proposal, operation: 'set', slices, hierarchy, dependencies, relations: 'Append verified issue links and sai-backlog-slices@1 correspondence without altering agreed source content; create separately verified native relations when supported' };
+  const proposal = { ...ready.proposal, operation: 'set', ...(existing ? { origin: existing } : {}), slices, hierarchy, dependencies, relations: existing ? origin.RELATIONS : 'Append verified issue links and sai-backlog-slices@1 correspondence without altering agreed source content; create separately verified native relations when supported' };
   return { status: 'ready', proposal, confirmation: adapter().digest(proposal) };
 }
 
@@ -33,16 +39,18 @@ function checkDestination(receipt, io) {
   if (current.actor !== receipt.actor || current.repo.id !== receipt.proposal.repositoryId || current.repo.visibility !== receipt.proposal.visibility || current.projects[0]?.id !== receipt.proposal.project.id) throw new Error('Publication identity, destination or visibility changed; stop for renewed review');
 }
 function relationBody(receipt, index) {
+  const upper = index ? null : receipt.proposal.origin?.child_of;
   const slices = receipt.proposal.slices.map((slice, i) => ({ change_name: slice.change_name, issue: receipt.items[i + 1].issue.url, depends_on: slice.depends_on }));
-  const value = { version: 1, platform: 'github', hierarchy: receipt.proposal.hierarchy, dependency_representation: receipt.proposal.dependencies, role: index ? 'child' : 'parent', parent: receipt.items[0].issue.url, slices, ...(index ? { change_name: slices[index - 1].change_name } : {}) };
+  const value = { version: 1, platform: 'github', hierarchy: receipt.proposal.hierarchy, dependency_representation: receipt.proposal.dependencies, role: index ? 'child' : 'parent', parent: receipt.items[0].issue.url, slices, ...(index ? { change_name: slices[index - 1].change_name } : {}), ...(upper ? { child_of: upper } : {}) };
   const links = index
     ? [`Parent: ${value.parent}`, ...slices[index - 1].depends_on.map(name => `Depends on: ${slices.find(slice => slice.change_name === name).issue}`)]
-    : slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`);
+    : [...slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`), ...(upper ? origin.upperLinks(upper) : [])];
   return `${receipt.items[index].description}\n\n${links.join('\n')}\n${identity.encode(value)}`;
 }
 function report(receipt, message) {
   const pending = receipt.items.flatMap((item, index) => [!item.issue && `create:${index}`, !item.project && `project:${index}`, !item.relations && `references:${index}`, index && receipt.proposal.hierarchy === 'native' && !item.hierarchy && `hierarchy:${index}`, ...(index && receipt.proposal.dependencies === 'native' ? receipt.proposal.slices[index - 1].depends_on.filter(name => !item.dependencies?.includes(name)).map(name => `dependency:${index}:${name}`) : [])].filter(Boolean));
-  return { status: pending.length || message ? 'partial_failure' : 'complete', created: receipt.items.filter(item => item.issue).map(item => item.issue), pending, representation: { hierarchy: receipt.proposal.hierarchy, dependencies: receipt.proposal.dependencies }, correspondence: pending.length || message ? null : identity.decode(relationBody(receipt, 0)), ...(message ? { message } : {}) };
+  const adopted = receipt.items.find(item => item.origin);
+  return { status: pending.length || message ? 'partial_failure' : 'complete', created: receipt.items.filter(item => item.issue && !item.origin).map(item => item.issue), ...(adopted ? { origin: adopted.issue } : {}), pending, representation: { hierarchy: receipt.proposal.hierarchy, dependencies: receipt.proposal.dependencies }, correspondence: pending.length || message ? null : identity.decode(relationBody(receipt, 0)), ...(message ? { message } : {}) };
 }
 function save(file, receipt) { adapter().save(file, receipt); }
 
@@ -68,12 +76,15 @@ function perform(receipt, file, io) {
         item.project = true; save(file, receipt);
       }
     }
-    for (let index = 0; index < receipt.items.length; index++) {
+    // An origin is rewritten last, so an interrupted publication never lists children that do not exist.
+    const order = receipt.items.map((row, index) => index);
+    if (receipt.items[0].origin) order.push(order.shift());
+    for (const index of order) {
       const item = receipt.items[index];
       const description = relationBody(receipt, index);
       if (!item.relations) {
         const current = allIssues(receipt, io).find(issue => issue.id === item.issue.id);
-        if (!current || current.title !== item.title || ![description, item.description, item.previous_relation_body].includes(current.body)) throw new Error('Issue content diverged; reconcile and obtain new approval');
+        if (!current || current.title !== item.title || !origin.bodies(item, description).includes(current.body)) throw new Error('Issue content diverged; reconcile and obtain new approval');
         if (current.body !== description) adapter().api(io, 'mutation($id:ID!,$title:String!,$body:String!){updateIssue(input:{id:$id,title:$title,body:$body}){issue{id url}}}', { id: item.issue.id, title: item.title, body: description });
         if (allIssues(receipt, io).find(issue => issue.id === item.issue.id)?.body !== description) throw new Error('Written references not verified');
         item.relations = true; save(file, receipt);
@@ -130,8 +141,9 @@ function publish(request, io) {
     const ready = query(request, io);
     if (ready.status !== 'ready') return ready;
     if (request.confirmation !== ready.confirmation) throw new Error('Exact parent, slices, destination and relations approval is required');
-    const state = adapter().inspect(request, io);
-    receipt = { version: 1, proposal: ready.proposal, actor: state.actor, items: [{ title: request.title, description: request.description }, ...ready.proposal.slices.map(slice => ({ title: slice.title, description: slice.description }))] };
+    // An origin set takes its destination from the originating issue.
+    const state = adapter().inspect(ready.proposal.origin ? { ...request, repository: ready.proposal.repository } : request, io);
+    receipt = { version: 1, proposal: ready.proposal, actor: state.actor, items: [ready.proposal.origin ? { ...origin.item(ready.proposal), project: true } : { title: request.title, description: request.description }, ...ready.proposal.slices.map(slice => ({ title: slice.title, description: slice.description }))] };
     fs.writeFileSync(file, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
   } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
   return perform(receipt, file, io);
@@ -158,9 +170,10 @@ function recover(request, io) {
     if (item.issue) {
       const current = all.find(issue => issue.id === item.issue.id && issue.url === item.issue.url);
       const expected = receipt.items.every(row => row.issue) ? relationBody(receipt, index) : item.description;
-      if (!current || current.title !== item.title || ![item.description, expected, item.previous_relation_body].includes(current.body)) throw new Error('Existing result diverged; no continuation is authorized');
+      if (!current || current.title !== item.title || !origin.bodies(item, expected).includes(current.body)) throw new Error('Existing result diverged; no continuation is authorized');
       item.relations = current.body === expected && expected !== item.description;
-      item.project = !!adapter().membership(io, receipt.proposal.project.id, item.issue.id);
+      // An existing origin keeps its own Project membership; only published children are added.
+      item.project = item.origin || !!adapter().membership(io, receipt.proposal.project.id, item.issue.id);
       if (index && receipt.proposal.hierarchy === 'native') {
         try { item.hierarchy = subIssues(`repos/${receipt.proposal.repository}/issues/${receipt.items[0].issue.number}/sub_issues`, io).some(issue => issue.html_url === item.issue.url); }
         catch (error) {

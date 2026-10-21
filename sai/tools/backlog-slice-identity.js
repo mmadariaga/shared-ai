@@ -44,8 +44,17 @@ function checkIdentity(value) {
   if (value.role === 'child' && !names.has(value.change_name)) throw new Error('Unknown child change name');
   if (value.hierarchy !== undefined && !['native', 'written'].includes(value.hierarchy)) throw new Error('Invalid hierarchy representation');
   if (value.dependency_representation !== undefined && !['native', 'written'].includes(value.dependency_representation)) throw new Error('Invalid dependency representation');
-  return { version: 1, platform: value.platform, role: value.role, parent, slices, ...(value.hierarchy ? { hierarchy: value.hierarchy } : {}), ...(value.dependency_representation ? { dependency_representation: value.dependency_representation } : {}), ...(value.role === 'child' ? { change_name: value.change_name } : {}) };
+  // An adopted origin that is itself a published child keeps that earlier correspondence beside its own set.
+  if (value.child_of !== undefined) {
+    if (value.role !== 'parent') throw new Error('Only a parent marker can carry child_of');
+    const upper = checkIdentity(value.child_of);
+    if (upper.role !== 'child' || upper.platform !== value.platform || upper.child_of || upper.slices.find(slice => slice.change_name === upper.change_name).issue !== parent) throw new Error('child_of must be the earlier child correspondence of this issue');
+  }
+  return { version: 1, platform: value.platform, role: value.role, parent, slices, ...(value.hierarchy ? { hierarchy: value.hierarchy } : {}), ...(value.dependency_representation ? { dependency_representation: value.dependency_representation } : {}), ...(value.role === 'child' ? { change_name: value.change_name } : {}), ...(value.child_of ? { child_of: checkIdentity(value.child_of) } : {}) };
 }
+
+/** The child-role correspondence of an issue: its own marker, or the one kept beside the set it later became the parent of. */
+function upper(value) { return value?.role === 'child' ? value : value?.child_of ?? null; }
 
 function encode(value) { return `${PREFIX}${JSON.stringify(checkIdentity(value))} -->`; }
 function decode(body) {
@@ -64,4 +73,4 @@ function decode(body) {
 }
 const escape = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function encodeHtml(value) { return `<pre>${escape(`sai-backlog-slices@1 ${JSON.stringify(checkIdentity(value))}`)}</pre>`; }
-module.exports = { encode, encodeHtml, decode, checkIdentity, normalize, platformFor, escape };
+module.exports = { upper, encode, encodeHtml, decode, checkIdentity, normalize, platformFor, escape };

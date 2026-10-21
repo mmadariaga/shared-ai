@@ -14,15 +14,16 @@ function bind(platform, load) {
         }
         const item = result.item, value = identity.decode(item.description);
         if (value && (value.platform !== platform || (value.role === 'parent' ? value.parent : value.slices.find(slice => slice.change_name === value.change_name)?.issue) !== item.url)) throw new Error('Correspondence does not identify its containing issue');
-        const parent = value?.role === 'child' ? value.parent : null;
+        const upper = identity.upper(value);
+        const parent = upper ? upper.parent : null;
         if (parent && item.parent && parent !== item.parent) throw new Error('Native parent conflicts with correspondence');
-        const dependencies = value?.role === 'child' ? value.slices.find(slice => slice.change_name === value.change_name).depends_on.map(name => value.slices.find(slice => slice.change_name === name).issue) : [];
+        const dependencies = upper ? upper.slices.find(slice => slice.change_name === upper.change_name).depends_on.map(name => upper.slices.find(slice => slice.change_name === name).issue) : [];
         return { ...result, item: { ...item, parent: item.parent || parent, children: [...new Set([...(item.children || []), ...(value?.role === 'parent' ? value.slices.map(slice => slice.issue) : [])])], dependencies: [...new Set([...(item.dependencies || []), ...dependencies])], correspondence: value } };
       }
       selected = full(reference.url); sources.push({ role: 'selected', ...selected });
       function confirm(parent, child) {
         if (!parent.item.children.includes(child.item.url) || child.item.parent !== parent.item.url) throw new Error('Parent and child do not confirm their relationship');
-        const value = child.item.correspondence;
+        const value = identity.upper(child.item.correspondence) ?? child.item.correspondence;
         if (value && (!parent.item.correspondence || parent.item.correspondence.role !== 'parent' || JSON.stringify(parent.item.correspondence.slices) !== JSON.stringify(value.slices))) throw new Error('Parent and child correspondence disagree');
       }
       if (selected.item.parent) {
