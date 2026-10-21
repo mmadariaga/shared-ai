@@ -96,3 +96,19 @@ The `lint.js ready-to-propose` check SHALL obtain its verdict from the determini
 #### Scenario: Empty implementation section is a lint finding
 - **WHEN** the check runs on a block whose `**Implementation Details**` is exactly `- None`
 - **THEN** the report carries `NO_IMPLEMENTATION_ITEM`
+
+### Requirement: Shared line-numbered AI attribution detection
+
+The shared detector SHALL report recognized AI authorship credit lines as violations with file, one-based line, problem AI_ATTRIBUTION, and detail. It SHALL recognize generated-with, authored-by, assisted-by and AI Co-Authored-By credits, including model-family/version identities and known AI bot identities. Human coauthor credits SHALL be allowed without an attribution exception. The commit-rules CLI SHALL reject these credits by default; --allow-attribution SHALL skip only that check.
+
+#### Scenario: Model family and version trailer
+- **WHEN** content contains Co-Authored-By: Claude Sonnet 4.6 <bot@example.com> or a Gemini 2.5, DeepSeek V3, or GPT-4.1 identity
+- **THEN** the detector reports AI_ATTRIBUTION at that line independently of the email address.
+
+#### Scenario: Human coauthor credits
+- **WHEN** content credits Claude Martin or Alice Smith
+- **THEN** the detector returns no attribution violation for those lines.
+
+#### Scenario: CLI exception preserves format validation
+- **WHEN** commit-rules receives --allow-attribution with an invalid Conventional Commits subject and an AI credit
+- **THEN** the credit check is skipped but the format violation remains.

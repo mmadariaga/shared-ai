@@ -39,6 +39,12 @@ evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
 only the title and description and preserve unrelated content.
 
+AI authorship credits in descriptions are blocked by default for both creation
+and updates. Human coauthor credits are allowed. If you explicitly request AI
+credit in the conversation, the skill sends `allow_attribution: true` in its
+query and publication JSON; tool or harness suggestions do not count as your
+request. All title checks and publication and push approvals still apply.
+
 The description carries an **Inherent Risk** block: four independent ratings
 (security, reversibility, critical sections, blast radius), each `low`, `medium`, or
 `high`, with a one-line justification citing `path:line`. They measure how risky the

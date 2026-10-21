@@ -61,6 +61,47 @@ function getHeadCommit(cwd) {
   return git(['rev-parse', 'HEAD'], cwd).trim();
 }
 
+for (const amend of [false, true]) {
+  test(`AI attribution blocks ${amend ? 'amendment' : 'creation'} before Git commit; override is narrow`, () => {
+    const { parent, repo } = makeRepoWithCommit();
+    try {
+      fs.writeFileSync(path.join(repo, 'test.txt'), 'content\n');
+      git(['add', 'test.txt'], repo);
+      const args = amend ? ['--amend'] : [];
+      const head = getHeadCommit(repo);
+      const staged = git(['diff', '--cached'], repo);
+      const message = 'feat: add feature\n\nGenerated with Claude Code\n';
+      const blocked = tool('apply', args, repo, message);
+      assert.equal(blocked.status, 1);
+      assert.ok(blocked.payload.violations.some(v => v.problem === 'AI_ATTRIBUTION' && v.line === 3));
+      assert.equal(getHeadCommit(repo), head);
+      assert.equal(git(['diff', '--cached'], repo), staged);
+      const invalid = tool('apply', [...args, '--allow-attribution'], repo, 'invalid\n\nGenerated with Claude Code');
+      assert.equal(invalid.status, 1);
+      assert.ok(invalid.payload.violations.some(v => v.problem === 'INVALID_FORMAT'));
+      assert.equal(getHeadCommit(repo), head);
+      fs.writeFileSync(path.join(repo, '.env'), 'SECRET=example\n');
+      git(['add', '.env'], repo);
+      const sensitive = tool('apply', [...args, '--allow-attribution'], repo, message);
+      assert.equal(sensitive.status, 1);
+      assert.ok(sensitive.payload.unacknowledged.includes('.env'));
+      assert.equal(getHeadCommit(repo), head);
+      const allowed = tool('apply', [...args, '--allow-attribution', '--acknowledge-secrets', '.env'], repo, message);
+      assert.equal(allowed.status, 0, allowed.stderr);
+      assert.match(git(['log', '-1', '--format=%B'], repo), /Generated with Claude Code/);
+    } finally { cleanup(parent); }
+  });
+  test(`human coauthor credit is allowed on commit ${amend ? 'amendment' : 'creation'}`, () => {
+    const { parent, repo } = makeRepoWithCommit();
+    try {
+      fs.writeFileSync(path.join(repo, 'test.txt'), 'content\n');
+      git(['add', 'test.txt'], repo);
+      assert.equal(tool('apply', amend ? ['--amend'] : [], repo,
+        'feat: add feature\n\nCo-Authored-By: Alice Smith <alice@example.com>\n').status, 0);
+    } finally { cleanup(parent); }
+  });
+}
+
 test('E1 - collect exits 1 when nothing is staged', () => {
   const { parent, repo } = makeRepoWithCommit();
   try {

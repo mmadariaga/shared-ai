@@ -95,3 +95,19 @@ The `apply` subcommand SHALL accept `--amend` to amend the previous commit's mes
 #### Scenario: apply --amend validation and sensitive-file blocking unchanged
 - **WHEN** `node sai/tools/commit.js apply --amend` validates a message or detects sensitive files
 - **THEN** validation rules, sensitive-file detection, blocking, and exact-match `--acknowledge-secrets` behave identically to the non-amend path
+
+### Requirement: apply rejects AI attribution before commit mutation
+
+The apply subcommand SHALL reject recognized AI credits by default for both new commits and --amend, returning AI_ATTRIBUTION violations before running git commit and leaving HEAD and staging unchanged. --allow-attribution SHALL enable only the attribution exception through in-process checkCommitRules validation; format and sensitive-file checks SHALL remain active.
+
+#### Scenario: New or amended AI credit is refused
+- **WHEN** apply receives a recognized AI credit without --allow-attribution, with or without --amend
+- **THEN** it exits 1 with a line-numbered AI_ATTRIBUTION violation, does not commit, and leaves HEAD and the staged diff unchanged.
+
+#### Scenario: Exception does not bypass other checks
+- **WHEN** apply receives --allow-attribution and an invalid message or unacknowledged sensitive staged file
+- **THEN** the applicable existing check still blocks the commit.
+
+#### Scenario: Human credit is permitted
+- **WHEN** a valid new or amended message credits Alice Smith and all other checks pass
+- **THEN** apply succeeds without --allow-attribution.
