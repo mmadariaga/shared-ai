@@ -952,3 +952,59 @@ function functionSection(source, declaration) {
   }
   return source.slice(match.index);
 }
+
+test('group headers render their visible text, are never under the cursor, and never confirm', async () => {
+  const options = ['-- Explore --', 'chat', 'overview', '-- Backlog --', 'provider', 'Done'];
+  const displayOptions = ['-- Explore --', 'Chat: ask', 'Overview: ask', '-- Backlog --', 'Provider: ask', 'Done'];
+  const run = async presses => {
+    const input = createFakeInput(true);
+    const writes = [];
+    const promise = runNavigator({
+      mode: 'single', question: 'Q:', options, defaultSelected: [], input, output: { write: text => writes.push(text) },
+      displayOptions, groupHeaders: ['-- Explore --', '-- Backlog --'],
+    });
+    schedulePresses(input, presses);
+    const outcome = await promise;
+    const cursorRows = writes.join('').split('\n').filter(line => /^\s*>/.test(line.replace(/\x1B\[[0-9;?]*[A-Za-z]/g, '')));
+    return { outcome, cursorRows: cursorRows.map(line => line.replace(/\x1B\[[0-9;?]*[A-Za-z]/g, '')) };
+  };
+  const enter = ['\r', keyInfo('return', '\r')];
+  const down = ['', keyInfo('down', '\x1B[B')];
+  const up = ['', keyInfo('up', '\x1B[A')];
+
+  const first = await run([enter]);
+  assert.deepEqual(first.outcome, { status: 'confirmed', items: ['chat'] });
+
+  const crossing = await run([down, down, enter]);
+  assert.deepEqual(crossing.outcome, { status: 'confirmed', items: ['provider'] });
+
+  const backUp = await run([down, down, up, enter]);
+  assert.deepEqual(backUp.outcome, { status: 'confirmed', items: ['overview'] });
+
+  const topStop = await run([up, up, enter]);
+  assert.deepEqual(topStop.outcome, { status: 'confirmed', items: ['chat'] });
+
+  const walk = await run([down, down, down, up, up, up, enter]);
+  assert.equal(walk.cursorRows.some(row => /-- (Explore|Backlog) --/.test(row)), false, 'the cursor never lands on a header');
+  assert.ok(walk.cursorRows.some(row => row.includes('Provider: ask')));
+
+  const input = createFakeInput(true);
+  const writes = [];
+  const promise = runNavigator({
+    mode: 'single', question: 'Q:', options, defaultSelected: [], input, output: { write: text => writes.push(text) },
+    displayOptions, groupHeaders: ['-- Explore --', '-- Backlog --'],
+  });
+  schedulePresses(input, [enter]);
+  await promise;
+  const frame = writes.join('').replace(/\x1B\[[0-9;?]*[A-Za-z]/g, '');
+  assert.match(frame, /^ {2}-- Explore --$/m);
+  assert.match(frame, /^ {2}-- Backlog --$/m);
+  assert.match(frame, /^> {4}Chat: ask$/m);
+});
+
+test('promptSelect without group headers behaves as before', async () => {
+  const input = createFakeInput(true);
+  const promise = promptSelect('Q:', ['a', 'b'], input);
+  schedulePresses(input, [['', keyInfo('down', '\x1B[B')], ['\r', keyInfo('return', '\r')]]);
+  assert.equal(await promise, 'b');
+});

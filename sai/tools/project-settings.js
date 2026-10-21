@@ -1,7 +1,8 @@
 'use strict';
 
-// Read-only reader for the committed project settings file. It runs from the
-// installed copy, so it uses only Node built-ins. No function here writes.
+// Read-only reader for the project settings files: the committed base file and
+// the optional hand-created local file that overrides it key by key. It runs
+// from the installed copy, so it uses only Node built-ins. No function here writes.
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -9,6 +10,7 @@ const { spawnSync } = require('node:child_process');
 // Keep the repo-relative display path stable across platforms. `path.join`
 // normalizes it when resolving the actual filesystem path below.
 const SETTINGS_FILE = '.sai/settings.jsonc';
+const LOCAL_SETTINGS_FILE = '.sai/settings.local.jsonc';
 const BACKLOG_FIELDS = ['provider', 'repository', 'project', 'organization'];
 // The code host of `/to-pr`: its own keys, because the backlog provider and the code host can differ.
 const PR_FIELDS = ['provider', 'repository', 'organization', 'project'];
@@ -18,24 +20,37 @@ const isKeyword = (value, keyword) => value.trim().toLowerCase() === keyword;
 // Language values are free strings; the two literals reach the gates in canonical form.
 const languageName = value => (isKeyword(value, 'english') ? 'English' : isKeyword(value, 'none') ? 'None' : value.trim());
 
-// The setting id catalogue: the single source of known ids and their validation.
-// An entry may add `normalize`, which maps a valid value to the one the gates compare.
+// The setting id catalogue: the single source of known ids, their validation, and
+// their presentation. An entry may add `normalize`, which maps a valid value to the one
+// the gates compare. `label` and `section` place a key on the settings screen; `absent` is
+// the text the screen shows for a key with no value, where `ask` does not fit.
 const CATALOGUE = {
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
     validate: field === 'provider'
       ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
       : nonEmptyString,
+    ...(field === 'provider' ? { label: 'Provider', section: 'Backlog' } : {}),
   }])),
   ...Object.fromEntries(PR_FIELDS.map(field => [`pr.${field}`, {
     validate: field === 'provider'
       ? (value, { prProviderIds }) => nonEmptyString(value) || (prProviderIds && !prProviderIds.includes(value) ? `must be one of ${prProviderIds.join(', ')}` : null)
       : nonEmptyString,
+    ...(field === 'provider' ? { label: 'Provider', section: 'Pull requests' } : {}),
   }])),
   'explore.readyToProposeLanguage': {
     validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
     normalize: languageName,
+    label: 'Ready to Propose language',
+    section: 'Explore',
   },
-  'explore.overviewLanguage': { validate: nonEmptyString, normalize: languageName },
+  'explore.overviewLanguage': { validate: nonEmptyString, normalize: languageName, label: 'Change overview language', section: 'Explore' },
+  'explore.chatPublicLanguage': {
+    validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
+    normalize: languageName,
+    label: 'Chat language',
+    section: 'Explore',
+    absent: 'follow my language',
+  },
 };
 
 // Replace comments with spaces and drop trailing commas, leaving string
@@ -82,29 +97,44 @@ function flatten(value, prefix = '') {
   });
 }
 
+// What an unusable file means for its readers, worded in the warning that names it.
+const BASE_EFFECT = 'every setting asks its normal question';
+const LOCAL_EFFECT = 'the local overrides are ignored and the base values apply';
+
 // E5/E6: an unknown id or an invalid value drops only that key, with a warning.
-function validate(parsed, label, ids) {
+// `present` lists every known id the file holds, whether its value is usable, `ask`, or invalid.
+function validate(parsed, label, ids, effect = BASE_EFFECT) {
   const values = {};
   const warnings = [];
-  if (!isObject(parsed)) return { values, warnings: [`${label} must contain a JSON object; every setting asks its normal question.`] };
+  const present = new Set();
+  if (!isObject(parsed)) return { values, present, warnings: [`${label} must contain a JSON object; ${effect}.`] };
   for (const [id, value] of flatten(parsed)) {
     if (!CATALOGUE[id]) { warnings.push(`Unknown setting id ${id} in ${label} is ignored.`); continue; }
+    present.add(id);
     if (typeof value === 'string' && isKeyword(value, 'ask')) continue;
     const problem = CATALOGUE[id].validate(value, ids);
     if (problem) warnings.push(`Setting ${id} in ${label} ${problem}; its question stays normal.`);
     else values[id] = CATALOGUE[id].normalize ? CATALOGUE[id].normalize(value) : value;
   }
-  return { values, warnings };
+  return { values, present, warnings };
 }
 
-function load(file, label, parse) {
+function load(file, label, parse, effect = BASE_EFFECT) {
   const read = readFile(file);
-  if (read.error) return { warnings: [`Cannot read ${label}: ${read.error}; every setting asks its normal question.`] };
+  if (read.error) return { warnings: [`Cannot read ${label}: ${read.error}; ${effect}.`] };
   try { return { parsed: parse(read.text) }; }
-  catch (error) { return { warnings: [`Cannot parse ${label}: ${error.message}; every setting asks its normal question.`] }; }
+  catch (error) { return { warnings: [`Cannot parse ${label}: ${error.message}; ${effect}.`] }; }
 }
 
 const readable = file => readFile(file).exists;
+
+// One settings file: { values, present, warnings }. A missing file holds nothing and warns of nothing.
+function readLayer(file, label, ids, effect) {
+  const empty = { values: {}, present: new Set(), warnings: [] };
+  if (!readable(file)) return empty;
+  const loaded = load(file, label, parseJsonc, effect);
+  return loaded.parsed === undefined ? { ...empty, warnings: loaded.warnings } : validate(loaded.parsed, label, ids, effect);
+}
 
 function git(cwd, args) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', shell: false });
@@ -131,17 +161,32 @@ function projectRoot(cwd = process.cwd()) {
 }
 
 /**
- * Read every catalogue value: { values: {id: value}, source: setting|absent, warnings, root, notices? }.
+ * Read every catalogue value: { values: {id: value}, origins: {id: base|local}, baseValues, localValues, source: setting|absent, warnings, root, notices? }.
+ * `.sai/settings.local.jsonc`, beside the base file, overrides the base file key by key: a key the local file holds
+ * replaces the base value even when its own value is `ask` or invalid, which leaves the question normal.
  * `providerIds` validates `backlog.provider`, `prProviderIds` validates `pr.provider`; `locate: false` reads the cwd itself.
  */
 function readSettings({ cwd = process.cwd(), providerIds, prProviderIds, locate = true } = {}) {
   const { root, notices } = locate ? projectRoot(cwd) : { root: cwd, notices: [] };
   const note = notices.length ? { notices } : {};
-  const file = path.join(root, SETTINGS_FILE);
-  if (!readable(file)) return { values: {}, source: 'absent', warnings: [], root, ...note };
-  const loaded = load(file, SETTINGS_FILE, parseJsonc);
-  const checked = loaded.parsed === undefined ? { values: {}, warnings: loaded.warnings } : validate(loaded.parsed, SETTINGS_FILE, { providerIds, prProviderIds });
-  return { values: checked.values, source: Object.keys(checked.values).length ? 'setting' : 'absent', warnings: checked.warnings, root, ...note };
+  const ids = { providerIds, prProviderIds };
+  const base = readLayer(path.join(root, SETTINGS_FILE), SETTINGS_FILE, ids);
+  const local = readLayer(path.join(root, LOCAL_SETTINGS_FILE), LOCAL_SETTINGS_FILE, ids, LOCAL_EFFECT);
+  const values = { ...base.values };
+  for (const id of local.present) delete values[id];
+  Object.assign(values, local.values);
+  const origins = {};
+  for (const id of Object.keys(values)) origins[id] = Object.hasOwn(local.values, id) ? 'local' : 'base';
+  return {
+    values,
+    origins,
+    baseValues: base.values,
+    localValues: local.values,
+    source: Object.keys(values).length ? 'setting' : 'absent',
+    warnings: [...base.warnings, ...local.warnings],
+    root,
+    ...note,
+  };
 }
 
 /** One setting: { value, source, warnings, notices? }. */
@@ -224,4 +269,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, isKeyword, parseJsonc, projectRoot, readSettings, get, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, isKeyword, parseJsonc, projectRoot, readSettings, get, readBacklog, readPr, notices, overrides, notice, report, main };
