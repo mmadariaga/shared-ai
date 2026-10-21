@@ -16,7 +16,7 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project settings', 'Exit']);
+const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
@@ -1276,7 +1276,7 @@ async function runPostSetupMenuInternal({
   if (!isTTY) return skippedOutcome('non-tty');
   const promptChoice = async (...args) => {
     const choice = selectChoice === promptSelect
-      ? await promptSelect(args[0], args[1], args[2], args[3], true)
+      ? await promptSelect(args[0], args[1], args[2], args[3], true, args[4])
       : await selectChoice(...args);
     if (choice === INPUT_CLOSED) throw new Error('Terminal input closed while waiting for a menu selection.');
     return choice;
@@ -1326,7 +1326,7 @@ async function runPostSetupMenuInternal({
           screen = 'harness';
           continue;
         }
-        if (action === 'Project settings') {
+        if (action === 'Project behavior settings') {
           await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput });
           continue;
         }

@@ -230,7 +230,7 @@ three-choice branch question (`shared`, `per-slice`, `none`) and chains per-slic
 branches through `new-change-branch` with `require_clean`, in conversation state
 only (`route-selector.md` `## Slice branch chain`). Per-project answers
 to command questions live in `.sai/settings.jsonc`; the `setup` menu's
-**Project settings** screen edits them, and
+**Project behavior settings** screen edits them, and
 [project settings](docs/project-settings.md) is the single reference.
 
 ### Managed agent files (tunable-seed lifecycle)

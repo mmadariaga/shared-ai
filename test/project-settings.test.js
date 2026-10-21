@@ -327,3 +327,131 @@ test('E6: the from-backlog CLI prints the settings notice and reads the root fro
   assert.deepEqual([output.status, output.provider, output.repository, output.number], ['resolved', 'github', 'owner/repo', 4]);
   assert.deepEqual(output.notices, ['Project setting backlog.provider: github']);
 });
+
+const LOCAL = '.sai/settings.local.jsonc';
+
+test('I3 and E4: the local file overrides the base file key by key, with each key origin', () => {
+  const cwd = project({
+    '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab","project":"p"},"explore":{"overviewLanguage":"English"}}',
+    [LOCAL]: '// mine\n{"backlog":{"provider":"github",},"explore":{"chatPublicLanguage":" español "}}',
+  });
+  const result = settings.readSettings({ cwd, providerIds });
+  assert.deepEqual(result.values, {
+    'backlog.provider': 'github', 'backlog.project': 'p', 'explore.overviewLanguage': 'English', 'explore.chatPublicLanguage': 'español',
+  });
+  assert.deepEqual(result.origins, {
+    'backlog.provider': 'local', 'backlog.project': 'base', 'explore.overviewLanguage': 'base', 'explore.chatPublicLanguage': 'local',
+  });
+  assert.equal(result.baseValues['backlog.provider'], 'gitlab');
+  assert.equal(result.localValues['backlog.provider'], 'github');
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(settings.get('backlog.provider', { cwd, providerIds }), { value: 'github', source: 'setting', warnings: [] });
+  assert.equal(settings.get('explore.chatPublicLanguage', { cwd }).value, 'español');
+  assert.deepEqual(settings.readBacklog({ cwd, providerIds }).config, { provider: 'github', project: 'p' });
+  const run = (...args) => spawnSync(process.execPath, [path.join(root, 'sai/tools/project-settings.js'), ...args], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(run('get', 'backlog.provider', '--json', '--cwd', cwd).stdout), { value: 'github', source: 'setting', warnings: [] });
+});
+
+test('E1: without a local file the result is the base file alone', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}' });
+  const result = settings.readSettings({ cwd, providerIds });
+  assert.deepEqual(result.values, { 'backlog.provider': 'gitlab' });
+  assert.deepEqual(result.origins, { 'backlog.provider': 'base' });
+  assert.deepEqual(settings.get('explore.chatPublicLanguage', { cwd }), { value: null, source: 'absent', warnings: [] });
+});
+
+test('E5: a local file without a base file applies from .sai/ at the project root', () => {
+  const cwd = project({ [LOCAL]: '{"explore":{"chatPublicLanguage":"Euskara"}}' });
+  assert.deepEqual(settings.get('explore.chatPublicLanguage', { cwd }), { value: 'Euskara', source: 'setting', warnings: [] });
+});
+
+test('E7: a local key equal to the base value is still an override', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}', [LOCAL]: '{"backlog":{"provider":"gitlab"}}' });
+  assert.deepEqual(settings.readSettings({ cwd, providerIds }).origins, { 'backlog.provider': 'local' });
+});
+
+test('local ask or an invalid local value replaces the base value and leaves the question normal', () => {
+  const base = '{"backlog":{"provider":"gitlab","project":"p"},"explore":{"chatPublicLanguage":"Euskara"}}';
+  const asked = project({ '.sai/settings.jsonc': base, [LOCAL]: '{"backlog":{"provider":"ASK"}}' });
+  const askedResult = settings.readSettings({ cwd: asked, providerIds });
+  assert.deepEqual(askedResult.values, { 'backlog.project': 'p', 'explore.chatPublicLanguage': 'Euskara' });
+  assert.deepEqual(askedResult.warnings, []);
+  const invalid = project({ '.sai/settings.jsonc': base, [LOCAL]: '{"backlog":{"provider":"jira"},"explore":{"chatPublicLanguage":"none"}}' });
+  const invalidResult = settings.readSettings({ cwd: invalid, providerIds });
+  assert.deepEqual(invalidResult.values, { 'backlog.project': 'p' });
+  assert.equal(invalidResult.warnings.length, 2);
+  assert.match(invalidResult.warnings.join('\n'), /backlog\.provider in \.sai\/settings\.local\.jsonc must be one of/);
+  assert.match(invalidResult.warnings.join('\n'), /explore\.chatPublicLanguage in \.sai\/settings\.local\.jsonc must name a language, not none/);
+});
+
+test('E2: an unparseable local file warns once, names the local file, and leaves the base file in force', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}', [LOCAL]: '{"backlog": ' });
+  const result = settings.get('backlog.provider', { cwd, providerIds });
+  assert.equal(result.value, 'gitlab');
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Cannot parse \.sai\/settings\.local\.jsonc/);
+  assert.match(result.warnings[0], /; the local overrides are ignored and the base values apply\.$/);
+  assert.doesNotMatch(result.warnings[0], /normal question/);
+  const base = project({ '.sai/settings.jsonc': '{"backlog": ', [LOCAL]: '{"backlog":{"provider":"github"}}' });
+  const baseResult = settings.get('backlog.provider', { cwd: base, providerIds });
+  assert.equal(baseResult.value, 'github');
+  assert.match(baseResult.warnings[0], /Cannot parse \.sai\/settings\.jsonc: .*; every setting asks its normal question\.$/);
+});
+
+test('E3: an unknown id in the local file is ignored with a warning naming the local file', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}', [LOCAL]: '{"backlog":{"type":"bug"},"other":1}' });
+  const result = settings.readSettings({ cwd, providerIds });
+  assert.deepEqual(result.values, { 'backlog.provider': 'gitlab' });
+  assert.deepEqual(result.origins, { 'backlog.provider': 'base' });
+  assert.equal(result.warnings.length, 2);
+  assert.match(result.warnings.join('\n'), /Unknown setting id backlog\.type in \.sai\/settings\.local\.jsonc/);
+  const notObject = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}', [LOCAL]: '[1]' });
+  assert.match(settings.readSettings({ cwd: notObject, providerIds }).warnings.join('\n'), /\.sai\/settings\.local\.jsonc must contain a JSON object/);
+});
+
+test('E5: a linked worktree reads the local file beside the base file it uses', t => {
+  const top = realTemp('settings-local-main-');
+  const linked = path.join(realTemp('settings-local-linked-'), 'wt');
+  t.after(() => { fs.rmSync(top, { recursive: true, force: true }); fs.rmSync(path.dirname(linked), { recursive: true, force: true }); });
+  git(top, 'init', '-q');
+  git(top, 'commit', '-q', '--allow-empty', '-m', 'init');
+  git(top, 'worktree', 'add', '-q', linked);
+  fs.mkdirSync(path.join(top, '.sai'));
+  fs.writeFileSync(path.join(top, '.sai/settings.jsonc'), '{"backlog":{"provider":"gitlab"}}');
+  fs.writeFileSync(path.join(top, LOCAL), '{"backlog":{"provider":"github"}}');
+  const inherited = settings.get('backlog.provider', { cwd: linked });
+  assert.equal(inherited.value, 'github');
+  assert.match(inherited.notices.join('\n'), /main worktree/);
+  fs.mkdirSync(path.join(linked, '.sai'));
+  fs.writeFileSync(path.join(linked, '.sai/settings.jsonc'), '{"backlog":{"provider":"azuredevops"}}');
+  assert.equal(settings.get('backlog.provider', { cwd: linked }).value, 'azuredevops');
+});
+
+test('I1: the catalogue labels and sections the screen keys and the chat language key accepts any language but none', () => {
+  for (const id of ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']) {
+    assert.equal(typeof settings.CATALOGUE[id].label, 'string', id);
+    assert.equal(typeof settings.CATALOGUE[id].section, 'string', id);
+  }
+  for (const id of ['backlog.repository', 'pr.project', 'backlog.organization']) assert.equal(settings.CATALOGUE[id].label, undefined, id);
+  assert.equal(settings.CATALOGUE['explore.chatPublicLanguage'].label, 'Chat language');
+  assert.deepEqual(
+    ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider'].map(id => [settings.CATALOGUE[id].section, settings.CATALOGUE[id].label]),
+    [['Explore', 'Ready to Propose language'], ['Explore', 'Change overview language'], ['Explore', 'Chat language'], ['Backlog', 'Provider'], ['Pull requests', 'Provider']],
+  );
+  const cwd = project({ '.sai/settings.jsonc': '{"explore":{"chatPublicLanguage":"english"}}' });
+  assert.equal(settings.get('explore.chatPublicLanguage', { cwd }).value, 'English');
+  const bad = project({ '.sai/settings.jsonc': '{"explore":{"chatPublicLanguage":"none"}}' });
+  assert.deepEqual([settings.get('explore.chatPublicLanguage', { cwd: bad }).value, settings.get('explore.chatPublicLanguage', { cwd: bad }).warnings.length], [null, 1]);
+});
+
+test('I7: the explore load reads explore.chatPublicLanguage after spawn and its resets, and leaves the shared policies alone', () => {
+  const body = fs.readFileSync(path.join(root, 'sai/commands/explore/body.md'), 'utf8');
+  const spawn = body.indexOf('Run `sai-state spawn');
+  const reset = body.indexOf('sai-state reset <id> explore-slice@1');
+  const chat = body.indexOf('get explore.chatPublicLanguage --json');
+  assert.ok(spawn > 0 && reset > spawn && chat > reset, 'the chat language read follows the spawn and its resets');
+  assert.match(body, /let's talk in <value>/);
+  assert.match(body, /only the user's explicit request for another language replaces it/);
+  const policy = fs.readFileSync(path.join(root, 'sai/policies/public-chat.md'), 'utf8');
+  assert.equal(policy.includes('chatPublicLanguage'), false);
+});
