@@ -151,7 +151,7 @@ Offline tests SHALL cover destination and type questions, supported conversion a
 
 ### Requirement: Boards slice sets preserve type content and native relationship meaning
 
-Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. Child blocks SHALL be preserved as losslessly escaped HTML pre blocks, and full source Markdown and outgoing HTML SHALL be shown before approval. Correspondence SHALL be stored in a visible escaped `sai-backlog-slices@1` pre block. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
+Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. When the set is published under an originating work item, that work item SHALL be the parent and SHALL keep its own work-item type; only the created children SHALL use the invocation-selected type, and each child SHALL be linked to the origin with a `Hierarchy-Reverse` relation. Child blocks SHALL be preserved as losslessly escaped HTML pre blocks, and full source Markdown and outgoing HTML SHALL be shown before approval. Correspondence SHALL be stored in a visible escaped `sai-backlog-slices@1` pre block. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
 
 #### Scenario: Approved slice set
 
@@ -162,6 +162,11 @@ Azure DevOps crystallized slice publication SHALL create the agreed parent and o
 
 - **WHEN** project rules reject a relationship after work items have been created
 - **THEN** recovery reports existing items and proposes a disclosed written fallback requiring explicit approval without duplicate creation.
+
+#### Scenario: Originating work item keeps its type
+
+- **WHEN** a slice set is published under an originating work item whose type differs from the invocation-selected type
+- **THEN** the origin keeps its type as the parent, the children use the selected type, and no type-change error is raised for the origin.
 
 ### Requirement: Boards child assignment is revision conditional and separate from content
 

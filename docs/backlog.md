@@ -34,7 +34,14 @@ agreed slice, including a one-slice set. `/to-backlog` retains full publication
 confirmation, without a second breakdown approval. Dependencies stay inside
 each block as comma-separated immediate change names and are validated before
 storage/publication. Blockers publish and run first; independent slices retain
-their original order. Native hierarchy/dependencies are used when supported;
+their original order. When the conversation started from an existing issue, that
+originating issue is the parent: the slices become its children and its
+description is rewritten with the agreed whole objective (title and state are
+kept), all under the one publication confirmation. It is rewritten last, so an
+interrupted publication leaves its original text, and it is never replaced,
+closed, or republished: an origin that already carries a published set, is
+closed, is not editable, or lies in another destination stops the publication
+before any write. Native hierarchy/dependencies are used when supported;
 unavailable relationships are disclosed as written links. Partial publication
 preserves created issues and a receipt. In both Claude Code and opencode,
 `/to-backlog` warns with completed and pending work, verifies without asking for

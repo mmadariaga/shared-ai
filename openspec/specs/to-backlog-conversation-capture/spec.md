@@ -94,7 +94,7 @@ The common skill SHALL own mode selection, extraction, clarification, proposal r
 
 ### Requirement: Origin-based publication mode selection
 
-The explicitly invoked to-backlog skill SHALL select its publication mode before extracting content. An originating issue SHALL mean the existing issue from which the conversation starts, identified by the starting request or explicit source provenance, not an incidental later reference link. An unambiguous originating issue SHALL select update whether supplied through from-backlog or directly by a complete or partial issue URL. No originating issue SHALL select creation. Incomplete starting context or multiple possible origins SHALL require clarification without guessing or silently choosing creation. An inaccessible origin SHALL block update rather than trigger replacement creation.
+The explicitly invoked to-backlog skill SHALL select its publication mode before extracting content. An originating issue SHALL mean the existing issue from which the conversation starts, identified by the starting request or explicit source provenance, not an incidental later reference link. An unambiguous originating issue SHALL select update whether supplied through from-backlog or directly by a complete or partial issue URL; when the conversation carries an agreed crystallized slice set, including a one-slice set, that origin SHALL instead become the parent of the set's publication, with no new-parent option. No originating issue SHALL select creation. Incomplete starting context or multiple possible origins SHALL require clarification without guessing or silently choosing creation. An inaccessible origin SHALL block update rather than trigger replacement creation.
 
 #### Scenario: Directly supplied origin
 
@@ -120,6 +120,11 @@ The explicitly invoked to-backlog skill SHALL select its publication mode before
 
 - **WHEN** the originating issue cannot be read or edited
 - **THEN** the skill reports the update blocker without creating a replacement issue.
+
+#### Scenario: Origin with a crystallized slice set
+
+- **WHEN** the conversation starts from an unambiguous originating issue and carries an agreed crystallized slice set
+- **THEN** the skill follows slice-set publication with that origin as the parent instead of update mode or a new parent.
 
 ### Requirement: Confirmed Linux publication preparation
 

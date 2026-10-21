@@ -92,12 +92,43 @@ function recover(request, io) {
   } catch (error) { return { status: 'uncertain', issue: receipt?.issue || null, message: error.message }; }
 }
 
-function readUpdate(request, io) {
+function readEditable(request, io) {
   const reference = source.resolve(request.reference, io);
   const { target, actor } = inspect(reference.target.url, io);
   const row = source.issue(target, reference.number, io);
   if (typeof row.updated_at !== 'string') throw new Error('Incomplete GitLab issue version');
-  return { status: 'complete', issue: identity(row), repository: target.url, repositoryId: target.id, visibility: target.visibility, host: target.host, actor, baseline: { title: row.title, description: row.description ?? '', updated_at: row.updated_at } };
+  return { status: 'complete', issue: identity(row), repository: target.url, repositoryId: target.id, visibility: target.visibility, host: target.host, actor, baseline: { title: row.title, description: row.description ?? '', updated_at: row.updated_at }, state: row.state, reference };
+}
+
+function readUpdate(request, io) {
+  const { state, reference, ...result } = readEditable(request, io);
+  return result;
+}
+
+const CHILDREN = 'query($path:ID!,$iid:String!){namespace(fullPath:$path){workItem(iid:$iid){widgets{type ... on WorkItemWidgetHierarchy{children(first:100){nodes{webUrl} pageInfo{hasNextPage}}}}}}}';
+// A read-only permission query: the work item exposes whether the authenticated user may update it.
+const PERMISSIONS = 'query($path:ID!,$iid:String!){namespace(fullPath:$path){workItem(iid:$iid){userPermissions{updateWorkItem}}}}';
+function requireEditable(reference, io) {
+  let response;
+  try { response = source.api(reference.target, 'graphql', io, 'POST', { query: PERMISSIONS, variables: { path: reference.repository, iid: String(reference.number) } }); }
+  catch { throw new Error('GitLab edit permission on the originating issue could not be verified'); }
+  const allowed = response?.errors?.length ? undefined : response?.data?.namespace?.workItem?.userPermissions?.updateWorkItem;
+  if (typeof allowed !== 'boolean') throw new Error('GitLab edit permission on the originating issue could not be verified');
+  if (!allowed) throw new Error('Originating issue is not editable by the authenticated user; no replacement will be created');
+}
+// The origin as set parent: its open state and the native children it already has.
+function readOrigin(request, io) {
+  const { state, reference, ...current } = readEditable({ reference: request.origin }, io);
+  requireEditable(reference, io);
+  const children = () => {
+    let response;
+    try { response = source.api(reference.target, 'graphql', io, 'POST', { query: CHILDREN, variables: { path: reference.repository, iid: String(reference.number) } }); }
+    catch { throw new Error('GitLab work item children could not be verified'); }
+    const widget = response?.errors?.length ? null : response?.data?.namespace?.workItem?.widgets?.find(item => item?.type === 'HIERARCHY');
+    if (!widget || !Array.isArray(widget.children?.nodes) || widget.children.pageInfo?.hasNextPage) throw new Error('GitLab work item children could not be verified');
+    return widget.children.nodes.map(node => node.webUrl).filter(Boolean);
+  };
+  return { issue: current.issue, repository: current.repository, baseline: current.baseline, closed: state === 'closed', children };
 }
 
 function queryUpdate(request, io) {
@@ -150,7 +181,7 @@ function recoverUpdate(request, io) {
 
 const sliceIdentity = require('./backlog-slice-identity');
 const set = require('./backlog-provider-set').bind('gitlab', {
-  query, representation: { hierarchy: 'written', dependencies: 'native' }, renderBlock: text => text,
+  query, origin: readOrigin, representation: { hierarchy: 'written', dependencies: 'native' }, renderBlock: text => text,
   append: (description, links, value) => `${description}\n\n${links.join('\n')}\n${sliceIdentity.encode(value)}`,
   inventory: (p, io) => list(p, io).map(row => ({ issue: identity(row), title: row.title, description: row.description ?? '', actor: row.author.id })),
   read: (p, item, io) => {

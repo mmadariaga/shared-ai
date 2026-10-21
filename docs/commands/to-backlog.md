@@ -28,7 +28,8 @@ settings, then Git remotes. Provider hosting does not override an explicit backl
 ## In detail
 
 If the conversation starts from an existing issue/work item, the skill updates
-that origin. Import via `/from-backlog` is optional: a direct starting reference
+that origin; for a crystallized slice set it publishes the slices as children of
+that origin and rewrites its description with the agreed objective. Import via `/from-backlog` is optional: a direct starting reference
 also qualifies. Later reference links are not targets. Ambiguous origins require
 clarification; an inaccessible origin never causes replacement creation.
 
