@@ -74,11 +74,13 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
   // invoke picks a location by area and resource name, which is ambiguous for
   // these resources (two WorkItems locations; project-scoped, GET-only
   // pull requests), so each goes through the SDK with its fixed location id.
-  if ((area === 'wit' && resource === 'workitems') || (area === 'location' && resource === 'connectionData') || (area === 'git' && resource === 'pullrequests')) {
+   if ((area === 'wit' && ['workitems', 'classificationnodes'].includes(resource)) || (area === 'work' && resource === 'iterations') || (area === 'location' && resource === 'connectionData') || (area === 'git' && resource === 'pullrequests')) {
     const location = area === 'location' ? '00d9565f-ed9c-4a06-9a50-00e7896ccab4'
-      : area === 'git' ? '9946fd70-0d40-406e-b686-b4744cbbcc37'
+       : area === 'git' ? '9946fd70-0d40-406e-b686-b4744cbbcc37'
+         : area === 'work' ? 'c9175577-28a1-4b06-9197-8636af9f64ad'
+           : resource === 'classificationnodes' ? '5a172953-1b41-49d3-840a-33f79c3ce89f'
         : route.type !== undefined ? '62d3d110-0047-428c-ad3c-4fe872c91c74' : '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b';
-    const version = area === 'location' ? '5.0-preview.1' : area === 'git' ? '7.1' : '7.1-preview.3';
+     const version = area === 'location' ? '5.0-preview.1' : area === 'git' || resource === 'classificationnodes' ? '7.1' : area === 'work' ? '7.1-preview.1' : '7.1-preview.3';
     const result = JSON.parse(io.run('azure-sdk', [], JSON.stringify({ organization: target.organization, client: area, location,
       version, method, route, body, query,
       mediaType: patch ? 'application/json-patch+json' : 'application/json' })));

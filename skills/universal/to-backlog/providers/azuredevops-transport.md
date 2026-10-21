@@ -15,8 +15,9 @@ project-scoped, GET-only location, which fails every creation and lists the pull
 requests of every repository in the project. Pull-request calls therefore use the
 SDK too.
 The bridge selects the installed extension's `get_work_item_tracking_client`,
-`get_location_client`, or `get_git_client` through the request's `client` value
-(`wit`, `location`, `git`) and calls its SDK `_send` with these official location IDs:
+`get_location_client`, `get_git_client`, or `get_work_client` through the request's
+`client` value (`wit`, `location`, `git`, `work`) and calls its SDK `_send` with
+these official location IDs:
 
 - Create: `62d3d110-0047-428c-ad3c-4fe872c91c74`, POST,
   `{project}/_apis/wit/workitems/${type}`. The template supplies the literal `$`;
@@ -27,6 +28,12 @@ The bridge selects the installed extension's `get_work_item_tracking_client`,
 - Identity: `get_location_client`, `00d9565f-ed9c-4a06-9a50-00e7896ccab4`, GET
   `_apis/connectionData`. Location has no resource-area identifier; do not
   assume an invoke area named `location` exists.
+- Iteration tree: `wit`, `5a172953-1b41-49d3-840a-33f79c3ce89f`, GET
+  `{project}/_apis/wit/classificationnodes/{structureGroup}`, API version `7.1`.
+  Native iteration paths are resolved from the verified project tree.
+- Current team iteration: `work`, `c9175577-28a1-4b06-9197-8636af9f64ad`, GET
+  `{project}/{team}/_apis/work/teamsettings/iterations`, API version `7.1-preview.1`,
+  with `$timeframe=current`. The result must identify exactly one iteration.
 - Pull requests: `get_git_client`, `9946fd70-0d40-406e-b686-b4744cbbcc37`, GET/POST/PATCH,
   `{project}/_apis/git/repositories/{repositoryId}/pullrequests[/{pullRequestId}]`,
   API version `7.1`. Every call carries `repositoryId`, so it reads and writes the

@@ -51,14 +51,14 @@ The adapter SHALL convert supported Markdown descriptions to deterministic HTML 
 
 ### Requirement: Exact Boards publication approval and project-rule enforcement
 
-Before creation approval, the skill SHALL display organization, project, visibility, work-item type, title, source Markdown, and complete outgoing HTML as literal content. It SHALL ask "Create this exact work item of this type in this Azure project?" using the existing confirm, edit, and cancel workflow. Approval SHALL bind the exact prepared destination, type, content, and confirmation token. The adapter SHALL submit only supported title and description inputs and SHALL NOT bypass project rules or automatically fill additional required fields. A project-rule rejection SHALL be reported and stop creation.
+Before ordinary creation or update approval, the skill SHALL display the exact destination, visibility, work-item type, title, description and every resolved planning change, including automatic parent linkage. Azure descriptions SHALL show source Markdown and outgoing HTML. The skill SHALL ask "Apply this exact work-item content and these planning changes?" through the existing confirm, edit and cancel workflow. Approval SHALL bind destination, type, content, planning inputs, authenticated identity and the unchanged confirmation token. The adapter SHALL publish content first and then apply approved planning fields separately, with project rules enabled. It SHALL NOT invent additional required field values or bypass project rules. Changed inputs SHALL require fresh preparation and approval.
 
 #### Scenario: Exact creation approval
-- **WHEN** the user approves the displayed type, destination, and outgoing content
+- **WHEN** the user approves the displayed type, destination, outgoing content, and resolved planning changes
 - **THEN** publication requires the unchanged proposal and confirmation token before one creation request.
 
 #### Scenario: Approval does not match
-- **WHEN** destination, type, content, or token differs from the prepared proposal
+- **WHEN** destination, type, content, planning, identity, or token differs from the prepared proposal
 - **THEN** the adapter performs no publication and requires fresh preparation and approval.
 
 #### Scenario: Additional required field prevents creation
@@ -67,7 +67,7 @@ Before creation approval, the skill SHALL display organization, project, visibil
 
 ### Requirement: Origin-bound revision-conditional Boards updates
 
-Updates SHALL require a complete Services work-item origin URL, verify returned item and project identity, and obtain a baseline containing revision, title, and description. Inaccessible or incomplete origins SHALL NOT become replacement creations. Updates SHALL change only title and description. A changed baseline SHALL require fresh preparation and approval. The write SHALL include a test of the confirmed `/rev` and all title or description changes in the same JSON Patch request. Revision rejection SHALL require rereading and renewed approval without automatic retry. Content whose title equals the current baseline title and whose description differs from the current baseline description only by harmless Azure normalization SHALL end without approval request or mutation.
+Updates SHALL require a complete Services work-item origin URL, verified item and project identity, and a baseline containing revision, title and description. Inaccessible or incomplete origins SHALL NOT become replacement creations. Updates SHALL support title, description and approved ordinary planning fields only. Changed baselines SHALL require fresh preparation and approval. The content request SHALL test the confirmed /rev and change only authorized title or description fields; approved planning changes SHALL follow in a separate revision-tested request. Revision rejection SHALL require rereading and renewed approval without automatic retry. Preparation SHALL return no_changes only when content matches under the existing harmless Azure normalization rule and every requested planning field already matches.
 
 #### Scenario: Baseline changes before publication
 - **WHEN** the current revision or baseline content differs from the approved baseline
@@ -82,7 +82,7 @@ Updates SHALL require a complete Services work-item origin URL, verify returned 
 - **THEN** one request tests that revision and changes only the authorized title and description fields with project rules enabled.
 
 #### Scenario: Update is a no-op
-- **WHEN** the proposed title equals the current baseline title and the proposed description equals the current baseline description or differs from it only by harmless Azure normalization
+- **WHEN** the proposed title equals the current baseline title and the proposed description equals the current baseline description or differs from it only by harmless Azure normalization, and all requested planning fields already match
 - **THEN** preparation returns no_changes without an approval request or a remote mutation.
 
 #### Scenario: Origin cannot be read
@@ -91,10 +91,10 @@ Updates SHALL require a complete Services work-item origin URL, verify returned 
 
 ### Requirement: Boards publication evidence and query-only recovery
 
-Before a write, the adapter SHALL save a new private receipt containing the exact authorized proposal, destination, authenticated identity, and either the update identity or pre-creation item IDs. Completion SHALL require verified remote identity, exact title equality, and a description equal to the approved description up to harmless Azure normalization. Confirmed write rejection and uncertain outcomes SHALL remain distinct; a failed readback after a write SHALL remain uncertain. Recovery SHALL perform queries only and SHALL NOT repeat publication. Without a verified creation-response identity, recovery SHALL compare saved IDs, type, author, title, and full description content up to harmless Azure normalization and require the actual created URL to be confirmed. A coincident title SHALL NOT prove publication. Zero or ambiguous compatible candidates SHALL require clarification rather than another creation.
+Before a write, the adapter SHALL save a private receipt containing the exact approved proposal, destination, authenticated identity, and update identity or pre-creation IDs. Completion SHALL require verified remote identity, exact title, equivalent description under harmless Azure normalization, and all requested planning fields. Confirmed rejection and uncertain outcomes SHALL remain distinct. Recovery without an approved continuation SHALL be read-only remotely and SHALL NOT repeat content publication. Lost creation identities SHALL require candidate evidence from saved IDs, type, author and full content, plus confirmation of the actual created URL; a coincident title SHALL NOT prove creation. Missing or ambiguous candidates SHALL require clarification, never replacement creation. Verified content with incomplete planning SHALL report partial_failure with confirmed and pending changes. Only explicit approval of the exact returned continuation and current state SHALL authorize pending-only planning writes with the same receipt.
 
 #### Scenario: Verified creation response
-- **WHEN** the write returns an item identity and readback verifies its destination, type, and complete approved content
+- **WHEN** the write returns an item identity and readback verifies its destination, type, complete approved content, and all requested planning fields
 - **THEN** the adapter reports completion with the verified item URL.
 
 #### Scenario: Creation response is lost
@@ -115,7 +115,7 @@ Before a write, the adapter SHALL save a new private receipt containing the exac
 
 ### Requirement: Existing authenticated Azure transport without environment mutation
 
-Publication SHALL reuse the existing from-backlog Azure runner and address interpretation. CLI and SDK child processes SHALL preserve the inherited authenticated environment while locally setting `AZURE_EXTENSION_USE_DYNAMIC_INSTALL` to `no`; they SHALL NOT install tools, authenticate, or change global defaults. SDK access SHALL require the already-installed azure-devops extension and use distinct official locations for work-item creation, ID-based read/update, and authenticated identity. Supported SDK launchers SHALL be the standard Windows MSI interpreter and absolute Python-shebang CLI launchers; unsupported packaging SHALL stop explicitly without guessing an interpreter. Windows arguments SHALL remain data without command-shell interpretation. Access failures SHALL report concrete blockers. Owned transport payloads SHALL be cleaned after success or failure without deleting recovery receipts.
+Publication SHALL reuse the existing Azure runner and address interpretation without tool installation, authentication or global-default changes. CLI and SDK children SHALL preserve authentication and disable dynamic extension installation locally. SDK execution SHALL require the installed azure-devops extension, use official distinct locations for creation, ID-based work-item operations, identity, iteration classification trees and current team iterations, and encode route values. Iteration trees SHALL use API 7.1; current team iterations SHALL use API 7.1-preview.1 with $timeframe=current. Supported launchers SHALL remain the standard Windows MSI interpreter and absolute Python-shebang CLI launchers; unsupported packaging SHALL stop without guessing. Windows arguments SHALL remain data. Access failures SHALL report blockers, and scratch cleanup SHALL preserve receipts.
 
 #### Scenario: Dynamic installation is enabled globally
 - **WHEN** inherited configuration permits automatic extension installation
@@ -135,7 +135,7 @@ Publication SHALL reuse the existing from-backlog Azure runner and address inter
 
 ### Requirement: Offline Azure publication and mirrored installation coverage
 
-Offline tests SHALL cover destination and type questions, supported conversion and unsupported-content stops, exact authorization, revision conflicts, restricted writes, uncertain outcomes, query-only recovery, installed SDK routing, inherited environment handling, and transport cleanup. Both Claude Code and opencode projections SHALL include the shared Azure tools, registries, and branch-specific references under existing managed content tracking and helper-only access declarations. These checks SHALL NOT be presented as live Azure integration validation.
+Offline tests SHALL cover exact planning approval, content-before-planning writes, native parent and iteration resolution, authenticated-user assignment, planning-only updates, complete-result no-op detection, partial completion, lost responses, stale continuations and pending-only recovery. Existing destination, content, revision, installed-SDK routing, environment and cleanup coverage SHALL remain. Both Claude Code and opencode SHALL receive the same shared tools and provider references through managed projections and existing helper-only access declarations. Offline checks SHALL NOT be reported as live Azure validation.
 
 #### Scenario: Simulated publication checks
 - **WHEN** Azure publication tests exercise destination, content, revision, or recovery behavior
@@ -228,7 +228,7 @@ The Azure DevOps adapter SHALL compare a sent description with a description rea
 
 ### Requirement: Direct verification and shared bounded publication recovery
 
-The Azure DevOps publication instructions SHALL direct recovery queries without an additional verification permission question, including partial and uncertain outcomes. Failed new-issue publications SHALL use the shared warning, verification and bounded retry contract: preserve completed work, allow one verified pending-only retry within original approval when executable pending actions exist, record its publication-wide allowance before writes, then verify and consult if incomplete. Individual Boards recovery SHALL remain query-only and SHALL NOT repeat publication. Pending set operations SHALL follow the shared retry sequence while retaining project rules and the approved work-item type. Incompatible types, hierarchy rules or changed relationship representation SHALL require a human decision rather than an automatic scope or type change. Existing-issue content edits SHALL receive no automatic mutation retry.
+Azure publication instructions SHALL direct verification without an additional permission question after partial or uncertain outcomes. Ordinary individual recovery SHALL remain read-only unless the user explicitly approves the returned pending-planning continuation. Such continuation SHALL preserve completed content and apply only still-pending planning fields under revision and state checks, without another creation or automatic content retry. Pending slice-set operations SHALL retain the shared warning, verification and one durable publication-wide verified pending-only retry allowance within unchanged approval. Incompatible types, hierarchy rules or changed representation SHALL require a human decision. Existing-issue content edits SHALL receive no automatic mutation retry.
 
 #### Scenario: Uncertain individual creation
 
@@ -244,3 +244,31 @@ The Azure DevOps publication instructions SHALL direct recovery queries without 
 
 - **WHEN** the automatic set retry remains incomplete
 - **THEN** the workflow verifies again without additional consent and consults the user with completed and pending state instead of granting another automatic retry.
+
+### Requirement: Ordinary Boards planning resolution and two-step completion
+
+Ordinary Azure Boards creation and updates SHALL complete approved title and description first, then the intended parent and explicitly requested planning fields. The skill SHALL include a known intended parent PBI ID or URL from context without requiring a separate linkage request. The helper SHALL validate a same-organization Product Backlog Item, reject self-parenting and conflicting existing parents, and preserve project rules. Sprint changes SHALL require an explicit request and resolve a native iteration path against the project tree; current sprint SHALL require a team and exactly one current iteration. Assignment SHALL require an explicit request to assign the authenticated user, write that user's unique name and verify the identity ID. Arbitrary assignees and work-item state changes SHALL remain unsupported. Deterministic tools SHALL own resolution, validation, execution, verification and recovery; shared instructions SHALL state goals rather than case-by-case operational policies.
+
+#### Scenario: Known parent without other planning requests
+- **WHEN** ordinary publication has a known intended parent PBI but no explicit sprint or assignment request
+- **THEN** its proposal includes only parent linkage and does not infer sprint or assignment.
+
+#### Scenario: Requested current sprint and self assignment
+- **WHEN** the user requests the current sprint and assignment to the authenticated user
+- **THEN** preparation resolves exactly one team iteration and the authenticated identity before full approval.
+
+#### Scenario: Planning-only update
+- **WHEN** content already matches but a requested planning field differs
+- **THEN** preparation returns a ready proposal rather than no_changes and completion verifies the full intended result.
+
+#### Scenario: Planning remains incomplete
+- **WHEN** content succeeds but planning fails or its response is lost
+- **THEN** recovery verifies actual state, retains the item and receipt, and applies only pending fields after exact continuation approval.
+
+#### Scenario: Planning changes after approval
+- **WHEN** planning state or revision changes before an approved continuation writes
+- **THEN** state or revision checks prevent overwriting the changed state and require renewed verification and approval.
+
+#### Scenario: Invalid planning reference
+- **WHEN** a parent, iteration, current sprint or authenticated identity cannot be validated
+- **THEN** preparation fails before publication rather than guessing a reference or expanding scope.

@@ -15,10 +15,13 @@ class Client:
             '62d3d110-0047-428c-ad3c-4fe872c91c74': ('POST', '/{project}/_apis/wit/workitems/${type}'),
             '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b': ('GET|PATCH', '/{project}/_apis/wit/workitems/{id}'),
             '00d9565f-ed9c-4a06-9a50-00e7896ccab4': ('GET', '/_apis/connectionData'),
-            '9946fd70-0d40-406e-b686-b4744cbbcc37': ('GET|POST|PATCH', '/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}')
+            '9946fd70-0d40-406e-b686-b4744cbbcc37': ('GET|POST|PATCH', '/{project}/_apis/git/repositories/{repositoryId}/pullrequests/{pullRequestId}'),
+            '5a172953-1b41-49d3-840a-33f79c3ce89f': ('GET', '/{project}/_apis/wit/classificationnodes/{structureGroup}'),
+            'c9175577-28a1-4b06-9197-8636af9f64ad': ('GET', '/{project}/{team}/_apis/work/teamsettings/iterations')
         }
         kinds = {'62d3d110-0047-428c-ad3c-4fe872c91c74': 'wit', '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b': 'wit',
-                 '00d9565f-ed9c-4a06-9a50-00e7896ccab4': 'location', '9946fd70-0d40-406e-b686-b4744cbbcc37': 'git'}
+                 '00d9565f-ed9c-4a06-9a50-00e7896ccab4': 'location', '9946fd70-0d40-406e-b686-b4744cbbcc37': 'git',
+                 '5a172953-1b41-49d3-840a-33f79c3ce89f': 'wit', 'c9175577-28a1-4b06-9197-8636af9f64ad': 'work'}
         methods, template = templates[location_id]
         assert http_method in methods.split('|')
         assert self.kind == kinds[location_id]
@@ -31,4 +34,5 @@ services = types.ModuleType('azext_devops.dev.common.services')
 services.get_work_item_tracking_client = lambda organization: Client(organization, 'wit')
 services.get_location_client = lambda organization: Client(organization, 'location')
 services.get_git_client = lambda organization: Client(organization, 'git')
+services.get_work_client = lambda organization: Client(organization, 'work')
 sys.modules['azext_devops.dev.common.services'] = services

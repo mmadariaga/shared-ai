@@ -22,7 +22,8 @@ baseline are returned, with no Project selection.
 
 ## Proposal — after extraction
 
-Use query-update with that baseline and the proposed final title and description.
+Use query-update with that baseline, the proposed final title and description,
+and any planning inputs supported by the selected provider.
 On `stale-baseline`, use returned current content to prepare again, preserving
 unrelated description text. **Complete when:** `ready` returns a proposal and
 token, or `no_changes` ends without publication.
@@ -34,14 +35,17 @@ Present the provider's required update limitation note before asking for approva
 
 ## Publication and recovery — after common confirmation
 
-Use update with unchanged baseline, canonical reference, final content and token.
+Use update with unchanged baseline, canonical reference, final content, approved
+planning inputs and token.
 It rereads before execution; any content or bound identity difference requires
 renewed preparation, review and approval. A failed update never becomes creation.
 Use recover-update for uncertain results before any retry. `complete` means
-remote content matches the proposal; `pending` means it matches the baseline;
-`divergent` means it matches neither. Recovery is read-only remotely. Pending
+the complete intended content and planning result is verified; `pending` means
+content matches the baseline; `divergent` means content matches neither the
+baseline nor the proposal. Recovery is read-only remotely except for
+the Azure provider's explicitly approved pending-planning continuation. Pending
 content requires fresh review and explicit approval with a new receipt before
 retrying. Divergent content requires reconciliation from the new baseline and
 fresh approval. Unreadable content stays uncertain; stop rather than retry.
-**Complete when:** remote content is verified or the concrete blocker and
+**Complete when:** the complete intended content and planning result is verified or the concrete blocker and
 recovery state are available for common reporting.
