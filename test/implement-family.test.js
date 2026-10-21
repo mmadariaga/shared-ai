@@ -70,6 +70,8 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/prereqs-paths.md',
     '@sai/policies/tool-resolution.md',
     '@skills/budget-executor/SKILL.md',
+    '@skills/budget-explorer/SKILL.md',
+    '@sai/policies/incremental-review.md',
     '@sai/policies/artifact-review-contract.md',
     '@sai/policies/finding-state.md',
     '@sai/policies/sai-learnings-format.md',
@@ -205,9 +207,9 @@ test('the review worker joins the matrix after RED and GREEN with the research c
 
 test('the build and implement commands hold a coordinator profile that can edit, commit, and delegate to their workers only', () => {
   const delegates = {
-    'sai-3-implement': ['executor', 'sai-3-red-worker', 'sai-3-green-worker'],
+    'sai-3-implement': ['executor', 'explorer', 'sai-3-red-worker', 'sai-3-green-worker'],
     'sai-4-review': ['sai-4-review-worker'],
-    'sai-build': ['executor', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker'],
+    'sai-build': ['executor', 'explorer', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker'],
   };
   const profiles = {
     'sai-3-implement': 'implement-command',
@@ -307,6 +309,25 @@ test('the coordinator reviews each step adversarially with bounded fix rounds an
   assert.match(review, /Style, design, performance, and general security belong to the later review command/);
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/artifact-review-contract.md')));
   assert.doesNotMatch(read('docs/commands/sai-3-implement.md'), /no review round after GREEN/);
+});
+
+test('both coordinator review loops follow the incremental review policy and stay inside its scope', () => {
+  const policy = read('sai/policies/incremental-review.md');
+  assert.match(policy, /First pass: full/);
+  assert.match(policy, /Later passes: the delta only/);
+  assert.match(policy, /one final pass over the round-3 delta/);
+  assert.match(policy, /`Pre-existing` finding is never sent to a worker/);
+  assert.match(policy, /review-delta\.js/);
+  const implement = read(COORDINATORS[0]);
+  assert.match(implement, /Fetch @sai\/policies\/incremental-review\.md/);
+  assert.match(implement, /reviews\/step-\{n\}-round-\{k\}\.tree/);
+  assert.match(implement, /one final pass over the round-3 delta and its consumers/);
+  const directBuild = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  assert.match(directBuild, /Fetch @sai\/policies\/incremental-review\.md/);
+  assert.match(directBuild, /one final pass over the round-3 delta and its consumers/);
+  assert.match(directBuild, /`review_snapshot`/);
+  assert.doesNotMatch(read('sai/commands/review/coordinator.md'), /incremental-review/);
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/tools/review-delta.js')));
 });
 
 test('the implement and review bindings render from the standalone template and leave the lifecycle to the coordinator', () => {
