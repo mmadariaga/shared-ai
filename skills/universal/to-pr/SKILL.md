@@ -56,11 +56,24 @@ OpenSpec documents only when their relationship to the committed diff is clear.
 Missing OpenSpec is normal. Optional context cannot add uncommitted work or override
 Git evidence.
 
+Compute the inherent-risk ratings on the current tree: read `sai/policies/inherent-risk.md`
+from the harness root that holds this skill's `skills/` directory and follow it, with the
+ref used for collection as the parent branch and `risk-signals.js` located per
+`sai/policies/tool-resolution.md` § `sai/tools/*.js` copies. With or without an OpenSpec
+change, the committed diff against the target is the input. Put the ratings block in the
+description at the position `description-format.md` fixes. **Complete when:** the draft
+carries one ratings block whose four levels are each at or above the tool's floor.
+
 Run `query` with `{provider,repository,remote,base,title,description}`. It validates
 the title rules and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
 for clarification. For update, retain unrelated description content unless the user
-explicitly approves its replacement. An update writes only title and description;
+explicitly approves its replacement. The ratings block is the exception: it is owned
+content, so on update replace everything between its markers (the markers included) in the
+existing description with the block just computed, or insert it at its fixed position when
+the existing description has none, without asking for approval of that replacement; the
+rest of the description follows the retention rule above, and the full result is still
+presented for the publication approval in step 3. An update writes only title and description;
 state, reviewers, comments and other fields are outside scope.
 `no_changes` ends without mutation.
 

@@ -418,3 +418,35 @@ When the current-user or label read fails again while `publish` re-runs the quer
 #### Scenario: A read fails at publication
 - **WHEN** the label or current-user read fails during `publish` and the supplied assignee and labels match the approved digest
 - **THEN** the request is published with exactly the approved assignee and labels and the result carries the re-read warning.
+
+### Requirement: Description carries the inherent-risk ratings block
+
+The to-pr skill SHALL compute the inherent-risk ratings on the current tree on every run by following `sai/policies/inherent-risk.md` over the `sai/tools/risk-signals.js` output, using the ref used for collection as the parent branch, with or without an OpenSpec change. The drafted description SHALL carry exactly one ratings block whose four levels are each at or above the tool's floor. The block SHALL sit after `## Audits`, or after `## Test plan` when `## Audits` is omitted, and before `## Out of Scope / Follow-ups`, and its content SHALL come from the policy, never from the draft's own claims.
+
+#### Scenario: No OpenSpec change exists
+- **WHEN** `/to-pr` runs on a branch with no resolvable OpenSpec change
+- **THEN** it computes the ratings from the committed diff against the target and the draft carries one ratings block
+
+#### Scenario: Block position without audits
+- **WHEN** the draft omits `## Audits`
+- **THEN** the ratings block follows `## Test plan` and precedes `## Out of Scope / Follow-ups`
+
+#### Scenario: Floors bound the published levels
+- **WHEN** the tool sets a `medium` security floor and the judgment is `low`
+- **THEN** the drafted block publishes security as `medium`
+
+### Requirement: Ratings block replacement on update
+
+On update, the to-pr skill SHALL replace everything between the ratings block markers, markers included, with the block just computed, or insert the block at its fixed position when the existing description has none, without asking for approval of that replacement. The rest of the description SHALL follow the existing retention rule, and the full result SHALL still be presented for publication approval.
+
+#### Scenario: An existing block is replaced
+- **WHEN** an existing request description holds a ratings block and manual text around it
+- **THEN** the proposed description replaces only the content between the markers and keeps the manual text intact
+
+#### Scenario: An existing description has no block
+- **WHEN** an existing request description has no ratings block
+- **THEN** the proposed description inserts the block at its fixed position
+
+#### Scenario: Replacement is still approved as a whole
+- **WHEN** the ratings block is replaced on update
+- **THEN** no separate approval is asked for the replacement and the full description is presented for publication approval

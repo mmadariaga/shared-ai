@@ -52,3 +52,11 @@ Shared tool-resolution instructions SHALL declare the `decision-records.js` invo
 
 - **WHEN** Claude Code or opencode resolves the installed `decision-records.js` copy
 - **THEN** it invokes the same `inventory --family <adr|ddr> --json --cwd <project-root>` form apart from the resolved tool path
+
+### Requirement: Risk-signals invocation form
+
+Shared tool-resolution instructions SHALL declare the `risk-signals.js` invocation as `node <tool-path> compute --parent <branch> [--cwd <project-root>]`, printing one JSON object with `status: ok` and the merge-base, fingerprint, and floors, or `status: blocked` with a `message`. The form SHALL be the same for Claude Code and opencode apart from the resolved tool path.
+
+#### Scenario: Both harnesses invoke the risk signals
+- **WHEN** Claude Code or opencode resolves the installed `risk-signals.js` copy
+- **THEN** it invokes the same `compute --parent <branch> [--cwd <project-root>]` form apart from the resolved tool path
