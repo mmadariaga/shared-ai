@@ -40,6 +40,7 @@ function fake({ native = false } = {}) {
         if (state.insertionError) {
           if (state.raceMember) state.members.add(v.issue);
           state.afterInsertionError = true;
+          if (state.graphqlError) return JSON.stringify({ errors: [{ message: state.insertionError, path: ['addProjectV2ItemById'] }] });
           throw new Error(state.insertionError);
         }
         state.members.add(v.issue); data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: `member-${v.issue}` } } };
@@ -272,18 +273,21 @@ test('a mutation response without an item id is verified by the issue-side read'
   const { result } = publish(t, fixture);
   assert.equal(result.status, 'complete'); assert.deepEqual(fixture.state.sleeps, Array(3).fill(2000));
 });
-test('set publication resolves concurrent auto-add for every issue through fresh membership reads', t => {
+for (const message of ['Content already exists', 'Content already exists in this project'])
+for (const graphqlError of [false, true]) test(`set publication resolves concurrent auto-add for every issue: ${message}, GraphQL=${graphqlError}`, t => {
   const fixture = fake();
-  Object.assign(fixture.state, { insertionError: 'gh: gh: Content already exists (addProjectV2ItemById)', raceMember: true, visibleAfter: 1 });
-  const { result } = publish(t, fixture);
+  Object.assign(fixture.state, { insertionError: graphqlError ? message : `gh: gh: ${message} (addProjectV2ItemById)`, graphqlError, raceMember: true, visibleAfter: 1 });
+  const { result, file } = publish(t, fixture);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(adds(fixture), 3);
   assert.ok([...fixture.state.reads.values()].every(reads => reads >= 2));
+  assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
 });
-for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`set partial result and approved continuation preserve existing issues: ${option}`, t => {
+for (const message of ['Content already exists', 'Content already exists in this project'])
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`set partial result and approved continuation preserve existing issues: ${message}, ${option}`, t => {
   const fixture = fake();
-  Object.assign(fixture.state, { insertionError: option === 'unrelated-error' ? 'Permission denied' : 'Content already exists', otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' });
+  Object.assign(fixture.state, { insertionError: option === 'unrelated-error' ? 'Permission denied' : message, otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' });
   const { result, file } = publish(t, fixture);
   assert.equal(result.status, 'partial_failure');
   assert.ok(result.pending.includes('project:0'));
@@ -294,14 +298,14 @@ for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error'
   fixture.state.members.clear();
   const recovered = github['recover-set']({ receipt: file }, fixture.io);
   assert.ok(recovered.pending.includes('project:0'));
-  fixture.state.insertionError = 'Content already exists'; fixture.state.raceMember = false;
+  fixture.state.insertionError = message; fixture.state.raceMember = false;
   const incomplete = github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io);
   assert.equal(incomplete.status, 'partial_failure');
   assert.ok(incomplete.pending.includes('project:0'));
   assert.equal(incomplete.created[0].id, 'I1');
   assert.equal(fixture.state.issues.length, 1);
   const retry = github['recover-set']({ receipt: file }, fixture.io);
-  fixture.state.insertionError = 'Content already exists'; fixture.state.raceMember = true;
+  fixture.state.insertionError = message; fixture.state.raceMember = true;
   const done = github['continue-set']({ receipt: file, confirmation: retry.continuation }, fixture.io);
   assert.equal(done.status, 'complete', JSON.stringify(done));
   assert.equal(fixture.state.issues.length, 3);
