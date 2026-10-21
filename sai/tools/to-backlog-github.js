@@ -102,8 +102,8 @@ function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
     itemId = added.addProjectV2ItemById?.item?.id;
   } catch (error) {
     const alreadyExists = error.graphqlErrors?.length
-      ? error.graphqlErrors.every(entry => entry.message === 'Content already exists' && (!entry.path || entry.path[0] === 'addProjectV2ItemById'))
-      : /^(?:gh:\s*)*Content already exists(?: \(addProjectV2ItemById\))?$/.test(error.message.trim());
+      ? error.graphqlErrors.every(entry => ['Content already exists', 'Content already exists in this project'].includes(entry.message) && (!entry.path || entry.path[0] === 'addProjectV2ItemById'))
+      : /^(?:gh:\s*)*Content already exists(?: in this project)?(?: \(addProjectV2ItemById\))?$/.test(error.message.trim());
     if (!alreadyExists) throw error;
     // Auto-add may win after our first read. Only a fresh issue-side read
     // can establish membership when the mutation returns no usable item id.
