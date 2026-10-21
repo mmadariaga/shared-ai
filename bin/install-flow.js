@@ -1005,15 +1005,21 @@ async function runNavigator({
   displayOptions,
   header,
   toggleAll = false,
+  groupHeaders = [],
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
   }
 
+  // A group header is an option whose own text is shown as a non-selectable row: the cursor skips it
+  // like a blank separator, and it never joins a selection.
+  const isGroupHeader = option => groupHeaders.includes(option);
+  const isFixedRow = option => isChecklistSeparator(option) || isGroupHeader(option);
+
   return new Promise((resolve) => {
-    const selected = options.map(option => !isChecklistSeparator(option) && defaultSelected.includes(option));
+    const selected = options.map(option => !isFixedRow(option) && defaultSelected.includes(option));
     let cursor = 0;
-    while (cursor < options.length && isChecklistSeparator(options[cursor])) cursor += 1;
+    while (cursor < options.length && isFixedRow(options[cursor])) cursor += 1;
     if (cursor >= options.length && options.length > 0) cursor = 0;
     let previousRows = 0;
     let viewStart = 0;
@@ -1026,12 +1032,13 @@ async function runNavigator({
       const headers = header ? [...(Array.isArray(header) ? header : [header])] : [];
       let instructions = footer ? [footer] : [];
       const optionLines = options.map((option, i) => {
-        if (isChecklistSeparator(option)) {
-          return '';
-        }
         const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
           ? displayOptions[i]
           : option;
+        if (isGroupHeader(option)) return `  ${label}`;
+        if (isFixedRow(option)) {
+          return '';
+        }
         const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
         return `${arrow} ${marker} ${label}`;
@@ -1135,27 +1142,27 @@ async function runNavigator({
       }
       if (toggleAll && mode === 'multi' && key.ctrl === true
           && typeof key.name === 'string' && key.name.toLowerCase() === 'a') {
-        const firstSelectable = options.findIndex(option => !isChecklistSeparator(option));
+        const firstSelectable = options.findIndex(option => !isFixedRow(option));
         if (firstSelectable < 0) return;
         const nextSelection = !selected[firstSelectable];
         options.forEach((option, index) => {
-          if (!isChecklistSeparator(option)) selected[index] = nextSelection;
+          if (!isFixedRow(option)) selected[index] = nextSelection;
         });
         render();
         return;
       }
       if (key.name === 'up') {
         let prev = cursor - 1;
-        while (prev >= 0 && isChecklistSeparator(options[prev])) prev -= 1;
+        while (prev >= 0 && isFixedRow(options[prev])) prev -= 1;
         if (prev >= 0) cursor = prev;
         render();
       } else if (key.name === 'down') {
         let next = cursor + 1;
-        while (next < options.length && isChecklistSeparator(options[next])) next += 1;
+        while (next < options.length && isFixedRow(options[next])) next += 1;
         if (next < options.length) cursor = next;
         render();
         } else if (str === ' ') {
-          if (isChecklistSeparator(options[cursor])) return;
+          if (isFixedRow(options[cursor])) return;
           if (mode === 'multi') {
             selected[cursor] = !selected[cursor];
           render();
@@ -1163,11 +1170,11 @@ async function runNavigator({
           finish({ status: 'confirmed', items: [options[cursor]] });
           }
         } else if (key.name === 'return') {
-          if (isChecklistSeparator(options[cursor]) && mode === 'single') return;
-          if (mode === 'multi' && preventEmptyConfirm && !selected.some((marked, i) => marked && !isChecklistSeparator(options[i]))) return;
+          if (isFixedRow(options[cursor]) && mode === 'single') return;
+          if (mode === 'multi' && preventEmptyConfirm && !selected.some((marked, i) => marked && !isFixedRow(options[i]))) return;
           finish({
             status: 'confirmed',
-            items: mode === 'multi' ? options.filter((_, i) => selected[i] && !isChecklistSeparator(options[i])) : [options[cursor]],
+            items: mode === 'multi' ? options.filter((_, i) => selected[i] && !isFixedRow(options[i])) : [options[cursor]],
           });
         }
       }
@@ -1194,9 +1201,12 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
   });
 }
 
-async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND, distinguishClosedInput = false) {
+// `navigatorOptions.groupHeaders` lists options that render as non-selectable group header rows;
+// `navigatorOptions.displayOptions` gives each option's visible text, index-aligned with `options`.
+async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND, distinguishClosedInput = false, navigatorOptions = undefined) {
   const outcome = await runNavigator({
     mode: 'single', question, options, defaultSelected: [], input, footer,
+    groupHeaders: navigatorOptions?.groupHeaders, displayOptions: navigatorOptions?.displayOptions,
   });
   if (outcome.status === 'back') return BACK;
   if (outcome.status === 'input-closed') return distinguishClosedInput ? INPUT_CLOSED : null;

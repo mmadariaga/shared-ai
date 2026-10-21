@@ -1,15 +1,17 @@
 'use strict';
 
-// The `Project settings` screen of the post-setup menu. It shows and edits the
-// three settings that the menu manages and saves them through the writer when
-// the user leaves the screen. Prompts are injected so tests drive it.
+// The `Project behavior settings` screen of the post-setup menu. It shows and edits the
+// settings that the menu manages, by label and under section headers from the catalogue,
+// and saves them through the writer when the user leaves the screen. A key that the
+// hand-created local settings file holds shows as an override and saves to that file.
+// Prompts are injected so tests drive it.
 const fs = require('fs');
 const path = require('path');
-const { readSettings, SETTINGS_FILE } = require('../sai/tools/project-settings.js');
+const { CATALOGUE, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require('../sai/tools/project-settings.js');
 const { checkValue, readStored, storedValue, saveSettings } = require('./project-settings-writer.js');
 const { BACK } = require('./install-flow.js');
 
-const SETTING_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'backlog.provider', 'pr.provider']);
+const SETTING_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']);
 const REGISTRIES = Object.freeze([
   ['skills', 'universal', 'to-backlog', 'providers', 'registry.json'],
   ['skills', 'universal', 'from-backlog', 'providers', 'registry.json'],
@@ -35,14 +37,27 @@ function prProviderIdsFrom(packageRoot) {
   return registry.providers.map(entry => entry.id);
 }
 
+// What a key with no value reads as: `ask` unless the catalogue words it otherwise.
+const absentText = id => CATALOGUE[id].absent ?? ASK;
+
 function valueChoices(id, providerIds, prProviderIds) {
   if (id === 'backlog.provider') return [ASK, ...providerIds];
   if (id === 'pr.provider') return [ASK, ...prProviderIds];
-  return [ASK, 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE];
+  return [absentText(id), 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE];
 }
 
+const sectionHeader = id => `-- ${CATALOGUE[id].section} --`;
+
 function rowLabel(id, shown) {
-  return `${id}: ${shown}`;
+  return `${CATALOGUE[id].label}: ${shown}`;
+}
+
+const colorEnabled = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+
+// An override row: the base value struck through, then the local value and a text marker that
+// stays visible when the terminal applies no styling.
+function overrideText(base, local, color) {
+  return color ? `\x1b[9m${base}\x1b[29m ${local} (local)` : `${base} -> ${local} (local)`;
 }
 
 /**
@@ -55,25 +70,42 @@ async function runProjectSettingsScreen({
   promptChoice,
   promptInput,
   log = console.log,
+  color = colorEnabled(),
 } = {}) {
   const providerIds = providerIdsFrom(packageRoot);
   const prProviderIds = prProviderIdsFrom(packageRoot);
-  const stored = readStored(projectPath);
-  if (stored.status === 'unreadable') {
-    log(`Cannot edit ${SETTINGS_FILE}: ${stored.error}. Fix or remove the file and try again.`);
-    return { status: 'failed', reason: 'unparseable', error: stored.error };
+  const roots = {};
+  for (const settingsFile of [SETTINGS_FILE, LOCAL_SETTINGS_FILE]) {
+    const stored = readStored(projectPath, settingsFile);
+    if (stored.status === 'unreadable') {
+      log(`Cannot edit ${settingsFile}: ${stored.error}. Fix or remove the file and try again.`);
+      return { status: 'failed', reason: 'unparseable', error: stored.error };
+    }
+    roots[settingsFile] = stored.status === 'ok' ? stored.root : {};
   }
-  const root = stored.status === 'ok' ? stored.root : {};
-  const { values, warnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
+  const baseRoot = roots[SETTINGS_FILE];
+  const localRoot = roots[LOCAL_SETTINGS_FILE];
+  const { baseValues, localValues, warnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
   for (const warning of warnings) log(warning);
 
+  // A key that the local file holds saves there; every other key saves to the base file.
+  const isLocal = id => storedValue(localRoot, id) !== undefined;
+  const targetRoot = id => (isLocal(id) ? localRoot : baseRoot);
   const changes = {};
-  const displayValue = id => {
-    if (Object.hasOwn(changes, id)) return changes[id];
+  const pending = id => Object.hasOwn(changes, id);
+  const shownIn = (root, values, id) => {
     const raw = storedValue(root, id);
-    if (raw === undefined) return ASK;
+    if (raw === undefined) return absentText(id);
     if (Object.hasOwn(values, id)) return values[id];
-    return checkValue(id, raw, providerIds, prProviderIds).ok ? ASK : `${JSON.stringify(raw)} (invalid)`;
+    return checkValue(id, raw, providerIds, prProviderIds).ok ? absentText(id) : `${JSON.stringify(raw)} (invalid)`;
+  };
+  const baseText = id => shownIn(baseRoot, baseValues, id);
+  const pendingText = id => changes[id] ?? absentText(id);
+  const displayValue = id => {
+    if (!isLocal(id)) return pending(id) ? pendingText(id) : baseText(id);
+    // Removing a key from the local file lets the base value apply again.
+    if (pending(id) && changes[id] === undefined) return baseText(id);
+    return overrideText(baseText(id), pending(id) ? pendingText(id) : shownIn(localRoot, localValues, id), color);
   };
 
   // A free-text language: ask again until the catalogue accepts it or the user backs out.
@@ -94,24 +126,43 @@ async function runProjectSettingsScreen({
   };
 
   const record = (id, value) => {
-    if (value === storedValue(root, id)) delete changes[id];
+    if (value === storedValue(targetRoot(id), id)) delete changes[id];
     else changes[id] = value;
   };
 
   for (;;) {
-    const labels = new Map(SETTING_IDS.map(id => [rowLabel(id, displayValue(id)), id]));
-    const action = await promptChoice('Project settings:', [...labels.keys(), DONE]);
+    // Option values are the setting ids and section headers, which are unique; the visible text
+    // travels beside them, because two sections may show the same label and value.
+    const options = [];
+    const displayOptions = [];
+    const groupHeaders = [];
+    SETTING_IDS.forEach((id, index) => {
+      if (index === 0 || CATALOGUE[id].section !== CATALOGUE[SETTING_IDS[index - 1]].section) {
+        groupHeaders.push(sectionHeader(id));
+        options.push(sectionHeader(id));
+        displayOptions.push(sectionHeader(id));
+      }
+      options.push(id);
+      displayOptions.push(rowLabel(id, displayValue(id)));
+    });
+    options.push(DONE);
+    displayOptions.push(DONE);
+    const action = await promptChoice('Project behavior settings:', options, undefined, undefined, { groupHeaders, displayOptions });
     if (action === null) return discard();
     if (action === BACK || action === DONE) break;
-    const id = labels.get(action);
+    const id = SETTING_IDS.find(candidate => candidate === action);
     if (!id) return discard();
-    const chosen = await promptChoice(`${id}:`, valueChoices(id, providerIds, prProviderIds));
+    const chosen = await promptChoice(`${CATALOGUE[id].label}:`, valueChoices(id, providerIds, prProviderIds));
     if (chosen === null) return discard();
     if (chosen === BACK) continue;
     if (chosen === OTHER_LANGUAGE) {
       const language = await askLanguage(id);
       if (language === null) return discard();
       if (language !== BACK) record(id, language);
+      continue;
+    }
+    if (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent) {
+      record(id, undefined);
       continue;
     }
     const checked = checkValue(id, chosen, providerIds, prProviderIds);
@@ -128,7 +179,7 @@ async function runProjectSettingsScreen({
     log(`Project settings were not saved: ${saved.error}`);
     return { status: 'failed', reason: 'save', error: saved.error };
   }
-  log(`Saved ${Object.keys(changes).length} project setting(s) to ${SETTINGS_FILE}.`);
+  log(`Saved ${Object.keys(changes).length} project setting(s) to ${saved.files.join(', ')}.`);
   return { status: 'saved', changes: { ...changes } };
 }
 

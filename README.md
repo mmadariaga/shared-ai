@@ -289,7 +289,7 @@ Keep the original `Fetch @` imports when editing overrides so the command still
 loads its workflow. Model customization preserves your other edits.
 
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
-**Project settings**. See [project settings](docs/project-settings.md).
+**Project behavior settings**. See [project settings](docs/project-settings.md).
 
 ### Default opencode models
 
