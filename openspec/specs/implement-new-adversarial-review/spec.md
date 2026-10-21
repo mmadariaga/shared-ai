@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-adversarial-review. Update Purpo
 
 ### Requirement: Adversarial step review after GREEN
 
-After GREEN closes a step, the `/sai-3-implement` coordinator SHALL stage GREEN's files, including new and unreported production files, and review the step's staged diff (`git diff --cached`, holding RED's tests and GREEN's production code) against the brief's spec scenarios and tasks before the step commits, applying the criteria of the Direct Build Step 2 functional fix loop in `sai/commands/explore/steps/pipeline-direct-build.md`. The structural check SHALL confirm that every scenario and task maps to changed production paths and to a test that asserts it, that the tests are not gamed (no special-casing of test inputs, no hard-coded expected values, no assertion that proves less than its scenario), that nothing beyond the brief or anticipatory of a later step is added, and that the production files match the plan or are justified in a deviation. The empirical check SHALL exercise the requested behavior through the project runnable surface (tests, CLI, or script) with the executor whenever feasible, rather than inferring it from the diff. The review SHALL be limited to spec fidelity, test gaming, and excess scope, and SHALL NOT report style, design, performance, or general security.
+After GREEN closes a step, the `/sai-3-implement` coordinator SHALL stage GREEN's files, including new and unreported production files, and review the step against the brief's spec scenarios and tasks before the step commits, applying the criteria of the Direct Build Step 2 functional fix loop in `sai/commands/explore/steps/pipeline-direct-build.md`. The passes SHALL follow `sai/policies/incremental-review.md` with the step's HEAD as the starting point: the coordinator SHALL take a snapshot after its `git add` and before the first pass, and again after each fix round. The first pass SHALL read the step's staged diff (`git diff --cached`, holding RED's tests and GREEN's production code); every later pass SHALL apply the same checks to the delta since the previous snapshot and to the direct consumers of the code it changed, nothing else. The structural check SHALL confirm that every scenario and task maps to changed production paths and to a test that asserts it, that the tests are not gamed (no special-casing of test inputs, no hard-coded expected values, no assertion that proves less than its scenario), that nothing beyond the brief or anticipatory of a later step is added, and that the production files match the plan or are justified in a deviation. The empirical check SHALL exercise the requested behavior through the project runnable surface (tests, CLI, or script) with the executor whenever feasible, rather than inferring it from the diff. The review SHALL be limited to spec fidelity, test gaming, and excess scope, and SHALL NOT report style, design, performance, or general security.
 
 #### Scenario: GREEN hard-codes the expected value
 - **WHEN** the step tests pass because GREEN returns the value a test expects instead of implementing the scenario
@@ -20,6 +20,10 @@ After GREEN closes a step, the `/sai-3-implement` coordinator SHALL stage GREEN'
 #### Scenario: A style issue is not reported
 - **WHEN** the step diff meets its scenarios and tasks but has a naming or formatting weakness
 - **THEN** the review reports no finding for it and leaves it to the later review command.
+
+#### Scenario: A later pass reads only the delta
+- **WHEN** a fix round of a step changes one production file
+- **THEN** the next pass reviews that file's delta and its direct consumers, not the step's full staged diff
 
 ### Requirement: Step review findings follow the shared artifact review contract
 
@@ -41,14 +45,20 @@ A round with findings SHALL send them as one ordered list to the worker that own
 
 ### Requirement: Bounded fix rounds leave pending findings
 
-Step review fix rounds SHALL NOT be attempts and SHALL spend no obstacle budget. The coordinator SHALL run at most 3 fix rounds per step and then read the diff once more; a round with no findings SHALL converge the review. Findings that remain after the third fix round SHALL be neither a failure nor an obstacle and SHALL NOT escalate: the coordinator SHALL write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, SHALL emit `record` (`finding`) the first time the file is written, and SHALL continue to the step commit. These pending findings SHALL be listed in the closing report at run close and SHALL NOT be written to any file outside the run directory. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) SHALL be an ordinary obstacle of the step.
+Step review fix rounds SHALL NOT be attempts and SHALL spend no obstacle budget. The coordinator SHALL run at most 3 fix rounds per step and then one final pass over the round-3 delta and its consumers, which only reports; a pass with no open finding SHALL converge the review, and an empty delta SHALL read no code and leave the open findings open. Findings that remain after the third fix round SHALL be neither a failure nor an obstacle and SHALL NOT escalate: the coordinator SHALL write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, SHALL emit `record` (`finding`) the first time the file is written, and SHALL continue to the step commit. These pending findings SHALL be listed in the closing report at run close and SHALL NOT be written to any file outside the run directory. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) SHALL be an ordinary obstacle of the step.
 
 #### Scenario: Findings survive the third round
-
-- **WHEN** the diff still has findings after the third fix round of a step
+- **WHEN** the final pass after the third fix round of a step still reports findings
 - **THEN** the coordinator writes them to `findings.md`, emits `record` (`finding`) on the first write, commits the step, does not escalate, and lists them in the closing report.
 
 #### Scenario: A round converges
-
-- **WHEN** a review round of a step returns no findings
+- **WHEN** a review pass of a step leaves no open finding
 - **THEN** the review ends and the coordinator continues to the step commit without another fix round.
+
+### Requirement: Step review ledger in the run directory
+
+The coordinator SHALL record each pass's ledger in `reviews/step-{n}-round-{k}.md` in the run directory, giving every finding its state (`open`, `fixed`, `scope`, or `Pre-existing`), and SHALL store the snapshot identifier taken before the pass in `reviews/step-{n}-round-{k}.tree`, so a resumed run can compute the delta. A finding SHALL stay open until a later pass confirms it fixed. A `Pre-existing` finding SHALL never be sent to a worker and SHALL never extend a round.
+
+#### Scenario: A problem the step did not cause
+- **WHEN** the step review finds a problem that also exists at HEAD before the step
+- **THEN** the coordinator marks it `Pre-existing` in the round file, sends it to no worker, and the review can still converge

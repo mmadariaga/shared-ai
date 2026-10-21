@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change project-sai-tools-and-extract-worktree. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Managed projection of sai tools into both harness roots
 
 The install manifest SHALL carry a `sai-tools` rule that projects the `sai/tools` source directory into the `sai` destination class at path `tools` for both the `claude` and the `opencode` harness, using `strategy: copy`, `recursive: true`, and `include: ["**/*.js"]`, so that every tool file is installed under the same resolved root that serves the prose which invokes it.
@@ -53,3 +55,10 @@ The `sai-tools` projection SHALL install `sai/tools/no-commit-guard.js` into `sa
 - **THEN** `no-commit-guard.js` is installed under both harness roots as a managed file with no `sai/install-manifest.json` change
 - **AND** the documentation row names the tool and its verdict vocabulary
 
+### Requirement: review-delta.js joins the registered deterministic tool roster
+
+The `sai-tools` projection SHALL install `sai/tools/review-delta.js` into `sai/tools/` under both harness roots as a managed, content-tracked file, with no projection rule change because the projection installs every `*.js` under `sai/tools/`. The `AGENTS.md` tools-directory row SHALL register the tool, describing its `snapshot` and `delta` sub-commands, its use by the incremental coordinator review loops of `/sai-3-implement` and Direct Build, and its verdicts `clean | changed | empty | n/a`.
+
+#### Scenario: the tool is projected and documented
+- **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
+- **THEN** `review-delta.js` is installed under both harness roots as a managed file
