@@ -290,7 +290,7 @@ The helper SHALL create only a missing `sai/` folder of the SAI temp root (and, 
 
 Single-issue creation publication and its recovery SHALL decide Project membership only through direct reads and SHALL NOT read the ProjectV2 `items` connection. The direct item read SHALL read the item returned by `addProjectV2ItemById` and accept it only when its Project is the destination Project and its content is the published issue. The issue-side read SHALL read the issue's Project items across all pages and count only items whose Project is the destination Project, archived items included. A `null` Project items connection SHALL count as no items. Before adding, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation and no unarchiving. After the add mutation, verification SHALL read immediately and then up to four more times two seconds apart. It SHALL use the direct item read when the response carries an item id, and the issue-side read otherwise. Publication SHALL report complete only after a verified insertion. An exhausted verification SHALL return partial failure with `Project membership not verified`, the insertion left pending, and the created issue preserved.
 
-Single-issue publication and recovery SHALL use the same membership check, insertion, and verification operation as GitHub set publication and continuation. If insertion returns the specific `Content already exists` error, the operation SHALL verify membership with fresh issue-side reads under the existing verification bound before reporting complete. A structured GraphQL error response SHALL qualify only when every error message is exactly `Content already exists` and each error path is absent or starts with `addProjectV2ItemById`. A command error SHALL qualify only when its trimmed message is exactly `Content already exists`, optionally prefixed by repeated `gh:` prefixes and optionally suffixed by ` (addProjectV2ItemById)`. Other errors SHALL retain their failure treatment without duplicate-error verification. If fresh verification fails or does not establish membership in the destination Project, publication SHALL retain the existing issue identity and receipt with insertion pending and report partial failure. Recovery SHALL reuse the existing issue rather than create another issue to resolve membership.
+Single-issue publication and recovery SHALL use the same membership check, insertion, and verification operation as GitHub set publication and continuation. If insertion returns either specific duplicate error, `Content already exists` or `Content already exists in this project`, the operation SHALL verify membership with fresh issue-side reads under the existing verification bound before reporting complete. A structured GraphQL error response SHALL qualify only when every error message is exactly `Content already exists` or `Content already exists in this project` and each error path is absent or starts with `addProjectV2ItemById`. A command error SHALL qualify only when its trimmed message is exactly `Content already exists` or `Content already exists in this project`, optionally prefixed by repeated `gh:` prefixes and optionally suffixed by ` (addProjectV2ItemById)`. Other errors SHALL retain their failure treatment without duplicate-error verification. If fresh verification fails or does not establish membership in the destination Project, publication SHALL retain the existing issue identity and receipt with insertion pending and report partial failure. Recovery SHALL reuse the existing issue rather than create another issue to resolve membership.
 
 #### Scenario: Insertion visible on the first read
 
@@ -351,3 +351,18 @@ Single-issue publication and recovery SHALL use the same membership check, inser
 
 - **WHEN** recovery retries pending insertion of the existing issue and receives a qualifying duplicate-content error
 - **THEN** it verifies destination membership through fresh issue-side reads and completes only on confirmation without creating another issue.
+
+#### Scenario: Both duplicate messages retain accepted command forms
+
+- **WHEN** insertion returns either exact duplicate message as a structured GraphQL error or a trimmed command error with the accepted repeated `gh:` prefixes and optional ` (addProjectV2ItemById)` suffix
+- **THEN** single-issue publication verifies destination membership through the existing bounded fresh issue-side reads and reports complete only on confirmation, without consuming an automatic recovery allowance for ordinary publication.
+
+#### Scenario: Structured duplicate messages may be mixed
+
+- **WHEN** every structured error has either accepted exact duplicate message and each path is absent or starts with `addProjectV2ItemById`
+- **THEN** both message forms may coexist in the response and the operation performs fresh destination-membership verification.
+
+#### Scenario: Duplicate text inside another failure is insufficient
+
+- **WHEN** a command error contains a duplicate message within network or permission failure prose, names another operation, or a structured response combines a duplicate with an unrelated error
+- **THEN** the operation preserves the failure without duplicate-error verification.

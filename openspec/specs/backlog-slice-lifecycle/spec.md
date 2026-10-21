@@ -310,7 +310,7 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 On GitHub, `publish-set`, `continue-set` and `recover-set` SHALL decide each issue's Project membership with the GitHub publication adapter's direct reads and SHALL NOT read the ProjectV2 `items` connection. Before adding an issue, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation. After the add mutation, publication SHALL verify with the bounded verification (one immediate read, then up to four more reads two seconds apart), using the direct item read when the response carries an item id and the issue-side read otherwise. When verification finds nothing, publication SHALL stop with `Project membership not verified` and leave that issue's Project operation pending. `recover-set` SHALL decide each Project operation with the issue-side read, leave it pending when no item of the destination Project is found, and never repeat the add mutation.
 
-GitHub `publish-set` and `continue-set` SHALL share the single-issue publication adapter's membership check, insertion, and verification operation. A specific `Content already exists` insertion error SHALL trigger fresh issue-side membership verification under the existing verification bound, not unconditional success. Eligibility SHALL require every structured GraphQL error to have the exact message `Content already exists` with no path or a path starting with `addProjectV2ItemById`, or a trimmed command error matching exactly that message with optional repeated `gh:` prefixes and optional ` (addProjectV2ItemById)` suffix. Other errors SHALL retain their failure treatment. When fresh membership reads fail or do not confirm the destination Project, the operation SHALL return partial failure, retain the receipt and created issue identities, and leave the affected Project operation pending. Recovery and approved continuation SHALL reuse already-created issues rather than create replacements to resolve membership.
+GitHub `publish-set` and `continue-set` SHALL share the single-issue publication adapter's membership check, insertion, and verification operation. A specific `Content already exists` or `Content already exists in this project` insertion error SHALL trigger fresh issue-side membership verification under the existing verification bound, not unconditional success. Eligibility SHALL require every structured GraphQL error to have the exact message `Content already exists` or `Content already exists in this project` with no path or a path starting with `addProjectV2ItemById`, or a trimmed command error matching exactly either message with optional repeated `gh:` prefixes and optional ` (addProjectV2ItemById)` suffix. Other errors SHALL retain their failure treatment. When fresh membership reads fail or do not confirm the destination Project, the operation SHALL return partial failure, retain the receipt and created issue identities, and leave the affected Project operation pending. Recovery and approved continuation SHALL reuse already-created issues rather than create replacements to resolve membership.
 
 #### Scenario: Direct reads complete set publication
 
@@ -361,6 +361,16 @@ GitHub `publish-set` and `continue-set` SHALL share the single-issue publication
 
 - **WHEN** a set insertion fails with an error other than the qualifying duplicate-content response
 - **THEN** publication or continuation reports the failure and retains partial results rather than treating the issue as a verified Project member.
+
+#### Scenario: Observed duplicate message completes a verified set
+
+- **WHEN** GitHub set publication receives `Content already exists in this project` in an eligible structured or command error and fresh issue-side reads confirm each issue in the requested Project
+- **THEN** publication continues with the existing issues and completes without consuming an automatic recovery allowance for ordinary publication.
+
+#### Scenario: Both duplicate messages preserve continuation results
+
+- **WHEN** approved continuation receives either accepted duplicate message for a pending Project operation
+- **THEN** it reuses the created issue and completes that operation only after fresh destination-membership confirmation, retaining partial results and the pending operation if verification fails.
 
 ### Requirement: GitHub assignment verification requires the approved parent
 

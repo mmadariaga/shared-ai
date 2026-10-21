@@ -49,7 +49,7 @@ function fakeGithub(state, command, args, input) {
     if (state.insertionError) {
       state.member = !!state.raceMember;
       state.afterInsertionError = true;
-      if (state.graphqlError) return JSON.stringify({ errors: [{ message: state.insertionError }] });
+      if (state.graphqlError) return JSON.stringify({ errors: [{ message: state.insertionError, path: ['addProjectV2ItemById'] }] });
       throw new Error(state.insertionError);
     }
     if (state.failInsertion) throw new Error('Project access denied');
@@ -263,8 +263,11 @@ test('only the destination Project counts and a null projectItems means no items
   }
 });
 
-for (const graphqlError of [false, true]) test(`concurrent auto-add completes only after a fresh destination read (${graphqlError ? 'GraphQL' : 'gh'})`, () => {
-  const state = { insertionError: graphqlError ? 'Content already exists' : 'gh: gh: Content already exists (addProjectV2ItemById)\n', graphqlError, raceMember: true, visibleAfter: 2 };
+for (const message of ['Content already exists', 'Content already exists in this project'])
+for (const variant of ['graphql', 'plain', 'prefix', 'suffix', 'prefix-and-suffix']) test(`concurrent auto-add completes only after a fresh destination read: ${message}, ${variant}`, () => {
+  const graphqlError = variant === 'graphql';
+  const insertionError = `${variant.includes('prefix') ? 'gh: gh: ' : ''}${message}${variant.includes('suffix') ? ' (addProjectV2ItemById)' : ''}\n`;
+  const state = { insertionError: graphqlError ? message : insertionError, graphqlError, raceMember: true, visibleAfter: 2 };
   const { input, io, receipt } = approved(state);
   assert.equal(github.publish(input, io).status, 'complete');
   assert.equal(state.visibleReads, 3);
@@ -273,10 +276,13 @@ for (const graphqlError of [false, true]) test(`concurrent auto-add completes on
   assert.equal(github.recover({ receipt }, io).status, 'complete');
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 1);
+  assert.deepEqual(state.sleeps, [2000, 2000]);
+  assert.equal(JSON.parse(fs.readFileSync(receipt, 'utf8')).automatic_retry_consumed, undefined);
 });
 
-for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${option}`, () => {
-  const state = { insertionError: option === 'unrelated-error' ? 'Project access denied' : 'Content already exists', otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' };
+for (const message of ['Content already exists', 'Content already exists in this project'])
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${message}, ${option}`, () => {
+  const state = { insertionError: option === 'unrelated-error' ? 'Project access denied' : message, otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' };
   const { input, io, receipt } = approved(state);
   const result = github.publish(input, io);
   assert.equal(result.status, 'partial_failure');
@@ -291,12 +297,12 @@ for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error'
   assert.equal(state.insertions, 1);
 });
 
-test('single-issue recovery also resolves a concurrent insertion without recreating the issue', () => {
+for (const message of ['Content already exists', 'Content already exists in this project']) test(`single-issue recovery resolves a concurrent insertion without recreating the issue: ${message}`, () => {
   const state = { failInsertion: true };
   const { input, io, receipt } = approved(state);
   assert.equal(github.publish(input, io).status, 'partial_failure');
   state.failInsertion = false;
-  state.insertionError = 'Content already exists';
+  state.insertionError = message;
   state.raceMember = true;
   const verified = github.recover({ receipt }, io);
   assert.equal(verified.status, 'partial_failure');
@@ -313,6 +319,11 @@ test('only the specific duplicate-content response is eligible for automatic ver
     { message: 'gh: Content already exists (createIssue)' },
     { errors: [{ message: 'Content already exists' }, { message: 'Forbidden' }] },
     { errors: [{ message: 'Content already exists', path: ['createIssue'] }] },
+    { message: 'Content already exists in this project but permission denied' },
+    { message: 'Network failure: Content already exists in this project' },
+    { message: 'gh: Content already exists in this project (createIssue)' },
+    { errors: [{ message: 'Content already exists in this project' }, { message: 'Forbidden' }] },
+    { errors: [{ message: 'Content already exists in this project', path: ['createIssue'] }] },
   ];
   for (const failure of failures) {
     let reads = 0;
@@ -328,6 +339,21 @@ test('only the specific duplicate-content response is eligible for automatic ver
     assert.throws(() => github.ensureMembership(io, 'P', 'I'));
     assert.equal(reads, 1, JSON.stringify(failure));
   }
+});
+
+test('structured duplicate errors may mix both exact messages and optional operation paths', () => {
+  let reads = 0;
+  const io = { run(command, args, input) {
+    const { query } = JSON.parse(input);
+    if (query.includes('addProjectV2ItemById')) return JSON.stringify({ errors: [
+      { message: 'Content already exists' },
+      { message: 'Content already exists in this project', path: ['addProjectV2ItemById'] },
+    ] });
+    reads++;
+    return JSON.stringify({ data: { node: { projectItems: { nodes: reads > 1 ? [{ id: 'ITEM', project: { id: 'P' } }] : [], pageInfo: { hasNextPage: false } } } } });
+  } };
+  github.ensureMembership(io, 'P', 'I');
+  assert.equal(reads, 2);
 });
 
 test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', () => {
