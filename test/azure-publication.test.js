@@ -41,7 +41,16 @@ function fixture() {
         assert.equal(sdk.route.pullRequestId !== undefined, sdk.method === 'PATCH');
         state.pullRequestCalls.push({ method: sdk.method, route: sdk.route, location: sdk.location });
       }
-      args = ['devops', 'invoke', '--resource', { location: 'connectionData', wit: 'workitems', git: 'pullrequests' }[sdk.client], '--http-method', sdk.method,
+      if (sdk.client === 'work') {
+        assert.equal(sdk.location, 'c9175577-28a1-4b06-9197-8636af9f64ad');
+        assert.deepEqual(sdk.route, { project, team: 'Team' });
+        assert.deepEqual(sdk.query, { '$timeframe': 'current' });
+      }
+      if (sdk.location === '5a172953-1b41-49d3-840a-33f79c3ce89f') {
+        assert.deepEqual(sdk.route, { project, structureGroup: 'iterations' });
+        assert.equal(sdk.client, 'wit'); assert.equal(sdk.query.$depth, 14);
+      }
+      args = ['devops', 'invoke', '--resource', sdk.location === '5a172953-1b41-49d3-840a-33f79c3ce89f' ? 'classificationnodes' : { location: 'connectionData', wit: 'workitems', git: 'pullrequests', work: 'iterations' }[sdk.client], '--http-method', sdk.method,
         '--detect', 'false', '--route-parameters', ...Object.entries(sdk.route).map(([k,v]) => `${k}=${v}`), '--media-type', sdk.mediaType];
     }
     if (command === 'git') {
@@ -62,7 +71,9 @@ function fixture() {
     const parameter = key => routes.find(a => a.startsWith(`${key}=`))?.slice(key.length + 1);
     const body = sdk ? sdk.body : args.includes('--in-file') ? JSON.parse(fs.readFileSync(args[args.indexOf('--in-file') + 1], 'utf8')) : undefined;
     if (resource === 'projects') return JSON.stringify({ id: 'project-id', name: project, visibility: 'private' });
-    if (resource === 'connectionData') return JSON.stringify({ authenticatedUser: { id: 'actor' } });
+    if (resource === 'connectionData') return JSON.stringify({ authenticatedUser: { id: 'actor', ...(state.uniqueName ? { properties: { Account: { $value: state.uniqueName } } } : {}) } });
+    if (resource === 'iterations') return JSON.stringify({ value: state.iterations || [{ path: 'Team\\Sprint 1' }] });
+    if (resource === 'classificationnodes') return JSON.stringify({ name: 'Team', children: [{ name: 'Sprint 1' }, { name: 'Sprint 2' }] });
     if (state.accessError) throw new Error(state.accessError);
     if (resource === 'workitemtypes') return JSON.stringify({ name: state.invalidType ? 'Bug' : 'Task' });
     if (resource === 'repositories') return JSON.stringify({ id: 'repo-id', name: 'Repo', project: { id: 'project-id' }, defaultBranch: 'refs/heads/main' });
@@ -75,11 +86,16 @@ function fixture() {
     state.writes.push({ command, method, resource, body, args });
     if (state.reject) throw new Error('HTTP status 400: project required field is missing');
     if (resource === 'workitems') {
-      if (method === 'PATCH' && (state.race || body[0].value !== state.items.get(1).rev)) throw new Error('HTTP status 412: revision test failed');
-      const id = method === 'PATCH' ? 1 : 2, row = state.items.get(id) || item(id);
-      for (const part of body) if (part.path.startsWith('/fields/')) row.fields[part.path.slice(8)] = part.value;
+      const id = method === 'PATCH' ? Number(parameter('id')) : 2, row = state.items.get(id) || item(id);
+      if (method === 'PATCH' && (state.race || body[0].value !== row.rev)) throw new Error('HTTP status 412: revision test failed');
+      const planning = body.some(part => part.path === '/relations/-' || /IterationPath|AssignedTo/.test(part.path));
+      if (planning && state.rejectPlanning) throw new Error('HTTP status 400: planning rejected');
+      for (const part of body) {
+        if (part.path.startsWith('/fields/')) row.fields[part.path.slice(8)] = part.path.endsWith('AssignedTo') ? { id: 'actor', uniqueName: part.value } : part.value;
+        if (part.path === '/relations/-') (row.relations ||= []).push(part.value);
+      }
       row.rev++; state.items.set(id, row);
-      if (state.lost) throw new Error('Connection lost after submission');
+      if (state.lost || planning && state.lostPlanning) throw new Error('Connection lost after submission');
       return JSON.stringify(row);
     }
     assert.equal(resource, 'pullrequests');
@@ -89,6 +105,167 @@ function fixture() {
   } };
   return { io, state, pr };
 }
+function planningFixture() {
+  const result = fixture();
+  result.state.uniqueName = 'me@example.test';
+  result.state.items.set(3, { id: 3, rev: 1, fields: { 'System.TeamProject': project, 'System.WorkItemType': 'Product Backlog Item', 'System.Title': 'Parent' } });
+  return result;
+}
+const planningRequest = { repository: `${organization}/${project}`, type: 'Task', title: 'Create', description: 'Body', parent: 3, iteration: 'current', team: 'Team', assignToMe: true };
+test('planning H1 M1: instruction completion follows the full proposal and provider-owned recovery', () => {
+  const skill = fs.readFileSync('skills/universal/to-backlog/SKILL.md', 'utf8');
+  const prepare = skill.split('## 2. Prepare one item')[1].split('## 3. Review and confirm')[0];
+  assert.match(prepare, /operation determine whether the complete\s+intended content and planning result needs changes/);
+  assert.match(prepare, /End without mutation only\s+on its `no_changes` result/);
+  assert.doesNotMatch(prepare, /If content already matches/);
+  const update = fs.readFileSync('skills/universal/to-backlog/providers/azuredevops-update.md', 'utf8');
+  assert.match(update, /`recover-update`\s+takes the saved receipt for read-only verification/);
+  assert.match(update, /provider-owned\s+planning recovery contract in `azuredevops\.md` for explicitly approved\s+pending-only continuation/);
+  assert.match(update, /`complete` and `no_changes` require the intended\s+content and all requested planning fields to match/);
+  assert.doesNotMatch(update, /only queries|`complete` requires equal content/);
+  const commonUpdate = fs.readFileSync('skills/universal/to-backlog/update.md', 'utf8');
+  assert.match(commonUpdate, /`complete` means\s+the complete intended content and planning result is verified/);
+  assert.match(commonUpdate, /explicitly approved pending-planning continuation/);
+});
+test('planning E1 I2 I4: exact approval binds resolved planning; content precedes one native planning patch', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io), file = receipt();
+  assert.equal(ready.proposal.planning.iteration, 'Team\\Sprint 1');
+  assert.equal(ready.proposal.planning.assignee.id, 'actor');
+  assert.equal(boards.publish({ ...planningRequest, parent: 1, confirmation: ready.confirmation, receipt: file }, io).status, 'failure_before_publication');
+  assert.equal(state.writes.length, 0);
+  const result = boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io);
+  assert.equal(result.status, 'complete');
+  assert.equal(state.writes.length, 2);
+  assert.deepEqual(state.writes[0].body.map(part => part.path), ['/fields/System.Title', '/fields/System.Description']);
+  assert.deepEqual(state.writes[1].body.map(part => part.path), ['/rev', '/relations/-', '/fields/System.IterationPath', '/fields/System.AssignedTo']);
+  assert.equal(state.writes[1].body.at(-1).value, 'me@example.test');
+  assert.equal(boards.recover({ receipt: file }, io).status, 'complete');
+  assert.equal(state.writes.length, 2);
+});
+test('planning E1 I2: parent alone never infers sprint or assignment; invalid references fail before writes', () => {
+  const { io, state } = planningFixture(), request = { ...planningRequest, iteration: undefined, assignToMe: undefined };
+  const ready = boards.query(request, io);
+  assert.deepEqual(Object.keys(ready.proposal.planning), ['parent']);
+  assert.equal(boards.publish({ ...request, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'complete');
+  assert.deepEqual(state.writes[1].body.map(part => part.path), ['/rev', '/relations/-']);
+  for (const change of [{ parent: 1 }, { parent: `${organization}/Other/_workitems/edit/3` }, { parent: 'https://dev.azure.com/else/Team/_workitems/edit/3' }, { iteration: 'Team\\Missing' }, { iteration: 'current', team: undefined }, { assignToMe: 'someone' }, { assignee: 'someone' }, { state: 'Done' }]) {
+    assert.throws(() => boards.query({ ...planningRequest, ...change }, io));
+  }
+  state.iterations = [];
+  assert.throws(() => boards.query(planningRequest, io), /missing or ambiguous/);
+  state.iterations = [{ path: 'Team\\Sprint 1' }, { path: 'Team\\Sprint 2' }];
+  assert.throws(() => boards.query(planningRequest, io), /missing or ambiguous/);
+  assert.equal(state.writes.length, 2);
+});
+test('planning E1 I2: current sprint and authenticated unique name changes invalidate publication approval', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io);
+  state.iterations = [{ path: 'Team\\Sprint 2' }];
+  assert.equal(boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'failure_before_publication');
+  state.iterations = [{ path: 'Team\\Sprint 1' }]; state.uniqueName = 'changed@example.test';
+  assert.equal(boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'failure_before_publication');
+  state.uniqueName = undefined;
+  assert.throws(() => boards.query(planningRequest, io), /unique name/);
+  assert.equal(state.writes.length, 0);
+});
+test('planning E2 I4: rejection remains partial; read-only recovery then approved continuation never recreates content', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io), file = receipt();
+  state.rejectPlanning = true;
+  assert.equal(boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io).status, 'partial_failure');
+  const pending = boards.recover({ receipt: file }, io);
+  assert.equal(pending.status, 'partial_failure');
+  assert.deepEqual(pending.confirmed, ['content']);
+  assert.deepEqual(pending.pending, ['parent', 'iteration', 'assignee']);
+  assert.equal(state.writes.length, 2);
+  assert.equal(boards.recover({ receipt: file, confirmation: pending.continuation }, io).status, 'uncertain');
+  state.rejectPlanning = false;
+  assert.equal(boards.recover({ receipt: file, confirmation: pending.continuation, approved: true }, io).status, 'complete');
+  assert.equal(state.writes.length, 3);
+  assert.equal(state.writes.filter(row => row.method === 'POST').length, 1);
+  assert.equal(boards.recover({ receipt: file, confirmation: pending.continuation, approved: true }, io).status, 'complete');
+  assert.equal(state.writes.length, 3);
+});
+test('planning E2 I4: lost planning response verifies completed fields without another write', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io), file = receipt();
+  state.lostPlanning = true;
+  assert.equal(boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io).status, 'partial_failure');
+  assert.equal(boards.recover({ receipt: file }, io).status, 'complete');
+  assert.equal(state.writes.length, 2);
+});
+test('planning E1 E2 I2 I4: planning-only update binds baseline, protects parent conflicts and is idempotent', () => {
+  const { io, state } = planningFixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+  const current = boards['read-update']({ reference }, io);
+  assert.deepEqual(current.planning_state, { parent: null, iteration: null, assignee: null });
+  const request = { ...planningRequest, reference, baseline: current.baseline, title: current.baseline.title, description: undefined };
+  const ready = boards['query-update'](request, io), file = receipt();
+  assert.equal(ready.status, 'ready');
+  assert.equal(boards.update({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+  const next = boards['read-update']({ reference }, io);
+  assert.equal(boards['query-update']({ ...request, baseline: next.baseline }, io).status, 'no_changes');
+  state.items.get(1).relations[0].url = `${organization}/_apis/wit/workItems/4`;
+  assert.throws(() => boards['query-update']({ ...request, baseline: next.baseline }, io), /different native parent/);
+  assert.equal(state.writes.length, 2);
+});
+test('planning E2 I4: stale continuation does not overwrite a concurrent planning change', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io), file = receipt();
+  state.rejectPlanning = true;
+  boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io);
+  const pending = boards.recover({ receipt: file }, io);
+  state.items.get(2).rev++; state.items.get(2).fields['System.IterationPath'] = 'Team\\Sprint 2';
+  state.rejectPlanning = false;
+  assert.equal(boards.recover({ receipt: file, confirmation: pending.continuation, approved: true }, io).status, 'uncertain');
+  assert.equal(state.writes.length, 2);
+});
+test('planning I3: ordinary Azure read exposes parent, iteration and assignment and rejects malformed metadata', () => {
+  const reader = require('../sai/tools/from-backlog-azuredevops');
+  const row = { id: 1, fields: { 'System.TeamProject': project, 'System.Title': 'Task', 'System.WorkItemType': 'Task', 'System.State': 'New',
+    'System.IterationPath': 'Team\\Sprint 1', 'System.AssignedTo': { id: 'actor', uniqueName: 'me@example.test', displayName: 'Me' } },
+    relations: [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: `${organization}/_apis/wit/workItems/3` }] };
+  const io = { run(command, args) {
+    assert.equal(command, 'az');
+    if (args[0] === 'boards') { assert.ok(args.includes('relations')); return JSON.stringify(row); }
+    return JSON.stringify({ comments: [], count: 0, totalCount: 0 });
+  } };
+  const ref = { organization, project, number: 1 }, result = reader.read(ref, io);
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(result.item.parent, { id: 3, url: `${organization}/_apis/wit/workItems/3` });
+  assert.equal(result.item.iteration, 'Team\\Sprint 1');
+  assert.deepEqual(result.item.assignment, { id: 'actor', displayName: 'Me', uniqueName: 'me@example.test' });
+  row.fields['System.AssignedTo'] = {};
+  assert.equal(reader.read(ref, io).status, 'incomplete');
+});
+test('planning E1 E2: a race after continuation verification cannot overwrite unapproved state', () => {
+  const { io, state } = planningFixture(), ready = boards.query(planningRequest, io), file = receipt();
+  state.rejectPlanning = true;
+  boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io);
+  const pending = boards.recover({ receipt: file }, io);
+  state.rejectPlanning = false;
+  let reads = 0;
+  const racing = { run(command, args, input) {
+    const sdk = command === 'azure-sdk' ? JSON.parse(input) : null;
+    if (sdk?.query?.$expand === 'relations' && ++reads === 2) {
+      state.items.get(2).rev++; state.items.get(2).fields['System.IterationPath'] = 'Team\\Sprint 2';
+    }
+    return io.run(command, args, input);
+  } };
+  assert.equal(boards.recover({ receipt: file, confirmation: pending.continuation, approved: true }, racing).status, 'partial_failure');
+  assert.equal(state.items.get(2).fields['System.IterationPath'], 'Team\\Sprint 2');
+  assert.equal(state.writes.length, 2);
+});
+test('planning E2 I4: update continuation applies only fields still pending after verified partial completion', () => {
+  const { io, state } = planningFixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+  const baseline = boards['read-update']({ reference }, io).baseline;
+  const request = { ...planningRequest, reference, baseline }, ready = boards['query-update'](request, io), file = receipt();
+  state.rejectPlanning = true;
+  assert.equal(boards.update({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'partial_failure');
+  const row = state.items.get(1);
+  row.relations = [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: `${organization}/_apis/wit/workItems/3` }]; row.rev++;
+  const pending = boards['recover-update']({ receipt: file }, io);
+  assert.deepEqual(pending.confirmed, ['content', 'parent']);
+  assert.deepEqual(pending.pending, ['iteration', 'assignee']);
+  state.rejectPlanning = false;
+  assert.equal(boards['recover-update']({ receipt: file, confirmation: pending.continuation, approved: true }, io).status, 'complete');
+  assert.deepEqual(state.writes.at(-1).body.map(part => part.path), ['/rev', '/fields/System.IterationPath', '/fields/System.AssignedTo']);
+});
 test('E1 E2 I1 I4 I5: cloud address normalization and registry precedence ask only for unresolved choices', () => {
   const https = 'https://org.visualstudio.com/DefaultCollection/Team/_git/Repo';
   assert.equal(azure.repositoryAddress(https).url, repo);

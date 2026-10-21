@@ -87,13 +87,14 @@ function read(reference, io) {
   let item;
   const comments = [];
   try {
-    const data = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--detect', 'false', '--output', 'json', '--only-show-errors']));
+    const data = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
     const fields = data.fields;
     if (data.id !== reference.number || !fields || !segment(fields['System.TeamProject']) || ['System.Title', 'System.State', 'System.WorkItemType'].some(key => typeof fields[key] !== 'string') || (fields['System.Description'] != null && typeof fields['System.Description'] !== 'string')) throw fault('retrieval-failed', 'Incomplete Azure DevOps work-item response');
     const project = fields['System.TeamProject'];
     if (reference.project && reference.project.toLowerCase() !== project.toLowerCase()) throw fault('retrieval-failed', 'Work-item project does not match the resolved project');
     const description = fields['System.Description'] ?? '';
     item = { provider: 'azuredevops', organization: reference.organization, project, number: data.id, url: `${reference.organization}/${encodeURIComponent(project)}/_workitems/edit/${data.id}`, title: fields['System.Title'], state: fields['System.State'], type: fields['System.WorkItemType'], description, description_format: 'html', description_missing: !description.trim() };
+    Object.assign(item, planningFields(data, reference));
     const seenTokens = new Set(), seenComments = new Set();
     let token, total;
     for (;;) {
@@ -122,6 +123,20 @@ function read(reference, io) {
   }
 }
 
+function planningFields(row, reference) {
+  if (row.relations != null && !Array.isArray(row.relations)) throw fault('retrieval-failed', 'Incomplete work-item relations');
+  const parents = (row.relations || []).filter(link => link.rel === 'System.LinkTypes.Hierarchy-Reverse');
+  if (parents.length > 1) throw fault('retrieval-failed', 'Multiple work-item parents');
+  const link = parents[0], match = link && /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
+  const parsed = link && address(link.url);
+  if (link && (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase())) throw fault('retrieval-failed', 'Invalid parent identity');
+  const assigned = row.fields['System.AssignedTo'], iteration = row.fields['System.IterationPath'];
+  if (assigned != null && (typeof assigned.id !== 'string' || !assigned.id)) throw fault('retrieval-failed', 'Incomplete Azure assignee identity');
+  if (iteration != null && typeof iteration !== 'string') throw fault('retrieval-failed', 'Invalid iteration path');
+  return { parent: link ? { id: Number(match[1]), url: link.url } : null, iteration: iteration ?? null,
+    assignment: assigned ? { id: assigned.id, ...(typeof assigned.displayName === 'string' ? { displayName: assigned.displayName } : {}), ...(typeof assigned.uniqueName === 'string' ? { uniqueName: assigned.uniqueName } : {}) } : null };
+}
+
 function nativeRelations(reference, io) {
   const row = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
   if (row.id !== reference.number || !row.fields || !segment(row.fields['System.TeamProject']) || (reference.project && row.fields['System.TeamProject'].toLowerCase() !== reference.project.toLowerCase()) || (row.relations != null && !Array.isArray(row.relations))) throw fault('retrieval-failed', 'Incomplete work-item relations');
@@ -143,7 +158,7 @@ function nativeRelations(reference, io) {
   if (parents.length > 1) throw fault('retrieval-failed', 'Multiple work-item parents');
   const assigned = row.fields['System.AssignedTo'];
   if (assigned != null && (typeof assigned.id !== 'string' || !assigned.id)) throw fault('retrieval-failed', 'Incomplete Azure assignee identity');
-  return { row, parent: parents[0] || null, children: urls('System.LinkTypes.Hierarchy-Forward'), dependencies: urls('System.LinkTypes.Dependency-Reverse'), assignees: assigned ? [assigned.id] : [] };
+  return { row, ...planningFields(row, reference), parent: parents[0] || null, children: urls('System.LinkTypes.Hierarchy-Forward'), dependencies: urls('System.LinkTypes.Dependency-Reverse'), assignees: assigned ? [assigned.id] : [] };
 }
 const readSet = require('./backlog-provider-import').bind('azuredevops', (url, io, initial) => {
   const ref = url ? resolve(url, io) : initial, result = read(ref, io);

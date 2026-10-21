@@ -37,16 +37,27 @@ New items summarize agreed problem, goal, scope, exclusions, unresolved
 questions, and maturity. Optional edge cases and implementation details reflect
 actual agreement, not suggestions silently promoted into requirements. Updates
 preserve unrelated description content and stable identifiers. State, comments,
-labels, assignments, and Project membership are outside update scope.
+labels, and Project membership are outside update scope. Ordinary Azure Boards
+creation and updates also complete the intended parent PBI when its ID or URL
+is known in context. Sprint changes require an explicit request (including
+"use the current sprint"), and assignment requires an explicit request to assign
+the authenticated current user. Other assignees and work-item state changes
+remain outside scope.
 
 Creation inserts GitHub issues into a writable Project, creates GitLab issues
 without board insertion, or asks for the Azure work-item type for this invocation.
 You review full content and the exact destination before confirming, editing,
 or cancelling. Azure Boards shows source Markdown and converted outgoing HTML.
-A changed update baseline requires fresh approval; matching content is a no-op.
+A changed update baseline requires fresh approval; the proposal operation reports
+a no-op only when the intended content and all requested planning fields match.
 Before approving an update, GitHub and GitLab show that their content check and
 write cannot be made atomic, so a concurrent edit in between can be overwritten.
 Azure's write is guarded by the confirmed revision.
+For ordinary Azure Boards publication, approval covers the content and every
+planning change, including automatic parent linkage. The tool publishes content
+first, then applies approved planning fields in a separate revision-tested
+request. Recovery verifies both steps and completes only pending authorized
+changes after explicit continuation approval; it does not recreate the item.
 
 Publication runs once. Keep the reported receipt and existing item link after a
 partial or uncertain result: recovery verifies outcomes, never recreates an item

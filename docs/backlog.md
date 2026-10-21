@@ -145,7 +145,9 @@ When the conversation starts from an existing issue/work item—whether imported
 or directly referenced—the skill updates that origin rather than creating a
 replacement. Later reference links do not change the target. Updates preserve
 unrelated description text and existing identifiers; they do not change state,
-comments, labels, assignees, or Project membership.
+comments, labels, or Project membership. Assignment remains unchanged except
+for explicitly requested authenticated-user assignment on ordinary Azure Boards
+publication, as described below.
 
 For creation, explicit destination fields take precedence over the project's
 `backlog.*` settings in [`.sai/settings.jsonc`](project-settings.md), then Git
@@ -160,6 +162,14 @@ GitLab uses its project address as `repository`. Azure can use `provider:
 the work-item type is selected per invocation, not stored as a default. Required
 project fields that the workflow cannot supply block creation; project rules
 are not bypassed.
+
+Ordinary Azure Boards creation and updates also link the intended parent PBI
+when its URL or ID is known in context. Sprint changes and authenticated-user
+assignment each require an explicit request; a request for the current sprint
+is resolved for the selected Azure team. Approval includes every planning change.
+Content is published first, then the approved planning fields. After a partial
+result, recovery verifies the existing item and offers an exact continuation for
+pending planning changes, requiring explicit approval without recreating content.
 
 Before publication, you see the exact destination and full outgoing content and
 can confirm, edit, or cancel. Azure Boards converts supported Markdown to HTML
