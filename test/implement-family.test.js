@@ -73,6 +73,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/artifact-review-contract.md',
     '@sai/policies/finding-state.md',
     '@sai/policies/sai-learnings-format.md',
+    '@sai/policies/inherent-risk.md',
     '@sai/orchestration/workers/bindings/red-worker.md',
     '@sai/orchestration/workers/bindings/green-worker.md',
     '@sai/orchestration/workers/bindings/review-worker.md',
@@ -357,4 +358,23 @@ test('audit reports are applied after the tasks through the step cycle, marked f
   assert.match(source, /no audit report holds an open fixable finding/);
   assert.match(read('sai/commands/implement/worker-common.md'), /every fixed mark to the coordinator/);
   assert.match(read('sai/commands/implement/steps/red-step.md'), /audit findings instead of tasks/);
+});
+
+test('the implement close stores the inherent-risk ratings in review.md before the learnings step', () => {
+  const source = read(COORDINATORS[0]);
+  const close = source.slice(source.indexOf('## Close'));
+  const ratings = close.indexOf('Store the inherent-risk ratings');
+  assert.ok(ratings !== -1 && ratings < close.indexOf('Promote learnings, before the report'), 'ratings come before the learnings step');
+  assert.match(close, /only when the run completed, marked at least one finding of any audit report fixed, and `openspec\/changes\/\{name\}\/review\.md` exists/);
+  assert.match(close, /Fetch @sai\/policies\/inherent-risk\.md/);
+  assert.match(close, /`\*\*Reviewed:\*\*` line of `review\.md` names/);
+  assert.match(close, /prints `fresh`/);
+  assert.match(close, /git check-ignore -q/);
+  assert.match(close, /Never force-add with `-f`/);
+  const policy = read('sai/policies/inherent-risk.md');
+  assert.match(policy, /## Stored block/);
+  assert.match(policy, /validate --parent <branch> --file <review\.md>/);
+  assert.match(read('sai/commands/deep-review/coordinator.md'), /once more for the inherent-risk ratings block/);
+  assert.match(read(COORDINATORS[1]), /storing the inherent-risk ratings block in `review\.md`/);
+  assert.match(read('skills/universal/to-pr/SKILL.md'), /`inherent_risk` field/);
 });

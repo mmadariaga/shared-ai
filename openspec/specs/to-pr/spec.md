@@ -421,7 +421,7 @@ When the current-user or label read fails again while `publish` re-runs the quer
 
 ### Requirement: Description carries the inherent-risk ratings block
 
-The to-pr skill SHALL compute the inherent-risk ratings on the current tree on every run by following `sai/policies/inherent-risk.md` over the `sai/tools/risk-signals.js` output, using the ref used for collection as the parent branch, with or without an OpenSpec change. The drafted description SHALL carry exactly one ratings block whose four levels are each at or above the tool's floor. The block SHALL sit after `## Audits`, or after `## Test plan` when `## Audits` is omitted, and before `## Out of Scope / Follow-ups`, and its content SHALL come from the policy, never from the draft's own claims.
+The to-pr skill SHALL publish the inherent-risk ratings from `collect`'s `inherent_risk` field. When `state` is `fresh`, it SHALL put the stored `block` in the description unchanged, without computing anything. When `state` is `stale` or `absent`, it SHALL compute the ratings on the current tree by following `sai/policies/inherent-risk.md` over the `sai/tools/risk-signals.js` output, using the ref used for collection as the parent branch, with or without an OpenSpec change. The drafted description SHALL carry exactly one ratings block, stored when `fresh` and otherwise computed with its four levels each at or above the tool's floor. The block SHALL sit after `## Audits`, or after `## Test plan` when `## Audits` is omitted, and before `## Out of Scope / Follow-ups`, and its content SHALL come from the policy or from the stored `fresh` block, never from the draft's own claims.
 
 #### Scenario: No OpenSpec change exists
 - **WHEN** `/to-pr` runs on a branch with no resolvable OpenSpec change
@@ -434,6 +434,14 @@ The to-pr skill SHALL compute the inherent-risk ratings on the current tree on e
 #### Scenario: Floors bound the published levels
 - **WHEN** the tool sets a `medium` security floor and the judgment is `low`
 - **THEN** the drafted block publishes security as `medium`
+
+#### Scenario: A fresh stored block is published as stored
+- **WHEN** `collect` reports `inherent_risk` with `state: fresh`
+- **THEN** the draft carries the stored block unchanged and no ratings are computed
+
+#### Scenario: A stale or absent block is recomputed
+- **WHEN** `collect` reports `inherent_risk` with `state: stale` or `state: absent`
+- **THEN** the skill computes the ratings on the current tree against the collection ref and the draft carries the computed block
 
 ### Requirement: Ratings block replacement on update
 
@@ -450,3 +458,19 @@ On update, the to-pr skill SHALL replace everything between the ratings block ma
 #### Scenario: Replacement is still approved as a whole
 - **WHEN** the ratings block is replaced on update
 - **THEN** no separate approval is asked for the replacement and the full description is presented for publication approval
+
+### Requirement: Collect reports the stored ratings block
+
+`sai/tools/to-pr.js collect` SHALL return an `inherent_risk` field that validates the ratings block stored in the change's `review.md` against the merge-base of HEAD with the request's base branch, reusing the `risk-signals.js` validation as a module. The field SHALL carry `state` (`fresh`, `stale`, or `absent`) and, only when `fresh`, the `block` extracted from `review.md`. A block that cannot be checked, and a change without `review.md`, SHALL be reported as `absent`.
+
+#### Scenario: The stored block matches the base and the code
+- **WHEN** `collect` runs after a fix round stored a block computed against the request's base and no code commit followed
+- **THEN** `inherent_risk` carries `state: fresh` and the stored `block`
+
+#### Scenario: Code was committed after the block
+- **WHEN** a code commit outside `openspec/` follows the commit that stored the block
+- **THEN** `inherent_risk` carries `state: stale` and no `block`
+
+#### Scenario: No review report exists
+- **WHEN** `collect` runs for a change without `review.md`
+- **THEN** `inherent_risk` carries `state: absent`

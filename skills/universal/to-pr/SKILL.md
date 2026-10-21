@@ -56,13 +56,17 @@ OpenSpec documents only when their relationship to the committed diff is clear.
 Missing OpenSpec is normal. Optional context cannot add uncommitted work or override
 Git evidence.
 
-Compute the inherent-risk ratings on the current tree: read `sai/policies/inherent-risk.md`
-from the harness root that holds this skill's `skills/` directory and follow it, with the
-ref used for collection as the parent branch and `risk-signals.js` located per
-`sai/policies/tool-resolution.md` § `sai/tools/*.js` copies. With or without an OpenSpec
-change, the committed diff against the target is the input. Put the ratings block in the
-description at the position `description-format.md` fixes. **Complete when:** the draft
-carries one ratings block whose four levels are each at or above the tool's floor.
+Publish the inherent-risk ratings from `collect`'s `inherent_risk` field. When `state` is
+`fresh`, put its `block` in the description as stored, unchanged and without computing
+anything: the review's fix round computed it for this merge-base and code. When `state` is
+`stale` or `absent`, compute the ratings on the current tree: read
+`sai/policies/inherent-risk.md` from the harness root that holds this skill's `skills/`
+directory and follow it, with the ref used for collection as the parent branch and
+`risk-signals.js` located per `sai/policies/tool-resolution.md` § `sai/tools/*.js` copies.
+With or without an OpenSpec change, the committed diff against the target is the input.
+Put the ratings block in the description at the position `description-format.md` fixes.
+**Complete when:** the draft carries one ratings block, stored when `fresh` and otherwise
+computed with its four levels each at or above the tool's floor.
 
 Run `query` with `{provider,repository,remote,base,title,description}`. It validates
 the title rules and finds an open request for this exact source and target.
