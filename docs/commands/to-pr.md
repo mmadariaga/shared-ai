@@ -39,6 +39,20 @@ evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
 only the title and description and preserve unrelated content.
 
+The description carries an **Inherent Risk** block: four independent ratings
+(security, reversibility, critical sections, blast radius), each `low`, `medium`, or
+`high`, with a one-line justification citing `path:line`. They measure how risky the
+change is by its nature, as a signal for the human reviewer; they change no review
+depth and start no audit, and fixing findings or hardening code lowers no level. The
+skill computes them on every run from the committed diff against the target, with or
+without an OpenSpec change, following `sai/policies/inherent-risk.md`. The deterministic
+script `sai/tools/risk-signals.js` sets a floor for security, reversibility, and blast
+radius from path, extension, and diff-size signals (and CodeGraph dependents when an
+index exists); the published level is never below its floor, and without an index the
+blast radius rests on diff size alone. On update, only the content between the block's
+`sai-inherent-risk` markers is replaced, with no separate approval, and the rest of the
+description is kept as it was; the full result is still shown before you approve.
+
 On GitHub and GitLab, the description ends with a `Closes` block generated from
 closing keywords in the branch's committed messages (such as `Fixes #12`). A branch
 named `<number>_<slug>` after an issue also closes that issue, but only when it has
