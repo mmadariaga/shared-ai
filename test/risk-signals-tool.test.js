@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
-const { compute, main } = require('../sai/tools/risk-signals');
+const { compute, validate, main } = require('../sai/tools/risk-signals');
 
 function git(cwd, ...args) {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -119,4 +119,90 @@ test('an invalid parent is reported as blocked', (t) => {
     assert.equal(main(['compute', '--parent', 'nope', '--cwd', cwd]), 2);
   } finally { process.stdout.write = original; }
   assert.deepEqual(written.map(line => JSON.parse(line).status), ['blocked', 'blocked']);
+});
+
+function block(result, levels = { security: 'low', reversibility: 'low', critical_sections: 'low', blast_radius: 'low' }) {
+  return [
+    '<!-- sai-inherent-risk:start -->',
+    '## Inherent Risk',
+    '',
+    `Merge-base: \`${result.merge_base}\` | Code fingerprint: \`${result.fingerprint}\``,
+    '',
+    '| Rating | Level | Justification |',
+    '|--------|-------|---------------|',
+    `| Security | ${levels.security} | src/a.js:1 |`,
+    `| Reversibility | ${levels.reversibility} | src/a.js:1 |`,
+    `| Critical sections | ${levels.critical_sections} | src/a.js:1 |`,
+    `| Blast radius | ${levels.blast_radius} | src/a.js:1 |`,
+    '<!-- sai-inherent-risk:end -->',
+  ].join('\n');
+}
+const report = text => `# Code Review - x\n\n**Reviewed:** \`main\` a..b\n\n${text}\n\n## Security Surface Triage\n\n- **Surface touched:** No\n`;
+
+test('a stored block that matches the code and respects the floors is fresh and carries its text', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/a.js': 'a\n' });
+  const stored = block(compute({ parent: 'main' }, cwd));
+  assert.deepEqual(validate({ parent: 'main', text: report(stored) }, cwd), { status: 'ok', state: 'fresh', block: stored });
+  commit(cwd, { 'openspec/changes/x/review.md': report(stored) });
+  assert.equal(validate({ parent: 'main', text: report(stored) }, cwd).state, 'fresh');
+});
+
+test('a block is stale when the code changes', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/a.js': 'a\n' });
+  const text = report(block(compute({ parent: 'main' }, cwd)));
+  assert.equal(validate({ parent: 'main', text }, cwd).state, 'fresh');
+  commit(cwd, { 'src/b.js': 'b\n' });
+  assert.equal(validate({ parent: 'main', text }, cwd).state, 'stale');
+});
+
+test('a block stays stale after the parent moves and is merged in', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/a.js': 'a\n' });
+  const text = report(block(compute({ parent: 'main' }, cwd)));
+  git(cwd, 'checkout', 'main');
+  commit(cwd, { 'src/c.js': 'c\n' });
+  git(cwd, 'checkout', 'feature');
+  git(cwd, 'merge', '--no-edit', 'main');
+  assert.equal(validate({ parent: 'main', text }, cwd).state, 'stale');
+});
+
+test('a missing, malformed, or below-floor block is absent', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'db/migrations/001.sql': 'create table a(id int);\n' });
+  const current = compute({ parent: 'main' }, cwd);
+  assert.equal(current.floors.reversibility, 'high');
+  const high = { security: 'low', reversibility: 'high', critical_sections: 'low', blast_radius: 'low' };
+  assert.equal(validate({ parent: 'main', text: report(block(current, high)) }, cwd).state, 'fresh');
+  assert.equal(validate({ parent: 'main', text: report(block(current)) }, cwd).state, 'absent');
+
+  const stored = block(current, high);
+  const broken = [
+    null,
+    report(''),
+    report(stored.replace('<!-- sai-inherent-risk:end -->', '')),
+    report(stored.replace('<!-- sai-inherent-risk:start -->', '')),
+    report(`${stored}\n${stored}`),
+    report(stored.replace(/Code fingerprint: `[0-9a-f]+`/, 'Code fingerprint: ``')),
+    report(stored.replace('| Security | low |', '| Security | severe |')),
+    report(stored.replace(/\| Blast radius .*\n/, '')),
+    report(stored.replace('Merge-base: ', 'Base: ')),
+  ];
+  for (const text of broken) assert.equal(validate({ parent: 'main', text }, cwd).state, 'absent');
+});
+
+test('validate reads the report file and reports a missing file as absent', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/a.js': 'a\n' });
+  write(cwd, 'review.md', report(block(compute({ parent: 'main' }, cwd))));
+  const written = [];
+  const original = process.stdout.write;
+  process.stdout.write = chunk => { written.push(String(chunk)); return true; };
+  try {
+    assert.equal(main(['validate', '--parent', 'main', '--file', 'review.md', '--cwd', cwd]), 0);
+    assert.equal(main(['validate', '--parent', 'main', '--file', 'missing.md', '--cwd', cwd]), 0);
+    assert.equal(main(['validate', '--parent', 'main', '--cwd', cwd]), 2);
+  } finally { process.stdout.write = original; }
+  assert.deepEqual(written.map(line => JSON.parse(line)).map(item => item.state ?? item.status), ['fresh', 'absent', 'blocked']);
 });

@@ -80,3 +80,43 @@ The ratings block SHALL sit between `<!-- sai-inherent-risk:start -->` and `<!--
 #### Scenario: A block is rendered
 - **WHEN** the ratings are published
 - **THEN** the block between the markers contains the `## Inherent Risk` heading, the `Merge-base` and `Code fingerprint` line, and one table row each for security, reversibility, critical sections, and blast radius
+
+### Requirement: Stored ratings block in review.md
+
+A fix round SHALL store the ratings block in the change's `review.md` after the report's title lines (the title and its `**Reviewed:**` line) and before the first triage section, replacing any previous block entirely. The block SHALL be computed against the parent branch that the `**Reviewed:**` line names, so the ratings describe the diff that was reviewed. A review that runs again SHALL regenerate `review.md` with no ratings block. The `Surface touched` triage lines SHALL read the same with or without a stored block.
+
+#### Scenario: A fix round stores the block
+- **WHEN** a completed `/sai-3-implement` fix round stores the ratings in a `review.md` whose `**Reviewed:**` line names `main`
+- **THEN** the block is computed against `main` and sits after the title and `**Reviewed:**` lines, before the first triage section
+
+#### Scenario: A later fix round replaces the block
+- **WHEN** a second completed fix round stores the ratings in a `review.md` that already holds a block
+- **THEN** all four ratings are recomputed on the resulting tree and the previous block is replaced entirely
+
+#### Scenario: The review runs again
+- **WHEN** `/sai-4-review` regenerates `review.md`
+- **THEN** the regenerated report carries no ratings block
+
+### Requirement: Stored block validation
+
+`sai/tools/risk-signals.js validate --parent <branch> --file <review.md> [--cwd <project-root>]` SHALL print one JSON object with `status: ok` and a `state` of `fresh`, `stale`, or `absent`, and with the `block` text when the state is `fresh`. The state SHALL be `fresh` when the stored merge-base and code fingerprint equal the ones computed now for `<branch>` and no stored level is below its floor computed now. It SHALL be `stale` when the merge-base or the code fingerprint no longer matches. It SHALL be `absent` when the file or the block is missing, or the block is invalid: a missing or repeated marker, a missing merge-base, fingerprint, or rating row, a level outside `low`/`medium`/`high`, or a level below its floor. A block that is not well formed SHALL be classified before any Git command runs. The `validate` function SHALL be exported for reuse as a module.
+
+#### Scenario: The block matches the code
+- **WHEN** `validate` reads a well-formed block whose merge-base and fingerprint equal the current ones and whose levels are at or above the current floors
+- **THEN** it prints `state: fresh` with the block text
+
+#### Scenario: The code changed after the block was stored
+- **WHEN** a commit outside `openspec/` follows the commit that stored the block
+- **THEN** `validate` prints `state: stale`
+
+#### Scenario: The parent was merged in
+- **WHEN** the parent branch moves and is merged into the change branch after the block was stored
+- **THEN** `validate` prints `state: stale`
+
+#### Scenario: The block is malformed or below the floor
+- **WHEN** the block lacks a marker, lacks the fingerprint, carries a level outside the scale, or stores reversibility `low` for a diff that adds a migration
+- **THEN** `validate` prints `state: absent`
+
+#### Scenario: The report file is missing
+- **WHEN** `--file` names a file that does not exist
+- **THEN** `validate` prints `state: absent`

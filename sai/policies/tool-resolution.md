@@ -66,8 +66,10 @@ takes one — never substitute one for the other.
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them).
 - `risk-signals.js`: `node <tool-path> compute --parent <branch> [--cwd
-  <project-root>]`. It always prints one JSON object (`status: ok` with the
-  merge-base, fingerprint, and floors, or `status: blocked` with a `message`).
+  <project-root>]`, and `node <tool-path> validate --parent <branch> --file
+  <review.md> [--cwd <project-root>]`. It always prints one JSON object
+  (`status: ok` with the merge-base, fingerprint, and floors, or with the stored
+  block's `state`; or `status: blocked` with a `message`).
 - `ready-to-propose.js`: `node <tool-path> check --profile loose|strict|dispatchable`
   with the text on stdin (the dispatchable profile reads its judgment verdicts
   after a `<<<VERDICTS>>>` line). It always prints one JSON verdict; `--json` is

@@ -17,7 +17,7 @@ Use these headings:
 The ratings block of `sai/policies/inherent-risk.md` (`<!-- sai-inherent-risk:start -->` …
 `<!-- sai-inherent-risk:end -->`) sits after `## Audits`, or after `## Test plan` when
 `## Audits` is omitted, and before `## Out of Scope / Follow-ups`. It is the one block every
-description carries; its content comes from that policy, never from the draft's own claims.
+description carries; its content comes from that policy, or from the stored block that `collect` reports as `fresh`, never from the draft's own claims.
 
 Omit empty optional sections. Do not claim a test or audit passed merely because
 its document exists. For updates preserve unrelated existing content and explain

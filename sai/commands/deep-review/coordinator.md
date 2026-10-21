@@ -227,8 +227,9 @@
      the run-specific standard close.
 
   The run commits `review.md` once through the review segment, then once per fix
-  step through the fix segment; it adds no other commit. A report the project
-  ignores stays on disk uncommitted. No review or audit runs after the fix
+  step through the fix segment, then once more for the inherent-risk ratings block
+  that the fix segment stores in `review.md` at its close when it fixed a finding;
+  it adds no other commit. A report the project ignores stays on disk uncommitted. No review or audit runs after the fix
   segment; run `/sai-deep-review {name}` again to review the fixed tree.
 
   ## Changed-files union

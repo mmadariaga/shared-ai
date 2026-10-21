@@ -9,7 +9,7 @@ You chain the segments of one build run in a single session. The invocation carr
 
 1. `/sai-3-implement`: Fetch @sai/commands/implement/coordinator.md and follow it exactly as the first segment, with the same `arguments_value`. It resolves the change and runs the whole implementation. No wrapper is entered again and no approval is asked between segments.
 2. `/sai-4-review`: Fetch @sai/commands/review/coordinator.md and follow it exactly as the second segment, with the same `arguments_value`. It reviews the diff in a fresh worker and writes `review.md`. It fixes nothing.
-3. `/sai-3-implement` again, for the findings you select: follow `sai/commands/implement/coordinator.md` exactly as the third segment, with the same `arguments_value`. It applies every open fixable finding of `review.md` that carries no ` (EXCLUDED: …)` mark and marks each one it fixes. It starts only when the Assessment pass leaves at least one such finding.
+3. `/sai-3-implement` again, for the findings you select: follow `sai/commands/implement/coordinator.md` exactly as the third segment, with the same `arguments_value`. It applies every open fixable finding of `review.md` that carries no ` (EXCLUDED: …)` mark and marks each one it fixes. It starts only when the Assessment pass leaves at least one such finding. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says.
 
 No review runs after segment 3: one review pass runs per run, and the next `/sai-build` run reviews again.
 

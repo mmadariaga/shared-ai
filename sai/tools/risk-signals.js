@@ -3,6 +3,7 @@
 // Deterministic inherent-risk signals for a change: the merge-base with a parent branch, the code fingerprint,
 // and the floor of each rating that path, extension, and diff-size signals justify. The policy
 // `sai/policies/inherent-risk.md` owns what the floors mean and how the rating levels are assigned over them.
+// `validate` reads a stored ratings block and reports whether it still matches the current code.
 
 const { execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
@@ -28,6 +29,10 @@ const USER_INPUT = /\breq\.(body|query|params|headers|cookies)\b|\brequest\.(arg
 const MIGRATION = /(^|\/)(migrations?|migrate|alembic|flyway|liquibase)\/|\.(sql|ddl|prisma)$|(^|\/)(schema\.rb|structure\.sql)$/i;
 const INFRASTRUCTURE = /(^|\/)(\.github\/workflows|\.circleci|k8s|kubernetes|helm|charts|terraform|ansible)\/|(^|\/)(\.gitlab-ci\.ya?ml|azure-pipelines[^/]*\.ya?ml|Jenkinsfile|Chart\.ya?ml)$|(^|\/)(Dockerfile|docker-compose)[^/]*$|\.(tf|tfvars|bicep)$/i;
 const DEPENDENCY = /(^|\/)(package(-lock)?\.json|yarn\.lock|pnpm-lock\.ya?ml|requirements[^/]*\.txt|Pipfile(\.lock)?|pyproject\.toml|poetry\.lock|go\.(mod|sum)|Cargo\.(toml|lock)|pom\.xml|build\.gradle(\.kts)?|packages\.config|Gemfile(\.lock)?|composer\.(json|lock))$|\.csproj$/i;
+
+const BLOCK_START = '<!-- sai-inherent-risk:start -->';
+const BLOCK_END = '<!-- sai-inherent-risk:end -->';
+const RATING_ROWS = { Security: 'security', Reversibility: 'reversibility', 'Critical sections': 'critical_sections', 'Blast radius': 'blast_radius' };
 
 const higher = (a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a);
 const bySize = (value, [medium, high]) => (value >= high ? 'high' : value >= medium ? 'medium' : 'low');
@@ -141,16 +146,66 @@ function compute(request, cwd) {
     codegraph: probe };
 }
 
+// The ratings block of a report: the text from the start marker to the end marker, or null unless the markers
+// appear exactly once each, in order.
+function extractBlock(text) {
+  if (typeof text !== 'string') return null;
+  const start = text.indexOf(BLOCK_START);
+  const end = text.indexOf(BLOCK_END);
+  if (start === -1 || end < start || text.indexOf(BLOCK_START, start + 1) !== -1 || text.indexOf(BLOCK_END, end + 1) !== -1) return null;
+  return text.slice(start, end + BLOCK_END.length);
+}
+
+// The merge-base, the code fingerprint, and the four levels of a block, or null when any of them is missing or invalid.
+function parseBlock(block) {
+  const header = /^Merge-base: `([0-9a-f]{7,64})` \| Code fingerprint: `([0-9a-f]{64})`\r?$/m.exec(block);
+  if (!header) return null;
+  const levels = {};
+  for (const row of block.split('\n')) {
+    const cells = row.split('|').map(cell => cell.trim());
+    if (cells.length < 4 || cells[0] !== '' || !(cells[1] in RATING_ROWS)) continue;
+    if (RATING_ROWS[cells[1]] in levels || !LEVELS.includes(cells[2])) return null;
+    levels[RATING_ROWS[cells[1]]] = cells[2];
+  }
+  return Object.values(RATING_ROWS).every(rating => rating in levels) ? { merge_base: header[1], fingerprint: header[2], levels } : null;
+}
+
+// `fresh`: the block matches the current code and respects the floors; `stale`: the merge-base or the code
+// fingerprint no longer matches; `absent`: the block is missing or invalid, or a stored level is below the floor
+// computed now. A block that is not well formed returns before any Git command runs.
+function validate(request, cwd) {
+  const block = extractBlock(request.text);
+  const stored = block && parseBlock(block);
+  if (!stored) return { status: 'ok', state: 'absent' };
+  const current = compute({ parent: request.parent }, cwd);
+  if (stored.merge_base !== current.merge_base || stored.fingerprint !== current.fingerprint) return { status: 'ok', state: 'stale' };
+  for (const [rating, floor] of Object.entries(current.floors)) {
+    if (floor && LEVELS.indexOf(stored.levels[rating]) < LEVELS.indexOf(floor)) return { status: 'ok', state: 'absent' };
+  }
+  return { status: 'ok', state: 'fresh', block };
+}
+
+const USAGE = 'Usage: node risk-signals.js compute --parent <branch> [--cwd <project-root>] | validate --parent <branch> --file <review.md> [--cwd <project-root>]';
+
 function main(argv) {
   const options = {};
   try {
     const [operation, ...rest] = argv;
-    if (operation !== 'compute') throw new Error('Usage: node risk-signals.js compute --parent <branch> [--cwd <project-root>]');
+    const allowed = { compute: ['--parent', '--cwd'], validate: ['--parent', '--file', '--cwd'] }[operation];
+    if (!allowed) throw new Error(USAGE);
     for (let index = 0; index < rest.length; index += 2) {
-      if (!['--parent', '--cwd'].includes(rest[index]) || rest[index + 1] === undefined) throw new Error('Usage: node risk-signals.js compute --parent <branch> [--cwd <project-root>]');
+      if (!allowed.includes(rest[index]) || rest[index + 1] === undefined) throw new Error(USAGE);
       options[rest[index].slice(2)] = rest[index + 1];
     }
-    const result = compute({ parent: options.parent }, options.cwd || process.cwd());
+    const cwd = options.cwd || process.cwd();
+    let result;
+    if (operation === 'compute') result = compute({ parent: options.parent }, cwd);
+    else {
+      if (!options.file) throw new Error(USAGE);
+      let text = null;
+      try { text = fs.readFileSync(path.resolve(cwd, options.file), 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      result = validate({ parent: options.parent, text }, cwd);
+    }
     process.stdout.write(JSON.stringify(result) + '\n');
     return 0;
   } catch (error) {
@@ -160,4 +215,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { compute, main, LEVELS, THRESHOLDS };
+module.exports = { compute, validate, extractBlock, main, LEVELS, THRESHOLDS };
