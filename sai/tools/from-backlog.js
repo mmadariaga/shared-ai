@@ -143,13 +143,17 @@ function run(command, args, input) {
 
 // Execute the installed CLI extension's own authenticated SDK. invoke chooses
 // by resource name and cannot distinguish the two WorkItems location IDs or
-// reach the repository-scoped pull-request location. `client` is location|wit|git.
+// reach the repository-scoped pull-request location. `client` is location|wit|git|work.
 const SDK_SCRIPT = `import sys, json
 from urllib.parse import quote
 request = json.loads(sys.stdin.buffer.read().decode('utf-8'))
 sys.path.insert(0, request.pop('extension'))
 from azext_devops.dev.common.services import get_work_item_tracking_client, get_location_client, get_git_client
-client = {'location': get_location_client, 'wit': get_work_item_tracking_client, 'git': get_git_client}[request['client']](request['organization'])
+if request['client'] == 'work':
+    from azext_devops.dev.common.services import get_work_client
+    client = get_work_client(request['organization'])
+else:
+    client = {'location': get_location_client, 'wit': get_work_item_tracking_client, 'git': get_git_client}[request['client']](request['organization'])
 routes = {k: quote(str(v), safe='') for k, v in request['route'].items()}
 # The SDK's service errors do not carry the HTTP status; record it where the SDK raises them.
 seen = []

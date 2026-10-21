@@ -43,6 +43,8 @@ test('H1: actual shared spawn boundary overrides inherited dynamic installation 
 test('H2: installed-SDK bridge selects distinct official location IDs and resolves final encoded REST templates', () => {
   const prefix = fs.readFileSync(path.join(__dirname, 'fixtures/azure-sdk-routing.py'), 'utf8');
   const cases = [
+    { client: 'wit', location: '5a172953-1b41-49d3-840a-33f79c3ce89f', method: 'GET', route: { project: 'Team Ω', structureGroup: 'iterations' }, expected: '/Team%20%CE%A9/_apis/wit/classificationnodes/iterations' },
+    { client: 'work', location: 'c9175577-28a1-4b06-9197-8636af9f64ad', method: 'GET', route: { project: 'Team Ω', team: 'Team Ω' }, expected: '/Team%20%CE%A9/Team%20%CE%A9/_apis/work/teamsettings/iterations' },
     { client: 'wit', location: '62d3d110-0047-428c-ad3c-4fe872c91c74', method: 'POST', route: { project: 'Team Ω', type: 'User Story' }, expected: '/Team%20%CE%A9/_apis/wit/workitems/$User%20Story' },
     { client: 'wit', location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'GET', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12' },
     { client: 'wit', location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'PATCH', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12', body: [{ op: 'test', path: '/rev', value: 3 }, { op: 'add', path: '/fields/System.Title', value: 'New' }] },
@@ -62,8 +64,8 @@ test('H2: installed-SDK bridge selects distinct official location IDs and resolv
     if (request.client === 'location') assert.equal(response.authenticatedUser.id, 'offline-actor');
   }
   const calls = [], org = { organization: 'https://dev.azure.com/org' };
-  for (const [area, resource, route, location, client] of [['wit', 'workitems', { project: 'Team', type: 'Task' }, cases[0].location, 'wit'],
-    ['wit', 'workitems', { project: 'Team', id: 1 }, cases[1].location, 'wit'],
+  for (const [area, resource, route, location, client] of [['wit', 'workitems', { project: 'Team', type: 'Task' }, '62d3d110-0047-428c-ad3c-4fe872c91c74', 'wit'],
+    ['wit', 'workitems', { project: 'Team', id: 1 }, '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', 'wit'],
     ['git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, '9946fd70-0d40-406e-b686-b4744cbbcc37', 'git']]) {
     azure.api(org, area, resource, route, { run(command, args, input) {
       assert.equal(command, 'azure-sdk'); const request = JSON.parse(input); calls.push(request); assert.equal(request.location, location); assert.equal(request.client, client); return '{}';

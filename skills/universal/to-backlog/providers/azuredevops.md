@@ -17,6 +17,14 @@ data stops. Here Project means Azure team project, not a GitHub Project insertio
 `query` takes canonical project `repository`, optional `project`, `type`, `title`
 and Markdown `description`. Ask for the exact work-item `type` when absent; it
 belongs to this invocation only, never a persistent default. Invalid types stop.
+For ordinary publication, pass the intended parent PBI known in context as
+`parent` (native work-item ID or full URL). Pass `iteration` (native iteration
+path, or `current` with the Azure `team` name) only when a sprint is explicitly
+requested, translating a natural-language current-sprint request to `current`.
+Pass `assignToMe:true` only on an explicit request to assign the authenticated
+user. The helper resolves and validates these references and returns the exact
+`planning` proposal; include all of it in publication approval. Resolve reported
+ambiguity with the user rather than inventing a reference or changing scope.
 Project rules stay enabled. Missing additional required fields stop creation;
 do not supply them automatically or bypass rules.
 
@@ -36,12 +44,22 @@ identity and pre-creation IDs before one rules-enforced write.
 no write was attempted. `rejected` is a confirmed server rejection; report and
 consult under `../publication-recovery.md`. On `uncertain`, keep the receipt and
 run `recover` directly with it, without asking permission to verify. Remote recovery
-is queries only: a WIQL POST is a query, not a publication. If the write response
+without a continuation token is queries only: a WIQL POST is a query, not a publication. If the write response
 was lost, show candidate links and ask for the actual created URL, then pass it
 as `issueUrl`. Candidates must be new relative to saved IDs and match type,
 author and full content. A coincident title is not evidence. Zero or multiple
 plausible matches require clarification, never automatic repeat creation.
 Complete when verified or the blocker and private receipt location are reported.
+
+Ordinary publication completes content first, then applies only the approved
+parent, iteration and authenticated-user assignment. `partial_failure` reports
+confirmed content and pending planning changes, never a failed creation to
+repeat. Use `recover` to verify the saved receipt. To finish a verified pending
+result, show its current state and pending changes, obtain explicit approval,
+then pass the returned `continuation` as `confirmation` with `approved:true`
+and the same receipt to `recover`. The helper revalidates the exact state and
+changes only pending fields. A lost response always goes through read-only
+verification first. A conflict needs reconciliation and fresh approval.
 
 ## Slice sets and implementation assignment
 

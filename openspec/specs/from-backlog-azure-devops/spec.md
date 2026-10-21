@@ -113,3 +113,19 @@ Azure hierarchical import SHALL read native parent, direct-child and predecessor
 
 - **WHEN** the selected work item has a verified parent
 - **THEN** import returns the selected child and full parent context separately, retains the child as origin and performs no remote mutation.
+
+### Requirement: Ordinary Boards reads expose validated planning fields
+
+Ordinary Azure Boards reads SHALL expand native relations and expose the parent work-item ID and native URL, iteration path and assignee identity alongside the original work-item content. Missing values SHALL be explicit nulls. Assignee data SHALL include the identity ID and available display name and unique name. Malformed relations, multiple parents, foreign-organization or invalid parent identities, missing assignee identity IDs and non-string iteration values SHALL prevent complete retrieval. Reads SHALL remain read-only and preserve original content and provenance.
+
+#### Scenario: Work item has planning metadata
+- **WHEN** a valid work item has a native parent, iteration and assigned identity
+- **THEN** ordinary read returns those fields with the original item content and available assignee names.
+
+#### Scenario: Planning metadata is absent
+- **WHEN** a valid work item has no parent, iteration or assignee
+- **THEN** ordinary read returns explicit null values without inventing planning data.
+
+#### Scenario: Planning metadata is malformed
+- **WHEN** planning data has invalid relation shape, conflicting parents or incomplete assignment identity
+- **THEN** read reports a non-complete outcome rather than claiming verified planning metadata.
