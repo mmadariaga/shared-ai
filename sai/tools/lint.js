@@ -58,6 +58,17 @@ function readFileOrFail(filePath) {
   }
 }
 
+function checkAiAttribution(content, file = 'text') {
+  const model = '(?:AI(?: assistant)?|artificial intelligence|LLM|Claude(?: Code|[- ](?:Sonnet|Opus|Haiku))?|ChatGPT|GPT(?:[- ]?[0-9][\\w.-]*)?|OpenAI(?: Codex)?|Anthropic|GitHub Copilot|Copilot|Codex|Gemini|DeepSeek|Grok|opencode|Cursor|Amazon Q|Aider|Windsurf)';
+  const credit = new RegExp(`\\b(?:generated|authored|written|created|produced|powered|assisted|co-authored|coauthored)(?:[ -]by|[ -]with|[ -]using|[ -]via|[ -]assisted by)[:\\s]*(?:(?:the|an?)\\s+)?(?:\\[|\\*|_)*${model}\\b|^\\s*${model}[ -](?:generated|authored|written|assisted)\\b`, 'i');
+  const trailer = new RegExp(`^\\s*Co-Authored-By:\\s*(?:${model}(?:[- ]v?\\d+(?:[.-]\\d+)*)?(?:\\s*<|\\s*$)|.*(?:noreply@(?:anthropic\\.com|openai\\.com)|copilot(?:\\[bot\\])?\\s*<))`, 'i');
+  // Trailer identities need a whole-name match so people named Claude are allowed.
+  return content.split('\n').flatMap((line, index) => (/^\s*Co-Authored-By:/i.test(line) ? trailer.test(line) : credit.test(line)) ? [{
+    file, line: index + 1, problem: 'AI_ATTRIBUTION',
+    detail: 'AI attribution requires an explicit user request',
+  }] : []);
+}
+
 /**
  * Check commit message subject line and body format.
  * Validates per sai/policies/commit-rules.md:
@@ -68,8 +79,9 @@ function readFileOrFail(filePath) {
  *   - No trailing period
  *   - Body (if present) wrapped at 72 characters per line
  *   - Blank line between subject and body (if body present)
+ *   - AI attribution only under the explicit user exception
  */
-function checkCommitRules(content) {
+function checkCommitRules(content, { allowAttribution = false } = {}) {
   const lines = content.split('\n');
   const subject = lines[0] || '';
 
@@ -132,6 +144,7 @@ function checkCommitRules(content) {
     }
   }
 
+  if (allowAttribution !== true) violations.push(...checkAiAttribution(content, 'commit message'));
   return violations;
 }
 
@@ -706,6 +719,7 @@ function usage() {
     '                      - worker-emission-ownership: Validate worker card emission ownership',
     '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
     '  --json              Emit the report as JSON on stdout',
+    '  --allow-attribution Allow user-requested AI credit in commit-rules only',
     '  --cwd <dir>         Working directory for file resolution (default: current directory)',
   ].join('\n');
 }
@@ -723,6 +737,8 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--json') {
       opts.json = true;
+    } else if (arg === '--allow-attribution') {
+      opts.allowAttribution = true;
     } else if (arg === '--help' || arg === '-h') {
       opts.help = true;
     } else if (arg === '--cwd') {
@@ -789,7 +805,7 @@ function main(argv) {
 
     switch (opts.check) {
       case 'commit-rules':
-        violations = checkCommitRules(content);
+        violations = checkCommitRules(content, { allowAttribution: opts.allowAttribution });
         break;
       case 'glossary-format':
         violations = checkGlossaryFormat(content);
@@ -841,6 +857,7 @@ function main(argv) {
 
 // Export functions for programmatic use
 module.exports = {
+  checkAiAttribution,
   checkCommitRules,
   checkPrTitleRules,
   checkGlossaryFormat,

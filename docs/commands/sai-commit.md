@@ -9,6 +9,7 @@ Prepares a commit message from changes that are already staged and creates the c
 - `--scope <scope>` / `--type <type>`: force the Conventional Commits scope or type instead of inferring them.
 - `--no-body`: write the subject line only.
 - `--amend`: rewrite the latest commit instead of creating a new one. When that commit is already pushed, the command warns and asks for a second confirmation.
+- `--allow-attribution`: permit AI authorship credits only when you explicitly request them in the conversation. Human coauthor credits need no flag. Format, secrets checks, and commit approvals still apply, including amendments.
 
 ## In detail
 

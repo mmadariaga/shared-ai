@@ -68,8 +68,9 @@ Put the ratings block in the description at the position `description-format.md`
 **Complete when:** the draft carries one ratings block, stored when `fresh` and otherwise
 computed with its four levels each at or above the tool's floor.
 
-Run `query` with `{provider,repository,remote,base,title,description}`. It validates
-the title rules and finds an open request for this exact source and target.
+Run `query` with `{provider,repository,remote,base,title,description}` and the
+`allow_attribution` exception only as `description-format.md` authorizes. It validates
+the title and final description and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
 for clarification. For update, retain unrelated description content unless the user
 explicitly approves its replacement. The ratings block is the exception: it is owned
@@ -140,7 +141,8 @@ Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
 path. Keep the receipt for recovery; never overwrite it or reuse it for a retry.
 Run `publish` once with the approved query fields (including the chosen `labels` and, when
-the proposal has one, its `assignee` object unchanged), `approved:true`, the
+the proposal has one, its `assignee` object unchanged, and the same authorized
+`allow_attribution: true` when applicable), `approved:true`, the
 `publish token`, and `receipt`. A changed baseline or HEAD blocks publication: return to full review rather than renewing a token silently.
 On `uncertain`, run `recover` with `{receipt}`: recovery is read-only. Check the
 selected source and destination for an existing request before any repeated create;

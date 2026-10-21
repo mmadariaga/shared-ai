@@ -436,7 +436,7 @@ function collectState(cwd, amend = false) {
  * Message is read from stdin.
  * With --amend, uses git commit --amend instead of git commit.
  */
-function applyCommit(cwd, acknowledgeSecretsArg, amend = false) {
+function applyCommit(cwd, acknowledgeSecretsArg, amend = false, allowAttribution = false) {
   // Read message from stdin
   const inputBuffer = fs.readFileSync(0, 'utf8');
   const message = inputBuffer;
@@ -446,7 +446,7 @@ function applyCommit(cwd, acknowledgeSecretsArg, amend = false) {
   }
 
   // Validate message format
-  const violations = checkCommitRules(message);
+  const violations = checkCommitRules(message, { allowAttribution });
   if (violations.length > 0) {
     throw new ValidationFailure(violations);
   }
@@ -505,6 +505,7 @@ function usage() {
     '    --json                     Emit output as JSON',
     '    --cwd <dir>                Working directory (default: current directory)',
     '    --amend                    Amend the previous commit instead of creating a new one',
+    '    --allow-attribution        Allow AI credit explicitly requested by the user',
     '    --acknowledge-secrets <list>  Comma-separated list of sensitive files to allow',
     '',
     '  Examples:',
@@ -533,6 +534,8 @@ function parseArgs(argv) {
       opts.help = true;
     } else if (arg === '--amend') {
       opts.amend = true;
+    } else if (arg === '--allow-attribution') {
+      opts.allowAttribution = true;
     } else if (arg === '--cwd') {
       opts.cwd = argv[++i];
     } else if (arg === '--acknowledge-secrets') {
@@ -594,7 +597,7 @@ function main(argv) {
       }
       return (result.has_staged || result.amend_target) ? 0 : 1;
     } else if (opts.subcommand === 'apply') {
-      const result = applyCommit(opts.cwd, opts.acknowledgeSecrets, opts.amend);
+      const result = applyCommit(opts.cwd, opts.acknowledgeSecrets, opts.amend, opts.allowAttribution);
       if (opts.json) {
         process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       } else {

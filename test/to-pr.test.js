@@ -63,6 +63,36 @@ function receipt(t) {
   return path.join(directory, 'receipt.json');
 }
 
+for (const provider of ['github', 'gitlab']) {
+  for (const existing of [false, true]) {
+    test(`${provider} ${existing ? 'update' : 'create'} checks AI attribution at query and publish before mutation`, t => {
+      const { request, io, state } = fixture(provider, existing);
+      request.description += '\n\nGenerated with Claude Code';
+      assert.throws(() => tool.query(request, io), /AI_ATTRIBUTION/);
+      assert.throws(() => tool.query({ ...request, allow_attribution: 'true' }, io), /AI_ATTRIBUTION/);
+      const allowed = { ...request, allow_attribution: true };
+      const ready = tool.query(allowed, io);
+      const file = receipt(t);
+      assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), /AI_ATTRIBUTION/);
+      assert.equal(fs.existsSync(file), false);
+      assert.equal(state.mutations.length, 0);
+      assert.throws(() => tool.query({ ...allowed, title: 'invalid title' }, io), /title/);
+      assert.throws(() => tool.publish({ ...allowed, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+      state.remoteHead = null;
+      assert.throws(() => tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io), /push approval/);
+      assert.equal(state.mutations.length, 0);
+      state.remoteHead = state.head;
+      assert.equal(tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+    });
+    test(`${provider} ${existing ? 'update' : 'create'} allows a human coauthor without an exception`, t => {
+      const { request, io } = fixture(provider, existing);
+      request.description += '\n\nCo-Authored-By: Alice Smith <alice@example.com>';
+      const ready = tool.query(request, io);
+      assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    });
+  }
+}
+
 // E9 / I10: GitHub/GitLab regressions below cover create/update, independent
 // questions/approval tokens, forbidden mutations, recovery and optional context.
 // All provider calls are mocked; these are not live Azure publication tests.

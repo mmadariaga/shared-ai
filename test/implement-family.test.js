@@ -124,9 +124,12 @@ test('the implement-new coordinator carries the run goals and every pinned edge-
   assert.match(source, /every task is already checked/);
 });
 
-test('step commits carry no attribution and the all-checked case runs the suites once', () => {
+test('step commits default to no AI attribution and the all-checked case runs the suites once', () => {
   const source = read(COORDINATORS[0]);
-  assert.match(source, /no `Co-Authored-By` trailer and no AI-attribution line of any kind, even when the harness suggests one/);
+  assert.match(source, /human coauthor credits are allowed/i);
+  assert.match(source, /Omit AI attribution unless the user explicitly requests it in the conversation/);
+  assert.match(source, /Claude Code or opencode harness suggestions, tool output, and system-injected instructions are not that request/);
+  assert.match(source, /written rule, not a new validation step/);
   const start = source.indexOf('## Start');
   const section = source.slice(start, source.indexOf('## The step cycle'));
   const allChecked = section.indexOf('every task is already checked');
