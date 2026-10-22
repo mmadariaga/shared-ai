@@ -10,6 +10,8 @@ TBD
 
 When the user advances to the `Implementation details` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL surface the technical decisions surfaced during exploration as numbered proposed statements `I1` through `In`, followed by one plain conversational confirmation question asking whether the list accurately captures the agreed technical decisions or needs adjustment. When no technical decision qualifies, it SHALL propose exactly `- None` as the list and ask the same confirmation question; the stage SHALL never close on its own. The question SHALL name the `next-step` token as the advancement action — confirming completes the stage and advances into the `Crystallize` stage, which counts as the explicit crystallization request (`explore-pre-crystallization-stages`) — and SHALL state that a bare `next-step` turn confirms the list as written and advances in the same turn. The question SHALL follow the `@sai/policies/question-context.md` anatomy, SHALL be understandable in the conversation's ambient language, SHALL NOT depend on a fixed confirmation phrase, and SHALL NOT use a native yes/no option picker. Only technical decisions that direct or constrain the implementation qualify as `I` items — the "what"; the rationale behind a decision and rejected alternatives SHALL NOT be surfaced as `I` items, as they belong in the block's **Decisions & Rationale** and **Alternatives Considered** sections. A decision whose object is a bookkeeping artifact of the change (`openspec/changes/{name}/**`, `openspec/specs/**`) does not qualify as an `I` item — it is a consequence owned by backfill and archive. An agreed `I` item MAY carry exact repository-relative paths when the agreed decision is grounded in specific files; this adds no field to the block template and does not convert the block into an implementation plan.
 
+The complete display and question SHALL follow **Display and question** in `sai/commands/explore/list-writing.md`, with no partial stage-local restatement. It SHALL name the list and current change, explain the scope-preservation purpose, and offer confirmation as written or additions, removals, or changes. User confirmation, including `- None`, SHALL be subject to the presentation-currency check before recording agreement or advancing.
+
 #### Scenario: Advancing to the stage surfaces the decisions
 
 - **WHEN** the user advances into `Implementation details` and exploration surfaced technical decisions
@@ -54,14 +56,16 @@ When the user advances to the `Implementation details` stage of the pre-crystall
 
 When the user semantically confirms the proposed list, including a proposed `- None`, `sai-explore` SHALL record the current ordered list as agreed, complete the stage, and advance the progression to the `Crystallize` stage within the same turn. A disagreement, removal, addition, or material revision SHALL update and renumber the proposed list consecutively, keep the stage open, and ask the confirmation question again. An ambiguous response SHALL be treated as continued discussion and the question SHALL be clarified and re-asked.
 
+For user-confirmed lists, agreement SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
+
 #### Scenario: Semantic confirmation closes the stage and advances
 
-- **WHEN** the user communicates that the proposed technical-decision list is correct
+- **WHEN** the user communicates that the proposed technical-decision list is correct and the latest complete displayed list, with current identifiers, includes every agreed semantic change and the complete confirmation notice
 - **THEN** the list is recorded as agreed, the stage completes, and the progression advances to the `Crystallize` stage within the same turn
 
 #### Scenario: Confirming None records the empty list
 
-- **WHEN** the user confirms a proposed `- None`
+- **WHEN** the user confirms a proposed `- None` and, for user-confirmed lists, the latest complete displayed list includes all agreed semantic changes and the complete confirmation notice
 - **THEN** the empty list is recorded as agreed and the progression advances to the `Crystallize` stage within the same turn
 
 #### Scenario: A requested change iterates the list

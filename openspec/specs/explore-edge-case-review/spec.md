@@ -34,6 +34,8 @@ When the user advances to the `Review edge cases` stage of the pre-crystallizati
 
 The edge-case review SHALL present the candidate scope-boundary behaviors as numbered `E1` through `En` proposed behavior statements, then run the lightweight probes as defined by `lightweight-probe`, then ask one plain conversational question asking whether the list accurately captures the change's relevant edge cases or needs adjustment. The emission SHALL be one message: the formal list first, then the probes, then the question, with nothing between them. When fewer than 2 material probe scenarios exist, the review SHALL show what the probes produced and SHALL state explicitly that there are no more material scenarios, without padding the emission with non-material probes. The question SHALL name the `next-step` token as the advancement action to the next stage and SHALL state that a bare `next-step` turn confirms the list as written and advances in the same turn. The question SHALL be understandable in the conversation's ambient language and SHALL NOT depend on a fixed agreement phrase or a native yes/no option picker. Agreement in another language SHALL be valid when its intent is clearly affirmative.
 
+The complete display and question SHALL follow **Display and question** in `sai/commands/explore/list-writing.md`, with no partial stage-local restatement. The question SHALL name the list and current change, explain that agreement preserves intended scope boundaries in the handoff, and offer confirmation as written or additions, removals, or changes.
+
 #### Scenario: Proposed behaviors are numbered for discussion
 
 - **WHEN** the review has one or more in-scope edge cases to discuss
@@ -68,9 +70,11 @@ The edge-case review SHALL present the candidate scope-boundary behaviors as num
 
 When the user semantically agrees that the proposed list is correct, `sai-explore` SHALL finalize that list for crystallization and advance the stage progression to the `Implementation details` stage within the same turn. A disagreement SHALL keep the review open, incorporate the requested changes, and ask the agreement question again. Explanations of side effects SHALL be owed only when user feedback drags changes into `E` items other than the one the feedback addressed (ripples); feedback aimed at a shown probe SHALL bind to the `E` item that probe illustrates. An ambiguous response SHALL be treated as discussion rather than agreement and SHALL cause the question to be clarified and re-asked.
 
+For user-confirmed lists, agreement SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
+
 #### Scenario: Semantic agreement closes the review and advances
 
-- **WHEN** the user communicates that the proposed edge-case list accurately captures the relevant scope boundaries
+- **WHEN** the user communicates that the proposed edge-case list accurately captures the relevant scope boundaries and the latest complete displayed list, with current identifiers, includes every agreed semantic change and the complete confirmation notice
 - **THEN** the review records the list as agreed and the progression advances to the `Implementation details` stage within the same turn
 
 #### Scenario: Disagreement iterates and re-asks

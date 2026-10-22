@@ -12,6 +12,10 @@ Shared by the `Review edge cases` and `Implementation details` list stages. This
 
 **Empty list.** An empty list is displayed directly as `- None` and skips the review pass.
 
+**Display and question.** Display the complete current list with its current `E`/`I` identifiers, then ask one plain conversational question under `@sai/policies/question-context.md`, in the ambient conversation language and never as a native yes/no picker. Name the list and current change, ask whether it captures the relevant edge cases or technical decisions, and explain that agreement preserves the intended scope boundaries in the handoff. Offer confirmation as written or additions, removals, or changes. State explicitly that a bare `next-step` confirms this displayed list as written and advances to the next stage in the same turn; no fixed agreement phrase is required. Keep the edge-case stage's one-message list → probes → question order. The automatically recorded empty E list keeps its stage-owned exception; an I list containing `- None` receives the complete question.
+
+For a revised list, use this same review, display, and question sequence and wait for another confirmation. Answer evaluation and presentation currency are owned by **List stages** in `steps/common.md`.
+
 **Warn and continue.** When the skill is absent, cannot be loaded, or its load is denied, print this line once per `/sai-explore` invocation, skip the review pass, and display the list under the stage's existing rules. A later list stage or revision in the same invocation prints nothing more.
 
 ```
