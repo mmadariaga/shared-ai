@@ -6,15 +6,68 @@
 |---|---|
 | opencode / main | Existing invoking session; explicit ID; API prompt admission and that session's per-message token usage. |
 | opencode / subagent | Existing native child, verified `parentID`, same provider/model/variant as parent; same API and usage path as main. |
-| Claude Code / main | Unavailable in this runner: no validated timed-input interface to the current native conversation with correlated per-request usage. |
-| Claude Code / subagent | Unavailable in this runner: no validated timed-input interface retaining the native subagent request category. |
+| Claude Code / main | The invoking session, named by `${CLAUDE_SESSION_ID}`. The model in the session performs each wait (a background Bash command) and the reactivation that its completion notification causes is the probe; usage and timestamps come from the session transcript. |
+| Claude Code / subagent | A child of the invoking session created with the `Agent` tool, `subagent_type: general-purpose` and no model override, so it inherits the main model (the `budget-*` agents pin their own model and are not valid children). Each probe is a `SendMessage` to the captured agent id; usage and timestamps come from the child's own transcript. |
 
-The Claude Code adapter fails closed before making requests. Its per-request
-usage decoder understands transcript `message.usage.cache_read_input_tokens`
-and `input_tokens`, but decoding usage does not prove equivalent hosting.
-Neither a new Agent SDK conversation nor `claude -p --resume` is used as a
-substitute. This is a known compatibility limitation, not a zero-cache result.
-The four tool/mode pairs remain distinct in reports and offline tests.
+## Claude Code mechanism
+
+No external process can send a prompt into a live Claude Code session, and
+resuming a session through the CLI does not prove the same context. The control
+is therefore inverted: the model in the session performs the waits and the
+runner only plans and records. `cache_ttl.js next` replays the probes recorded
+in `state.json` through the same `measure()` loop opencode uses and returns the
+next wait; `cache_ttl.js record` reads the finished probe from the transcript,
+appends it to the state and returns the next wait or the final report. Every
+engine decision (ladder, descent, refinement, rewarm, sanity check, caps) is the
+one the opencode loop makes for the same sample sequence.
+
+- **Waits.** `cache_ttl.js wait --out DIR --seconds N` runs as a background Bash
+  command (`run_in_background`, description `cache-ttl-wait`). It ends `N`
+  seconds after the target's last transcript request, once that request has
+  been stable for two seconds, so the interval cannot end early. Its exit
+  notification reactivates the session. `Monitor` (30-minute expiry, a
+  re-arming turn refreshes the cache) and `ScheduleWakeup` (only under
+  `/loop`, 3,600-second cap) are not used.
+- **Transcripts.** The main file is `<projects>/<project>/<session_id>.jsonl`
+  and the subagent file `<projects>/<project>/<session_id>/subagents/agent-<agentId>.jsonl`,
+  where `<projects>` is the `projects` folder under the Claude Code
+  configuration root (`CLAUDE_CONFIG_DIR`, else `~/.claude`; `--projects` overrides
+  it). The main file is found by the exact session id: no match, several
+  matches, or a transcript naming another session is `unavailable`.
+- **Requests.** Lines that share `message.id` are one request, stamped with the
+  earliest `timestamp`. Per request the runner reads `cache_read_input_tokens`,
+  `input_tokens`, `cache_creation.ephemeral_5m_input_tokens`,
+  `cache_creation.ephemeral_1h_input_tokens`, and `message.model`.
+- **Interval and bucket.** The interval runs from the request before the probe to
+  the probe request, by transcript timestamps, never the requested wait. Each
+  sample records the cache bucket the probe wrote to and the one the anchor
+  wrote to (`ephemeral_5m`, `ephemeral_1h`, `none-written`); the report lists
+  every bucket observed.
+- **Late usage.** The transcript writes usage late: a main-mode probe is read
+  on the next request (`record` answers `pending` once, and the model calls it
+  again). A subagent probe is read once the child's transcript has been quiet
+  for five seconds. Usage still absent then makes the sample invalid, never a
+  MISS.
+- **Interference.** Between the request that launched the wait (main) or the
+  previous sample (subagent) and the probe, a user message, another task
+  notification, queued input, an automatic compaction, or a second continuation
+  invalidates the sample. Hook-added context on the probe turn is recorded as an
+  observation and does not. A wait whose notification status is not
+  `completed` (for example `killed` under memory pressure) leaves the sample
+  incomplete, never a MISS; the report then names
+  `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1` as a launch option the user may
+  choose, and the benchmark never sets it.
+- **Model.** The model is checked through every request's `message.model`. A
+  subagent on another model than the main session stops the run. The effort
+  level is not in the transcript and is reported as an unverified limitation.
+- **Capabilities.** Transcript usage fields, background command notifications,
+  and `SendMessage` continuation are required. A missing one reports
+  `unavailable` and names it; `finish --out DIR --unavailable "<what>"` records
+  that. `finish --out DIR` also stops a run and keeps its valid samples.
+
+The session is reserved for the whole run in both modes, and each probe is a
+full model turn over the whole conversation. Simulated fixtures validate data
+handling and the shared decision path only, never live equivalence.
 
 Concrete mechanism validation: the opencode V2 OpenAPI contract defines
 `GET /api/session/{sessionID}` with `id`, `parentID`, `model`, and `fork`;
@@ -26,15 +79,6 @@ It never creates a replacement session or changes session configuration.
 API reads do not send provider requests. Use the existing authenticated
 `opencode api` CLI (including its configured server), not a guessed server URL.
 
-Claude Code's documented resume restores conversation state, but its
-non-interactive permission/configuration behavior and main/subagent cache
-categories differ. Its prompt-cache documentation explicitly distinguishes
-main conversation, subagent, and fork requests. These contracts do not expose
-proof that an external `-p` resume of a subagent preserves the native category,
-or a timed input path into the active invoking conversation. Therefore this
-distribution does not claim a live Claude Code measurement. Simulated fixtures
-validate data handling only, never live equivalence.
-
 Sources for these checks:
 - https://opencode.ai/v2/docs/api
 - https://opencode.ai/v2/openapi.json
@@ -44,8 +88,10 @@ Sources for these checks:
 
 ## Dependencies and invocation
 
-Node.js 22+, opencode V2 CLI with access to the exact session and its
-per-message usage, and a readable server interference log. No npm packages,
+Node.js 22+. opencode: the V2 CLI with access to the exact session and its
+per-message usage, and a readable server interference log. Claude Code: a
+readable `projects` transcript folder, Bash with `run_in_background`, the
+`Agent` tool and `SendMessage` (subagent mode). No npm packages,
 SQLite, OpenSpec, or historical experiment files are required. Missing
 permissions, unsupported API schemas, missing usage or an unreadable log
 produce a limitation rather than fabricated cache reads. The runner reads the
@@ -69,9 +115,27 @@ For subagent mode use its child ID as `--session` and keep the parent ID in
 Use a private new directory with an existing parent, chosen for the platform;
 the runner refuses to overwrite an existing run. A CLI-only `--dry-run`
 prints the schedule without API calls, files, sleeps or paid requests; it
-does not verify session identity. For Claude Code `--tool claude` preserves
-the requested mode and emits a no-probe compatibility report on a consented
-run. `--inspect` instead reports the limitation without writing files.
+does not verify session identity.
+
+For Claude Code use `--tool claude`, the invoking session's id for
+`--invoking-session` (and for `--session` in main mode), the child's agent id for
+`--session` in subagent mode, and optionally `--projects DIR`. `--inspect`
+reads the transcripts and prints the verified identity without writing files.
+A consented run (`--acknowledge-consumption`) creates `--out`, writes
+`state.json`, and prints the first step; the session then drives the run with
+`next`, `wait`, `record` and `finish`, each taking `--out DIR`:
+
+```sh
+node cache_ttl.js next   --out DIR
+node cache_ttl.js wait   --out DIR --seconds N     # background Bash, description cache-ttl-wait
+node cache_ttl.js record --out DIR [--poll-s 120]  # subagent: waits for the child
+node cache_ttl.js finish --out DIR [--reason TEXT | --unavailable TEXT]
+```
+
+Each prints one JSON object: `wait` (seconds, `wait_args`, `record_args`),
+`pending` (call `record` again), or `done` (report and summary paths). On Claude
+Code `--probe-text` is the `SendMessage` text in subagent mode, and
+`--time-prefix` and `--log` are not used: a main-mode probe is the reactivation.
 
 ## Parameters (maintained source defaults)
 

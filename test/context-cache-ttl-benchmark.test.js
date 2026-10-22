@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { parameters, validateIdentity, conclusion, measure, renderSummary } = require('../skills/universal/sai-context-cache-ttl-benchmark/engine');
-const { OpenCodeAdapter, opencodeUsage, claudeUsage, claudeLimitation } = require('../skills/universal/sai-context-cache-ttl-benchmark/adapters');
+const { OpenCodeAdapter, opencodeUsage, claudeUsage, claudeLimitations } = require('../skills/universal/sai-context-cache-ttl-benchmark/adapters');
 const { parseArgs } = require('../skills/universal/sai-context-cache-ttl-benchmark/cache_ttl');
 const { expandInstallManifest } = require('../bin/install-manifest');
 
@@ -104,10 +104,12 @@ test('E1/E2 reject ambiguous sessions, wrong parent, model and variant without r
   assert.throws(() => new OpenCodeAdapter({ session: '', invokingSession: '', mode: 'main' }), /Explicit/);
 });
 
-test('E3 missing usage is not a cache MISS; Claude mechanisms report unavailable for both modes', () => {
+test('E3 missing usage is not a cache MISS, on either tool', () => {
   assert.throws(() => opencodeUsage({ type: 'assistant', time: { completed: 1 } }), /unavailable/);
   assert.throws(() => claudeUsage({ type: 'assistant', message: { model: 'x', usage: {} } }), /unavailable/);
-  for (const mode of ['main', 'subagent']) assert.match(claudeLimitation(mode), new RegExp(`Claude Code ${mode} measurement unavailable`));
+  assert.equal(claudeUsage({ type: 'assistant', message: { id: 'm', model: 'x', usage: { input_tokens: 4, cache_read_input_tokens: 9, cache_creation: { ephemeral_1h_input_tokens: 7, ephemeral_5m_input_tokens: 0 } } } }).cache_1h, 7);
+  for (const mode of ['main', 'subagent']) assert.ok(claudeLimitations(mode).every(text => !/unavailable in this runner/.test(text)));
+  assert.ok(claudeLimitations('subagent').some(text => /effort/.test(text)) && !claudeLimitations('main').some(text => /effort/.test(text)));
 });
 
 test('E4/E7 disturbance, model change and hidden-warming evidence invalidate affected samples', async () => {
@@ -201,19 +203,22 @@ test('CLI dry runs are offline and consent is required before live output', () =
   assert.throws(() => parseArgs([...args, '--mode', 'main', '--subagent']), /not both/);
 });
 
-test('Claude CLI produces explicit no-probe limitation reports in both categories', t => {
+test('Claude CLI reports unavailable with the reason when the invoking transcript is missing, and sends no request', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cache-benchmark-offline-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'projects', 'C--elsewhere'), { recursive: true });
   const runner = path.resolve(__dirname, '../skills/universal/sai-context-cache-ttl-benchmark/cache_ttl.js');
   for (const mode of ['main', 'subagent']) {
     const out = path.join(root, mode);
-    assert.throws(() => execFileSync(process.execPath, [runner, '--tool', 'claude', '--mode', mode, '--session', mode === 'main' ? 'parent' : 'child', '--invoking-session', 'parent', '--out', out, '--acknowledge-consumption'], { stdio: 'pipe' }), error => error.status === 1);
+    const args = ['--tool', 'claude', '--mode', mode, '--session', mode === 'main' ? 'parent' : 'child', '--invoking-session', 'parent', '--projects', path.join(root, 'projects'), '--out', out, '--acknowledge-consumption'];
+    assert.throws(() => execFileSync(process.execPath, [runner, ...args], { stdio: 'pipe' }), error => error.status === 1);
     const report = JSON.parse(fs.readFileSync(path.join(out, 'report.json'), 'utf8'));
     assert.equal(report.status, 'unavailable'); assert.equal(report.probes, 0);
     assert.equal(report.mode, mode); assert.equal(report.model, null);
     assert.equal(report.results_valid, false);
-    assert.match(fs.readFileSync(path.join(out, 'summary.md'), 'utf8'), /No request was sent/);
-    assert.throws(() => execFileSync(process.execPath, [runner, '--tool', 'claude', '--mode', mode, '--session', 'parent', '--invoking-session', 'parent', '--out', out, '--acknowledge-consumption'], { stdio: 'pipe' }), error => error.status === 2);
+    assert.match(report.limitations[0], /No transcript names the invoking Claude Code session/);
+    assert.match(fs.readFileSync(path.join(out, 'summary.md'), 'utf8'), /unavailable/);
+    assert.throws(() => execFileSync(process.execPath, [runner, ...args], { stdio: 'pipe' }), error => error.status === 2);
   }
 });
 

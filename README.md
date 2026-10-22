@@ -144,7 +144,7 @@ Use these workflows alongside the main pipeline in Claude Code and opencode.
 | [`/sai-worktree`](docs/commands/sai-worktree.md) | Create or remove separate Git working folders so you can work on changes in parallel. |
 | [`/sai-status`](docs/commands/sai-status.md) | Check progress for one change or all active changes without modifying files. |
 | [`/sai-retire-docs`](docs/commands/sai-retire-docs.md) | Find outdated decision records and specs; archive only the candidates you approve. |
-| [`/sai-context-cache-ttl-benchmark`](docs/commands/sai-context-cache-ttl-benchmark.md) | Explicit context-cache lifetime experiment in main or same-model subagent mode; reports unsupported tool interfaces without sending probes. |
+| [`/sai-context-cache-ttl-benchmark`](docs/commands/sai-context-cache-ttl-benchmark.md) | Explicit context-cache lifetime experiment in main or same-model subagent mode on opencode and Claude Code; a missing tool capability reports `unavailable` without sending probes. |
 
 See the [utility command reference](docs/on-demand-commands.md) for options.
 
