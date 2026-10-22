@@ -60,7 +60,7 @@ Every installation SHALL copy each distributed preset into the selected harness'
 #### Scenario: OpenCode installation refreshes all distributed defaults
 
 - **WHEN** OpenCode installation runs with absent or edited distributed default files
-- **THEN** it SHALL install the distributed contents of `[sai-default]-Go.json`, `[sai-default]-Go+Zen.json`, `[sai-default]-oAI-LUNA+Zen.json`, and `[sai-default]-oAI-SOL+Zen.json` without applying them to projects
+- **THEN** it SHALL install the distributed contents of `[sai-default]-Go.json`, `[sai-default]-oAI-LUNA.json`, and `[sai-default]-oAI-SOL.json` without applying them to projects
 
 #### Scenario: Claude Code installation refreshes its distributed default
 
