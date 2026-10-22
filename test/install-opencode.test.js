@@ -907,6 +907,25 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
   }
 });
 
+test('runOpencodeInstall installs opencode v2 with its postinstall allowed', () => {
+  const expected = 'npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest';
+  assert.equal(OPENCODE_INSTALL_CMD, expected, 'the printed manual command should match the executed one');
+  const origSpawnSync = childProcess.spawnSync;
+  const spawnSyncCalls = [];
+  childProcess.spawnSync = (...args) => {
+    spawnSyncCalls.push(args);
+    return { error: null, status: 0, stdout: '', stderr: '' };
+  };
+  try {
+    assert.equal(runOpencodeInstall(), true);
+    assert.equal(spawnSyncCalls.length, 1);
+    assert.equal(spawnSyncCalls[0][0], expected, 'should use exact command string');
+    assert.equal(spawnSyncCalls[0][1]?.shell, true, 'should use shell: true');
+  } finally {
+    childProcess.spawnSync = origSpawnSync;
+  }
+});
+
 test('copyOpencodeConfig proceeds past non-plain-object agent maps and ensures depth without permissions', () => {
   const cases = [
     ['opencode.json', JSON.stringify({ agent: ['not', 'an', 'object'] }), ['not', 'an', 'object']],
