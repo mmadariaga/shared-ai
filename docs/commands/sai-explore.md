@@ -29,6 +29,15 @@ is shown without its review.`), skips the review pass, and continues with its
 own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
 
+In Claude Code and opencode, each E/I list question explains that a bare
+`next-step` confirms the displayed list and advances. Confirmation applies only
+to the latest complete list shown with that notice. If a side discussion changes
+an item's meaning, or the notice was missing, Explore redisplays the complete
+list and asks again before accepting confirmation. A revision paired with
+`next-step` also waits for a new confirmation; discussion that changes no meaning
+does not. An empty E list can still be recorded automatically, while an I list
+containing `- None` requires your confirmation.
+
 Explore records a Ready to Propose block set only when every block is dispatchable,
 so any route you choose receives a block it can run. A dispatchable block follows the
 block format, carries a confirmed `- None` or at least one in-scope implementation

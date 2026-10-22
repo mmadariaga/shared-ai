@@ -37,6 +37,8 @@ When the friction assessment fires, the slicing assessment SHALL draft one behav
 
 The `Implementation details` list stage SHALL never close on its own. When no technical decision qualifies, it SHALL propose exactly `- None` as the list and wait for the user's confirmation; only a bare `next-step` or explicit agreement SHALL record the empty list and advance. A confirmed `- None` SHALL be a valid `**Implementation Details**` value of a single change. The deterministic `- None` empty-set recording without confirmation SHALL apply only to `Review edge cases`.
 
+For user-confirmed lists, agreement SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
+
 #### Scenario: No qualifying decision yields a proposed None
 
 - **WHEN** the user advances into `Implementation details` and no technical decision qualifies
@@ -44,5 +46,5 @@ The `Implementation details` list stage SHALL never close on its own. When no te
 
 #### Scenario: Confirmed None enters Crystallize
 
-- **WHEN** the user answers the proposed `- None` with a bare `next-step` or explicit agreement
+- **WHEN** the user answers the proposed `- None` with a bare `next-step` or explicit agreement and, for user-confirmed lists, the latest complete displayed list includes all agreed semantic changes and the complete confirmation notice
 - **THEN** the empty list is recorded as agreed and the progression enters `Crystallize` in the same turn

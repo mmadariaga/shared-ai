@@ -46,9 +46,11 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 
 The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token) or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `next-step` SHALL be the only token with a defined stage-advancement action: the `crystallize` token and natural-language requests to crystallize, to print the paste-ready block, to create a proposal, or to move to a named stage SHALL carry no prescribed advancement response, and the agent interprets them in context. The `shortcut` answer to the issue intake's shortcut question SHALL be the one other explicit advancement: it moves the progression from `Explore change` directly to `Crystallize` with the issue's agreed lists. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
 
+At Review edge cases and Implementation details, agreement to a user-confirmed E/I list SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
+
 #### Scenario: The next token advances the progression
 
-- **WHEN** the user sends the bare token `next-step` or expresses advancement as the turn's dominant intent
+- **WHEN** the user sends the bare token `next-step` or expresses advancement as the turn's dominant intent, with a current complete display and confirmation notice required only when this turn confirms a user-confirmed E/I list at Review edge cases or Implementation details
 - **THEN** the progression advances to the following stage and the TODO re-renders with it `in_progress`
 
 #### Scenario: Natural language names a stage
@@ -58,7 +60,7 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 #### Scenario: Semantic confirmation advances the stage in the same turn
 
-- **WHEN** the user semantically confirms the proposed list at the `Review edge cases` or `Implementation details` stage
+- **WHEN** the user semantically confirms the proposed list at the `Review edge cases` or `Implementation details` stage and, for user-confirmed lists, the latest complete displayed list includes all agreed semantic changes and the complete confirmation notice
 - **THEN** the list is recorded as agreed and the progression advances to the next stage within the same turn
 
 #### Scenario: The agent's solidity judgment never advances a stage
@@ -288,6 +290,8 @@ After crystallization, Plan and Manual SHALL close the active slice only on the 
 ### Requirement: Early staged-progression ownership lives in common
 `sai/commands/explore/steps/common.md` SHALL own the pre-crystallization TODO, next-step advancement, the shared list-stage rules, and persistence mechanics, while the `Review edge cases` and `Implementation details` stage rules SHALL live in `steps/review-edge-cases.md` and `steps/implementation-details.md`, while post-crystallization next-slice close SHALL live only in `steps/slice.md` with recordedList-before-selector order preserved.
 
+The complete list display and question SHALL be owned by `sai/commands/explore/list-writing.md`; common SHALL own answer evaluation, the conversation-only presentation-currency check, and the ordered record-then-advance events. Both stage files SHALL reference that shared presentation owner.
+
 #### Scenario: Early progression resolves in common
 - **WHEN** a pre-crystallization stage advances
 - **THEN** the common ownership rules govern TODO rendering and advancement
@@ -296,9 +300,11 @@ After crystallization, Plan and Manual SHALL close the active slice only on the 
 
 The explore caller SHALL advance the pre-crystallization progression only on explicit next-step recognition: a bare token with optional trivial punctuation or greeting, or dominant intent to advance the progression, or semantic confirmation of the proposed list at Review edge cases or Implementation details. A `crystallize` token or a natural-language crystallization request SHALL NOT be a defined advancement trigger. Mere containment of next-step SHALL NOT fire, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance. Semantic confirmation at either list stage SHALL record the agreed list and advance in the same turn.
 
+At Review edge cases and Implementation details, agreement to a user-confirmed E/I list SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
+
 #### Scenario: Bare token and dominant intent advance
 
-- **WHEN** the user sends the bare next-step token or makes progression advancement the turn dominant intent
+- **WHEN** the user sends the bare next-step token or makes progression advancement the turn dominant intent, with a current complete display and confirmation notice required only when this turn confirms a user-confirmed E/I list at Review edge cases or Implementation details
 - **THEN** the progression advances to the next stage and the stage TODO re-renders with it in progress
 
 #### Scenario: Containment and non-advancing uses stay put
