@@ -1,0 +1,12 @@
+#!/bin/sh
+# Run `shared-ai setup` from the /src checkout on a project directory.
+# Usage: sai-local-setup-test [dir]   (default: a fresh empty git repo at ~/project)
+set -e
+dir="${1:-$HOME/project}"
+if [ ! -e "$dir" ]; then
+  mkdir -p "$dir"
+  git init -q "$dir"
+  echo "Created empty git project at $dir"
+fi
+sai-local-install-test setup "$dir"
+echo "Project: $dir"

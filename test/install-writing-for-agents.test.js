@@ -103,7 +103,8 @@ test('I3: the command is fixed and preselects no assistant, scope, or answer', (
     'skills@latest',
     'add',
     'mattpocock/skills',
-    '--skill=writing-for-agents',
+    '--skill',
+    'writing-for-agents',
   ]);
   for (const flag of ['-a', '-g', '-y', '--agent', '--global', '--yes']) {
     assert.ok(!WRITING_FOR_AGENTS_SKILLS_ARGS.includes(flag));
@@ -113,9 +114,9 @@ test('I3: the command is fixed and preselects no assistant, scope, or answer', (
 test('I4: the invoking runner is mapped from npm_config_user_agent', () => {
   const all = () => true;
   const pick = ua => selectSkillsRunner({ env: { npm_config_user_agent: ua }, available: all });
-  assert.equal(writingForAgentsCommandFor(pick('npm/10.0.0 node/v22')), 'npx skills@latest add mattpocock/skills --skill=writing-for-agents');
-  assert.equal(writingForAgentsCommandFor(pick('pnpm/9.0.0 npm/? node/v22')), 'pnpm dlx skills@latest add mattpocock/skills --skill=writing-for-agents');
-  assert.equal(writingForAgentsCommandFor(pick('bun/1.1.0 npm/? node/v22')), 'bunx skills@latest add mattpocock/skills --skill=writing-for-agents');
+  assert.equal(writingForAgentsCommandFor(pick('npm/10.0.0 node/v22')), 'npx skills@latest add mattpocock/skills --skill writing-for-agents');
+  assert.equal(writingForAgentsCommandFor(pick('pnpm/9.0.0 npm/? node/v22')), 'pnpm dlx skills@latest add mattpocock/skills --skill writing-for-agents');
+  assert.equal(writingForAgentsCommandFor(pick('bun/1.1.0 npm/? node/v22')), 'bunx skills@latest add mattpocock/skills --skill writing-for-agents');
 });
 
 test('I4: an unavailable invoking runner falls back to the first available of npx, pnpm dlx, bunx', () => {
@@ -166,7 +167,7 @@ test('E3: no usable runner prints the manual command and starts nothing', async 
   assert.equal(calls.prompts.length, 0);
   assert.equal(calls.installs.length, 0);
   assert.equal(notices.length, 1);
-  assert.match(notices[0], /npx skills@latest add mattpocock\/skills --skill=writing-for-agents/);
+  assert.match(notices[0], /npx skills@latest add mattpocock\/skills --skill writing-for-agents/);
 });
 
 test('E4: without a TTY the command is printed, no process starts, and no runner is probed', async () => {
@@ -190,7 +191,7 @@ test('E4: without a TTY the command is printed, no process starts, and no runner
   assert.equal(calls.prompts.length, 0);
   assert.equal(calls.installs.length, 0);
   assert.equal(notices.length, 1);
-  assert.match(notices[0], /pnpm dlx skills@latest add mattpocock\/skills --skill=writing-for-agents/);
+  assert.match(notices[0], /pnpm dlx skills@latest add mattpocock\/skills --skill writing-for-agents/);
 });
 
 test('E4: without a TTY and without a recognised user agent the manual command uses npx', async () => {
@@ -226,7 +227,7 @@ test('E5: a failed install leaves the manual command and does not throw', async 
   const { options, notices } = offerHarness({ runInstall: () => false });
   await offerWritingForAgentsInstall(options);
   assert.equal(notices.length, 1);
-  assert.match(notices[0], /--skill=writing-for-agents/);
+  assert.match(notices[0], /--skill writing-for-agents/);
 });
 
 test('E5: the offer uses the selected runner, pnpm dlx included', async () => {

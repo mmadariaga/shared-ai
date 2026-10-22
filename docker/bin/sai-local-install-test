@@ -1,0 +1,9 @@
+#!/bin/sh
+# Install the read-only checkout at /src the way npm would ship it; extra args go to
+# shared-ai (e.g. `setup`). Pack it to a tarball first, since `npx /src` symlinks and
+# chmods inside /src. Pass the tarball as the npx spec, not --package: --package leaks
+# npm_config_package into child processes and breaks the installer's nested
+# `npx skills@latest`.
+set -e
+tgz="$(cd /tmp && npm pack /src --silent | tail -n1)"
+exec npx -y "file:/tmp/$tgz" "$@"
