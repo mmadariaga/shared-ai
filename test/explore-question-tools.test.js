@@ -82,9 +82,10 @@ test('explicit conversational questions stay plain text', () => {
   assert.match(invitation, /plain conversational text/);
   assert.match(invitation, /never the harness option-picker/);
   assert.match(invitation, /exception covers ONLY this global invitation/);
-  const lists = definition(read('common.md'), '**List stages (');
+  assert.match(definition(read('common.md'), '**List stages ('), /\*\*Display and question\*\*/);
+  const lists = definition(fs.readFileSync(path.join(__dirname, '../sai/commands/explore/list-writing.md'), 'utf8'), '**Display and question.**');
   assert.match(lists, /one plain conversational question/);
-  assert.match(lists, /never a native yes\/no picker/);
+  assert.match(lists, /never (?:as )?a native yes\/no picker/);
   const candidates = definition(read('poc-lane.md'), '**Stop 2 — candidate list agreement');
   assert.match(candidates, /one plain conversational question/);
   assert.match(candidates, /use no native yes\/no picker/);
