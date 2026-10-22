@@ -5,14 +5,14 @@ TBD - created by archiving change opencode-preset-examples. Update Purpose after
 
 ## Requirements
 
-### Requirement: Example preset table documents the four opencode presets
+### Requirement: Example preset table documents the three opencode presets
 
-The README Post Install area SHALL document all four OpenCode SAI default presets with their prefixed filenames, model mixes, and Load preset usage guidance.
+The README Post Install area SHALL document all three OpenCode SAI default presets with their prefixed filenames, model mixes, and Load preset usage guidance.
 
 #### Scenario: Reader discovers which preset to use
 
 - **WHEN** a user reads the Example presets subsection
-- **THEN** the table SHALL name `[sai-default]-Go.json`, `[sai-default]-Go+Zen.json`, `[sai-default]-oAI-LUNA+Zen.json`, and `[sai-default]-oAI-SOL+Zen.json` with their model mixes and provide guidance for loading a preset through Customize models
+- **THEN** the table SHALL name `[sai-default]-Go.json`, `[sai-default]-oAI-LUNA.json`, and `[sai-default]-oAI-SOL.json` with their model mixes and provide guidance for loading a preset through Customize models
 
 ### Requirement: Example preset table documents the Claude OPUS preset
 
