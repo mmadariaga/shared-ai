@@ -13,11 +13,19 @@ When the `codegraph` binary is absent from PATH, the installer SHALL recommend s
 - **THEN** only the system-install recommendation is printed and no MCP or index check runs
 
 ### Requirement: MCP absence SHALL recommend flagged install command
-When `mcp.codegraph` is missing or disabled in both global and project configs, the installer SHALL recommend `codegraph install -y -t claude,opencode`. An enabled entry in either the global or the project config SHALL count as configured.
+When no CodeGraph MCP entry is configured in either the global or the project config, the installer SHALL recommend `codegraph install -y -t claude,opencode`. The installer SHALL recognize two entry shapes: the opencode v1 `mcp.codegraph` entry, which counts as configured unless it sets `enabled: false`, and the opencode v2 `mcp.servers.codegraph` entry that CodeGraph writes, which counts as configured unless it sets `disabled: true`. A configured entry of either shape in either the global or the project config SHALL count as configured.
 
 #### Scenario: Missing MCP wiring
-- **WHEN** the binary exists but no enabled mcp.codegraph entry is found
+- **WHEN** the binary exists but no configured `mcp.codegraph` or `mcp.servers.codegraph` entry is found
 - **THEN** the output recommends the flagged install command and continues to the index check
+
+#### Scenario: opencode v2 servers entry counts as configured
+- **WHEN** a config holds `mcp.servers.codegraph` without `disabled: true`
+- **THEN** the installer treats the CodeGraph MCP as configured and does not recommend the install command for it
+
+#### Scenario: Disabled opencode v2 servers entry is not configured
+- **WHEN** the only CodeGraph entry is `mcp.servers.codegraph` with `disabled: true`
+- **THEN** the installer treats the CodeGraph MCP as not configured
 
 ### Requirement: Index absence SHALL recommend codegraph init at the db path
 The index check SHALL look at `<project-root>/.codegraph/codegraph.db` and, when absent, SHALL recommend `codegraph init` in the project root with that db path named.

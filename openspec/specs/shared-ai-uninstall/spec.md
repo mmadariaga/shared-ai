@@ -134,7 +134,7 @@ Re-running uninstall SHALL be safe. A deletion-set path that does not exist on d
 - **THEN** it prints a summary with the number of files deleted, kept-as-override, and not-found
 
 ### Requirement: excluded targets are never touched
-The uninstall flow SHALL NOT modify the opencode config files (`opencode.json`, `opencode.jsonc`), the per-project `setup` artifacts (`openspec/config.yaml`, `openspec/schemas/sai-workflow/`), or any externally-installed global CLI (`openspec`, `opencode-ai`, `@colbymchenry/codegraph`). No uninstall flag SHALL cause these to be modified. The opencode config files are left exactly as the user defined them: any keys the user has written — including a pre-existing `agent.*` block from a prior install, or any user-owned `agent.explore`/`agent.executor`/`agent.budget` entry that the pre-slice-1 installer had merged — are preserved verbatim. The uninstall flow does not read these files for modification; no merged-key report line, no per-key restoration, and no retroactive agent-key cleanup are performed.
+The uninstall flow SHALL NOT modify the opencode config files (`opencode.json`, `opencode.jsonc`), the per-project `setup` artifacts (`openspec/config.yaml`, `openspec/schemas/sai-workflow/`), or any externally-installed global CLI (`openspec`, `@opencode/cli`, `@colbymchenry/codegraph`). No uninstall flag SHALL cause these to be modified. The opencode config files are left exactly as the user defined them: any keys the user has written — including a pre-existing `agent.*` block from a prior install, or any user-owned `agent.explore`/`agent.executor`/`agent.budget` entry that the pre-slice-1 installer had merged — are preserved verbatim. The uninstall flow does not read these files for modification; no merged-key report line, no per-key restoration, and no retroactive agent-key cleanup are performed.
 
 #### Scenario: opencode config is left exactly as the user defined it
 - **WHEN** any `uninstall` invocation runs
@@ -148,4 +148,4 @@ The uninstall flow SHALL NOT modify the opencode config files (`opencode.json`, 
 
 #### Scenario: external global CLIs are not uninstalled
 - **WHEN** any `uninstall` invocation runs
-- **THEN** the flow does not attempt to uninstall or remove `openspec`, `opencode-ai`, or `@colbymchenry/codegraph`
+- **THEN** the flow does not attempt to uninstall or remove `openspec`, `@opencode/cli`, or `@colbymchenry/codegraph`

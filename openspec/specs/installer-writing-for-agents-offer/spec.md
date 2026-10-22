@@ -26,7 +26,7 @@ The installer SHALL treat `writing-for-agents` as present for a selected assista
 
 ### Requirement: Single interactive skills.sh offer
 
-When the skill is absent for one or more selected assistants and stdin is a TTY, the installer SHALL show one yes/no offer naming every assistant that lacks it. On acceptance it SHALL run `skills@latest add mattpocock/skills --skill=writing-for-agents` through the selected runner, with no `-a`, `-g`, or `-y` argument, spawned from an argument array with inherited stdio. A shell SHALL be used only on Windows. The offer SHALL run once per install, after the harness installs and before the CodeGraph offer.
+When the skill is absent for one or more selected assistants and stdin is a TTY, the installer SHALL show one yes/no offer naming every assistant that lacks it. On acceptance it SHALL run `skills@latest add mattpocock/skills --skill writing-for-agents` through the selected runner, with no `-a`, `-g`, or `-y` argument, spawned from an argument array with inherited stdio. The skill name SHALL be passed as its own argument after `--skill`, never in the `--skill=writing-for-agents` form, which the skills CLI ignores and which would install every skill in the repository. The manual command shown in notices SHALL use the same `--skill writing-for-agents` form. A shell SHALL be used only on Windows. The offer SHALL run once per install, after the harness installs and before the CodeGraph offer.
 
 #### Scenario: One offer names all assistants that lack the skill
 
@@ -36,7 +36,12 @@ When the skill is absent for one or more selected assistants and stdin is a TTY,
 #### Scenario: The command preselects nothing
 
 - **WHEN** the user accepts the offer
-- **THEN** the spawned command is `skills@latest add mattpocock/skills --skill=writing-for-agents` behind the runner, with no assistant, scope, or answer flags
+- **THEN** the spawned command is `skills@latest add mattpocock/skills --skill writing-for-agents` behind the runner, with no assistant, scope, or answer flags
+
+#### Scenario: Only the writing-for-agents skill is requested
+
+- **WHEN** the installer builds the skills.sh arguments
+- **THEN** `--skill` and `writing-for-agents` are two separate arguments and no `--skill=` argument is present
 
 ### Requirement: Runner selection follows the invoking package manager
 

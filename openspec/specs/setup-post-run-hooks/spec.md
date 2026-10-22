@@ -22,7 +22,7 @@ TBD — delta spec for the new capability carried no Purpose body.
 - **THEN** the post-setup workflow SHALL NOT be invoked
 
 ### Requirement: Readline remains available through post-setup work
-The setup orchestration SHALL own the readline lifecycle and SHALL keep the active readline interface open until schema template copying and the injected post-setup workflow have both settled. It SHALL close the interface after the workflow settles, including when the workflow rejects, and the injected workflow SHALL NOT own interface creation or closure.
+The setup orchestration SHALL own the readline lifecycle and SHALL keep the active readline interface open until schema template copying and the injected post-setup workflow have both settled. It SHALL close the interface after the workflow settles, including when the workflow rejects, and the injected workflow SHALL NOT own interface creation or closure. Setup SHALL create its readline interface only after the openspec install offer, the CodeGraph install offer, and the CodeGraph index step have run, because those offers prompt through their own readline on stdin and a second live interface would echo each key twice and leave stdin paused for later prompts.
 
 #### Scenario: Interactive post-setup workflow uses readline
 - **WHEN** an injected post-setup workflow inspects the setup context
@@ -35,6 +35,14 @@ The setup orchestration SHALL own the readline lifecycle and SHALL keep the acti
 #### Scenario: Setup exits before the seam
 - **WHEN** setup is declined or fails before post-setup work begins
 - **THEN** setup SHALL close any readline interface it created and SHALL NOT invoke the post-setup workflow
+
+#### Scenario: Readline is created after the CLI install offers
+- **WHEN** setup runs the openspec probe, the CodeGraph probe, and the CodeGraph index step
+- **THEN** setup creates its readline interface only after all three have run
+
+#### Scenario: Failed openspec install offer creates no readline
+- **WHEN** the openspec install offer ends in a required failure
+- **THEN** setup returns `required-failure` without having created a readline interface
 
 ### Requirement: Testable functional orchestration
 The setup orchestration and post-setup seam SHALL use exported CommonJS functions and an options-object dependency-injection pattern consistent with existing installer helpers. The exported setup functions SHALL NOT call `process.exit`. For controlled setup completion, `main` SHALL return exactly one of the outcomes `success`, `aborted`, `required-failure`, or `post-setup-failure`; the CLI entry boundary SHALL map `success` and `aborted` to exit status 0, and `required-failure` and `post-setup-failure` to exit status 1. Requiring `bin/setup.js` SHALL remain side-effect free and SHALL NOT start the setup flow.
