@@ -583,7 +583,7 @@ function rewriteOpencodeConfigPrefixes(text, opencodeBase) {
   return text.split('~/.config/opencode/').join(`${posix}/`);
 }
 
-const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
+const OPENCODE_INSTALL_CMD = 'npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
 const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install -y -t claude,opencode';
 const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
@@ -609,7 +609,7 @@ function probeCodegraph() {
 }
 
 function runOpencodeInstall() {
-  const result = childProcess.spawnSync('npm i -g opencode-ai@latest', { shell: true, stdio: 'inherit' });
+  const result = childProcess.spawnSync(OPENCODE_INSTALL_CMD, { shell: true, stdio: 'inherit' });
   return !result.error && result.status === 0;
 }
 
@@ -628,6 +628,7 @@ function runOpenspecInstall() {
 }
 
 async function promptYesNoReadline(question) {
+  prepareLineInput(process.stdin);
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     const answer = await new Promise(resolve => rl.question(question, resolve));
@@ -699,7 +700,8 @@ const WRITING_FOR_AGENTS_SKILLS_ARGS = [
   'skills@latest',
   'add',
   'mattpocock/skills',
-  `--skill=${WRITING_FOR_AGENTS_SKILL}`,
+  '--skill',
+  WRITING_FOR_AGENTS_SKILL,
 ];
 
 // Runner candidates in fallback order. `userAgentPrefix` maps the invoking
@@ -1684,8 +1686,14 @@ function readJsoncConfigAt(filePath) {
   }
 }
 
+// Accepts the opencode v1 shape (`mcp.codegraph`, `enabled`) and the v2 shape
+// CodeGraph writes (`mcp.servers.codegraph`, `disabled`).
 function isCodegraphMcpEnabledInConfig(root) {
   if (!isPlainObject(root) || !isPlainObject(root.mcp)) return false;
+  if (isPlainObject(root.mcp.servers)) {
+    const server = root.mcp.servers.codegraph;
+    if (isPlainObject(server) && server.disabled !== true) return true;
+  }
   const entry = root.mcp.codegraph;
   if (!isPlainObject(entry)) return false;
   return entry.enabled !== false;

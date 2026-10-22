@@ -142,15 +142,16 @@ async function main(options = {}) {
   } = options;
 
   const projectPath = resolvePath(argv);
-  const rl = createReadline();
   console.log(`Configuring SAI workflow at ${projectPath}`);
 
   if (!(await offerOpenspecInstall())) {
-    rl.close();
     return 'required-failure';
   }
   await offerCodegraphInstall();
   ensureCodegraphIndex(projectPath);
+  // Opened only now: the offers prompt through their own readline on stdin, and
+  // a second live interface would echo each key twice and be left on a paused stdin.
+  const rl = createReadline();
   const openspecOutcome = await ensureOpenspecDir(projectPath, rl);
   if (openspecOutcome !== 'success') {
     return openspecOutcome;

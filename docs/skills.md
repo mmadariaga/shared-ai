@@ -55,7 +55,7 @@ offers installation through skills.sh only in an interactive terminal and only
 after consent. You can also run:
 
 ```bash
-npx skills@latest add mattpocock/skills --skill=writing-for-agents
+npx skills@latest add mattpocock/skills --skill writing-for-agents
 ```
 
 `pnpm dlx` and `bunx` are alternatives. skills.sh lets you choose assistant and

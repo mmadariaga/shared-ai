@@ -13,9 +13,23 @@ const {
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,
+  isCodegraphMcpEnabledInConfig,
 } = require('../bin/install-flow.js');
 
 const { main, ensureCodegraphIndex } = require('../bin/setup.js');
+
+test('isCodegraphMcpEnabledInConfig reads the opencode v1 mcp shape', () => {
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: { codegraph: { type: 'local' } } }), true);
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: { codegraph: { enabled: false } } }), false);
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: {} }), false);
+});
+
+test('isCodegraphMcpEnabledInConfig reads the opencode v2 mcp.servers shape codegraph writes', () => {
+  const entry = { type: 'local', command: ['codegraph', 'serve', '--mcp'], disabled: false, codemode: false };
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: { servers: { codegraph: entry } } }), true);
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: { servers: { codegraph: { ...entry, disabled: true } } } }), false);
+  assert.equal(isCodegraphMcpEnabledInConfig({ mcp: { servers: {} } }), false);
+});
 
 test('probeCodegraph uses spawnSync exit-code semantics', () => {
   const origSpawnSync = childProcess.spawnSync;
@@ -314,6 +328,33 @@ test('setup runs with an injected workflow: copy before workflow, ctx readline l
   } finally {
     cap.restore();
     restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup opens its readline only after the CLI install offers settle', async () => {
+  // The offers prompt through their own readline on stdin; a second live
+  // interface echoes every key twice and is left on a paused stdin.
+  const events = [];
+  const orig = childProcess.spawnSync;
+  childProcess.spawnSync = (cmd, args) => {
+    const line = Array.isArray(args) ? `${cmd} ${args.join(' ')}` : String(cmd);
+    if (/^(openspec|codegraph) --version/.test(line)) events.push(line);
+    return { status: line.startsWith('openspec --version') ? 0 : 1, stdout: '', stderr: '', error: null };
+  };
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  try {
+    await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => { events.push('createReadline'); return rl; },
+    });
+    // The second codegraph probe is ensureCodegraphIndex, which also runs before.
+    assert.deepEqual(events, ['openspec --version', 'codegraph --version', 'codegraph --version', 'createReadline']);
+  } finally {
+    cap.restore();
+    childProcess.spawnSync = orig;
     fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });
