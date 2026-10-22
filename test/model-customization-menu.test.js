@@ -127,7 +127,7 @@ const COMBINED_BOTH_BARE = [
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 17 names. These are current-state
+// basenames. Both harnesses ship the same 18 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
@@ -142,6 +142,7 @@ const OPENCODE_COMMANDS = [
   'sai-backfill',
   'sai-build',
   'sai-commit',
+  'sai-context-cache-ttl-benchmark',
   'sai-deep-review',
   'sai-explore',
   'sai-merge',
