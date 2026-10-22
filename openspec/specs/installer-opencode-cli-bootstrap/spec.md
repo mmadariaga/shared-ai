@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Opencode binary detection
 
 During the Opencode install branch, the installer SHALL probe for the `opencode` binary by invoking it with `--version`. A successful invocation (process spawns and exits zero) SHALL be treated as **present**. A spawn failure (binary not found) or a non-zero exit SHALL be treated as **absent**. The probe SHALL resolve `opencode` through the platform's executable PATH resolution, **including Windows `PATHEXT` / `.cmd` shim resolution** — as `bin/setup.js` already does for `openspec` (via a `where`/`which` lookup and/or spawning with `shell: true`). A probe that bypasses shell/`PATHEXT` resolution (e.g. a bare `spawnSync('opencode', […])` without `shell: true`) SHALL NOT be used, because on Windows it throws `ENOENT` for globally-installed npm `.cmd` shims and would misclassify an installed binary as absent. The probe SHALL NOT read or infer presence from the existence of the `~/.config/opencode/` directory, because that proves the installer ran once, not that the binary is installed.
@@ -29,27 +30,31 @@ The probe SHALL use `childProcess.spawnSync('opencode --version', { shell: true,
 
 ### Requirement: Interactive install offer on a TTY
 
-When the `opencode` binary is absent AND `process.stdin.isTTY` is truthy, the installer SHALL prompt the user with `Install opencode now? [y/n]` using the readline line-interface. On an affirmative answer the installer SHALL run the documented install command via `childProcess.spawnSync('npm i -g opencode-ai@latest', { shell: true, stdio: 'inherit' })` — a single hardcoded string literal with `shell: true`, NOT the array-args form, for the same DEP0190-silencing rationale as the opencode probe. On a negative answer the installer SHALL instead print the exact install command for the user to run manually. The install command SHALL be `npm i -g opencode-ai@latest`.
+When the `opencode` binary is absent AND `process.stdin.isTTY` is truthy, the installer SHALL prompt the user with `Install opencode now? [y/n]` using the readline line-interface. Before it opens that line-interface, the yes/no prompt SHALL prepare stdin for line input (cooked mode restored and the stream resumed), so the prompt waits for the user's answer even when it follows the raw-mode tool-selection checklist. On an affirmative answer the installer SHALL run the documented install command via `childProcess.spawnSync('npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest', { shell: true, stdio: 'inherit' })` — a single hardcoded string literal with `shell: true`, NOT the array-args form, for the same DEP0190-silencing rationale as the opencode probe. On a negative answer the installer SHALL instead print the exact install command for the user to run manually. The install command SHALL be `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest`, which installs opencode v2 and allows its postinstall script, and the executed command and the printed manual command SHALL be the same string.
 
 #### Scenario: Missing binary, TTY present, user confirms
 - **WHEN** the binary is absent, a TTY is present, and the user answers yes to `Install opencode now? [y/n]`
-- **THEN** the installer runs `npm i -g opencode-ai@latest`
+- **THEN** the installer runs `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest`
 
 #### Scenario: Missing binary, TTY present, user declines
 - **WHEN** the binary is absent, a TTY is present, and the user answers no to `Install opencode now? [y/n]`
-- **THEN** the installer does not execute any install command and prints the exact command `npm i -g opencode-ai@latest` for the user to run manually
+- **THEN** the installer does not execute any install command and prints the exact command `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest` for the user to run manually
+
+#### Scenario: Offer after the tool-selection checklist waits for an answer
+- **WHEN** the install offer is shown right after the raw-mode tool-selection checklist has closed
+- **THEN** the prompt prepares stdin for line input first and waits for the user's yes/no answer instead of exiting immediately
 
 ### Requirement: CI-safe print-only fallback without a TTY
 
-When the `opencode` binary is absent AND `process.stdin.isTTY` is falsy (CI, piped, non-interactive), the installer SHALL print the exact install command `npm i -g opencode-ai@latest` and SHALL NOT prompt the user and SHALL NOT execute any install command.
+When the `opencode` binary is absent AND `process.stdin.isTTY` is falsy (CI, piped, non-interactive), the installer SHALL print the exact install command `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest` and SHALL NOT prompt the user and SHALL NOT execute any install command.
 
 #### Scenario: Missing binary, no TTY
 - **WHEN** the binary is absent and no TTY is present
-- **THEN** the installer prints the exact command `npm i -g opencode-ai@latest`, issues no prompt, and executes nothing
+- **THEN** the installer prints the exact command `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest`, issues no prompt, and executes nothing
 
 ### Requirement: Bootstrap is non-blocking for the file-copy
 
-The binary detection and install offer SHALL run only within the Opencode install branch and SHALL be independent of the file-copy that populates `~/.config/opencode/`. The file-copy SHALL run regardless of the detection or install outcome, and a declined, failed, or skipped install SHALL NOT abort the installer or prevent the file-copy from completing. When an executed install command exits with a failure, the installer SHALL print the exact manual command `npm i -g opencode-ai@latest` so the user can complete the install by hand, rather than failing silently.
+The binary detection and install offer SHALL run only within the Opencode install branch and SHALL be independent of the file-copy that populates `~/.config/opencode/`. The file-copy SHALL run regardless of the detection or install outcome, and a declined, failed, or skipped install SHALL NOT abort the installer or prevent the file-copy from completing. When an executed install command exits with a failure, the installer SHALL print the exact manual command `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest` so the user can complete the install by hand, rather than failing silently.
 
 #### Scenario: File-copy runs when binary is absent and install is declined
 - **WHEN** the Opencode branch runs, the binary is absent, and the user declines the install offer
@@ -57,4 +62,4 @@ The binary detection and install offer SHALL run only within the Opencode instal
 
 #### Scenario: Install command failure does not abort the installer
 - **WHEN** the install command is executed and exits with a failure
-- **THEN** the installer does not abort, prints the exact manual command `npm i -g opencode-ai@latest`, and the SAI file-copy still completes normally
+- **THEN** the installer does not abort, prints the exact manual command `npm i -g --allow-scripts=@opencode/cli @opencode/cli@latest`, and the SAI file-copy still completes normally
