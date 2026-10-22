@@ -313,9 +313,8 @@ presets but keeps personal presets and does not change your project's selections
 | Preset | Choose it for |
 |--------|---------------|
 | `[sai-default]-Go.json` | OpenCode Go models throughout. |
-| `[sai-default]-Go+Zen.json` | OpenCode Go with free helper models to reduce cost. |
-| `[sai-default]-oAI-LUNA+Zen.json` | OpenAI Luna with free helper models. |
-| `[sai-default]-oAI-SOL+Zen.json` | OpenAI Sol for the more demanding planning/build work, with free helpers. |
+| `[sai-default]-oAI-LUNA.json` | OpenAI Luna for every role, with GPT-5.6 Luna for demanding work. |
+| `[sai-default]-oAI-SOL.json` | OpenAI Sol for the more demanding planning/build work, Luna for lighter tasks. |
 | `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |
 
 Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
@@ -326,14 +325,14 @@ Use benchmarks to shortlist models, then test them on your project: a good
 overall ranking does not guarantee good results for your tasks. Compare the
 prices available through your own providers and subscriptions.
 
-![Intelligence vs Cost (Oct 2026)](Intelligence-vs-Cost-(8-Oct-'26).png)
-[+ Info](https://artificialanalysis.ai/?models=claude-sonnet-5-5-medium%2Cgpt-6-1-sol-xhigh%2Cmimo-v2-6-flash%2Cglm-5-3-flash%2Cgpt-6-luna-xhigh%2Cmimo-v2-6-pro%2Cclaude-sonnet-5-5-high%2Cclaude-opus-5-5%2Cgpt-6-1-sol-high%2Cgpt-6-luna%2Cqwen3-8-flash-next%2Cgpt-6-1-sol-medium%2Cqwen3-8-27b%2Cgpt-6-1-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-1-sol-low%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3%2Cgrok-4-7&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task&total-cost=intelligence-vs-total-cost&cost=intelligence-vs-cost-per-task)
+![Intelligence vs Cost (Oct 2026)](Intelligence-vs-Cost-(22-Oct-'26).png)
+[+ Info](https://artificialanalysis.ai/?models=gpt-6-1-sol-xhigh%2Cmimo-v2-6-flash%2Cglm-5-3-flash%2Cgpt-6-luna-xhigh%2Cclaude-haiku-5-5-high%2Cmimo-v2-6-pro%2Cclaude-sonnet-5-5-high%2Cclaude-opus-5-5%2Cgpt-6-1-sol-high%2Cclaude-haiku-5-5-xhigh%2Cgrok-4-7%2Cgpt-6-luna%2Cclaude-haiku-5-5%2Cqwen3-8-flash-next%2Cgpt-6-1-sol-medium%2Cclaude-haiku-5-5-medium%2Cgpt-6-1-sol%2Cgrok-4-6%2Cmuse-spark-1-3-xhigh%2Cclaude-opus-5-5-xhigh%2Cgpt-6-1-sol-low%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Cminimax-m3-1-flash%2Cdeepseek-v4-1-flash-1017%2Cqwen3-8-27b&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task&total-cost=intelligence-vs-total-cost&cost=intelligence-vs-cost-per-task#intelligence-efficiency-tabs)
 
 Other rankings that can help you choose:
 
 - Edge case and code quality focused benchmark: https://aicodingdaily.com/leaderboard
 - Bug Hunt Bench (score vs cost): https://bughunt.productcompass.pm/?preset=featured&view=scatter
-- Cybersecurity benchmark (CVE rediscovery): https://x.com/pilvar222/status/2102722250264789423
+- Cybersecurity benchmark (CVE rediscovery): https://x.com/pilvar222/status/2113260594547524087
 - Front-end web development: https://arena.ai/leaderboard/code/webdev
 
 ## Third Party Tools

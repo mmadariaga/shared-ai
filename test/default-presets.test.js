@@ -12,7 +12,7 @@ const prefix = '[sai-default]-';
 
 for (const [harness, install, names] of [
   ['claude', installClaude, ['OPUS.json']],
-  ['opencode', installOpencode, ['Go.json', 'Go+Zen.json', 'oAI-LUNA+Zen.json', 'oAI-SOL+Zen.json']],
+  ['opencode', installOpencode, ['Go.json', 'oAI-LUNA.json', 'oAI-SOL.json']],
 ]) {
   test(`${harness}: every installation refreshes only distributed defaults and does not apply presets`, () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-default-presets-'));
