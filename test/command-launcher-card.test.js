@@ -41,7 +41,8 @@ function activeWrapperCommands(harness) {
     .map(file => [file, foldersByFile.get(file)]);
 }
 
-const wrapperCommands = activeWrapperCommands('claude');
+const CONTEXT_PRESERVING = new Set(['sai-context-cache-ttl-benchmark.md']);
+const wrapperCommands = activeWrapperCommands('claude').filter(([file]) => !CONTEXT_PRESERVING.has(file));
 const bootWrapperCommands = wrapperCommands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
 const movedDirectives = {
   spec: [
@@ -172,7 +173,7 @@ test('baseline fixture captures the pre-change directive inventory', () => {
 });
 
 test('wrapper census covers every active wrapper in both harnesses', () => {
-  const expectedFiles = commands.map(([file]) => file).sort();
+  const expectedFiles = [...commands.map(([file]) => file), ...CONTEXT_PRESERVING].sort();
   const claudeWrappers = activeWrapperCommands('claude');
   const opencodeWrappers = activeWrapperCommands('opencode');
 
@@ -419,12 +420,12 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain 17 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 18 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 17, `${harness} should retain exactly 17 sai wrappers`);
-    assert.equal(files.length, 21, `${harness} wrapper directory should contain 21 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 18, `${harness} should retain exactly 18 sai wrappers`);
+    assert.equal(files.length, 22, `${harness} wrapper directory should contain 22 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);
