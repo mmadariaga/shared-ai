@@ -139,6 +139,9 @@ test('removeInside deletes only directories strictly inside the SAI temp root', 
     assert.equal(removeInside('claude', dir, options), true);
     assert.equal(fs.existsSync(dir), false);
     assert.equal(removeInside('claude', dir, options), false);
+    // A missing path whose parents are missing too is judged by its nearest existing ancestor, never a crash.
+    assert.equal(removeInside('claude', path.join(dir, 'gone', 'deeper'), options), false);
+    assert.throws(() => removeInside('claude', path.join(box.base, 'gone', 'deeper'), options), error => error.code === 'REJECTED_PATH');
 
     const root = resolveTempRoot('claude', options);
     const outside = path.join(box.base, 'outside');

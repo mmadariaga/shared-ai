@@ -203,6 +203,19 @@ function makeTempDir(harness, prefix = DEFAULT_PREFIX, options = {}) {
   }
 }
 
+/** The real path a missing `target` would have: its nearest existing ancestor, resolved, plus the missing rest. */
+function realpathOfMissing(target, io) {
+  const missing = [];
+  for (let current = target; ; current = path.dirname(current)) {
+    try {
+      return path.join(io.realpathSync(current), ...missing.reverse());
+    } catch (error) {
+      if (error.code !== 'ENOENT' || path.dirname(current) === current) throw error;
+      missing.push(path.basename(current));
+    }
+  }
+}
+
 /**
  * Remove a directory strictly inside the SAI temp root. Any other path is
  * rejected and nothing is deleted. Returns whether a directory was removed.
@@ -224,7 +237,7 @@ function removeInside(harness, target, options = {}) {
     return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   };
   if (!stat) {
-    if (!inside(path.resolve(io.realpathSync(path.dirname(resolved)), path.basename(resolved)))) {
+    if (!inside(realpathOfMissing(resolved, io))) {
       throw new TempRootError(`Path ${resolved} is not inside the SAI temp root ${realRoot}`, 'REJECTED_PATH');
     }
     return false;
