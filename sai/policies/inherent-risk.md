@@ -30,7 +30,8 @@ node <tool-path> compute --parent <branch> [--cwd <project-root>]
 ```
 
 It prints one JSON object: `merge_base`, `fingerprint` (the hash of the diff
-between the merge-base and HEAD, excluding `openspec/`), `floors`, the `signals`
+between the merge-base and HEAD, excluding `openspec/` and `SAI_LEARNINGS.md`,
+rendered the same whatever the user's git configuration), `floors`, the `signals`
 behind them (each with `path` and, where it has one, `line`), `stats`, and
 `codegraph`. A floor is the least level the rating may take: judgment raises it
 and never lowers it. Critical sections have no floor (`null`).
