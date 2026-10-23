@@ -1,7 +1,7 @@
 # Spec Step — Research
 
-Active step: research. Research until you can write the change, then return the
-`research` progress event.
+Active step: research. Research until you can write the change, then report the
+`research` step.
 
 ## Research guide
 

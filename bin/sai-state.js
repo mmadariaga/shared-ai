@@ -108,7 +108,7 @@ function sessionDir() {
 }
 
 const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
-const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
+const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress -";
 const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
 
 const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> - (one Ready to Propose block on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array)";
@@ -119,9 +119,6 @@ const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 // The block emit is accepted only while this machine sits at its final stage.
 const BLOCK_STAGE_MACHINE = 'explore-idea@1';
 const BLOCK_STAGE = 'crystallize';
-
-// The design machine is the only one that accepts the variant option.
-const WITH_OVERVIEW_MACHINE = 'design-standalone@1';
 
 // Reads the whole of stdin synchronously. A closed or empty pipe yields ''.
 function readStdinSync() {
@@ -548,27 +545,11 @@ function commandEmit(id, machineIdArg, eventSource, extraArgs) {
 // the machine. Output is always an object carrying `validation` (the verdict);
 // a valid verdict adds the ordinary emit fields unchanged. Exit 1 covers both an
 // invalid verdict and a machine error; callers discriminate by `validation.ok`.
-function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverviewArg) {
+function commandEmitProgress(id, machineIdArg, eventSource, extraArgs) {
   if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
     process.stderr.write('emit --progress requires <id> <machineId> --progress - and reads the worker progress payload JSON from stdin: ' + EMIT_PROGRESS_FORM + '\n');
     process.exitCode = 2;
     return;
-  }
-
-  let withOverview;
-  if (withOverviewArg !== undefined) {
-    const target = envelope.parseTarget(machineIdArg);
-    if (!target || target.key !== WITH_OVERVIEW_MACHINE) {
-      process.stderr.write('--with-overview is accepted only on ' + WITH_OVERVIEW_MACHINE + ', got ' + machineIdArg + '\n');
-      process.exitCode = 2;
-      return;
-    }
-    if (withOverviewArg !== 'true' && withOverviewArg !== 'false') {
-      process.stderr.write('--with-overview requires true or false: ' + EMIT_PROGRESS_FORM + '\n');
-      process.exitCode = 2;
-      return;
-    }
-    withOverview = withOverviewArg === 'true';
   }
 
   const validator = loadValidator();
@@ -586,7 +567,6 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
 
   const progress = validator.parsePayloadText(text).payload;
   const event = { step_ids: progress.step_ids };
-  if (withOverview !== undefined) event.withOverview = withOverview;
 
   const outcome = runEmit(id, machineIdArg, () => ({ event }));
   writeResponse(Object.assign({ validation }, outcome.payload));
@@ -1051,8 +1031,8 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'emit' && parsed.named['ready-to-propose'] === true) {
-    if (parsed.named.progress !== undefined || parsed.named['with-overview'] !== undefined) {
-      process.stderr.write('--ready-to-propose cannot be combined with --progress or --with-overview\n');
+    if (parsed.named.progress !== undefined) {
+      process.stderr.write('--ready-to-propose cannot be combined with --progress\n');
       process.exitCode = 2;
       return;
     }
@@ -1060,7 +1040,7 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
-    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['with-overview']);
+    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
     return;
   }
   if (parsed.command === 'emit') {
@@ -1086,7 +1066,7 @@ function main(argv) {
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --progress -   (worker progress payload JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -   (one amended block on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>\n');

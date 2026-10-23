@@ -166,8 +166,8 @@ test('step 7 todo policy keeps Explore-only manual review, supervised Review Eng
   );
   assert.match(reviewLoop, /Post-crystallization review loop \(sai-explore only\)[\s\S]{0,600}user-triggered/,
     'manual review must be an Explore-only, user-triggered surface');
-  assert.match(combined, /supervis(?:ed|ion)[\s\S]{0,320}Review Engine|Review Engine[\s\S]{0,320}supervis(?:ed|ion)/i,
-    'supervised review must use the Review Engine surface');
+  assert.match(combined, /Review Engine[\s\S]{0,320}incremental review rounds of the plan coordinators/i,
+    'the plan coordinators review through the shared finding contract beside the Review Engine');
   assert.doesNotMatch(source, /spec-proposal and design workers are consumers/i,
     'the finding contract should name no spec or design worker consumer');
 

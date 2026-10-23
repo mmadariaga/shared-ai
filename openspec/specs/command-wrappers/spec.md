@@ -5,6 +5,7 @@
 Define the thin `sai-*` wrappers for Claude Code and opencode: what each one loads, how it routes, and where its model routing is declared.
 
 ## Requirements
+
 ### Requirement: ai-* commands wrap opsx skills additively
 
 Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from installed `sai/` paths. The skill SKILL.md files SHALL NOT be modified.
@@ -73,19 +74,19 @@ The Claude Code wrapper SHALL declare its utility model and the opencode wrapper
 
 ### Requirement: spec-command-routes-through-coordinator-and-steps
 
-The `sai-1-spec` wrapper SHALL fetch `@sai/commands/spec/command-bootstrap.md`, which boots the coordinator at `@sai/commands/spec/coordinator.md`; the coordinator SHALL route to the worker, which loads `@sai/commands/spec/steps/common.md` at dispatch and later steps through coordinator pointers. No static spec-generation instruction file SHALL be the command's primary phase instruction. The coordinator's fetch of `@sai/policies/artifact-feedback-gate.md` for the completion gate is not a spec-generation instruction and is permitted.
+The `sai-1-spec` wrapper SHALL fetch the harness `fetch` skill and `@sai/commands/spec/coordinator.md` directly, with no boot adapter and no `command-bootstrap.md`; the coordinator SHALL dispatch the spec worker, which loads `@sai/commands/spec/steps/common.md` at dispatch and later steps through coordinator pointers. No static spec-generation instruction file SHALL be the command's primary phase instruction, and the coordinator SHALL fetch no artifact feedback gate.
 
 #### Scenario: claude wrapper routes through coordinator and steps
 
 - **WHEN** `commands/claude/sai-1-spec.md` is executed
-- **THEN** it fetches `@sai/commands/spec/command-bootstrap.md` which boots the coordinator at `@sai/commands/spec/coordinator.md`, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
+- **THEN** it fetches `@sai/commands/spec/coordinator.md` directly, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
 
 #### Scenario: opencode wrapper routes through coordinator and steps
 
 - **WHEN** `commands/opencode/sai-1-spec.md` is executed
-- **THEN** it fetches `@sai/commands/spec/command-bootstrap.md` which boots the coordinator at `@sai/commands/spec/coordinator.md`, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
+- **THEN** it fetches `@sai/commands/spec/coordinator.md` directly, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
 
 #### Scenario: completion gate fetch is permitted
 
-- **WHEN** the spec coordinator reaches its completion phase
-- **THEN** its fetch of `@sai/policies/artifact-feedback-gate.md` does not count as a spec-generation instruction
+- **WHEN** the spec coordinator reaches its close
+- **THEN** it fetches no artifact feedback gate, and its fetches of the shared cycle and the worker binding do not count as spec-generation instructions

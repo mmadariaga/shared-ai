@@ -18,13 +18,12 @@ Keep one canonical `GLOSSARY.md` at the project root that every SAI phase reads 
 
 ### Requirement: Spec command writes GLOSSARY.md at project root
 
-The spec command's MAY-modify list in `sai/policies/spec-phase-contract.md` SHALL identify the glossary file at the project root. When the spec phase bootstraps or appends a domain term, it SHALL write to the project-root `GLOSSARY.md`.
+The spec worker's write surface in `sai/commands/spec/worker.md` SHALL identify the glossary file at the project root. When the spec phase bootstraps or appends a domain term, it SHALL write to the project-root `GLOSSARY.md`.
 
 #### Scenario: MAY-modify list points to project root
 
-- **WHEN** `sai/policies/spec-phase-contract.md` is read
-- **THEN** its SpecWriteSurface names the repository-root GLOSSARY.md
-- **AND** it does NOT reference `openspec/changes/{name}/GLOSSARY.md`
+- **WHEN** the write surface of `sai/commands/spec/worker.md` is read
+- **THEN** it names the repository-root `GLOSSARY.md` and does not reference `openspec/changes/{name}/GLOSSARY.md`
 
 #### Scenario: bootstrap writes to root
 

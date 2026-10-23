@@ -686,8 +686,8 @@ test('stdin emit: non-delivery failures return their error without reason', () =
 // ─── First filed step pointer on reset (step-pointer-with-task) ─────────────
 
 const FIRST_FILED = [
-  ['spec-standalone@1', 'prereqs-and-change', 'research', 'proposal', 'sai/commands/spec/steps/research.md'],
-  ['design-standalone@1', 'prereqs-resolution', 'research', 'design', 'sai/commands/design/steps/research.md'],
+  ['spec-steps@1', 'spec-intake', 'research', 'proposal', 'sai/commands/spec/steps/research.md'],
+  ['design-steps@1', 'design-intake', 'research', 'design', 'sai/commands/design/steps/research.md'],
   ['security-standalone@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
   ['performance-standalone@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
   ['accessibility-standalone@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
@@ -762,25 +762,3 @@ test('CLI: a first progress emit with only the first id returns the reset pointe
   }
 });
 
-test('CLI: design combined first emit seeds --with-overview and a retry reset seeds it again (E7)', () => {
-  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-design-first-emit-variant').stdout).id;
-  const machineId = 'design-standalone@1';
-  const allOpted = ['prereqs-resolution', 'research', 'design', 'tasks', 'interfaces'];
-  try {
-    invokeCommand('reset', id, machineId);
-    let out = runCli(['emit', id, machineId, '--progress', '--with-overview', 'true', '-'], progressPayload(['prereqs-resolution', 'research']));
-    assert.equal(JSON.parse(out.stdout).stage, 'design');
-    out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload(allOpted.slice(2)));
-    assert.equal(JSON.parse(out.stdout).stage, 'overview', 'the opted-in variant should be seeded by the combined first emit');
-
-    // A design-phase retry starts from a reset machine and seeds the variant again.
-    const reset = JSON.parse(invokeCommand('reset', id, machineId).stdout);
-    assert.equal(reset.stage, 'research');
-    out = runCli(['emit', id, machineId, '--progress', '--with-overview', 'false', '-'], progressPayload(['prereqs-resolution', 'research']));
-    assert.equal(JSON.parse(out.stdout).stage, 'design');
-    out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload(allOpted.slice(2)));
-    assert.equal(JSON.parse(out.stdout).stage, 'done', 'the retry should adopt its own unopted variant');
-  } finally {
-    cleanup([id]);
-  }
-});

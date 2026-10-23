@@ -67,7 +67,7 @@ veto or a safe-operations denial.
 The clean route is artifact-blind: a clean `completed` (not disproved by
 coordinator evidence and carrying no STOP), `needs_input`, `cancelled`,
 `progress`, `notice`, and every pre-resolution result never inspect artifacts,
-the adapter-declared surface, or the static registry.
+or the adapter-declared surface.
 
 After resolution, exactly three results are **non-clean** and open diagnosis: a
 structurally valid `failed` result, a `completed` result disproved by coordinator
@@ -113,11 +113,8 @@ history until the recovery scope resets; it never enters a project artifact.
    alone grants recovery or forces zero attempts.
 
 2. **Channel selection per cause surface.** Channel selection precedes
-   diagnosis-key derivation, and the two recovery channels are exclusive for
-   each cause surface. When the surface lies inside the adapter's authorized
-   read set, the planning channel inspects it without matching any static
-   registry row. The static channel uses the phase-static registry below, only for
-   a surface outside that read set in a blind adapter. When an
+   diagnosis-key derivation. A cause surface inside the adapter's authorized
+   read set is inspected there; a surface outside it stays `unresolved`. When an
    authorized surface does not resolve to a concrete point and correction
    boundary, Cause Locus stays `unresolved` and there is no fallback to a
    static row.
@@ -213,7 +210,7 @@ fallback.
 A `needs_input` returned during recovery exits recovery without a charge; its
 question and options go through the normal input loop, and the ledger is kept.
 A `cancelled` result never enters or re-enters recovery: it closes as cancelled
-without a recovery charge, except in the Explore exception below.
+without a recovery charge.
 
 **Downstream relaunch after owner correction.** When an `owner-in-run` owner
 returns `completed` from recovery, its correction invalidates the downstream
@@ -241,59 +238,3 @@ never marks, extends, renames, or adds progress-plan steps.
 `--fast-track` changes nothing here: neither the three-slot pool, key
 accounting, eligibility, duplicate handling, the no-replacement rule, nor
 recovery reporting, and its own gates stay in force.
-
-## Explore Plan (unattended) item-10 exception
-
-Ordinary adapters keep a `cancelled` result as a clean stop, except in one
-place: a selector-dispatched Explore Plan (unattended) item 10.
-There, after a post-resolution supervised phase-worker `status: cancelled`, the
-cancelled phase may enter one Explore Diagnosis Round when the phase-keyed,
-conversation-only `diagnosis_rounds.<phase>` is unused. Only
-`diagnosis_rounds.spec` and `diagnosis_rounds.design` are valid keys.
-
-The Explore Plan (unattended) item 10 round does not spend the shared
-diagnosis ledger. It is read-only and permits at most one diagnosis and at most one
-same-worker re-dispatch; it never uses a replacement worker, and `--fast-track`
-does not widen it. When an actionable diagnosis cannot be delivered because
-same-worker continuation fails, record `continuation/transport loss`, consume
-the round, close the route as terminal with no replacement fallback, and leave
-the change retryable for a later Plan (unattended) selection.
-
-Standalone spec and design, Build, manual item-9 review, adapters without this
-named route, and outer user cancellation get no cancellation recovery.
-
-## Static registry for blind adapters
-
-A blind adapter matches a cause surface outside its read set through this
-deterministic, phase-static registry and match matrix. The match algorithm has
-no dynamic registration and never reads test-file content:
-
-1. Require `unrecoverable` to be exactly the boolean `false`; a missing, null,
-   string, numeric, or `true` value is no match.
-2. Select the registered surface whose `accepted_failure_classes` contains the
-   structured worker-authored `failure_class` exactly. Zero or several
-   candidates is no match; a non-accepted, unsupported, or ineligible failure
-   class stays unresolved with zero attempts.
-3. A missing or empty `changed_files` stays unresolved with zero attempts.
-   Otherwise substitute the resolved change name for `{change-name}` in the
-   surface's primary and optional path templates; every reported path must
-   match one of them exactly, and no extra or unrelated path is accepted.
-   Primary-path evidence is mandatory: `changed_files` must contain at least
-   one substituted primary path, and when primary-path evidence is missing the
-   match stays unresolved with zero attempts.
-4. A successful match returns `diagnosis_key`: `design-overview-repair` names
-   the matched surface. Cause Locus becomes `in-scope`, and the key is the ordered tuple of
-   the substituted primary path, the surface's `concrete_lifecycle_point`, and
-   its `authorized_correction_boundary`. The surface label is not a fourth key
-   component, and the key never comes from `changed_files` order or prose.
-5. Any failed check leaves the result and Cause Locus `unresolved` with zero
-   attempts: no ledger slot and no `continue_after_recovery`.
-
-Summary prose must not supply Cause Locus or `diagnosis_key`; the algorithm
-never infers a failure class, surface, path, lifecycle point, correction
-boundary, Cause Locus, or `diagnosis_key` from prose. No other blind surface is
-registered. The sole runtime registry for this algorithm is:
-
-| surface_id | artifact_path_template | optional_path_templates | concrete_lifecycle_point | authorized_correction_boundary | accepted_failure_classes |
-|---|---|---|---|---|---|
-| design-overview-repair | openspec/changes/{change-name}/change-overview.md | openspec/changes/{change-name}/.openspec.yaml | overview-generation-repair | design-worker-overview-repair | validation-failed, generation-error, dispatch-failed, envelope-contract-violation, blocking-contradiction |

@@ -1,8 +1,7 @@
 'use strict';
 
-// Progress emit: `sai-state emit <id> <machineId> --progress [--with-overview
-// true|false] -` validates a worker progress payload through the validator
-// module and only then advances the step machine. Every case spawns the CLI as
+// Progress emit: `sai-state emit <id> <machineId> --progress -` validates a
+// worker progress payload through the validator module and only then advances the step machine. Every case spawns the CLI as
 // a real process.
 
 const { test } = require('node:test');
@@ -48,8 +47,8 @@ function readRecord(id) {
 test('progress emit: valid payload returns the verdict plus the ordinary emit fields and advances the machine', () => {
   const id = spawnSession('progress-valid');
   try {
-    assert.equal(runCli(['reset', id, 'spec-standalone@1']).exitCode, 0);
-    const result = progressEmit(id, 'spec-standalone@1', progress(['prereqs-and-change']));
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const result = progressEmit(id, 'spec-steps@1', progress(['spec-intake']));
     assert.equal(result.exitCode, 0, result.stderr);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, true);
@@ -65,8 +64,8 @@ test('progress emit: valid payload returns the verdict plus the ordinary emit fi
     // Same transition as the legacy two-call path on a fresh session.
     const legacyId = spawnSession('progress-valid-legacy');
     try {
-      assert.equal(runCli(['reset', legacyId, 'spec-standalone@1']).exitCode, 0);
-      const legacy = runCli(['emit', legacyId, 'spec-standalone@1', '-'], JSON.stringify({ step_ids: ['prereqs-and-change'] }));
+      assert.equal(runCli(['reset', legacyId, 'spec-steps@1']).exitCode, 0);
+      const legacy = runCli(['emit', legacyId, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['spec-intake'] }));
       assert.equal(legacy.exitCode, 0, legacy.stderr);
       const legacyJson = JSON.parse(legacy.stdout);
       assert.equal(json.stage, legacyJson.stage);
@@ -82,9 +81,9 @@ test('progress emit: valid payload returns the verdict plus the ordinary emit fi
 test('progress emit (E1): shape-invalid payload returns validation.ok false, exit 1, and leaves the store untouched', () => {
   const id = spawnSession('progress-invalid');
   try {
-    assert.equal(runCli(['reset', id, 'spec-standalone@1']).exitCode, 0);
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
     const before = readRecord(id);
-    const result = progressEmit(id, 'spec-standalone@1', JSON.stringify({ event: 'progress', changed_files: [] }));
+    const result = progressEmit(id, 'spec-steps@1', JSON.stringify({ event: 'progress', changed_files: [] }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
@@ -101,7 +100,7 @@ test('progress emit (E1): shape-invalid payload returns validation.ok false, exi
 test('progress emit (E2): non-JSON stdin follows the validator semantics, not the emit parse failure', () => {
   const id = spawnSession('progress-nonjson');
   try {
-    const result = progressEmit(id, 'spec-standalone@1', 'not json');
+    const result = progressEmit(id, 'spec-steps@1', 'not json');
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, false);
@@ -126,14 +125,14 @@ function stripReceivedAt(response) {
 
 test('progress emit: verdict parity with `validate --kind progress --json` for BOM-prefixed and whitespace-padded payloads', () => {
   const inputs = [
-    `﻿${progress(['prereqs-and-change'])}`,
-    `  \n${progress(['prereqs-and-change'])}\n  `,
+    `﻿${progress(['spec-intake'])}`,
+    `  \n${progress(['spec-intake'])}\n  `,
   ];
   for (const input of inputs) {
     const id = spawnSession('progress-parity');
     try {
       const direct = runCli(['validate', '--kind', 'progress', '--json'], input, VALIDATOR_TOOL);
-      const fused = progressEmit(id, 'spec-standalone@1', input);
+      const fused = progressEmit(id, 'spec-steps@1', input);
       const directVerdict = JSON.parse(direct.stdout);
       const fusedVerdict = JSON.parse(fused.stdout).validation;
       assert.equal(JSON.stringify(fusedVerdict), JSON.stringify(stripReceivedAt(directVerdict)));
@@ -148,7 +147,7 @@ test('progress emit (E3): validation runs before any session read, so a corrupt 
   const id = spawnSession('progress-order');
   try {
     fs.writeFileSync(sessionFile(id), '{not valid json');
-    const result = progressEmit(id, 'spec-standalone@1', progress(['x'], { event: 'notice' }));
+    const result = progressEmit(id, 'spec-steps@1', progress(['x'], { event: 'notice' }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
@@ -164,7 +163,7 @@ test('progress emit (E4): valid payload with SESSION_FILE_CORRUPT keeps the verd
   const id = spawnSession('progress-corrupt');
   try {
     fs.writeFileSync(sessionFile(id), '{not valid json');
-    const result = progressEmit(id, 'spec-standalone@1', progress([]));
+    const result = progressEmit(id, 'spec-steps@1', progress([]));
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, true);
     assert.match(json.received_at, RECEIVED_AT_PATTERN);
@@ -179,7 +178,7 @@ test('progress emit (E4): valid payload with SESSION_FILE_CORRUPT keeps the verd
 test('progress emit (E4): valid payload with VERSION_MISMATCH keeps the verdict intact, exit 1', () => {
   const id = spawnSession('progress-version');
   try {
-    const result = progressEmit(id, 'spec-standalone@9', progress(['prereqs-and-change']));
+    const result = progressEmit(id, 'spec-steps@9', progress(['spec-intake']));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, true);
@@ -195,7 +194,7 @@ test('progress emit (E4): valid payload with VERSION_MISMATCH keeps the verdict 
 test('progress emit (E5): an invalid payload on a wrong machineId reports the verdict, not VERSION_MISMATCH', () => {
   const id = spawnSession('progress-validation-wins');
   try {
-    const result = progressEmit(id, 'spec-standalone@9', JSON.stringify({ event: 'progress' }));
+    const result = progressEmit(id, 'spec-steps@9', JSON.stringify({ event: 'progress' }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, false);
@@ -218,15 +217,15 @@ test('progress emit (E6): a missing validator module exits 2 on every verb namin
     const tool = path.join(root, 'bin', 'sai-state.js');
     const id = spawnSession('progress-novalidator');
     try {
-      assert.equal(runCli(['reset', id, 'spec-standalone@1']).exitCode, 0);
-      for (const argv of [['spawn', '--key', 'k'], ['reset', id, 'spec-standalone@1'], ['close', id]]) {
+      assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+      for (const argv of [['spawn', '--key', 'k'], ['reset', id, 'spec-steps@1'], ['close', id]]) {
         const r = runCli(argv, '', tool);
         assert.equal(r.exitCode, 2);
         assert.equal(r.stdout, '');
         assert.ok(r.stderr.includes(path.join(root, 'tools', 'worker-report-validator.js')));
       }
       const before = readRecord(id);
-      const result = runCli(['emit', id, 'spec-standalone@1', '--progress', '-'], progress(['prereqs-and-change']), tool);
+      const result = runCli(['emit', id, 'spec-steps@1', '--progress', '-'], progress(['spec-intake']), tool);
       assert.equal(result.exitCode, 2);
       assert.equal(result.stdout, '');
       assert.ok(result.stderr.includes(path.join(root, 'tools', 'worker-report-validator.js')));
@@ -255,7 +254,7 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
     const tool = path.join(sai, 'bin', 'sai-state.js');
     const id = spawnSession('progress-installed');
     try {
-      const result = runCli(['emit', id, 'spec-standalone@1', '--progress', '-'], progress(['prereqs-and-change']), tool);
+      const result = runCli(['emit', id, 'spec-steps@1', '--progress', '-'], progress(['spec-intake']), tool);
       assert.equal(result.exitCode, 0, result.stderr);
       assert.equal(JSON.parse(result.stdout).validation.ok, true);
     } finally {
@@ -266,45 +265,12 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
   }
 });
 
-test('progress emit (E7): --with-overview seeds the design variant on the first emit after reset, even with empty step_ids', () => {
-  const optedId = spawnSession('progress-overview-true');
-  const baseId = spawnSession('progress-overview-false');
-  try {
-    assert.equal(runCli(['reset', optedId, 'design-standalone@1']).exitCode, 0);
-    assert.equal(runCli(['reset', baseId, 'design-standalone@1']).exitCode, 0);
-    const opted = progressEmit(optedId, 'design-standalone@1', progress([]), ['--with-overview', 'true']);
-    const base = progressEmit(baseId, 'design-standalone@1', progress([]), ['--with-overview', 'false']);
-    assert.equal(opted.exitCode, 0, opted.stderr);
-    assert.equal(base.exitCode, 0, base.stderr);
-    const optedState = JSON.parse(readRecord(optedId)).stateByMachine['design-standalone@1'].state;
-    const baseState = JSON.parse(readRecord(baseId)).stateByMachine['design-standalone@1'].state;
-    assert.equal(optedState.withOverview, true);
-    assert.equal(baseState.withOverview, false);
-  } finally {
-    cleanup(optedId);
-    cleanup(baseId);
-  }
-});
-
-test('progress emit (E7): --with-overview on any machine other than design-standalone@1 is a usage error', () => {
-  const id = spawnSession('progress-overview-usage');
-  try {
-    const result = progressEmit(id, 'spec-standalone@1', progress([]), ['--with-overview', 'true']);
-    assert.equal(result.exitCode, 2);
-    assert.equal(result.stdout, '');
-    const badValue = progressEmit(id, 'design-standalone@1', progress([]), ['--with-overview', 'maybe']);
-    assert.equal(badValue.exitCode, 2);
-  } finally {
-    cleanup(id);
-  }
-});
-
 test('progress emit (E8): empty step_ids is valid and the pointer does not move', () => {
   const id = spawnSession('progress-empty');
   try {
-    assert.equal(runCli(['reset', id, 'spec-standalone@1']).exitCode, 0);
-    const first = progressEmit(id, 'spec-standalone@1', progress([]));
-    const second = progressEmit(id, 'spec-standalone@1', progress([]));
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const first = progressEmit(id, 'spec-steps@1', progress([]));
+    const second = progressEmit(id, 'spec-steps@1', progress([]));
     assert.equal(first.exitCode, 0, first.stderr);
     assert.equal(second.exitCode, 0, second.stderr);
     const a = JSON.parse(first.stdout);
@@ -327,7 +293,7 @@ test('progress emit (E10): non-progress payload kinds return validation.ok false
       { event: 'conflict_detected', summary: 's', changed_files: [], affected_files: [], continuation_state: 'language-selection' },
     ];
     for (const payload of payloads) {
-      const result = progressEmit(id, 'spec-standalone@1', JSON.stringify(payload));
+      const result = progressEmit(id, 'spec-steps@1', JSON.stringify(payload));
       assert.equal(result.exitCode, 1);
       assert.equal(JSON.parse(result.stdout).validation.ok, false);
     }
@@ -339,20 +305,20 @@ test('progress emit (E10): non-progress payload kinds return validation.ok false
 test('progress emit (E11): emit without --progress keeps its shape and exit codes', () => {
   const id = spawnSession('progress-legacy');
   try {
-    const ok = runCli(['emit', id, 'spec-standalone@1', '-'], JSON.stringify({ step_ids: [] }));
+    const ok = runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: [] }));
     assert.equal(ok.exitCode, 0, ok.stderr);
     const okJson = JSON.parse(ok.stdout);
     assert.equal(okJson.validation, undefined);
     assert.equal(typeof okJson.stage, 'string');
 
-    const unparseable = runCli(['emit', id, 'spec-standalone@1', '-'], 'not json');
+    const unparseable = runCli(['emit', id, 'spec-steps@1', '-'], 'not json');
     assert.equal(unparseable.exitCode, 1);
     const badJson = JSON.parse(unparseable.stdout);
     assert.equal(badJson.error, 'INVALID_EVENT');
     assert.equal(badJson.reason, 'EVENT_UNPARSEABLE');
     assert.equal(badJson.validation, undefined);
 
-    const usage = runCli(['emit', id, 'spec-standalone@1'], '');
+    const usage = runCli(['emit', id, 'spec-steps@1'], '');
     assert.equal(usage.exitCode, 2);
   } finally {
     cleanup(id);
@@ -364,12 +330,12 @@ test('every sai-state verb writes received_at as the first stdout key and no tim
   try {
     const cases = [
       runCli(['spawn', '--key', `every-verb-b-${process.pid}-${Date.now()}`]),
-      runCli(['reset', id, 'spec-standalone@1']),
-      runCli(['emit', id, 'spec-standalone@1', '-'], JSON.stringify({ step_ids: ['prereqs-and-change'] })),
-      progressEmit(id, 'spec-standalone@1', progress(['prereqs-and-change'])),
-      progressEmit(id, 'spec-standalone@1', 'not json'),
+      runCli(['reset', id, 'spec-steps@1']),
+      runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['spec-intake'] })),
+      progressEmit(id, 'spec-steps@1', progress(['spec-intake'])),
+      progressEmit(id, 'spec-steps@1', 'not json'),
       runCli(['reset', id, 'nope@1']),
-      runCli(['emit', id, 'spec-standalone@9', '-'], JSON.stringify({ step_ids: [] })),
+      runCli(['emit', id, 'spec-steps@9', '-'], JSON.stringify({ step_ids: [] })),
       runCli(['close', id]),
     ];
     for (const result of cases) {

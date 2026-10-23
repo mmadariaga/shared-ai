@@ -9,12 +9,12 @@ TBD - created by archiving change extract-step-machine-routing. Update Purpose a
 
 A factory function `createLinearStepMachine({ machineId, steps, stageFiles })` SHALL be exported from `sai-state/machines/linear-steps.js` and create a stateful stage machine object with the standard machine interface: properties `machineId`, `initialState`, `STEPS`, `STAGE_FILES`, `DONE_STAGE`, and methods `transition`, `project`, and `firstFiled`.
 
-**Scope:** Factory implementation for data modules spec-standalone, review-steps, and future linear machines.
+**Scope:** Factory implementation for the data modules spec-steps, design-steps, review-steps, and future linear machines.
 
 #### Scenario: Factory creates machine with required interface
 
-- **WHEN** `createLinearStepMachine({ machineId: 'spec-standalone@1', steps: ['prereqs-and-change', 'research', ...], stageFiles: {...} })` is invoked
-- **THEN** it returns an object with `machineId` property set to 'spec-standalone@1', `initialState` object, `STEPS` array, `STAGE_FILES` object, `DONE_STAGE` string constant, and `transition`, `project`, and `firstFiled` methods
+- **WHEN** `createLinearStepMachine({ machineId: 'spec-steps@1', steps: ['spec-intake', 'research', ...], stageFiles: {...} })` is invoked
+- **THEN** it returns an object with `machineId` property set to 'spec-steps@1', `initialState` object, `STEPS` array, `STAGE_FILES` object, `DONE_STAGE` string constant, and `transition`, `project`, and `firstFiled` methods
 
 ### Requirement: Factory-created initial state
 

@@ -4,27 +4,24 @@ This file is fetched at worker dispatch and stays in force for the entire run. I
 
 Rules originating here: Step delivery meta-rule, Generation scope, Artifact-only scope, Decision style, Cost and budget discipline.
 
-Fetch @sai/commands/design/phase-contract.md and use its `DesignWriteSurface`,
-`DesignResultUnion`, and pointer/rendering separation as the canonical phase
-declarations. This step file supplies no competing lifecycle, progress, or
-write-scope contract.
+The write surface and the report shape are those of `worker.md` and
+`@sai/commands/plan/worker-common.md`. This step file supplies no competing
+lifecycle or write-scope contract.
 
 ## Step delivery meta-rule
 
-The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-resolution` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets research. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-resolution` inline, then follow that pointer, and report `prereqs-resolution` and `research` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session.
-
-Every step in the canonical plan, `overview` included, is reached through pointer delivery from the `design-standalone@1` step machine declared in `@sai/commands/design/phase-contract.md`. The `overview` step file is the normative home of the overview lifecycle; the other step files reference the worker card for their bodies. A generation-trigger continuation that arrives without the `overview` pointer names `steps/overview.md` explicitly.
+The coordinator names each active step by one pointer line — `Active step: <id> — follow <path>`. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely in the coordinator's messages; this file is the only step surface loaded at dispatch. `design-intake` has no step file of its own — it runs from the worker contract plus this file before the first pointer, and the first delivered pointer targets research. The first pointer arrives as the first line of the task message, before the task: run `design-intake` inline, then follow that pointer, and report `design-intake` and `research` together in the first report. Each step ends by writing your report with the step's id in `step_ids`; a message without a pointer line (a fix round or an answer) leaves the active step unchanged. The overview is not a step: it arrives as a continuation that names `steps/overview.md` explicitly.
 
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/remember.md
 
 ## Generation scope
 
-Generate `design.md`, `tasks.md`, and `interfaces.md` for the resolved change as the default outputs. `proposal.md` and `specs/**` may be amended in place only when a spec problem is discovered during design, clarity on the fix is present, and the user explicitly consents — never by default.
+Generate `design.md`, `tasks.md`, and `interfaces.md` for the resolved change as the default outputs. `proposal.md` and `specs/**` may be amended in place only when a spec problem is discovered during design, clarity on the fix is present, and the coordinator answers `in-place` — never by default.
 
 ## Artifact-only scope
 
-The authorized write surface is `DesignWriteSurface` in `@sai/commands/design/phase-contract.md`. Within `openspec/changes/{name}/`, the design worker writes `design.md`, `tasks.md`, `interfaces.md`, and `.openspec.yaml` under their respective phase rules. The opted-in overview generator writes only `change-overview.md` under `@sai/commands/design/change-overview.md`; the parent worker owns overview state in `.openspec.yaml`. Amend `proposal.md` and `specs/**/*.md` only under the design step's spec-problem handling rule after explicit user consent.
+The authorized write surface is the one in `worker.md`. Within `openspec/changes/{name}/`, the design worker writes `design.md`, `tasks.md`, `interfaces.md`, and `.openspec.yaml` under their respective phase rules. The opted-in overview generator writes only `change-overview.md` under `@sai/commands/design/change-overview.md`; the parent worker owns overview state in `.openspec.yaml`. Amend `proposal.md` and `specs/**/*.md` only under the design step's spec-problem handling rule, after the coordinator answers `in-place`.
 
 Never write `implementation.md`, test files, or any other artifact. Code generation and project modifications are the explicit responsibility of downstream commands.
 
@@ -33,7 +30,7 @@ Never write `implementation.md`, test files, or any other artifact. Code generat
 - `proposal.md` and the specs arrive settled: discovery, rationale, trade-offs, and edge cases were agreed before this phase.
 - Resolve technical choices yourself when the evidence justifies them.
 - Record any assumption that would change behavior the specs describe in `design.md` Open Questions.
-- Ask through the existing gates: blocking Open Questions, the explicit spec-amendment authorization, and the artifact-feedback gate. Return `needs_input` for those, each complying with `@sai/policies/question-context.md`; present closed-choice asks through the native picker per `@sai/policies/remember.md`.
+- Ask only through the two existing gates: blocking Open Questions and the spec-amendment decision. Report `needs_input` for those per `worker-common.md`; the coordinator answers from the block, the artifacts, and the repository, and escalates only what none of them settles.
 
 ## Cost and budget discipline (summary)
 

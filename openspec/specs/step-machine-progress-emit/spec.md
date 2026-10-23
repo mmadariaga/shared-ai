@@ -6,14 +6,14 @@ TBD - created by archiving change emit-validates-progress. Update Purpose after 
 ## Requirements
 
 ### Requirement: Progress emit validates before any store read
-`bin/sai-state.js` SHALL provide `emit <id> <machineId> --progress [--with-overview true|false] -`, which reads one worker progress payload from stdin. It SHALL validate the raw, unnormalized stdin text through the worker-report validator module with kind `progress` before any session, machine or registry read. An invalid verdict SHALL be written as `{received_at, validation}` with exit code 1, SHALL read no store, and SHALL leave the machine untouched. Non-JSON stdin SHALL yield `validation.ok: false` and never `EVENT_UNPARSEABLE`. An invalid payload sent to an unknown or version-mismatched machine SHALL report the invalid verdict, never the machine error.
+`bin/sai-state.js` SHALL provide `emit <id> <machineId> --progress -`, which reads one worker progress payload from stdin. It SHALL validate the raw, unnormalized stdin text through the worker-report validator module with kind `progress` before any session, machine or registry read. An invalid verdict SHALL be written as `{received_at, validation}` with exit code 1, SHALL read no store, and SHALL leave the machine untouched. Non-JSON stdin SHALL yield `validation.ok: false` and never `EVENT_UNPARSEABLE`. An invalid payload sent to an unknown or version-mismatched machine SHALL report the invalid verdict, never the machine error.
 
 #### Scenario: Shape-invalid payload never reaches the machine
-- **WHEN** a payload missing `step_ids` is piped to `emit <id> spec-standalone@1 --progress -`
+- **WHEN** a payload missing `step_ids` is piped to `emit <id> spec-steps@1 --progress -`
 - **THEN** the process exits 1 with `received_at` first, `validation.ok` false and its `errors`, and the session file is unchanged
 
 #### Scenario: Non-JSON stdin is an invalid verdict
-- **WHEN** `not-json` is piped to `emit <id> spec-standalone@1 --progress -`
+- **WHEN** `not-json` is piped to `emit <id> spec-steps@1 --progress -`
 - **THEN** the output carries `validation.ok` false with the validator's invalid-JSON error and no `reason: "EVENT_UNPARSEABLE"`
 
 #### Scenario: Validation wins over a corrupt store or wrong machine
@@ -35,8 +35,8 @@ TBD - created by archiving change emit-validates-progress. Update Purpose after 
 On a valid verdict the progress emit SHALL derive the machine event `{"step_ids": payload.step_ids}` and apply it through the same transition logic as an event emit. It SHALL write one object carrying `received_at` first, then `validation`, plus the ordinary emit fields (`stage`, `next`, `rejected?`, `warnings?`, or `error` with `next`), unchanged. Validation and machine advancement SHALL share the one `received_at` value read for the invocation. Exit code 1 SHALL cover both an invalid verdict and a machine error, and callers SHALL discriminate by `validation.ok`. A valid verdict that meets a store failure (`SESSION_FILE_CORRUPT`, `VERSION_MISMATCH`, `UNKNOWN_MACHINE`, or an unreachable store) SHALL keep its `validation` block unaltered and the top-level `received_at` alongside the machine's error or warnings. An empty `step_ids` list SHALL be valid and SHALL leave the pointer where it was. Undeclared ids SHALL validate and the machine SHALL ignore them.
 
 #### Scenario: Valid payload validates and advances in one call
-- **WHEN** a valid progress payload reporting `prereqs-and-change` is piped to `emit <id> spec-standalone@1 --progress -` after reset
-- **THEN** the process exits 0 with a top-level `received_at` first, `validation.ok` true, and the `next.follow` of the following step
+- **WHEN** a valid progress payload reporting `spec-intake` and `research` is piped to `emit <id> spec-steps@1 --progress -` after reset
+- **THEN** the process exits 0 with a top-level `received_at` first, `validation.ok` true, and the `next.follow` of the `proposal` step
 
 #### Scenario: Store failure keeps the verdict intact
 - **WHEN** a valid progress payload is piped to a progress emit whose session file is corrupt or whose machine id mismatches the registry version
@@ -45,17 +45,6 @@ On a valid verdict the progress emit SHALL derive the machine event `{"step_ids"
 #### Scenario: Empty step_ids leaves the pointer unchanged
 - **WHEN** a valid progress payload with `step_ids: []` is piped to a progress emit
 - **THEN** the process exits 0 with `validation.ok` true and the same `next.follow` as before
-
-### Requirement: Design variant option on the progress emit
-The progress emit SHALL accept `--with-overview true|false` only on `design-standalone@1` and SHALL add `withOverview` to the derived event. On any other machine, or with a value other than `true` or `false`, it SHALL be a usage error with exit code 2. The coordinator SHALL pass the option on the first progress emit after the segment's machine reset, even when that event reports no ids, and SHALL omit it on later progress emits.
-
-#### Scenario: First emit seeds the design variant
-- **WHEN** the design coordinator's first progress emit after reset passes `--with-overview true` with `step_ids: []`
-- **THEN** the machine adopts the opted-in six-step plan
-
-#### Scenario: Option on another machine is a usage error
-- **WHEN** `--with-overview true` is passed to a progress emit on `spec-standalone@1`
-- **THEN** the process exits 2 with a stderr message naming `design-standalone@1`
 
 ### Requirement: Validator module resolution relative to the store CLI
 Every `bin/sai-state.js` verb (`spawn`, `emit`, `emit --progress`, `reset`, `close`) SHALL load the validator module relative to `bin/sai-state.js` from two fixed candidates, in order: `../tools/worker-report-validator.js` (installed layout `sai/{bin,sai-state,tools}`), then `../sai/tools/worker-report-validator.js` (source layout `{bin,sai-state,sai/tools}`), because the module exports the only `received_at` clock. When neither exists, or the module lacks `generateReceivedAt` or `validateText`, the verb SHALL exit 2 naming the tried paths on stderr and SHALL emit nothing on stdout. The invocation SHALL be byte-identical whichever tool-resolution candidate for `sai-state.js` wins.
@@ -91,7 +80,7 @@ When the active adapter declares a `step_machine`, the coordinator SHALL pipe th
 - **THEN** the step Milestone Stamp is the `HH:mm` of the response top-level `received_at` with no wall-clock call
 
 ### Requirement: Progress emit behavior is tested through the spawned CLI
-The repository SHALL test the progress emit by spawning `node bin/sai-state.js emit … --progress -` as a real process. The tests SHALL cover invalid shapes, non-JSON stdin, verdict parity without time normalization, validation-before-store-read, store failures with the verdict intact, a missing validator module on every verb, the installed layout, `--with-overview` seeding and misuse, empty `step_ids`, non-progress kinds, and unchanged plain emit. A further test SHALL run every `sai-state` verb and assert `received_at` is the first stdout key while stderr carries no time. The existing validator tests SHALL pass with the rename applied.
+The repository SHALL test the progress emit by spawning `node bin/sai-state.js emit … --progress -` as a real process. The tests SHALL cover invalid shapes, non-JSON stdin, verdict parity without time normalization, validation-before-store-read, store failures with the verdict intact, a missing validator module on every verb, the installed layout, empty `step_ids`, non-progress kinds, and unchanged plain emit. A further test SHALL run every `sai-state` verb and assert `received_at` is the first stdout key while stderr carries no time. The existing validator tests SHALL pass with the rename applied.
 
 #### Scenario: Suite exercises the real process
 - **WHEN** `test/sai-state-progress-emit.test.js` runs

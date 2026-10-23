@@ -1,73 +1,41 @@
-<TASK>
+# `/sai-1-spec` coordinator
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
-  Fetch @sai/policies/stage-machine.md and follow it for every store interaction.
-  Fetch @sai/policies/spec-phase-contract.md and use it as the sole source for the spec lifecycle, progress, pointer, write-scope, result, and validation-report declarations.
-  Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.
+Fetch @sai/policies/public-chat.md and follow it exactly.
+Fetch @sai/policies/remember.md
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @skills/budget/SKILL.md
+Fetch @sai/policies/tool-resolution.md
+Fetch @sai/commands/plan/cycle.md and follow it for everything this card does not state.
 
-  ## Your Role: Spec Phase Coordinator
+You are the driver of the segment. The invocation carries one string, `arguments_value`: a `Ready to Propose` block, or the reference to one, or the name of an existing change followed by feedback.
 
-  You are the user-facing spec coordinator. You run the shared runner's Result Loop for one `sai-1-spec-proposal-worker`. The coordinator alone renders progress, and it owns lifecycle metadata, validation-report rendering, and gate presentation. The worker owns every technical act: prerequisites, argument and change resolution, OpenSpec queries, research, artifact writes, summaries, and feedback edits.
+## Goal
 
-  ## Artifact access
+Write or refine the change's `proposal.md` and `specs/` with no human in the loop. The segment is done when both exist and satisfy the worker's verification, every mechanical check passes, the artifacts went through up to 3 incremental review rounds, and the segment's paths are committed locally (or left on disk when the project ignores them). A human is needed only for force majeure. The command stops before design: running `/sai-2-design` approves the specs.
 
-  - **Clean route** — `progress`, `needs_input`, `cancelled`, and a `completed` that neither carries STOP nor is disproved by coordinator evidence. The coordinator stays artifact-blind: it does not read or write git, code, configuration, documentation, or change artifacts. The no-commit guard's two tool invocations are its only git access.
-  - **Non-clean route** — after resolution, a structurally valid `failed`, a `completed` carrying STOP, or a `completed` disproved by coordinator evidence. Using the worker-authored `failure_class` as evidence, the coordinator may inspect only the authorized artifact read set — `proposal.md`, `specs/**`, and the root `GLOSSARY.md` — to establish Cause Locus.
-  - On both routes the coordinator never writes or repairs `proposal.md`, `specs/**`, or `GLOSSARY.md`; correction on that surface belongs to the same worker.
+## Start
 
-  ## Phase adapter
+1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed.
+2. Find the input. A `--block-file <path>` with a `--block-hash <sha256>` (on separate lines or in either order) references a stored block; a pasted block is the text that holds the line `## Ready to Propose`. Exactly one block per run. Otherwise the first remaining token is a change name and the rest is feedback, and the change is startable when `openspec/changes/{name}/` holds `proposal.md` or a file under `specs/`. When there is no block and no startable change, print this and end the run, writing nothing: `Cannot start /sai-1-spec: creation needs a dispatchable Ready to Propose block (paste it, or pass --block-file and --block-hash), or the name of a change that already has proposal.md or specs/ followed by your feedback.`
+3. The change name is the block's `**Change name**`, or the first token. A block for a change that already has `proposal.md` or a file under `specs/` is not a creation: print this and end the run, writing nothing: `Cannot start /sai-1-spec for {name}: it already has artifacts. Refine it with /sai-1-spec {name} followed by your feedback.`
+4. Open the run per the cycle's Opening the run; inside `/sai-plan` it is already open. Emit `segment-start` with the segment `spec`, then `reset` `spec-steps@1`. Write a pasted block verbatim to `block.md` in the run directory, and the feedback verbatim to `feedback.md`.
+5. Validate the block before any dispatch, so a malformed block costs nothing. Fetch @sai/policies/ready-to-propose-format.md for § Stored block transport and § Dispatchable contract. For a stored block, resolve `ready-to-propose.js` per `tool-resolution.md` and run `verify-file --block-file <path> --block-hash <hash>`; a missing, unreadable, or mismatched file ends the run. Then run `check --profile dispatchable --block-file <path>` against the block file. A structural violation (`"ok": false`) ends the run showing every violation with its block index, line number, problem, and detail; a degraded paste fails here too, and the user copies the block again from the `/sai-explore` output. When `judgment.pending` lists flagged lines, Fetch @sai/policies/block-hygiene-judgment.md, judge exactly those lines, save the verdicts as a JSON array in the run directory, and run `check --profile dispatchable --block-file <path> --verdicts-file <path>`; a `violation` verdict ends the run showing its clause, line number, and evidence. Proceed only when the verdict reports `"dispatchable": true`. A run that ends here prints the cause, writes nothing, and removes its run directory. A refinement run has no block to validate.
+6. Record the commit paths' dirty baseline per the cycle's Commit rule.
 
-  Declare these fields for the shared runner:
+## The segment
 
-  - `original_envelope` — exactly one opaque string, the `arguments_value` supplied by the active wrapper.
-  - `dispatch_operation` and `continuation_operation` — the active spec-worker binding's dispatch and same-worker continuation.
-  - `allowed_nonterminal_extensions` — only the `progress` shape from the phase contract; `extension_handlers` is empty. There is no design notice state. Validate the four closed lifecycle statuses, that progress event, and the `validation_report` extension on `completed`, without inventing fields.
-  - `replacement_reconstruction_fields` — the original envelope, opaque input history, pending feedback, resolved change name, changed-file union, feedback iteration, and the departing worker's `active_step_id`.
-  - `progress_plan` — the canonical five-step `progress_plan` from the phase contract, rendered per `@sai/policies/todo-structure.md`.
-  - `step_machine: spec-standalone@1`
-  - `recovery_policy: true`
-  - `terminal_navigation` — § 5.
+Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 
-  ## No-commit guard
+The worker is `sai-1-spec-proposal-worker`. Its steps, in the order the static fallback uses, are `spec-intake` (inline), then `research`, `proposal`, `specs`, `validation`, each at `sai/commands/spec/steps/{step}.md`. The task message opens with the first pointer, then names the change, the mode (`creation` with `block_file`, or `refinement` with `feedback_file`), the report path, and the run directory. When the refinement feedback is empty, the refinement task is to re-verify the artifacts and correct what the verification finds.
 
-  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
-  the spec worker's stretches: `snapshot` opens a window, holding the returned SHA as
-  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
-  own two tool invocations are this coordinator's only git access on the
-  artifact-blind clean route and change no other rule above.
+**Mechanical checks.** From the project root, through the budget executor: `openspec validate {name}`; `node <tool-path> {name}` for `check-delta-headers.js`; `node <tool-path> sai-1 {name} --cwd <project-root>` for `check-cited-paths.js`.
 
-  ## Lifecycle Steps
+**Review criteria.** Fidelity to the input (on creation, the block's capabilities, constraints, edge cases, and in-scope implementation details each reach a requirement or scenario; on refinement, the feedback is applied and the intent of `proposal.md`'s What and Why survives); excess scope (no requirement, scenario, or capability beyond the input, and no out-of-scope implementation detail turned into a requirement); internal consistency (the proposal never contradicts a spec, every requirement has a scenario, terms match `GLOSSARY.md`); and consistency across artifacts (each capability the proposal lists has its delta spec, and no spec exists for an unlisted capability).
 
-  ### 1. Initialize and render
+**Commit paths.** `openspec/changes/{name}/proposal.md`, the files under `openspec/changes/{name}/specs/`, `openspec/changes/{name}/.openspec.yaml`, and `GLOSSARY.md` when the worker changed it. Subject, for example: `docs(spec): add proposal and specs` on creation, `docs(spec): refine proposal and specs` on refinement.
 
-  Initialize an ordered duplicate-free changed-file union, an empty opaque input history, no pending feedback, and feedback iteration `0`. Render the full plan (first step `in_progress`, the rest `pending`) before the dispatch. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route instead: record its notice, disable later panel calls for this invocation, and continue without a panel.
+## Close
 
-  ### 2. Dispatch exactly one worker
+Print, in this order: the worker's decision summary; every consistency warning of the validation report in the form `steps/validation.md` gives; the assumptions, each with its question, answer, and source (or that there are none); the findings still pending after the third review round (or that there are none); the scope observations when there are some; the checks that were skipped when there are some; and whether the paths were committed, committed in part, or left uncommitted because the project ignores them.
 
-  Dispatch exactly one worker per the runner's § Dispatch and task disclosure: the original envelope travels in the first continuation after `event: ready`. Send the first filed step's pointer (`research`), which the segment-start `reset` returns, as the first line of the post-ready task disclosure, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Before the first progress event, the worker's `active_step_id` is that step.
-
-  ### 3. Run the Result Loop
-
-  Process every result through the runner. The spec-specific additions:
-
-  - `progress` — Progress-event panel updates and worker continuation follow `@sai/policies/todo-structure.md` through the shared command runner's same-turn rule; an unavailable panel uses the same recorded degradation route and does not block continuation.
-  - `needs_input` — present the exact question and ordered options through the native picker, append `{question, options, answer_value}` to the opaque input history, and continue the same worker with the exact value.
-  - Continuation failure — always try same-worker continuation before a replacement; only when it fails, dispatch at most one replacement worker from the reconstruction fields above. Its first continuation carries the pointer line for the departing worker's `active_step_id`.
-  - Recovery — the runner and `@sai/policies/bounded-recovery.md` own diagnosis, eligibility, attempts, and hand-back. Forward the ordered diagnosis with exactly `continue_after_recovery`; recovery text never marks, adds, or renames plan steps.
-
-  ### 4. Open the feedback gate
-
-  On `completed`, print the worker-authored summary, render every `validation_report.warnings` entry in the phase contract's canonical format, then present the `proposal.md`, `specs/**` feedback gate. A worker `completed` followed by the artifact feedback gate is pre-gate and does not reconcile.
-
-  On each feedback-option selection, the coordinator emits the gate's feedback-text prompt exactly once, waits for the user's reply, holds it as pending feedback, and forwards only that text to the same worker, never the empty picker turn. When that feedback turn returns a verified `completed`, report worker-authored discards, clear pending feedback, increment the feedback iteration, print the summary and the current validation report, and re-present the gate.
-
-  ### 5. Finish and stop
-
-  The gate's `Finish step` proceed selection is the spec phase's reconciliation trigger. Reconcile against the last terminal `completed`: every unmarked step renders `completed`. `failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered.
-
-  Then print the MANDATORY STOP text exactly once: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track --overview-lang Lang) **in a new chat** when ready.`
-
-</TASK>
-
-Follow instruction on <TASK> step by step
+A segment that completed ends with exactly ``Spec done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` in a new chat when ready.`` A segment that failed, stopped, or ended on an unanswered escalation ends with its report and no closing line. Inside `/sai-plan` the segment prints its report and the plan coordinator's closing line replaces this one.

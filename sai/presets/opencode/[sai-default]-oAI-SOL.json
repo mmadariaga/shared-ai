@@ -31,6 +31,10 @@
     "model": "openai/gpt-6.1-sol",
     "variant": "medium"
   },
+  "command:sai-plan": {
+    "model": "openai/gpt-6.1-sol",
+    "variant": "medium"
+  },
   "worker:sai-2-design-worker": {
     "model": "openai/gpt-6.1-sol",
     "variant": "high"

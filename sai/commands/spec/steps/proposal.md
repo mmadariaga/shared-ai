@@ -1,7 +1,6 @@
 # Spec Step — Proposal
 
-Active step: proposal. Write `proposal.md`, then return the `proposal` progress
-event.
+Active step: proposal. Write `proposal.md`, then report the `proposal` step.
 
 Create and instruct the proposal through the OpenSpec CLI; no OpenSpec skill
 is loaded.
@@ -19,8 +18,7 @@ is loaded.
    constrain the content; keep both out of every artifact.
 4. Stop there: `specs/**` is the next step.
 
-Questions go out as `needs_input`, the coordinator renders progress, and the
-step ends with the progress event.
+Questions go out as a `needs_input` report, and the step ends with your report.
 
 When the block carries `**Request Additional Notes**`, copy its content
 byte-for-byte into the `## Request Additional Notes` section of `proposal.md`:
