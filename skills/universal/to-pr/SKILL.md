@@ -64,11 +64,18 @@ anything: the review's fix round computed it for this merge-base and code. When 
 directory and follow it, with the ref used for collection as the parent branch and
 `risk-signals.js` located per `sai/policies/tool-resolution.md` § `sai/tools/*.js` copies.
 With or without an OpenSpec change, the committed diff against the target is the input.
-Put the ratings block in the description at the position `description-format.md` fixes.
-**Complete when:** the draft carries one ratings block, stored when `fresh` and otherwise
+Put the ratings block in the description at the position `description-format.md` fixes,
+or use that file's overflow-only managed-comment option on any supported provider.
+**Complete when:** the selected location carries one ratings block, stored when `fresh` and otherwise
 computed with its four levels each at or above the tool's floor.
 
-Run `query` with `{provider,repository,remote,base,title,description}` and the
+For an explicit Azure DevOps request to create a draft or convert an existing PR
+to draft, include `draft:true` in both `query` and `publish`. Omit it otherwise:
+creation keeps current behavior, and updates preserve the current draft state.
+This adds no GitHub or GitLab draft operation.
+
+Run `query` with `{provider,repository,remote,base,title,description}` plus the
+risk allocation fields from `description-format.md`, any explicit Azure `draft:true`, and the
 `allow_attribution` exception only as `description-format.md` authorizes. It validates
 the title and final description and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
@@ -78,8 +85,9 @@ content, so on update replace everything between its markers (the markers includ
 existing description with the block just computed, or insert it at its fixed position when
 the existing description has none, without asking for approval of that replacement; the
 rest of the description follows the retention rule above, and the full result is still
-presented for the publication approval in step 3. An update writes only title and description;
-state, reviewers, comments and other fields are outside scope.
+presented for the publication approval in step 3. Updates write title and description,
+the selected managed risk comment, and an explicitly requested Azure draft state.
+Reviewers and all other fields stay unchanged.
 `no_changes` ends without mutation.
 
 When `query` is creating a GitHub PR or GitLab MR, its result lists the project's
@@ -100,7 +108,13 @@ Run `push-query` with the destination fields. A `ready` result carries the exact
 remote, push URL, branch, commit and the `push token`; `no_changes` means the remote
 branch already holds the approved commit. Show the operation (create or update),
 platform, repository, visibility, source, target, and existing request URL if
-updating. Show the complete proposed title and description, not a summary. For update
+updating. Show the complete proposed title and description, not a summary. When
+`proposal.inherent_risk.required` is true, also show the complete comment body,
+its provider/repository and existing request URL (or the new request being created),
+the authenticated author, and whether this creates or updates the managed comment.
+Show an explicitly requested draft state. These operations are part of the same
+approval question: append their exact allocation and draft-state operations to
+the question below when present. For update
 also show the baseline and what changes. Before approval show any
 `proposal.concurrency_warning` verbatim: a reread does not protect the interval
 before a provider's update request.
@@ -140,11 +154,12 @@ the remote history as it is.
 Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
 path. Keep the receipt for recovery; never overwrite it or reuse it for a retry.
-Run `publish` once with the approved query fields (including the chosen `labels` and, when
+Run `publish` once with the approved query fields (including risk allocation, overflow
+evidence and explicit draft request unchanged, the chosen `labels` and, when
 the proposal has one, its `assignee` object unchanged, and the same authorized
 `allow_attribution: true` when applicable), `approved:true`, the
 `publish token`, and `receipt`. A changed baseline or HEAD blocks publication: return to full review rather than renewing a token silently.
-On `uncertain`, run `recover` with `{receipt}`: recovery is read-only. Check the
+On `uncertain` or `partial_failure`, run `recover` with `{receipt}`: recovery is read-only. Check the
 selected source and destination for an existing request before any repeated create;
 an uncertain result is not permission to create again. For an unapplied update,
 reconcile current content and obtain fresh approval before retrying.
@@ -155,4 +170,11 @@ they leave the request published. Recovery applies nothing; it reports the reque
 `assignees` and `labels`.
 When publication fails or ends uncertain after a verified push, report the completed
 push and the failed publication separately, and keep the draft and the pushed branch.
+Report `pr` and `comment` outcomes separately; only `complete` for both required
+operations means complete success. An unverified draft remains pending, not fulfilled.
+If recovery returns a `continuation`, show the pending comment's full approved
+content and destination again and ask for approval of that operation only. Run
+`resume` with `{receipt,approved:true,confirmation:<continuation>}` only after
+that approval. It never pushes or repeats PR publication. With no continuation,
+clarify uncertain or divergent state instead of retrying a comment creation.
 **Complete when:** publication is verified or uncertainty is accurately reported.

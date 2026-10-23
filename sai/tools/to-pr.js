@@ -9,6 +9,7 @@ const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules, checkAiAttribution } = require('./lint');
 const projectSettings = require('./project-settings');
 const riskSignals = require('./risk-signals');
+const riskComments = require('./to-pr-comments');
 const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, options = {}) {
@@ -206,6 +207,13 @@ function labelling(request, selected, provider, io) {
   return { assignee, labels, available, warnings, userFailed, labelsFailed };
 }
 const baseline = ({ assignees, labels, ...row }) => row;
+function validateDescription(provider, description, overflowLimit) {
+  const limit = provider === 'azuredevops' ? 4000 : Number.isSafeInteger(overflowLimit) && overflowLimit > 0 ? overflowLimit : undefined;
+  if (limit && description.length > limit) {
+    const details = { provider, length: description.length, limit, excess: description.length - limit };
+    throw Object.assign(new Error(`Description exceeds provider limit: ${JSON.stringify(details)}`), { code: 'description-too-long', ...details });
+  }
+}
 // `build` rebuilds the proposal around a given assignee and labels, for publish's fallback.
 function prepareQuery(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
@@ -217,16 +225,22 @@ function prepareQuery(request, io) {
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
   const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = withClosingBlock(request, selected, io);
+  validateDescription(request.provider, description, request.risk_placement === 'comment' ? request.description_overflow?.limit : undefined);
+  if (request.draft !== undefined && (request.provider !== 'azuredevops' || request.draft !== true)) throw new Error('Only an explicit Azure draft:true request is supported');
+  const inherent_risk = riskComments.plan(request, description, provider, selected.target, rows[0], io);
   const attribution = request.allow_attribution === true ? [] : checkAiAttribution(description, 'request description');
   if (attribution.length) throw new Error(`Invalid request description: ${JSON.stringify(attribution)}`);
+  if (inherent_risk && request.allow_attribution !== true && checkAiAttribution(inherent_risk.body, 'risk comment').length) throw new Error('Invalid risk comment: AI_ATTRIBUTION');
   const applied = rows[0] ? { warnings: [] } : labelling(request, selected, provider, io);
   const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
+    ...(inherent_risk ? { inherent_risk } : {}), ...(request.draft === true ? { draft: true } : {}),
     ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}) });
   const proposal = build(applied.assignee, applied.labels);
-  const matches = rows[0]?.title === request.title && rows[0]?.description === description;
+  const prMatches = rows[0]?.title === request.title && rows[0]?.description === description && (request.draft !== true || rows[0]?.isDraft === true);
+  const matches = prMatches && (!inherent_risk?.required || inherent_risk.existing?.body === inherent_risk.body);
   const all = [...warnings, ...applied.warnings];
   const ready = { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(applied.available ? { available_labels: applied.available } : {}), ...(all.length ? { warnings: all } : {}) };
-  return { ready, applied, build };
+  return { ready, applied, build, prMatches };
 }
 function query(request, io) { return prepareQuery(request, io).ready; }
 // E10: a user or label read that fails when publish re-queries never rejects an approved creation. The assignee and
@@ -266,39 +280,84 @@ function publish(request, io) {
   if (pushQuery(request, io).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
   request = { ...request, receipt: receiptPath(request.receipt) };
   const provider = adapter(request.provider, io);
-  const receipt = { proposal: ready.proposal, ...(provider.publicationEvidence ? { evidence: provider.publicationEvidence(ready.proposal, io) } : {}) };
+  const receipt = { proposal: ready.proposal, pr: { status: prepared.prMatches ? 'complete' : 'pending' }, comment: { status: ready.proposal.inherent_risk?.required ? 'pending' : 'not_required', attempted: false }, ...(provider.publicationEvidence ? { evidence: provider.publicationEvidence(ready.proposal, io) } : {}) };
   fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
   let submitted = false;
   try {
-    const result = provider.mutate(ready.proposal, io);
+    const result = prepared.prMatches ? ready.proposal.existing : provider.mutate(ready.proposal, io);
     submitted = true;
+    receipt.pr = { status: 'complete', request: result };
     if (receipt.evidence) {
       receipt.evidence.result = result;
-      fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
     }
-    return labellingOutcome(recover({ receipt: request.receipt }, io), ready.proposal, result, rereadNotices);
-  } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message }; }
+    fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
+    const verified = recover({ receipt: request.receipt }, io);
+    if (verified.pr?.status === 'complete' && receipt.comment.status === 'pending') return labellingOutcome(writeComment(request.receipt, io), ready.proposal, result, rereadNotices);
+    return labellingOutcome(verified, ready.proposal, result, rereadNotices);
+  } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message,
+    pr: { status: submitted ? 'verification_pending' : error.rejected ? 'rejected' : 'uncertain' }, comment: receipt.comment }; }
 }
 function recover(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
-  const { proposal, evidence } = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
+  const receipt = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
+  const { proposal, evidence } = receipt;
   const provider = adapter(proposal.provider, io);
+  let result;
   if (provider.recoverPublication) {
     if (!evidence || !Array.isArray(evidence.previous)) throw new Error('Missing private publication evidence');
-    return { ...provider.recoverPublication(proposal, evidence, io, request), receipt: request.receipt };
+    result = provider.recoverPublication(proposal, evidence, io, request);
+  } else {
+    const target = provider.inspect(proposal.target.url, io);
+    if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
+    const rows = provider.list(target, proposal.source, proposal.base, io);
+    const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
+    result = candidates.length === 1 ? { status: 'complete', request: candidates[0] } : { status: 'uncertain', candidates: rows, message: 'Read-only recovery cannot verify the approved content; do not repeat creation' };
   }
-  const target = adapter(proposal.provider, io).inspect(proposal.target.url, io);
-  if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
-  const rows = adapter(proposal.provider, io).list(target, proposal.source, proposal.base, io);
-  const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
-  return candidates.length === 1 ? { status: 'complete', request: candidates[0] } : { status: 'uncertain', candidates: rows, receipt: request.receipt, message: 'Read-only recovery cannot verify the approved content; do not repeat creation' };
+  if (!proposal.inherent_risk?.required) return { ...result, receipt: request.receipt, pr: { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) }, comment: { status: 'not_required' } };
+  receipt.pr = { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) };
+  if (receipt.pr.status === 'complete') {
+    try {
+      const row = riskComments.current(proposal, result.request, provider, io);
+      receipt.comment = { ...receipt.comment, status: row?.body === proposal.inherent_risk.body ? 'complete' : receipt.comment?.attempted ? 'uncertain' : 'pending', current: row };
+    } catch (error) { receipt.comment = { ...receipt.comment, status: 'uncertain', message: error.message }; }
+  }
+  fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
+  const complete = result.status === 'complete' && receipt.comment.status === 'complete';
+  const safe = result.status === 'complete' && receipt.comment.status === 'pending' && !receipt.comment.attempted && digest(receipt.comment.current) === digest(proposal.inherent_risk.existing);
+  return { ...result, status: complete ? 'complete' : result.status === 'complete' ? 'partial_failure' : 'uncertain', receipt: request.receipt,
+    pr: receipt.pr, comment: receipt.comment, ...(!complete ? { message: 'PR and risk comment have separate outcomes; recover before retrying the pending comment only.' } : {}),
+    ...(safe ? { continuation: digest(receipt) } : {}) };
+}
+function writeComment(file, io) {
+  const receipt = JSON.parse(fs.readFileSync(file, 'utf8')), { proposal } = receipt;
+  const provider = adapter(proposal.provider, io), risk = proposal.inherent_risk;
+  try {
+    if (provider.commentActor(proposal.target, io) !== risk.actor) throw new Error('Authenticated comment author changed');
+    const row = riskComments.current(proposal, receipt.pr.request, provider, io);
+    if (row?.body === risk.body) return recover({ receipt: file }, io);
+    if (receipt.comment.attempted || digest(row) !== digest(risk.existing)) throw new Error('Comment baseline changed or submission remains uncertain; clarify before modification');
+    receipt.comment.attempted = true;
+    fs.writeFileSync(file, JSON.stringify(receipt), { mode: 0o600 });
+    provider.writeComment(proposal.target, receipt.pr.request, row, risk.body, io);
+  } catch (error) {
+    if (error.rejected || /\bHTTP(?: status)?\s*[:=]?\s*(?:400|401|403|404|409|412|422)\b/i.test(error.message)) receipt.comment.attempted = false;
+    receipt.comment.message = error.message;
+    fs.writeFileSync(file, JSON.stringify(receipt), { mode: 0o600 });
+  }
+  return recover({ receipt: file }, io);
+}
+function resume(request, io) {
+  const result = recover(request, io);
+  if (result.status === 'complete') return result;
+  if (request.approved !== true || !result.continuation || request.confirmation !== result.continuation) throw new Error('Exact pending-comment approval required after read-only recovery');
+  return writeComment(receiptPath(request.receipt), io);
 }
 function main(argv) {
   let request;
   try {
     const [operation, registryPath] = argv;
-    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover };
-    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover <registry.json>; JSON on stdin');
+    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume };
+    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume <registry.json>; JSON on stdin');
     request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
@@ -308,7 +367,7 @@ function main(argv) {
     } else result = operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;
-  } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
+  } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
 }
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, main };
+module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, resume, validateDescription, main };

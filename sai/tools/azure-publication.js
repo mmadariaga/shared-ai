@@ -74,9 +74,9 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
   // invoke picks a location by area and resource name, which is ambiguous for
   // these resources (two WorkItems locations; project-scoped, GET-only
   // pull requests), so each goes through the SDK with its fixed location id.
-   if ((area === 'wit' && ['workitems', 'classificationnodes'].includes(resource)) || (area === 'work' && resource === 'iterations') || (area === 'location' && resource === 'connectionData') || (area === 'git' && resource === 'pullrequests')) {
+   if ((area === 'wit' && ['workitems', 'classificationnodes'].includes(resource)) || (area === 'work' && resource === 'iterations') || (area === 'location' && resource === 'connectionData') || (area === 'git' && ['pullrequests', 'pullRequestThreads', 'pullRequestThreadComments'].includes(resource))) {
     const location = area === 'location' ? '00d9565f-ed9c-4a06-9a50-00e7896ccab4'
-       : area === 'git' ? '9946fd70-0d40-406e-b686-b4744cbbcc37'
+        : area === 'git' ? ({ pullrequests: '9946fd70-0d40-406e-b686-b4744cbbcc37', pullRequestThreads: 'ab9e40f9-4de4-4271-baf8-0a97fbc7e7f1', pullRequestThreadComments: 'c817c469-cee2-4f6e-9167-27d812472a76' })[resource]
          : area === 'work' ? 'c9175577-28a1-4b06-9197-8636af9f64ad'
            : resource === 'classificationnodes' ? '5a172953-1b41-49d3-840a-33f79c3ce89f'
         : route.type !== undefined ? '62d3d110-0047-428c-ad3c-4fe872c91c74' : '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b';
