@@ -9,6 +9,55 @@ representation, content format and invocation-scoped type requirements.
 Updating a previously published set retains its correspondence and children;
 this branch grants no additional child creation on update.
 
+After reading an origin baseline, inspect its `sai-backlog-slices@1` marker as
+data. A parent marker selects **Published set update** below, before `query-set`;
+an unmarked origin or a child marker keeps the new-set route below.
+
+## Published set update
+
+Use `query-set-update` with `origin` (the canonical parent URL), the agreed
+whole-objective `title` and `description`, and `blocks` (the complete refined
+Ready to Propose set). Preserve each block's existing child Backlog origin.
+The tool resolves children by recorded change name and URL, not block order,
+and verifies the complete correspondence before execution. Added, removed or
+renamed slices, or changed dependency edges, return `composition-changed` with
+the differences: show them and publish nothing. An unreadable or incompatible
+child also blocks the whole update; ask for clarification rather than infer a mapping.
+
+On `no_changes`, report that no update is necessary and finish without writes.
+On `ready`, show the combined proposal's destinations and visibility, each
+issue's baseline title and description, exact proposed title and description,
+and which issues will change or stay unchanged. Ask once: "Update only these
+issues' titles and descriptions to this exact content?" Offer confirm, edit,
+and cancel through Claude Code's `AskUserQuestion` or opencode's `question`.
+Include the selected provider's required update concurrency note before every
+approval: GitHub and GitLab cannot make the final content check and write
+atomic; Azure guards the write with the confirmed revision.
+The caller prepare/supplied-answer protocol applies unchanged. Wait for that
+exact proposal's explicit approval; cancellation writes nothing. Any edit
+returns to preparation and a new confirmation.
+
+After approval, follow `prepare-temp.md`, then call `update-set` with the same
+request, unchanged `confirmation`, and a fresh private `receipt` path. This
+lane uses only content updates: it creates no issues and changes no states,
+comments, assignments, Project membership, or relationships. It checks the
+whole remote set before each changed issue's write; concurrent edits stop
+pending writes and require a refreshed comparison and new explicit approval.
+Updates are not indivisible: already-applied changes remain applied.
+
+Report `updated`, `unchanged`, `pending`, and the receipt path. For a partial or
+uncertain result, call `recover-set-update` with that receipt first. It reads
+remote state and updates only the private record; it skips content already
+applied and distinguishes pending from divergent content. A returned
+`continuation` binds the verified pending operations under the original set
+approval: pass it as `confirmation` to `continue-set-update` to resume them.
+Follow `publication-recovery.md`'s single automatic retry allowance, passing
+`automatic_retry: true`; after it is consumed obtain an explicit continuation.
+Without a continuation, show the blocker and refresh the proposal for another
+explicit confirmation; never retry old content over remote edits. Keep the
+existing correspondence and origin URLs for the caller; no identity changes
+or new origin transport are needed. End without assignment or implementation.
+
 ## Originating issue
 
 With an unambiguous originating issue (`SKILL.md` section 1) the origin is the

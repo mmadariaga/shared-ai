@@ -48,10 +48,10 @@ function addsOnlyWhitespace(sent, received) {
 }
 const equivalent = (sent, received) => typeof sent === 'string' && typeof received === 'string'
   && (addsOnlyWhitespace(sent, received) || addsOnlyWhitespace(sent.replace(COUNTERS, ''), received));
-function content(request, baseline) {
+function content(request, baseline, rendered = false) {
   if (typeof request.title !== 'string' || !request.title.trim() || /[\r\n]/.test(request.title)) throw new Error('Nonempty single-line title required');
   if (baseline && (request.description === undefined || request.description === baseline.description)) return { title: request.title, description: baseline.description };
-  return { title: request.title, description: convert(request.description) };
+  return { title: request.title, description: rendered ? request.description : convert(request.description) };
 }
 function readItem(target, number, io) {
   const row = azure.api(target, 'wit', 'workitems', { project: target.project, id: number }, io);
@@ -163,11 +163,11 @@ function readUpdate(request, io) {
   return { status: 'complete', ...target, repository: target.url, issue: item.issue, baseline: item.baseline, type: item.type,
     planning_state: planningState(relationRow(target, item.issue, io)) };
 }
-function queryUpdate(request, io) {
+function queryUpdate(request, io, rendered = false) {
   const current = readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Boards revision changed; prepare and explicitly approve again' };
   const plan = planning(request, current, io, current.issue);
-  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline), ...(plan ? { planning: plan } : {}) };
+  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered), ...(plan ? { planning: plan } : {}) };
   delete proposal.status;
   if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
@@ -193,11 +193,11 @@ function outcome(receipt, io) {
   if (p.operation === 'update' && digest(row.baseline) === digest(p.baseline)) return { status: 'pending', issue: row.issue, message: 'Update is not visible; fresh approval and a new receipt are required before retrying' };
   return { status: p.operation === 'update' ? 'divergent' : 'uncertain', issue: row.issue, current: row.baseline, message: 'Remote content differs; reconcile and obtain fresh approval' };
 }
-function execute(request, io, updating) {
+function execute(request, io, updating, rendered = false) {
   let receipt, file;
   try {
     file = receiptPath(request.receipt);
-    const ready = updating ? queryUpdate(request, io) : query(request, io);
+    const ready = updating ? queryUpdate(request, io, rendered) : query(request, io);
     if (ready.status !== 'ready') return ready;
     if (ready.confirmation !== request.confirmation) throw new Error('Exact destination, revision and outgoing content confirmation required');
     receipt = { proposal: ready.proposal, ...(updating ? { issue: ready.proposal.issue } : { baseline: list(ready.proposal, io) }), stage: 'write_pending' };
@@ -324,3 +324,6 @@ const assignment = require('./backlog-provider-assignment').bind('azuredevops', 
 });
 module.exports = { classify, resolve, query, publish: (r, io) => execute(r, io, false), recover,
   'read-update': readUpdate, 'query-update': queryUpdate, update: (r, io) => execute(r, io, true), 'recover-update': recover, ...set, ...assignment };
+Object.assign(module.exports, require('./backlog-set-update').bind('azuredevops', () => ({
+  ...module.exports, 'query-update': (r, io) => queryUpdate(r, io, true), update: (r, io) => execute(r, io, true, true)
+}), equivalent));
