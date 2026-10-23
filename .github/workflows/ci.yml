@@ -34,9 +34,6 @@ jobs:
         run: |
           bash --noprofile --norc -c 'exit 0'
           pwsh -NoProfile -NonInteractive -Command 'if ($PSVersionTable.PSVersion.Major -lt 7) { exit 1 }; exit 0'
-      - name: Prepare Linux temporary roots for Claude Code and OpenCode tests
-        if: runner.os == 'Linux'
-        run: mkdir -m 700 "/tmp/claude-$(id -u)" /tmp/opencode
       - run: npm ci
       - run: npm test
 
