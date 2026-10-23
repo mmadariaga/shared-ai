@@ -490,3 +490,79 @@ When the originating issue carries a `sai-backlog-slices@1` marker with role `ch
 
 - **WHEN** a later import or slice lookup reads an origin whose parent marker carries `child_of`
 - **THEN** it resolves the issue's earlier parent, dependencies and change name from that `child_of` correspondence.
+
+### Requirement: Published slice sets support content-only updates with stable correspondence
+
+The shared to-backlog workflow SHALL route an imported origin carrying a published parent marker to a separate set-content-update operation before new-set preparation. GitHub, GitLab and Azure DevOps SHALL resolve every child by its recorded change name and canonical URL, validate the complete correspondence and unchanged dependency edges before any write, and preserve existing child origins. Block order alone SHALL NOT change composition. Added, removed or renamed slices, changed dependencies, conflicting block origins, or missing, unreadable, ambiguous or incompatible child correspondence SHALL prevent the entire proposed update. Existing single-issue updates and new-set publication SHALL retain their separate workflows.
+
+#### Scenario: Reordered blocks preserve identities
+
+- **WHEN** the complete refined block set has the same change names and dependencies in a different order
+- **THEN** preparation resolves the same recorded child URLs and permits content comparison without creating or reassociating issues.
+
+#### Scenario: Composition differs
+
+- **WHEN** preparation detects an added, removed or renamed slice or changed dependency edges
+- **THEN** it reports the composition differences and writes no issue in the set.
+
+#### Scenario: Correspondence cannot be verified
+
+- **WHEN** a child cannot be read, its marker is ambiguous or incompatible, or a supplied block origin conflicts with its recorded child URL
+- **THEN** preparation rejects the update without inferring a mapping or writing any issue.
+
+### Requirement: Published set updates bind one explicit approval to exact combined content
+
+In Claude Code and opencode, the set-update workflow SHALL present destinations and visibility, baseline and exact proposed titles and descriptions for every issue, and which issues change or remain unchanged. It SHALL request one explicit confirm, edit or cancel decision through the harness native picker. Approval SHALL bind the exact combined content, destinations and reference remote state. Edits SHALL require a refreshed proposal and approval; cancellation SHALL make no remote writes. Execution SHALL update only issues whose content differs, using existing provider comparison rules; an entirely equivalent set SHALL report no changes without writes. GitHub and GitLab SHALL disclose their non-atomic final check/write limitation before approval; Azure DevOps SHALL retain revision-conditional updates and rendered-HTML equivalence without converting already-rendered descriptions again.
+
+#### Scenario: Only one issue differs
+
+- **WHEN** an approved combined proposal changes only the parent or one child
+- **THEN** execution writes only that issue's title and description and reports the other issues as unchanged.
+
+#### Scenario: All content is equivalent
+
+- **WHEN** every proposed title and description matches the published content under the provider comparison rules
+- **THEN** preparation returns no changes and the workflow performs no writes.
+
+#### Scenario: Exact approval is absent or stale
+
+- **WHEN** execution receives a mismatched confirmation or content or baseline different from the approved combined proposal
+- **THEN** it performs no remote update under that approval and requires renewed comparison and confirmation.
+
+#### Scenario: User edits or cancels the proposal
+
+- **WHEN** the user edits or cancels the combined proposal instead of confirming its exact contents
+- **THEN** cancellation leaves the set unchanged and edited content returns to preparation and a new explicit confirmation before execution.
+
+### Requirement: Published set content updates preserve nested hierarchy and non-content state
+
+Set-content updates SHALL change only intended titles and descriptions and retain issue identities, correspondence, comments, assignments, states, Project membership and native relationships. For an adopted parent acting as a child in an upper set, validation SHALL verify its upper child correspondence while rendering SHALL preserve its own parent marker, child_of correspondence, descendant Child links and upper Parent and Depends on links. Descendant issues SHALL remain unchanged. The lane SHALL create, close or reassociate no issues and SHALL end without assignment or implementation.
+
+#### Scenario: Upper set updates an adopted-parent child
+
+- **WHEN** an upper set's changed child is itself a published parent with valid matching child_of correspondence
+- **THEN** its content updates while its nested marker, descendant links, upper links, descendant issue contents and existing relationships remain intact.
+
+#### Scenario: Nested membership is unproven
+
+- **WHEN** a nested parent lacks matching upper child_of correspondence or has duplicate markers
+- **THEN** preparation rejects its membership in the upper set and performs no content or relationship mutation.
+
+### Requirement: Published set update recovery verifies the full remote frontier
+
+Set-update execution SHALL retain a private durable record of destinations, approved content and operation outcomes. Before each pending write it SHALL reread the entire set and stop pending writes when identity, destination, visibility, actor or remote content no longer matches the approved state. It SHALL report actual updated, unchanged and pending issues and the recovery record, without promising an indivisible multi-issue operation. Recovery SHALL inspect remote state without remote writes, recognize already-applied content, distinguish pending, divergent and unverifiable results, and never repeat completed writes. Verified pending continuation SHALL require its exact returned token and reuse the existing durable single automatic retry allowance under the original approval; further retries SHALL require an explicit continuation. Divergence SHALL provide no executable continuation and SHALL require a refreshed comparison and new explicit approval.
+
+#### Scenario: Partial failure resumes only pending content
+
+- **WHEN** some issue updates succeed before another update fails and recovery verifies the remaining original baselines
+- **THEN** the result reports completed and pending issues and an authorized continuation writes only pending content without repeating completed updates.
+
+#### Scenario: Remote edit interrupts a partially applied set
+
+- **WHEN** a remote edit appears after an earlier issue was updated but before the next pending write
+- **THEN** execution retains completed changes, stops pending writes and recovery withholds executable continuation until comparison and approval are renewed.
+
+#### Scenario: Lost update response is reconciled
+
+- **WHEN** an update response is lost but rereading the issue confirms the approved content was applied
+- **THEN** recovery recognizes that operation as complete and does not repeat its remote write.

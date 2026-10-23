@@ -370,3 +370,4 @@ module.exports = { query, publish, recover, pages, membership, verifyMembership,
   'lookup-slice': lookupSlice,
   'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
   'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };
+Object.assign(module.exports, require('./backlog-set-update').bind('github', () => module.exports));
