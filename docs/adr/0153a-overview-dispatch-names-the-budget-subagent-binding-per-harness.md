@@ -4,7 +4,9 @@
 
 ## Status
 
-Accepted
+Accepted; superseded in respect of the opencode binding name
+
+The opencode generic agents were renamed to match Claude Code: the overview dispatch now names `task(subagent_type: budget-subagent)` on opencode, from `agents/opencode/budget-subagent.md`. The decision to name both harness bindings explicitly stands.
 
 ## Context
 

@@ -295,7 +295,7 @@ command into a read-only child as a workaround.
 ### Language Policy
 All agents MUST think and reason internally in English, regardless of the user's input language.
 
-- **User-facing chat:** respond in the language the user writes in (default English if unclear).
+- **User-facing chat:** respond in the language the user writes in (default English if unclear). One exception: when the project setting `explore.chatPublicLanguage` holds a language, `/sai-explore` chats in that language until the user asks for another one (`docs/project-settings.md`).
 - **Generated artifacts** (`review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code): written in English unless the user explicitly requests otherwise.
 
 ### Attribution prohibition

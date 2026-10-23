@@ -4,7 +4,9 @@
 
 ## Status
 
-Accepted
+Accepted; superseded in respect of the run directory and the durable record
+
+The run directory moved out of the repository: it is a private `mkdtemp` child of the SAI temp root (`sai/tools/temp-root.js`), removed when the run completes. `build-log.md` is no longer written: the closing report is the only record of deviations, overrides, and pending findings. Item 6 below keeps its original wording as the record of the decision at the time.
 
 ## Context
 
