@@ -26,10 +26,12 @@ test('CI keeps both Node 22 platforms, interpreter preflight, tests, and package
   assert.match(workflow, /npm pack --dry-run --json \| node \.github\/scripts\/verify-package\.cjs/);
 });
 
-test('CI provisions the required private Claude Code and OpenCode temporary roots on Linux before tests', () => {
-  const setup = "- name: Prepare Linux temporary roots for Claude Code and OpenCode tests\n        if: runner.os == 'Linux'\n        run: mkdir -m 700 \"/tmp/claude-$(id -u)\" /tmp/opencode";
-  assert.ok(workflow.includes(setup));
-  assert.ok(workflow.indexOf(setup) < workflow.indexOf('- run: npm test'));
+test('npm test provisions the Linux harness temporary roots itself, so CI needs no separate step', () => {
+  const script = require('../package.json').scripts.test;
+  assert.match(script, /^node --import \.\/test\/harness-roots\.js --test\b/);
+  assert.doesNotMatch(workflow, /mkdir -m 700/);
+  const preload = fs.readFileSync(path.join(__dirname, 'harness-roots.js'), 'utf8');
+  assert.match(preload, /harnessRoot\(harness\), \{ mode: 0o700 \}/);
 });
 
 test('CI Required runs after all prerequisites and rejects every non-success result', () => {
