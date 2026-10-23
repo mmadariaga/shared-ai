@@ -23,18 +23,18 @@ The to-pr skill SHALL prepare titles and descriptions primarily from committed b
 
 ### Requirement: Create or update the exact matching request
 
-The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write only title and description. Identical content SHALL end without mutation, where the compared description is the computed description including any tool-owned closing block. Titles SHALL use the existing shared title validator.
+The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write title and description, any separately approved managed risk comment, and only an explicitly requested Azure draft state. Reviewers, assignees, labels and unrelated fields SHALL remain unchanged. Identical content SHALL end without mutation only when the title, computed description including any tool-owned closing block, requested Azure draft state and required managed comment already match. Titles SHALL use the existing shared title validator.
 
 #### Scenario: Existing request receives a content update
 - **WHEN** exactly one open request matches the selected source and destination
-- **THEN** the proposed operation updates only its title and description and does not create another request.
+- **THEN** the proposed operation updates its title and description, any approved managed risk comment and explicitly requested Azure draft state, preserves unrelated fields, and does not create another request.
 
 #### Scenario: Matching requests are ambiguous
 - **WHEN** more than one open request matches
 - **THEN** publication stops for clarification without mutation.
 
 #### Scenario: Content is unchanged
-- **WHEN** the existing title and description already match the proposed content, including the recomputed closing block
+- **WHEN** the existing title and description already match the proposed content, including the recomputed closing block, and any requested draft state and required managed comment also match
 - **THEN** the operation ends without mutation.
 
 #### Scenario: Title validation fails
@@ -43,11 +43,11 @@ The system SHALL query open requests for the selected source repository, source 
 
 ### Requirement: Complete presentation and exact publication approval
 
-The skill SHALL apply the same approval workflow on Claude Code and opencode. Before asking for approval, it SHALL complete `query` and, when publication is ready, `push-query`. It SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning and every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning.
+The skill SHALL apply the same approval workflow on Claude Code and opencode. Before asking for approval, it SHALL complete `query` and, when publication is ready, `push-query`. It SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description. When a managed risk comment is required, it SHALL also show the complete comment body, provider and repository, existing request URL or new request destination, authenticated author, and whether the comment is created or updated. It SHALL show an explicitly requested Azure draft state and append the exact comment allocation and draft-state operations to the applicable approval question. The proposal and confirmation SHALL bind risk placement, complete risk block, comment body and baseline, accepted original overflow length and limit, and explicit draft state; changing any of these SHALL invalidate earlier approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning and every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning.
 
-When `push-query` returns `ready`, the skill SHALL also show the exact remote, push URL, branch, and commit, then ask exactly "Push this commit to this remote branch without force and publish the title and description above?" It SHALL offer "Approve PR message and push branch", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+When `push-query` returns `ready`, the skill SHALL also show the exact remote, push URL, branch, and commit, then use the exact base question "Push this commit to this remote branch without force and publish the title and description above?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message and push branch", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
-When `push-query` returns `no_changes`, the skill SHALL ask "Publish this exact title and description to this destination?" It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+When `push-query` returns `no_changes`, the skill SHALL use the exact base question "Publish this exact title and description to this destination?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
 The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation, unattended mode, and general prior grants SHALL NOT authorize these operations. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
 
@@ -55,11 +55,11 @@ Changed content, destination, baseline, or HEAD SHALL invalidate stale approval 
 
 #### Scenario: Approve a combined push and publication
 - **WHEN** publication is ready and the remote branch does not contain the selected commit
-- **THEN** the skill presents the complete publication proposal, warnings, and exact push details, asks the exact combined question, and waits for explicit approval of both operations.
+- **THEN** the skill presents the complete publication proposal, warnings, and exact push details, asks the exact combined base question with any required comment-allocation or Azure draft-state operation suffix, and waits for explicit approval of every operation named.
 
 #### Scenario: Approve publication
 - **WHEN** publication is ready and `push-query` reports that the remote branch already holds the approved commit
-- **THEN** the skill presents the complete publication proposal and asks only the publication approval question with publication-only approval, Edit, and Cancel options.
+- **THEN** the skill presents the complete publication proposal and asks the publication-only base question with any required comment-allocation or Azure draft-state operation suffix and the publication-only approval, Edit, and Cancel options.
 
 #### Scenario: Provider terminology matches the destination
 - **WHEN** the skill presents either approval question
@@ -137,14 +137,14 @@ Publication SHALL record its proposal in a new receipt outside the repository be
 
 ### Requirement: Verified publication and read-only uncertain-outcome recovery
 
-The system SHALL verify published content by reading the selected destination after mutation. An uncertain response SHALL NOT authorize repeated creation. Recovery SHALL perform reads only, verify repository identity, and check requests for the selected source and target and the exact approved content. An unverifiable result SHALL report uncertainty and the receipt location. An unapplied update SHALL require reconciliation and fresh approval before retrying. Azure publication SHALL save private destination, approved content, branches, commit, and pre-publication request IDs before mutation and retain a verified write-response identity when available. Azure recovery SHALL verify project, repository, authenticated identity, visibility, branches, commit, and full content. Without a write-response identity, a creation candidate SHALL also match the author, be absent from saved IDs, and have its actual URL confirmed by the user. A coincident title SHALL NOT establish publication evidence. Zero or ambiguous eligible candidates SHALL require clarification, not repeated creation. Confirmed write rejection SHALL remain distinct from uncertainty; failed readback after a write SHALL remain uncertain even when the read itself is rejected.
+The system SHALL verify published content by reading the selected destination after mutation. It SHALL record and report PR content and required managed-comment outcomes separately, and report a requested Azure draft state as pending until readback confirms it. Complete success SHALL require all requested outcomes to be verified. A failed comment after verified PR publication SHALL NOT authorize repeating PR creation or a completed push. Recovery SHALL inspect the managed comment without a remote mutation; only a safe pending-comment continuation with renewed exact approval SHALL permit a separate comment-only resume, which SHALL never publish the PR or push again. A submission with an uncertain outcome, an unreadable comment, or a changed or ambiguous baseline SHALL receive no automatic comment retry. An uncertain response SHALL NOT authorize repeated creation. Recovery SHALL perform reads only, verify repository identity, and check requests for the selected source and target and the exact approved content. An unverifiable result SHALL report uncertainty and the receipt location. An unapplied update SHALL require reconciliation and fresh approval before retrying. Azure publication SHALL save private destination, approved content, branches, commit, and pre-publication request IDs before mutation and retain a verified write-response identity when available. Azure recovery SHALL verify project, repository, authenticated identity, visibility, branches, commit, and full content. Without a write-response identity, a creation candidate SHALL also match the author, be absent from saved IDs, and have its actual URL confirmed by the user. A coincident title SHALL NOT establish publication evidence. Zero or ambiguous eligible candidates SHALL require clarification, not repeated creation. Confirmed write rejection SHALL remain distinct from uncertainty; failed readback after a write SHALL remain uncertain even when the read itself is rejected.
 
 #### Scenario: Creation response is lost
 - **WHEN** creation may have succeeded but its response is uncertain
 - **THEN** recovery queries the selected destination without creating another request.
 
 #### Scenario: Published content is verified
-- **WHEN** exactly one eligible request has the approved title and description at the verified destination
+- **WHEN** exactly one eligible request has the approved title and description at the verified destination and every requested draft state and required managed comment is verified
 - **THEN** recovery reports completion with that request's verified URL.
 
 #### Scenario: Recovery cannot verify the outcome
@@ -165,7 +165,7 @@ The system SHALL verify published content by reading the selected destination af
 
 ### Requirement: Azure Repos Services publication adapter
 
-The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change only title and description.
+The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change title and description and additionally set isDraft:true only for an explicit draft:true request. Creation SHALL likewise send isDraft:true only when requested. Otherwise the field SHALL be omitted, preserving an existing draft state and the previous creation behavior. The adapter SHALL verify the requested state by reading isDraft:true back from the selected request and SHALL NOT report an unverified state as fulfilled. Separately approved managed risk comments SHALL use repository-scoped PR threads and update only the uniquely marked authenticated author's comment.
 
 Azure publication SHALL use the shared complete-proposal approval workflow: combined human approval when a push is required and publication-only approval otherwise. Push and publication SHALL retain separate tokens and validation. Azure approval options SHALL use PR terminology. Azure execution SHALL reuse the existing authenticated runner without installation, login, credential changes, or global-default changes. The adapter and its recovery mechanisms SHALL remain unchanged by the combined human approval.
 
@@ -175,7 +175,7 @@ Azure publication SHALL use the shared complete-proposal approval workflow: comb
 
 #### Scenario: Azure update is selected
 - **WHEN** exactly one active Azure request matches the repository and both branches
-- **THEN** preparation selects that request for a title-and-description-only update rather than duplicate creation.
+- **THEN** preparation selects that request for a title-and-description update with only any explicitly requested Azure draft conversion and separately approved managed risk comment, rather than duplicate creation.
 
 #### Scenario: Azure branch needs publication
 - **WHEN** the remote source branch does not contain the approved commit
@@ -377,11 +377,11 @@ When `query` prepares the creation of a GitHub pull request or GitLab merge requ
 
 ### Requirement: Updates and Azure Repos requests receive no assignee or labels
 
-The system SHALL read, propose, and write no assignee or labels when it updates an existing request, and the update call SHALL send only the title and the description. For Azure Repos, `query` SHALL read neither the current user nor labels and SHALL return the warning `no assignee or labels: the provider does not support them`.
+The system SHALL read, propose, and write no assignee or labels for assignment when it updates an existing request. The PR update call SHALL send title and description and only an explicitly requested Azure isDraft:true; managed risk-comment writes SHALL be separate. On GitHub and GitLab, managed-comment planning SHALL read the authenticated current user even on update to establish comment ownership, not assignment. For Azure Repos, `query` SHALL read no user for assignment and no labels and SHALL return the warning `no assignee or labels: the provider does not support them`.
 
 #### Scenario: An update leaves assignee and labels untouched
 - **WHEN** `query` and `publish` select an existing open request for update
-- **THEN** no current user or label read occurs and the update call carries only title and description.
+- **THEN** no assignment or label read or write occurs, the PR update carries title and description and only an explicit Azure draft request, and any authenticated-user read serves managed-comment ownership only.
 
 #### Scenario: Azure Repos creation states the limitation
 - **WHEN** `query` prepares an Azure Repos pull request creation
@@ -421,14 +421,14 @@ When the current-user or label read fails again while `publish` re-runs the quer
 
 ### Requirement: Description carries the inherent-risk ratings block
 
-The to-pr skill SHALL publish the inherent-risk ratings from `collect`'s `inherent_risk` field. When `state` is `fresh`, it SHALL put the stored `block` in the description unchanged, without computing anything. When `state` is `stale` or `absent`, it SHALL compute the ratings on the current tree by following `sai/policies/inherent-risk.md` over the `sai/tools/risk-signals.js` output, using the ref used for collection as the parent branch, with or without an OpenSpec change. The drafted description SHALL carry exactly one ratings block, stored when `fresh` and otherwise computed with its four levels each at or above the tool's floor. The block SHALL sit after `## Audits`, or after `## Test plan` when `## Audits` is omitted, and before `## Out of Scope / Follow-ups`, and its content SHALL come from the policy or from the stored `fresh` block, never from the draft's own claims.
+The to-pr skill SHALL publish the inherent-risk ratings from `collect`'s `inherent_risk` field. When `state` is `fresh`, it SHALL put the stored `block` in the selected publication location unchanged, without computing anything. When `state` is `stale` or `absent`, it SHALL compute the ratings on the current tree by following `sai/policies/inherent-risk.md` over the `sai/tools/risk-signals.js` output, using the ref used for collection as the parent branch, with or without an OpenSpec change. The selected location SHALL carry exactly one complete ratings block, stored when `fresh` and otherwise computed with its four levels each at or above the tool's floor. Normally that location SHALL be the description. On any supported provider, when the original description exceeds the provider's limit, the authoring agent MAY instead select a managed comment containing the complete unchanged block, or retain the block in the description and shorten other text. Relocation SHALL NOT be automatic and SHALL NOT truncate or summarize the block. When placed in the description, the block SHALL sit after `## Audits`, or after `## Test plan` when `## Audits` is omitted, and before `## Out of Scope / Follow-ups`, and its content SHALL come from the policy or from the stored `fresh` block, never from the draft's own claims.
 
 #### Scenario: No OpenSpec change exists
 - **WHEN** `/to-pr` runs on a branch with no resolvable OpenSpec change
-- **THEN** it computes the ratings from the committed diff against the target and the draft carries one ratings block
+- **THEN** it computes the ratings from the committed diff against the target and the draft carries one ratings block in the selected publication location
 
 #### Scenario: Block position without audits
-- **WHEN** the draft omits `## Audits`
+- **WHEN** the draft keeps the block in the description and omits `## Audits`
 - **THEN** the ratings block follows `## Test plan` and precedes `## Out of Scope / Follow-ups`
 
 #### Scenario: Floors bound the published levels
@@ -437,27 +437,29 @@ The to-pr skill SHALL publish the inherent-risk ratings from `collect`'s `inhere
 
 #### Scenario: A fresh stored block is published as stored
 - **WHEN** `collect` reports `inherent_risk` with `state: fresh`
-- **THEN** the draft carries the stored block unchanged and no ratings are computed
+- **THEN** the selected location carries the stored block unchanged and no ratings are computed
 
 #### Scenario: A stale or absent block is recomputed
 - **WHEN** `collect` reports `inherent_risk` with `state: stale` or `state: absent`
-- **THEN** the skill computes the ratings on the current tree against the collection ref and the draft carries the computed block
+- **THEN** the skill computes the ratings on the current tree against the collection ref and the selected location carries the computed block
 
 ### Requirement: Ratings block replacement on update
 
-On update, the to-pr skill SHALL replace everything between the ratings block markers, markers included, with the block just computed, or insert the block at its fixed position when the existing description has none, without asking for approval of that replacement. The rest of the description SHALL follow the existing retention rule, and the full result SHALL still be presented for publication approval.
+When the description is the selected risk location on update, the to-pr skill SHALL replace everything between the ratings block markers, markers included, with the block just computed, or insert the block at its fixed position when the existing description has none, without asking for approval of that replacement. The rest of the description SHALL follow the existing retention rule, and the full result SHALL still be presented for publication approval.
 
 #### Scenario: An existing block is replaced
-- **WHEN** an existing request description holds a ratings block and manual text around it
+- **WHEN** an existing request description holds a ratings block and manual text around it and the selected location remains the description
 - **THEN** the proposed description replaces only the content between the markers and keeps the manual text intact
 
 #### Scenario: An existing description has no block
-- **WHEN** an existing request description has no ratings block
+- **WHEN** an existing request description has no ratings block and the selected location is the description
 - **THEN** the proposed description inserts the block at its fixed position
 
 #### Scenario: Replacement is still approved as a whole
 - **WHEN** the ratings block is replaced on update
-- **THEN** no separate approval is asked for the replacement and the full description is presented for publication approval
+- **THEN** no separate approval is asked merely for ratings recomputation and the full description, any required comment operation and chosen allocation are presented for publication approval
+
+When comment placement is selected, the agent SHALL remove the block from the proposed description and preserve unrelated description text; the tool SHALL reuse the authenticated author's single managed comment. Returning the block to the description SHALL replace the managed comment's block with a location notice instead of leaving a second current copy. Both allocation changes SHALL remain part of complete publication approval.
 
 ### Requirement: Collect reports the stored ratings block
 
@@ -494,3 +496,83 @@ The to-pr query and publish paths SHALL validate the final description after com
 #### Scenario: Human credit needs no exception
 - **WHEN** a creation or update description credits Alice Smith and other checks and approvals pass
 - **THEN** query and publication permit that credit without allow_attribution.
+
+### Requirement: Final description length validation
+
+The shared query preparation SHALL validate the final composed description before confirmation and publication, before a dependent push or remote publication mutation. Azure DevOps SHALL accept at most 4000 UTF-16 units using JavaScript description.length, including Markdown, spaces, line breaks and added content. Exactly 4000 SHALL be accepted. Overflow SHALL produce a structured description-too-long diagnostic with provider, length, limit and excess. GitHub and GitLab SHALL gain no default local limit; comment relocation SHALL validate the final composed description against the explicitly supplied documented or reported provider limit. Publication SHALL repeat this validation.
+
+#### Scenario: Azure exact boundary and Unicode
+- **WHEN** an Azure creation or update description contains 3998 single-unit characters and one two-unit emoji
+- **THEN** its length is 4000 and local length validation accepts it.
+
+#### Scenario: Azure overflow is blocked before approval and publication
+- **WHEN** an Azure description has length 4001 at query or publication
+- **THEN** it is rejected with provider azuredevops, length 4001, limit 4000 and excess 1 without a dependent push or publication mutation.
+
+#### Scenario: Closing references cause remaining overflow
+- **WHEN** a GitHub or GitLab comment allocation fits its supplied limit before tool-added closing references but exceeds that limit after composition
+- **THEN** query and publication reject the final composed description and require further editing.
+
+#### Scenario: Non-Azure publication has no invented default limit
+- **WHEN** a GitHub or GitLab description exceeds 4000 units and no comment-relocation limit is supplied
+- **THEN** Azure's 4000-unit rule is not applied to that description.
+
+### Requirement: Overflow-only explicit risk allocation
+
+The agent SHALL select risk placement and provide the complete marked risk_block to query and publish; the tool SHALL validate and execute the selected allocation without rewriting or moving text. Description placement SHALL contain exactly one matching block; comment placement SHALL contain none of its markers in the description. Comment placement SHALL require positive safe-integer original overflow length and limit, with length greater than limit and at least the authored description length plus complete block length. The original overflow length SHALL refer to the authored draft before the tool adds closing references; the final validation SHALL include those references. Azure's supplied limit SHALL be exactly 4000. The accepted overflow length and limit SHALL enter the approved proposal unchanged. AI-attribution validation SHALL also cover the proposed comment under the same explicit exception rules as descriptions.
+
+#### Scenario: Relocation remains insufficient
+- **WHEN** the agent chooses a comment but the final description still exceeds the accepted provider limit
+- **THEN** publication remains blocked and the full risk block is preserved for further authoring.
+
+#### Scenario: Overflow evidence changes after approval
+- **WHEN** the accepted original overflow length or limit changes between query and publication
+- **THEN** the confirmation no longer authorizes publication and complete fresh approval is required.
+
+#### Scenario: Original overflow excludes generated closing text
+- **WHEN** the authored shortened description plus risk block accounts for original overflow and generated closing references increase the final description size
+- **THEN** overflow evidence is evaluated against authored text and final length is checked separately after closing-reference composition.
+
+### Requirement: Managed risk-comment identity and verification
+
+Across GitHub, GitLab and Azure DevOps, the tool SHALL identify managed comments with the sai-to-pr:inherent-risk marker and authenticated author, preserve unrelated comments, retain the existing identifier and update a unique existing managed comment instead of creating a duplicate. A foreign author or multiple marked comments SHALL require clarification before modification. GitHub comment and GitLab note reads SHALL include every page; incomplete, repeated or malformed results SHALL block safe identification. Azure thread reads SHALL reject incomplete results. Required comment bodies SHALL be verified by readback, not inferred from a successful write response.
+
+#### Scenario: Existing managed comment is updated
+- **WHEN** exactly one marked comment belongs to the authenticated author and a new block is approved
+- **THEN** publication updates that comment's identifier with the full block and leaves other comments unchanged.
+
+#### Scenario: Managed comment identification is ambiguous
+- **WHEN** multiple marked comments or a differently authored marked comment is found
+- **THEN** the tool refuses modification and requires clarification.
+
+#### Scenario: Lost response is verified without duplication
+- **WHEN** a comment write response is lost but readback finds the exact approved comment body
+- **THEN** recovery reports the comment complete without another write.
+
+#### Scenario: Confirmed pending comment resumes separately
+- **WHEN** PR content is verified, a comment was rejected without uncertain submission, read-only recovery confirms the unchanged baseline, and the user approves the exact pending-comment continuation
+- **THEN** resume writes only that comment and repeats neither the PR mutation nor push.
+
+#### Scenario: Uncertain absent comment cannot be blindly retried
+- **WHEN** a comment submission remains uncertain or its state cannot be read and verified
+- **THEN** no safe retry continuation is offered and the result reports the comment as unverified separately from PR content.
+
+### Requirement: Explicit Azure draft-state scope
+
+The tool SHALL accept draft:true only for an explicit Azure DevOps draft request, bind it to the approved proposal and send isDraft:true on creation or update. It SHALL reject draft:false and draft requests for GitHub or GitLab under this enhancement. Without a draft request it SHALL omit the field, preserving previous creation behavior and an existing state. Readback SHALL separately confirm requested draft state; verified content alone SHALL NOT establish draft completion.
+
+#### Scenario: Draft creation or conversion is approved
+- **WHEN** an Azure creation or existing-request update is approved with draft:true
+- **THEN** the adapter sends isDraft:true and reports the draft request fulfilled only after readback confirms that state.
+
+#### Scenario: Draft operation changes after approval
+- **WHEN** draft:true is added after approval of an ordinary Azure proposal
+- **THEN** the earlier confirmation is rejected before publication.
+
+#### Scenario: No draft request preserves state
+- **WHEN** an Azure update omits draft:true
+- **THEN** its payload omits isDraft and the existing draft state is preserved.
+
+#### Scenario: Draft readback is incomplete
+- **WHEN** Azure content matches the approved proposal but isDraft:true cannot be confirmed
+- **THEN** recovery reports content verified and draft pending, not full success, without repeating creation.

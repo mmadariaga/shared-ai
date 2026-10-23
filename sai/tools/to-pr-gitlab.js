@@ -65,4 +65,20 @@ const closing = {
   issueUrl: (repository, number, target) => `${target.url.slice(0, -target.repository.length)}${repository}/-/issues/${number}`,
   children: (url, io) => backlog.readChildren({ url }, io),
 };
-module.exports = { inspect, resolve, list, currentUser, labels, mutate, closing };
+function commentActor(target, io) { return currentUser(target, io).login; }
+function comments(target, request, io) {
+  const rows = [], seen = new Set();
+  for (let page = 1; ; page++) {
+    const batch = api(target, `projects/${target.id}/merge_requests/${request.number}/notes?per_page=100&page=${page}`, io);
+    if (!Array.isArray(batch)) throw new Error('Incomplete GitLab comments');
+    for (const row of batch) {
+      if (!Number.isSafeInteger(row.id) || typeof row.body !== 'string' || !row.author?.username || seen.has(row.id)) throw new Error('Incomplete or repeated GitLab comment');
+      seen.add(row.id); if (!row.system) rows.push({ id: row.id, body: row.body, actor: row.author.username });
+    }
+    if (batch.length < 100) return rows;
+  }
+}
+function writeComment(target, request, previous, body, io) {
+  return api(target, `projects/${target.id}/merge_requests/${request.number}/notes${previous ? `/${previous.id}` : ''}`, io, previous ? 'PUT' : 'POST', { body });
+}
+module.exports = { inspect, resolve, list, currentUser, labels, mutate, closing, commentActor, comments, writeComment };

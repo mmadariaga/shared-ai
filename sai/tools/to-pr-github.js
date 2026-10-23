@@ -73,4 +73,20 @@ const closing = {
   issueUrl: (repository, number) => `https://github.com/${repository}/issues/${number}`,
   children: (url, io) => backlog.readChildren({ url }, io),
 };
-module.exports = { inspect, list, currentUser, labels, mutate, closing };
+function commentActor(target, io) { return currentUser(target, io).login; }
+function comments(target, request, io) {
+  const rows = [], seen = new Set();
+  for (let page = 1; ; page++) {
+    const batch = api(target, `repos/${target.repository}/issues/${request.number}/comments?per_page=100&page=${page}`, io);
+    if (!Array.isArray(batch)) throw new Error('Incomplete GitHub comments');
+    for (const row of batch) {
+      if (!Number.isSafeInteger(row.id) || typeof row.body !== 'string' || !row.user?.login || seen.has(row.id)) throw new Error('Incomplete or repeated GitHub comment');
+      seen.add(row.id); rows.push({ id: row.id, body: row.body, actor: row.user.login });
+    }
+    if (batch.length < 100) return rows;
+  }
+}
+function writeComment(target, request, previous, body, io) {
+  return api(target, previous ? `repos/${target.repository}/issues/comments/${previous.id}` : `repos/${target.repository}/issues/${request.number}/comments`, io, previous ? 'PATCH' : 'POST', { body });
+}
+module.exports = { inspect, list, currentUser, labels, mutate, closing, commentActor, comments, writeComment };

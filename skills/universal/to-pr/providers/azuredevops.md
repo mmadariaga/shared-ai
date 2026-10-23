@@ -17,8 +17,12 @@ match. Both branches identify the request; multiple active matches stop.
 Keep common full publication approval and **separate** branch-push approval.
 Before approval for an update show `proposal.concurrency_warning`. The reread
 binds the baseline but Azure PATCH leaves an unprotected concurrent-edit interval
-between reread and write, unlike Boards' atomic revision test. Only title and
-description are updated, without state, reviewers or other fields. Azure Repos
+between reread and write, unlike Boards' atomic revision test. Title and
+description are updated; explicit `draft:true` additionally sets `isDraft:true`
+on creation or update, and verification must read back `isDraft:true`. Without
+that request the field is omitted and an existing state is preserved. Reviewers
+and other fields stay unchanged. Managed Inherent Risk comments use PR threads
+and update only the authenticated author's uniquely marked comment. Azure Repos
 requests get no assignee (a reviewer means approval, not ownership) and no labels;
 `query` states this in one line and reads neither.
 
@@ -33,3 +37,8 @@ commit, author and full content and must be absent from previous IDs. Coincident
 titles prove nothing. Zero or multiple plausible matches require clarification;
 never repeat creation automatically. Complete with a verified URL or the
 concrete blocker and private receipt location.
+
+Descriptions over 4000 UTF-16 units fail locally at query and again at publish,
+before approval or a dependent push. Exactly 4000 is valid. The error includes
+provider, length, limit and excess. The shared description format owns the
+optional risk-comment authoring choice; a still-oversized description stays blocked.

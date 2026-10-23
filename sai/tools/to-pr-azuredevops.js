@@ -19,7 +19,8 @@ function sameRepository(value, target) {
 function identity(row, target, source, base) {
   if (!Number.isSafeInteger(row.pullRequestId) || row.pullRequestId < 1 || row.repository?.id !== target.id || row.repository?.project?.id !== target.projectId || row.sourceRefName !== `refs/heads/${source}` || row.targetRefName !== `refs/heads/${base}` || typeof row.title !== 'string' || (row.description != null && typeof row.description !== 'string') || typeof row.createdBy?.id !== 'string' || typeof row.lastMergeSourceCommit?.commitId !== 'string') throw new Error('Incomplete Azure PR identity or content');
   return { number: row.pullRequestId, url: `${target.url}/pullrequest/${row.pullRequestId}`, title: row.title,
-    description: row.description ?? '', actor: row.createdBy.id, head: row.lastMergeSourceCommit.commitId, status: row.status };
+    description: row.description ?? '', actor: row.createdBy.id, head: row.lastMergeSourceCommit.commitId, status: row.status,
+    ...(typeof row.isDraft === 'boolean' ? { isDraft: row.isDraft } : {}) };
 }
 function list(target, source, base, io, all = false) {
   const result = [], seen = new Set();
@@ -42,8 +43,8 @@ function mutate(proposal, io) {
   const p = proposal;
   const row = azure.api(p.target, 'git', 'pullrequests', { project: p.target.project, repositoryId: p.target.id,
     ...(p.existing ? { pullRequestId: p.existing.number } : {}) }, io, p.existing ? 'PATCH' : 'POST', p.existing
-    ? { title: p.title, description: p.description }
-    : { title: p.title, description: p.description, sourceRefName: `refs/heads/${p.source}`, targetRefName: `refs/heads/${p.base}` });
+    ? { title: p.title, description: p.description, ...(p.draft === true ? { isDraft: true } : {}) }
+    : { title: p.title, description: p.description, sourceRefName: `refs/heads/${p.source}`, targetRefName: `refs/heads/${p.base}`, ...(p.draft === true ? { isDraft: true } : {}) });
   return identity(row, p.target, p.source, p.base);
 }
 function publicationEvidence(proposal, io) {
@@ -53,12 +54,40 @@ function recoverPublication(proposal, evidence, io, request) {
   const target = inspect(proposal.target.url, io);
   if (target.id !== proposal.target.id || target.projectId !== proposal.target.projectId || target.actor !== proposal.target.actor || target.visibility !== proposal.target.visibility) throw new Error('Azure recovery destination or authenticated identity changed');
   const rows = list(target, proposal.source, proposal.base, io, true);
-  const candidates = rows.filter(row => row.title === proposal.title && row.description === proposal.description && row.head === proposal.head &&
+   const candidates = rows.filter(row => row.title === proposal.title && row.description === proposal.description && row.head === proposal.head &&
     (proposal.existing ? row.number === proposal.existing.number : row.actor === target.actor && !evidence.previous.includes(row.number)));
   const number = proposal.existing?.number || evidence.result?.number;
   const verified = number ? candidates.filter(row => row.number === number) : candidates.filter(row => row.url === request.requestUrl);
-  return verified.length === 1 ? { status: 'complete', request: verified[0] } : { status: 'uncertain', candidates,
+  if (verified.length === 1) {
+    const draft = proposal.draft === true ? { requested: true, status: verified[0].isDraft === true ? 'complete' : 'pending' } : undefined;
+    return { status: draft?.status === 'pending' ? 'uncertain' : 'complete', request: verified[0], content_status: 'complete',
+      ...(draft ? { draft } : {}), ...(draft?.status === 'pending' ? { message: 'PR content is verified, but the requested draft state is not confirmed; do not repeat creation.' } : {}) };
+  }
+  return { status: 'uncertain', candidates, ...(proposal.draft === true ? { draft: { requested: true, status: 'pending' } } : {}),
     message: 'Query-only recovery cannot prove publication. Confirm the actual PR URL; do not repeat creation.' };
 }
-module.exports = { classify, resolve, inspect, sameRepository, list, mutate, publicationEvidence, recoverPublication,
+function commentActor(target) { return target.actor; }
+function commentRoute(target, request) { return { project: target.project, repositoryId: target.id, pullRequestId: request.number }; }
+function comments(target, request, io) {
+  const result = azure.api(target, 'git', 'pullRequestThreads', commentRoute(target, request), io);
+  if (!Array.isArray(result.value) || result.count !== result.value.length || result.continuation_token) throw new Error('Incomplete Azure comment threads');
+  const rows = [], seen = new Set();
+  for (const thread of result.value) {
+    if (!Number.isSafeInteger(thread.id) || !Array.isArray(thread.comments)) throw new Error('Incomplete Azure comment thread');
+    for (const row of thread.comments) {
+      if (row.isDeleted) continue;
+      const id = `${thread.id}/${row.id}`;
+      if (!Number.isSafeInteger(row.id) || typeof row.content !== 'string' || !row.author?.id || seen.has(id)) throw new Error('Incomplete or repeated Azure comment');
+      seen.add(id); rows.push({ id, threadId: thread.id, commentId: row.id, body: row.content, actor: row.author.id });
+    }
+  }
+  return rows;
+}
+function writeComment(target, request, previous, body, io) {
+  const route = commentRoute(target, request);
+  return previous
+    ? azure.api(target, 'git', 'pullRequestThreadComments', { ...route, threadId: previous.threadId, commentId: previous.commentId }, io, 'PATCH', { content: body })
+    : azure.api(target, 'git', 'pullRequestThreads', route, io, 'POST', { comments: [{ parentCommentId: 0, content: body, commentType: 1 }], status: 1 });
+}
+module.exports = { classify, resolve, inspect, sameRepository, list, mutate, publicationEvidence, recoverPublication, commentActor, comments, writeComment,
   concurrencyWarning: 'Azure PR updates reread before writing, but a concurrent edit between that read and the PATCH is not protected. Approve only if you accept this interval.' };
