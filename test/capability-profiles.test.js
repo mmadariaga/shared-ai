@@ -166,3 +166,13 @@ test('changing required grants preserves scalar and structured user-owned tunabl
     assert.ok(!fs.readdirSync(root).some(name => name.includes('owner')));
   }
 });
+
+test('the context-cache benchmark delegates only to the same-model general subagent its skill requires', () => {
+  const skill = fs.readFileSync(path.join(repoRoot, 'skills/universal/sai-context-cache-ttl-benchmark/SKILL.md'), 'utf8');
+  assert.match(skill, /subagent_type: general-purpose/);
+  assert.match(skill, /`budget-\*` agents pin their own model and are\s+not valid children/);
+  assert.deepEqual(resolveProfile(registry, 'context-cache-benchmark-command').delegate, ['general']);
+  const opencode = translate(registry, 'context-cache-benchmark-command', 'opencode');
+  assert.deepEqual(opencode.permissions.filter(rule => rule.action === 'subagent').map(rule => rule.resource), ['general']);
+  assert.ok(translate(registry, 'context-cache-benchmark-command', 'claude').allowedTools.split(', ').includes('Agent'));
+});
