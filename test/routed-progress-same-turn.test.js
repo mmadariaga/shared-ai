@@ -39,8 +39,8 @@ test('no-op events render nothing and milestone stamps retain their validator so
   assert.match(policy, /The render precedes the dispatch call itself/);
 });
 
-test('all five coordinators defer progress batching to the runner without a render-first override', () => {
-  for (const phase of ['spec', 'design', 'security', 'performance', 'accessibility']) {
+test('all three audit coordinators defer progress batching to the runner without a render-first override', () => {
+  for (const phase of ['security', 'performance', 'accessibility']) {
     const card = read(`sai/commands/${phase}/coordinator.md`);
     assert.doesNotMatch(card, /through the shared command runner before worker continuation/, phase);
     assert.match(card, /command-runner\.md/, phase);
@@ -70,15 +70,11 @@ test('combined startup retains failure, legitimate early-outcome and reconstruct
   const runner = read('sai/orchestration/command-runner.md');
   assert.match(runner, /before the first progress event it is the first filed step/);
   assert.match(read('sai/commands/accessibility/worker.md'), /a no-UI run reports `resolve-accessibility-scope`/);
-  const design = require('../sai-state/machines/design-standalone.js');
-  for (const withOverview of [false, true]) {
-    assert.equal(design.firstFiled().stage, 'research');
-    const first = design.transition(design.initialState, { step_ids: ['prereqs-resolution', 'research'], withOverview });
-    assert.deepEqual(first.state.done, ['prereqs-resolution', 'research']);
-    assert.equal(first.state.withOverview, withOverview);
-    assert.equal(first.state.stage, 'design');
-    const later = design.transition(first.state, { step_ids: ['design'], withOverview: !withOverview });
-    assert.equal(later.state.withOverview, withOverview);
-    assert.equal(design.project(JSON.parse(JSON.stringify(later.state))).next.follow, design.STAGE_FILES.tasks);
-  }
+  const design = require('../sai-state/machines/design-steps.js');
+  assert.equal(design.firstFiled().stage, 'research');
+  const first = design.transition(design.initialState, { step_ids: ['design-intake', 'research'] });
+  assert.deepEqual(first.state.done, ['design-intake', 'research']);
+  assert.equal(first.state.stage, 'design');
+  const later = design.transition(first.state, { step_ids: ['design'] });
+  assert.equal(design.project(JSON.parse(JSON.stringify(later.state))).next.follow, design.STAGE_FILES.tasks);
 });

@@ -146,6 +146,7 @@ const OPENCODE_COMMANDS = [
   'sai-deep-review',
   'sai-explore',
   'sai-merge',
+  'sai-plan',
   'sai-retire-docs',
   'sai-status',
   'sai-worktree',

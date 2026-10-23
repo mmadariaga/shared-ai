@@ -1,20 +1,20 @@
 # Design Step — Design
 
-Active step: design. Write `design.md`, then report the `design` progress event per the worker contract.
+Active step: design. Write `design.md`, then report the `design` step.
 
 ## Spec-problem handling during design
 
 While generating design artifacts, if you discover a problem in `proposal.md` or any `specs/**/*.md` (for example: a requirement that contradicts the codebase, a missing or wrong scenario, an internally inconsistent spec, or a spec-vs-source contradiction), classify the problem first, then your clarity on the fix.
 
-Fetch @sai/policies/artifact-review-contract.md and apply its § Scope observations, with the approved `proposal.md` and `specs/**` as the approved scope. A scope observation is recorded in `design.md` `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y" and named in your terminal `summary` in the report line form of § Scope observations; design continues from the specs as approved, with no question. This holds in every run, supervised or not.
+Fetch @sai/policies/artifact-review-contract.md and apply its § Scope observations, with the approved `proposal.md` and `specs/**` as the approved scope. A scope observation is recorded in `design.md` `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y" and named in your report `notes` in the report line form of § Scope observations; design continues from the specs as approved, with no question.
 
 Every other problem is a spec defect and takes the clarity path:
 
-- **Clarity present** — you can state the exact text to change and the exact replacement, grounded in the proposal, the specs, and any codebase facts already gathered. Present to the user: (1) the discovered problem, (2) the concrete diff to `proposal.md` and/or the affected `specs/**/*.md` file(s), and (3) a closed-choice offer between applying the patch **in place** and routing to `/sai-1-spec`, per the closed-choice-prompts convention in `sai/policies/remember.md`. Never apply the amendment by default; wait for the user's explicit selection.
-  - If the user selects **in place**: apply exactly the presented patch, then write `approval.specs.amendment.{at, notes}` to `openspec/changes/{resolved_change_name}/.openspec.yaml`, merging into the existing file content and preserving all prior top-level keys (including `schema:`, `created:`, `approval.specs.approved_at`, and `approval.specs.notes`) verbatim — do NOT truncate or rewrite the whole file. Then continue generating design artifacts from the amended specs.
-  - If the user selects **route to `/sai-1-spec`** (or any non-in-place response): do NOT modify `proposal.md` or `specs/**`, do NOT write an amendment audit entry, and direct the user to re-run `/sai-1-spec` to make the correction in a fresh spec pass.
+- **Clarity present** — you can state the exact text to change and the exact replacement, grounded in the proposal, the specs, and any codebase facts already gathered. Report `needs_input` with (1) the discovered problem, (2) the concrete diff to `proposal.md` and/or the affected `specs/**/*.md` file(s), and (3) the two options `in-place` (apply the patch) and `route` (leave the specs and name the correction for `/sai-1-spec`). Never apply the amendment by default; wait for the coordinator's answer.
+  - If the answer is **in-place**: apply exactly the presented patch, then write `approval.specs.amendment.{at, notes}` to `openspec/changes/{resolved_change_name}/.openspec.yaml`, merging into the existing file content and preserving all prior top-level keys (including `schema:`, `created:`, `approval.specs.approved_at`, and `approval.specs.notes`) verbatim — do NOT truncate or rewrite the whole file. Then continue generating design artifacts from the amended specs.
+  - If the answer is **route** (or anything other than in-place): do NOT modify `proposal.md` or `specs/**`, do NOT write an amendment audit entry, continue generating design artifacts from the specs as approved, and name the correction in `notes` so that the closing report can send the user to `/sai-1-spec`.
 
-- **Clarity absent** — you cannot determine the correct amendment (for example, a spec-vs-codebase contradiction where you cannot tell which side is stale, or a fundamentally wrong spec you cannot safely patch). Route the user to `/sai-1-spec` directly. Do NOT offer an in-place amendment and do NOT modify `proposal.md` or `specs/**`.
+- **Clarity absent** — you cannot determine the correct amendment (for example, a spec-vs-codebase contradiction where you cannot tell which side is stale, or a fundamentally wrong spec you cannot safely patch). Report `blocked`, name the defect and where it is, and say that the correction belongs to `/sai-1-spec`. Do NOT offer an in-place amendment and do NOT modify `proposal.md` or `specs/**`.
 
 ## Generate design.md
 

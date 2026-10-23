@@ -7,21 +7,12 @@ TBD - created by archiving change spec-standalone-state-machine. Update Purpose 
 
 ### Requirement: Six-step stage table as-is
 
-The machine SHALL replicate the five steps from the canonical spec phase contract as-is in canonical order `prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, happy-path only with no wait or failure states and no `review` stage. The terminal stage SHALL be `done`.
+The machine SHALL hold the five spec steps in canonical order `spec-intake`, `research`, `proposal`, `specs`, `validation`, happy-path only with no wait or failure states and no `review` stage. The terminal stage SHALL be `done`.
 
 #### Scenario: Table order matches the canonical plan
 
 - **WHEN** the caller inspects STEPS on the sidecar machine
 - **THEN** the list is exactly the five canonical steps in order with DONE_STAGE as done
-
-### Requirement: Stateful sidecar identity and initial state
-
-The machine SHALL be identified as `spec-standalone@1` with initial stage `prereqs-and-change` and empty done set. The machine SHALL be routing-only and SHALL never write artifacts.
-
-#### Scenario: Fresh session starts at prereqs-and-change
-
-- **WHEN** a standalone run opens a fresh sidecar session
-- **THEN** the stage is prereqs-and-change, done is empty, and no prior marks are reused
 
 ### Requirement: Monotonic transition with silent ignore
 
@@ -38,14 +29,23 @@ Project SHALL derive the active step from the surviving session done set via fir
 
 #### Scenario: Replacement projects proposal after research
 
-- **WHEN** the caller projects a surviving session with done holding prereqs-and-change and research
+- **WHEN** the caller projects a surviving session with done holding spec-intake and research
 - **THEN** next follow names the proposal step file with the loaded-set skip hint
 
 ### Requirement: Registry registration alongside explore machines
 
-The registry SHALL register `spec-standalone@1` alongside `explore-idea@1` and `explore-slice@1` with no change to existing registrations.
+The registry SHALL register `spec-steps@1` alongside `explore-idea@1` and `explore-slice@1` with no change to existing registrations.
 
 #### Scenario: Registry hosts all three machines
 
 - **WHEN** the caller checks registry membership after startup
-- **THEN** spec-standalone, explore-idea, and explore-slice machines are all present
+- **THEN** spec-steps, explore-idea, and explore-slice machines are all present
+
+### Requirement: spec-steps machine identity and initial state
+
+The machine SHALL be identified as `spec-steps@1` with initial stage `spec-intake` and empty done set. The machine SHALL be routing-only and SHALL never write artifacts.
+
+#### Scenario: Fresh session starts at spec-intake
+
+- **WHEN** a spec segment opens a fresh sidecar session
+- **THEN** the stage is spec-intake, done is empty, and no prior marks are reused

@@ -1,6 +1,6 @@
 # Design Step — Research
 
-Active step: research. Gather source evidence for design and identify any unresolved facts; report the `research` progress event per the worker contract. The `design.md` Open Questions gate runs in the tasks step after design is written.
+Active step: research. Gather source evidence for design and identify any unresolved facts; report the `research` step. The `design.md` Open Questions gate runs in the tasks step after design is written.
 
 ## Inputs
 

@@ -68,7 +68,7 @@ test('the severity vocabulary, finding shape, identifier scheme, and tally form 
 
 test('every explore review surface points to the contract section without restating the definition', () => {
   for (const file of [
-    'sai/commands/explore/steps/pipeline-plan-unattended.md',
+    'sai/commands/plan/cycle.md',
     'sai/commands/explore/steps/review-loop.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
   ]) {
@@ -81,11 +81,16 @@ test('every explore review surface points to the contract section without restat
   }
 });
 
-test('the Plan (unattended) final report carries review and design-worker scope observations', () => {
-  const plan = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
+test('the plan closing reports carry review and design-worker scope observations', () => {
+  const design = read('sai/commands/design/coordinator.md');
+  const spec = read('sai/commands/spec/coordinator.md');
+  const step = read('sai/commands/design/steps/design.md');
+  const cycle = read('sai/commands/plan/cycle.md');
 
-  assert.match(plan, /every scope observation the design worker's terminal `summary` names/);
-  assert.match(plan, /At every ending of the run, print them under `Scope observations`/);
+  assert.match(design, /the scope observations when there are some/);
+  assert.match(spec, /the scope observations when there are some/);
+  assert.match(step, /named in your report `notes` in the report line form of § Scope observations/);
+  assert.match(cycle, /It lists the scope observations under `Scope observations` and prints no such section when there is none/);
 });
 
 test('the design step classifies a spec gap before asking and records a scope observation as a non-goal', () => {
@@ -94,15 +99,14 @@ test('the design step classifies a spec gap before asking and records a scope ob
   assert.match(handling, /Fetch @sai\/policies\/artifact-review-contract\.md and apply its § Scope observations/);
   assert.match(handling, /non-goal of the form "out of scope: X — revisit when Y"/);
   assert.match(handling, /with no question/);
-  assert.match(handling, /every run, supervised or not/);
   assert.ok(handling.indexOf('§ Scope observations') < handling.indexOf('**Clarity present**'),
     'classification should precede the clarity path');
   assert.match(handling, /\*\*Clarity present\*\*/);
   assert.match(handling, /\*\*Clarity absent\*\*/);
 });
 
-test('the design result union gains no scope observation field', () => {
-  const phaseContract = read('sai/commands/design/phase-contract.md');
+test('the worker report shape gains no scope observation field', () => {
+  const workerCommon = read('sai/commands/plan/worker-common.md');
 
-  assert.doesNotMatch(phaseContract, /scope observation/i);
+  assert.doesNotMatch(workerCommon, /scope observation/i);
 });

@@ -6,17 +6,21 @@ This capability defines the sai-1-spec feedback gate and mandatory stop after pr
 
 ## Requirements
 
-### Requirement: sai-1-spec termination behavior
-After writing all spec files, sai-1-spec SHALL present the feedback gate (per the `artifact-feedback-gate` capability) and SHALL stop only after the user selects the proceed option `Finish step`. On that selection it prints the existing sai-1 stop message unchanged and exits. This change does not alter the wording of that message. The gate is NOT an approval gate: it MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`.
+### Requirement: sai-1-spec stops when its segment closes
 
-#### Scenario: stop fires after Finish step
-- **WHEN** sai-1-spec finishes writing `proposal.md` and `specs/**/*.md`, presents the feedback gate, and the user selects `Finish step`
-- **THEN** it prints the existing sai-1 stop message (unchanged by this change) and exits without any follow-up question
+`/sai-1-spec` SHALL stop when its segment closes — after the worker wrote `proposal.md` and the specs, the mechanical checks passed, the review rounds ended, and the segment's paths were committed or left uncommitted because the project ignores them — by printing its closing report and, when the segment completed, exactly ``Spec done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` in a new chat when ready.`` It SHALL present no feedback gate and ask no follow-up question. It is not an approval gate: it MUST NOT ask for approval and MUST NOT write `approval.specs` keys to `.openspec.yaml`.
 
-#### Scenario: stop is deferred until Finish step
-- **WHEN** sai-1-spec has written all artifacts but the user has not yet selected `Finish step` in the gate
-- **THEN** the stop message is NOT printed and the step does not terminate
+#### Scenario: stop fires after the segment closes
 
-#### Scenario: no approval and no yaml write
-- **WHEN** the user selects `Finish step` in the gate
-- **THEN** sai-1-spec does not ask for approval and does not write to `.openspec.yaml`
+- **WHEN** `/sai-1-spec` finishes writing `proposal.md` and `specs/**/*.md`, its checks pass, its review ends, and its paths are committed
+- **THEN** it prints the closing report ending with the `Spec done` line and exits without any follow-up question
+
+#### Scenario: stop is deferred until the segment closes
+
+- **WHEN** `/sai-1-spec` has written all artifacts but a mechanical check still fails
+- **THEN** the `Spec done` line is not printed and the segment does not close
+
+#### Scenario: no approval and no approval write
+
+- **WHEN** `/sai-1-spec` closes
+- **THEN** it does not ask for approval and writes no `approval.specs` key to `.openspec.yaml`

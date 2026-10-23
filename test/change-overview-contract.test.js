@@ -361,24 +361,24 @@ test('valid generator failures propagate failure_kind while malformed envelopes 
     'the design worker should separate malformed nested envelopes from generator failures');
 });
 
-test('state key transitions unmaterialized → materializing → current at first Continue', () => {
+test('state key transitions unmaterialized → materializing → current on the overview continuation', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /unmaterialized/, 'worker contract should know the unmaterialized initial state');
   assert.match(worker, /materializing/, 'worker contract should mark materializing before dispatch');
   assert.match(worker, /current/, 'worker contract should mark current after success');
-  assert.match(worker, /Continue/, 'worker contract should drive the transition through Continue');
+  assert.match(worker, /overview continuation/i, 'worker contract should drive the transition through the overview continuation');
 });
 
 test('effective source modification marks stale before the first write', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
-  const staleIndex = worker.search(/stale/);
-  assert.ok(staleIndex !== -1, 'worker contract should contain the stale state');
-  const preStale = worker.slice(0, staleIndex);
-  assert.match(preStale, /immediately before/i, 'stale should be tied to immediately before the write');
-  assert.match(preStale, /first/i, 'stale should be set before the first write');
-  assert.match(preStale, /effective/i, 'stale should be tied to effective source writes');
+  const guard = worker.slice(worker.indexOf('**Stale-before-first-write**'));
+  assert.ok(guard.length > 0, 'worker contract should contain the stale-before-first-write rule');
+  assert.match(guard, /overview\.state: stale/, 'worker contract should contain the stale state');
+  assert.match(guard, /immediately before/i, 'stale should be tied to immediately before the write');
+  assert.match(guard, /first/i, 'stale should be set before the first write');
+  assert.match(guard, /effective/i, 'stale should be tied to effective source writes');
 });
 
 test('no-effective-change transaction verifies the existing overview before restoring current', () => {
@@ -628,58 +628,54 @@ test('schema and worker transport coverage is not satisfied by template-only sec
 
 // ─── Step 4: Continue-triggered overview generation in the design coordinator ─
 
-test('Continue triggers worker-owned generation only when --overview-lang is present', () => {
+test('the overview continuation triggers worker-owned generation only when --overview-lang is present', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-  assert.match(coordinator, /Continue/, 'the gate-closed next action should be Continue');
-  assert.match(coordinator, /generation[\s-]?(?:pass|trigger|terminal)/i,
-    'Continue should trigger the worker-owned generation pass');
-  assert.match(coordinator, /same[\s-]?worker/i, 'generation should run via a same-worker continuation');
+  assert.match(coordinator, /\*\*Overview\.\*\*/, 'the coordinator should specify the overview continuation');
+  assert.match(coordinator, /Follow @sai\/commands\/design\/steps\/overview\.md/, 'the continuation should name the overview step file');
   assert.match(
     coordinator,
-    /(?:only|when|if)[\s\S]{0,220}`?--overview-lang`?[\s\S]{0,220}(?:present|provided|supplied)[\s\S]{0,500}(?:generation|generator)/i,
-    'Continue generation should be conditional on an explicitly present overview-language flag',
+    /only when `--overview-lang` carried a language, send the worker one continuation/i,
+    'generation should be conditional on an explicitly present overview-language flag',
   );
   assert.match(
     coordinator,
-    /(?:(?:absent|without|missing)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing))[\s\S]{0,500}(?:no|skip|does not|without)[\s\S]{0,160}(?:generation|generator)/i,
+    /Without the option, send no continuation and generate no overview/i,
     'an absent overview-language flag should suppress generation',
   );
+  assert.match(coordinator, /After the review ends and the checks pass/, 'the overview follows the review and the checks');
 });
 
-test('failed first materialization suppresses the success terminal', () => {
+test('failed first materialization suppresses the success report', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
+  const overview = artifact('sai/commands/design/steps/overview.md');
 
-  assert.match(coordinator, /`?--overview-lang`?/, 'materialization failure applies to the opted-in path');
-  assert.match(coordinator, /failed/i, 'coordinator should map a failed first materialization');
-  assert.match(coordinator, /completion sentence/i, 'coordinator should reference the design completion sentence');
-  assert.match(coordinator, /suppress|do\s*not\s*emit|does\s*not\s*emit/i,
-    'coordinator should suppress the design completion sentence on a failed materialization');
+  assert.match(coordinator, /A failed overview is an obstacle \(identifier `overview`\)/, 'the coordinator should treat a failed overview as an obstacle');
+  assert.match(overview, /never report `done` for a failed first materialization or failed regeneration/i,
+    'the worker should never report done for a failed materialization');
+  assert.match(overview, /reports `blocked`/, 'a failed generation should report blocked');
 });
 
-test('unopted Continue materializes nothing while permitting an existing stale overview', () => {
+test('an unopted run materializes nothing while permitting an existing stale overview', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
+  const overview = artifact('sai/commands/design/steps/overview.md');
 
-  assert.match(coordinator, /materializ/i, 'coordinator should reference materialization');
   assert.match(
     coordinator,
-    /(?:(?:absent|without|missing)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing))[\s\S]{0,500}(?:without\s+materialization|no\s+overview|unmaterialized|no generation)/i,
+    /Without the option, send no continuation and generate no overview; an existing overview stays, and the worker marked it stale if the sources changed/,
     'an unopted path should end without materializing an overview',
   );
-  assert.match(
-    worker,
-    /(?:(?:absent|without|missing)[\s\S]{0,320}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,320}(?:absent|without|missing))[\s\S]{0,420}(?:stale|permitted|allowed|leave)[\s\S]{0,180}(?:overview|state)/i,
-    'an unopted path should permit an existing stale overview rather than regenerating it',
-  );
+  assert.match(overview, /Without the option the worker receives no continuation/, 'the overview step should define the unopted route');
+  assert.match(worker, /`overview\.state: stale`/, 'the worker should mark an existing overview stale at the first effective write');
 });
 
-test('generation terminal changed_files are forwarded without re-derivation', () => {
+test('the overview report lists both changed files and the commit paths include them', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
+  const overview = artifact('sai/commands/design/steps/overview.md');
 
-  assert.match(coordinator, /`?--overview-lang`?/, 'changed_files forwarding applies to opted-in generation');
-  assert.match(coordinator, /changed_files/, 'coordinator should forward the generation terminal changed_files');
-  assert.match(coordinator, /forward/i, 'coordinator should forward changed_files unchanged');
+  assert.match(coordinator, /`change-overview\.md` when generated/, 'the commit paths should include the generated overview');
+  assert.match(overview, /That report's `changed_files` includes `openspec\/changes\/\{change-name\}\/change-overview\.md` and `openspec\/changes\/\{change-name\}\/\.openspec\.yaml`/);
 });
 
 // ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
@@ -775,28 +771,25 @@ test('review output is a single findings block handed off without acceptance', (
     'the findings block should not carry a change: header line');
 });
 
-test('findings route to the design worker at the feedback gate without a handoff block', () => {
+test('findings route to the plan commands as feedback without a handoff block', () => {
   const explore = exploreContract();
 
   const blockStart = explore.indexOf('When a review transaction surfaces findings');
   assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
   const nextWhen = explore.indexOf('\n    - When', blockStart);
-  const blockEnd = nextWhen === -1 ? blockStart + 1600 : nextWhen;
+  const blockEnd = nextWhen === -1 ? blockStart + 1800 : nextWhen;
   const block = explore.slice(blockStart, blockEnd);
 
   assert.doesNotMatch(block, /^## DesignCorrectionRequest/m,
     'the loop should not emit a ## DesignCorrectionRequest heading');
   assert.doesNotMatch(block, /^change:/m,
     'the findings block should not carry a change: header line');
-  assert.match(block, /\/sai-2-design/,
-    'the findings block should route through a re-invoked /sai-2-design');
-  assert.match(block, /feedback gate/i, 'the findings should be pasted at the feedback gate');
-  assert.match(block, /design-artifact findings[\s\S]{0,80}directly/,
-    'design-artifact findings should be applied directly by the design worker');
-  assert.match(block, /apply in place/i,
-    'the spec-amendment path should be consent-gated and apply in place');
-  assert.match(block, /\/sai-1-spec[\s\S]{0,200}(?:cannot consume|not offered)/i,
-    'the spec-amendment path should not offer /sai-1-spec for design corrections');
+  assert.match(block, /feedback of `\/sai-2-design \{name\}` for design-artifact findings/,
+    'design-artifact findings should go to /sai-2-design as feedback');
+  assert.match(block, /of `\/sai-1-spec \{name\}` for proposal\/spec findings/,
+    'proposal and spec findings should go to /sai-1-spec as feedback');
+  assert.match(block, /applies it unattended through its own worker, review rounds, and checks/i,
+    'each command should apply the findings unattended');
 });
 
 test('completed Review change-overview forms findings only and marks no review item', () => {
@@ -920,32 +913,23 @@ test('closure stops at crystallization and discard and preserves terminal paths'
 
 // ─── Step 3: spec-design-review-progress-step (overview progress evidence) ──
 
-test('Step 3: successful overview materialization or regeneration emits a progress event carrying the overview step id with both changed files', () => {
+test('Step 3: successful overview materialization or regeneration reports done with both changed files', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
+  assert.match(worker, /report `status: done` only after a generator success/i, 'generator success should report done');
   assert.match(
     worker,
-    /generator success[\s\S]{0,240}(?:emit|progress)|(?:emit|progress)[\s\S]{0,240}generator success/i,
-    'generator success should emit the overview progress event'
+    /overview\.state[\s\S]{0,160}current[\s\S]{0,240}report|report[\s\S]{0,240}overview\.state[\s\S]{0,160}current/i,
+    'the overview report should follow overview.state current'
   );
   assert.match(
     worker,
-    /overview\.state[\s\S]{0,160}current[\s\S]{0,240}(?:emit|progress)|(?:emit|progress)[\s\S]{0,240}overview\.state[\s\S]{0,160}current/i,
-    'the overview progress event should follow overview.state current'
-  );
-  assert.match(
-    worker,
-    /(?:emit|reports?)[\s\S]{0,120}progress[\s\S]{0,160}\[?["'`]?overview["'`]?\]?|step_?ids?:[\s\S]{0,120}\[?["'`]?overview["'`]?\]?/i,
-    'the progress event should carry the overview step id'
-  );
-  assert.match(
-    worker,
-    /progress[\s\S]{0,400}change-overview\.md[\s\S]{0,400}\.openspec\.yaml|progress[\s\S]{0,400}\.openspec\.yaml[\s\S]{0,400}change-overview\.md/i,
-    'the overview progress event should report change-overview.md and .openspec.yaml in changed_files'
+    /report's `changed_files` includes `openspec\/changes\/\{change-name\}\/change-overview\.md` and `openspec\/changes\/\{change-name\}\/\.openspec\.yaml`/,
+    'the overview report should list change-overview.md and .openspec.yaml in changed_files'
   );
 });
 
-test('Step 3: any overview generation failure emits no overview progress event and preserves existing diagnostics', () => {
+test('Step 3: any overview generation failure reports blocked and preserves existing diagnostics', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   for (const failure of ['dispatch', 'process loss', 'malformed', 'empty envelope', 'validation', 'contradiction', 'generation']) {
@@ -954,13 +938,13 @@ test('Step 3: any overview generation failure emits no overview progress event a
   }
   assert.match(
     worker,
-    /(?:dispatch|process loss|malformed|empty envelope|validation|contradiction|generation fail)[\s\S]{0,400}(?:no|without|never)[\s\S]{0,160}`?overview`?[\s\S]{0,160}(?:progress event|step_?ids?)/i,
-    'every failure route should emit no overview progress event'
+    /(?:dispatch failure|process loss|malformed or empty envelope|blocking contradiction|validation failure|generation error)[\s\S]{0,400}reports `blocked`/i,
+    'every failure route should report blocked'
   );
   assert.match(
     worker,
-    /(?:existing|prior|current)[\s\S]{0,160}(?:non-?empty)[\s\S]{0,240}(?:failure_classification|failure_kind|failure_details|diagnostic)[\s\S]{0,200}(?:intact|remain|stays?|unchanged|preserv)/i,
-    'existing non-empty failure classification and details should remain intact'
+    /preserving the current diagnostics/i,
+    'existing diagnostics should remain intact when repair does not complete'
   );
 });
 

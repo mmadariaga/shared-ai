@@ -53,6 +53,7 @@ const TARGET_PROFILE = Object.freeze({
   'agent:budget-subagent':               { context: 'Medium',  difficulty: '↑' },
   'command:sai-1-spec':                  { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-2-design':                { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-plan':                    { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-3-implement':             { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-5-security':              { context: 'Medium',  difficulty: '↑' },
   'command:sai-6-performance':           { context: 'Medium',  difficulty: '↑' },
@@ -139,7 +140,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
 // views keep today's alphabetical order. Phase 4 keeps `backfill` before
 // `archive` as the explicit alphabetical exception.
 const ALL_PHASE_ORDER = Object.freeze([
-  Object.freeze(['sai-explore', 'sai-1-spec', 'sai-2-design']),
+  Object.freeze(['sai-explore', 'sai-plan', 'sai-1-spec', 'sai-2-design']),
   Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-review']),
   Object.freeze(['sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']),
   Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge', 'sai-commit']),

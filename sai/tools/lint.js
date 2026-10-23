@@ -624,7 +624,7 @@ function checkStepContract(content) {
  * The stage machine emission surface includes:
  *   - sai-state commands (emit, spawn, close, reset, etc.)
  *   - bin/sai-state.js file reference
- *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-run@1, review-steps@1, security-standalone@1)
+ *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-steps@1, design-steps@1, plan-run@1, implement-run@1, review-steps@1, security-standalone@1)
  *   - Legacy /emit HTTP command
  */
 function checkWorkerEmissionOwnership(content) {
@@ -638,7 +638,7 @@ function checkWorkerEmissionOwnership(content) {
   const saiStateBinPattern = /bin\/sai-state\.js/;
   const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|reset|run)`/;
   // 3. Stage machine IDs in the format name@version
-  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-run|review-steps|security-standalone)@\d+/;
+  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-steps|design-steps|plan-run|implement-run|review-steps|security-standalone)@\d+/;
   // 4. Legacy /emit HTTP command
   const legacyEmitPattern = /\/emit\b/;
 

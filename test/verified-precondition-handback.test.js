@@ -49,11 +49,13 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 });
 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
-const routedPhases = ['spec', 'security', 'performance', 'accessibility'];
+// The plan family (spec, design, plan) runs outside the shared orchestration, like the
+// implement family, and loads none of the shared hand-back policy.
+const routedPhases = ['security', 'performance', 'accessibility'];
 const routedCards = routedPhases.flatMap((phase) =>
   ['coordinator.md', 'worker.md'].map((name) => `sai/commands/${phase}/${name}`)
 );
-const designCards = ['coordinator.md', 'worker.md'].map((name) => `sai/commands/design/${name}`);
+const designCards = [];
 const compositionCards = ['sai/commands/deep-review/coordinator.md'];
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
@@ -89,7 +91,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 21);
+  assert.equal(commandCards.length, 17);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);
@@ -138,6 +140,6 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
   );
   assert.match(
     read('sai/commands/design/steps/design.md'),
-    /direct the user to re-run `\/sai-1-spec` to make the correction in a fresh spec pass\./
+    /name the correction in `notes` so that the closing report can send the user to `\/sai-1-spec`\./
   );
 });

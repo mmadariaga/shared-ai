@@ -34,7 +34,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   stdin, sends it to one machine, and returns
   `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The `-` marker is the
   last argument; event JSON passed as an argument is a usage error (exit 2).
-- **Progress emit**: `sai-state emit <id> <machineId> --progress [--with-overview true|false] -`
+- **Progress emit**: `sai-state emit <id> <machineId> --progress -`
   reads one worker progress payload
   (`{event: "progress", step_ids, changed_files}`) as JSON from stdin instead
   of a hand-composed event. It validates the raw stdin text, unnormalized,
@@ -48,9 +48,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   valid verdict, the ordinary emit fields above. An invalid verdict never
   reaches the machine; non-JSON stdin is an invalid verdict, not
   `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
-  error: discriminate by `validation.ok`. `--with-overview` is accepted only on
-  `design-standalone@1` and adds `withOverview` to the derived event; on any
-  other machine it is a usage error (exit 2). A validator module found in
+  error: discriminate by `validation.ok`. A validator module found in
   neither location relative to the CLI exits 2 naming the tried paths and
   emits nothing. Every verb loads that module for `received_at`, so a missing
   validator exits 2 on every verb. Every stdout JSON response, machine errors
@@ -88,7 +86,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   other stage nothing is recorded and the response is `INVALID_EVENT` with
   `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1`
   pointer (exit 1). `--amend` is outside this check. On any other
-  machine, or combined with `--progress` or `--with-overview`, the option is a
+  machine, or combined with `--progress`, the option is a
   usage error (exit 2). A detector module found in neither location relative to
   the CLI exits 2 naming the tried paths.
 - **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -`

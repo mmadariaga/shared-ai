@@ -53,7 +53,7 @@ const OPERATION_PHRASE = {
 
 test('Step 2 routed harness bindings expose the required lifecycle symbols', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, 'design');
+    const binding = matrixBinding(harness, 'security');
     for (const operation of REQUIRED_OPERATIONS) {
       assert.match(binding, OPERATION_PHRASE[operation],
         `${harness} binding should expose ${operation}`);
@@ -73,7 +73,7 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
-      if (filename === 'design-worker.md') {
+      if (filename === 'security-worker.md') {
         for (const operation of REQUIRED_OPERATIONS) {
           assert.match(binding, OPERATION_PHRASE[operation],
             `${harness} binding should define ${operation}`);
@@ -98,12 +98,12 @@ test('Step 3 keeps the managed Claude phase agents alongside the neutral binding
 });
 
 test('Step 2 routed coordinator failed needs_input continuation allows one replacement with complete reconstruction state', () => {
-  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const coordinator = artifact('sai/commands/security/coordinator.md');
   const fields = [
     'original envelope',
-    'resolved name',
-    'opaque history',
-    'changed-file union',
+    'resolved_change_name',
+    'opaque input history',
+    'changed-files union',
   ];
 
   assert.match(coordinator, /failed|failure/i,
@@ -115,7 +115,7 @@ test('Step 2 routed coordinator failed needs_input continuation allows one repla
       `the coordinator should reconstruct ${field}`);
   }
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, 'design');
+    const binding = matrixBinding(harness, 'security');
     assert.match(binding, /one bounded replacement|replacement/i,
       `${harness} binding should carry the replacement path`);
     assert.match(binding, /reconstruction[ _]fields|originating binding context/i,

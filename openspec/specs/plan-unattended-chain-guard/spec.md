@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change plan-unattended-chain-guard. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Chain authority mandates complete emit before design dispatch
 
 The Plan-Unattended supervision SHALL treat explore-slice@1 as the authority for the spec-to-design chain. After spec convergence and the artifact gate proceed, the complete emit (sai-1 to sai-2) SHALL be mandatory before the chained design dispatch and before turn close. The supervision SHALL validate stage before every dispatch, consume the returned stage as current, and SHALL NOT close the turn after Supervised sai-1 done while stage is still sai-1.
@@ -32,10 +34,9 @@ On store failure, rejected emit, or degraded store, the supervision SHALL hold t
 
 ### Requirement: Chain guard preserves terminal and routing invariants
 
-The chain guard SHALL preserve existing invariants: a failed, cancelled, or STOP-bearing sai-1 result SHALL never dispatch sai-2; spec cap exhaustion after three rounds with High findings SHALL continue to sai-2; a sai-2 failure after spec convergence SHALL keep specs_converged_changes with design-only retry over existing proposal.md and specs; multi-slice completion SHALL occur only via next-slice on implement; sai-3-implement SHALL never be dispatched; no overview-language question SHALL run at emission; and fast-track SHALL never auto-select the close selector.
+The chain guard SHALL preserve these invariants: a spec segment that fails, is stopped, or ends on an unanswered escalation SHALL never start the design segment; review findings still pending after the spec segment's third round SHALL continue to the design segment; a design segment that does not complete SHALL leave the specs on disk, and a retry SHALL resume at the design segment because existing `proposal.md` and specs count as a done spec segment; multi-slice completion SHALL occur only via next-slice on implement; sai-3-implement SHALL never be dispatched; no overview-language question SHALL run at emission; and fast-track SHALL never auto-select the close selector.
 
 #### Scenario: Failed spec phase guides retry without dispatching design
 
-- **WHEN** the sai-1 worker returns failed, cancelled, or STOP-bearing completed
-- **THEN** the supervision guides with Next step: run /sai-1-spec and leaves the change retryable without dispatching sai-2
-
+- **WHEN** the spec segment of the followed `/sai-plan` run fails, is stopped, or ends on an unanswered escalation
+- **THEN** the route prints `Next step: choose Plan - Unattended again to resume the stopped segment, or run /sai-1-spec or /sai-2-design for {name}.` and leaves the change retryable without starting the design segment

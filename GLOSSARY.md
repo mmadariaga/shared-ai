@@ -13,13 +13,13 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces in external-first and internal-public boundary blocks, with project-root-relative paths and portable ASCII relationships or execution flows for design review; excluded from `change-overview.md`."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
-**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, `/sai-plan`); spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
-**Auto-Answer**: "A supervised-pipeline answer that `sai-explore` gives to a spec worker's `needs_input` question on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
+**Auto-Answer**: "A grounded answer that `sai-explore` gives to a backfill worker's question during **Direct Build - Unattended** on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
 *Avoid*: auto-reply, autonomous reply, silent answer, proxy answer
 
-**Autonomy Audit Log**: "The in-conversation-only report presented at the end of a supervised spec phase listing every **Auto-Answer** given, the answer value, and the reasoning, written to no file or artifact."
+**Autonomy Audit Log**: "The in-conversation-only entries (automatic corrections and ignored process statements) that the **Direct Build - Unattended** terminal report adds, written to no file or artifact."
 *Avoid*: audit trail, decision log, autonomy report, answer log
 
 **Backfilled Change**: "An OpenSpec change reconstructed post-implementation by `/sai-backfill`, with `backfilled: true` written to `.openspec.yaml` and contractually forbidden from producing `design.md`, `tasks.md`, or `implementation.md`."
@@ -30,6 +30,15 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Build Command**: "The un-numbered `/sai-build` command (cards at `sai/commands/build/`) that chains `/sai-3-implement`, one `/sai-4-review` pass, an assessment of its findings, and a second `/sai-3-implement` run for the findings it selects, in one session for a disk-resolved change name, with no approval between segments. Not the explore crystallization-close **Direct Build - Unattended** lane (`direct-build-unattended` / `sai-direct-build-worker`)."
 *Avoid*: sai-9-build, implement-apply macro, batch apply, build worker, Direct Build - Unattended, direct-build-unattended, sai-direct-build-worker
+
+**Plan Command**: "The un-numbered `/sai-plan` command (cards at `sai/commands/plan/`) that chains `/sai-1-spec` and `/sai-2-design` as **Segments** in one session from a Ready to Propose block or a change that already has its specs, with no approval between segments; `/sai-1-spec` and `/sai-2-design` are always unattended goal-driven commands outside the shared orchestration."
+*Avoid*: plan pipeline, sai-0-plan, interactive spec, supervised spec phase
+
+**Segment**: "One phase run inside a composition, such as the spec or design segment of `/sai-plan`, whose coordinator card is followed in the composing session and whose artifacts on disk are its only interface to the next segment."
+*Avoid*: sub-command, stage, step
+
+**Assumption**: "An answer the coordinator of a plan **Segment** gives to a worker question, recorded with its source in the run directory and the closing report only."
+*Avoid*: auto-answer, decision record, persisted note
 
 **Direct Build - Unattended**: "The explore crystallization-close selector lane with route id `direct-build-unattended`, visible label `Direct Build - Unattended`, and managed implementer `sai-direct-build-worker` (matrix phase/binding `direct-build`); code-first unattended implementation from a Ready to Propose block, followed by backfill and archive under `--direct-build-prepare` / `--direct-build-execute`. Distinct from `/sai-build` / `meta-build`."
 *Avoid*: Auto, autofast, auto-fast, Build - Unattended, build-unattended, sai-build
@@ -55,7 +64,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Closure State**: "The chat-scoped lifecycle classification of an explored idea as active-uncrystallized, crystallized, or discarded, used to determine whether a successful `sai-explore` response requires an actionable ending."
 *Avoid*: response state, closure status, idea status
 
-**Confidence Threshold**: "The qualitative judgment — not a computed number — above which `sai-explore` may **Auto-Answer** a supervised worker question and below or unclear of which it escalates the question to the user."
+**Confidence Threshold**: "The qualitative judgment — not a computed number — above which `sai-explore` may **Auto-Answer** a backfill worker question during **Direct Build - Unattended** and below or unclear of which it escalates the question to the user."
 *Avoid*: confidence score, threshold value, certainty level, confidence cutoff
 
 **Continuation/Transport Loss**: "The routing diagnosis that a recovery or ordinary continuation operation could not be delivered or produced no result at all."
@@ -75,9 +84,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Diagnosis Key**: "The coordinator-owned normalized identity of one concrete recovery diagnosis as the ordered tuple `(artifact path, concrete point, authorized correction boundary)`."
 *Avoid*: diagnosis ID, recovery key, cause key
-
-**Diagnosis Round**: "A single conversation-scoped, read-only **Review Engine** transaction over active supervised phase artifacts after a non-clean worker closure, whose findings are forwarded once as correction feedback and are not counted as a **Supervised Review Round**."
-*Avoid*: recovery review, diagnostic review pass, worker retry review
 
 *Avoid*: splittable step, production step, split-eligible step, "testable" (which describes the RED block only)
 
@@ -171,7 +177,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Orientation Index**: "The `SAI_AGENTS.md` document installed at the harness root by the `sai-agents-index` projection, containing one entry per SAI documentation surface — canonical location, purpose, writer, and a pointer to the canonical format file — with conditional-presence wording, no restated normative rules, and no harness named inside the file."
 *Avoid*: agent guide, doc index, SAI manual, agent onboarding doc
 
-**Overview Language**: "The conversation-only, chat-scoped value for a change's overview, supplied by an explicit overview-language flag, selected by the overview-language gate (gate 9), asked in round 3 of the `sai-explore` route round and applied only for **Plan (unattended)**, or set to the literal `None`; it is carried in the `Ready to Propose` block only when knowable at emission, and absence never selects a language implicitly."
+**Overview Language**: "The conversation-only, chat-scoped value for a change's overview, supplied by an explicit overview-language flag, selected by the overview-language gate (gate 9), asked in round 3 of the `sai-explore` route round and applied only for **Plan (unattended)** (passed to `/sai-plan` as `--overview-lang`), or set to the literal `None`; it is carried in the `Ready to Propose` block only when knowable at emission, and absence never selects a language implicitly."
 *Avoid*: overview-language value, overview prose language, overview gate value
 
 **Overview State**: "The persisted `overview.state` key in a change's `.openspec.yaml` carrying one of `unmaterialized` / `materializing` / `failed` / `current` / `stale` — the durable signal that lets `sai-status` and `sai-archive` distinguish a not-yet-attempted overview, an in-progress or interrupted generation, a failed first materialization, a current one, and one whose sources changed since materialization, without inspecting `change-overview.md` contents; transitioned by the design worker, who marks `materializing` before generator dispatch and `stale` before the first effective source write of every post-materialization transaction."
@@ -183,11 +189,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
-**Phase Review Pass**: "Retired term. No live worker-owned review surface uses this concept; use **Artifact Review** for the manual or supervised **Explore Review Engine** surfaces."
+**Phase Review Pass**: "Retired term. No live worker-owned review surface uses this concept; use **Artifact Review** for the manual **Explore Review Engine** and the plan coordinators' incremental review rounds."
 *Avoid*: review round, review iteration, review cycle, reviewer call
-
-**Phase Transition**: "The supervised pipeline report that records the completed outcome of one phase before the next phase begins."
-*Avoid*: phase handoff, phase switch, transition notice
 
 **Pipeline Selector**: "The three-option `Plan - Unattended` / `Direct Build - Unattended` / `Manual` native picker emitted at the close of every `sai-explore` crystallization turn — the explicit user act that authorizes the selected delegated route, and, after a clean Direct Build (unattended) slice completion while pending slices remain, re-presented as a per-slice authorization gate rather than a one-time authorization for the entire crystallized set."
 *Avoid*: start-pipeline, start-pipeline token, pipeline token, auto picker, pipeline prompt
@@ -241,17 +244,11 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Review Loop Navigation**: "The manual-mode-only shell of the post-crystallization review loop — the entry paths, the chat-scoped iteration, the five-option picker, `Skip` / `Exit review loop`, the picker re-entry invariant, and the print-for-paste handoff — which drives the **Review Engine** once per review transaction and performs no review work itself."
 *Avoid*: review menu, loop shell, review picker, review navigation
 
-**Review Reference Set**: "Retired term. The former worker-owned reviewer context is no longer a live concept; the manual and supervised **Explore Review Engine** surfaces consume their resolved artifact context without creating a worker-owned review surface."
+**Review Reference Set**: "Retired term. The former worker-owned reviewer context is no longer a live concept; the manual **Explore Review Engine** and the plan coordinators consume their resolved artifact context without creating a worker-owned review surface."
 *Avoid*: reviewer context, background files, input set, supporting docs
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
-
-**Supervised Pipeline**: "A single-invocation workflow that dispatches phase workers, reviews their artifacts in-session through the **Review Engine**, and converges each phase before continuing to the next."
-*Avoid*: automatic pipeline, chained workflow, phase automation
-
-**Supervised Review Round**: "One complete in-session **Artifact Review** of a supervised phase's artifacts — the explore coordinator invoking the **Explore Review Engine** once over the phase's freshly read artifact set, plus the phase worker's consuming and applying every external finding that invocation returns — counted once however many per-finding steps it takes, with at most three rounds per phase."
-*Avoid*: supervised review pass, auto review round, pipeline review pass
 
 **Routing Category**: "One of the seven tokens (`frontend-ui`, `frontend-code`, `backend`, `data`, `infra`, `docs`, `other`) on a step's `**Routing**` line naming the kind of work the step performs, judged by its purpose; `other` is used only when no category fits and carries a parenthetical note."
 *Avoid*: routing layer, routing discipline, step layer
@@ -322,6 +319,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Phase Adapter** belongs to one routed phase and is consumed by the **Orchestration Core** shared runner; it is not a **Harness Boot Adapter**.
 - **Chained Phase Composition** orders one or more **Phase Adapter** segments inside a single supervising invocation; only the final adapter's `terminal_navigation` closes a successful multi-adapter run.
 - The **Build Command** orders `/sai-3-implement`, `/sai-4-review`, and a second `/sai-3-implement` run in one session; it is not a distinct worker identity and it is not a consumer of **Chained Phase Composition**.
+- The **Plan Command** orders `/sai-1-spec` and `/sai-2-design` in one session, runs both **Segments** unattended through the shared plan cycle, records its **Assumptions** in its run directory and closing report only, and is what the explore `Plan - Unattended` route follows.
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - An **Architecture Snapshot** relates to an external-first **External Surface** block and an **Internal Public Surface** block.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
@@ -342,18 +340,16 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
 - A **Milestone Stamp** belongs to one **Progress Step** of a routed phase progress task list and is attached by the coordinator as a decorative rendering action, never by a worker.
 - A **Progress Step** of a routed phase progress task list carries exactly one **Milestone Stamp** once it renders `completed`, and none before; the stamp's value is the **Received At** of the response that marked it.
-- An **Artifact Review** is performed only by the manual `sai-explore` post-crystallization **Review Engine** or a supervised **Supervised Review Round** through the in-session **Explore Review Engine**; workers consume its external findings and never form a second review surface.
-- A **Diagnosis Round** uses the **Review Engine** after a non-clean supervised worker closure, forwards its findings once as worker correction feedback, and never marks or clears **Artifact Review** evidence.
-- A **Supervised Review Round** passes the **Explore Review Engine**'s external findings to the phase worker, which applies them without forming findings or emitting another review format.
+- An **Artifact Review** is performed only by the manual `sai-explore` post-crystallization **Review Engine** or the incremental review rounds of the plan coordinators; workers consume its external findings and never form a second review surface.
 - An **Idea Progress List** belongs to one `sai-explore` chat and is grown and marked only from in-session evidence; the session never writes it to a file, and it is never derived from repository state.
 - A **Native Task Panel** is a single-slot resource with exactly one declared owner at a time.
-- While a `sai-explore` chat is active, the panel's declared owner is that session's **Idea Progress List** — a supervised run is the illustrative case, during which no plan-based list renders on the panel.
+- While a `sai-explore` chat is active, the panel's declared owner is that session's **Idea Progress List** — a Direct Build or Plan run is the illustrative case, during which no plan-based list renders on the panel.
 - An **Idea Progress List** is distinct from a **Progress Plan**: the plan is declared by a phase adapter, is static, and is marked only from worker progress events, while the idea list tracks the explored idea and is marked only from in-session explore evidence.
 - An **Idea Progress List** gains per-slice items when the slicing assessment identifies each slice, and its reviewed sai-1 / sai-2 items are marked or cleared per the most recent completed **Artifact Review**'s High-finding outcome.
 - A **Pre-Crystallization Stage TODO** belongs to one `sai-explore` chat and is cleared at crystallization, when the session's **Idea Progress List** takes the **Native Task Panel**.
 - A **Pre-Crystallization Stage TODO** is distinct from an **Idea Progress List** and a **Progress Plan**: the stage TODO renders the user-paced pre-crystallization progression, the idea list tracks post-crystallization idea evidence, and the plan is adapter-declared and marked from worker progress events.
-- An **Overview Language** value is supplied by an explicit overview-language flag or selected by the overview-language gate, asked in round 3 of the route round and applied only for **Plan (unattended)** (or is the literal `None`), remains conversation-only per crystallized idea or slice set, and the selected language is forwarded only through a **Supervised Pipeline** started by the **Pipeline Selector**'s `Plan (unattended)` option; `None` omits the overview-language flag from the chained design envelope, and the value is never written to any artifact.
-- A **Pipeline Selector** closes every crystallization turn and, after a clean Direct Build (unattended) slice completion while pending slices remain, is re-presented for the next per-slice authorization; `Plan (unattended)` starts the **Supervised Pipeline**, `Direct Build (unattended)` starts the direct implementation lane, and `Manual` starts none and leaves later execution to an explicit request.
+- An **Overview Language** value is supplied by an explicit overview-language flag or selected by the overview-language gate, asked in round 3 of the route round and applied only for **Plan (unattended)** (or is the literal `None`), remains conversation-only per crystallized idea or slice set, and the selected language is forwarded only to the `/sai-plan` coordinator followed by the **Pipeline Selector**'s `Plan (unattended)` option; `None` omits the overview-language option, and the value is never written to any artifact.
+- A **Pipeline Selector** closes every crystallization turn and, after a clean Direct Build (unattended) slice completion while pending slices remain, is re-presented for the next per-slice authorization; `Plan (unattended)` follows the **Plan Command**, `Direct Build (unattended)` starts the direct implementation lane, and `Manual` starts none and leaves later execution to an explicit request.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **RED Worker**; a GREEN-direct dispatch receives the Step's own verification commands instead.
 - An **Intent Reconciliation** compares a **Backfilled Change**'s verified diff with its optional intent statement and never treats the two sources as interchangeable evidence.
 - An **Intent Reconciliation** reports **Scope Drift** for evidenced work that the intent statement does not name, while still allowing the evidence-backed behavior to be specced.
@@ -382,12 +378,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Question Context Contract** prompt carries its own essential state context, which is one of the permitted grounding sources for an **Auto-Answer**.
 - A **Tool Fence** belongs to a routed coordinator entrypoint (`commands/claude/sai-{1,2,3,5,6,7,8}-*.md`) and converts the coordinator's prose prohibition plus declared panel capability into a harness-enforced restriction; it is Claude Code frontmatter only.
 - A **Prerequisite Verdict** is returned by the delegated prerequisite-check budget subagent to the `sai-explore` main agent; on `halt` it carries the verbatim remediation literal.
-- A **Supervised Pipeline** emits a **Phase Transition** after one phase converges and before dispatching the next phase.
-- A **Phase Transition** belongs to one completed phase and precedes one downstream phase in a **Supervised Pipeline**.
-- A **Supervised Review Round** belongs to one supervised phase and is performed by the explore coordinator through the **Review Engine**, unlike a **Phase Review Pass** which is owned by the phase worker.
 - An **Auto-Answer** is given only when confidence is clearly above the **Confidence Threshold**; unclear or below-threshold confidence escalates the worker question to the user instead of auto-answering.
-- Every **Auto-Answer** is recorded in the **Autonomy Audit Log**; an escalated question is not, because the user already saw and answered it.
-- An **Autonomy Audit Log** is presented in conversation at supervised spec-phase end and is never written to any file, artifact, or configuration.
+- An **Autonomy Audit Log** is presented in conversation in the **Direct Build - Unattended** terminal report and is never written to any file, artifact, or configuration.
 - A **DDR** encodes a **Domain Invariant**; an **ADR** documents a decision that does not.
 - A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker.
 - A **Worktree Name Triple** belongs to one git worktree created by `/sai-worktree` and is derived from the main worktree's directory name plus the first free counter slot.
@@ -421,7 +413,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Timestamp" vs "Milestone Stamp"** — a bare "timestamp" is a general programming concept (excluded from glossary scope) and also names ISO-8601 metadata such as `approval.specs.approved_at`, so it must not name the progress-list annotation. **Resolution:** **Milestone Stamp** is the qualified term for the HH:mm progress-list annotation on routed phase progress task lists; bare "timestamp" is never used for it.
 - **Milestone Stamp vs Received At** — both name the same instant on a stamped run, so a bare "time" is ambiguous between the response value and its rendering. **Resolution:** **Received At** is the offset-bearing ISO-8601 `received_at` first key of a CLI response; **Milestone Stamp** is that value's own HH:MM field, rendered on a `completed` step of a progress task list. The stamp is read straight off the observation time and from nothing else — the coordinator issues no wall-clock call and resolves no timezone — so the two are never independent readings that could disagree.
 - **"Effort" vs "Model Variant"** — the retired combined-frame customizer treated `effort` as a shared UI concept mapped to opencode's `variant` key, while the real opencode CLI exposes model-specific variants; a bare "effort" is ambiguous between Claude Code's tunable key and opencode's per-model variant. **Resolution:** **Model Variant** names the opencode model-specific settings modifier selected per model through the dependent provider → model → variant flow; `effort` remains Claude Code's tunable key; the shared UI concept is retired and the two harnesses use separate selector sequences.
-- **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while **Overview Language** is the chat-scoped, conversation-only value supplied by an explicit overview-language flag, selected at gate 9 in round 3 of the route round and applied only for **Plan (unattended)**, or set to the literal `None`. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the selected value that forwards only through a **Pipeline Selector** `Plan (unattended)` run, with `None` omitting the overview-language flag from the chained design envelope; the qualified terms are always used and the two never share a surface.
+- **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while **Overview Language** is the chat-scoped, conversation-only value supplied by an explicit overview-language flag, selected at gate 9 in round 3 of the route round and applied only for **Plan (unattended)**, or set to the literal `None`. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the selected value that forwards only to the `/sai-plan` coordinator followed by a **Pipeline Selector** `Plan (unattended)` run, with `None` omitting the overview-language option; the qualified terms are always used and the two never share a surface.
 - **Failure Class vs generator failure_kind** — both are machine-readable failure labels, but they belong to different nested result envelopes. **Resolution:** **Failure Class** names the outer routed-worker repair boundary, while the overview generator's `failure_kind` remains its inner five-field result value; valid inner kinds propagate unchanged, and an untrusted inner envelope becomes the outer **Envelope Contract Violation** class.
-- **Supervised Review Round vs Phase Review Pass** — both are complete review units with a worker-processing half and a three-attempt/cap flavor, but they are owned by different surfaces: the **Phase Review Pass** is the routed worker's own review of its phase artifacts, while the **Supervised Review Round** is the explore coordinator's in-session review of a supervised phase's artifacts through the **Review Engine**. **Resolution:** **Phase Review Pass** names the worker-owned unit of the routed planning phase; **Supervised Review Round** names the coordinator-owned in-session unit of the supervised pipeline; the two terms are never synonyms and a bare "pass" or "round" is ambiguous.
 - **Readiness Signal vs Readiness Statement** — the old wording "readiness signal" described the once-per-stable-idea one-liner naming the crystallize action; the stage-aware reframing folds the maturity judgment into the **Closure Reminder** and stops treating it as navigation. **Resolution:** **Readiness Statement** names the folded maturity judgment carried inside the reminder line; "readiness signal" survives only in test-pinned source sentences that must keep the old noun, and new writing uses the qualified term.

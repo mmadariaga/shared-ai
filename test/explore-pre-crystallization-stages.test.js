@@ -25,6 +25,7 @@ const explore = () => {
     'sai/commands/explore/steps/crystallization-language-gates.md',
     'sai/commands/explore/steps/review-loop.md',
     'sai/commands/explore/steps/pipeline-selector.md',
+    'sai/commands/explore/steps/route-selector.md',
     'sai/commands/explore/steps/pipeline-plan-unattended.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
     'sai/commands/explore/steps/idea-list.md',
@@ -83,7 +84,8 @@ test('gate 9 is opt-in at supervised Plan activation, puts do-not-create first, 
   assert.match(question, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/i);
   assert.match(question, /When the route answer is Direct Build, Manual, or no valid route, ignore the overview answer/i);
   assert.match(supervised, /after the native route picker returns a clear \*\*Plan \(unattended\)\*\* selection for a dispatchable change/i);
-  assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
+  assert.match(supervised, /before setting `active_change` or following the plan coordinator/i);
+  assert.match(routeSelector, /Fallback ask and activation/);
   assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(source, /emitted second, carrying no marker/);
   assert.doesNotMatch(readArtifact('sai/commands/explore/steps/crystallization-language-gates.md'), /gate 9/i);

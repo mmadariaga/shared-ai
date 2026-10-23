@@ -31,6 +31,10 @@
     "model": "sonnet",
     "effort": "high"
   },
+  "command:sai-plan": {
+    "model": "sonnet",
+    "effort": "high"
+  },
   "worker:sai-2-design-worker": {
     "model": "sonnet",
     "effort": "high"

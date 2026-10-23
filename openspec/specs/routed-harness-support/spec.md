@@ -48,6 +48,5 @@ Shared SAI instructions and policies SHALL describe the supported Claude Code an
 
 #### Scenario: Shared policy is inspected
 
-- **WHEN** a maintainer reads `sai/commands/explore/instructions.md`, `sai/commands/design/worker.md`, the active files under `sai/commands/design/steps/`, the active files under `sai/commands/spec/steps/`, `sai/policies/remember.md`, `sai/policies/artifact-feedback-gate.md`, or `sai/policies/status-picker.md`
-- **THEN** no active clause assigns behavior to a Copilot inline consumer or preserves an inline adapter exception
-- **AND** the Claude Code and opencode rules remain explicit and testable
+- **WHEN** a maintainer reads `sai/commands/explore/instructions.md`, `sai/commands/design/worker.md`, the active files under `sai/commands/design/steps/`, the active files under `sai/commands/spec/steps/`, `sai/policies/remember.md`, or `sai/policies/status-picker.md`
+- **THEN** no active clause assigns behavior to a Copilot inline consumer or preserves an inline adapter exception, and the Claude Code and opencode rules remain explicit and testable

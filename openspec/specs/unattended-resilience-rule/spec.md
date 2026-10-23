@@ -62,35 +62,6 @@ Immediately before sending any execute order (a closed order whose effects are h
 - **WHEN** an execute order fails and a foreign-index record is pending
 - **THEN** the coordinator restores the pending foreign entries before the no-effect check, and ends recovery with a report when that restore stops
 
-### Requirement: Corrections consume the existing budget and add no loop rounds
-
-Each route SHALL keep one budget per scope, shared between the two recovery paths, where an attempt is one correction sent through either path: Plan - Unattended SHALL allow one diagnosis round per phase, and Direct Build - Unattended SHALL allow three attempts per failed step. Attempts SHALL be counted on the counter the route already keeps in conversation state and SHALL be charged immediately before the attempt is sent; a delivery failure, repeated error, or malformed result SHALL NOT refund or reset the charge. Plan - Unattended SHALL charge `diagnosis_rounds.spec` or `diagnosis_rounds.design` for the active phase, and the Explore Diagnosis Round with its Bounded Recovery continuation SHALL form that one round, charged once. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), and a step's attempts SHALL never draw on another step's key. The Direct Build close of `/sai-5-review` and `/sai-review`, which keeps no diagnosis counter, SHALL count the three attempts per close in conversation. An attempt SHALL add no round to a loop that already has a cap, including the three review-fix rounds. The run SHALL stop when the Plan phase's diagnosis round is used with the step still failing, when a Direct Build step's counter reaches three with that step still failing, or when the budget agent returns the diagnosis the previous attempt already returned.
-
-#### Scenario: The budget is exhausted
-
-- **WHEN** a Direct Build step still fails after its three attempts have been charged
-- **THEN** the run stops without another automatic correction
-
-#### Scenario: A correction occurs inside a capped loop
-
-- **WHEN** an automatic correction happens during the three-round review-fix loop
-- **THEN** no fourth round is added
-
-#### Scenario: The budget agent repeats the diagnosis
-
-- **WHEN** the budget agent returns the diagnosis that the previous attempt already returned
-- **THEN** the run stops with the stop notice
-
-#### Scenario: A Plan phase uses its one diagnosis round
-
-- **WHEN** a Plan - Unattended spec or design phase still fails after its one diagnosis round was charged
-- **THEN** the run stops with that phase's guidance, the change stays retryable, and only a new Plan selection resets the counters
-
-#### Scenario: Each failed Direct Build step has its own attempts
-
-- **WHEN** a Direct Build step fails after an earlier step used attempts in the same slice
-- **THEN** the failed step is charged on its own key with three attempts, and the counters persist across a same-slice resume and reset only with a new slice
-
 ### Requirement: The stop notice is defined once
 
 When the resilience rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it.
@@ -181,3 +152,27 @@ A correction's own report SHALL be evidence, not the result. After every attempt
 
 - **WHEN** the foreign-change check after an attempt reports a path outside the slice paths
 - **THEN** the route stops, reports the exact paths, and reverts nothing
+
+### Requirement: Direct Build corrections consume the existing budget and add no loop rounds
+
+Direct Build - Unattended SHALL keep one budget per scope, shared between the two recovery paths, where an attempt is one correction sent through either path, and SHALL allow three attempts per failed step. Attempts SHALL be counted on the counter the route already keeps in conversation state and SHALL be charged immediately before the attempt is sent; a delivery failure, repeated error, or malformed result SHALL NOT refund or reset the charge. The route SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), and a step's attempts SHALL never draw on another step's key. An attempt SHALL add no round to a loop that already has a cap, including the three review-fix rounds. The run SHALL stop when a step's counter reaches three with that step still failing, or when the budget agent returns the diagnosis the previous attempt already returned. Plan - Unattended SHALL keep no such budget: it follows `/sai-plan`, whose coordinator owns its obstacles.
+
+#### Scenario: The budget is exhausted
+
+- **WHEN** a Direct Build step still fails after its three attempts have been charged
+- **THEN** the run stops without another automatic correction
+
+#### Scenario: A correction occurs inside a capped loop
+
+- **WHEN** an automatic correction happens during the three-round review-fix loop
+- **THEN** no fourth round is added
+
+#### Scenario: The budget agent repeats the diagnosis
+
+- **WHEN** the budget agent returns the diagnosis that the previous attempt already returned
+- **THEN** the run stops with the stop notice
+
+#### Scenario: Each failed Direct Build step has its own attempts
+
+- **WHEN** a Direct Build step fails after an earlier step used attempts in the same slice
+- **THEN** the failed step is charged on its own key with three attempts, and the counters persist across a same-slice resume and reset only with a new slice

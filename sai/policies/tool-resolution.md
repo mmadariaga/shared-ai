@@ -87,7 +87,7 @@ takes one — never substitute one for the other.
 - `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
   `--json` nor `--cwd`. The progress emit (`emit <id> <machineId> --progress
-  [--with-overview true|false] -`, payload on stdin) loads the validator module
+  -`, payload on stdin) loads the validator module
   itself, relative to the resolved `sai-state.js`, so it needs no separate
   `worker-report-validator.js` resolution and stays byte-identical whichever
   `sai-state.js` candidate wins.

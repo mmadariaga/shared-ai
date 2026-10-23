@@ -194,7 +194,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
-    const phaseFolders = ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+    const phaseFolders = ['security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
     const phases = [
       'spec-worker.md',
       'design-worker.md',

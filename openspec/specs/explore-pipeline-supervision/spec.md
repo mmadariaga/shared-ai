@@ -117,28 +117,6 @@ When the supervised spec-proposal worker completes after the in-session review r
 - **WHEN** `/sai-1-spec` completes outside explore supervision
 - **THEN** its existing mandatory-stop message remains unchanged.
 
-### Requirement: Supervised gate fetch sites supply mode supervised
-
-Before the first dispatch of a Plan - Unattended run, explore SHALL fetch `sai/policies/artifact-feedback-gate.md` once and use it for both supervised phases. At the two item-10 gate application sites — after the supervised spec review round converges, exhausts its cap, or returns empty findings, and after the supervised design review round converges, exhausts its cap, or returns empty findings — explore SHALL supply `mode = supervised` together with the existing artifacts, proceed-label, and next-action parameters. Those two sites are the only explore-owned suppliers of `mode = supervised`. The standalone fetch sites in `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` SHALL NOT supply `mode`, retaining the interactive default.
-
-#### Scenario: spec-phase gate site supplies supervised mode
-
-- **WHEN** a supervised spec review round converges, exhausts its cap, or returns empty findings
-- **THEN** explore applies the shared gate with `mode = supervised`, artifacts `proposal.md, specs/**`, proceed-label `Finish step`, and next-action equal to the spec-to-design phase transition
-- **AND** the gate auto-executes that next-action without presenting the picker.
-
-#### Scenario: design-phase gate site supplies supervised mode
-
-- **WHEN** a supervised design review round converges, exhausts its cap, or returns empty findings
-- **THEN** explore applies the shared gate with `mode = supervised`, artifacts `design.md, tasks.md, interfaces.md`, proceed-label `Continue`, and next-action equal to overview generation plus the supervised design terminal
-- **AND** the gate auto-executes that next-action without presenting the picker.
-
-#### Scenario: standalone coordinators stay interactive
-
-- **WHEN** `/sai-1-spec` or `/sai-2-design` is invoked directly
-- **THEN** the corresponding coordinator fetches the shared gate without supplying `mode`
-- **AND** the gate presents at iteration 0 with `Give feedback (Recommended)` first and the proceed option second.
-
 ### Requirement: Gate suppression does not weaken force-majeure interruptions
 
 Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Plan - Unattended supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Direct Build - Unattended selection. The dispatched implementer SHALL write any repository artifact the block requires, within the repository-artifact scope and its protected update protocols, and SHALL NOT directly modify published `openspec/specs/**`. The dispatched backfill and archive workers SHALL execute only the consented validated artifact writes, spec sync, archive move, owned-path staging, and pre-authorized local commit in their closed order. Explore itself SHALL remain read-only including read-only schema validation of draft content.
@@ -158,79 +136,6 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 - **WHEN** Direct Build Unattended is selected
 - **THEN** the implementer may write code, tests, configuration, and schemas under closed exclusions while explore stays read-only
-
-### Requirement: item-10 diagnosis feedback is bounded and read-only
-
-The item-10 supervised Plan - Unattended route SHALL use the shared `sai/policies/bounded-recovery.md` Bounded Recovery policy as the single source for post-resolution non-clean diagnosis. That shared trigger set SHALL be a structurally valid post-resolution `failed` result of any closed worker failure class, a `completed` result disproved by coordinator verification, or a `completed` result carrying STOP. The Explore item-10 failure route SHALL additionally activate this one-shot diagnosis path for a post-resolution supervised worker `cancelled` result; this Explore-specific cancellation activation SHALL NOT change generic clean-cancellation behavior for other adapters or the manual review loop.
-
-For a selected spec or design phase, when the phase worker returns any of those diagnosis-entry results and the phase's conversation-only diagnosis counter is unused, Explore SHALL invoke the existing Review Engine exactly once with the authoritative change name and the phase artifact-set designator (`sai-1` for `proposal.md` plus `specs/**`, or `sai-2` for `design.md`, `tasks.md`, and `interfaces.md`). The engine SHALL reread the current available artifacts and SHALL remain read-only. Explore SHALL form diagnosis feedback in this exact order: `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification`. The feedback SHALL preserve the engine's severity-rated findings and base-form summary when findings are available, and SHALL describe missing or unavailable evidence when the engine cannot form findings.
-
-After the diagnosis round, Explore SHALL attempt at most one re-dispatch of the same phase worker with that diagnosis as feedback through the existing recovery continuation operation. Explore SHALL never apply a correction directly and SHALL never dispatch a replacement worker from this route. A diagnosis that cannot establish an actionable correction, a worker veto, or a failed or undeliverable re-dispatch SHALL close the active attempt without another diagnosis, leaving the change retryable. An actionable diagnosis whose same-worker continuation cannot be delivered SHALL use the shared `continuation/transport loss` stopping diagnosis. A successful re-dispatch returns to the ordinary lifecycle for that phase and does not count the diagnosis as a supervised review round.
-
-Clean `completed` without disproof and without STOP does not start diagnosis.
-
-#### Scenario: A failed worker starts one diagnosis round
-
-- **WHEN** a resolved supervised spec or design worker returns a structurally valid `failed` result with any closed worker failure class and its phase diagnosis counter is zero
-- **THEN** Explore invokes `Review Engine(changeName, sai-1)` or `Review Engine(changeName, sai-2)` according to the active phase
-- **AND** the engine rereads the current phase artifacts without writing them
-- **AND** Explore produces the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis feedback.
-
-#### Scenario: A coordinator-disproved completed result starts one diagnosis round
-
-- **WHEN** a resolved supervised spec or design worker returns `completed` that coordinator verification disproves and its phase diagnosis counter is zero
-- **THEN** Explore invokes the same phase-selected Review Engine Diagnosis Round as for `failed`
-- **AND** the entry uses the shared Bounded Recovery non-clean set rather than a failed-only Explore special case.
-
-#### Scenario: A STOP-bearing completed result starts one diagnosis round
-
-- **WHEN** a resolved supervised spec or design worker returns `completed` carrying STOP and its phase diagnosis counter is zero
-- **THEN** Explore invokes the same phase-selected Review Engine Diagnosis Round as for `failed`
-- **AND** clean `completed` without STOP and without coordinator disproof does not start diagnosis.
-
-#### Scenario: A cancelled worker starts the Explore-specific diagnosis round
-
-- **WHEN** a resolved supervised spec or design worker returns `cancelled` and its phase diagnosis counter is zero
-- **THEN** Explore invokes the same phase-selected Review Engine transaction and forms the same five ordered diagnosis sections
-- **AND** the cancellation route remains item-10-specific and does not make cancellation recoverable for unrelated adapters or the manual review loop.
-
-#### Scenario: Findings are forwarded without direct repair
-
-- **WHEN** the diagnosis round produces one or more `High`, `Medium`, or `Low` Review Engine findings
-- **THEN** Explore preserves the shared finding shape, severity, identifiers, and base-form summary as diagnosis evidence
-- **AND** it forwards the diagnosis as feedback to the same phase worker through the existing recovery continuation operation
-- **AND** Explore creates, modifies, or deletes no artifact, configuration, metadata, or test file.
-
-#### Scenario: Diagnosis re-dispatch is single and same-worker
-
-- **WHEN** the diagnosis round establishes an actionable correction and the active worker can be resumed
-- **THEN** Explore re-dispatches that same phase worker exactly once with the diagnosis feedback
-- **AND** it does not dispatch a replacement worker
-- **AND** a later failed, cancelled, disproved-completed, or STOP-bearing completed result from that re-dispatch does not start a second diagnosis round in the same phase attempt.
-
-#### Scenario: Actionable diagnosis cannot resume the worker
-
-- **WHEN** the Diagnosis Round establishes an actionable correction but the same-worker continuation cannot be delivered or the worker cannot be resumed
-- **THEN** Explore consumes the phase's one diagnosis-round counter and selects `continuation/transport loss` as the stopping diagnosis
-- **AND** it does not dispatch the ordinary replacement-worker fallback
-- **AND** it closes the active attempt with the selected change still uncompleted and retryable for a later Plan - Unattended selection.
-
-#### Scenario: Diagnosis has no actionable correction
-
-- **WHEN** the Review Engine reports only missing or unavailable evidence, or the diagnosis cannot establish a safe actionable correction boundary
-- **THEN** Explore consumes the one diagnosis round without inventing a cause or correction
-- **AND** it does not perform a direct artifact repair or an ungrounded re-dispatch
-- **AND** the selected change remains uncompleted and retryable.
-
-#### Scenario: diagnosis remains read-only and retryable
-
-- **WHEN** diagnosis has no actionable correction, continuation fails, or the worker fails or cancels again
-- **THEN** Explore performs no direct repair or replacement dispatch and leaves the selected change eligible for a later Plan - Unattended attempt.
-
-#### Scenario: diagnosis counter is separate from review rounds
-
-- **WHEN** the item-10 diagnosis route runs
-- **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments, independently of `review_rounds`, and both counters reset on a new Plan attempt without persistence.
 
 ### Requirement: Direct Build - Unattended eight-step unattended flow
 
@@ -477,20 +382,6 @@ After a valid native picker answer for `Plan - Unattended` activates `route-choi
 - **WHEN** the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds while explore-slice has no pending slice
 - **THEN** Explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
 
-### Requirement: Plan - Unattended activates shared runtime recovery for pre-result interruptions
-
-The Plan - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` and apply its resilience rule to every non-clean outcome, replacing the route's local failure branches. The rule SHALL apply after the existing validation and Bounded Recovery handling, and a stop SHALL report per the policy's Stop condition. Claude Code and opencode SHALL use the same policy semantics while retaining their harness-specific binding mechanics.
-
-#### Scenario: Plan runtime interruption reaches the shared rule
-
-- **WHEN** a disclosed Plan spec or design worker stretch ends in a non-clean outcome after the existing validation and Bounded Recovery handling
-- **THEN** the route evaluates the shared resilience rule before stopping or asking the user to choose a routine next action
-
-#### Scenario: Valid Plan results remain unchanged
-
-- **WHEN** a Plan worker returns a valid `needs_input`, `failed`, or `cancelled` result
-- **THEN** Plan follows its existing result handling first and applies the rule only where that handling would end the run
-
 ### Requirement: Direct Build - Unattended activates the policy only for the full route
 
 The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow and apply its resilience rule to every non-clean outcome after dispatch/startup handling, payload validation, and accepted-result Bounded Recovery. Where a step says to stop on a failure, the route SHALL stop only when the rule answers no, and it SHALL issue an execute order again only under the policy's execute-order rule. The pinned `--no-specs` POC profile SHALL remain outside this policy.
@@ -632,3 +523,17 @@ Every Direct Build response SHALL reach the active validator exactly as received
 
 - **WHEN** a pending step has exhausted its existing recovery attempts
 - **THEN** the coordinator reports the cause and keeps the step pending without granting another attempt merely because resumption was requested
+
+### Requirement: Plan - Unattended follows the /sai-plan coordinator
+
+The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, and the run state. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
+
+#### Scenario: Plan route follows the plan coordinator
+
+- **WHEN** the user selects `Plan - Unattended` for a dispatchable slice
+- **THEN** explore exports the slice's block and follows `/sai-plan` with the block reference, without dispatching spec or design workers outside the plan coordinator
+
+#### Scenario: a failed segment parks the slice
+
+- **WHEN** the spec segment of the followed `/sai-plan` run ends stopped
+- **THEN** explore emits `{intent: fail}`, no design segment starts, and a later `Plan - Unattended` answer retries the slice

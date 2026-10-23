@@ -1,7 +1,7 @@
 # Spec Step — Specs
 
-Active step: specs. Write the capability delta specs, then return the `specs`
-progress event.
+Active step: specs. Write the capability delta specs, then report the `specs`
+step.
 
 For each capability under `proposal.md`'s `## Capabilities`, write one delta
 spec from `openspec instructions specs --change "<name>" --json`, written
