@@ -63,6 +63,163 @@ function receipt(t) {
   return path.join(directory, 'receipt.json');
 }
 
+// Risk allocation is author-authenticated, approval-bound, and recovered per operation.
+const riskBlock = '<!-- sai-inherent-risk:start -->\n## Inherent Risk\nComplete ratings\n<!-- sai-inherent-risk:end -->';
+function commentFixture(provider, existing = false) {
+  const made = fixture(provider, existing), run = made.io.run;
+  made.state.comments = [];
+  made.io.run = (command, args, input) => {
+    const endpoint = args[1] || '', method = args[args.indexOf('--method') + 1];
+    if (command !== 'git' && /\/(?:comments|notes)(?:\?|\/|$)/.test(endpoint)) {
+      if (method === 'GET') {
+        if (made.state.commentReadFails) throw new Error('Comment read unavailable');
+        return JSON.stringify(made.state.comments.map(row => provider === 'github'
+          ? { id: row.id, body: row.body, user: { login: row.actor } }
+          : { id: row.id, body: row.body, author: { username: row.actor } }));
+      }
+      const body = JSON.parse(input).body;
+      made.state.mutations.push({ method, endpoint, body });
+      if (made.state.commentRejected) throw Object.assign(new Error('Comment rejected'), { rejected: true });
+      if (method === 'POST') made.state.comments.push({ id: 11, body, actor: 'octo' });
+      else made.state.comments.find(row => row.id === Number(endpoint.split('/').pop())).body = body;
+      if (made.state.commentLost) throw new Error('Comment response lost');
+      return '{}';
+    }
+    return run(command, args, input);
+  };
+  made.request = { ...made.request, risk_placement: 'comment', risk_block: riskBlock, description_overflow: { length: 5000, limit: 4000 } };
+  return made;
+}
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} relocation validates the composed description at and above the supplied limit`, () => {
+    const { io, request, state } = commentFixture(provider);
+    const run = io.run;
+    io.run = (command, args, input) => command === 'git' && args[0] === 'log' ? 'Closes #5' : run(command, args, input);
+    const limit = 2800, suffix = `\n\n<!-- sai-closing-refs:start -->\nCloses #5\n<!-- sai-closing-refs:end -->`;
+    const exact = { ...request, description: 'x'.repeat(limit - suffix.length), description_overflow: { length: 5000, limit } };
+    const ready = tool.query(exact, io);
+    assert.equal(ready.proposal.description, exact.description + suffix);
+    assert.equal(ready.proposal.description.length, limit);
+    const above = { ...exact, description: exact.description + 'x' };
+    const diagnostic = error => error.code === 'description-too-long' && error.provider === provider && error.length === limit + 1 && error.limit === limit && error.excess === 1;
+    assert.throws(() => tool.query(above, io), diagnostic);
+    assert.throws(() => tool.publish({ ...above, approved: true, confirmation: ready.confirmation }, io), diagnostic);
+    assert.equal(state.mutations.length, 0);
+    assert.throws(() => tool.query({ ...exact, description: 'x'.repeat(limit + 100) }, io), error => error.length === limit + 100 + suffix.length);
+  });
+  test(`${provider} original overflow excludes tool-added closing references and its evidence binds approval`, t => {
+    const { io, request, state } = commentFixture(provider);
+    const run = io.run;
+    io.run = (command, args, input) => command === 'git' && args[0] === 'log' ? 'Closes #5' : run(command, args, input);
+    const block = riskBlock.replace('Complete ratings', 'r'.repeat(1580 - riskBlock.length + 'Complete ratings'.length));
+    assert.equal(block.length, 1580);
+    const chosen = { ...request, description: 'x'.repeat(1500), risk_block: block, description_overflow: { length: 3080, limit: 2800 } };
+    const ready = tool.query(chosen, io);
+    assert.ok(ready.proposal.description.length > 1500);
+    assert.ok(ready.proposal.description.length <= 2800);
+    assert.deepEqual(ready.proposal.inherent_risk.description_overflow, chosen.description_overflow);
+    for (const evidence of [{ length: 3081, limit: 2800 }, { length: 3080, limit: 2801 }]) {
+      const changed = { ...chosen, description_overflow: evidence };
+      assert.notEqual(tool.query(changed, io).confirmation, ready.confirmation);
+      assert.throws(() => tool.publish({ ...changed, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    }
+    assert.equal(state.mutations.length, 0);
+    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.comments[0].body, `<!-- sai-to-pr:inherent-risk -->\n${block}`);
+  });
+  test(`${provider} risk comment creation, idempotent update and full allocation approval`, t => {
+    const { io, request, state } = commentFixture(provider);
+    const ready = tool.query(request, io), file = receipt(t);
+    assert.equal(ready.proposal.inherent_risk.placement, 'comment');
+    assert.equal(ready.proposal.inherent_risk.body, `<!-- sai-to-pr:inherent-risk -->\n${riskBlock}`);
+    assert.throws(() => tool.publish({ ...request, risk_block: riskBlock.replace('ratings', 'changed'), approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+    assert.throws(() => tool.publish({ ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+    const published = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
+    assert.equal(published.status, 'complete');
+    assert.equal(published.pr.status, 'complete'); assert.equal(published.comment.status, 'complete');
+    assert.equal(state.comments.length, 1);
+    const count = state.mutations.length;
+    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal(tool.query(request, io).status, 'no_changes');
+    assert.equal(state.mutations.length, count);
+    state.comments.push({ id: 12, body: 'Unrelated comment', actor: 'someone-else' });
+    const updated = { ...request, risk_block: riskBlock.replace('ratings', 'new ratings') };
+    const next = tool.query(updated, io);
+    assert.equal(tool.publish({ ...updated, approved: true, confirmation: next.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.comments.length, 2); assert.equal(state.comments[1].body, 'Unrelated comment');
+    assert.match(state.comments[0].body, /new ratings/);
+    const restored = { ...request, description: `${request.description}\n${riskBlock}`, risk_placement: 'description' };
+    assert.equal(tool.publish({ ...restored, approved: true, confirmation: tool.query(restored, io).confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.doesNotMatch(state.comments[0].body, /sai-inherent-risk:start/);
+    assert.match(state.rows[0].body ?? state.rows[0].description, /sai-inherent-risk:start/);
+  });
+  test(`${provider} rejected comment resumes alone after read-only recovery and exact approval`, t => {
+    const { io, request, state } = commentFixture(provider);
+    state.commentRejected = true;
+    const file = receipt(t), ready = tool.query(request, io);
+    const partial = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
+    assert.equal(partial.status, 'partial_failure'); assert.equal(partial.pr.status, 'complete');
+    const count = state.mutations.length;
+    const recovered = tool.recover({ receipt: file }, io);
+    assert.equal(state.mutations.length, count); assert.ok(recovered.continuation);
+    assert.throws(() => tool.resume({ receipt: file, approved: true, confirmation: 'wrong' }, io), /approval/);
+    state.commentRejected = false;
+    assert.equal(tool.resume({ receipt: file, approved: true, confirmation: recovered.continuation }, io).status, 'complete');
+    assert.equal(state.mutations.length, count + 1);
+    assert.match(state.mutations.at(-1).endpoint, /comments|notes/);
+  });
+  test(`${provider} lost comment response verifies without duplicate and unreadable/ambiguous state cannot resume`, t => {
+    const { io, request, state } = commentFixture(provider);
+    state.commentLost = true;
+    const file = receipt(t), ready = tool.query(request, io);
+    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+    assert.equal(state.comments.length, 1);
+    state.commentReadFails = true;
+    const count = state.mutations.length, uncertain = tool.recover({ receipt: file }, io);
+    assert.equal(uncertain.status, 'partial_failure'); assert.equal(uncertain.comment.status, 'uncertain');
+    assert.equal(uncertain.continuation, undefined); assert.equal(state.mutations.length, count);
+    state.commentReadFails = false;
+    state.comments[0].actor = 'different-author';
+    assert.throws(() => tool.query(request, io), /different author/);
+    assert.equal(tool.recover({ receipt: file }, io).comment.status, 'uncertain');
+    state.comments[0].actor = 'octo';
+    state.comments.push({ ...state.comments[0], id: 22 });
+    assert.throws(() => tool.query(request, io), /Ambiguous/);
+    assert.equal(tool.recover({ receipt: file }, io).comment.status, 'uncertain');
+  });
+  test(`${provider} comment choice requires overflow and complete block, adds no Azure limit or draft support`, () => {
+    const { io, request } = commentFixture(provider);
+    assert.throws(() => tool.query({ ...request, description_overflow: undefined }, io), /overflow/);
+    assert.throws(() => tool.query({ ...request, risk_block: 'summary' }, io), /complete/);
+    assert.throws(() => tool.query({ ...request, draft: true }, io), /Azure/);
+    assert.equal(tool.query({ ...request, risk_placement: undefined, risk_block: undefined, description: 'x'.repeat(4001) }, io).status, 'ready');
+  });
+  test(`${provider} an unconfirmed absent comment cannot be blindly retried and baseline edits invalidate approval`, t => {
+    const { io, request, state } = commentFixture(provider, true);
+    state.comments = [{ id: 11, body: '<!-- sai-to-pr:inherent-risk -->\nold block', actor: 'octo' }];
+    const before = tool.query(request, io);
+    state.comments[0].body += '\nconcurrent edit';
+    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: before.confirmation, receipt: receipt(t) }, io), /approval/);
+    assert.equal(state.mutations.length, 0);
+    state.comments = [];
+    const run = io.run;
+    io.run = (command, args, input) => {
+      if (command !== 'git' && /\/(comments|notes)$/.test(args[1] || '') && args[args.indexOf('--method') + 1] === 'POST') {
+        state.mutations.push({ endpoint: args[1] });
+        throw new Error('Connection lost: submission outcome unknown');
+      }
+      return run(command, args, input);
+    };
+    const file = receipt(t);
+    const result = tool.publish({ ...request, approved: true, confirmation: tool.query(request, io).confirmation, receipt: file }, io);
+    assert.equal(result.pr.status, 'complete'); assert.equal(result.comment.status, 'uncertain');
+    assert.equal(result.continuation, undefined);
+    const count = state.mutations.length;
+    assert.throws(() => tool.resume({ receipt: file, approved: true }, io), /approval/);
+    assert.equal(state.mutations.length, count);
+  });
+}
+
 for (const provider of ['github', 'gitlab']) {
   for (const existing of [false, true]) {
     test(`${provider} ${existing ? 'update' : 'create'} checks AI attribution at query and publish before mutation`, t => {
@@ -472,7 +629,7 @@ test('E9 / I1 / I2 / I10: both harnesses install to-pr and retire managed sai-pr
     fs.writeFileSync(path.join(directory, 'pr.md'), 'User document');
     if (harness === 'claude') flow.installClaude(directory); else flow.installOpencode(directory);
     assert.equal(fs.existsSync(file), false);
-    for (const relative of ['skills/to-pr/SKILL.md', 'skills/to-pr/providers/registry.json', 'skills/to-pr/providers/github.md', 'skills/to-pr/providers/gitlab.md', 'skills/to-pr/description-format.md', 'sai/tools/to-pr.js', 'sai/tools/to-pr-github.js', 'sai/tools/to-pr-gitlab.js']) assert.ok(fs.existsSync(path.join(directory, relative)), relative);
+    for (const relative of ['skills/to-pr/SKILL.md', 'skills/to-pr/providers/registry.json', 'skills/to-pr/providers/github.md', 'skills/to-pr/providers/gitlab.md', 'skills/to-pr/description-format.md', 'sai/tools/to-pr.js', 'sai/tools/to-pr-comments.js', 'sai/tools/to-pr-github.js', 'sai/tools/to-pr-gitlab.js', 'sai/tools/to-pr-azuredevops.js']) assert.ok(fs.existsSync(path.join(directory, relative)), relative);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(directory, 'skills/to-pr/providers/registry.json'), 'utf8')), registry);
     assert.equal(fs.readFileSync(path.join(directory, 'sai/tools/to-pr.js'), 'utf8'), fs.readFileSync('sai/tools/to-pr.js', 'utf8'));
     assert.match(fs.readFileSync(path.join(directory, 'skills/to-pr/SKILL.md'), 'utf8'), /returned `instructions` reference/);

@@ -7,9 +7,17 @@ resolves the canonical project identity; `glab api --hostname` uses that exact h
 Issue enablement is irrelevant to merge requests. Query open MRs with exact source
 and target project ids and branch names. Creation writes source_branch,
 target_branch, title and description; update PUT writes only title and description.
-On creation only, the authenticated user (`GET user`) and every page of project labels
+For assignment on creation only, the authenticated user (`GET user`) and every page of project labels
 are read; the same `POST merge_requests` carries `assignee_ids` and the chosen existing
 labels as a comma-separated `labels` value. No label is ever created.
 Failed or malformed reads of the MR listing are blockers, never evidence that no MR
 exists; the user and label reads above are warnings, never blockers.
 Completion requires read-back of the exact approved content at the selected URL.
+
+For the shared risk-comment option, read `GET user` even on update to establish
+comment authorship, and read every page of `merge_requests/{number}/notes`.
+Create with `POST` on that endpoint or update the uniquely marked author's note
+with `PUT merge_requests/{number}/notes/{id}`. These are separate approved
+operations, not extra MR fields. An unavailable author or ambiguous note blocks
+comment work; the assignment-read warning rule does not authorize an unidentified
+note edit. Verify the complete body on read-back; recovery stays read-only.

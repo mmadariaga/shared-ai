@@ -99,12 +99,79 @@ function fixture() {
       return JSON.stringify(row);
     }
     assert.equal(resource, 'pullrequests');
-    state.rows = [pr(body.title, body.description)];
+    state.rows = [{ ...pr(body.title, body.description), ...(body.isDraft !== undefined ? { isDraft: body.isDraft } : state.rows[0]?.isDraft !== undefined ? { isDraft: state.rows[0].isDraft } : {}) }];
     if (state.lost) throw new Error('Lost write response');
     return JSON.stringify(state.rows[0]);
   } };
   return { io, state, pr };
 }
+test('Azure description boundaries and UTF-16 units are checked before approval or push, including update and publish', () => {
+  for (const existing of [false, true]) {
+    const { io, state, pr } = fixture();
+    if (existing) state.rows = [pr('old', 'old')];
+    const valid = { ...prRequest, description: 'x'.repeat(3998) + '\u{1f600}' };
+    const ready = prs.query(valid, io);
+    assert.equal(ready.proposal.description.length, 4000);
+    const overflow = { ...valid, description: valid.description + 'x' };
+    const check = error => error.provider === 'azuredevops' && error.length === 4001 && error.limit === 4000 && error.excess === 1;
+    assert.throws(() => prs.query(overflow, io), check);
+    assert.throws(() => prs.publish({ ...overflow, approved: true, confirmation: ready.confirmation }, io), check);
+    assert.equal(state.writes.length, 0);
+    assert.ok(!state.calls.some(call => call.command === 'git' && ['push', 'ls-remote'].includes(call.args[0])));
+  }
+});
+test('Azure explicit draft create/conversion is approval-bound, omitted otherwise and verified independently of a response', () => {
+  for (const existing of [false, true]) {
+    const { io, state, pr } = fixture();
+    if (existing) state.rows = [{ ...pr('old', 'old'), isDraft: false }];
+    const plain = prs.query(prRequest, io), draft = { ...prRequest, draft: true };
+    const ready = prs.query(draft, io);
+    assert.notEqual(ready.confirmation, plain.confirmation);
+    assert.throws(() => prs.publish({ ...draft, approved: true, confirmation: plain.confirmation }, io), /approval/);
+    const file = receipt();
+    assert.equal(prs.publish({ ...draft, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+    assert.equal(state.writes[0].body.isDraft, true);
+    assert.equal(state.rows[0].isDraft, true);
+    delete state.rows[0].isDraft;
+    const unverified = prs.recover({ receipt: file }, io);
+    assert.equal(unverified.status, 'uncertain');
+    assert.equal(unverified.pr.status, 'complete'); assert.equal(unverified.draft.status, 'pending');
+    assert.equal(state.writes.length, 1);
+  }
+  const { io, state, pr } = fixture();
+  state.rows = [{ ...pr('old', 'old'), isDraft: true }];
+  const ready = prs.query(prRequest, io);
+  assert.equal(prs.publish({ ...prRequest, approved: true, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'complete');
+  assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false);
+  assert.equal(state.rows[0].isDraft, true);
+});
+test('Azure risk thread is complete, authored, updated in place and still blocks insufficient relocation', () => {
+  const made = fixture(), { io, state } = made, baseRun = io.run;
+  const threads = [], calls = [];
+  io.run = (command, args, input) => {
+    const sdk = command === 'azure-sdk' ? JSON.parse(input) : null;
+    if (sdk && ['ab9e40f9-4de4-4271-baf8-0a97fbc7e7f1', 'c817c469-cee2-4f6e-9167-27d812472a76'].includes(sdk.location)) {
+      assert.equal(sdk.route.repositoryId, 'repo-id'); assert.equal(sdk.route.pullRequestId, 7);
+      assert.equal(sdk.version, '7.1');
+      if (sdk.method === 'GET') return JSON.stringify({ count: threads.length, value: threads });
+      calls.push(sdk);
+      if (sdk.method === 'POST') threads.push({ id: 20, comments: [{ id: 1, content: sdk.body.comments[0].content, author: { id: 'actor' } }] });
+      else threads[0].comments[0].content = sdk.body.content;
+      return '{}';
+    }
+    return baseRun(command, args, input);
+  };
+  const block = '<!-- sai-inherent-risk:start -->\n## Inherent Risk\nComplete ratings\n<!-- sai-inherent-risk:end -->';
+  const request = { ...prRequest, draft: true, risk_placement: 'comment', risk_block: block, description_overflow: { length: 5000, limit: 4000 } };
+  assert.throws(() => prs.query({ ...request, description: 'x'.repeat(4001) }, io), error => error.code === 'description-too-long');
+  const ready = prs.query(request, io);
+  assert.equal(prs.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'complete');
+  assert.equal(threads[0].comments[0].content, `<!-- sai-to-pr:inherent-risk -->\n${block}`);
+  const next = { ...request, risk_block: block.replace('ratings', 'updated ratings') };
+  assert.equal(prs.publish({ ...next, approved: true, confirmation: prs.query(next, io).confirmation, receipt: receipt() }, io).status, 'complete');
+  assert.equal(calls.length, 2); assert.equal(calls[1].method, 'PATCH'); assert.equal(calls[1].route.threadId, 20);
+  assert.equal(state.writes.length, 1, 'Comment-only update never repeats PR mutation');
+});
 function planningFixture() {
   const result = fixture();
   result.state.uniqueName = 'me@example.test';
