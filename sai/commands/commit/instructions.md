@@ -21,8 +21,12 @@ Nothing is required beyond staged changes. Optional flags in `$ARGUMENTS`:
 - `--type {type}` — force the type (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`/`perf`/`style`/`build`/`ci`/`revert`);
 - `--no-body` — subject only;
 - `--amend` — a message for `git commit --amend`.
-- `--allow-attribution` — an AI credit only when explicitly requested by the user
-  in the conversation, per `commit-rules.md` § Attribution; human credits need no flag.
+- `--allow-attribution` — the user's explicit request for an AI credit, per
+  `commit-rules.md` § Attribution; human credits need no flag. The invocation
+  starts clean, so the request counts only when the user makes it in this
+  invocation: by typing this flag in the arguments, or by asking for AI credit
+  in a reply during the run. A request made before the command was invoked does
+  not reach it.
 
 ---
 
