@@ -1,14 +1,14 @@
 ---
-description: Design a change into design.md, tasks.md, and interfaces.md — running it approves the specs; --overview-lang also writes change-overview.md. Stops before /sai-3-implement.
-argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
+description: Design a change into design.md, tasks.md, and interfaces.md with no human in the loop — running it approves the specs; --overview-lang also writes change-overview.md. Reviewed, checked, and committed locally; stops before /sai-3-implement.
+argument-hint: "[change-name] [feedback] [--overview-lang <language>]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/adapters/claude/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/design/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: design

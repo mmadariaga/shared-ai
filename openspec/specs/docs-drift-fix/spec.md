@@ -16,12 +16,12 @@ The documentation SHALL describe step-gated instruction delivery as machine-only
 
 ### Requirement: Spec And Design Declare Machine-Only Routing
 
-Spec and design coordinators, phase contracts, and workers SHALL declare exclusive step_machine routing with no static step_pointer_map table or dual map-plus-machine declaration.
+Spec and design coordinators and workers SHALL route steps exclusively through the `spec-steps@1` and `design-steps@1` machines, with no static step_pointer_map table or dual map-plus-machine declaration.
 
 #### Scenario: Coordinator routes via machine
 
 - **WHEN** a spec or design run starts and needs its next step instruction file
-- **THEN** the coordinator routes through spec-standalone@1 or design-standalone@1 STAGE_FILES and the worker executes only the coordinator-provided machine pointer
+- **THEN** the coordinator routes through spec-steps@1 or design-steps@1 STAGE_FILES and the worker executes only the coordinator-provided machine pointer
 
 ### Requirement: Design Table Removed And Consumers Migrated
 

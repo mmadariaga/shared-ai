@@ -403,54 +403,6 @@ Before every recovery attempt, the coordinator SHALL validate one coordinator-on
 - **THEN** it SHALL not mark, extend, rename, or add any progress-plan step
 - **AND** undeclared recovery identifiers SHALL not be invented
 
-### Requirement: Invocation-scoped accounting and lifecycle boundaries
-
-The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery or by a recovery-scope reset. The recovery budget SHALL belong to the active recovery scope — the Step for a Step-executing adapter, the composition segment for an adapter that executes no Steps: notices, progress events, and normal `needs_input` turns SHALL not reset it. A pre-resolution outer-envelope failure SHALL spend zero attempts and SHALL retain its pre-resolution payload shape. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter diagnosis or recovery. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
-
-#### Scenario: Changed files survive recovery
-
-- **WHEN** a worker reports paths before and during recovery
-- **THEN** the coordinator SHALL preserve their first-seen order in the final union
-- **AND** SHALL include later paths only once
-
-#### Scenario: Intervening events do not reset budget
-
-- **WHEN** notices, progress events, or normal input turns occur between failed results
-- **THEN** the coordinator SHALL retain the number of recovery attempts already spent
-- **AND** SHALL retain the same remaining budget
-
-#### Scenario: E2 cancellation bypasses diagnosis
-
-- **WHEN** a worker returns `status: cancelled` after a prior non-clean result or during a recovery continuation
-- **THEN** the coordinator SHALL stop cleanly without assigning a new diagnosis
-- **AND** SHALL spend no additional recovery attempt
-
-#### Scenario: Explore diagnosis entry for non-clean completed uses only diagnosis_rounds
-
-- **WHEN** Explore item 10 runs a Diagnosis Round after coordinator-disproved `completed` or STOP-bearing `completed`
-- **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments
-- **AND** the route does not spend a shared three-slot recovery-ledger slot or create a replacement worker
-
-#### Scenario: Fast-track does not widen non-clean completed diagnosis bounds
-
-- **WHEN** an opted-in invocation includes `--fast-track`
-- **THEN** Explore item-10 diagnosis entry for disproved or STOP-bearing `completed`, when applicable, retains the one diagnosis-round and one same-worker re-dispatch bound
-
-#### Scenario: Cancellation bypasses recovery
-
-- **WHEN** a worker returns `status: cancelled`
-- **THEN** the coordinator SHALL stop cleanly without announcing or spending a recovery attempt
-
-#### Scenario: Fast-track does not change recovery
-
-- **WHEN** an opted-in invocation includes `--fast-track`
-- **THEN** the coordinator SHALL apply the same cause-locus, zero-attempt, three-slot-ledger, and reporting rules as a normal invocation
-
-#### Scenario: A recovery-scope reset never touches the changed-files union
-
-- **WHEN** the ledger is reset on entry to a new recovery scope after earlier results reported changed paths
-- **THEN** the coordinator SHALL preserve the first-seen ordered union of those paths unchanged
-
 ### Requirement: Same-harness lifecycle parity
 
 Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical non-clean-closure diagnosis categories, cause-locus semantics, zero-attempt exceptions, recovery budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting. Neither harness SHALL dispatch a replacement worker for the recovery path, except for a corrective dispatch that the phase card declares as an exception, which SHALL be identical on both harnesses. Harness-specific binding mechanics MAY differ.
@@ -500,26 +452,6 @@ The shared three-slot recovery budget SHALL be represented as three mutually dis
 - **WHEN** two closures identify the same normalized artifact path, concrete point, and authorized correction boundary but carry different Cause Locus values — the first unresolved and the later `in-scope`
 - **THEN** the coordinator SHALL derive equal `diagnosis_key` tuples
 - **AND** the later closure SHALL stop as a duplicate and SHALL not consume a second slot for the unchanged concrete cause
-
-### Requirement: Explore Auto cancellation exception is named and one-shot
-
-The shared bounded-recovery contract SHALL name selector-dispatched Explore Auto item 10 as the sole exception to the default clean-cancellation prohibition. In that route only, a post-resolution supervised phase-worker `cancelled` result MAY enter the Explore Diagnosis Round, using a phase-keyed conversation-only `diagnosis_rounds` counter, with at most one read-only diagnosis and at most one same-worker re-dispatch. It SHALL never use a replacement worker and SHALL not make cancellation recoverable for standalone spec or design adapters, Build, the manual item-9 review loop, adapters without the named Explore route, or outer user cancellation.
-
-#### Scenario: Explore Auto cancellation is diagnosable after Auto authorization
-
-- **WHEN** the user has selected `Auto`, item 10 supervision is active, and its resolved phase worker returns `cancelled`
-- **THEN** the route permits the named Explore Diagnosis Round when that phase counter is unused
-- **AND** it may forward one actionable diagnosis to the same worker without treating the result as a new user cancellation decision
-
-#### Scenario: ordinary cancellation remains a clean stop
-
-- **WHEN** a standalone adapter, Build, the manual review loop, or an outer user action returns or produces `cancelled`
-- **THEN** the result enters no diagnosis or recovery route and consumes no recovery budget
-
-#### Scenario: Explore continuation loss is terminal and retryable
-
-- **WHEN** an Explore Diagnosis Round establishes an actionable correction but same-worker continuation cannot be delivered
-- **THEN** the route records `continuation/transport loss`, consumes the diagnosis round, dispatches no replacement worker, and leaves the change retryable
 
 ### Requirement: Downstream relaunch after owner correction
 
@@ -710,30 +642,6 @@ An automatic correction SHALL be eligible only while the resilience rule answers
 - **WHEN** any invariant is unknown or false
 - **THEN** the affected work stops without automatic correction and without a new authorization
 
-### Requirement: Runtime repair consumes the shared diagnosis allowance
-
-An attempt SHALL be charged on the route's existing counter immediately before it is sent, and each route SHALL keep one budget per scope shared between the two recovery paths. Plan - Unattended SHALL charge the active phase's `diagnosis_rounds.spec` or `diagnosis_rounds.design`, which allows one diagnosis round per phase; the Explore Diagnosis Round and its Bounded Recovery continuation SHALL form that one round, charged once. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), which allows three attempts per failed step; a step's attempts SHALL never draw on another step's key. A route diagnosis or Bounded Recovery continuation in a step SHALL be an attempt on that step's key.
-
-#### Scenario: A Plan phase uses its existing allowance
-
-- **WHEN** an attempt is selected for a Plan - Unattended spec or design worker
-- **THEN** the attempt is charged once on that phase's existing counter as its one diagnosis round rather than on a second recovery budget
-
-#### Scenario: A Direct Build implementer uses one slice allowance
-
-- **WHEN** an attempt is selected for a Direct Build implementer during Step 1, Step 2, or Step 2b
-- **THEN** the attempt is charged on the failed step's own key with three attempts for that step, rather than on one counter shared by the implementer's steps
-
-#### Scenario: A spent allowance cannot stack
-
-- **WHEN** progress, a question answer, a continuation, a review round, a transport retry, a replacement, a step transition, a delivery failure, or a repeated error follows a charged attempt
-- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the budget of that phase or step
-
-#### Scenario: The review close uses one correction
-
-- **WHEN** the command catalog is read for a Direct Build close of `/sai-5-review` or `/sai-review`
-- **THEN** no such close exists: `/sai-deep-review` runs its fix through an `/sai-3-implement` segment, so no close attempt is selected and no fix-loop round is added
-
 ### Requirement: Runtime repair uses worker-compatible continuations
 
 A correction SHALL reach a worker only through a continuation form that worker's contract already accepts. Plan - Unattended spec and design workers SHALL use the existing `continue_after_recovery` record, the Direct Build implementer SHALL use its verification-note contract, and every other worker SHALL use its ordinary fresh-result request or its route-defined correction feedback. Repair content SHALL be input to the worker, never a new result shape or execute order. A Direct Build execute order that failed SHALL be issued again only after the no-effect check verifies that it changed nothing, and an order whose mutation completed or whose state is partial or unknown SHALL never be issued again.
@@ -813,3 +721,51 @@ The `recovery-ledger@1` stage machine SHALL track a worker `unrecoverable: true`
 - **WHEN** an accepted override has lifted Step 1's veto and a second override for Step 1 arrives before any new veto
 - **THEN** the machine SHALL reject the second override with `no active veto`
 - **AND** a later `veto` event for Step 1 SHALL make a veto active again that only a new accepted override lifts
+
+### Requirement: Invocation-scoped recovery accounting and lifecycle boundaries
+
+The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery or by a recovery-scope reset. The recovery budget SHALL belong to the active recovery scope — the Step for a Step-executing adapter, the composition segment for an adapter that executes no Steps: notices, progress events, and normal `needs_input` turns SHALL not reset it. A pre-resolution outer-envelope failure SHALL spend zero attempts and SHALL retain its pre-resolution payload shape. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter diagnosis or recovery, on every adapter and route. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
+
+#### Scenario: Changed files survive recovery
+
+- **WHEN** a worker reports paths before and during recovery
+- **THEN** the coordinator SHALL preserve their first-seen order in the final union and SHALL include later paths only once
+
+#### Scenario: Intervening events do not reset budget
+
+- **WHEN** notices, progress events, or normal input turns occur between failed results
+- **THEN** the coordinator SHALL retain the number of recovery attempts already spent and the same remaining budget
+
+#### Scenario: Cancellation bypasses diagnosis and recovery
+
+- **WHEN** a worker returns `status: cancelled`, including after a prior non-clean result or during a recovery continuation
+- **THEN** the coordinator SHALL stop cleanly without assigning a new diagnosis and without announcing or spending a recovery attempt
+
+#### Scenario: Fast-track does not change recovery
+
+- **WHEN** an opted-in invocation includes `--fast-track`
+- **THEN** the coordinator SHALL apply the same cause-locus, zero-attempt, three-slot-ledger, and reporting rules as a normal invocation
+
+#### Scenario: A recovery-scope reset never touches the changed-files union
+
+- **WHEN** the ledger is reset on entry to a new recovery scope after earlier results reported changed paths
+- **THEN** the coordinator SHALL preserve the first-seen ordered union of those paths unchanged
+
+### Requirement: Runtime repair consumes the Direct Build step allowance
+
+An attempt SHALL be charged on the route's existing counter immediately before it is sent, and the route SHALL keep one budget per scope shared between the two recovery paths. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), which allows three attempts per failed step; a step's attempts SHALL never draw on another step's key. A route diagnosis or Bounded Recovery continuation in a step SHALL be an attempt on that step's key. Plan - Unattended SHALL charge no explore counter: it follows `/sai-plan`, whose coordinator keeps its own budget of three attempts per obstacle.
+
+#### Scenario: A Direct Build implementer uses one slice allowance
+
+- **WHEN** an attempt is selected for a Direct Build implementer during Step 1, Step 2, or Step 2b
+- **THEN** the attempt is charged on the failed step's own key with three attempts for that step, rather than on one counter shared by the implementer's steps
+
+#### Scenario: A spent allowance cannot stack
+
+- **WHEN** progress, a question answer, a continuation, a review round, a transport retry, a replacement, a step transition, a delivery failure, or a repeated error follows a charged attempt
+- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the budget of that step
+
+#### Scenario: The Plan route keeps no explore diagnosis counter
+
+- **WHEN** a segment of the `/sai-plan` run followed by the Plan route meets an obstacle
+- **THEN** the plan coordinator charges its own per-obstacle attempt budget and explore charges no `diagnosis_rounds` key

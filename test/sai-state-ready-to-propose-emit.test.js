@@ -273,7 +273,7 @@ test('stored file verification reports unreadable input without substituting con
 
 test('both harness routes and all three consuming workers use file/hash references', () => {
   const read = name => fs.readFileSync(path.join(REPO_ROOT, name), 'utf8');
-  for (const name of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/spec/worker.md']) {
+  for (const name of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/spec/coordinator.md']) {
     assert.match(read(name), /--block-file/);
     assert.match(read(name), /--block-hash/);
     assert.match(read(name), /Stored block transport/);
@@ -535,11 +535,10 @@ test('block emit: usage errors exit 2 (other machine, missing marker, combined f
   try {
     const valid = block('usage-change');
     assert.equal(blockEmit(id, valid, 'explore-idea@1').exitCode, 2);
-    assert.equal(blockEmit(id, valid, 'design-standalone@1').exitCode, 2);
+    assert.equal(blockEmit(id, valid, 'design-steps@1').exitCode, 2);
     assert.equal(runCli(['emit', id, MACHINE, '--ready-to-propose'], valid).exitCode, 2);
     assert.equal(runCli(['emit', id, MACHINE, '--ready-to-propose', '-', 'extra'], valid).exitCode, 2);
     assert.equal(blockEmit(id, valid, MACHINE, ['--progress']).exitCode, 2);
-    assert.equal(blockEmit(id, valid, MACHINE, ['--with-overview', 'true']).exitCode, 2);
     assert.equal(readSet(id), null);
   } finally {
     cleanup(id);

@@ -1,8 +1,7 @@
 # Unattended Runtime Recovery
 
 This policy is the single source of the unattended **resilience rule**. It
-applies only to the unattended lanes: Explore's selected **Plan - Unattended**
-and **Direct Build - Unattended** routes, after task disclosure. The Direct Build
+applies only to Explore's selected **Direct Build - Unattended** route, after task disclosure. The Direct Build
 `--no-specs` POC profile does not use it: a POC failure is the experiment's
 observation, and correcting it automatically could hide the result. It changes
 no attended command or other route.
@@ -134,14 +133,12 @@ authored (a non-agreed part of the block, the envelope, or continuation text),
 the coordinator corrects that input and re-dispatches. This counts as an
 attempt.
 
-**Worker continuation forms.** `continue_after_recovery` for the spec and
-design workers (`Reported`, `Evidence`, `Cause`, `Correction`,
-`Verification`), the same-worker verification note for
+**Worker continuation forms.** The same-worker verification note for
 `sai-direct-build-worker`, and the worker's ordinary fresh-result request or
 its route-defined correction feedback elsewhere. Repair content is input to
 the worker, not a new result shape or execute order.
 
-**Log.** Record every attempt for the autonomy audit
+**Log.** Record every attempt for the corrections entries of the terminal report
 (`@sai/policies/autonomy-audit-log.md`): what failed, which path took it, what
 was corrected, and why it stays within the authorization.
 
@@ -190,30 +187,24 @@ An order that succeeded is consumed and is never issued again.
 
 ## Attempts
 
-Each route keeps one budget per scope, shared between the two recovery paths:
-one diagnosis round per Plan phase, and three attempts per failed Direct Build
-step. Count them on the counter the route already keeps in conversation state.
+The route keeps one budget per scope, shared between the two recovery paths:
+three attempts per failed Direct Build step. Count them on the counter the route already keeps in conversation state.
 Charge the route's existing counter immediately before sending the attempt. A
 delivery failure, repeated error, or malformed result does not refund or reset
 the charge:
 
-- **Plan - Unattended:** `diagnosis_rounds.spec` or `diagnosis_rounds.design`
-  for the active phase, which allows one diagnosis round per phase. The
-  Explore Diagnosis Round and its **Bounded Recovery** continuation form that
-  one round, charged once on this counter.
 - **Direct Build - Unattended:** `diagnosis_rounds.direct_build`, keyed by the
   failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`),
   which allows three attempts per failed step. A route diagnosis or
   **Bounded Recovery** continuation in a step is an attempt on its key; a
   step's attempts never draw on another step's key.
 
-Stop (§ Stop condition) when the Plan phase's diagnosis round is used with the
-step still failing, when a Direct Build step's counter reaches three with that
+Stop (§ Stop condition) when a Direct Build step's counter reaches three with that
 step still failing, or when the budget agent returns the diagnosis the
 previous attempt already returned.
 
 Reset these counters only where the existing route resets its diagnosis state
-for a new Plan attempt or a new Direct Build slice. Progress, a question
+for a new Direct Build slice. Progress, a question
 answer, a continuation, a review/fix round, a transport retry, a replacement,
 and a Direct Build step transition leave them as they are.
 
@@ -256,12 +247,11 @@ blocked the correction (agreed content, authorization, slice paths,
 available information, planned process, execute-order state, or attempts);
 and what the user must decide,
 presented as the stop options of `@sai/policies/stop-options.md`. Lanes
- reference this notice and do not restate it. A stopped Plan slice still
- requires a fresh route picker answer. For a pending Direct Build execution in
+ reference this notice and do not restate it. For a pending Direct Build execution in
  the same conversation, use `sai/commands/explore/steps/route-selector.md`'s
  pending-execution decision and the retained state in `pipeline-direct-build.md`;
  resumption preserves these attempts and execute-order checks.
 
-Keep the Plan approval/review stop and Direct Build's selected-scope, validated
+Keep Direct Build's selected-scope, validated
 execution-order, and one-local-commit gates unchanged. Obtain any existing
 confirmation before its action; this policy grants no new authorization.

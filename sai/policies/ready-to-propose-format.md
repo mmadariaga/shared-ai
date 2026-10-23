@@ -70,7 +70,7 @@ One contract makes a block valid for every route that consumes it — Plan - Una
 
 Plan - Unattended and Direct Build - Unattended dispatch a block only from the `sai-state` store. In Claude Code and opencode, run `sai-state block <id> <change-name> --export --harness <claude|opencode>` and send the returned `block_file` and `hash` together as `--block-file <absolute path>` and `--block-hash <sha256>` envelope lines. The tool writes the stored text directly into a private transfer file under the active harness temp root; no model copies its content into a message or heredoc.
 
-Every receiving worker, including direct implementation, backfill prepare, and supervised specification, verifies before dependent work:
+Every receiving worker or coordinator, including direct implementation, backfill prepare, and the spec coordinator, verifies before dependent work:
 
 1. Require both envelope lines. Resolve `ready-to-propose.js` per `@sai/policies/tool-resolution.md` and run `node <tool-path> verify-file --block-file <path> --block-hash <hash>`.
 2. On a missing, unreadable, unsafe, or mismatched file, return `failed` with no changes, naming the problem. Never reconstruct or repair the block from chat. Read the verified file as the sole block input only after success.

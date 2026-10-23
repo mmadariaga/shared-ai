@@ -100,7 +100,7 @@ test('round 3 carries the overview question as a conditional question resolved o
   assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?`--fast-track`/);
   assert.match(overview, /first match wins and no overview question joins the round/);
   assert.match(overview, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/);
-  assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and `pipeline-plan-unattended\.md` asks gate 9 on its own before the spec worker is dispatched/);
+  assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and the fallback ask below asks gate 9 on its own before the plan coordinator is followed/);
   assert.match(overview, /resolved once per set/);
   assert.match(overview, /Direct Build and Manual never generate a change overview, and no overview question runs at block emission/);
 });

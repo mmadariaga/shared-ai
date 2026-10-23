@@ -1,6 +1,6 @@
 # Design Step — Tasks
 
-Active step: tasks. Resolve all Open Questions, then write `tasks.md`, and report the `tasks` progress event per the worker contract.
+Active step: tasks. Resolve all Open Questions, then write `tasks.md`, and report the `tasks` step.
 
 ## Open Questions gate
 
@@ -9,11 +9,11 @@ After writing `design.md`, review the **Open Questions** section.
 For each question:
    1. **Delegate** it to a **`budget-explorer`** subagent with a precise search prompt. Do NOT search yourself.
    2. If the subagent returns a clear answer from the codebase, incorporate it into `design.md` and remove the question.
-   3. If the subagent reports it cannot find the answer (not found, ambiguous, or out of scope), present the question to the user.
+   3. If the subagent reports it cannot find the answer (not found, ambiguous, or out of scope), report `needs_input` for the question.
 
-The presentation SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (the unresolved Open Question), why it matters (no `tasks.md` step that depends on it can be planned until it is resolved), the essential state context (the change `{resolved_change_name}`, the question as recorded in `design.md` `## Open Questions`, and why research could not answer it), and plain-language options where a closed choice applies — in plain wording, without bare artifact references.
+The question states what is being decided (the unresolved Open Question), why it matters (no `tasks.md` step that depends on it can be planned until it is resolved), the essential state context (the change `{resolved_change_name}`, the question as recorded in `design.md` `## Open Questions`, and why research could not answer it), and plain-language options where a closed choice applies — in plain wording, without bare artifact references.
 
-Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or resolved by the user. Incorporate all answers into `design.md` before continuing.
+Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or answered by the coordinator. Incorporate all answers into `design.md` before continuing.
 
 A real follow-up is not an Open Question and does not block `tasks.md` generation: it is recorded in `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y". Conversely, a genuine unresolved unknown the design cannot proceed without is an Open Question and passes through this blocking gate.
 
@@ -108,6 +108,6 @@ After all implementation steps, end the file with these two mandatory sections i
 
    **Precedence.** Where a learnings entry and fresh research disagree about the same repo-level artifact, prefer what you observe in the current codebase: the learnings entry records what was true when it was written.
 
-   **Contradiction notice.** When you prefer a freshly-researched value over a `SAI_LEARNINGS.md` entry concerning the same repo-level artifact, surface the disagreement to the user as a printed notice naming the entry's key, the recorded value, and the researched value. Print nothing when there is no such disagreement. The notice is **printed output only**: `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this rule grants it no write authority over that file — it remains writable only by the `/sai-3-implement` coordinator's learnings promotion at run close. The notice exists because supersede-by-key alone cannot reach a class of stale entries: promotion fires only from a deviation, a deviation is an execution failure, and a correct value in `## Implementation Context` is precisely what prevents that failure — so an entry corrected at design time may never be re-observed at apply time. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
+   **Contradiction notice.** When you prefer a freshly-researched value over a `SAI_LEARNINGS.md` entry concerning the same repo-level artifact, surface the disagreement as a notice in `notes` naming the entry's key, the recorded value, and the researched value; the coordinator prints it in its closing report. Report nothing when there is no such disagreement. The notice is **report output only**: `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this rule grants it no write authority over that file — it remains writable only by the `/sai-3-implement` coordinator's learnings promotion at run close. The notice exists because supersede-by-key alone cannot reach a class of stale entries: promotion fires only from a deviation, a deviation is an execution failure, and a correct value in `## Implementation Context` is precisely what prevents that failure — so an entry corrected at design time may never be re-observed at apply time. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
 
 Both sections are mandatory. They must contain real content derived from research, not placeholder text.

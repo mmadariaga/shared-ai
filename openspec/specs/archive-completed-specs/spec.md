@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change retire-stale-specs. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: archive-rename-instructions-files
 
 The spec at `openspec/specs/rename-instructions-files/` SHALL be moved to an archive location (e.g., `openspec/specs/_archived/rename-instructions-files/`) because its described work — renaming `plan.md→implement.md` and `implement.md→apply.md` in `sai/instructions/` — is already reflected in the current file layout (no `plan.md` exists; `implement.md` and `apply.md` are both present).
@@ -35,13 +37,12 @@ The spec at `openspec/specs/opencode-model-resolution/` SHALL be archived becaus
 
 ### Requirement: archive-sai-1-override-merge
 
-The spec at `openspec/specs/sai-1-override-merge/` SHALL be archived because the scope restriction override it proposed has already been added to `sai/policies/spec-phase-contract.md` as a SpecWriteSurface.
+The spec at `openspec/specs/sai-1-override-merge/` SHALL be archived because the scope restriction override it proposed is already part of the spec phase's write surface.
 
 #### Scenario: spec is archived
 
 - **WHEN** the implementation runs
-- **THEN** `openspec/specs/sai-1-override-merge/` no longer appears in the active spec tree
-- **THEN** its contents are preserved at `openspec/specs/_archived/sai-1-override-merge/`
+- **THEN** `openspec/specs/sai-1-override-merge/` no longer appears in the active spec tree and its contents are preserved at `openspec/specs/_archived/sai-1-override-merge/`
 
 ### Requirement: archive-directory-exists
 
@@ -51,4 +52,3 @@ An `openspec/specs/_archived/` directory SHALL exist after the implementation; i
 
 - **WHEN** the first spec is archived and `openspec/specs/_archived/` does not yet exist
 - **THEN** the directory is created before the spec is moved into it
-

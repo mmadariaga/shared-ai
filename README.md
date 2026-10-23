@@ -112,7 +112,7 @@ Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks 
 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
-| **Plan - Unattended** | The change needs careful design and you want to approve the plan before coding. More rigorous, but uses more tokens. | Prepares and reviews specs and design, then stops for your feedback. Run `/sai-build` when ready. |
+| **Plan - Unattended** | The change needs careful design and you want to approve the plan before coding. More rigorous, but uses more tokens. | Runs [`/sai-plan`](docs/commands/sai-plan.md): prepares, checks, reviews, and commits specs and design, then stops for your feedback. Run `/sai-build` when ready. |
 | **Direct Build - Unattended** | The change is small and clear, such as a focused fix. Less planning overhead. | Implements and reviews the change, reconstructs specs, archives it, and makes one local commit. No push. |
 | **Manual** | You want to review and control each phase separately. More interaction. | Gives you the `Ready to Propose` block for `/sai-1-spec` in a new chat. Follow the [numbered pipeline](docs/sequential-pipeline.md). |
 
@@ -126,6 +126,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
+| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design | `proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`, and one local commit per segment |
 | [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings you select | Reports and, if you select fixes, one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |

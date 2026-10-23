@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const specMachine = require('../sai-state/machines/spec-standalone.js');
+const specMachine = require('../sai-state/machines/spec-steps.js');
+const designMachine = require('../sai-state/machines/design-steps.js');
 const securityMachine = require('../sai-state/machines/security-standalone.js');
 const performanceMachine = require('../sai-state/machines/performance-standalone.js');
 const accessibilityMachine = require('../sai-state/machines/accessibility-standalone.js');
@@ -15,7 +16,8 @@ const reviewMachine = require('../sai-state/machines/review-steps.js');
 const registry = require('../sai-state/registry.js');
 
 const machines = [
-  { name: 'spec-standalone@1', machine: specMachine },
+  { name: 'spec-steps@1', machine: specMachine },
+  { name: 'design-steps@1', machine: designMachine },
   { name: 'security-standalone@1', machine: securityMachine },
   { name: 'performance-standalone@1', machine: performanceMachine },
   { name: 'accessibility-standalone@1', machine: accessibilityMachine },
