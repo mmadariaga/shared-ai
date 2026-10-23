@@ -104,3 +104,17 @@ When a run closes `completed`, the coordinator SHALL remove its run directory wi
 
 - **WHEN** the removal of a completed run's directory fails
 - **THEN** the closing report names the run directory left at its path and the run does not fail
+
+### Requirement: Shared run core
+
+The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`, which SHALL export `createRunMachine`. The core SHALL own the attempt budget of 3 per obstacle, the stages `idle`, `running`, `escalated`, `completed`, and `stopped`, the identifiers-only state (the run directory, the open escalation, the attempts per obstacle, and the path lists named by the machine's reference kinds), and the events `start`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. A machine built on the core SHALL supply only its machine id, its next-step hint, its reference kinds, its extra state fields, a handler for the events the core does not own, and an optional close hook. `implement-run@1` SHALL be built on the core, adding the `step` and `committed` state fields, the `step-start` and `step-done` events, and clearing the current step at close, and SHALL keep its id, events, rejections, and emit responses unchanged.
+
+#### Scenario: Implement events outside the core reach the implement machine
+
+- **WHEN** the coordinator emits `step-done` for a step to a running `implement-run@1` run
+- **THEN** the core passes the event to the implement handler, which adds the step to `committed` once and clears the current step when it matches.
+
+#### Scenario: Close clears the current step through the hook
+
+- **WHEN** the coordinator emits `close` with outcome `completed` while a step is current
+- **THEN** the core sets the stage to `completed` and the implement close hook clears the current step.
