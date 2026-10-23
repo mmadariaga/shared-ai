@@ -107,6 +107,26 @@ function publish(t, fixture) {
   const file = receipt(t);
   return { result: github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io), file };
 }
+test('published GitHub set updates only changed content without creations, membership or relation mutations', t => {
+  const f = fake({ native: true }), published = publish(t, f);
+  assert.equal(published.result.status, 'complete');
+  const request = { origin: f.state.issues[0].url, title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  assert.equal(github['query-set-update'](request, f.io).status, 'no_changes');
+  request.blocks = request.blocks.replace('**What**: None', '**What**: refined child');
+  const ready = github['query-set-update'](request, f.io);
+  assert.equal(ready.status, 'ready');
+  const start = f.state.calls.length, file = receipt(t);
+  const result = github['update-set']({ ...request, confirmation: ready.confirmation, receipt: file }, f.io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.deepEqual(result.updated.map(item => item.number), [2]);
+  assert.equal(f.state.issues.length, 3);
+  const writes = f.state.calls.slice(start).filter(call => call.input && JSON.parse(call.input).query?.startsWith('mutation'));
+  assert.equal(writes.length, 1);
+  assert.match(JSON.parse(writes[0].input).query, /updateIssue/);
+  assert.deepEqual(result.correspondence, published.result.correspondence);
+  assert.equal(github['recover-set-update']({ receipt: file }, f.io).status, 'complete');
+});
+
 test('dependency validator separates singleton and complete sets, format, duplicate, self, absent and cycles', () => {
   assert.equal(detector.checkStrict(block('dependent', 'blocker')).ok, true);
   for (const deps of ['blocker blocker', 'blocker,', 'blocker; second', 'blocker, blocker', 'dependent']) assert.equal(detector.checkStrict(block('dependent', deps)).ok, false, deps);
@@ -749,6 +769,30 @@ for (const native of [false, true]) test(`an origin that is a published child ta
     assert.deepEqual(imported.sources.map(row => row.role), ['selected', 'parent-context', 'child']);
     assert.equal(imported.item.parent, parent);
   }
+  const descendant = JSON.stringify(fixture.state.issues[3]);
+  const relationships = JSON.stringify([...fixture.state.parents]);
+  const dependencies = JSON.stringify([...fixture.state.blockers]);
+  const members = [...fixture.state.members];
+  const updateRequest = { origin: parent, title: fixture.request.title, description: fixture.request.description,
+    blocks: block('dependent', 'blocker') + '\n' + block('blocker').replace('**What**: None', '**What**: Refined upper slice') };
+  const prepared = github['query-set-update'](updateRequest, fixture.io);
+  assert.equal(prepared.status, 'ready', JSON.stringify(prepared));
+  const start = fixture.state.calls.length;
+  const updated = github['update-set']({ ...updateRequest, confirmation: prepared.confirmation, receipt: receipt(t) }, fixture.io);
+  assert.equal(updated.status, 'complete', JSON.stringify(updated));
+  assert.deepEqual(updated.updated.map(item => item.url), [origin.url]);
+  assert.deepEqual(identity.decode(origin.body), marker);
+  assert.ok(origin.body.includes('Refined upper slice'));
+  assert.ok(origin.body.includes(`Child: sub-one — ${fixture.state.issues[3].url}`));
+  assert.ok(origin.body.includes(`Parent: ${parent}`));
+  assert.equal(JSON.stringify(fixture.state.issues[3]), descendant);
+  assert.equal(JSON.stringify([...fixture.state.parents]), relationships);
+  assert.equal(JSON.stringify([...fixture.state.blockers]), dependencies);
+  assert.deepEqual([...fixture.state.members], members);
+  const mutations = fixture.state.calls.slice(start).filter(call => call.input && JSON.parse(call.input).query?.startsWith('mutation'));
+  assert.equal(mutations.length, 1);
+  assert.match(JSON.parse(mutations[0].input).query, /updateIssue/);
+  assert.equal(fixture.state.issues.length, 4);
 });
 test('origin transport replaces the adopted origin in slice blocks with the child URL and refuses other origins', t => {
   const fixture = fake(), origin = withOrigin(fixture);

@@ -17,6 +17,15 @@ selected invocation-scoped type applies to every item, with project rules
 enabled. See [Backlog workflows](../backlog.md#import-an-item) for dependency
 validation and partial-result recovery.
 
+An imported already-published slice set can be refined and updated in place.
+One confirmation covers the exact parent and child content; only issues with
+differences are written. Change names, child identities, and dependency edges
+must stay unchanged (block order may change). Added, removed, renamed, missing,
+or ambiguous children block the entire update. Remote edits require refreshed
+comparison and approval. Partial results retain a private recovery record so
+completed updates are not repeated. This content-only lane changes no issue
+state, assignment, comments, Project membership, or relationships.
+
 ## Inputs and flags
 
 Invoke `/to-backlog` in the conversation containing the work to capture. There

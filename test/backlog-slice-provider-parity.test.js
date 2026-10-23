@@ -64,6 +64,7 @@ function fixture(platform) {
       const row = show(Number(/issues\/(\d+)/.exec(endpoint)[1]));
       if (method === 'PUT') {
         const body = JSON.parse(input); state.writes.push({ method, body });
+        if (body.title !== undefined) row.title = body.title;
         if (body.description !== undefined) row.description = state.normalize ? state.normalize(body.description) : body.description;
         if (body.assignee_ids) row.assignees = body.assignee_ids.map(id => ({ id }));
         row.updated_at += '+';
@@ -126,6 +127,34 @@ function publish(t, fixture) {
   return { file, ready, result: fixture.adapter['publish-set']({ ...fixture.request, receipt: file, confirmation: ready.confirmation }, fixture.io) };
 }
 for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: published set content update preserves correspondence and writes only differences`, t => {
+    const f = fixture(platform), published = publish(t, f);
+    assert.equal(published.result.status, 'complete');
+    const marker = published.result.correspondence;
+    const request = { origin: f.url(1), title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+    const original = JSON.stringify(f.state.rows);
+    assert.equal(f.adapter['query-set-update'](request, f.io).status, 'no_changes');
+    assert.equal(JSON.stringify(f.state.rows), original);
+    request.title = 'Refined objective';
+    const ready = f.adapter['query-set-update'](request, f.io);
+    assert.equal(ready.status, 'ready', JSON.stringify(ready));
+    assert.equal(ready.proposal.items.filter(item => item.changed).length, 1);
+    const before = f.state.writes.length;
+    const file = published.file + '.update';
+    const result = f.adapter['update-set']({ ...request, confirmation: ready.confirmation, receipt: file }, f.io);
+    assert.equal(result.status, 'complete', JSON.stringify(result));
+    assert.equal(f.state.writes.length, before + 1);
+    assert.equal(f.state.rows.length, 3);
+    assert.deepEqual(result.updated.map(item => item.url), [f.url(1)]);
+    assert.deepEqual(result.correspondence, marker);
+    assert.equal(f.adapter['recover-set-update']({ receipt: file }, f.io).status, 'complete');
+    request.blocks = block('renamed') + '\n' + block('dependent', 'renamed');
+    const blocked = f.adapter['query-set-update'](request, f.io);
+    assert.equal(blocked.reason, 'composition-changed');
+    assert.deepEqual(blocked.added, ['renamed']);
+    assert.deepEqual(blocked.removed, ['blocker']);
+    assert.equal(f.state.writes.length, before + 1);
+  });
   test(`${platform}: one automatic retry is durable across relationship failures`, t => {
     const f = fixture(platform); f.state.failRelation = true;
     const { file, result } = publish(t, f);
@@ -655,5 +684,25 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(imported.status, 'complete', imported.message);
     assert.deepEqual(imported.sources.map(source => source.role), ['selected', 'parent-context', 'child']);
     assert.equal(imported.item.parent, parent);
+    const descendant = JSON.stringify(f.state.rows[3]);
+    const relationships = JSON.stringify(f.state.rows.map(row => row.relations));
+    const blockers = JSON.stringify([...f.state.blockers]);
+    const updateRequest = { origin: parent, title: f.request.title, description: f.request.description,
+      blocks: block('dependent', 'blocker') + '\n' + block('blocker').replace('**What**: None', '**What**: Refined upper slice') };
+    const prepared = f.adapter['query-set-update'](updateRequest, f.io);
+    assert.equal(prepared.status, 'ready', JSON.stringify(prepared));
+    const before = f.state.writes.length;
+    const updated = f.adapter['update-set']({ ...updateRequest, confirmation: prepared.confirmation, receipt: path.join(directory, 'update.json') }, f.io);
+    assert.equal(updated.status, 'complete', JSON.stringify(updated));
+    assert.deepEqual(updated.updated.map(item => item.url), [url]);
+    assert.deepEqual(identity.decode(text(f, row)), marker);
+    assert.ok(text(f, row).includes('Refined upper slice'));
+    assert.ok(text(f, row).includes(`Child: sub-one — ${f.url(4)}`));
+    assert.ok(text(f, row).includes(`Parent: ${parent}`));
+    assert.equal(JSON.stringify(f.state.rows[3]), descendant);
+    assert.equal(JSON.stringify(f.state.rows.map(row => row.relations)), relationships);
+    assert.equal(JSON.stringify([...f.state.blockers]), blockers);
+    assert.equal(f.state.rows.length, 4);
+    assert.equal(f.state.writes.length, before + 1);
   });
 }

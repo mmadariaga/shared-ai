@@ -245,3 +245,4 @@ const assignment = require('./backlog-provider-assignment').bind('gitlab', {
   }
 });
 module.exports = { resolve, query, publish, recover, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate, ...set, ...assignment };
+Object.assign(module.exports, require('./backlog-set-update').bind('gitlab', () => module.exports));
