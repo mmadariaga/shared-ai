@@ -278,8 +278,6 @@ test('the incident line is pinned in the guard policy, not restated in cards', (
 
 test('every coordinator card that dispatches a routed worker carries the guard policy', () => {
   const cards = [
-    'sai/commands/spec/coordinator.md',
-    'sai/commands/design/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
@@ -296,9 +294,12 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     assert.ok(body.includes('snapshot') && body.includes('verify'), `${card} must pair snapshot and verify`);
     assert.ok(!body.includes('autonomy-audit-log'), `${card} must not restate the guard's incident line`);
   }
-  // The implement, review, and build coordinators run outside the shared
-  // orchestration: they own their local commits and carry no guard window.
-  for (const card of ['sai/commands/implement/coordinator.md', 'sai/commands/review/coordinator.md', 'sai/commands/build/coordinator.md']) {
+  // The implement, review, build, and plan-family coordinators run outside the
+  // shared orchestration: they own their local commits and carry no guard window.
+  for (const card of [
+    'sai/commands/implement/coordinator.md', 'sai/commands/review/coordinator.md', 'sai/commands/build/coordinator.md',
+    'sai/commands/spec/coordinator.md', 'sai/commands/design/coordinator.md', 'sai/commands/plan/coordinator.md',
+  ]) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
     assert.ok(!body.includes('@sai/policies/no-commit-guard.md'), `${card} runs outside the shared guard windows`);
   }

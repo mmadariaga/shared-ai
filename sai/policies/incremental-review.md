@@ -1,6 +1,6 @@
 # Incremental Review
 
-The pass rules of the two coordinator review-fix loops: the step review of `/sai-3-implement` and the functional fix loop of Direct Build (Step 2 of `sai/commands/explore/steps/pipeline-direct-build.md`). `/sai-4-review`, the Direct Build suite-gate rounds (Step 2b), and every other review loop keep their own behavior and do not load this file.
+The pass rules of the coordinator review-fix loops: the step review of `/sai-3-implement`, the functional fix loop of Direct Build (Step 2 of `sai/commands/explore/steps/pipeline-direct-build.md`), and the artifact review rounds of the `/sai-1-spec` and `/sai-2-design` segments (`sai/commands/plan/cycle.md`), which review the segment's artifact paths instead of a diff. `/sai-4-review`, the Direct Build suite-gate rounds (Step 2b), and every other review loop keep their own behavior and do not load this file.
 
 Fetch @sai/policies/tool-resolution.md
 

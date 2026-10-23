@@ -21,14 +21,17 @@ const commands = [
   ['sai-deep-review.md', 'deep-review'],
   ['sai-explore.md', 'explore'],
   ['sai-merge.md', 'merge'],
+  ['sai-plan.md', 'plan'],
   ['sai-retire-docs.md', 'retire-docs'],
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-// The implement, review, and build commands run outside the shared
+// The implement, review, build, and plan-family commands run outside the shared
 // orchestration: their wrappers fetch the harness skill and the coordinator card
 // directly, with no boot adapter and no command bootstrap.
-const DIRECT_COORDINATOR = new Set(['sai-3-implement.md', 'sai-4-review.md', 'sai-build.md']);
+const DIRECT_COORDINATOR = new Set([
+  'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
+]);
 const bootCommands = commands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
 const emptyBootstraps = new Set(['explore', 'retire-docs', 'status', 'worktree']);
 const loadFreeBootstraps = new Set([...emptyBootstraps, 'deep-review']);
@@ -45,13 +48,6 @@ const CONTEXT_PRESERVING = new Set(['sai-context-cache-ttl-benchmark.md']);
 const wrapperCommands = activeWrapperCommands('claude').filter(([file]) => !CONTEXT_PRESERVING.has(file));
 const bootWrapperCommands = wrapperCommands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
 const movedDirectives = {
-  spec: [
-    'Fetch @skills/safe-operations/SKILL.md and use it.',
-    'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',
-  ],
-  design: [
-    'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
-  ],
   security: [
     'Fetch @sai/orchestration/workers/bindings/security-worker.md and use it.',
   ],
@@ -127,14 +123,14 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 14 harness-neutral command bootstraps exist and budget has none', () => {
+test('exactly 12 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of bootCommands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
-  assert.equal(actual.length, 14);
+  assert.equal(actual.length, 12);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
 });
 
@@ -324,6 +320,9 @@ test('change and status pickers use only arguments_value and preserve the empty-
 });
 
 const DIRECT_COORDINATOR_COORDINATOR = {
+  'sai-1-spec.md': 'Fetch @sai/commands/spec/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-2-design.md': 'Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-plan.md': 'Fetch @sai/commands/plan/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-3-implement.md': 'Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-4-review.md': 'Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-build.md': 'Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
@@ -364,7 +363,7 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
   }
 });
 
-test('final wrappers: both sai-explore wrappers keep idea-list-render while the Plan route owns both workers', () => {
+test('final wrappers: both sai-explore wrappers keep idea-list-render while the Plan route follows the plan coordinator', () => {
   const claudeExplore = read('commands/claude/sai-explore.md');
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
@@ -372,8 +371,8 @@ test('final wrappers: both sai-explore wrappers keep idea-list-render while the 
   const exploreBootstrap = read('sai/commands/explore/command-bootstrap.md');
   assert.doesNotMatch(exploreBootstrap, /Fetch @/, 'explore command bootstrap should preload nothing');
   const planRoute = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-  assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'the Plan route should load the design-worker binding at dispatch');
+  assert.match(planRoute, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
+  assert.doesNotMatch(planRoute, /bindings\/(?:spec|design)-worker\.md/, 'the Plan route dispatches no worker itself');
 });
 
 test('final wrappers: all known labelled argument lines are absent after the envelope in both harnesses', () => {
@@ -420,12 +419,12 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain 18 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 19 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 18, `${harness} should retain exactly 18 sai wrappers`);
-    assert.equal(files.length, 22, `${harness} wrapper directory should contain 22 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 19, `${harness} should retain exactly 19 sai wrappers`);
+    assert.equal(files.length, 23, `${harness} wrapper directory should contain 23 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);

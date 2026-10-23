@@ -9,8 +9,6 @@ const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifes
 
 const repoRoot = path.join(__dirname, '..');
 const routedPhases = [
-  'spec',
-  'design',
   'security',
   'performance',
   'accessibility',
@@ -69,8 +67,6 @@ test('shared runner renders only after a progress event changes the marked set',
 
 test('routed coordinators delegate progress rendering to the shared policy', () => {
   const coordinatorPaths = [
-    'sai/commands/spec/coordinator.md',
-    'sai/commands/design/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
@@ -107,8 +103,8 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
       assert.match(binding.text, /worker never emits panel tool calls/);
     }
 
-    const standaloneBindings = bindings.filter(item => ['red', 'green', 'review'].includes(item.phase));
-    assert.equal(standaloneBindings.length, 3, `${harness} should retain RED, GREEN, and review bindings`);
+    const standaloneBindings = bindings.filter(item => ['spec', 'design', 'red', 'green', 'review'].includes(item.phase));
+    assert.equal(standaloneBindings.length, 5, `${harness} should retain spec, design, RED, GREEN, and review bindings`);
     for (const binding of standaloneBindings) {
       assert.doesNotMatch(binding.text, /panel-render\.md/,
         `${harness}/${binding.destinationName} must not bind the progress panel for a standalone coordinator`);
@@ -119,23 +115,20 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
   }
 });
 
-test('supervised explore runs keep visual plan rendering disabled while retaining pointer routing', () => {
+test('the plan family renders no task list and keeps pointer routing in its own cards', () => {
   const explore = readExploreContract();
 
-  assert.match(explore, /declares no visual `progress_plan`/);
-  assert.match(explore, /no task-list step is marked and no milestone stamp is rendered/i);
-  assert.match(explore, /spec-standalone@1/,
-    'pointer routing should remain active under supervision');
-  assert.match(explore, /declares the machine as routing-only/,
-    'the supervised adapter should declare the machine as routing-only');
-  assert.doesNotMatch(explore, /SpecStepPointerMap/,
-    'the static SpecStepPointerMap reference should not remain');
+  assert.doesNotMatch(explore, /spec-standalone@1|design-standalone@1/, 'the retired plan machines are gone from explore');
+  assert.doesNotMatch(explore, /SpecStepPointerMap/, 'the static SpecStepPointerMap reference should not remain');
+  for (const relativePath of ['sai/commands/spec/coordinator.md', 'sai/commands/design/coordinator.md', 'sai/commands/plan/cycle.md']) {
+    const card = read(relativePath);
+    assert.doesNotMatch(card, /progress_plan|todo-structure|panel-render/, `${relativePath} declares no progress plan and renders no panel`);
+  }
+  assert.match(read('sai/commands/plan/cycle.md'), /Active step: <stage> — follow <next\.follow>/, 'pointer routing stays active');
 });
 
 test('panel degradation is declared for routed phases and explore', () => {
   for (const relativePath of [
-    'sai/commands/spec/coordinator.md',
-    'sai/commands/design/coordinator.md',
     'sai/commands/security/coordinator.md',
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',

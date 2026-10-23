@@ -11,7 +11,7 @@ A coordinator or supervising surface that declares a `step_machine` SHALL retain
 
 #### Scenario: reset names the first filed step
 
-- **WHEN** a coordinator runs the segment-start `reset <id> spec-standalone@1`
+- **WHEN** a coordinator runs the segment-start `reset <id> spec-steps@1`
 - **THEN** it retains `stage: research` and the `research` step file as `next.follow` for the task disclosure, with no other `sai-state` verb invoked
 
 ### Requirement: Task disclosure opens with the first filed step pointer
@@ -74,28 +74,9 @@ A coordinator that reconstructs a replacement worker before any progress event h
 - **WHEN** the spec worker's continuation fails before its first progress event and a replacement is reconstructed
 - **THEN** the reconstruction carries `active_step_id: research` and the replacement's first continuation carries the `research` pointer line
 
-### Requirement: Design discloses research in both variants and seeds the variant on the combined emit
-
-The `design-standalone@1` machine SHALL name `research` as its first filed step in both the opted-in and the unopted variant, so the disclosed pointer never depends on the variant. The design coordinator's first progress emit, which normally carries `prereqs-resolution` and `research` together, SHALL carry `--with-overview true|false`. A design-phase retry SHALL start from a reset machine and seed the variant again on its first emit. The `--overview-lang` to boolean mapping SHALL stay unchanged for standalone design. The supervised Explore Plan (unattended) design adapter SHALL always seed `--with-overview false`, including on a retry and regardless of `overview_language`.
-
-#### Scenario: combined first emit seeds the variant
-
-- **WHEN** the design coordinator pipes a first progress event carrying `prereqs-resolution` and `research` with `--with-overview true`
-- **THEN** the machine adopts the opted-in plan and its next pointer names `design`
-
-#### Scenario: retry reseeds after reset
-
-- **WHEN** a design-phase retry resets `design-standalone@1` and its first progress emit passes `--with-overview false`
-- **THEN** the machine adopts the unopted plan for the retry
-
-#### Scenario: supervised adapter seeds the unopted variant
-
-- **WHEN** the supervised Explore Plan (unattended) adapter emits the first design progress event with a selected `overview_language`
-- **THEN** the emit passes `--with-overview false` and the machine adopts the unopted plan
-
 ### Requirement: Chained and supervised surfaces disclose the first pointer
 
-The `/sai-explore` supervised pipeline SHALL open the spec worker's task disclosure with the `research` pointer from `reset <id> spec-standalone@1`. It SHALL open the chained design worker's task disclosure with the `research` pointer from `reset <id> design-standalone@1`, including on a design-phase retry after a new reset. The `/sai-build` implement segment SHALL brief each RED and GREEN worker with the pointer line returned by resetting `red-steps@1` or `green-steps@1` before each step.
+The spec and design segments of `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`, including when `/sai-explore` follows `/sai-plan`, SHALL open the spec worker's task message with the `research` pointer from `reset <id> spec-steps@1` and the design worker's task message with the `research` pointer from `reset <id> design-steps@1`. The `/sai-build` implement segment SHALL brief each RED and GREEN worker with the pointer line returned by resetting `red-steps@1` or `green-steps@1` before each step.
 
 #### Scenario: chained implement segment
 
@@ -104,8 +85,8 @@ The `/sai-explore` supervised pipeline SHALL open the spec worker's task disclos
 
 #### Scenario: supervised spec dispatch
 
-- **WHEN** the supervised pipeline's spec worker returns `event: ready`
-- **THEN** the task disclosure opens with the `research` pointer line, and a replacement before the first progress event resumes at `research`
+- **WHEN** the spec worker of a `/sai-plan` run followed by `/sai-explore` returns `event: ready`
+- **THEN** the task message opens with the `research` pointer line from `reset <id> spec-steps@1`
 
 ### Requirement: The first-pointer rule is single-sourced and phase-neutral
 

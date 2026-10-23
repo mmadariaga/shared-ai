@@ -5,14 +5,16 @@ TBD
 
 ## Requirements
 
-### Requirement: Shared picker prose remains harness-neutral
+### Requirement: Plan cycle picker prose remains harness-neutral
 
-The shared `sai/policies/artifact-feedback-gate.md` SHALL not embed a picker-tool example for one harness when the canonical harness mapping already lives in `sai/policies/remember.md`. This prohibition SHALL preserve the gate's two-choice order, proceed-label behavior, feedback iteration, and native-picker requirement.
+The shared plan segment cycle `sai/commands/plan/cycle.md` SHALL not embed a picker-tool example for one harness when the canonical harness mapping already lives in `sai/policies/remember.md`. This prohibition SHALL preserve the escalation's coordinator-written options, its stop option, and the native-picker requirement.
 
-#### Scenario: Artifact feedback gate delegates picker mapping
-- **WHEN** a user reaches the artifact feedback gate
-- **THEN** the shared gate text contains no single-harness picker example and the harness-specific picker mapping continues to come from `sai/policies/remember.md`
+#### Scenario: Plan escalation delegates picker mapping
 
-#### Scenario: Gate behavior remains unchanged
-- **WHEN** the user selects feedback or the step-specific proceed label
-- **THEN** the gate preserves its existing feedback-first ordering, iteration behavior, and proceed semantics across supported harnesses
+- **WHEN** a plan segment escalates an obstacle to the user
+- **THEN** the shared cycle text contains no single-harness picker example and the harness-specific picker mapping continues to come from `sai/policies/remember.md`
+
+#### Scenario: Escalation behavior remains unchanged
+
+- **WHEN** the user selects a way to continue or the stop option
+- **THEN** the escalation keeps its option order, its counter reset on continue, and its stop semantics across supported harnesses

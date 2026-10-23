@@ -31,6 +31,10 @@
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
+  "command:sai-plan": {
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "variant": "xhigh"
+  },
   "worker:sai-2-design-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"

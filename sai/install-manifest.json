@@ -13,12 +13,13 @@
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
       "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
       "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
-      "spec-command": { "extends": "coordinator", "delegate": ["sai-1-spec-proposal-worker"] },
-      "design-command": { "extends": "coordinator", "delegate": ["sai-2-design-worker"] },
       "security-command": { "extends": "coordinator", "delegate": ["sai-5-security-worker"] },
       "performance-command": { "extends": "coordinator", "delegate": ["sai-6-performance-worker"] },
       "accessibility-command": { "extends": "coordinator", "delegate": ["sai-7-accessibility-worker"] },
       "implement-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations"], "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker"] },
+      "spec-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker"] },
+      "design-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-2-design-worker"] },
+      "plan-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker", "sai-2-design-worker"] },
       "review-command": { "extends": "implement-command", "delegate": ["sai-4-review-worker"] },
       "build-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker"] },
       "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-5-security-worker", "sai-6-performance-worker", "sai-7-accessibility-worker"] },
@@ -55,7 +56,7 @@
         "sai-4-review-worker": "worker-research"
       },
       "commands": {
-        "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implement-command",
+        "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-plan": "plan-command", "sai-3-implement": "implement-command",
         "sai-4-review": "review-command", "sai-build": "build-command", "sai-deep-review": "deep-review-command",
         "sai-5-security": "security-command", "sai-6-performance": "performance-command", "sai-7-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
@@ -113,12 +114,12 @@
         "bindingStem": "spec",
         "claudeAgent": {
           "agentName": "sai-1-spec-proposal-worker",
-          "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
+          "description": "Spec-proposal worker for /sai-1-spec, /sai-plan, and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "sonnet",
           "effort": "high"
         },
         "opencodeAgent": {
-          "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
+          "description": "Spec-proposal worker for /sai-1-spec, /sai-plan, and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
@@ -130,12 +131,12 @@
         "bindingStem": "design",
         "claudeAgent": {
           "agentName": "sai-2-design-worker",
-          "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
+          "description": "Design worker for /sai-2-design, /sai-plan, and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "sonnet",
           "effort": "high"
         },
         "opencodeAgent": {
-          "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
+          "description": "Design worker for /sai-2-design, /sai-plan, and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
@@ -3765,6 +3766,13 @@
       "managedBodyHashes": [
         "b6dc6f5006930c074f270798853a67c488eaa5533c64e370af86057b7574bf03"
       ]
-    }
+    },
+    { "id": "retired-plan-family-commands-spec-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/spec/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["a14a70caeacd0650753b646d5a40c1c15354acddecc525a828b3b34a2f2ac063"] },
+    { "id": "retired-plan-family-commands-design-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/design/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["2def7c0a4fa182a8b84562c9a0c70ef3a0a6f43fe6b337791228e818088f3586"] },
+    { "id": "retired-plan-family-commands-design-phase-contract-md", "destination": { "class": "sai", "path": "commands/design/phase-contract.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["8c46dfa5c6742f1eda958f55939220cebe11c42c5de64dfb602acea74d3ef338"] },
+    { "id": "retired-plan-family-policies-spec-phase-contract-md", "destination": { "class": "sai", "path": "policies/spec-phase-contract.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c45d304c82fdb5c0b6b0825bb5bca2617a946ca8189ff4a43c0b38f0895a16bf"] },
+    { "id": "retired-plan-family-policies-artifact-feedback-gate-md", "destination": { "class": "sai", "path": "policies/artifact-feedback-gate.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["7cfc8b43e66c64c942aebd1330ce32a904d317ab63144f2eaaaa28a961ae855a"] },
+    { "id": "retired-plan-family-sai-state-machines-spec-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/spec-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["364a5d40f2ddcfe446400d72ba07b702752170de4a9fbad4774bfafe6e6b3329"] },
+    { "id": "retired-plan-family-sai-state-machines-design-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/design-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["f86b8bbead82d188e558b863e9483412264cf3c75a392eae09ee01e3785bc34e"] }
   ]
 }

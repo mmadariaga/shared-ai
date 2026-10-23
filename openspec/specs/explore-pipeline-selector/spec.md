@@ -196,7 +196,7 @@ No token or dominant-intent form SHALL dispatch supervision. When a user sends o
 
 ### Requirement: Auto dispatch source is the last crystallization set
 
-A valid Plan or Direct Build picker answer SHALL operate only on uncompleted change names in `last_crystallization_set` in emission order and SHALL route only the first pending entry. It SHALL use `completed_changes` and `specs_converged_changes` to route the spec or design retry. It SHALL NOT discover repository changes, add an uncrystallized change, present a multi-change picker with Cancel, or re-sort names. Each valid selection SHALL select and dispatch at most one change.
+A valid Plan or Direct Build picker answer SHALL operate only on uncompleted change names in `last_crystallization_set` in emission order and SHALL route only the first pending entry. It SHALL use `completed_changes` to skip completed changes; the Plan route leaves the choice between the spec and design segments to the `/sai-plan` coordinator, which decides from the artifacts on disk. It SHALL NOT discover repository changes, add an uncrystallized change, present a multi-change picker with Cancel, or re-sort names. Each valid selection SHALL select and dispatch at most one change.
 
 #### Scenario: multiple uncompleted changes remain
 
@@ -214,8 +214,9 @@ A valid Plan or Direct Build picker answer SHALL operate only on uncompleted cha
 - **THEN** no slice-name picker is presented, no slice is routed, no worker dispatches, and no Manual route or Manual handoff is recorded
 
 #### Scenario: failed Auto remains retryable from existing state
-- **WHEN** a Plan attempt fails or is cancelled before its applicable terminal worker completes
-- **THEN** the name remains absent from `completed_changes`, a later valid Plan picker answer reuses `last_crystallization_set` and the existing `specs_converged_changes` membership, and no new state key or repository discovery is used
+
+- **WHEN** a Plan run fails or is stopped before its design segment completes
+- **THEN** the name remains absent from `completed_changes`, and a later valid Plan picker answer reuses `last_crystallization_set` and lets `/sai-plan` resume from the artifacts on disk, with no new state key or repository discovery
 
 ### Requirement: Empty or completed selection set receives an explicit acknowledgement
 
@@ -264,21 +265,6 @@ On GitHub Copilot, a Plan - Unattended selection SHALL dispatch no spec worker o
 - **WHEN** the user selects Plan - Unattended in a GitHub Copilot explore session
 - **THEN** explore replies that supervision is unavailable on this harness
 - **AND** it performs no worker dispatch and no artifact write.
-
-### Requirement: Re-crystallization supersedes prior lifecycle state
-
-A crystallization turn that re-emits an already-supervised change name SHALL, when replacing `last_crystallization_set`, remove every name in the new set from `completed_changes` and `specs_converged_changes`, so a later Plan - Unattended selection dispatches the spec phase over the new block instead of acknowledging the change as completed or entering a design-phase retry over superseded specs.
-
-#### Scenario: a completed change is re-crystallized
-
-- **WHEN** a change name in `completed_changes` is re-emitted by a later crystallization turn and the user selects Plan - Unattended
-- **THEN** explore dispatches the spec worker over the newly emitted block
-- **AND** it does not acknowledge the change as already completed.
-
-#### Scenario: a specs-converged change is re-crystallized
-
-- **WHEN** a change name in `specs_converged_changes` but not `completed_changes` is re-emitted by a later crystallization turn and the user selects Plan - Unattended
-- **THEN** explore dispatches the spec phase over the new block rather than the design-phase retry branch.
 
 ### Requirement: Authorize Direct Build - Unattended dispatch
 
@@ -356,3 +342,17 @@ For the full Direct Build route, Step 1 SHALL complete `sai/policies/backlog-imp
 #### Scenario: Stop after a failed assignment
 - **WHEN** an assignment fails for a chained slice and the user answers Stop
 - **THEN** the chain ends
+
+### Requirement: Re-crystallization clears completed state
+
+A crystallization turn that re-emits an already-routed change name SHALL, when replacing `last_crystallization_set`, remove every name in the new set from `completed_changes`, so a later Plan - Unattended selection follows `/sai-plan` with the newly emitted block instead of acknowledging the change as completed. Whether the spec segment runs SHALL be decided by `/sai-plan` from the disk: existing `proposal.md` and specs count as a done spec segment and are not rewritten by the block.
+
+#### Scenario: a completed change is re-crystallized
+
+- **WHEN** a change name in `completed_changes` is re-emitted by a later crystallization turn and the user selects Plan - Unattended
+- **THEN** explore follows `/sai-plan` with the newly emitted block reference and does not acknowledge the change as already completed
+
+#### Scenario: a change with specs on disk is re-crystallized
+
+- **WHEN** a re-emitted change already has `proposal.md` and specs on disk and the user selects Plan - Unattended
+- **THEN** `/sai-plan` counts the spec segment as done and runs the design segment without rewriting the specs

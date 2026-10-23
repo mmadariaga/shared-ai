@@ -122,9 +122,11 @@ standalone [`new-change-branch`](new-change-branch.md), while preserving exact
 Git references internally.
 
 After rounds 1 and 2 finish or are skipped, choose how to continue. `Manual` hands you the
-Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design
-with up to three in-session review rounds per phase, then stops for your review before `/sai-build`.
-Ambiguous questions still escalate. `Direct Build - Unattended` authorizes
+Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` follows [`/sai-plan`](sai-plan.md)
+for the first pending slice: spec and design run with up to three review rounds per
+segment, one local commit per segment, then it stops for your review before `/sai-build`.
+A worker question that nothing in the block, the artifacts, or the repository settles
+still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
 it never pushes. For slices, the selector repeats per slice. Fast-track does
 not skip these authorizations or the reconfirmation of unresolved decisions.

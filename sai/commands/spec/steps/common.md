@@ -15,14 +15,14 @@ questions, trade-offs, rationale, edge cases, terminology) already happened in
 normative translation, so ask nothing the block already answers. A refinement
 run carries no block and works from the existing artifacts.
 
-Your deliverables are the files of the `SpecWriteSurface` in
-`@sai/policies/spec-phase-contract.md`. Design, tasks, code, tests, and
-configuration belong to `/sai-2-design` and later phases.
+Your deliverables are the files of the write surface in `worker.md`. Design,
+tasks, code, tests, and configuration belong to `/sai-2-design` and later
+phases.
 
 Ask a question only when its answer changes a normative statement in
-`proposal.md` or `specs/**`. Return it as `needs_input` per
-`@sai/policies/question-context.md`, addressed to the user as a peer who knows
-the domain better than you.
+`proposal.md` or `specs/**`. Report it as `needs_input` per
+`worker-common.md`: the coordinator answers from the block, the artifacts, and
+the repository, and escalates only what none of them settles.
 
 Write each domain term to the root `GLOSSARY.md` the moment you resolve it, per
 `<glossary_format>` § Adding a term.
@@ -30,11 +30,13 @@ Write each domain term to the root `GLOSSARY.md` the moment you resolve it, per
 ## Step delivery
 
 The coordinator names the active step with one pointer line,
-`Active step: <id> — follow <path>`, on a progress-event continuation. Follow
-only the file that line names: every step path arrives that way, so open no
-other step file. A continuation without a pointer line (artifact feedback,
-recovery) keeps the current step. Each step ends by returning its progress
-event per the worker contract. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-and-change` inline, then follow that pointer, and report `prereqs-and-change` and `research` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
+`Active step: <id> — follow <path>`. Follow only the file that line names:
+every step path arrives that way, so open no other step file. A message without
+a pointer line (a fix round or an answer) keeps the current step. Each step ends
+by writing your report with the step's id in `step_ids`. The first pointer
+arrives as the first line of the task message, before the task: run
+`spec-intake` inline, then follow that pointer, and report `spec-intake` and
+`research` together in the first report.
 
 ## Cost discipline
 
@@ -58,14 +60,13 @@ output-contract format. Your side of it:
 ## Verification
 
 Verification is the checklist below, which includes Rule #1 and Rule #2. The
-validation step runs it, and so does every accepted edit from artifact
-feedback or a recovery correction. Correct every failure before the
-step completes.
+validation step runs it, and so does every fix round and every refinement
+edit. Correct every failure before the step completes.
 
 - `proposal.md` exists and is non-empty.
 - At least one non-empty `specs/**/*.md` exists.
 - Every requirement has at least one valid scenario.
-- This invocation writes only within `SpecWriteSurface`. Pre-existing
+- This invocation writes only within the write surface of `worker.md`. Pre-existing
   later-phase artifacts such as `design.md` or `tasks.md` are left untouched
   and do not fail this check on a refinement run.
 - Rule #1 and Rule #2 hold.
@@ -79,8 +80,8 @@ a requirement or scenario. The specs are normative. On a contradiction:
 - When the spec is clearly normative for the topic, edit the proposal to match
   the spec, never the reverse, and add the decision-summary line
   `Reconciled proposal: spec is normative for <topic>`.
-- When intent is genuinely ambiguous, change neither artifact. Return one
-  `validation_report` warning naming both sides and their locations; the user
+- When intent is genuinely ambiguous, change neither artifact. Report one
+  warning naming both sides and their locations; the user
   decides.
 
 Silence is not a contradiction: a proposal note about deferred or out-of-scope
@@ -106,7 +107,7 @@ targeted search of your own, covering only the literals this change pins, never
 unrelated specs. Then:
 
 - Preserved, found and equal → no warning.
-- Preserved or Ambiguous, found but different → one `validation_report`
+- Preserved or Ambiguous, found but different → one report
   warning naming the spec assertion and its location, the source value and its
   `file:line`, and the disagreement. Reconcile neither side; the user decides
   which one is stale.

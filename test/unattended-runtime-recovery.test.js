@@ -23,7 +23,7 @@ function section(document, title) {
   return compact(document.slice(bodyStart, nextHeading === -1 ? undefined : nextHeading));
 }
 
-test('recovery is reached from both selected unattended routes, not POC or other selectors', () => {
+test('recovery is reached from the Direct Build route only, not Plan, POC, or other selectors', () => {
   const policyPath = 'sai/policies/unattended-runtime-recovery.md';
   const policy = read(policyPath);
   const plan = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
@@ -34,7 +34,7 @@ test('recovery is reached from both selected unattended routes, not POC or other
   const policyProjection = manifest.projections.find(({ id }) => id === 'sai-policies');
 
   assert.ok(policy.length > 0, `${policyPath} should exist and have content`);
-  assert.match(plan, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
+  assert.doesNotMatch(plan, /unattended-runtime-recovery/, 'the Plan route follows /sai-plan and its own obstacle budget');
   assert.match(directBuild, /For the full `direct-build-unattended` route only, Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
   assert.match(directBuild, /Do not load or apply it to the pinned `--no-specs` POC profile/);
   assert.doesNotMatch(selector, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
@@ -127,16 +127,15 @@ test('each failed step allows three attempts shared by both paths on the counter
   const directBuild = compact(read('sai/commands/explore/steps/pipeline-direct-build.md'));
   const charge = attempts.indexOf("Charge the route's existing counter immediately before sending the attempt");
   const nonRefund = attempts.indexOf('does not refund or reset the charge');
-  const planCounter = attempts.indexOf('`diagnosis_rounds.spec` or `diagnosis_rounds.design`');
   const directBuildCounter = attempts.indexOf('`diagnosis_rounds.direct_build`, keyed by the');
   const reset = attempts.indexOf('Reset these counters only where the existing route resets its diagnosis state');
 
-  assert.ok(charge >= 0 && charge < nonRefund && nonRefund < planCounter && planCounter < directBuildCounter && directBuildCounter < reset,
-    'the existing phase/slice counter is charged before the attempt and its reset boundary is explicit');
-  assert.match(attempts, /one diagnosis round per Plan phase, and three attempts per failed Direct Build\s+step/);
+  assert.ok(charge >= 0 && charge < nonRefund && nonRefund < directBuildCounter && directBuildCounter < reset,
+    'the existing slice counter is charged before the attempt and its reset boundary is explicit');
+  assert.match(attempts, /three attempts per failed Direct Build\s+step/);
   assert.match(attempts, /shared between the two recovery paths/);
   assert.match(attempts, /Count them on the counter the route already keeps in conversation state/);
-  assert.match(attempts, /one diagnosis round per phase\. The\s+Explore Diagnosis Round and its \*\*Bounded Recovery\*\* continuation form that\s+one round/);
+  assert.doesNotMatch(attempts, /diagnosis_rounds\.spec|diagnosis_rounds\.design|Plan phase/, 'the Plan charge rules are retired');
   assert.match(attempts, /keyed by the\s+failed step \(`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`\)/);
   assert.doesNotMatch(attempts, /across Steps 1–2/);
   assert.doesNotMatch(attempts, /Direct Build close of/);
@@ -191,15 +190,13 @@ test('success comes from the step check through its owner, never from a correcti
   assert.match(stop, /this policy grants no new authorization/);
 });
 
-test('recovery preserves Plan review stops and Direct Build selection, execution-order, and commit gates', () => {
-  const plan = compact(read('sai/commands/explore/steps/pipeline-plan-unattended.md'));
+test('recovery preserves Direct Build selection, execution-order, and commit gates', () => {
   const directBuild = compact(read('sai/commands/explore/steps/pipeline-direct-build.md'));
   const stop = section(read('sai/policies/unattended-runtime-recovery.md'), 'Stop condition');
 
-  assert.match(plan, /A successful Plan \(unattended\) run.*?review here → `\/sai-build \{name\}` in another chat.*?performs no implementation-phase dispatch/);
-  assert.match(plan, /`\/sai-3-implement` is never dispatched/);
   assert.match(directBuild, /Selecting it consents delegated writes \(item 1\) AND pre-authorizes one local commit for the current slice/);
   assert.match(directBuild, /after coordinator validation, gate resolution, and the one-commit authorization state are all present/);
   assert.match(directBuild, /never push, amend, retry, or add an action outside the order/);
-  assert.match(stop, /Keep the Plan approval\/review stop and Direct Build's selected-scope, validated execution-order, and one-local-commit gates unchanged/);
+  assert.match(stop, /Keep Direct Build's selected-scope, validated execution-order, and one-local-commit gates unchanged/);
 });
+

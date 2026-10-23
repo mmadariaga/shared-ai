@@ -67,10 +67,11 @@ test('discovered coordinators have registered step machines and fetch stage-mach
   const coordinators = discoverStepMachineCoordinators();
   assert.ok(coordinators.length > 0, 'should discover at least one coordinator with step_machine');
 
-  // Must discover exactly spec, design, performance, security, and accessibility
+  // The shared-orchestration audit phases declare a step_machine. The spec and design
+  // commands run outside the shared orchestration and drive their machines from their own cards.
   const names = coordinators.map(c => c.name).sort();
-  const expectedPhases = ['accessibility', 'design', 'performance', 'security', 'spec'];
-  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, performance, security, and accessibility');
+  const expectedPhases = ['accessibility', 'performance', 'security'];
+  assert.deepEqual(names, expectedPhases, 'must discover exactly performance, security, and accessibility');
 
   for (const coord of coordinators) {
     assert.ok(registry.has(coord.machineId), `${coord.machineId} must be registered in sai-state/registry.js`);
@@ -82,119 +83,64 @@ test('discovered coordinators have registered step machines and fetch stage-mach
 
 test('coordinator progress plans match their registered machines (source-driven)', () => {
   const coordinators = discoverStepMachineCoordinators();
-  const specPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/policies/spec-phase-contract.md'), 'utf8');
-  const designPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/commands/design/phase-contract.md'), 'utf8');
-
   for (const coord of coordinators) {
     const machine = registry.get(coord.machineId);
     assert.ok(machine, `${coord.machineId} must be registered`);
-
-    let extractedIds;
-    if (coord.name === 'spec') {
-      // Extract from spec-phase-contract.md SpecProgressPlan section
-      const specPlanMatch = specPhaseContract.match(/### `SpecProgressPlan`[\s\S]*?(?=### )/);
-      assert.ok(specPlanMatch, 'spec-phase-contract.md should have SpecProgressPlan section');
-      extractedIds = planIds(specPlanMatch[0]);
-      assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
-    } else if (coord.name === 'design') {
-      // Extract unopted and opted variants from design phase-contract.md
-      const designPlanMatch = designPhaseContract.match(/### `DesignProgressPlan`[\s\S]*?(?=### )/);
-      assert.ok(designPlanMatch, 'design phase-contract.md should have DesignProgressPlan section');
-
-      // Look for opted-in plan block (comes first in the text)
-      const optedMatch = designPlanMatch[0].match(/\*\*Opted-in plan[\s\S]*?(?=\*\*Unopted|###)/);
-      assert.ok(optedMatch, 'design phase-contract should have opted-in plan block');
-      const optedIds = planIds(optedMatch[0]);
-      assert.deepEqual(optedIds, machine.OPTED_IN_STEPS, 'design opted-in ids must match OPTED_IN_STEPS');
-
-      // Look for unopted plan block (comes second in the text)
-      const unoptedMatch = designPlanMatch[0].match(/\*\*Unopted plan[\s\S]*?(?=###|$)/);
-      assert.ok(unoptedMatch, 'design phase-contract should have unopted plan block');
-      const unoptedIds = planIds(unoptedMatch[0]);
-      assert.deepEqual(unoptedIds, machine.UNOPTED_STEPS, 'design unopted ids must match UNOPTED_STEPS');
-    } else if (coord.name === 'performance' || coord.name === 'security' || coord.name === 'accessibility') {
-      // Extract from coordinator card itself
-      extractedIds = planIds(coord.content);
-      assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
-    }
+    const extractedIds = planIds(coord.content);
+    assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
   }
 });
 
 test('step machines own STAGE_FILES with no static pointer tables (source-driven)', () => {
-  const coordinators = discoverStepMachineCoordinators();
-  const specPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/policies/spec-phase-contract.md'), 'utf8');
-  const designPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/commands/design/phase-contract.md'), 'utf8');
-
-  assert.doesNotMatch(specPhaseContract, /### `SpecStepPointerMap`/,
-    'spec-phase-contract.md should not retain the static SpecStepPointerMap table');
-  assert.doesNotMatch(designPhaseContract, /### `DesignStepPointerMap`/,
-    'design phase-contract.md should not retain the static DesignStepPointerMap table');
-  assert.match(specPhaseContract, /spec-standalone@1/,
-    'spec-phase-contract.md should route via the spec step machine');
-  assert.match(designPhaseContract, /design-standalone@1/,
-    'design phase-contract.md should route via the design step machine');
-
   const expectedSpecStageFiles = {
-    'prereqs-and-change': 'none',
+    'spec-intake': 'none',
     research: 'sai/commands/spec/steps/research.md',
     proposal: 'sai/commands/spec/steps/proposal.md',
     specs: 'sai/commands/spec/steps/specs.md',
     validation: 'sai/commands/spec/steps/validation.md',
   };
   const expectedDesignStageFiles = {
-    'prereqs-resolution': 'none',
+    'design-intake': 'none',
     research: 'sai/commands/design/steps/research.md',
     design: 'sai/commands/design/steps/design.md',
     tasks: 'sai/commands/design/steps/tasks.md',
     interfaces: 'sai/commands/design/steps/interfaces.md',
-    overview: 'sai/commands/design/steps/overview.md',
   };
-
-  for (const coord of coordinators) {
-    const machine = registry.get(coord.machineId);
-    assert.ok(machine, `${coord.machineId} must be registered`);
-
-    if (coord.name === 'spec') {
-      const machineSteps = Array.from(machine.STEPS).sort();
-      assert.deepEqual(machineSteps, Object.keys(expectedSpecStageFiles).sort(),
-        'spec machine STEPS must cover the canonical six steps');
-      for (const [id, target] of Object.entries(expectedSpecStageFiles)) {
-        assert.equal(machine.STAGE_FILES[id], target,
-          `spec ${id} pointer must match STAGE_FILES[${id}]`);
-      }
-    } else if (coord.name === 'design') {
-      const machineOptedSteps = Array.from(machine.OPTED_IN_STEPS).sort();
-      assert.deepEqual(machineOptedSteps, Object.keys(expectedDesignStageFiles).sort(),
-        'design machine OPTED_IN_STEPS must cover the canonical seven steps');
-      for (const [id, target] of Object.entries(expectedDesignStageFiles)) {
-        assert.equal(machine.STAGE_FILES[id], target,
-          `design ${id} pointer must match STAGE_FILES[${id}]`);
-      }
+  for (const [machineId, expected] of [['spec-steps@1', expectedSpecStageFiles], ['design-steps@1', expectedDesignStageFiles]]) {
+    const machine = registry.get(machineId);
+    assert.ok(machine, `${machineId} must be registered`);
+    assert.deepEqual(Array.from(machine.STEPS), Object.keys(expected), `${machineId} steps`);
+    for (const [id, target] of Object.entries(expected)) {
+      assert.equal(machine.STAGE_FILES[id], target, `${machineId} ${id} pointer must match STAGE_FILES[${id}]`);
     }
-    // Note: every routed phase uses step_machine; no phase retains a static step_pointer_map table
   }
+  assert.equal(registry.get('design-steps@1').STAGE_FILES.overview, undefined,
+    'the overview is a separate continuation, not a step of design-steps@1');
+  // The retired phase contracts and machines no longer exist.
+  for (const retired of ['sai/policies/spec-phase-contract.md', 'sai/commands/design/phase-contract.md',
+    'sai-state/machines/spec-standalone.js', 'sai-state/machines/design-standalone.js']) {
+    assert.equal(fs.existsSync(path.join(__dirname, '..', retired)), false, `${retired} must be retired`);
+  }
+  assert.equal(registry.has('spec-standalone@1'), false);
+  assert.equal(registry.has('design-standalone@1'), false);
 });
 
-test('spec-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('spec-standalone@1');
-  assert.ok(machine, 'spec-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'spec-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
-test('design-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('design-standalone@1');
-  assert.ok(machine, 'design-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'design-standalone@1');
-  assert.ok(machine.UNOPTED_STEPS, 'must have UNOPTED_STEPS array');
-  assert.ok(machine.OPTED_IN_STEPS, 'must have OPTED_IN_STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
+test('spec-steps@1, design-steps@1, and plan-run@1 are properly registered', () => {
+  for (const machineId of ['spec-steps@1', 'design-steps@1']) {
+    const machine = registry.get(machineId);
+    assert.ok(machine, `${machineId} must be registered`);
+    assert.equal(machine.machineId, machineId);
+    assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
+    assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
+    assert.ok(machine.initialState, 'must have initialState');
+    assert.equal(typeof machine.transition, 'function', 'must have transition function');
+    assert.equal(typeof machine.project, 'function', 'must have project function');
+  }
+  const run = registry.get('plan-run@1');
+  assert.ok(run, 'plan-run@1 must be registered');
+  assert.equal(run.machineId, 'plan-run@1');
+  assert.equal(typeof run.transition, 'function');
+  assert.equal(typeof run.project, 'function');
 });
 
 test('security-standalone@1 machine is properly registered', () => {
@@ -262,7 +208,7 @@ test('replacement before the first progress event reconstructs with the first fi
 
 test('every step-machine coordinator sends the first filed pointer with the task disclosure', () => {
   const coordinators = discoverStepMachineCoordinators();
-  assert.equal(coordinators.length, 5, 'five step-machine coordinators should be discovered');
+  assert.equal(coordinators.length, 3, 'three step-machine coordinators should be discovered');
   for (const { name, machineId, content } of coordinators) {
     const mod = registry.get(machineId);
     const second = mod.firstFiled().stage;
@@ -274,8 +220,24 @@ test('every step-machine coordinator sends the first filed pointer with the task
   }
 });
 
+test('the plan commands deliver the first filed pointer with the task message and advance the machines per report', () => {
+  const cycle = readRepo('sai/commands/plan/cycle.md');
+  assert.match(cycle, /`reset` the segment's step machine; the response names the first filed step/);
+  assert.match(cycle, /The task message opens with `Active step: <stage> — follow <next\.follow>`/);
+  assert.match(cycle, /emit `\{"step_ids": \[\.\.\.\]\}` to the machine/);
+  for (const [name, machineId] of [['spec', 'spec-steps@1'], ['design', 'design-steps@1']]) {
+    const coordinator = readRepo(`sai/commands/${name}/coordinator.md`);
+    assert.ok(coordinator.includes(machineId), `${name} coordinator should reset ${machineId}`);
+    const second = registry.get(machineId).firstFiled().stage;
+    assert.ok(coordinator.includes(`\`${second}\``), `${name} coordinator should list the static fallback order`);
+    const common = readRepo(`sai/commands/${name}/steps/common.md`);
+    assert.match(common, /first line of the task message/, `${name} common.md should carry the step-delivery rule`);
+    assert.match(common, /in the first report/, `${name} common.md should report both ids together`);
+  }
+});
+
 test('every step-machine worker and common.md adopt the task-disclosure pointer rule', () => {
-  for (const name of ['spec', 'design', 'security', 'performance', 'accessibility']) {
+  for (const name of ['security', 'performance', 'accessibility']) {
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
     assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
@@ -291,16 +253,3 @@ test('every step-machine worker and common.md adopt the task-disclosure pointer 
   }
 });
 
-test('chained and supervised surfaces deliver the first pointer in their own task disclosure (E9)', () => {
-  const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(pipeline, /reset <id> spec-standalone@1` returns/);
-  assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview false` in every supervised run, including on a design-phase retry/);
-});
-
-test('supervised design adapter seeds the unopted variant and names the overview step in the generation trigger', () => {
-  const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  const contract = readRepo('sai/commands/design/phase-contract.md');
-  assert.match(pipeline, /`--with-overview false` in every supervised run[\s\S]{0,400}regardless of `overview_language`/);
-  assert.match(pipeline, /generation-trigger payload[\s\S]{0,600}naming `@sai\/commands\/design\/steps\/overview\.md`/);
-  assert.match(contract, /supervised route[\s\S]{0,200}always passes `--with-overview false`/);
-});

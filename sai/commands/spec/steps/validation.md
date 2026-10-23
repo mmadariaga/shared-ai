@@ -1,12 +1,12 @@
 # Spec Step — Validation
 
 Active step: validation. Verify the artifacts and compose the decision summary,
-then return the `validation` progress event.
+then report the `validation` step.
 
 1. Run verification (`steps/common.md` § Verification) and correct every
    failure.
 2. Run the cited-path gate.
-3. Compose the decision summary and the validation report (§ Completion).
+3. Compose the decision summary and the warnings (§ Completion).
 
 ## Cited-path gate
 
@@ -22,11 +22,22 @@ summary. This gate is the one exception to the policy's stop rule.
 
 ## Completion
 
-Hold two things for the phase's `completed` result, which the coordinator
-prints: the decision summary as its `summary`, and every Rule #1 and Rule #2
-warning as an ordered `validation_report.warnings` entry (`spec_assertion`,
-`other_side`, `disagreement`; an empty list when there are none) per
-`@sai/policies/spec-phase-contract.md`.
+Hold two things for your report, which the coordinator reads: the decision
+summary as its `summary`, and every Rule #1 and Rule #2 warning as an ordered
+`warnings` entry (`spec_assertion`, `other_side`, `disagreement`; an empty list
+when there are none). The coordinator prints every warning after the summary in
+the form below, and the user decides which side is stale.
+
+```text
+⚠ Consistency warning — not auto-resolved; you decide which side is stale.
+
+  • Spec assertion    : <spec_assertion>
+  • <other_side label> : <other_side>
+  • Disagreement      : <disagreement>
+```
+
+`other_side` carries the already-labelled source or proposal location; the
+coordinator preserves it verbatim.
 
 Recompute the decision summary from the current `proposal.md` and `specs/**`
 alone, never from conversation:

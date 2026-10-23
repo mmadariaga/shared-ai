@@ -47,7 +47,6 @@ function spec(relativePath) {
 function supervisionContract() {
   return [
     exploreContract(),
-    spec('sai/policies/artifact-feedback-gate.md'),
     spec('sai/policies/artifact-review-contract.md'),
   ].join('\n');
 }
@@ -322,21 +321,24 @@ test('overview-language gate is deferred from crystallization until round 3 of t
     spec('sai/commands/explore/steps/crystallization-protocol.md'),
     spec('sai/commands/explore/steps/crystallization-language-gates.md'),
   ].join('\n');
-  const supervised = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
 
   assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
-  assert.match(supervised, /Gate 9 at Plan \(unattended\) activation/);
-  assert.match(supervised, /Round 3 of the route round asks gate 9 beside the route question/i);
-  assert.match(supervised, /Only when round 3 left `overview_language` unresolved[\s\S]*?ask gate 9 on its own exactly once here/i);
-  assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
-  assert.match(supervised, /Empty or completed crystallization sets, an ambiguous or invalid reply, and an already-active run end before this gate/i);
-  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
+  assert.match(plan, /Gate 9 at Plan \(unattended\) activation/);
+  assert.match(plan, /owned by `route-selector\.md` § Change overview question/);
+  assert.doesNotMatch(plan, /ask gate 9 on its own exactly once/, 'the Plan step points to the selector instead of restating the gate');
+  assert.match(selector, /Only when round 3 left it unresolved[\s\S]*?ask gate 9 on its own exactly once here/i);
+  assert.match(selector, /dispatch nothing until it is answered or resolves to `None` under the decline rule/i);
+  assert.match(selector, /Empty or completed crystallization sets, an ambiguous or invalid reply, and an already-active run end before this gate/i);
+  assert.match(selector, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
 });
 
-test('the spec handoff example demonstrates fast-track and overview language together', () => {
-  const coordinator = spec('sai/commands/spec/coordinator.md');
-  assert.match(coordinator, /sai-2-design \{name\}/);
-  assert.match(coordinator, /--fast-track --overview-lang Lang/);
+test('the spec closing line hands off to /sai-2-design and the design closing line to /sai-3-implement', () => {
+  const spec1 = spec('sai/commands/spec/coordinator.md');
+  const design = spec('sai/commands/design/coordinator.md');
+  assert.match(spec1, /Spec done in openspec\/changes\/\{name\}\/\. Review it and run `\/sai-2-design \{name\}` in a new chat when ready\./);
+  assert.match(design, /Design done in openspec\/changes\/\{name\}\/\. Run `\/sai-3-implement \{name\}` \*\*in a new chat\*\* when ready\./);
 });
 
 test('Manual is an explicit route; invalid picker answers preserve the waiting inventory', () => {
@@ -390,124 +392,13 @@ test('supervision tracks ordered unique changes and dispatches only eligible wor
     /ordered unique|duplicate[- ]free|first[- ]emission order/i,
     /empty|completed.*set|already completed/i,
     /(?:ambiguous|unclear)[\s\S]{0,240}(?:dispatch nothing|emit no route intent)/i,
-    /one remaining|single remaining|without a picker/i,
+    /Do not present a slice-name picker/i,
     /failed|cancelled.*retry|retryable/i,
     /active.*reject|duplicate starts/i,
   ]) assert.match(source, term);
 });
 
-test('supervised spec dispatch preserves the selected block and branches between auto-answer and escalation', () => {
-  const source = exploreContract();
-
-  assert.match(source, /SpecWorkerRequest/);
-  assert.match(source, /--block-file/);
-  assert.match(source, /--export --harness <claude\|opencode>/);
-  assert.match(source, /selected change.*complete.*Ready to Propose|complete.*emitted Ready to Propose/i);
-  assert.match(source, /verified file is the worker's only substantive block input/i);
-  assert.match(source, /needs_input/);
-  assert.match(source, /ordered option|options.*order|order.*option/i);
-  assert.match(source, /auto[- ]answer/i);
-  assert.match(source, /escalat/i);
-  assert.match(source, /closed[- ]choice/i);
-  assert.match(source, /worker's own offered option values|offered option values.*worker/i);
-  assert.match(source, /same worker/);
-  assert.match(source, /only.*user.*answer|user's answer/i);
-});
-
-test('supervised question autonomy uses qualitative confidence and escalates ambiguity', () => {
-  const source = exploreContract();
-
-  assert.match(source, /confidence is judged qualitatively/i);
-  assert.match(source, /Ambiguity resolves toward escalation/i);
-  assert.match(source, /borderline|unclear/i);
-  assert.match(source, /(?:borderline|unclear).*escalat|escalat.*(?:borderline|unclear)/i);
-});
-
-test('supervised auto-answers require bounded grounding and escalate ungrounded answers', () => {
-  const source = exploreContract();
-
-  assert.match(source, /The answer must be located in the permitted grounding sources/i);
-  assert.match(source, /The permitted grounding sources are bounded/i);
-  assert.match(source, /conversation-only|ungrounded/i);
-  assert.match(source, /(?:conversation-only|ungrounded).*escalat|escalat.*(?:conversation-only|ungrounded)/i);
-});
-
-test('below-threshold questions preserve exact worker wording and continue the same worker', () => {
-  const source = exploreContract();
-
-  assert.match(source, /Below-threshold questions escalate to the user unchanged/i);
-  assert.match(source, /worker's exact question/i);
-  assert.match(source, /exact option labels\/values/i);
-  assert.match(source, /harness-native picker/i);
-  assert.match(source, /selected value.*same worker|same worker.*selected value/i);
-  assert.match(source, /same-worker continuation|same worker continuation/i);
-});
-
-test('question autonomy is limited to selector-dispatched supervision', () => {
-  const source = exploreContract();
-
-  assert.match(source, /Autonomy is scoped to supervised spec execution/i);
-  assert.match(source, /selector-dispatched supervision only/i);
-  assert.match(source, /independent `?\/sai-1-spec`?/i);
-  assert.match(source, /standalone coordinator.*unchanged|unchanged.*standalone coordinator/i);
-});
-
-test('each auto-answer emits the interim accountability notice with ordered fields', () => {
-  const source = exploreContract();
-
-  assert.match(source, /Auto-answered questions are reported/i);
-  assert.match(source, /minimal interim notice at the point of answering|existing minimal interim notice/i);
-  assert.match(source, /Auto-answered \(supervised\):.*\u2192.*\n\s+\[grounding:.*\u2014/is);
-  assert.match(source, /question.*answer.*grounding.*citation/is);
-});
-
-test('supervised autonomy keeps state in conversation and tracks escalations', () => {
-  const source = exploreContract();
-
-  assert.match(source, /in-conversation-only|conversation-only state/i);
-  assert.match(source, /per-auto-answer record|auto-answer record/i);
-  assert.match(source, /question.*answer.*grounding citation/is);
-  assert.match(source, /running escalated count/i);
-  assert.match(source, /scoped to this selector-dispatched supervision only/i);
-});
-
-test("machine feedback continues each round's complete findings list to the same phase worker", () => {
-  const source = exploreContract();
-  const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
-
-  assert.match(source, /MachineFeedbackAdapter/);
-  assert.match(source, /sai\/policies\/artifact-feedback-gate\.md/);
-  assert.match(source, /needs_input/);
-  assert.match(source, /same (?:spec[- ]proposal|spec|design|phase)[- ]?worker/i);
-
-  assert.match(policy, /exactly one same-worker continuation[\s\S]{0,200}complete ordered findings/i);
-  assert.match(policy, /per-item legitimacy rules/i);
-  assert.match(policy, /artifact-only scope/i);
-  assert.match(policy, /decision-summary recomputation/i);
-  assert.match(policy, /Accepted changes remain worker-owned.*proposal\.md.*specs/si);
-  assert.match(policy, /specific discard reporting|Every discarded finding.*specific reason/i);
-});
-
-test('machine feedback cannot enter or advance the user gate or proceed branch', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
-
-  assert.match(source, /emits neither the picker nor the empty-turn prompt/i);
-  assert.match(source, /does not consume a user feedback turn/i);
-  assert.match(source, /does not increment.*iteration counter/i);
-  assert.match(source, /does not execute.*proceed-label.*next-action/i);
-});
-
-test('iteration zero offers feedback after the supervised review rounds settle', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
-
-  assert.match(source, /empty findings array is a no-op/i);
-  assert.match(source, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:round|loop) converges, exhausts? (?:its )?three-round cap, or is interrupted by worker failure\./i);
-  assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
-  assert.match(source, /iteration 0/);
-});
-
-test('explore remains read-only and closes with the supervised in-session completion contract', () => {
+test('explore remains read-only and its Plan route follows the plan coordinator', () => {
   const source = exploreContract();
 
   assert.match(source, /Explore.*no direct write|no direct write/i);
@@ -518,15 +409,8 @@ test('explore remains read-only and closes with the supervised in-session comple
   for (const harness of ['Claude Code', 'opencode']) {
     assert.match(source, new RegExp(harness.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'));
   }
-  assert.match(
-    source,
-    /Supervised sai-1 done in openspec\/changes\/\{name\}\/\./
-  );
-  assert.doesNotMatch(source, /sai-2 was not run|Independent review and artifact feedback are complete/i);
-  assert.match(
-    source,
-    /(?:spec convergence|spec.*converg|cap exhaustion)[\s\S]{0,200}(?:chain|proceed|continue)[\s\S]{0,120}(?:design|sai-2)/i
-  );
+  assert.match(source, /\*\*Plan - Unattended\*\* runs `\/sai-plan` for the first pending slice/);
+  assert.doesNotMatch(source, /sai-2 was not run|Independent review and artifact feedback are complete|Supervised sai-1 done/i);
   assert.match(source, /Ready to Propose/);
 });
 
@@ -544,44 +428,6 @@ test('Claude Code explore adapter permits worker supervision without direct writ
   assert.equal(allowedTools.includes('Edit'), false);
   assert.equal(allowedTools.includes('Write'), false);
   assert.equal(allowedTools.includes('Bash'), false);
-});
-
-test('Step 1 explore adapters route only the permitted planning workers', () => {
-  const claude = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
-  const opencode = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const planRoute = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/steps/pipeline-plan-unattended.md'), 'utf8');
-
-   assert.match(claude, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/);
-   assert.match(claude, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-   assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
-   assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Edit(?:,|\s|$)/m);
-   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
-   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
-
-     assert.match(opencode, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-     assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-   assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
-    assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-    assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
-
-  for (const retiredPath of [
-    'commands/copilot/sai-explore.prompt.md',
-    'sai/orchestration/inline-invocation.md',
-  ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
-});
-
-test('opencode explore adapter enables native task dispatch with both numbered planning workers', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const planRoute = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/steps/pipeline-plan-unattended.md'), 'utf8');
-
-     assert.match(source, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-    assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-    assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
-   assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
-   assert.doesNotMatch(source, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-   assert.doesNotMatch(source, /sai-coordinator|managed coordinator/i);
-   assert.doesNotMatch(source, /reviewer[- ](?:binding|skill|agent)|independent[- ]review.*(?:binding|skill|agent)/i);
 });
 
 test('retired Copilot and inline explore surfaces are absent', () => {
@@ -616,195 +462,6 @@ test('direct spec and design wrappers retain their existing terminal contracts',
     'commands/copilot/sai-1-spec.prompt.md',
     'commands/copilot/sai-2-design.prompt.md',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
-});
-
-test("Step 1 continues each completed round's findings in one batched same-worker continuation", () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(
-    feedbackGate,
-    /For each completed review round in the bounded convergence loop, perform exactly one same-worker continuation that carries that round's complete ordered findings list/i
-  );
-  assert.match(feedbackGate, /exactly one verification at the close of the turn \(`openspec validate`\)/i);
-  assert.match(feedbackGate, /one block reporting every individual disposition/i);
-  assert.match(feedbackGate, /decision-summary recomputation exactly once/i);
-  assert.doesNotMatch(feedbackGate, /For each finding[\s\S]{0,120}perform one same-worker continuation/i);
-  assert.match(feedbackGate, /Complete all findings for the current (?:pass|round) before supervision evaluates whether another (?:fresh review pass|review round) is required/i);
-});
-
-test('Step 1 preserves artifact-only worker ownership and specific discard reasons', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-  const supervision = exploreContract();
-
-  assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to the files in `artifacts`/i);
-  assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
-  assert.match(supervision, /The spec worker is the spec phase's only delegated writer:[\s\S]{0,260}SpecWriteSurface[\s\S]{0,180}`proposal\.md`[\s\S]{0,100}`specs\/\*\*`/i);
-  assert.match(supervision, /Explore never writes directly/i);
-});
-
-test('Step 1 defers the ordinary gate until review convergence, round cap, or interruption', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(feedbackGate, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:round|loop) converges, exhausts? (?:its )?three-round cap, or is interrupted by worker failure\./i);
-  assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
-});
-
-test('Step 1 gives each routed feedback selection exactly one coordinator-owned text prompt', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(feedbackGate, /## Parameters[\s\S]{0,500}`artifacts`[\s\S]{0,500}`proceed-label`[\s\S]{0,500}`next-action`/i);
-  assert.match(feedbackGate, /routed feedback selection[\s\S]{0,300}coordinator/i);
-  assert.match(feedbackGate, /exactly one clean feedback-text prompt/i);
-  assert.match(
-    feedbackGate,
-    /worker[\s\S]{0,180}(?:must not|does not|never)[\s\S]{0,120}(?:emit|present|output)[\s\S]{0,120}(?:feedback|prompt)/i
-  );
-});
-
-test('Step 1 gives repeated feedback selections independent coordinator prompts without worker prompts', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(feedbackGate, /each selection[\s\S]{0,240}independent coordinator prompt/i);
-  assert.match(feedbackGate, /no additional worker prompt/i);
-});
-
-test('Step 1 preserves the feedback heading, iteration labels, language, selection, and machine-feedback semantics', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(feedbackGate, /## On "Give feedback"/);
-  assert.match(feedbackGate, /`Give feedback \(Recommended\)`[\s\S]{0,180}`Give more feedback`/i);
-  assert.match(feedbackGate, /render it in the user's language/i);
-  assert.match(feedbackGate, /Apply feedback \*\*selectively per item\*\*/i);
-  assert.match(feedbackGate, /## Machine-feedback adapter \(supervised (?:sai-1 only|phases)\)/i);
-});
-
-test('Step 1 applies routed ownership to sai-1 and sai-2', () => {
-  const feedbackGate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(feedbackGate, /routed[\s\S]{0,240}sai-1[\s\S]{0,240}sai-2/i);
-});
-
-test('Step 4 synchronizes the normative artifact feedback gate contract', () => {
-  const normative = fs.readFileSync(
-    path.join(repoRoot, 'openspec/specs/artifact-feedback-gate/spec.md'),
-    'utf8'
-  );
-
-  assert.match(normative, /sai\/policies\/artifact-feedback-gate\.md/);
-  assert.match(normative, /sai\/policies\/remember\.md/);
-  assert.match(normative, /Give feedback \(Recommended\)/i);
-  assert.match(normative, /Give more feedback/i);
-  assert.match(normative, /exactly one[\s\S]{0,160}routed[\s\S]{0,160}coordinator[\s\S]{0,160}prompt/i);
-  assert.match(normative, /sai-2[\s\S]{0,240}Continue[\s\S]{0,240}terminal design navigation/i);
-
-  assert.doesNotMatch(normative, /sai-2 gate coexists with the existing \(b\) confirm without stale re-reads/i);
-  assert.doesNotMatch(normative, /\(a\)[\s\S]{0,500}\(b\)[\s\S]{0,500}continuation/i);
-});
-
-test('Step 2 reports auto-answered questions at every terminal outcome with grounding citations', () => {
-  const source = exploreContract();
-
-  assert.match(source, /Auto-answered questions are reported at every phase ending/i);
-  assert.match(source, /convergence.*cap exhaustion.*(?:worker failure|failed|cancelled).*worker/is);
-  assert.match(source, /each.*auto[- ]answer.*grounding citation|grounding citation.*each.*auto[- ]answer/is);
-});
-
-test('Step 2 reports only the aggregate escalation denominator without escalated question content', () => {
-  const source = exploreContract();
-
-  assert.match(source, /The audit log reports the escalation denominator/i);
-  assert.match(source, /escalated question content is absent from the audit log/i);
-});
-
-test('Step 2 keeps the autonomy audit in conversation and never persists it', () => {
-  const source = exploreContract();
-
-  assert.match(source, /The audit log is never persisted/i);
-  assert.match(source, /in[- ]conversation text|conversation[- ]only/i);
-  assert.match(source, /no file.*artifact.*configuration|never written to any file.*artifact.*config/i);
-});
-
-test('Step 2 pins the autonomy audit field order and empty-report form', () => {
-  const source = exploreContract();
-
-  assert.match(source, /pinned scannable layout single-sourced at `sai\/policies\/autonomy-audit-log\.md`/);
-  assert.match(source, /phase label `supervised spec phase`/);
-  assert.match(source, /that policy owns the fixed field order, the empty-report case/);
-});
-
-test('supervised pipeline state extends the selector interface by phase with separate round counters', () => {
-  const source = supervisionContract();
-
-  for (const field of [
-    'tracked_changes',
-    'last_crystallization_set',
-    'completed_changes',
-    'active_change',
-    'active_phase',
-    'auto_answered',
-    'escalated_count',
-    'specs_converged_changes',
-    'review_rounds',
-  ]) assert.match(source, new RegExp(`\\b${field}\\b`));
-
-  assert.match(source, /auto_answered.*phase-keyed|phase-keyed.*auto_answered/i);
-  assert.match(source, /escalated_count.*phase-keyed|phase-keyed.*escalated_count/i);
-  assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
-  assert.doesNotMatch(source, /\breview_passes\b/);
-  assert.doesNotMatch(source, /\bfinding_history\b/);
-  assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
-  assert.match(source, /On a valid \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\* picker answer, use only the pending set[\s\S]{0,160}`last_crystallization_set` minus `completed_changes`/);
-  assert.match(source, /review loop's \(item 9\) source only, and is never the deferred choice's dispatch source/i);
-  assert.match(source, /A later crystallization turn replaces the pending set with that turn's emitted names/i);
-  assert.match(source, /assumed applied or discarded/i);
-  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
-    'supervised chained requests must not construct or forward the wrapper echo field');
-  assert.match(source, /arguments_value\s*:\s*"\{name\} --fast-track"/);
-});
-
-test('supervised review reports spec convergence or cap exhaustion before design dispatch and preserves the token', () => {
-  const source = supervisionContract();
-
-  assert.match(
-    source,
-    /spec phase.*converg[\s\S]{0,360}(?:pass outcome|round outcome|autonomy audit)[\s\S]{0,360}(?:design worker|design dispatch)/i
-  );
-  assert.match(source, /same active supervised invocation and `active_change` remain in force/i);
-  assert.match(source, /spec (?:phase )?cap exhaustion[\s\S]{0,200}(?:chain|proceed|continue|dispatch)[\s\S]{0,120}(?:design|sai-2)/i);
-  assert.match(source, /failed or cancelled spec-worker[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
-});
-
-test('Step 2 blind supervision rejects duplicate starts until the chained design outcome', () => {
-  const source = supervisionContract();
-
-   assert.match(source, /Active supervision rejects another \*\*Plan \(unattended\)\*\* selection/i);
-  assert.match(source, /throughout the chained design phase/i);
-  assert.match(source, /ends only at the applicable terminal outcome/i);
-  assert.match(source, /spec and design.*(?:review_rounds|review rounds).*autonomy records remain separate|spec and design.*autonomy records remain separate/i);
-  assert.match(source, /completed_changes.*applicable terminal worker result/i);
-  assert.match(source, /specs_converged_changes.*active_phase.*design/i);
 });
 
 test('active exploration closure defines the three conversation-only states and success-only rule', () => {
@@ -919,29 +576,10 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
   assert.match(source, /overview_language/);
   assert.match(source, /--overview-lang/);
   assert.match(source, /selected.*language|language.*selected/i);
-  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/);
-
-  const deterministic = source.indexOf('**Deterministic selection**');
-  assert.ok(deterministic >= 0, 'the deterministic Plan/Build selection contract should be present');
-  const auto = source.slice(deterministic);
-  const noOverview = auto.match(
-    /(?:do[- ]not[- ]create|None)[\s\S]{0,5000}?arguments_value:\s*"\{name\} --fast-track --supervised"/i
-  );
-  assert.ok(
-    noOverview,
-    'do-not-create/None Plan should forward exactly {name} --fast-track --supervised'
-  );
-  const noOverviewEnvelope = noOverview[0].match(/arguments_value:\s*"[^"]+"/i)?.[0] || '';
-  assert.equal(
-    noOverviewEnvelope,
-    'arguments_value: "{name} --fast-track --supervised"',
-    'the do-not-create/None Plan envelope should contain no overview flag or value'
-  );
-  assert.doesNotMatch(
-    noOverviewEnvelope,
-    /--overview-lang(?:\s|`|"|$)/i,
-    'the do-not-create/None Plan envelope must not carry an overview flag or value'
-  );
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  assert.match(plan, /--overview-lang <overview_language>/);
+  assert.match(plan, /The last line is present only when \`overview_language\` is not the literal \`None\`/);
+  assert.doesNotMatch(plan, /--fast-track|--supervised/, 'the plan arguments carry no fast-track or supervised marker');
 
   const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
   const manualStart = routeSelector.indexOf('- **Manual** (`route_mode = manual`)');
@@ -949,10 +587,10 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
   const manual = routeSelector.slice(manualStart, routeSelector.indexOf('**Post-Manual handoff', manualStart));
   assert.match(manual, /dispatches no worker/i);
   assert.doesNotMatch(manual, /(?:command_name|arguments_value)\s*:/i,
-    'Manual must forward no supervised dispatch envelope');
+    'Manual must forward no dispatch envelope');
 
   assert.match(source, /not.*persist|never.*persist/i);
-  assert.match(source, /failed\/cancelled retry|failed or cancelled retry|retry/i);
+  assert.match(source, /failed\/cancelled retry|failed or cancelled retry|failed or stopped run|retry/i);
 });
 
 test('Step 1 Claude explore wrapper documents both optional flags (opencode commands carry no argument-hint)', () => {
@@ -979,184 +617,10 @@ test('Step 1 rejects malformed language input before dispatch', () => {
 
 // â”€â”€â”€ Step 2: spec-design-review-progress-step (external findings and worker correction) â”€
 
-test('Step 2: the spec phase has no external findings review step and ends at validation', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-  const coordinator = spec('sai/commands/spec/coordinator.md');
-  const contract = spec('sai/policies/spec-phase-contract.md');
-
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/steps/review.md')), false,
-    'the dead spec review step file should be retired');
-  assert.doesNotMatch(worker, /### External findings consumption/,
-    'the dead external findings consumption section should be gone');
-  assert.doesNotMatch(worker, /run the automatic review loop/,
-    'validation must not enter a worker-owned automatic review loop');
-  assert.match(worker, /artifact validation plus decision-summary derivation returns `validation`/,
-    'validation should be reported as a progress event');
-  assert.doesNotMatch(contract, /`review` — "Review artifacts"/,
-    'the canonical plan should end at validation');
-  assert.match(coordinator, /Report worker-authored discards/i,
-    'the coordinator should keep surfacing feedback discards');
-  assert.match(worker, /the worker dispatches no reviewer of its own/,
-    'the phase worker should not dispatch or own the reviewer');
-  assert.doesNotMatch(worker, /The reviewer evaluates reviewed-set consistency/,
-    'the retired worker-owned reviewer axes must be absent');
-});
-
-test('Step 2: workers have no automatic reviewer loop under supervision and the supervised flow has no routed task list', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-  const supervision = exploreContract();
-
-  assert.match(worker, /\bsupervised\b/i,
-    'the worker contract should state the supervised boundary');
-  assert.match(worker, /the worker dispatches no reviewer of its own/,
-    'the worker must not retain a worker-owned automatic reviewer or its counters');
-  assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
-    'supervision must not retain a second worker-owned review layer');
-  assert.match(supervision, /declares no visual `progress_plan`/,
-    'the supervised adapter should suppress only the visual progress plan');
-  assert.match(supervision, /no task-list step is marked and no milestone stamp is rendered/i,
-    'no routed task list should render under supervision');
-  assert.match(supervision, /spec-standalone@1/,
-    'pointer routing should remain active under supervision');
-  assert.match(supervision, /declares the machine as routing-only/,
-    'the supervised adapter should declare the machine as routing-only');
-  assert.doesNotMatch(supervision, /SpecStepPointerMap/,
-    'the static SpecStepPointerMap reference should not remain');
-});
-
 // â”€â”€â”€ Step 3: spec-design-review-progress-step (supervised design review) â”€â”€â”€â”€
 
-test('Step 3: design workers have no automatic reviewer loop under supervision and keep the supervised flow without routed-list marking', () => {
-  const worker = spec('sai/commands/design/worker.md');
-  const supervision = exploreContract();
-
-  assert.match(worker, /\bsupervised\b/i,
-    'the design worker contract should cover supervised invocation');
-  assert.match(worker, /SHALL NOT dispatch or own an artifact reviewer/,
-    'the design worker must not retain a worker-owned automatic reviewer');
-  assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
-    'supervision must not retain a second design-worker review layer');
-  assert.match(worker, /supervised[\s\S]{0,320}(?:no|without)[\s\S]{0,140}(?:adapter|plan|list)/i,
-    'the supervised design worker should not own a routed-list surface');
-  assert.match(
-    supervision,
-    /(?:design|sai-2)[\s\S]{0,240}no plan-based list renders|no plan-based list renders[\s\S]{0,240}(?:design|sai-2)/i,
-    'no plan-based list should render in the supervised design flow'
-  );
-});
-
 // â”€â”€â”€ suppress-worker-review-under-supervision: Auto envelope pins (verify-first) â”€
-test('Plan spec envelope carries leading --supervised only in arguments_value', () => {
-  const source = exploreContract();
-  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
-    'spec Plan dispatch must not construct or forward the wrapper echo field');
-  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Plan dispatch should put --supervised on arguments_value');
-  assert.match(source, /arguments_value:[\s\S]{0,100}--supervised\s+--block-file[^\n]+\s+--block-hash/i, 'spec arguments_value should begin with --supervised ahead of the paired stored-file/hash reference');
-  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:\s*"--supervised"/,
-    'explore must not carry the marker as a bare non-empty wrapper echo');
-});
-
-test('Plan chained design envelope forwards overview generation conditionally', () => {
-  const source = exploreContract();
-  const deterministic = source.indexOf('**Deterministic selection**');
-  assert.ok(deterministic >= 0, 'the deterministic Plan/Build selection contract should be present');
-  const auto = source.slice(deterministic);
-
-  assert.ok(
-    auto.match(
-      /(?:selected|provided|chosen|overview_language)[\s\S]{0,5000}arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"|arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"[\s\S]{0,5000}(?:selected|provided|chosen|overview_language)/i
-    ),
-    'selected language should be forwarded as --overview-lang'
-  );
-  const noOverview = auto.match(
-    /(?:do[- ]not[- ]create|None)[\s\S]{0,5000}?arguments_value:\s*"\{name\} --fast-track --supervised"/i
-  );
-  assert.ok(
-    noOverview,
-    'do-not-create/None should forward exactly {name} --fast-track --supervised'
-  );
-  assert.doesNotMatch(
-    noOverview[0].match(/arguments_value:\s*"[^"]+"/i)?.[0] || '',
-    /--overview-lang(?:\s|`|"|$)/i,
-    'do-not-create/None should not forward an overview flag or value'
-  );
-  assert.doesNotMatch(
-    auto,
-    /arguments_value:\s*"\{name\} --supervised --fast-track"/,
-    'the supervised Plan envelope should remain name-first and fast-track-first'
-  );
-});
-
-test('Step 7: design grammar is name-first and accepts supervised and fast-track flags', () => {
-  const worker = spec('sai/commands/design/worker.md');
-
-  assert.match(worker, /requires the change name before the option/i,
-    'the design grammar should require the change name before flags');
-  assert.match(worker, /recognize bare `--supervised`/i,
-    'the design grammar should recognize the bare --supervised flag');
-  assert.match(worker, /order-independent among flags after the change name[\s\S]{0,220}both accepted/i,
-    'the overview-language and supervised flags stay order-independent after the name');
-  assert.match(worker, /If `--fast-track` is present[\s\S]{0,220}remove the token/i,
-    'the design worker must strip fast-track from the combined envelope');
-  assert.match(worker, /fast-track notice/i,
-    'the design worker must return a fast-track notice');
-  assert.match(worker, /coordinator prints it/i,
-    'the coordinator must own presentation of the worker-produced fast-track notice');
-});
-
-test('design-phase retry carries --supervised and does not re-run sai-1', () => {
-  const source = exploreContract();
-  assert.match(source, /design-phase retry[\s\S]{0,800}--supervised|retry[\s\S]{0,400}--supervised[\s\S]{0,400}design/i, 'design-phase retry must carry --supervised');
-  assert.match(source, /design-phase retry[\s\S]{0,500}never dispatch sai-1|never[\s\S]{0,80}regenerate `proposal\.md`|does not re-dispatch the sai-1/i, 'design-phase retry must not re-dispatch sai-1 or regenerate proposal/specs');
-});
-
 // â”€â”€â”€ Step 1: supervised-review-in-session (in-session review rounds) â”€
-
-test('supervised review rounds use the sole in-session Review Engine convergence path without a reviewer subagent', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /supervised review round|review rounds|in[- ]session review/i);
-  assert.match(source, /Review[\s-]?Engine\(changeName[\s\S]{0,120}artifactSet|Review[\s-]?Engine\(\s*changeName\s*,\s*artifactSet/i);
-  assert.match(source, /artifactSet[\s\S]{0,160}sai-1\|sai-2|sai-1\|sai-2[\s\S]{0,160}artifactSet/i);
-  assert.match(source, /spec[\s\S]{0,160}design[\s\S]{0,160}(?:pair|chain|phase pairing|same phase)/i);
-  assert.match(source, /in[- ]session/i);
-  assert.match(source, /(?:sole|only)[\s\S]{0,160}(?:automatic )?(?:convergence|review)|(?:automatic )?(?:convergence|review)[\s\S]{0,160}(?:sole|only)/i);
-  assert.match(source, /Two surfaces form findings under this contract|not additional review surfaces/i,
-    'the Review Engine should be the only reviewer surface');
-  assert.doesNotMatch(source, /IndependentReviewResult|IndependentReviewFinding/);
-});
-
-test('Step 7: supervised rounds allow three rounds per attempt, High extension under cap, third-High exhaustion, and reset on a new attempt', () => {
-  const source = exploreContract();
-
-  assert.match(source, /review_rounds/);
-  assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
-  assert.doesNotMatch(source, /\breview_passes\b/);
-  assert.doesNotMatch(source, /\bfinding_history\b/);
-  assert.match(source, /three[- ]rounds?(?:[\s\S]{0,180}(?:per|each) attempt)|(?:per|each) attempt[\s\S]{0,180}(?:three|3)[\s\S]{0,100}round/i,
-    'each supervised attempt should have a three-round budget');
-  assert.match(source, /High[\s\S]{0,300}(?:extends?|continues?|requires another|next)[\s\S]{0,260}(?:round|pass)[\s\S]{0,220}(?:cap|third|three|permit)/i,
-    'High findings should extend the loop while the attempt cap permits');
-  assert.match(source, /(?:third|3rd|round 3|third round)[\s\S]{0,300}High[\s\S]{0,300}(?:exhaust|cap|stop)|High[\s\S]{0,300}(?:third|3rd|round 3|third round)[\s\S]{0,300}(?:exhaust|cap|stop)/i,
-    'a High finding on the third round should exhaust the attempt');
-  assert.match(source, /(?:new|next) attempt[\s\S]{0,260}(?:reset|starts?)[\s\S]{0,180}(?:review_rounds|round counter)[\s\S]{0,120}(?:`?0`?|zero)|(?:review_rounds|round counter)[\s\S]{0,140}(?:`?0`?|zero)[\s\S]{0,260}(?:new|next) attempt/i,
-    'a new attempt should reset phase round counters to zero');
-  assert.doesNotMatch(source, /at most one[\s\S]{0,80}(?:supervised )?(?:review|round)/i,
-    'the live supervised contract must not impose an at-most-one review cap');
-  assert.match(source, /manual (?:review|counters)[\s\S]{0,160}(?:separate|do not count|does not count|does not increment)|separate from supervised rounds/i);
-});
-
-test('Step 7: spec and design workers retain no automatic review loop for any supervised value', () => {
-  const phases = [
-    spec('sai/commands/spec/worker.md'),
-    spec('sai/commands/design/worker.md'),
-  ];
-
-  for (const worker of phases) {
-    assert.match(worker, /(?:the worker dispatches no reviewer of its own|SHALL NOT dispatch or own an artifact reviewer)/,
-      'neither phase worker may retain an automatic reviewer for any supervised value');
-  }
-});
 
 test('non-supervised worker state carries no worker-owned review convergence', () => {
   for (const worker of [
@@ -1228,47 +692,6 @@ test('selector semantics remain shared and are not duplicated in harness wrapper
   }
 });
 
-test('supervised rounds preserve accepted external corrections and fresh disk evidence', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /fresh disk (?:re[- ]?read|read)|re[- ]?read[s]? (?:from|the) disk|fresh[\s\S]{0,120}disk/i);
-  assert.match(source, /same (?:spec|design|phase)[- ]?worker/i);
-  assert.match(source, /Explore never writes directly/i);
-  assert.match(source, /read[- ]only/i);
-  assert.match(source, /per-item legitimacy/i);
-  assert.match(source, /specific discard|discard[\s\S]{0,80}specific reason/i);
-});
-
-test('cap exhaustion reports one tally line and continues the supervised run', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /cap exhaustion[\s\S]{0,200}(?:one|single)[\s\S]{0,60}line|(?:one|single)[\s\S]{0,60}line[\s\S]{0,200}cap exhaustion/i);
-  assert.match(source, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i);
-  assert.match(source, /(?:spec|sai-1)[\s\S]{0,120}cap exhaustion[\s\S]{0,240}(?:chain|proceed|continue|dispatch)[\s\S]{0,160}(?:design|sai-2)/i);
-  assert.match(source, /(?:design|sai-2)[\s\S]{0,120}cap exhaustion[\s\S]{0,240}(?:complet|terminal|end|finish)/i);
-  assert.doesNotMatch(source, /Outstanding High:|Contract-violations=/);
-});
-
-test('supervised review rounds drive the phase review item in-progress state', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /mark, clear, or render nothing for `reviewed-sai-1` or `reviewed-sai-2`; those references are inert/i);
-  assert.match(source, /Route steps carry `pending \| in_progress \| completed`/);
-  assert.match(source, /A clean spec convergence completes `sai-1` and starts `sai-2` as `in_progress`/);
-  assert.match(source, /Cap exhaustion is a non-failure report/i);
-});
-
-test('manual Review Loop Navigation and supervised rounds remain distinct', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /Review Loop Navigation/i);
-  assert.match(source, /four[- ]option|four options|4[- ]option/i);
-  assert.match(source, /free-text[\s\S]{0,80}exit|exit[\s\S]{0,80}free-text/i);
-  assert.match(source, /supervised review rounds?|in[- ]session review rounds?/i);
-  assert.match(source, /Review Loop Navigation[\s\S]{0,320}(?:manual|interactive)/i);
-  assert.doesNotMatch(source, /worker[- ]owned Phase Review Pass|worker[- ]owned[\s-]+review loop/i);
-});
-
 test('Step 5: the manual gate note precedes the canonical question, names sai-explore and review-loop, and is not a third option', () => {
   const source = exploreContract();
   assert.match(source, /sai-explore[\s\S]{0,1400}review-loop|review-loop[\s\S]{0,1400}sai-explore/i,
@@ -1284,100 +707,6 @@ test('Step 5: supervised flow omits the manual gate note and canonical question'
 
   assert.match(source, /supervis(?:ed|ion)[\s\S]{0,600}(?:omit|does not|never|no|without)[\s\S]{0,220}(?:gate note|note|question|ask|picker|free-text)/i,
     'supervised execution should omit both manual gate surfaces');
-});
-
-test('Step 1: artifact feedback gate declares an explicit interactive or supervised mode', () => {
-  const gate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(gate, /`mode`[\s\S]{0,180}optional|optional[\s\S]{0,180}`mode`/i);
-  assert.match(gate, /interactive/);
-  assert.match(gate, /supervised/);
-  assert.match(gate, /(?:omitted|missing)[\s\S]{0,140}interactive|default(?:s|ing)?[\s\S]{0,100}interactive/i);
-  assert.match(gate, /invalid[\s\S]{0,180}(?:non-empty[\s\S]{0,80})?mode[\s\S]{0,180}STOP|mode[\s\S]{0,180}invalid[\s\S]{0,180}STOP/i);
-  assert.match(
-    gate,
-    /(?:must not|never|do not)[\s\S]{0,180}(?:detect|infer|derive)[\s\S]{0,180}(?:invocation[- ]context|caller|conversation)[\s\S]{0,180}mode/i
-  );
-});
-
-test('Step 1: supervised mode auto-proceeds without the interactive feedback surfaces', () => {
-  const gate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(gate, /supervised[\s\S]{0,320}(?:auto[- ]proceed|automatically)[\s\S]{0,220}`?next-action`?/i);
-  assert.match(gate, /supervised[\s\S]{0,420}`?next-action`?[\s\S]{0,180}(?:exactly once|once)/i);
-  assert.match(gate, /supervised[\s\S]{0,420}(?:does not|never|no)[\s\S]{0,100}(?:present|emit)[\s\S]{0,100}(?:picker|free-text)/i);
-  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|no)[\s\S]{0,100}(?:increment|change)[\s\S]{0,100}iteration/i);
-  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|must not)[\s\S]{0,120}(?:write|modify)[\s\S]{0,100}`?\.openspec\.yaml`?/i);
-  assert.match(gate, /failed[\s\S]{0,220}(?:or|and)[\s\S]{0,80}cancelled[\s\S]{0,220}(?:never|not|no)[\s\S]{0,180}(?:auto[- ]proceed|next-action)/i);
-});
-
-test('Step 1: supervised placement follows the decision summary and reports follow proceed', () => {
-  const gate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-
-  assert.match(gate, /supervised[\s\S]{0,420}(?:after|following)[\s\S]{0,120}decision summary/i);
-  assert.match(gate, /(?:after|following)[\s\S]{0,120}(?:proceed|`?next-action`?)[\s\S]{0,260}(?:report|reporting|summary)/i);
-});
-
-test('Step 1: interactive mode keeps Give feedback Recommended before proceed', () => {
-  const gate = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
-    'utf8'
-  );
-  const feedback = gate.indexOf('Give feedback (Recommended)');
-  const proceed = gate.indexOf('proceed-label');
-
-  assert.match(gate, /interactive[\s\S]{0,320}Give feedback \(Recommended\)[\s\S]{0,240}proceed/i);
-  assert.ok(feedback >= 0, 'interactive feedback option should be present');
-  assert.ok(proceed >= 0, 'proceed option should be present');
-  assert.ok(feedback < proceed, 'interactive feedback should precede proceed');
-});
-
-test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phase transition', () => {
-  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
-
-  assert.match(plan,
-    /supplying `artifacts = proposal\.md, specs\/\*\*`, `proceed-label = Finish step`, and `next-action = the spec-to-design phase transition below`[\s\S]{0,200}additionally supplies `mode = supervised`/,
-    'the supervised spec gate should supply its artifacts, Finish step, the phase transition, and mode = supervised');
-});
-
-test('Step 2: supervised Continue conditionally selects overview generation or a no-generation terminal', () => {
-  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
-
-  assert.match(plan,
-    /supplying `artifacts = design\.md, tasks\.md, interfaces\.md`, `proceed-label = Continue`, and a conditional `next-action`: `overview-generation` when `overview_language` is a selected non-`None` value, or `no-generation supervised-terminal` when `overview_language` is `None`/,
-    'the supervised design gate should select overview generation or the no-generation terminal from overview_language');
-  assert.match(plan, /The supervised application additionally supplies `mode = su/,
-    'the supervised design gate should supply mode = supervised');
-});
-
-test('Step 2: post-proceed report ordering remains after supervised gates without active-supervision interval stage enumeration', () => {
-  const source = exploreContract();
-  const gate = source.match(
-    /(?:proposal\.md[\s\S]{0,500}specs\/\*\*[\s\S]{0,700}(?:Finish|phase-transition)[\s\S]{0,300}(?:phase-transition|Finish)|design\.md[\s\S]{0,350}tasks\.md[\s\S]{0,350}interfaces\.md[\s\S]{0,900}(?:Continue|overview-generation|supervised-terminal)[\s\S]{0,300}(?:overview-generation|supervised-terminal|Continue))/i
-  );
-
-  assert.ok(gate, 'a supervised artifact gate should exist before post-proceed reporting');
-  const afterGate = source.slice(gate.index + gate[0].length);
-  assert.match(afterGate, /Auto-answered:[\s\S]{0,220}Escalated:/i,
-    'post-proceed reporting should retain Auto-answered before Escalated');
-  assert.match(source, /pinned scannable layout single-sourced at `sai\/policies\/autonomy-audit-log\.md`/,
-    'post-proceed reporting should render the audit through the single-sourced policy');
-  assert.match(source, /grounding citation/,
-    'post-proceed reporting should retain question, answer, and grounding order');
-  assert.doesNotMatch(
-    source,
-    /active[- ]supervision\s+interval[\s\S]{0,360}(?:stage|step)[\s\S]{0,180}(?:enumerat|\b1\.[\s\S]{0,80}\b2\.)/i,
-    'the supervised contract must not add interval stage-enumeration prose'
-  );
 });
 
 // â”€â”€â”€ Step 4: deferred Manual handoff (green-exception tests) â”€
@@ -1443,15 +772,14 @@ test('Step 4: Manual remains uncapped and each later choice emits one handoff', 
 });
 
 test('Step 4: successful Plan (unattended) emits the build handoff and never dispatches implementation', () => {
-  const source = exploreContract();
-  const success = 'A successful Plan (unattended) run emits the expanded successful close above (review here → `/sai-build {name}` in another chat → titled `next-slice`) and performs no implementation-phase dispatch';
-  const successIndex = source.indexOf(success);
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const close = plan.slice(plan.indexOf('**Close.**'), plan.indexOf('**`next-slice` on Implement.**'));
 
-  assert.ok(successIndex >= 0, 'the successful Plan outcome should be specified');
-  assert.match(source.slice(successIndex, successIndex + 320), /\/sai-build \{name\}.*another chat.*next-slice/is,
-    'successful Plan should hand off to the build composition with the expanded close');
-  assert.doesNotMatch(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
-    'successful Plan should not emit the obsolete terminal text');
+  assert.ok(close.length > 0, 'the Plan close should be specified');
+  assert.match(close, /review here → \`\/sai-build \{name\}\` in another chat/, 'successful Plan should hand off to the build composition');
+  assert.match(close, /titled active slice/);
+  assert.match(close, /The route never dispatches \`\/sai-3-implement\` or any later worker/);
+  assert.doesNotMatch(close, /\`sai-3 was not run\.\`/i, 'successful Plan should not emit the obsolete terminal text');
 });
 
 test('Direct Build continuation starts the next ordered slice only after clean success and explicit consent', () => {
@@ -1491,9 +819,8 @@ test('Plan completion and Direct Build continuation use the native route picker'
   assert.match(routeSelector, /This separate question stays a distinct question of round 3 and is not the route choice above/i);
 });
 
-test('Direct Build final report is outcome-first and leaves the Plan report unchanged', () => {
+test('Direct Build final report is outcome-first and leaves the audit layout to the corrections entries', () => {
   const directBuild = spec('sai/commands/explore/steps/pipeline-direct-build.md');
-  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
   const auditLayout = spec('sai/policies/autonomy-audit-log.md');
   const reportStart = directBuild.indexOf('**Direct Build terminal report**');
   const reportEnd = directBuild.indexOf('**Successful slice completion transition', reportStart);
@@ -1517,31 +844,41 @@ test('Direct Build final report is outcome-first and leaves the Plan report unch
   assert.match(report, /Name the violated rule for a contract violation/);
   assert.match(report, /expected generated file is excluded from the commit, name it and the reason/);
   assert.match(report, /omit routine rounds without findings, cap tallies, checks without alerts, automatic answers that caused no problems/i);
-  assert.match(report, /follow the Direct Build - Unattended final-report exception in `sai\/policies\/autonomy-audit-log\.md`/);
 
-  assert.match(plan, /Autonomy audit — supervised spec phase/);
-  assert.match(plan, /Autonomy audit — supervised design phase/);
-  assert.match(plan, /sai\/policies\/autonomy-audit-log\.md/);
-  assert.match(auditLayout, /Direct Build -\s*Unattended final report is the scoped exception:[\s\S]{0,120}does not emit an autonomy\s+audit/);
-  assert.match(auditLayout, /This exception applies only to that final report[\s\S]{0,100}every other route stay unchanged/);
-  assert.match(auditLayout, /Pinned scannable layout \(field order fixed\)/);
-  assert.match(auditLayout, /Auto-answered: <N>\s+Escalated: <M>/);
-  assert.match(auditLayout, /\(no questions were auto-answered this phase\)/);
+  assert.match(auditLayout, /Corrections: <N>/);
+  assert.match(auditLayout, /Ignored process statements: <K>/);
+  assert.match(auditLayout, /NEVER written to any file, artifact, change\s+directory, or configuration/);
+  assert.doesNotMatch(auditLayout, /Auto-answered: <N>/, 'the Plan auto-answer audit is retired');
 });
 
-test('Step 4: failed or cancelled Plan maps retry guidance from phase state without changing retry state', () => {
-  const source = exploreContract();
-  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
-  const contract = [source, selectorSpec].join('\n');
+test('Step 4: failed or stopped Plan segments park the slice, print one guidance line, and never dispatch implementation', () => {
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
 
-  assert.match(contract, /(?:failed|cancelled)[\s\S]{0,500}(?:absent|not present|missing)[\s\S]{0,220}specs_converged_changes[\s\S]{0,260}`?\/sai-1-spec`?/i,
-    'a failed/cancelled Plan phase absent from specs_converged_changes should point to /sai-1-spec');
-  assert.match(contract, /specs_converged_changes[\s\S]{0,500}(?:present|contains)[\s\S]{0,260}(?:absent|not present|missing)[\s\S]{0,220}completed_changes[\s\S]{0,260}`?\/sai-2-design`?/i,
-    'a converged but incomplete Plan phase should point to /sai-2-design');
-  assert.match(contract, /(?:retry state|retry)[\s\S]{0,220}(?:unchanged|preserv|does not change)/i,
-    'failed/cancelled guidance must preserve retry state');
-  assert.match(contract, /(?:failed|cancelled)[\s\S]{0,700}(?:no|not|never|without)[\s\S]{0,180}(?:implementation|sai-3)[\s\S]{0,120}(?:dispatch|start|run)/i,
-    'failed/cancelled Plan must not dispatch implementation');
+  assert.match(plan, /When a segment fails, is stopped, or ends on an unanswered escalation, emit \`\{intent: fail\}\` after its report, parking the slice on its current stage/);
+  assert.match(plan, /a later \*\*Plan - Unattended\*\* choice with a fresh picker answer retries it/);
+  assert.match(plan, /one localized guidance line: \`Next step: choose Plan - Unattended again to resume the stopped segment, or run \/sai-1-spec or \/sai-2-design for \{name\}\.\`/);
+  assert.match(plan, /Add the name to \`completed_changes\` only when the design segment completed/);
+  assert.match(plan, /The route never dispatches \`\/sai-3-implement\` or any later worker/);
+});
+
+test('the Plan route follows /sai-plan and keeps the plan family out of explore', () => {
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
+
+  assert.match(plan, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
+  assert.match(plan, /--block-file <absolute path returned by export>/);
+  assert.match(plan, /--block-hash <sha256 returned by export>/);
+  assert.match(plan, /Set \`active_change\` before dispatch and reject duplicate starts for the full active interval/);
+  assert.match(plan, /\{intent: complete\}\` \(\`sai-1\` → \`sai-2\`\) before the design segment starts/);
+  assert.match(plan, /\{intent: complete\}\` \(\`sai-2\` → \`implement\`\)/);
+  for (const retired of ['specs_converged_changes', 'active_phase', 'auto_answered', 'escalated_count', 'review_rounds', 'Diagnosis Round']) {
+    assert.ok(!plan.includes(retired), `the Plan step must not mention ${retired}`);
+    assert.ok(!selector.includes(retired), `the selector state must not mention ${retired}`);
+  }
+  for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change', 'overview_language']) {
+    assert.ok(selector.includes(kept), `the selector state keeps ${kept}`);
+  }
+  assert.doesNotMatch(selector, /diagnosis_rounds = \{ spec/, 'the spec and design diagnosis counters are retired');
 });
 
 test('Step 4: handoff prose localizes while command and review-loop literals remain verbatim English', () => {
@@ -1554,281 +891,6 @@ test('Step 4: handoff prose localizes while command and review-loop literals rem
 });
 
 const artifact = relativePath => spec(relativePath);
-
-test('Step 2 item-10 starts one phase-selected Review Engine diagnosis round after worker failure', () => {
-  const source = supervisionContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-
-  assert.match(source, /diagnosis_rounds/);
-  const reviewEngineCall = String.raw`Review\s+Engine\s*\(\s*changeName\s*,\s*["'\x60]sai-(?:1|2)["'\x60]\s*\)`;
-  const coordinatorDisproved = String.raw`(?:coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)`;
-  const completedCoordinatorDisproved = String.raw`(?:completed[\s\S]{0,900}${coordinatorDisproved}|${coordinatorDisproved}[\s\S]{0,900}completed)`;
-  const completedStop = String.raw`(?:completed[\s\S]{0,900}STOP|STOP[\s\S]{0,900}completed)`;
-  const diagnosisEntry = trigger => new RegExp(
-    String.raw`(?:${trigger}[\s\S]{0,900}${reviewEngineCall}|${reviewEngineCall}[\s\S]{0,900}${trigger})`,
-    'i'
-  );
-
-  for (const [trigger, entry] of [
-    ['failed or cancelled', diagnosisEntry(String.raw`(?:failed|cancelled)`)],
-    ['completed and coordinator-disproved', diagnosisEntry(completedCoordinatorDisproved)],
-    ['completed and STOP-bearing', diagnosisEntry(completedStop)],
-  ]) {
-    assert.match(
-      diagnosis,
-      entry,
-      `${trigger} workers should enter a phase-selected Review Engine diagnosis`
-    );
-  }
-
-  let previous = -1;
-  for (const label of ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification']) {
-    const index = diagnosis.indexOf(label);
-    assert.ok(index >= 0, `diagnosis should include ${label}`);
-    assert.ok(index > previous, `diagnosis labels should remain ordered through ${label}`);
-    previous = index;
-  }
-
-  assert.match(diagnosis, /continue_after_recovery/);
-  assert.match(
-    diagnosis,
-    /(?:at most one[\s\S]{0,220}(?:same[- ]worker[\s\S]{0,120}(?:re[- ]?dispatch|dispatch)|(?:re[- ]?dispatch|dispatch)[\s\S]{0,120}same[- ]worker)|same[- ]worker[\s\S]{0,220}(?:re[- ]?dispatch|dispatch)[\s\S]{0,120}at most one)/i,
-    'diagnosis permits at most one same-worker re-dispatch'
-  );
-});
-
-test('Step 2 item-10 cancelled workers use the Explore-specific diagnosis path', () => {
-  const source = exploreContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-
-  assert.match(diagnosis, /item[- ]?10[\s\S]{0,500}(?:cancelled|cancellation)|(?:cancelled|cancellation)[\s\S]{0,500}item[- ]?10/i);
-  assert.match(
-    diagnosis,
-    /(?:cancelled|cancellation)[\s\S]{0,900}(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)|(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)[\s\S]{0,900}(?:cancelled|cancellation)/i,
-    'cancellation should remain on the Explore diagnosis path'
-  );
-  assert.match(
-    diagnosis,
-    /(?:(?:not|never|does not|must not)[\s\S]{0,180}(?:a\s+)?(?:standalone|manual)[\s\S]{0,180}(?:recover|recovery))|(?:(?:standalone|manual)[\s\S]{0,180}(?:recover|recovery)[\s\S]{0,180}(?:not|never|excluded|item[- ]?10))/i,
-    'cancelled item-10 work must not become a standalone or manual recovery path'
-  );
-});
-
-test('Step 2 item-10 diagnosis forwards findings without direct Explore repair or replacement workers', () => {
-  const source = exploreContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-
-  assert.match(
-    diagnosis,
-    /(?:(?:diagnosis|Review\s+Engine)\s+findings?[\s\S]{0,260}(?:forward|pass|return)[\s\S]{0,220}(?:same[- ]worker|phase worker|worker))|(?:(?:forward|pass|return)[\s\S]{0,220}(?:diagnosis|Review\s+Engine)\s+findings?[\s\S]{0,220}worker)/i,
-    'diagnosis findings should be forwarded to the existing phase worker'
-  );
-  assert.match(
-    diagnosis,
-    /(?:Explore|explore|diagnosis)[\s\S]{0,260}(?:never|does not|must not|no direct)[\s\S]{0,220}(?:apply|write|edit|repair)/i,
-    'Explore must not directly apply, write, edit, or repair the diagnosis correction'
-  );
-  assert.match(
-    diagnosis,
-    /(?:(?:never|does not|must not|no)[\s\S]{0,180}(?:dispatch|create|select|use)[\s\S]{0,120}replacement worker)|(?:replacement worker)[\s\S]{0,160}(?:is|gets?)?[\s\S]{0,80}(?:never|not|no)[\s\S]{0,100}(?:dispatch|create|select)/i,
-    'diagnosis must not dispatch a replacement worker'
-  );
-});
-
-test('Step 2 item-10 diagnosis rounds are phase-keyed, separate from review rounds, and reset per Plan attempt', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /diagnosis_rounds[\s\S]{0,180}\bspec\b/i, 'diagnosis_rounds.spec should be named');
-  assert.match(source, /diagnosis_rounds[\s\S]{0,260}\bdesign\b/i, 'diagnosis_rounds.design should be named');
-
-  const counterPair = source.match(/diagnosis_rounds[\s\S]{0,700}review_rounds|review_rounds[\s\S]{0,700}diagnosis_rounds/i);
-  assert.ok(counterPair, 'diagnosis_rounds and review_rounds should be discussed together');
-  assert.match(counterPair[0], /independent|separate|distinct/i, 'diagnosis rounds must be independent of review rounds');
-  assert.match(
-    source,
-    /(?:plan-unattended|Plan \(unattended\))[\s\S]{0,800}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,500}diagnosis_rounds|diagnosis_rounds[\s\S]{0,800}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,500}(?:plan-unattended|Plan \(unattended\))/i,
-    'a new Plan attempt should reset diagnosis rounds'
-  );
-});
-
-test('Step 2 item-10 diagnosis references Bounded Recovery without restating the generic recovery contract', () => {
-  const source = supervisionContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-  const recovery = artifact('sai/policies/bounded-recovery.md');
-
-  assert.match(recovery, /Bounded Recovery/i, 'the shared Bounded Recovery contract should exist');
-  assert.match(diagnosis, /Bounded Recovery/i, 'item-10 should reference Bounded Recovery');
-  for (const coordinatorPath of [
-    'sai/commands/spec/coordinator.md',
-    'sai/commands/design/coordinator.md',
-  ]) {
-    assert.match(
-      artifact(coordinatorPath),
-      /Fetch @sai\/policies\/bounded-recovery\.md and follow it as part of the shared runner\./,
-      `${coordinatorPath} should statically load the bounded-recovery policy`
-    );
-  }
-  assert.match(
-    diagnosis,
-    /(?:(?:single|sole|shared)[\s\S]{0,180}(?:Bounded Recovery|contract))|(?:Bounded Recovery|contract)[\s\S]{0,180}(?:single|sole|shared)/i,
-    'Bounded Recovery should remain the single shared contract'
-  );
-  assert.match(
-    diagnosis,
-    /(?:(?:does not|never|must not)[\s\S]{0,220}(?:restate|repeat|duplicate|reproduce)[\s\S]{0,220}(?:full|generic)[\s\S]{0,180}(?:ledger|routing))|its generic ledger and routing stay there/i,
-    'item-10 should not restate the full generic ledger or routing contract'
-  );
-});
-
-test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase guidance only', () => {
-  const source = exploreContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 12000);
-
-  assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
-  assert.match(diagnosis, /retryable/i);
-  assert.match(diagnosis, /(?:later Plan \(unattended\)|next Plan \(unattended\)|plan-unattended|uncompleted)/i);
-  assert.match(
-    diagnosis,
-    /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)|applicable existing phase guidance/i
-  );
-  assert.match(
-    diagnosis,
-    /(?:(?:not|never|does not|must not|without)[\s\S]{0,180}(?:dispatch|start|run)[\s\S]{0,100}sai-3-implement)|(?:sai-3-implement)[\s\S]{0,180}(?:not|never|does not|must not|no)[\s\S]{0,100}(?:dispatch|start|run)/i,
-    'diagnosis exhaustion must not dispatch sai-3-implement'
-  );
-});
-
-test('Step 3: failed or cancelled item-10 work settles the active phase review item before Diagnosis Round', () => {
-  const source = exploreContract();
-
-  assert.match(source, /A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending` and retryable/i,
-    'a non-clean phase result leaves its route step pending');
-  assert.match(source, /stop diagnosis, leave the phase route step `pending` and the change uncompleted and `plan-unattended`-retryable/i,
-    'a stopped diagnosis leaves the phase route step pending');
-});
-
-test('Step 3: Diagnosis Round does not mark review items in progress or add a diagnosis list item', () => {
-  const source = exploreContract();
-
-  assert.match(source, /The chosen route creates its own entries with no baseline items/i,
-    'the panel holds only route entries, so diagnosis adds no list item');
-  assert.match(source, /Round-based reviews form findings only and mark, clear, or render nothing for `reviewed-sai-1` or `reviewed-sai-2`/i);
-});
-
-test('Step 3: diagnosis findings do not change review evidence or count as a Supervised Review Round', () => {
-  const source = exploreContract();
-
-  assert.match(source, /`diagnosis_rounds = \{ spec: 0, design: 0 \}`: one conversation-only object with one counter per phase/);
-  assert.match(source, /These counters are independent of `review_roun/,
-    'diagnosis rounds never count as supervised review rounds');
-});
-
-test('Step 3: successful same-worker re-dispatch resumes ordinary review and only ordinary review enters in_progress', () => {
-  const source = exploreContract();
-
-  assert.match(source, /forward exactly one `continue_after_recovery` to that same worker/i);
-  assert.match(source, /A successful redispatch returns to the ordinary lifecycle for the interrupted phase, including its existing review-round handling/i);
-});
-
-test('Step 3: stopped diagnosis leaves the phase item pending and keeps diagnosis state conversation-only', () => {
-  const source = exploreContract();
-
-  assert.match(source, /stop diagnosis, leave the phase route step `pending`/i,
-    'stopped diagnosis must leave the phase route step pending');
-  assert.match(source, /`diagnosis_rounds = \{ spec: 0, design: 0 \}`: one conversation-only object/,
-    'diagnosis state must be conversation-only');
-  assert.match(source, /Route state is emitted only by the explore coordinator, is never authored by a worker, is never persisted/i,
-    'route state must not persist');
-});
-
-test('Step 3: Diagnosis Round render rules live in Explore instructions, not either idea-list renderer', () => {
-  const explore = exploreContract();
-  const claudeRenderer = spec('sai/adapters/claude/idea-list-render.md');
-  const opencodeRenderer = spec('sai/adapters/opencode/idea-list-render.md');
-
-  assert.match(explore, /Diagnosis Round/,
-    'Explore instructions should own the Diagnosis Round render rules');
-  for (const [name, renderer] of [
-    ['Claude Code', claudeRenderer],
-    ['opencode', opencodeRenderer],
-  ]) {
-    assert.doesNotMatch(renderer, /Diagnosis Round|diagnosis_rounds/,
-      `${name} idea-list renderer must not contain diagnosis render rules`);
-  }
-});
-
-test('Step 2: item-10 diagnosis includes coordinator-disproved completed worker results', () => {
-  const source = supervisionContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-  const disproved = String.raw`(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)`;
-  const completedDisproved = String.raw`(?:completed[\s\S]{0,900}${disproved}|${disproved}[\s\S]{0,900}completed)`;
-
-  assert.match(
-    diagnosis,
-    new RegExp(
-      String.raw`(?:${completedDisproved}[\s\S]{0,900}(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)|(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)[\s\S]{0,900}${completedDisproved})`,
-      'i'
-    ),
-    'a coordinator-disproved completed result should enter item-10 diagnosis'
-  );
-});
-
-test('Step 2: item-10 diagnosis includes STOP-bearing completed worker results', () => {
-  const source = supervisionContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-  const stopBearing = String.raw`(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)`;
-  const completedStop = String.raw`(?:completed[\s\S]{0,900}${stopBearing}|${stopBearing}[\s\S]{0,900}completed)`;
-
-  assert.match(
-    diagnosis,
-    new RegExp(
-      String.raw`(?:${completedStop}[\s\S]{0,900}(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)|(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)[\s\S]{0,900}${completedStop})`,
-      'i'
-    ),
-    'a STOP-bearing completed result should enter item-10 diagnosis'
-  );
-});
-
-test('Step 2: clean completed workers never start item-10 diagnosis', () => {
-  const source = supervisionContract();
-  const start = source.search(/diagnosis_rounds/i);
-  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
-  const notDisproved = String.raw`(?:not[\s\S]{0,120}disprov\w*|without[\s\S]{0,120}disprov\w*|no[\s\S]{0,120}disprov\w*)`;
-  const noStop = String.raw`(?:no[\s\S]{0,120}STOP|without[\s\S]{0,120}STOP|not[\s\S]{0,120}STOP[- ]bearing|not[\s\S]{0,120}carrying[\s\S]{0,80}STOP)`;
-
-  assert.match(
-    diagnosis,
-    new RegExp(
-      String.raw`completed[\s\S]{0,900}${notDisproved}[\s\S]{0,900}${noStop}[\s\S]{0,900}(?:never|does not|must not)[\s\S]{0,260}(?:start|enter|trigger)[\s\S]{0,260}(?:item[- ]?10[\s\S]{0,120})?(?:diagnosis|Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)`,
-      'i'
-    ),
-    'a clean completed result must be explicitly excluded by both its non-disproved and no-STOP state'
-  );
-});
-
-test('Step 2: pending-before-diagnosis applies to disproved or STOP-bearing completed workers', () => {
-  const source = exploreContract();
-
-  assert.match(source, /a coordinator-disproved `completed` result, or a `completed` result carrying STOP[\s\S]{0,300}enters this route before ordinary retry\/re-selection prose/i,
-    'disproved and STOP-bearing completed results enter diagnosis');
-  assert.match(source, /A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending`/i,
-    'those results leave the active route step pending');
-});
 
 test('crystallization renders a temporary mode-specific route without changing the evidence catalog', () => {
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
