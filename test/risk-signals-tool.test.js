@@ -206,3 +206,42 @@ test('validate reads the report file and reports a missing file as absent', (t) 
   } finally { process.stdout.write = original; }
   assert.deepEqual(written.map(line => JSON.parse(line)).map(item => item.state ?? item.status), ['fresh', 'absent', 'blocked']);
 });
+
+test('the learnings file stays out of the fingerprint like the change artifacts', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/app.js': 'module.exports = 2;\n' });
+  const before = compute({ parent: 'main' }, cwd);
+  commit(cwd, { 'SAI_LEARNINGS.md': '# Learnings\n' });
+  const after = compute({ parent: 'main' }, cwd);
+  assert.equal(after.fingerprint, before.fingerprint);
+  assert.equal(after.stats.changed_files, 1);
+});
+
+test('signals and the fingerprint do not depend on the user git diff configuration', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/app.js': 'x\nconst a = req.body.name;\n', 'tests/app.test.js': 'const b = req.body.x;\n' });
+  const plain = compute({ parent: 'main' }, cwd);
+  const settings = [['diff.noprefix', 'true'], ['diff.mnemonicPrefix', 'true'], ['diff.context', '7'], ['diff.algorithm', 'histogram'], ['diff.relative', 'true']];
+  for (const [key, value] of settings) git(cwd, 'config', key, value);
+  const configured = compute({ parent: 'main' }, cwd);
+  assert.equal(configured.fingerprint, plain.fingerprint);
+  assert.deepEqual(configured.signals, plain.signals);
+  assert.deepEqual(configured.signals.filter(item => item.signal === 'user-input'), [
+    { rating: 'security', level: 'medium', signal: 'user-input', path: 'src/app.js', line: 2 },
+  ]);
+});
+
+test('an added line that starts with ++ is read as content, not as a file header', (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/app.js': '++ req.body.first\nconst b = req.body.second;\n' });
+  const evidence = compute({ parent: 'main' }, cwd).signals.filter(item => item.signal === 'user-input');
+  assert.deepEqual(evidence.map(item => [item.path, item.line]), [['src/app.js', 1], ['src/app.js', 2]]);
+});
+
+// Windows file names cannot hold a double quote, the character that makes git quote a header path.
+test('a quoted diff header path is read as the real path', { skip: process.platform === 'win32' }, (t) => {
+  const cwd = repository(t);
+  commit(cwd, { 'src/we"ird.js': 'const b = req.body.second;\n' });
+  const evidence = compute({ parent: 'main' }, cwd).signals.filter(item => item.signal === 'user-input');
+  assert.deepEqual(evidence.map(item => [item.path, item.line]), [['src/we"ird.js', 1]]);
+});

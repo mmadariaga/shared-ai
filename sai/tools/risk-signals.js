@@ -11,7 +11,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const LEVELS = ['low', 'medium', 'high'];
-const EXCLUDE_ARTIFACTS = ':(exclude)openspec';
+// Pathspecs outside the measured code: the change artifacts and the learnings file a run promotes at close.
+const EXCLUDE_ARTIFACTS = [':(exclude)openspec', ':(exclude)SAI_LEARNINGS.md'];
 const EVIDENCE_PER_SIGNAL = 5;
 const DEPENDENTS_PROBE_LIMIT = 12;
 const SAFE_PATH = /^[\w./@+-]+$/;
@@ -37,8 +38,31 @@ const RATING_ROWS = { Security: 'security', Reversibility: 'reversibility', 'Cri
 const higher = (a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a);
 const bySize = (value, [medium, high]) => (value >= high ? 'high' : value >= medium ? 'medium' : 'low');
 
+// Diff output feeds the fingerprint and the parsed file headers, so it must not depend on the user's git
+// configuration: these pin every setting that changes the bytes of a plain `git diff`.
+const DIFF_CONFIG = [
+  'diff.noprefix=false', 'diff.mnemonicPrefix=false', 'diff.relative=false', 'diff.algorithm=myers',
+  'diff.indentHeuristic=true', 'diff.context=3', 'diff.interHunkContext=0', 'diff.suppressBlankEmpty=false',
+  `diff.orderFile=${process.platform === 'win32' ? 'NUL' : '/dev/null'}`, 'core.quotePath=false', 'color.ui=false',
+].flatMap(setting => ['-c', setting]);
+
 function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
+  return execFileSync('git', [...DIFF_CONFIG, ...args], { cwd, encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+// A diff header path is C-quoted when it holds a quote, a backslash, or a control character.
+const ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+function unquote(text) {
+  if (!text.startsWith('"') || !text.endsWith('"')) return text;
+  const bytes = [];
+  const body = text.slice(1, -1);
+  for (let index = 0; index < body.length; index++) {
+    if (body[index] !== '\\') { bytes.push(...Buffer.from(body[index])); continue; }
+    const octal = /^[0-7]{3}/.exec(body.slice(index + 1));
+    if (octal) { bytes.push(parseInt(octal[0], 8)); index += 3; }
+    else bytes.push(ESCAPES[body[++index]] ?? body.charCodeAt(index));
+  }
+  return Buffer.from(bytes).toString('utf8');
 }
 
 function checkedRef(value) {
@@ -48,7 +72,7 @@ function checkedRef(value) {
 
 // `--name-status -z` yields `<status>\0<path>\0` and, for a rename or copy, `<status>\0<old>\0<new>\0`.
 function changedFiles(cwd, base) {
-  const parts = git(cwd, ['diff', '--name-status', '-z', '-M', base, 'HEAD', '--', '.', EXCLUDE_ARTIFACTS]).split('\0');
+  const parts = git(cwd, ['diff', '--name-status', '-z', '-M', base, 'HEAD', '--', '.', ...EXCLUDE_ARTIFACTS]).split('\0');
   const files = [];
   for (let index = 0; index < parts.length - 1;) {
     const status = parts[index++];
@@ -62,7 +86,7 @@ function changedFiles(cwd, base) {
 
 function lineTotals(cwd, base) {
   let added = 0, deleted = 0;
-  for (const row of git(cwd, ['diff', '--numstat', '-M', base, 'HEAD', '--', '.', EXCLUDE_ARTIFACTS]).split('\n')) {
+  for (const row of git(cwd, ['diff', '--numstat', '-M', base, 'HEAD', '--', '.', ...EXCLUDE_ARTIFACTS]).split('\n')) {
     const [plus, minus] = row.split('\t');
     added += Number(plus) || 0;
     deleted += Number(minus) || 0;
@@ -70,13 +94,17 @@ function lineTotals(cwd, base) {
   return { added, deleted };
 }
 
-// Added lines with their new-file line numbers, read from the zero-context diff.
+// Added lines with their new-file line numbers, read from the zero-context diff. A `+++ ` row is a file header
+// only before the file's first hunk; inside a hunk it is an added line that starts with `++ `.
 function* addedLines(cwd, base) {
-  let file = null, line = 0;
-  for (const row of git(cwd, ['diff', '-U0', '--no-color', '--no-ext-diff', '-M', base, 'HEAD', '--', '.', EXCLUDE_ARTIFACTS]).split('\n')) {
-    if (row.startsWith('+++ ')) file = row === '+++ /dev/null' ? null : row.slice(6);
-    else if (row.startsWith('@@')) line = Number(/\+(\d+)/.exec(row)?.[1]) || 0;
-    else if (row.startsWith('+') && file) yield { path: file, line: line++, text: row.slice(1) };
+  let file = null, line = 0, header = false;
+  for (const row of git(cwd, ['diff', '-U0', '--no-color', '--no-ext-diff', '-M', base, 'HEAD', '--', '.', ...EXCLUDE_ARTIFACTS]).split('\n')) {
+    if (row.startsWith('diff --git ')) { header = true; file = null; }
+    else if (header && row.startsWith('+++ ')) {
+      const target = unquote(row.slice(4));
+      file = target.startsWith('b/') ? target.slice(2) : null;
+    } else if (row.startsWith('@@')) { header = false; line = Number(/\+(\d+)/.exec(row)?.[1]) || 0; }
+    else if (!header && row.startsWith('+') && file) yield { path: file, line: line++, text: row.slice(1) };
   }
 }
 
@@ -105,7 +133,7 @@ function compute(request, cwd) {
   git(cwd, ['rev-parse', '--verify', `${parent}^{commit}`]);
   const head = git(cwd, ['rev-parse', 'HEAD']).trim();
   const base = git(cwd, ['merge-base', parent, 'HEAD']).trim();
-  const fingerprint = crypto.createHash('sha256').update(git(cwd, ['diff', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, 'HEAD', '--', '.', EXCLUDE_ARTIFACTS])).digest('hex');
+  const fingerprint = crypto.createHash('sha256').update(git(cwd, ['diff', '--no-color', '--no-ext-diff', '--no-textconv', '-M', base, 'HEAD', '--', '.', ...EXCLUDE_ARTIFACTS])).digest('hex');
   const files = changedFiles(cwd, base);
   const totals = lineTotals(cwd, base);
   const floors = { security: 'low', reversibility: 'low', blast_radius: 'low', critical_sections: null };
