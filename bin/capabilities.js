@@ -10,6 +10,8 @@ const AGENTS = {
   explorer: { claude: 'budget-explorer', opencode: 'budget-explorer' },
   executor: { claude: 'budget-executor', opencode: 'budget-executor' },
   budget: { claude: 'budget-subagent', opencode: 'budget-subagent' },
+  // The harness's built-in general-purpose subagent, which inherits the caller's model.
+  general: { claude: 'general-purpose', opencode: 'general' },
 };
 
 function resolveProfile(registry, name, ancestors = []) {
