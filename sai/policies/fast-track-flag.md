@@ -7,8 +7,8 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 ## Canonical model
 
 1. **Owner** — the coordinator (or the main session on surfaces without a
-   routed coordinator) owns BOTH the parse and the banner for `sai-explore`,
-   `sai-archive`, and `sai-merge`. Workers
+   routed coordinator) owns BOTH the parse and the banner for `sai-explore`
+   and `sai-archive`. Workers
    never parse `--fast-track` for activation and never emit the activation
    banner; `sai-backfill` is the phase-owned exception below.
 2. **Parse** — inspect the opaque request string for the positional token

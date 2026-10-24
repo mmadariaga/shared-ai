@@ -98,12 +98,12 @@ The shared worker core SHALL state that backfill returns `draft_references` to w
 
 ### Requirement: Transfer helper grants on command profiles
 
-`sai/install-manifest.json` SHALL add the shell grant `node {sai}/tools/transfer.js *` to the `archive-command`, `backfill-command`, and `merge-command` profiles alongside their existing grants, and SHALL add no new tool for either harness.
+`sai/install-manifest.json` SHALL add the shell grant `node {sai}/tools/transfer.js *` to the `archive-command` and `backfill-command` profiles alongside their existing grants, and SHALL add no new tool for either harness. The `merge-command` profile SHALL carry no `transfer.js` grant, because `/sai-merge` no longer uses transfer files.
 
 #### Scenario: Command profiles carry the transfer grant
 
 - **WHEN** the archive, backfill, and merge command profiles are read from the install manifest
-- **THEN** each shell grant list contains `node {sai}/tools/transfer.js *`
+- **THEN** the archive and backfill shell grant lists contain `node {sai}/tools/transfer.js *` and the merge profile has no such grant
 
 ### Requirement: Temporary scenario metadata is separate and verified
 

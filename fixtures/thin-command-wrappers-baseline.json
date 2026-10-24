@@ -71,8 +71,7 @@
       ],
       "sai-merge.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it."
+        "Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-plan.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -150,8 +149,7 @@
       ],
       "sai-merge.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it."
+        "Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-plan.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

@@ -239,10 +239,11 @@ test('the write serves coordinator-named correction ranges after staging', t => 
   assert.throws(() => merge.bundle(fixture.cwd, JSON.parse(fs.readFileSync(record, 'utf8'))), /not a correction snapshot/);
 });
 
-test('the worker stages name the bundle and the tool-owned write', () => {
-  const strategy = merge.instructions('strategy');
-  const apply = merge.instructions('apply');
-  assert.match(strategy, /merge-tool> bundle --record/);
+test('the worker steps name the bundle and the tool-owned write', () => {
+  const read = name => fs.readFileSync(path.join(__dirname, '..', 'sai/commands/merge/steps', `${name}.md`), 'utf8');
+  const common = read('common');
+  const apply = read('apply');
+  assert.match(common, /merge-tool> bundle --record/);
   assert.match(apply, /merge-tool> write --record/);
-  assert.doesNotMatch(strategy + apply, /git cat-file blob/);
+  assert.doesNotMatch(common + apply + read('strategy'), /git cat-file blob/);
 });

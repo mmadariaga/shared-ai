@@ -9,29 +9,6 @@ const { spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
 const { validateText, parsePayloadText } = require('./worker-report-validator');
 
-// Section libraries, sliced per stage as [library, start heading, end heading].
-// The coordinator runs the mechanical stages; the worker owns the judgment stages.
-const LIBRARIES = { stages: 'coordinator-stages.md', presentation: 'presentation.md', instructions: 'instructions.md' };
-const SIDES = ['instructions', '## Sides', '## Gate trips'];
-const PROVENANCE = ['instructions', '### Merge provenance', '### Step 6:'];
-const MESSAGES = ['stages', '## Informative messages', null];
-const STAGES = {
-  preflight: { owner: 'coordinator', facts: 'preflight', slices: [['presentation', '# Merge Presentation Seam', '## Preflight texts'],
-    ['stages', '## Stage: preflight', '## Stage: conflicts'], ['presentation', '## Preflight texts', '## Conflict texts']] },
-  conflicts: { owner: 'coordinator', facts: 'conflicts', slices: [['stages', '## Stage: conflicts', '## Stage: verify'],
-    ['presentation', '## Conflict texts', '## Verification texts']] },
-  verify: { owner: 'coordinator', facts: 'verify', slices: [['stages', '## Stage: verify', '## Stage: collision'],
-    ['presentation', '## Verification texts', '## Collision texts']] },
-  collision: { owner: 'coordinator', facts: 'collision', slices: [['stages', '## Stage: collision', '## Stage: final'],
-    ['presentation', '## Collision texts', '## Final texts']] },
-  final: { owner: 'coordinator', facts: 'status', slices: [['stages', '## Stage: final', '## Informative messages'], MESSAGES,
-    ['presentation', '## Final texts', null]] },
-  messages: { owner: 'coordinator', slices: [MESSAGES] },
-  strategy: { owner: 'worker', slices: [['instructions', '## Sides', '#### Writing the resolution']] },
-  apply: { owner: 'worker', slices: [['instructions', '#### Writing the resolution', '### Step 8:']] },
-  'test-correction': { owner: 'worker', slices: [['instructions', '### Step 8:', '### Step 9:']] },
-  'renumbering-plan': { owner: 'worker', slices: [SIDES, PROVENANCE, ['instructions', '### Step 9:', null]] },
-};
 const RECORD = /^docs\/(adr|ddr)\/(\d{4})([a-z]*)-(.+)\.md$/;
 const MARKER = /^(<{7,}|={7,}|>{7,}|\|{7,})(?: .*)?\r?$/m;
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
@@ -184,6 +161,17 @@ function nameStatus(cwd, args) {
   return entries;
 }
 
+// The current branch's upstream, and how many of the commits a rebase or squash
+// rewrites the upstream already holds: those need a force push afterwards.
+function upstreamFacts(cwd, method, targetSha, base) {
+  const ref = git(cwd, ['rev-parse', '--symbolic-full-name', '@{upstream}'], true)?.trim() || null;
+  const range = [`${base}..${targetSha}`];
+  const rewritten = method === 'rebase' ? git(cwd, ['rev-list', ...range]).split('\n').filter(Boolean) : [];
+  const unpublished = ref && rewritten.length ? git(cwd, ['rev-list', ...range, `^${ref}`]).split('\n').filter(Boolean) : rewritten;
+  const shared = ref ? rewritten.length - unpublished.length : 0;
+  return { ref, rewritten_commits: rewritten.length, shared_with_upstream: shared, force_push_needed: shared > 0 };
+}
+
 function provenance(cwd, sourceRef, method, squash) {
   if (!/^refs\/(heads|remotes\/origin)\/.+/.test(sourceRef) || sourceRef.includes('\0')) throw new Error('full branch source_ref required');
   if (!['merge', 'rebase'].includes(method) || !['yes', 'no', 'not-applicable'].includes(squash)
@@ -200,7 +188,8 @@ function provenance(cwd, sourceRef, method, squash) {
     return { target_sha: targetSha, source_ref: sourceRef, source_sha: sourceSha, merge_base: base, method, squash,
       source_introduced_records: added.filter(item => item.status === 'A' && RECORD.test(item.path)
         && !/\/0000-INDEX\.md$/.test(item.path)).map(item => item.path),
-      target_rules: rules(targetSha), source_rules: rules(sourceSha) };
+      target_rules: rules(targetSha), source_rules: rules(sourceSha),
+      upstream: upstreamFacts(cwd, method, targetSha, base) };
   });
 }
 
@@ -728,30 +717,75 @@ function verify(cwd, explicit, fixed) {
     state: after, data: { verification_result: passed ? 'passed' : 'failed', ...evidence, state_changed_during_run: changed } };
 }
 
-function instructions(stage, reconstruct = false) {
-  // Own-property lookup: a stage name such as "constructor" is unknown, not inherited.
-  if (!Object.hasOwn(STAGES, stage)) throw new Error(`unknown active stage: ${stage}`);
-  const { owner, slices } = STAGES[stage];
-  const directory = path.join(__dirname, '..', 'commands', 'merge');
-  const library = {};
-  const read = name => library[name] ??= fs.readFileSync(path.join(directory, LIBRARIES[name]), 'utf8').replace(/\r\n/g, '\n');
-  const mechanics = fs.readFileSync(path.join(directory, 'mechanics.md'), 'utf8').replace(/\r\n/g, '\n');
-  const common = mechanics.slice(mechanics.indexOf('## Evidence, not authority'), mechanics.indexOf('## Stage delivery')).trim();
-  // A worker starting or replaced at a judgment point saw no earlier stage:
-  // --reconstruct adds the common rules, the side mapping and the provenance definition.
-  const rebuild = reconstruct && owner === 'worker';
-  const slice = ([name, start, end]) => {
-    const source = read(name);
-    const from = source.indexOf(start); const to = end ? source.indexOf(end, from + start.length) : source.length;
-    if (from < 0 || to < from) throw new Error(`missing instruction section: ${start}`);
-    return source.slice(from, to).trim();
-  };
-  let body = slices.map(slice).join('\n\n');
-  if (rebuild) body = [SIDES, PROVENANCE].filter(([, start]) => !body.includes(start)).map(slice).concat(body).join('\n\n');
-  const lead = owner === 'worker'
-    ? 'Execute only this disclosed stage. Return at its hand-off; the coordinator names the next stage. References to other steps identify destinations, not permission to execute them.'
-    : 'Run this stage now and follow it to its exit. The lifecycle seam selects the next stage; references to other stages identify destinations, not text to act on yet.';
-  return `# Active merge stage: ${stage}\n\n${lead}\n\n` + (rebuild ? common + '\n\n' : '') + body + '\n';
+// Failing tests named in a suite's output, for the formats the common runners
+// print. A failing run that names none is not attributable to individual tests.
+const FAILING_TEST_LINES = [
+  /^\s*not ok \d+ - (.+?)(?: # .*)?$/,
+  /^\s*[✖✕] (.+?)(?: \(\d+(?:\.\d+)?\s?ms\))?$/,
+  /^\s*FAILED (\S+)/,
+  /^\s*--- FAIL: (\S+)/,
+  /^\s*test (\S+) \.\.\. FAILED$/,
+  /^\s*Failed (\S+)(?: \[.*\])?$/,
+];
+const WHOLE_SUITE = '(suite)';
+
+function failingTests(data) {
+  const text = `${data.stdout || ''}\n${data.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '');
+  const names = new Set();
+  for (const line of text.split(/\r?\n/)) {
+    const match = FAILING_TEST_LINES.map(pattern => pattern.exec(line)).find(Boolean);
+    // A runner's summary header (`✖ failing tests:`) is not a test.
+    if (match && !match[1].trim().endsWith(':')) names.add(match[1].trim());
+  }
+  return [...names].sort(compare);
+}
+
+// The suite as it stands before the integration: the reference every later
+// verification compares against. It runs on the working tree as launched.
+function baseline(cwd, explicit, fixed) {
+  const receipt = verify(cwd, explicit, fixed);
+  const failing = receipt.data.verification_result === 'failed' ? failingTests(receipt.data) : [];
+  return { ...receipt, outcome: receipt.outcome === 'failure' ? 'success' : receipt.outcome,
+    data: { ...receipt.data, mode: 'baseline', head: git(cwd, ['rev-parse', '--verify', 'HEAD']).trim(), failing, identified: failing.length > 0 } };
+}
+
+// Verification against the baseline. `verification_result` is the blocking
+// verdict: `failed` only for a new failure, a test that passes in the baseline
+// and fails on two consecutive runs. `comparison.status` names what the report
+// must say: clean, preexisting, flaky, not-comparable, new, or unavailable.
+function compareToBaseline(cwd, reference, explicit, fixed) {
+  if (reference?.action !== 'verify' || reference.data?.mode !== 'baseline') throw new Error('captured baseline record required');
+  const base = reference.data;
+  const dependencies = ['head', 'index', 'operations', 'tree'];
+  const failed = receipt => receipt.data.verification_result === 'failed';
+  const settle = (receipt, status, found, runs) => ({ ...receipt,
+    outcome: found.new.length ? 'failure' : receipt.outcome === 'failure' ? 'success' : receipt.outcome,
+    data: { ...receipt.data, verification_result: found.new.length ? 'failed' : receipt.data.verification_result === 'unavailable' ? 'unavailable' : 'passed',
+      comparison: { status, ...found },
+      runs: runs.map(run => ({ exit_code: run.data.exit_code, test_ms: run.data.test_ms, stdout: run.data.stdout || '', stderr: run.data.stderr || '' })) } });
+  const none = { new: [], flaky: [], preexisting: [] };
+  if (base.verification_result === 'unavailable') {
+    const receipt = { version: 1, action: 'verify', outcome: 'not-applicable', dependencies, state: state(cwd, dependencies),
+      data: { verification_result: 'unavailable', unavailable_reason: base.unavailable_reason, command: null, exit_code: null, test_ms: 0, detail: 'the baseline was unavailable' } };
+    return settle(receipt, 'unavailable', none, []);
+  }
+  const first = verify(cwd, explicit, fixed);
+  if (first.data.verification_result === 'unavailable') return settle(first, 'unavailable', none, [first]);
+  if (!failed(first)) return settle(first, 'clean', none, [first]);
+  const names = failingTests(first.data);
+  const baselineFailed = base.verification_result === 'failed';
+  if (baselineFailed && (!base.identified || !names.length)) return settle(first, 'not-comparable', none, [first]);
+  const known = new Set(base.failing);
+  const preexisting = names.filter(name => known.has(name));
+  const candidates = baselineFailed ? names.filter(name => !known.has(name)) : names.length ? names : [WHOLE_SUITE];
+  if (!candidates.length) return settle(first, 'preexisting', { ...none, preexisting }, [first]);
+  const second = verify(cwd, explicit, fixed);
+  if (second.data.verification_result === 'unavailable') return settle(second, 'unavailable', none, [first, second]);
+  if (!failed(second)) return settle(second, 'flaky', { new: [], flaky: candidates.filter(name => name !== WHOLE_SUITE), preexisting }, [first, second]);
+  const again = failingTests(second.data);
+  const confirmed = candidates.includes(WHOLE_SUITE) ? again.length ? again : [WHOLE_SUITE]
+    : again.length ? candidates.filter(name => again.includes(name)) : candidates;
+  return settle(second, 'new', { new: confirmed, flaky: candidates.filter(name => name !== WHOLE_SUITE && !confirmed.includes(name)), preexisting }, [first, second]);
 }
 
 function saveReceipt(cwd, result, filename) {
@@ -790,7 +824,14 @@ function collect(action, cwd, opts, stdin) {
       if (!opts['suite-hash'] || hash(record) !== opts['suite-hash']) throw new Error('missing or changed suite record hash');
       fixed = JSON.parse(record);
     }
-    result = verify(cwd, opts.command, fixed);
+    if (opts.baseline) {
+      if (!opts.record) throw new Error('verify --baseline requires --record (new file outside the repository)');
+      result = baseline(cwd, opts.command, fixed);
+    } else if (opts['baseline-record']) {
+      const reference = fs.readFileSync(opts['baseline-record']);
+      if (!opts['baseline-hash'] || hash(reference) !== opts['baseline-hash']) throw new Error('missing or changed baseline record hash');
+      result = compareToBaseline(cwd, JSON.parse(reference), opts.command, fixed);
+    } else result = verify(cwd, opts.command, fixed);
   }
   else if (action === 'collision') result = collision(cwd, stdin());
   else if (action === 'bundle' || action === 'write') {
@@ -809,37 +850,29 @@ function collect(action, cwd, opts, stdin) {
   if (opts.record && !['conflicts', 'correction', 'resolution', 'bundle', 'write'].includes(action)) {
     result = saveReceipt(cwd, result, opts.record);
     if (action === 'verify') {
-      const { stdout, stderr, ...data } = result.data;
+      const { stdout, stderr, runs, ...data } = result.data;
       result = { ...result, data: { ...data, output_ref: result.record,
-        stdout_hash: hash(stdout || ''), stderr_hash: hash(stderr || '') } };
+        stdout_hash: hash(stdout || ''), stderr_hash: hash(stderr || ''),
+        ...(runs ? { runs: runs.map(({ stdout: out, stderr: err, ...run }) => ({ ...run, stdout_hash: hash(out), stderr_hash: hash(err) })) } : {}) } };
     }
   }
   return result;
 }
 
-// Composite stage entry for the coordinator: the stage text and its facts in one call.
-function enter(stage, cwd, opts, stdin) {
-  if (!Object.hasOwn(STAGES, stage) || !STAGES[stage].facts) throw new Error(`unknown coordinator stage: ${stage}`);
-  const action = STAGES[stage].facts;
-  if (['conflicts', 'verify', 'collision'].includes(action) && !opts.record) throw new Error(`stage ${stage} requires --record (new file outside the repository)`);
-  const result = collect(action, cwd, opts, stdin);
-  return { text: instructions(stage) + `\n## Stage facts\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n`, result };
-}
-
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'stage', 'command', 'suite', 'suite-hash', 'context'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
-    if (arg === '--reconstruct') { opts.reconstruct = true; continue; }
+    if (arg === '--baseline') { opts.baseline = true; continue; }
     if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <enter|instructions|preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
-        + 'enter: --stage preflight|conflicts|verify|collision|final [--record <external-new-file>] (coordinator stage text plus its facts; Markdown output)\n'
-        + 'instructions: --stage strategy|apply|test-correction|renumbering-plan [--reconstruct] (worker stage text), or a coordinator stage or messages (text only; Markdown output)\n'
-        + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures)\n'
+      process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
+        + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
         + 'valid/collision: receipt JSON on stdin; conflicts/correction: --record <external-new-file>; correction: authorized region inventory on stdin\n'
-        + 'verify, enter --stage verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
+        + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
+        + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
+        + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
         + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages)\n'
         + 'write: --record <snapshot-file> --record-hash <sha256>; {"conflict_id", "text"} or an array of them on stdin (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
         + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
@@ -859,13 +892,7 @@ function main(argv) {
     const utf16 = input[0] === 0xFF && input[1] === 0xFE ? 'utf-16le' : input[0] === 0xFE && input[1] === 0xFF ? 'utf-16be' : null;
     return JSON.parse(new TextDecoder(utf16 || 'utf-8').decode(input));
   };
-  if (action === 'instructions') { process.stdout.write(instructions(opts.stage, opts.reconstruct)); return 0; }
   const cwd = fs.realpathSync.native(opts.cwd);
-  if (action === 'enter') {
-    const entered = enter(opts.stage, cwd, opts, stdin);
-    process.stdout.write(entered.text);
-    return entered.result?.outcome === 'failure' ? 1 : 0;
-  }
   const result = collect(action, cwd, opts, stdin);
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   return result.outcome === 'failure' ? 1 : 0;
@@ -875,4 +902,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, collision, status, instructions, enter, STAGES, state, main };
+module.exports = { preflight, provenance, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, status, state, main };

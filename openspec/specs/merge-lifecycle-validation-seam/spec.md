@@ -5,90 +5,11 @@ Defines the coordinator-owned merge lifecycle state machine: its states, the exh
 
 ## Requirements
 
-### Requirement: Defined merge lifecycle states and paths
+### Requirement: Merge run state replaces the lifecycle table
 
-The merge lifecycle validation seam MUST define the closed states `preflight`, `method-selection`, `branch-selection`, `merge-outcome`, `language-selection`, `scope-selection`, `contextual-analysis`, `resolution`, `verification`, `adr-ddr`, `authorization`, and `terminal`, covering the clean and conflicted merge paths and the per-stop rebase cycle.
+`/sai-merge` SHALL have no lifecycle state table or transition validator: `sai/commands/merge/lifecycle.md` SHALL be retired with a retirement entry in `sai/install-manifest.json`, and the run's progress SHALL be held by the `merge-run@1` machine and the git state, the git state winning when they disagree.
 
-#### Scenario: Coordinator tracks an integration outcome
+#### Scenario: Lifecycle card is retired
 
-- **WHEN** the coordinator records a clean or conflicted outcome of a launch or a `git rebase --continue`
-- **THEN** the lifecycle advances from `merge-outcome` along the matching defined path
-
-### Requirement: Coordinator transition validation boundary
-
-Before selecting each merge operation, the coordinator SHALL call `validate_transition(current_state, target_state, operation_context)`. A transition SHALL be `valid` only when its row exists in the permitted-transition table and its precondition holds; an `invalid` result SHALL halt before the operation and report the current state, target state, and violated precondition.
-
-#### Scenario: Missing context prevents operation selection
-
-- **WHEN** a transition is requested without its required operation context
-- **THEN** the validator returns `invalid` and no operation, worker dispatch, mutation, or presentation update follows
-
-### Requirement: Exhaustive permitted-transition table
-
-The permitted-transition table MUST list every transition a real run takes, including early closures to `terminal` from any state when the run closes early (in-progress guard, dirty refusal, branch-resolution failure, declined strategy, exhausted review budget, or launch failure), re-entry from `resolution` or `verification` to `contextual-analysis` on a `strategy-analysis` event, the rebase cycle `verification` → `authorization` → `merge-outcome`, and the finished-rebase closure `adr-ddr` → `terminal` when nothing is staged.
-
-#### Scenario: Clean integration follows the clean path
-
-- **WHEN** the current state is `merge-outcome`, the target is `adr-ddr`, and the outcome is clean
-- **THEN** the validator returns `valid` and the run skips every conflict-only state
-
-#### Scenario: First conflict enters language selection
-
-- **WHEN** the current state is `merge-outcome`, the outcome is conflicted, and `working_language` is unresolved
-- **THEN** only `language-selection` is a valid target
-
-#### Scenario: Later rebase stop reuses the language
-
-- **WHEN** the current state is `merge-outcome`, the outcome is conflicted, and `working_language` is already selected
-- **THEN** `contextual-analysis` is a valid target without a language question
-
-#### Scenario: Declined strategy closes the run
-
-- **WHEN** the run closes after `decline-strategy`
-- **THEN** the transition to `terminal` is valid and `commit_executed` stays false
-
-### Requirement: Merge gate preconditions are explicit
-
-The validator SHALL require a resolved language, an eligible scope or fast-track full scope, a confirmed strategy with a validated payload, a reviewed and staged resolution, an accepted verification result, resolved collision applicability with repairs applied, and a recorded authorization answer at their respective boundaries.
-
-#### Scenario: Fast-track bypasses only method and scope selection
-
-- **WHEN** fast-track is active
-- **THEN** `preflight` → `branch-selection` is valid with the method pinned to `merge`, the scope is satisfied by `full`, and every other precondition still applies
-
-### Requirement: Neutral coordinator and worker ownership
-
-The lifecycle validation seam SHALL remain neutral for Claude Code and opencode and coordinator-owned, and MUST NOT dispatch workers, perform git mutations, write resolutions, or transfer mutation ownership.
-
-#### Scenario: Conflict analysis and mutation remain separated
-
-- **WHEN** the merge flow reaches conflict analysis or a coordinator-owned mutation boundary
-- **THEN** the seam validates lifecycle state while the worker keeps analysis and the coordinator keeps every mutation
-
-### Requirement: Lifecycle states map to stages and owners
-
-The merge lifecycle seam SHALL assign every state to exactly one stage (`preflight`, `conflicts`, `verify`, `collision`, or `final`) and SHALL name who works in it: the coordinator and the merge tool in every stage, and the worker only for conflict analysis and writing, correction of a failed test round, and planning a `needs-judgment` collision result. The worker SHALL be dispatched on the first entry to `contextual-analysis` or on the first `adr-ddr` whose collision receipt is `needs-judgment`, whichever comes first, and every later judgment point SHALL continue that same worker.
-
-#### Scenario: Run without judgment reaches terminal with no worker
-
-- **WHEN** the launch is clean and the collision check needs no judgment
-- **THEN** the run reaches `terminal` with no worker dispatched
-
-#### Scenario: Conflicted outcome requires a captured snapshot
-
-- **WHEN** the current state is `merge-outcome` and the outcome is conflicted
-- **THEN** the transition to `language-selection` or `contextual-analysis` is valid only after the conflict snapshot is captured
-
-### Requirement: Early failed verification continuation
-
-The lifecycle validation seam SHALL accept the coordinator-only verification result `failed-no-correction` when Step 8 closes failed verification without an applied correction or a concrete repeat reason. For `method=merge`, this result SHALL permit `verification` to `adr-ddr`; for a stopped rebase, it SHALL permit `verification` to `finalization`. These transitions SHALL use the same integration continuation as `cap-exhausted` without treating verification as passed or claiming that all three rounds were consumed.
-
-#### Scenario: Early failed merge verification reaches collision handling
-
-- **WHEN** Step 8 records `failed-no-correction` for a merge
-- **THEN** the lifecycle permits the transition from `verification` to `adr-ddr` with failed verification status
-
-#### Scenario: Early failed rebase verification reaches finalization
-
-- **WHEN** Step 8 records `failed-no-correction` at a stopped rebase
-- **THEN** the lifecycle permits the transition from `verification` to `finalization` without representing the result as a pass or exhausted budget
+- **WHEN** the install manifest is read
+- **THEN** it carries a retirement entry for `commands/merge/lifecycle.md` and no active projection of it
