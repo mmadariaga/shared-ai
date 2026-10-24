@@ -1,6 +1,6 @@
 # Accessibility Step — Resolve Static Accessibility Audit
 
-Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below. The step is done when every component in `component types` has been evaluated against every triggered checklist and, when Visual Design is triggered, every CSS file and design token as well; then report the `resolve-static-audit` progress event per the worker contract.
+Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below. The step is done when every component in `component types` has been evaluated against every triggered checklist and, when Visual Design is triggered, every CSS file and design token as well; then report `step-done` for `resolve-static-audit`.
 
 ### Phase 2: Semantics & Structure
 

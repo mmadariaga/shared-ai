@@ -12,7 +12,8 @@ Claude Code and opencode.
 | `--full` | No | Whole repo | Whole repo | All UI files | All audits |
 | `--path <dir>` | No | One path | One path | One path | All audits |
 | `--tier backend\|frontend\|db\|queue` | No | No | One tier | No | Performance only |
-| `--runtime` | No | No | Approved diagnostics | Approved browser checks | Performance and accessibility |
+| `--runtime` | No | No | Runs diagnostics | Runs browser checks | Performance and accessibility |
+| `--url <url>` | No | No | No | Dev-server URL | Accessibility |
 
 The default scope is the committed branch diff against the parent branch. If
 you omit `--parent-branch`, the commands use the repository's default branch
@@ -26,10 +27,14 @@ change picker; scope options do not remove the need for a change and its proposa
 /sai-6-performance my-change --full --tier db
 ```
 
-Without `--runtime`, analysis asks no questions between change resolution and
-the final close. With it, each diagnostic/browser check still needs your
-authorization. Security has no runtime option. An explicit `--fast-track` on
-`/sai-deep-review` is a no-op, not permission to run diagnostics or fix findings.
+The standalone audits ask no questions between change resolution and their close.
+`--runtime` is the whole authorization for diagnostics and browser checks: a tool
+that is not installed, or a URL that does not respond, is marked unavailable in the
+report and the static audit goes on. The dev-server URL is an input, so with
+`--runtime` and no `--url` the accessibility audit asks for it before it starts.
+Each audit commits its own report locally (when the project does not ignore it) and
+never fixes a finding. Security has no runtime option. An explicit `--fast-track` on
+the audits and on `/sai-deep-review` is a no-op, not permission to fix findings.
 
 ## Which audits run
 
@@ -41,7 +46,7 @@ authorization. Security has no runtime option. An explicit `--fast-track` on
 
 Those recommendations are the three `**Surface touched:**` fields in `review.md`. `/sai-deep-review` always runs review first, then dispatches an audit only when that field is exactly `Yes`. `No` leaves the audit inactive; any other value is illegible, so the audit does not run and the summary carries a warning. When `review.md` is missing or no field is legible, the command reports the gap, shows the changed files, and offers no findings round.
 
-Standalone `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility` are diff-scoped vs the parent branch by default. Pass `--full` or `--path {dir}` to expand scope; performance also accepts `--tier` and `--runtime`, accessibility also accepts `--runtime`. Every review and audit command accepts the parent branch only as `--parent-branch <branch>`, and runs unattended unless `--runtime` is passed. `/sai-4-review` itself takes only a change name and `--parent-branch`: it reviews the diff.
+Standalone `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility` are diff-scoped vs the parent branch by default. Pass `--full` or `--path {dir}` to expand scope; performance also accepts `--tier` and `--runtime`, accessibility also accepts `--runtime` and `--url`. Every review and audit command accepts the parent branch only as `--parent-branch <branch>`, and runs unattended. `/sai-4-review` itself takes only a change name and `--parent-branch`: it reviews the diff.
 
 `/sai-deep-review` accepts the union of those options and passes each segment only the options its own command declares (in `sai/commands/{review,security,performance,accessibility}/options.md`). `--full` or `--path` skips the triage and runs all three audits, since they ask to look beyond the diff; an empty-diff review (`No changes detected`) still ends the run with no audits and no fix. An option aimed at an audit that did not run has no effect, and the summary says so. An option no segment accepts stops the command before any dispatch.
 

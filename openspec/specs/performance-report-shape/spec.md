@@ -19,11 +19,11 @@ The performance report template SHALL define `performance.md` as the title, a si
 
 ### Requirement: Single provenance line
 
-The report SHALL carry exactly one header line in the form `**Scope:** {…} · **Tiers:** {…} · **Baseline:** {…} · **Date:** {YYYY-MM-DD}`. Scope SHALL name the parent branch in diff mode, Tiers SHALL name only the tiers audited, and Baseline SHALL name the reference or state that absolute thresholds are used, as the single baseline source for every finding.
+The report SHALL carry exactly one header line in the form `**Scope:** {…} · **Tiers:** {…} · **Baseline:** {…} · **Diagnostics:** {…} · **Date:** {YYYY-MM-DD}`. Scope SHALL name the parent branch in diff mode, Tiers SHALL name only the tiers audited, Baseline SHALL name the reference or state that absolute thresholds are used, as the single baseline source for every finding, and Diagnostics SHALL state `not requested`, the diagnostics that ran, or those that were unavailable and why.
 
 #### Scenario: Diff-mode provenance
-- **WHEN** the audit runs in diff mode against parent branch `main` on the backend and db tiers without a baseline
-- **THEN** the provenance line names diff vs `main`, the tiers backend and db, and absolute thresholds as the baseline
+- **WHEN** the audit runs in diff mode against parent branch `main` on the backend and db tiers without a baseline and without `--runtime`
+- **THEN** the provenance line names diff vs `main`, the tiers backend and db, absolute thresholds as the baseline, and diagnostics as not requested
 
 ### Requirement: Finding fields and estimate mark
 

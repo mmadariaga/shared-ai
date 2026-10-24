@@ -1,6 +1,8 @@
 # Security Step — Audit Dependencies
 
-Active step: resolve-sca. Audit the dependency manifests the SCA gate admitted in `discover-module-map`. The step is done when every admitted manifest is audited and every vulnerable dependency is recorded; then report the `resolve-sca` progress event per the worker contract.
+Active step: resolve-sca. Audit the dependency manifests the SCA gate admitted in `discover-module-map`. The step is done when every admitted manifest is audited and every vulnerable dependency is recorded; then report `step-done` for `resolve-sca`.
+
+When `discover-module-map` admitted no manifest, this step has no work: it was reported with `resolve-sast-analysis`, and the report says SCA did not run and why.
 
 ### SCA — Software Composition Analysis
 

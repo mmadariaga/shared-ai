@@ -72,8 +72,17 @@ read its presence as "audit not applicable".}
 
 - **Files reviewed:** {n} / {n in scope}
 - **Static phases evaluated:** {2,3,4,5,6,7,8 — list}
-- **Runtime tools used:** {axe / pa11y / Lighthouse / manual keyboard / "none — static-only mode"}
+- **Runtime tools used:** {axe / pa11y / Lighthouse / "none — static-only mode"}; a tool that was not installed, or a URL that did not respond, is listed as `unavailable — {reason}`
 - **Categories with no instances detected:** {list — do not omit silently}
+
+---
+
+## Pending Manual Checks
+
+{Checks only a person can run, never presented as verified: one pair per critical flow the change touches.}
+
+- [ ] Keyboard walk of {flow}: {keyboard path to follow}
+- [ ] Screen reader smoke test of {flow} with {NVDA / VoiceOver / TalkBack}
 
 ---
 

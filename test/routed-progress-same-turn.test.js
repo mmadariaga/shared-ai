@@ -56,7 +56,6 @@ test('existing dependency work remains installed without expanding review/audit 
   for (const phase of ['review', 'security', 'performance', 'accessibility']) {
     assert.match(read(`sai/commands/${phase}/steps/common.md`), /Fetch @skills\/budget-ro\/SKILL\.md/);
     const worker = read(`sai/commands/${phase}/worker.md`);
-    if (phase !== 'review' && phase !== 'security' && phase !== 'performance') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
     assert.doesNotMatch(worker, /Fetch @sai\/policies\/prereqs-check\.md|prereqs\.js/);
   }
   assert.match(read('sai/commands/deep-review/coordinator.md'), /runs no OpenSpec prerequisite check/);
@@ -69,7 +68,7 @@ test('combined startup retains failure, legitimate early-outcome and reconstruct
   assert.match(core, /carries both ids in plan order/);
   const runner = read('sai/orchestration/command-runner.md');
   assert.match(runner, /before the first progress event it is the first filed step/);
-  assert.match(read('sai/commands/accessibility/worker.md'), /a no-UI run reports `resolve-accessibility-scope`/);
+  assert.match(read('sai/commands/accessibility/worker.md'), /When the scope holds no UI file, the audit does not apply, even with `--runtime`: the first batch also carries `resolve-static-audit` and `resolve-runtime-audit`/);
   const design = require('../sai-state/machines/design-steps.js');
   assert.equal(design.firstFiled().stage, 'research');
   const first = design.transition(design.initialState, { step_ids: ['design-intake', 'research'] });

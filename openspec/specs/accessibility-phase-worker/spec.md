@@ -7,16 +7,16 @@ TBD
 
 ### Requirement: Accessibility worker owns the complete technical workflow
 
-The routed accessibility worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup. The routed worker SHALL load `sai/commands/accessibility/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-accessibility-scope` step from that surface before following the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale caller-neutral accessibility invocation core fetch chain SHALL NOT be part of the worker's instruction loading.
+The accessibility worker SHALL own parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and the completed summary; change resolution, the `proposal.md` gate, argument validation, and the dev-server URL question SHALL belong to the shared audit coordinator `sai/commands/audit/coordinator.md`. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup. The worker SHALL load `sai/commands/audit/worker-common.md` and `sai/commands/accessibility/steps/common.md` at creation together with its worker card, run the fileless `resolve-accessibility-scope` step from the brief and that surface before following the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale caller-neutral accessibility invocation core fetch chain SHALL NOT be part of the worker's instruction loading.
 
 #### Scenario: Routed worker starts from an invocation envelope
-- **WHEN** the accessibility worker receives the harness envelope
-- **THEN** it performs the complete technical accessibility workflow from that envelope and durable repository state without running OpenSpec environment prerequisite checks
-- **AND** it returns artifact paths and summary metadata rather than report contents in lifecycle payloads
+- **WHEN** the accessibility worker receives its task brief naming the change, the options, and the report path
+- **THEN** it performs the technical accessibility workflow from that brief and durable repository state without resolving the change or running OpenSpec environment prerequisite checks
+- **AND** it returns the report path, counts, and summary rather than report contents in its result
 
 #### Scenario: Sealed initial surface replaces the invocation-core fetch
-- **WHEN** the routed accessibility worker is dispatched
-- **THEN** its initial surface references only its contract plus `sai/commands/accessibility/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
+- **WHEN** the accessibility worker is created
+- **THEN** its initial surface references only its card, `sai/commands/audit/worker-common.md`, and `sai/commands/accessibility/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
 - **AND** the audit policy remains single-sourced across the carved step files
 
 #### Scenario: Monolith is retired
@@ -25,16 +25,16 @@ The routed accessibility worker SHALL own envelope parsing, change resolution, t
 
 ### Requirement: Worker preserves accessibility prerequisites, argument parsing, and scope behavior
 
-Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. It SHALL parse `arguments_value` per `sai/commands/accessibility/options.md`: an optional change name, then the optional `--full` or `--path <dir>` scope flag, the optional `--runtime` flag, and the optional `--parent-branch <branch>`. An unknown `--` option, an option missing its value, or a second positional value SHALL return `failed` before resolution and name the token. It SHALL also preserve change selection behavior. Parent-branch detection SHALL use the `--parent-branch` value first. It SHALL default to static review and ask no question without `--runtime`. It SHALL replace the audit with a Not Applicable report when the selected scope contains no UI files, and write no report when the proposal prerequisite is missing.
+The worker SHALL NOT parse `arguments_value`, resolve the change, or present a change picker: it SHALL take the change name and the options (the optional `--full` or `--path <dir>` scope, `--runtime`, `--url <url>`, and `--parent-branch <branch>`) from the coordinator's brief, which the coordinator has already validated against `sai/commands/accessibility/options.md` after verifying `proposal.md`. It SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. Parent-branch detection SHALL use the `--parent-branch` value first. It SHALL default to static review and ask no question without `--runtime`. It SHALL replace the audit with a Not Applicable report when the selected scope contains no UI files, even with `--runtime`.
 
 #### Scenario: Proposal prerequisite is missing
 - **WHEN** the selected change has no `openspec/changes/{change-name}/proposal.md`
-- **THEN** the worker returns the existing actionable missing-proposal failure
-- **AND** it performs no audit analysis and writes no `accessibility.md`
+- **THEN** the audit coordinator ends the run with its missing-proposal line before creating the worker
+- **AND** no audit analysis runs and no `accessibility.md` is written
 
 #### Scenario: Scope contains no UI files
 - **WHEN** the selected diff contains no `.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, or component-bearing markdown files
-- **THEN** the worker writes `accessibility.md` with only its header and a justified `## Not Applicable` section and returns `completed`
+- **THEN** the worker writes `accessibility.md` with only its header and a justified `## Not Applicable` section, runs no scanner, and returns `completed`
 - **AND** it does not create accessibility findings
 
 #### Scenario: Runtime flag is absent
@@ -60,57 +60,22 @@ The worker SHALL preserve the existing WCAG 2.2 Level AA scope, selected AAA tar
 - **THEN** the report states `No instances detected` for that category
 - **AND** it does not invent a speculative finding
 
-### Requirement: Runtime checks require individual worker authorization
-
-When `--runtime` is present, the worker SHALL require that the user has started the dev server and SHALL request authorization through the worker's closed `needs_input` lifecycle payload before every individual runtime command. The authorization loop SHALL be finite and non-batched: it SHALL present at most one authorization question for each applicable scanner command in the fixed runtime checklist. The worker SHALL never auto-execute or automatically retry a runtime command. Authorized scanner commands SHALL preserve the existing `npx @axe-core/cli {url} --exit`, `npx pa11y {url} --reporter cli`, and `npx lhci autorun --only-categories=accessibility` invocations. Keyboard walks and screen-reader smoke tests SHALL remain explicit user-verified checks, and runtime evidence SHALL be cross-referenced with static findings before reporting.
-
-#### Scenario: Runtime scanner needs authorization
-- **WHEN** runtime mode reaches an individual scanner command after the dev server is available
-- **THEN** the worker returns `needs_input` with the command-specific question and ordered authorize/skip options
-- **AND** it does not execute the command before the user selects an option
-
-#### Scenario: User authorizes one scanner command
-- **WHEN** the user selects authorize for one runtime scanner command
-- **THEN** the worker executes only that authorized command
-- **AND** it requests a new authorization before any subsequent command
-
-#### Scenario: User skips one scanner command
-- **WHEN** the user selects skip for one runtime scanner command
-- **THEN** the worker does not execute that command
-- **AND** it continues without treating the skipped command as runtime evidence
-
-#### Scenario: Runtime checks are partially completed
-- **WHEN** runtime mode is requested and one or more scanner commands are skipped or unavailable
-- **THEN** the report distinguishes runtime mode from static-only mode and identifies the used, skipped, or unavailable tools in its runtime-tools-used statement
-- **AND** it does not claim evidence from any command that did not run
-
-#### Scenario: Authorized scanner cannot reach the dev server
-- **WHEN** an authorized scanner command fails because the dev server is unavailable
-- **THEN** the worker records that runtime check as unavailable using the command's observed result
-- **AND** it does not convert the failure into an accessibility finding or retry automatically
-
-#### Scenario: Runtime mode lacks a started server
-- **WHEN** `--runtime` is present but the user has not started the dev server
-- **THEN** the worker does not invoke a browser scanner
-- **AND** it returns `needs_input` asking the user to start and confirm the dev server, with an option to skip runtime checks
-- **AND** it proceeds without runtime evidence when the user selects the skip option
-
 ### Requirement: Worker writes and verifies only the accessibility artifact
 
-The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, a severity-prefixed identifier on every finding when there are any, a closing `Summary:` tally line whose counts match the report's findings, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, and a re-test checklist. The completed lifecycle result SHALL carry the canonical change name, report path, worker-authored summary, and `changed_files` containing only `accessibility.md`.
+The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, a severity-prefixed identifier on every finding when there are any, a closing `Summary:` tally line whose counts match the report's findings, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, a pending manual checks section, and a re-test checklist. The completed result SHALL carry the report path, the counts, a worker-authored summary, and `changed_files` containing only `accessibility.md`.
 
 #### Scenario: Accessibility report completes
-- **WHEN** static review and any authorized runtime checks pass self-critique and report verification
+- **WHEN** static review and any runtime checks pass self-critique and report verification
 - **THEN** `accessibility.md` exists, is non-empty, and contains only evidence-backed findings or explicit clean outcomes in the selected scope
 - **AND** the worker returns `completed` with `accessibility.md` as its only changed file
 
 ### Requirement: Accessibility lifecycle results carry no time field
 
-The accessibility worker SHALL return progress and terminal lifecycle results with no time field, while retaining static review, runtime authorization, and report-only write boundaries; the CLI response's `received_at` is the only observed time.
+The accessibility worker SHALL return `step-done`, `question`, and terminal results with no time field, while retaining static review, runtime, and report-only write boundaries.
 
 #### Scenario: Accessibility reports a milestone
-- **WHEN** an accessibility milestone completes
-- **THEN** its lifecycle payload carries the changed paths for that result and no time field.
+- **WHEN** an accessibility step completes
+- **THEN** its `step-done` result carries the step ids and no time field.
 
 #### Scenario: Report generation would modify production files
 - **WHEN** a proposed audit action would modify production code, components, styles, configuration, or runtime state
@@ -182,14 +147,6 @@ The worker SHALL write every statement about what a screen reader will announce 
 - **WHEN** a finding states what a screen reader will announce for an element
 - **THEN** that statement is prefixed `Inferred:`
 
-### Requirement: Zero active changes returns an exact failure literal
-
-When change resolution finds zero active changes, the accessibility worker SHALL return `failed` with exactly: No active changes found. Run `/sai-1-spec` to create one.
-
-#### Scenario: No active changes exist
-- **WHEN** `arguments_value` supplies no change name and `openspec list --json` reports zero changes
-- **THEN** the worker returns `failed` with exactly: No active changes found. Run `/sai-1-spec` to create one.
-
 ### Requirement: Component-bearing markdown is defined in the accessibility common step file
 
 `sai/commands/accessibility/steps/common.md` SHALL define component-bearing markdown once, beside the UI file list, as `.mdx` files plus `.md` files containing an HTML element or a capitalized component tag such as `<Button>`. A `.md` file containing neither SHALL NOT be a UI file.
@@ -204,8 +161,27 @@ When change resolution finds zero active changes, the accessibility worker SHALL
 
 ### Requirement: Accessibility findings stay within the selected scope
 
-The accessibility audit SHALL report findings only within the selected scope, and the worker instructions SHALL carry no rule for adding one-line notes about out-of-scope risks.
+The accessibility audit SHALL report findings only within the selected scope. A risk noticed outside the selected scope SHALL get at most a one-line note, never a finding or an audit.
 
 #### Scenario: Risk outside the selected diff
 - **WHEN** the auditor notices an accessibility risk in a file outside the selected scope
-- **THEN** the report contains no finding or note for that file
+- **THEN** the report contains no finding for that file, and at most a one-line note
+
+### Requirement: Runtime scanners run on --runtime alone
+
+When `--runtime` is present, `--runtime` SHALL be the whole authorization for the runtime scanners: the worker SHALL ask no authorization question and SHALL never wait for an answer before running them. The scanners SHALL keep the `npx @axe-core/cli {url} --exit`, `npx pa11y {url} --reporter cli`, and `npx lhci autorun --only-categories=accessibility` invocations against the dev server at `--url`. The worker SHALL never retry a failed runtime command. A scanner that is not installed or fails to start, a missing `--url`, or a URL that does not respond SHALL be recorded as unavailable with its reason, and the static audit SHALL continue. Keyboard walks and screen-reader smoke tests SHALL be listed under the report's `## Pending Manual Checks` and never presented as verified, and runtime evidence SHALL be cross-referenced with static findings before reporting.
+
+#### Scenario: Runtime checks are partially completed
+- **WHEN** runtime mode is requested and one or more scanner commands are unavailable
+- **THEN** the report distinguishes runtime mode from static-only mode and identifies the used and unavailable tools in its runtime-tools-used statement
+- **AND** it does not claim evidence from any command that did not run
+
+#### Scenario: Authorized scanner cannot reach the dev server
+- **WHEN** a scanner command fails because the dev server at `--url` does not respond
+- **THEN** the worker records that runtime check as unavailable using the command's observed result
+- **AND** it does not convert the failure into an accessibility finding or retry automatically
+
+#### Scenario: Runtime mode lacks a started server
+- **WHEN** `--runtime` is present but the brief carries no `--url` because the user declined the coordinator's URL question
+- **THEN** the worker does not invoke a browser scanner and asks no question
+- **AND** it records the runtime part as unavailable and completes the static audit

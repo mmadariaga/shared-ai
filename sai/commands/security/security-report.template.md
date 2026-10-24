@@ -1,7 +1,7 @@
 ```markdown
 # Security Report — {Feature Name}
 
-**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`} · **Scan type:** {SAST | SCA | SAST+SCA} · **Date:** {YYYY-MM-DD}
+**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`} · **Scan type:** {SAST | SCA | SAST+SCA} · **SCA:** {ran on {manifests} | did not run — {why, e.g. no dependency manifest changed in the selected scope}} · **Date:** {YYYY-MM-DD}
 
 {Write a section only when it has content: omit every section with nothing to record instead of filling it with "N/A" or an empty table.}
 

@@ -44,18 +44,15 @@
       ],
       "sai-5-security.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/security-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-6-performance.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/performance-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-7-accessibility.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-archive.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -126,18 +123,15 @@
       ],
       "sai-5-security.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/security-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-6-performance.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/performance-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-7-accessibility.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it."
+        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-archive.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

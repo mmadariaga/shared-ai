@@ -13,21 +13,13 @@ The performance worker files SHALL state each rule once. `steps/common.md` SHALL
 - **WHEN** the performance worker loads `steps/common.md`
 - **THEN** it finds the write limit stated once, in § Hard Rules, and not repeated in a Remember block or in `worker.md`
 
-### Requirement: Worker contract structure
-
-`sai/commands/performance/worker.md` SHALL have the sections Change Resolution and Proposal Gate, `## Steps`, and Continuation and Reconstruction. `## Steps` SHALL list the canonical step ids and labels unchanged, with the progress batch that reports each one. With no active changes, the worker SHALL return `failed` with exactly "No active changes found. Run `/sai-1-spec` to create one."
-
-#### Scenario: No active changes
-- **WHEN** `/sai-7-performance` runs with no change name and `openspec list --json` returns zero changes
-- **THEN** the worker returns `failed` with the exact no-active-changes text
-
 ### Requirement: Step completion criteria
 
-Every performance step file SHALL open with a checkable "The step is done when …" criterion. The `map-stack-hot-paths` criterion SHALL require every file of the selected scope to be assigned a tier or recorded as having no performance surface, and stack components per tier, hot paths, the baseline reference, and accepted trade-offs to exist. The `audit-performance-tiers` criterion SHALL require every hot path to be evaluated against every item of its tier's checklist and the cross-cutting checklist, with every flaw recorded with its fields. The `resolve-diagnostics` criterion SHALL require the gate to be resolved by an authorized run, the user's skip, or the absence of a diagnostic that would firm up a finding. The `close-performance-outcome` criterion SHALL require the saved report to pass its form verification.
+Every performance step file SHALL open with a checkable "The step is done when …" criterion. The `map-stack-hot-paths` criterion SHALL require every file of the selected scope to be assigned a tier or recorded as having no performance surface, and stack components per tier, hot paths, the baseline reference, and accepted trade-offs to exist. The `audit-performance-tiers` criterion SHALL require every hot path to be evaluated against every item of its tier's checklist and the cross-cutting checklist, with every flaw recorded with its fields. The `resolve-diagnostics` criterion SHALL require every diagnostic that firms up a finding to have run or to be recorded as unavailable. The `close-performance-outcome` criterion SHALL require the saved report to pass its form verification.
 
 #### Scenario: Mapping cannot close on one hot path
 - **WHEN** the mapping step has identified one hot path but some files of the selected scope are not yet classified
-- **THEN** the step is not done and reports no `map-stack-hot-paths` progress event
+- **THEN** the step is not done and reports no `map-stack-hot-paths` `step-done`
 
 ### Requirement: Mapping step owns the delegation limits
 
@@ -44,3 +36,11 @@ The close step SHALL define the `completed` summary: severity counts, up to thre
 #### Scenario: Completed summary
 - **WHEN** the close step returns `completed` for a report with two High findings in diff mode
 - **THEN** the summary carries the severity counts, both High findings, the report path, and the parent branch, and no report content
+
+### Requirement: Performance worker card lists only its step batches
+
+`sai/commands/performance/worker.md` SHALL load `sai/commands/audit/worker-common.md` and `sai/commands/performance/steps/common.md` and SHALL carry one `## Steps` section that lists the canonical step ids in order with the `step-done` batch that reports each one. It SHALL carry no change-resolution, proposal-gate, or continuation-and-reconstruction section: the shared audit coordinator resolves the change and verifies `proposal.md` before creating the worker, and it owns worker replacement.
+
+#### Scenario: Worker card lists the step batches
+- **WHEN** the performance worker card is read
+- **THEN** its `## Steps` section lists `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, `resolve-diagnostics`, and `close-performance-outcome` in order with the batch that reports each

@@ -29,9 +29,9 @@ The security coordinator SHALL send every progress-event continuation as exactly
 
 ### Requirement: Security Worker Active Step Execution
 
-The security worker SHALL load `steps/common.md` at dispatch as part of its sealed initial surface. It SHALL run the fileless `resolve-security-scope` from that surface before following the first pointer, which arrives as the first line of the task-disclosure continuation before `arguments_value`. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file. It SHALL report `resolve-security-scope` and `discover-module-map` together in its first progress event. A legitimately skipped gated stage SHALL still report its milestone and advance past its step without executing the step file.
+The security worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-security-scope` from the brief and that surface before following the first pointer, which arrives as the first line of the task message before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-security-scope` and `discover-module-map` together in its first `step-done` batch. A gated stage it skips because it does not apply SHALL be reported in the same `step-done` batch as the step that decided the skip, so the next pointer lands on the step that still has work without the skipped step file executing.
 
 #### Scenario: Gated SCA skip advances the pointer
 
-- **WHEN** no dependency manifest changed in the diff and the SCA gate resolves as legitimately skipped
-- **THEN** the worker reports the `resolve-sca` milestone completed and the next delivered pointer names the following step without `resolve-sca.md` executing
+- **WHEN** no dependency manifest changed in the diff and the SCA gate admits no manifest
+- **THEN** the worker reports `resolve-sca` in the `resolve-sast-analysis` `step-done` batch and the next delivered pointer names `close-security-outcome` without `resolve-sca.md` executing

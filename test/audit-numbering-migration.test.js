@@ -18,6 +18,10 @@ function asLinux(action) {
   try { return action(); } finally { Object.defineProperty(process, 'platform', original); }
 }
 
+// The pre-renumbering command wrappers are pinned verbatim: the retired-file
+// hashes recognize those bytes, and the current wrappers no longer match them.
+const legacyCommand = (harness, newName) => fs.readFileSync(path.join(__dirname, 'fixtures', 'audit-legacy-commands', harness, `${newName}.md`), 'utf8');
+
 for (const harness of ['claude', 'opencode']) {
   const install = base => asLinux(() => harness === 'claude' ? flow.installClaude(base) : flow.installOpencode(base));
   const enumerate = base => harness === 'claude' ? uninstall.enumerateClaude(base) : uninstall.enumerateOpencode(base);
@@ -52,7 +56,7 @@ for (const harness of ['claude', 'opencode']) {
           const destination = path.join(base, folder, `${newName}${suffix}.md`);
           // A pre-renumbering definition also used the legacy opencode helper
           // grants. Keep this a historical fixture, not a hypothetical hybrid.
-          const source = fs.readFileSync(destination, 'utf8').replaceAll(newName, oldName)
+          const source = (folder === 'commands' ? legacyCommand(harness, newName) : fs.readFileSync(destination, 'utf8')).replaceAll(newName, oldName)
             .replaceAll('resource: "budget-explorer"', 'resource: "explore"')
             .replaceAll('resource: "budget-subagent"', 'resource: "budget"');
           const tunable = harness === 'claude' ? 'effort: high' : folder === 'agents' ? 'variant: custom' : '';
@@ -121,7 +125,7 @@ for (const harness of ['claude', 'opencode']) {
     install(base);
     const destination = path.join(base, 'commands/sai-5-security.md');
     const legacy = path.join(base, 'commands/sai-6-security.md');
-    const previous = fs.readFileSync(destination, 'utf8').replaceAll('sai-5-security', 'sai-6-security').replace(/^model:.*$/m, 'model: custom-before-cleanup');
+    const previous = legacyCommand(harness, 'sai-5-security').replaceAll('sai-5-security', 'sai-6-security').replace(/^model:.*$/m, 'model: custom-before-cleanup');
     fs.writeFileSync(legacy, previous);
     fs.unlinkSync(destination);
     require('../bin/audit-name-migration').prepare(base);
