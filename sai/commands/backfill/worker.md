@@ -56,6 +56,11 @@ Envelope Tokens section; `fast_track_active` is worker-derived session state.
 
 ## Lifecycle
 
+When the task-disclosure continuation carries the full Direct Build route's
+outermost `--report-dir` line, Fetch @sai/policies/direct-build-report-transport.md
+and use it for every report, including preparation, execution, and correction.
+Strip that line before the `--transfer-dir` line. Standalone behavior is unchanged.
+
 This phase declares NO progress plan: emit no progress events and no notice.
 Every stretch opens with `event: ready` as its first nonterminal return before
 any expensive work; the task arrives only in the post-ready same-worker

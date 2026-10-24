@@ -143,3 +143,13 @@ An uncertain commit is checked before continuing: a confirmed commit consumes
 the original authorization once; an unknown result remains stopped. Nothing is
 pushed. Claude Code and opencode use the same rules through their native agent
 continuation mechanisms. Resumption in a new conversation is not supported.
+
+Full Direct Build workers deliver reports through private files and return
+only a path and hash. One validator operation checks the hash and validates
+the same bytes, without coordinator copying. Failed delivery, invalid content,
+and a call with no response remain distinct. Recovery uses the existing attempt
+limits without asking for instructions on recoverable errors. Confirmed archive
+moves and commits are not repeated to recover a report. Unresolved verification
+retains the reports and evidence and closes with what completed and what remains
+unchecked. The initial readiness exchange, POC, and standalone backfill and
+archive behavior are unchanged in Claude Code and opencode.

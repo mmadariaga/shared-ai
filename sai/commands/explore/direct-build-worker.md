@@ -9,6 +9,10 @@ Apply it within the crystallized block's scope and this worker's role restrictio
 
 ## Invocation Envelope
 
+For the full Direct Build route, Fetch @sai/policies/direct-build-report-transport.md
+and use its outermost task-disclosure line and file-reference returns. The
+initial ready handshake and the `--no-specs` POC remain unchanged.
+
 The worker receives exactly one opaque string: `arguments_value`. Under
 strict-zero two-phase startup the initial dispatch carries only the ready
 prompt plus base instructions with no task content; `arguments_value` arrives

@@ -21,6 +21,8 @@
  *
  * Sub-commands:
  *   validate                   Read a closed payload from stdin and validate it.
+ *   validate --report-dir <dir> --report-file <path> --report-hash <sha256>
+ *                              Verify a private reference and validate the same bytes.
  *
  * Usage:
  *   cat payload.json | node sai/tools/worker-report-validator.js validate --kind <kind> [--json] [--cwd <dir>]
@@ -31,7 +33,7 @@
  *   - progress     Validate a progress event payload
  *   - conflict_detected  Validate a conflict_detected extension payload
  *
- * Exit codes: 0 = validation passed; 1 = validation failed, payload is malformed;
+ * Exit codes: 0 = validation passed; 1 = delivery or payload validation failed;
  * 2 = usage error or IO failure.
  */
 
@@ -657,11 +659,37 @@ async function commandValidate(kind) {
   return validateText(stdinData, kind);
 }
 
+/** Verify once and validate that exact buffer; never read the report again. */
+function validateFile(dir, reference, kind, options = {}) {
+  let verified;
+  try {
+    verified = require('./transfer').verify(dir, reference, options);
+  } catch (error) {
+    return { ok: false, action: 'validate', kind, outcome: 'delivery-failed', errors: [error.message] };
+  }
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(verified.bytes);
+    if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text)) {
+      throw new Error('Report contains unsupported control characters');
+    }
+  } catch (error) {
+    return { ok: false, action: 'validate', kind, outcome: 'report-invalid', errors: [error.message] };
+  }
+  const verdict = validateText(text, kind);
+  return { ...verdict, outcome: verdict.ok ? 'accepted' : 'report-invalid',
+    ...(verdict.ok ? { payload: parsePayloadText(text).payload } : {}) };
+}
+
 function usage() {
   return [
     'Usage: cat payload.json | node sai/tools/worker-report-validator.js validate --kind <kind> [--json] [--cwd <dir>]',
     '',
     '  validate                 Read a closed payload from stdin and validate it.',
+    '  --report-dir <dir> --report-file <path> --report-hash <sha256>',
+    '                           Instead verify a private transfer file and validate the same bytes.',
+    '                           All three flags are required together; stdin is not read.',
+    '                           JSON includes outcome and, only on acceptance, the parsed payload.',
     '',
     '  --kind <kind>            Mandatory: the payload kind to validate.',
     '                           One of: terminal, notice, progress, conflict_detected.',
@@ -672,7 +700,7 @@ function usage() {
     '  --cwd <dir>              Working directory (for symmetry with other tools; not',
     '                           currently used by the validator).',
     '',
-    'Exit codes: 0 = ok; 1 = validation failed; 2 = usage or IO error.',
+    'Exit codes: 0 = ok; 1 = delivery or validation failed; 2 = usage or IO error.',
     'The JSON response carries received_at (CLI reception time) as its first key.',
   ].join('\n');
 }
@@ -684,6 +712,11 @@ function parseArgs(argv) {
     if (arg === '--json') opts.json = true;
     else if (arg === '--cwd') opts.cwd = argv[++i];
     else if (arg === '--kind') opts.kind = argv[++i];
+    else if (['--report-dir', '--report-file', '--report-hash'].includes(arg)) {
+      if (!argv[i + 1] || argv[i + 1].startsWith('--')) return { error: `missing value for ${arg}` };
+      const key = { '--report-dir': 'reportDir', '--report-file': 'reportFile', '--report-hash': 'reportHash' }[arg];
+      opts[key] = argv[++i];
+    }
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
     else if (opts.command === null) opts.command = arg;
@@ -735,8 +768,15 @@ async function main(argv) {
   }
 
   try {
+    const fileMode = ['reportDir', 'reportFile', 'reportHash'].some(key => opts[key] !== undefined);
+    if (fileMode && ![opts.reportDir, opts.reportFile, opts.reportHash].every(Boolean)) {
+      process.stderr.write('File validation requires --report-dir, --report-file, and --report-hash together\n');
+      return 2;
+    }
     const receivedAt = generateReceivedAt();
-    const verdict = await commandValidate(kind);
+    const verdict = fileMode
+      ? validateFile(opts.reportDir, { path: opts.reportFile, sha256: opts.reportHash }, kind)
+      : await commandValidate(kind);
     const payload = Object.assign({ received_at: receivedAt }, verdict);
     render(payload, opts.json);
     return payload.ok ? 0 : 1;
@@ -760,6 +800,7 @@ module.exports = {
   main,
   commandValidate,
   validateText,
+  validateFile,
   parsePayloadText,
   validatePayload,
   validateTerminal,

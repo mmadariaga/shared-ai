@@ -220,6 +220,13 @@ are user-configured per role, so success is measured in model turns, tool
 calls, and tokens per run, not minutes.
 
 ### Direct Build (unattended) selector option (crystallization-close)
+Full Direct Build worker reports use `sai/policies/direct-build-report-transport.md`:
+implementation, backfill, and archive workers return private report path/hash
+references after the unchanged ready handshake. The validator checks and validates
+one byte buffer; recovery keeps confirmed operations separate from report checks
+and retains unresolved evidence. Claude Code and opencode use the same contract;
+POC and standalone reused-worker behavior remain unchanged.
+
 Direct Build (unattended) mutation ownership is the existing `sai-backfill-worker` and
 `sai-archive-worker`: each uses a read-only `--direct-build-prepare` stretch and
 one coordinator-validated `--direct-build-execute` continuation. The archive worker owns the validated sync →
