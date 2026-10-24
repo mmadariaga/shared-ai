@@ -44,3 +44,5 @@ option to stop.
 project's ignore rules do not ignore it. An ignored report stays on disk, and
 nothing is force-added or pushed. A new run regenerates the report from scratch;
 an interrupted run is not resumed. The command ends with `Accessibility audit done.`.
+
+[`/sai-deep-review`](sai-deep-review.md) runs this audit as one cycle of the same coordinator, in parallel with the other activated audits. Inside that run, the audit asks you only what nothing else can answer (`/sai-deep-review` asks for the `--url` dev-server URL once, before the audits start, when `--runtime` came without it): a worker question is answered from the repository and listed as an assumption, and is put to you through the picker only when nothing answers it and the answer would change the report (the other audits keep running meanwhile), and an audit that fails or runs out of attempts is reported as failed while the others finish.

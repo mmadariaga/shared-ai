@@ -112,8 +112,8 @@ conversion, so the coordinator issues no wall-clock call and resolves no zone.
 - **Terminal status** (`--kind terminal`) — exactly one of `completed`,
   `needs_input`, `failed`, or `cancelled`. `completed`, `failed`, and
   `cancelled` close the run; `completed` closes the worker's current dispatch
-  phase, but its resumability for recovery ends only when the run closes or a
-  segment boundary is crossed (§ Chained phase composition). `needs_input`
+  phase, but its resumability for recovery ends only when the run closes
+  (§ Phase segment). `needs_input`
   pauses the run instead; the validator also checks its question, ordered
   options where applicable, and binding-owned continuation metadata. For a
   closed option set, present the exact question and options and forward the
@@ -240,10 +240,7 @@ issues any progress render and the two-line continuation in the same turn per
 § Result kinds, after validation and registration. Without a `step_machine`, a progress continuation is
 exactly `continue_after_progress`.
 
-## Chained phase composition
+## Phase segment
 
-An invocation may execute an ordered sequence of phase adapters, each segment
-through this Result Loop. The composition rules — segment rebinding, consecutive
-transitions, and supervisor continuity across segments — live in
-`sai/orchestration/composition.md`, which only composition coordinators load. A
-one-adapter invocation is a single segment spanning the whole invocation.
+An invocation executes one phase adapter through this Result Loop: a single
+segment that spans the whole invocation. No orchestration file chains adapters.

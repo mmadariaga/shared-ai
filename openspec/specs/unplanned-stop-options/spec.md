@@ -100,14 +100,6 @@ Full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for 
 - **WHEN** a full Direct Build run ends incomplete and its final report is printed
 - **THEN** the shared stopped report identifies the required decision in Next step and applicable stop options follow Execution details as a separate decision prompt outside the report
 
-### Requirement: Composition stops close once at the supervisor
-
-In a composition (`/sai-build`, `/sai-deep-review`), a stop inside a segment SHALL close once, at the supervisor, with options covering the whole invocation (for example re-entering through `/sai-build`), and SHALL NOT produce one set of options per segment.
-
-#### Scenario: A segment stops inside a composition
-- **WHEN** a segment of a composition halts on an error or an unexpected condition
-- **THEN** the supervisor closes the stop once with options covering the whole invocation
-
 ### Requirement: Options rest on evidence already held
 
 Stop options SHALL rest on the evidence the stopping surface already holds (payload, diagnosis, hand-back, or what it may read under its contract). Offering options SHALL NOT widen its read or write scope.

@@ -43,70 +43,6 @@ test('Step 1 performance worker card loads the shared audit rules and no shared-
   }
 });
 
-test('performance coordinator exposes the complete adapter contract', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  const fields = [
-    'original_envelope',
-    'dispatch_operation',
-    'continuation_operation',
-    'allowed_nonterminal_extensions',
-    'extension_handlers',
-    'replacement_reconstruction_fields',
-    'terminal_navigation',
-  ];
-
-  assert.match(coordinator, /performance_coordinator_adapter/);
-  for (const field of fields) {
-    assert.match(coordinator, new RegExp(`\\b${field}\\b`));
-  }
-  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}progress/i);
-  assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
-  assert.match(coordinator, /terminal_navigation[\s\S]{0,120}navigation below/i);
-  assert.equal((coordinator.match(/Performance audit done\./g) || []).length, 1,
-    'the done-literal is declared exactly once, in the navigation section');
-});
-
-test('performance coordinator validates lifecycle payloads and terminal statuses', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-
-  assert.match(coordinator, /validat(?:e|es|ion)[\s\S]{0,240}(?:lifecycle|worker)[\s\S]{0,240}(?:payload|result)/i);
-  for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
-    assert.match(coordinator, new RegExp(`\\b${status}\\b`));
-  }
-  for (const field of ['summary', 'changed_files', 'resolved_change_name', 'question', 'options']) {
-    assert.match(coordinator, new RegExp(`\\b${field}\\b`));
-  }
-  assert.match(coordinator, /status[\s\S]{0,180}(?:exactly|only)[\s\S]{0,180}(?:completed|needs_input|failed|cancelled)/i);
-});
-
-test('performance coordinator preserves summary text and unions changed paths in first-seen order', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-
-  assert.match(coordinator, /changed_files[\s\S]{0,240}(?:ordered|first[- ]seen)[\s\S]{0,120}union/i);
-  assert.match(coordinator, /(?:print|preserve)[\s\S]{0,160}(?:worker )?summary[\s\S]{0,160}(?:unchanged|verbatim|exactly)/i);
-  assert.ok(coordinator.includes('Performance audit done.'));
-});
-
-test('performance coordinator performs no technical prerequisite or research I/O', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-
-  for (const operation of [
-    'prerequisite',
-    'artifact',
-    'git',
-    'diff',
-    'tier',
-    'diagnostic',
-    'research',
-  ]) {
-    assert.match(
-      coordinator,
-      new RegExp(`(?:SHALL NOT|MUST NOT|does not)[^\\n]{0,180}${operation}`, 'i'),
-      `coordinator should prohibit ${operation} I/O`
-    );
-  }
-});
-
 test('performance scope grammar lives in options.md, validated by the audit coordinator and applied by common.md', () => {
   const common = artifact('sai/commands/performance/steps/common.md');
   const options = artifact('sai/commands/performance/options.md');
@@ -273,15 +209,6 @@ test('performance steps bound delegated research and rejected writes', () => {
   assert.match(diagnostics, /never against a production target/);
 });
 
-test('Step 3 coordinator preserves worker lifecycle results and owns the continuation operation', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  for (const field of ['summary', 'question', 'options', 'changed_files', 'resolved_change_name']) {
-    assert.match(coordinator, new RegExp(field, 'i'), `the coordinator should preserve ${field}`);
-  }
-  assert.match(coordinator, /continuation_operation/i,
-    'the coordinator should route through the binding continuation operation');
-});
-
 test('Step 3 managed-agent identity and binding remain while forwarding skill sources are retired', () => {
   const identity = 'sai-6-performance-worker';
   const surfaces = [
@@ -344,27 +271,6 @@ test('Step 4 performance wrappers fetch the shared audit coordinator, which fetc
   }
 });
 
-test('performance coordinator declares the canonical five-step progress plan in order with labels', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-
-  for (const id of ['resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'resolve-diagnostics', 'close-performance-outcome']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
-      `the plan should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /resolve-performance-scope[\s\S]{0,300}map-stack-hot-paths[\s\S]{0,300}audit-performance-tiers[\s\S]{0,300}resolve-diagnostics[\s\S]{0,300}close-performance-outcome/,
-    'the five canonical step ids should be declared in order'
-  );
-  assert.match(coordinator, /resolve-performance-scope[\s\S]{0,200}Resolve performance scope and tier/i);
-  assert.match(coordinator, /map-stack-hot-paths[\s\S]{0,200}Map stack and hot paths/i);
-  assert.match(coordinator, /audit-performance-tiers[\s\S]{0,200}Resolve performance tier analysis/i);
-  assert.match(coordinator, /resolve-diagnostics[\s\S]{0,200}Resolve diagnostics gate/i);
-  assert.match(coordinator, /close-performance-outcome[\s\S]{0,200}Close performance outcome/i);
-  assert.match(coordinator, /at dispatch/i);
-  assert.match(coordinator, /continue_after_progress[\s\S]{0,160}protocol[- ]?only/i);
-});
-
 test('performance worker contract enumerates the five ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/performance/worker.md');
 
@@ -380,48 +286,8 @@ test('performance worker contract enumerates the five ids and pins the batch sem
   assert.doesNotMatch(worker, /progress event|needs_input|authorization question/i);
 });
 
-test('performance coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/commands/performance/worker.md');
-
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
-    'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
-    'the policy should state the declared-step threshold');
-  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
-    'no task list / todowrite call should be emitted below the threshold');
-  assert.doesNotMatch(coordinator, /fewer than three|below three/,
-    'the coordinator should reference the policy and not restate the threshold constant');
-  assert.match(policy, /coordinator session/i,
-    'the policy should record the coordinator-only emission ownership');
-  assert.doesNotMatch(coordinator, /date \+%H:%M/,
-    'the coordinator should carry no per-harness wall-clock command');
-
-  assert.match(policy, /todowrite/i,
-    'the policy should name the opencode todowrite tool');
-  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
-    'the policy should tie the disabled-by-default tool to the subagent context');
-  assert.doesNotMatch(coordinator, /Get-Date/,
-    'the coordinator should carry no PowerShell wall-clock command');
-
-  assert.doesNotMatch(worker, /no Milestone Stamp/i,
-    'the worker never renders stamps, so its contract states nothing about them');
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-});
-
 // ─── audit-step-gated-instructions (step-gated delivery replicated onto the audit family) ──
 
-const PERFORMANCE_PLAN_STEPS = [
-  ['resolve-performance-scope', 'Resolve performance scope and tier'],
-  ['map-stack-hot-paths', 'Map stack and hot paths'],
-  ['audit-performance-tiers', 'Resolve performance tier analysis'],
-  ['resolve-diagnostics', 'Resolve diagnostics gate'],
-  ['close-performance-outcome', 'Close performance outcome'],
-];
 const PERFORMANCE_STEP_MAP = {
   'resolve-performance-scope': null,
   'map-stack-hot-paths': 'sai/commands/performance/steps/map-stack-hot-paths.md',
@@ -429,55 +295,6 @@ const PERFORMANCE_STEP_MAP = {
   'resolve-diagnostics': 'sai/commands/performance/steps/resolve-diagnostics.md',
   'close-performance-outcome': 'sai/commands/performance/steps/close-performance-outcome.md',
 };
-
-test('step-gated: the performance coordinator declares step_machine and loads stage-machine.md', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-
-  assert.match(coordinator, /step_machine: performance-standalone@1/,
-    'the coordinator should declare step_machine: performance-standalone@1');
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.doesNotMatch(coordinator, /step_pointer_map/,
-    'the static step_pointer_map should not be declared');
-});
-
-test('step-gated: progress continuations carry exactly two lines with the deterministic Active step pointer', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-  assert.match(stageMachine, /the two-line continuation/i,
-    'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /`Active step: none` line/,
-    'stage-machine.md should specify the terminal pointer line');
-});
-
-test('step-gated: non-progress continuations carry no pointer line', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /do not invoke emit and do not consult the machine/,
-    'stage-machine.md should state that non-progress continuations do not invoke emit');
-  assert.match(stageMachine, /active step file persists/,
-    'stage-machine.md should state that the active step file persists');
-});
-
-test('step-gated: replacement reconstruction includes active_step_id', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /replacement_reconstruction_fields[\s\S]{0,400}active_step_id/,
-    'replacement reconstruction should include the departing worker active_step_id');
-  assert.match(stageMachine, /A replacement worker re-resolves/,
-    "stage-machine.md should describe replacement re-resolution");
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-});
 
 test('step-gated: the performance worker loads steps/common.md at dispatch and executes only the active step', () => {
   const worker = artifact('sai/commands/performance/worker.md');

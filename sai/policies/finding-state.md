@@ -8,8 +8,8 @@ A **Question** is a finding that needs an answer from the user. It carries a
 `Q*` identifier in `review.md`: the review writes a disagreement with a recorded
 decision, scope creep, and a concern it cannot locate in code as Questions. A
 Question is a finding waiting for the user's answer, never a finding to send to
-another command. `/sai-deep-review` asks for the answer in its findings round and
-hands it to `/sai-3-implement`.
+another command. `/sai-build` and `/sai-deep-review` ask no one: Questions stay open
+and the fix segment applies only fixable findings.
 
 ## Fixable
 
@@ -30,9 +30,8 @@ A finding is **open** when it carries no fixed mark and **fixed** when it
 carries one. A report keeps its fixed findings: it records what was found and
 what was fixed, so nothing is removed. A Question is open until it is answered
 and fixed; an unanswered Question stays open. Every consumer of a report acts
-on open findings only: the `/sai-deep-review` round selects from them and
-`/sai-3-implement` applies them, except the findings that carry the excluded
-mark (see Excluded mark).
+on open findings only: `/sai-3-implement` applies them, except the findings that
+carry the excluded mark (see Excluded mark).
 
 ## Fixed mark
 
@@ -57,9 +56,8 @@ replaces its findings together with their marks.
 The **excluded mark** is the literal ` (EXCLUDED: <reason>)` appended to the end
 of the finding's heading line, for example
 `#### M2 — Rename helper (EXCLUDED: cosmetic, outside the change's behavior)`.
-The `/sai-build` coordinator writes it after its assessment pass, for a fixable
-finding it decides not to fix; the `/sai-deep-review` coordinator writes it for
-each fixable finding the user left out of the findings round; a user may also
+The `/sai-build` and `/sai-deep-review` coordinators write it after their
+Assessment pass, for a fixable finding they decide not to fix; a user may also
 write it by hand. The
 reason is concrete and fits on the heading line. Only the heading line changes,
 as with the fixed mark: the body, the identifier, the severity, and the closing

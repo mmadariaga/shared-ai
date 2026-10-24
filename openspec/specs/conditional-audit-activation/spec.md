@@ -8,23 +8,23 @@ Defines the conditional activation rules for audit segments in the `/sai-review`
 
 ### Requirement: Audit segments activate only when triage resolves to Yes
 
-Without `--full` or `--path`, the activated segment list SHALL include the review segment (always) plus only the audit segments whose triage value is exactly `Yes`. It SHALL preserve the declared order (review → security → performance → accessibility) and omit the other segments. With `--full` or `--path`, a successful review SHALL activate all three audit segments in the declared order without the triage parse. If zero audits are activated after a successful review and a legible triage parse, the composition SHALL dispatch no audits and SHALL run the findings round using only the freshly generated `review.md`. Without `--full` or `--path`, a missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/deep-review/command-bootstrap.md`, and the findings round SHALL NOT run. An individually illegible value SHALL keep its warning, SHALL activate no audit, and SHALL add no correction authorization.
+Without `--full` or `--path`, `/sai-deep-review` SHALL run the review segment always and then only the audits whose triage value is exactly `Yes`, in the fixed order security, performance, accessibility. With `--full` or `--path`, a completed review SHALL activate all three audits without the triage parse. When zero audits are activated after a completed review and a legible triage parse, the run SHALL start no audit cycle and SHALL take `review.md` alone into the fixing tail: the Assessment pass and the fix segment run only when it holds a fixable finding. Without `--full` or `--path`, a missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/deep-review/coordinator.md`, and no Assessment pass SHALL run. An individually illegible value SHALL keep its warning, SHALL activate no audit, and SHALL give no authority to correct it.
 
 #### Scenario: Zero audits recommended ends the suite
-- **WHEN** a successful review without `--full` or `--path` has at least one legible triage value and none of the three `**Surface touched:**` values is exactly `Yes`
-- **THEN** the composition SHALL dispatch no audits and SHALL run the findings round with `review.md` only; open fixable findings and open Questions receive its round, otherwise the exact literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` is preserved
+- **WHEN** a completed review without `--full` or `--path` has at least one legible triage value and none of the three `**Surface touched:**` values is exactly `Yes`
+- **THEN** no audit cycle starts, the Assessment pass reads `review.md` only when it holds a fixable finding, and the run ends with `Deep review done.`
 
 #### Scenario: Missing or wholly illegible review retains the error close
 - **WHEN** review completes without `--full` or `--path` but `review.md` is absent or none of the three triage values is legible
-- **THEN** the composition SHALL report the gap, show the changed files, and end without an audit dispatch, a correction choice, or a findings round
+- **THEN** the run SHALL print the gap and end without an audit, an Assessment pass, a fix segment, or a closing line
 
 #### Scenario: Individually illegible triage retains its warning
 - **WHEN** one or two triage values are illegible and the legible values activate no audit
-- **THEN** the composition SHALL retain the summary warning for each illegible value and SHALL decide whether the round is asked only from the freshly generated review findings, with no authorization inferred from illegibility
+- **THEN** the close SHALL keep a warning line for each illegible value and the fixing tail SHALL read only the freshly generated `review.md`, with no authority inferred from illegibility
 
 #### Scenario: Full or path scope activates every audit
-- **WHEN** the review completes successfully and `--full` or `--path` was given
-- **THEN** the security, performance, and accessibility segments all activate without the triage parse
+- **WHEN** the review completes and `--full` or `--path` was given
+- **THEN** the security, performance, and accessibility audits all activate without the triage parse
 
 ### Requirement: Artifact regeneration semantics for recommended audits
 

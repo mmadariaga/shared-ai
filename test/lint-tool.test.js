@@ -1041,13 +1041,13 @@ The machine review-steps@1 is coordinator-owned.
   }
 });
 
-test('lint.js worker-emission-ownership: security-standalone reference in worker fails', () => {
+test('lint.js worker-emission-ownership: security-steps reference in worker fails', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
     const testFile = path.join(tmpdir, 'worker.md');
     const workerContent = `# Worker
 
-The machine security-standalone@1 is coordinator-only.
+The machine security-steps@1 is coordinator-only.
 `;
     fs.writeFileSync(testFile, workerContent);
     const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);

@@ -7,17 +7,6 @@ const path = require('path');
 
 const registry = require('../sai-state/registry.js');
 
-// Helper: Extract step ids from progress plan format: "- `id` — \"label\""
-function planIds(markdownSection) {
-  const ids = [];
-  const re = /^\s*- `([a-z-]+)` — "/gm;
-  let match;
-  while ((match = re.exec(markdownSection)) !== null) {
-    ids.push(match[1]);
-  }
-  return ids;
-}
-
 // Helper: Extract [id, target] pairs from step_pointer_map table
 function pointerRows(markdownSection) {
   const rows = [];
@@ -63,31 +52,13 @@ function discoverStepMachineCoordinators() {
   return coordinators;
 }
 
-test('discovered coordinators have registered step machines and fetch stage-machine.md', () => {
-  const coordinators = discoverStepMachineCoordinators();
-  assert.ok(coordinators.length > 0, 'should discover at least one coordinator with step_machine');
-
-  // The shared-orchestration audit phases declare a step_machine. The spec and design
-  // commands run outside the shared orchestration and drive their machines from their own cards.
-  const names = coordinators.map(c => c.name).sort();
-  const expectedPhases = ['accessibility', 'performance', 'security'];
-  assert.deepEqual(names, expectedPhases, 'must discover exactly performance, security, and accessibility');
-
-  for (const coord of coordinators) {
-    assert.ok(registry.has(coord.machineId), `${coord.machineId} must be registered in sai-state/registry.js`);
-    assert.ok(coord.content.includes('Fetch @sai/policies/stage-machine.md'), `${coord.name} must load stage-machine.md`);
-    const machine = registry.get(coord.machineId);
-    assert.ok(machine, `${coord.machineId} should be retrievable from registry`);
-  }
-});
-
-test('coordinator progress plans match their registered machines (source-driven)', () => {
-  const coordinators = discoverStepMachineCoordinators();
-  for (const coord of coordinators) {
-    const machine = registry.get(coord.machineId);
-    assert.ok(machine, `${coord.machineId} must be registered`);
-    const extractedIds = planIds(coord.content);
-    assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
+test('no coordinator card declares a step_machine adapter field any more, and the retired audit machines are gone', () => {
+  assert.deepEqual(discoverStepMachineCoordinators().map(coord => coord.name), [],
+    'the audit coordinator drives the {audit}-steps@1 machines directly, with no adapter declaration');
+  for (const audit of ['security', 'performance', 'accessibility']) {
+    assert.equal(registry.has(`${audit}-standalone@1`), false, `${audit}-standalone@1 must be unregistered`);
+    assert.equal(fs.existsSync(path.join(__dirname, '..', `sai-state/machines/${audit}-standalone.js`)), false, `${audit}-standalone.js must be retired`);
+    assert.equal(registry.has(`${audit}-steps@1`), true, `${audit}-steps@1 must stay registered`);
   }
 });
 
@@ -143,39 +114,6 @@ test('spec-steps@1, design-steps@1, and plan-run@1 are properly registered', () 
   assert.equal(typeof run.project, 'function');
 });
 
-test('security-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('security-standalone@1');
-  assert.ok(machine, 'security-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'security-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
-test('performance-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('performance-standalone@1');
-  assert.ok(machine, 'performance-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'performance-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
-test('accessibility-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('accessibility-standalone@1');
-  assert.ok(machine, 'accessibility-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'accessibility-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
 for (const audit of ['security', 'performance', 'accessibility']) {
   test(`${audit}-steps@1 machine is registered and routes by pointer, skipped stages included`, () => {
     const id = `${audit}-steps@1`;
@@ -223,17 +161,14 @@ test('replacement before the first progress event reconstructs with the first fi
   assert.match(stageMachine, /Before the first progress event, that active step is the first filed step/);
 });
 
-test('every step-machine coordinator sends the first filed pointer with the task disclosure', () => {
-  const coordinators = discoverStepMachineCoordinators();
-  assert.equal(coordinators.length, 3, 'three step-machine coordinators should be discovered');
-  for (const { name, machineId, content } of coordinators) {
-    const mod = registry.get(machineId);
-    const second = mod.firstFiled().stage;
-    assert.match(content, new RegExp("first filed step's pointer \\(`" + second + '`\\)'),
-      `${name} coordinator should name its first filed step ${second}`);
-    assert.match(content, /post-ready task disclosure/, `${name} coordinator should send it in the task disclosure`);
-    assert.match(content, /Before the first progress event, the worker's `active_step_id` is that step/,
-      `${name} coordinator should set active_step_id for early replacement`);
+test('the audit coordinator sends the first filed pointer with the task disclosure', () => {
+  const coordinator = readRepo('sai/commands/audit/coordinator.md');
+  assert.match(coordinator, /`reset` `\{audit\}-steps@1`/);
+  assert.match(coordinator, /The `reset` response names the first pointer/);
+  assert.match(coordinator, /The task message opens with the first pointer line, `Active step: <stage> — follow <pointer>`/);
+  for (const audit of ['security', 'performance', 'accessibility']) {
+    const second = registry.get(`${audit}-steps@1`).firstFiled().stage;
+    assert.ok(fs.existsSync(path.join(__dirname, '..', `sai/commands/${audit}/steps/${second}.md`)), `${audit} first filed step ${second} has its step file`);
   }
 });
 

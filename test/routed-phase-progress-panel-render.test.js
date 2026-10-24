@@ -62,24 +62,6 @@ test('shared runner renders only after a progress event changes the marked set',
   assert.match(runner, /continuation remains exactly `continue_after_progress`/);
 });
 
-test('routed coordinators delegate progress rendering to the shared policy', () => {
-  const coordinatorPaths = [
-    'sai/commands/security/coordinator.md',
-    'sai/commands/performance/coordinator.md',
-    'sai/commands/accessibility/coordinator.md',
-  ];
-
-  for (const relativePath of coordinatorPaths) {
-    const coordinator = read(relativePath);
-    assert.match(coordinator, /Progress-event\s+panel updates(?: and worker continuation)? follow/);
-    assert.doesNotMatch(coordinator, /shared command runner before worker continuation/);
-    assert.match(coordinator, /panel tool is unavailable at runtime|declared panel tool is unavailable at runtime/);
-    assert.match(coordinator, /record its notice/);
-    assert.match(coordinator, /disable later[\s\S]{0,40}panel calls/);
-    assert.doesNotMatch(coordinator, /Re-render the list on every progress event/);
-  }
-});
-
 test('routed matrix bindings reference the matching harness panel mechanics', () => {
   const manifest = loadInstallManifest(repoRoot);
 
@@ -125,14 +107,6 @@ test('the plan family renders no task list and keeps pointer routing in its own 
 });
 
 test('panel degradation is declared for routed phases and explore', () => {
-  for (const relativePath of [
-    'sai/commands/security/coordinator.md',
-    'sai/commands/performance/coordinator.md',
-    'sai/commands/accessibility/coordinator.md',
-  ]) {
-    assert.match(read(relativePath), /unavailable at runtime/,
-      `${relativePath} should define the runtime panel degradation route`);
-  }
   // Check explore separately since it needs the whole contract
   assert.match(readExploreContract(), /unavailable at runtime/,
     'sai/commands/explore/instructions.md should define the runtime panel degradation route');

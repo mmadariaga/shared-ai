@@ -5,16 +5,16 @@ TBD - created by archiving change review-standalone-direct-build-close. Update P
 
 ## Requirements
 
-### Requirement: Meta-Review Zero-Audit Branch Is Terminal
+### Requirement: Zero-audit run takes review.md alone into the Assessment pass
 
-After a successful review and a legible triage parse, the `/sai-deep-review` composition coordinator SHALL own the zero-audit close and SHALL apply the findings round of `sai/commands/deep-review/findings-selection.md` with only the freshly regenerated `review.md`. Open fixable findings and open Questions SHALL receive the round, with no fix started before the user chooses to fix. When no report qualifies for the round, the composition SHALL print its pinned zero-audit literal unchanged and retain any warning the run produced. Using the final adapter's `terminal_navigation` SHALL select its presentation only. A missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/deep-review/command-bootstrap.md`, never a correction choice.
+After a completed review and a legible triage parse that activates no audit, the `/sai-deep-review` coordinator SHALL own the zero-audit close: it SHALL run no audit, SHALL run the Assessment pass and the fix segment over `review.md` alone when it holds a fixable finding, and SHALL ask no findings round. A missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/deep-review/coordinator.md`, with no Assessment pass and no fix segment.
 
 #### Scenario: Zero audits recommended with findings still present
 
-- **WHEN** a successful `/sai-deep-review` run has a legible triage parse, recommends zero audits, and the freshly regenerated `review.md` still carries an open fixable finding or an open Question
-- **THEN** the composition coordinator asks the findings round with `review.md` only, runs no audit, and starts no fix segment before the user chooses to fix
+- **WHEN** a `/sai-deep-review` run has a legible triage parse, recommends zero audits, and the regenerated `review.md` carries an open fixable finding
+- **THEN** the coordinator runs no audit, runs the Assessment pass over `review.md` only, and asks the user no selection question
 
 #### Scenario: Missing review content takes the Error close
 
 - **WHEN** the review segment completes and `review.md` is missing or none of its three triage values is legible
-- **THEN** the composition reports the gap, shows the changed files, and ends without a correction choice or a findings round
+- **THEN** the coordinator prints the gap and ends without an Assessment pass, a fix segment, or a closing line

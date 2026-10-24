@@ -245,7 +245,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0173b — Build composition inherits pointer delivery with no opt-out special case](./0173b-build-composition-inherits-pointer-delivery.md) — Refs 0172c, Refs 0163, Refs 0156
 - [0174 — Relax the artifact-content-inference prohibition in chained composition successor activation](./0174-relax-composition-successor-inference-prohibition.md) — Refs 0147a, Refs 0151, Refs 0152b, Refs 0173b
-- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
+- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — Superseded by 0200
 
 ### `/sai-build-new`, `/sai-3-implement-new`, and `/sai-4-review-new`
 
@@ -256,6 +256,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-plan`, `/sai-1-spec`, and `/sai-2-design`
 
 - [0199 — `/sai-1-spec` and `/sai-2-design` leave the shared orchestration and compose into `/sai-plan`](./0199-spec-and-design-leave-the-shared-orchestration.md) — **Amends** 0194, Refs 0187, Refs 0188, Refs 0189
+
+### `/sai-deep-review`, `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`
+
+- [0200 — The audits and `/sai-deep-review` leave the shared orchestration, and `composition.md` retires](./0200-audits-and-deep-review-leave-the-shared-orchestration.md) — Supersedes 0187, Refs 0107b, Refs 0194, Refs 0199
 
 ### `/sai-merge`
 
@@ -340,7 +344,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
 - [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
 - [0147a — Three-rule composition delta lives only in command-runner.md Result Loop](./0147a-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081 — Superseded by 0187
-- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
+- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — Superseded by 0200
 - [0150a — Recovery pool is segment-scoped under composition](./0150a-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139b, Refs 0147a
 - [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147a
 - [0152b — Build is an ordinary composition coordinator, not explore supervision](./0152b-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147a, Refs 0151, Refs 0083
@@ -377,7 +381,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0139b — Use a presence-only policy for bounded worker recovery](./0139b-presence-only-bounded-recovery-policy.md)
 - [0140a — Supervised rounds invoke the Review Engine in-session](./0140a-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137a
 - [0147a — Three-rule composition delta lives only in command-runner.md Result Loop](./0147a-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081 — Superseded by 0187
-- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
+- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — Superseded by 0200
 - [0150a — Recovery pool is segment-scoped under composition](./0150a-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139b, Refs 0147a
 - [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147a
 - [0152b — Build is an ordinary composition coordinator, not explore supervision](./0152b-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147a, Refs 0151, Refs 0083
@@ -504,7 +508,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs ddr:0021, Refs 0087
 - [0147a — Three-rule composition delta lives only in command-runner.md Result Loop](./0147a-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081 — Superseded by 0187
-- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
+- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — Superseded by 0200
 - [0148a — Keep the three-file apply layout; redefine normative homes](./0148a-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
 - [0149a — Parameterized terminal_navigation binds two actions; no phase fork](./0149a-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148a
 - [0150a — Recovery pool is segment-scoped under composition](./0150a-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139b, Refs 0147a
@@ -654,6 +658,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0197](./0197-next-step-is-the-only-stage-advancement-keyword.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
 | [0198](./0198-build-new-selects-and-fixes-findings-after-its-review.md) | amends | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) |
 | [0199](./0199-spec-and-design-leave-the-shared-orchestration.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
+| [0200](./0200-audits-and-deep-review-leave-the-shared-orchestration.md) | supersedes | [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
@@ -684,6 +689,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0120 — Concurrent three-child FIFO supervision for the headless Orca runtime](./archive/0120-orca-headless-runtime-supervision.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
 - [0121 — Per-CLI launchers with a strict allowlist credential parser](./archive/0121-orca-launcher-credential-boundary.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
 - [0147a — Three-rule composition delta lives only in command-runner.md Result Loop](./0147a-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081 — *Superseded by [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md)*
+- [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — *Superseded by [0200](./0200-audits-and-deep-review-leave-the-shared-orchestration.md)*
 - [0139a — Use fresh read-only reviewers with worker-owned artifact edits](./0139a-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158c](./0158c-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0166 — Envelope-only change-name resolution for shared pickers and four cards](./archive/0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *ARCHIVED to ./archive/ — retains and forwards `wrapper_echo_value`, which the single-string envelope removed; superseded by [0171c](./0171c-single-string-invocation-envelope.md)*
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./archive/0090-centralize-copilot-inline-planning-lifecycle.md) — *Superseded by the retire-inline-harness-model change, which removed the Copilot inline adapter*

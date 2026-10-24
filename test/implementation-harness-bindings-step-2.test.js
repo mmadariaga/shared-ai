@@ -105,12 +105,12 @@ test('Step 3 keeps the managed Claude phase agents alongside the neutral binding
 });
 
 test('Step 2 routed coordinator failed needs_input continuation allows one replacement with complete reconstruction state', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
+  const coordinator = artifact('sai/orchestration/command-runner.md');
   const fields = [
-    'original envelope',
-    'resolved_change_name',
+    'original_envelope',
+    'replacement_reconstruction_fields',
     'opaque input history',
-    'changed-files union',
+    'preserve the union',
   ];
 
   assert.match(coordinator, /failed|failure/i,

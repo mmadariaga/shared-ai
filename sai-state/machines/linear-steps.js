@@ -2,7 +2,7 @@
 
 // Factory for linear step machines: creates a stateful stage machine that owns
 // happy-path step routing for standalone coordinator runs. The returned machine
-// follows the spec-steps@1, design-steps@1, and security-standalone@1 pattern: the machine owns the
+// follows the spec-steps@1, design-steps@1, and review-steps@1 pattern: the machine owns the
 // stage table, pointer routing, transition rules, and progression state; the
 // coordinator consults it per progress event and wraps its `next.follow` in the
 // unchanged two-line continuation (wire byte-identical). Routing-only: the

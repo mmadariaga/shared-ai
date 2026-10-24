@@ -44,13 +44,13 @@ A review or audit command SHALL ask no question between change resolution and it
 ### Requirement: Both harness wrappers announce the options
 
 The Claude Code and opencode wrappers SHALL name the accepted options in their `description`:
-- `/sai-deep-review`: `--full`, `--path <dir>`, `--tier <tier>`, `--runtime`, `--parent-branch <branch>`.
+- `/sai-deep-review`: `--full`, `--path <dir>`, `--tier <tier>`, `--runtime`, `--url <url>`, `--parent-branch <branch>`.
 - `/sai-4-review`: `--parent-branch <branch>`.
 - `/sai-5-security`: `--full`, `--path <dir>`, `--parent-branch <branch>`.
 - `/sai-6-performance`: `--full`, `--path <dir>`, `--tier <tier>`, `--runtime`, `--parent-branch <branch>`.
 - `/sai-7-accessibility`: `--full`, `--path <dir>`, `--runtime`, `--url <url>`, `--parent-branch <branch>`.
 
-Each Claude Code `argument-hint` SHALL write the parent branch as `--parent-branch <branch>`, and the `/sai-7-accessibility` hint SHALL list `[optional: --url <url>]`.
+Each Claude Code `argument-hint` SHALL write the parent branch as `--parent-branch <branch>`, and the `/sai-deep-review` and `/sai-7-accessibility` hints SHALL list `[optional: --url <url>]`.
 
 #### Scenario: Wrapper description lists --parent-branch
 - **WHEN** a user lists commands in Claude Code or opencode

@@ -246,7 +246,10 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'implement', 'worker-common.md')), 'implement/worker-common.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'coordinator.md')), 'build/coordinator.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'deep-review', 'coordinator.md')), 'deep-review/coordinator.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'deep-review', 'command-bootstrap.md')), 'deep-review/command-bootstrap.md should be in sai/commands/');
+  for (const retired of ['command-bootstrap.md', 'findings-selection.md']) {
+    assert.equal(fs.existsSync(path.join(saiCmdDir, 'deep-review', retired)), false, `deep-review/${retired} should be retired`);
+  }
+  assert.equal(fs.existsSync(path.join(path.dirname(saiCmdDir), 'orchestration', 'composition.md')), false, 'composition.md should be retired');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply')), false, 'the apply card set should be retired from sai/commands/');
   for (const retired of ['meta-build', 'meta-review', 'implement-new', 'review-new', 'build-new']) {
     assert.equal(fs.existsSync(path.join(saiCmdDir, retired)), false, `${retired} should not be projected`);
@@ -773,8 +776,9 @@ test('installClaude active projection carries the neutral root protocols, routed
       assert.ok(sourceSet.has(protocol), `Claude should project the neutral root protocol ${protocol}`);
     }
     for (const [phase] of WORKER_BINDINGS) {
-      assert.ok(sourceSet.has(`sai/commands/${phase}/coordinator.md`),
-        `every routed card should carry a coordinator: sai/commands/${phase}/coordinator.md`);
+      const coordinatorFolder = ['security', 'performance', 'accessibility'].includes(phase) ? 'audit' : phase;
+      assert.ok(sourceSet.has(`sai/commands/${coordinatorFolder}/coordinator.md`),
+        `every routed card should carry a coordinator: sai/commands/${coordinatorFolder}/coordinator.md`);
       assert.ok(sourceSet.has(`sai/commands/${phase}/worker.md`),
         `every routed card should carry a worker: sai/commands/${phase}/worker.md`);
     }
@@ -827,7 +831,6 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
-    'sai-deep-review',
     'sai-commit',
   ];
   try {
@@ -845,7 +848,7 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
       'the Claude boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md')), false,
       'the opencode boot adapter must not be installed in the Claude harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
@@ -888,8 +891,8 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the Claude boot must not select a coordinator card for the ${name} utility`);
     }
-    assert.match(boot, /@sai\/commands\/deep-review\/coordinator\.md/,
-      'the Claude boot must select the routed coordinator card for deep-review');
+    assert.doesNotMatch(boot, /@sai\/commands\/deep-review\//,
+      'the Claude boot must not select a card for deep-review, which fetches its coordinator directly');
     assert.doesNotMatch(boot, /@sai\/commands\/apply\//,
       'the Claude boot must no longer select any apply card');
     assert.match(boot, /Routed names \([^)]*`archive`/,

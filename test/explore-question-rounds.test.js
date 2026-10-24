@@ -115,10 +115,8 @@ test('both harnesses share one round presentation policy', () => {
   assert.match(rounds, /one `AskUserQuestion` call carrying every question of the round/);
   assert.match(rounds, /`question` call when the picker accepts several questions, and one call per question, consecutively and in the same order, otherwise/);
   assert.match(rounds, /Consecutive calls in the same order form one round/);
-  for (const consumer of ['sai/commands/deep-review/findings-selection.md', 'sai/commands/explore/steps/route-selector.md']) {
-    assert.match(read(consumer), /Fetch @sai\/policies\/question-rounds\.md/, `${consumer} references the shared policy`);
-  }
-  assert.doesNotMatch(read('sai/commands/deep-review/findings-selection.md'), /one `AskUserQuestion` call/);
+  assert.match(read('sai/commands/explore/steps/route-selector.md'), /Fetch @sai\/policies\/question-rounds\.md/, 'route-selector references the shared policy');
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/deep-review/findings-selection.md')), false, 'the deep-review findings round is retired');
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry, or opencode's `question` tool with custom\/free-text input enabled/);
 });
 
