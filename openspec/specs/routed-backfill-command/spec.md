@@ -6,34 +6,19 @@ Define the routed coordinator/worker architecture for `/sai-backfill`: a minimal
 
 ## Requirements
 
-### Requirement: Routed card set and boot routing
-
-`sai-backfill` SHALL be a routed-shaped command whose card set is exactly `sai/commands/backfill/coordinator.md` and `sai/commands/backfill/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `backfill` among the routed names so that selecting it fetches `@sai/commands/backfill/coordinator.md`, and SHALL exclude `backfill` from the utility-name lists byte-symmetrically; no boot path SHALL select a backfill `body.md`.
-
-#### Scenario: Both boots route backfill to the coordinator card
-
-- **WHEN** either supported harness boots with `command_name` set to `backfill`
-- **THEN** `backfill` appears in that boot adapter's routed-name list and the selected card is `@sai/commands/backfill/coordinator.md`
-- **AND** `backfill` does not appear in the boot's utility-name list
-
-#### Scenario: The utility body surface is retired
-
-- **WHEN** `sai/commands/backfill/` is inspected after the change
-- **THEN** no `body.md` exists and no adapter, launcher, or test fixture selects one for `sai-backfill`
-
 ### Requirement: Minimal lifecycle adapter
 
-The backfill coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is exactly the opaque single-string `arguments_value` received from the active wrapper byte-for-byte; `dispatch_operation` dispatches exactly one `sai-backfill-worker` through the active backfill-worker binding using that envelope; `continuation_operation` continues the same worker through the binding's continuation mechanism forwarding the exact answer value or the validation report; `allowed_nonterminal_extensions` is none. The adapter SHALL declare NO `progress_plan` — no progress event exists in this lifecycle, no panel plan renders, and no acknowledgement literal is defined — and NO `recovery_policy`: the coordinator SHALL NOT fetch `@sai/policies/bounded-recovery.md`, keep no recovery ledger, and perform no recovery continuations. A replacement worker SHALL reconstruct only from the complete original envelope, the opaque input history (including forwarded interview answers), the confirmed change name, the validated draft set pending write, and the ordered duplicate-free changed-files union.
+The backfill coordinator SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections, and SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. It SHALL create exactly one `sai-backfill-worker` through the backfill-worker binding with the ready prompt alone, and after `event: ready` send the same worker the `--transfer-dir <dir>` line followed by `arguments_value` byte-for-byte; it SHALL continue that worker with each exact answer value or validation report. The run SHALL declare no progress plan, no progress event, no acknowledgement literal, and no recovery ledger. A worker without ready or a readable result SHALL be a `worker` obstacle, and a draft set that fails reference verification, schema validation, or the delta-header preflight SHALL be a `draft` obstacle, both handled under `sai/policies/obstacle-escalation.md` with the attempt count kept in the conversation; the interview questions, the worker's stop texts, a transfer-directory blocker, a preflight tooling failure, a reported unavailable or denied transfer helper, and the completion handoff SHALL remain planned stops or planned asks. A replacement worker SHALL start from the ready handshake and receive a hand-over written by the coordinator that carries the original `arguments_value` with the `--transfer-dir` line, the interview answers already given, the confirmed change name, the Direct Build mode, the latest validated references and closed execution order pending write, the one-shot execution state, and the symptom, never draft content.
 
 #### Scenario: A backfill run carries no progress or recovery machinery
 
 - **WHEN** the backfill coordinator card is read
-- **THEN** it declares no `progress_plan`, defines no progress event or acknowledgement literal, declares no `recovery_policy`, and never fetches the bounded-recovery policy
+- **THEN** it declares no progress plan, defines no progress event or acknowledgement literal, keeps no recovery ledger, and fetches none of the command runner, worker core, bounded-recovery, stop-options, or unattended-runtime-recovery contracts
 
 #### Scenario: Envelope stays opaque end-to-end
 
 - **WHEN** a `/sai-backfill` invocation forwards its request to the worker
-- **THEN** the worker receives exactly the original single-string `arguments_value` and no parsed, cleaned, or persisted variant of it
+- **THEN** the worker receives exactly the original single-string `arguments_value`, preceded only by the `--transfer-dir` line, and no parsed, cleaned, or persisted variant of it
 
 ### Requirement: Worker owns the read-only technical flow and never mutates
 
@@ -154,3 +139,31 @@ Claude Code and opencode SHALL use the same shared scenario-preservation policy 
 #### Scenario: Correction repeats the checks
 - **WHEN** draft content or temporary exception bytes change after feedback
 - **THEN** the author check and independent receiver verification and approval repeat on the corrected result
+
+### Requirement: Direct card set and wrapper fetch
+
+`sai-backfill` SHALL run on the goal-driven shape. Its card set SHALL be `sai/commands/backfill/coordinator.md` and `sai/commands/backfill/worker.md` with its instruction file, with no `invocation.md`, no `body.md`, and no `command-bootstrap.md`. Both `/sai-backfill` wrappers (`commands/claude/sai-backfill.md` and `commands/opencode/sai-backfill.md`) SHALL fetch the harness fetch skill, carry the clean-start line, and fetch `sai/commands/backfill/coordinator.md` directly, forwarding the InvocationEnvelope with `command_name: backfill`; they SHALL fetch no boot adapter and no command bootstrap, and the opencode wrapper SHALL declare `subtask: false`. Neither harness boot adapter SHALL list `backfill` among its routed or utility names. The coordinator SHALL fetch the `backfill-worker.md` binding itself. The retired `sai/commands/backfill/command-bootstrap.md` destination SHALL be recorded as a retired install-manifest entry so that an upgrade install removes it from the installed roots of both harnesses.
+
+#### Scenario: The wrappers reach the coordinator card directly
+
+- **WHEN** either harness's `sai-backfill.md` wrapper is read
+- **THEN** it fetches the harness fetch skill and `sai/commands/backfill/coordinator.md`, names no boot adapter or `command-bootstrap.md`, and neither boot adapter lists `backfill` as a routed or utility name
+
+#### Scenario: The retired bootstrap leaves installed roots
+
+- **WHEN** an upgrade install runs after the change on either harness
+- **THEN** the install manifest lists `commands/backfill/command-bootstrap.md` as a retired destination for both harnesses and the file no longer exists in `sai/commands/backfill/`
+
+### Requirement: Standalone backfill keeps its interview
+
+A standalone `/sai-backfill` run SHALL keep its interview as user questions that the coordinator presents. An unattended envelope (a detected crystallized block, a parsed diff-source token, and `--fast-track`), as Direct Build sends it, SHALL return zero `needs_input` results, and the coordinator SHALL route directly from the dispatch to validation and execution, presenting worker-authored payload content unaltered as ordinary conversation text. With `--fast-track`, a standalone run SHALL skip exactly the generated reconciliation questions, the spec-conflict decision, and the change-name confirmation, and SHALL ask every other question it asks without the flag.
+
+#### Scenario: A standalone run asks its interview
+
+- **WHEN** `/sai-backfill {name} --staged` runs without a crystallized block
+- **THEN** the coordinator presents the worker's interview questions to the user and forwards each answer verbatim to the same worker
+
+#### Scenario: Direct Build stays unattended
+
+- **WHEN** Direct Build dispatches backfill with a crystallized block, `--staged`, and `--fast-track`
+- **THEN** the worker returns no `needs_input` result and the coordinator presents the worker-authored payload content without asking

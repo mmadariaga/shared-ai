@@ -444,7 +444,7 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
         `${harness}/${phase} binding destination should be bindingStem-derived`);
       // The spec, design, audit, and merge commands run outside the shared orchestration, so
       // their bindings render from the standalone template like the implement and review roles.
-      const standalonePhase = ['spec', 'design', 'security', 'performance', 'accessibility', 'merge', 'commit'].includes(phase);
+      const standalonePhase = ['spec', 'design', 'security', 'performance', 'accessibility', 'merge', 'commit', 'archive', 'backfill'].includes(phase);
       assert.equal(binding.templateName,
         standalonePhase ? `${harness}StandaloneBinding` : (harness === 'claude' ? 'claudeBinding' : 'opencodeBinding'),
         `${harness}/${phase} binding should use its harness binding template`);
