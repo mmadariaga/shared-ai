@@ -281,7 +281,6 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     'sai/commands/commit/coordinator.md',
     'sai/commands/archive/coordinator.md',
     'sai/commands/backfill/coordinator.md',
-    'sai/commands/merge/coordinator.md',
   ];
   for (const card of cards) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
@@ -290,12 +289,12 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     assert.ok(body.includes('snapshot') && body.includes('verify'), `${card} must pair snapshot and verify`);
     assert.ok(!body.includes('autonomy-audit-log'), `${card} must not restate the guard's incident line`);
   }
-  // The implement, review, build, and plan-family coordinators run outside the
+  // The implement, review, build, plan-family, audit, deep-review, and merge coordinators run outside the
   // shared orchestration: they own their local commits and carry no guard window.
   for (const card of [
     'sai/commands/implement/coordinator.md', 'sai/commands/review/coordinator.md', 'sai/commands/build/coordinator.md',
     'sai/commands/spec/coordinator.md', 'sai/commands/design/coordinator.md', 'sai/commands/plan/coordinator.md',
-    'sai/commands/audit/coordinator.md', 'sai/commands/deep-review/coordinator.md',
+    'sai/commands/audit/coordinator.md', 'sai/commands/deep-review/coordinator.md', 'sai/commands/merge/coordinator.md',
   ]) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
     assert.ok(!body.includes('@sai/policies/no-commit-guard.md'), `${card} runs outside the shared guard windows`);

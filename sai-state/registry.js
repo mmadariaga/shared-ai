@@ -57,6 +57,7 @@ try { register('performance-steps@1', require('./machines/performance-steps.js')
 try { register('accessibility-steps@1', require('./machines/accessibility-steps.js')); } catch (err) {}
 try { register('implement-run@1', require('./machines/implement-run.js')); } catch (err) {}
 try { register('plan-run@1', require('./machines/plan-run.js')); } catch (err) {}
+try { register('merge-run@1', require('./machines/merge-run.js')); } catch (err) {}
 try { register('recovery-ledger@1', require('./machines/recovery-ledger.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };

@@ -6,31 +6,6 @@ Define the phase-adapter progress plan declaration, the canonical per-phase step
 
 ## Requirements
 
-### Requirement: phase-adapter-declares-progress-plan
-
-A routed phase adapter MAY declare a static, ordered worker progress plan. A phase adapter without a worker `progress_plan` SHALL run without worker progress events and without a worker-derived task list, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO whose route is unknown until source-branch selection and merge outcome. The adaptive TODO MAY include `contextual-analysis` between conflict scope selection and resolution, SHALL not be transported in the worker envelope, and SHALL not alter worker continuation semantics.
-
-#### Scenario: adapter declares a plan
-
-- **WHEN** a phase adapter supplies a `progress_plan`
-- **THEN** the coordinator SHALL treat it as the authoritative progress plan for the invocation
-- **AND** SHALL NOT alter its order, ids, or labels
-
-#### Scenario: adapter declares no plan
-
-- **WHEN** a phase adapter supplies no `progress_plan`
-- **THEN** the coordinator SHALL run the invocation without worker progress events or a worker-derived task list and SHALL NOT synthesize a worker plan, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO after branch selection and merge outcome
-
-#### Scenario: Merge adaptive TODO is separate from worker progress
-
-- **WHEN** `/sai-merge` runs with no declared worker progress plan
-- **THEN** the coordinator may render the canonical adaptive TODO after branch selection without synthesizing a worker progress plan
-
-#### Scenario: Contextual route does not become worker progress
-
-- **WHEN** a conflicted `/sai-merge` invocation reaches contextual analysis
-- **THEN** the coordinator renders the adaptive TODO independently while the worker continues using the existing lifecycle payload and continuation contract
-
 ### Requirement: plan-ids-canonical-in-phase-contracts
 
 The step ids of a progress plan SHALL be canonical per phase: every phase worker whose adapter declares a `progress_plan` SHALL enumerate the ids it may report, and the adapter SHALL declare the same ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL contain only `arguments_value`. The worker SHALL not add, remove, reorder, or rename steps; unknown ids SHALL be ignored.
@@ -62,16 +37,17 @@ The coordinator SHALL render the declared progress plan as a live task list and 
 - **WHEN** the coordinator renders the task list
 - **THEN** every rendered progress step SHALL come from the declared plan and no step SHALL be invented by the coordinator
 
-### Requirement: Adaptive merge TODO remains separate
+### Requirement: Phase adapter progress plan declaration
 
-A merge adapter without a worker `progress_plan` SHALL continue without worker progress events or worker-derived task lists while allowing the coordinator to render the adaptive merge TODO after branch selection and reconcile it after the merge outcome.
+A routed phase adapter MAY declare a static, ordered worker progress plan. A phase adapter without a worker `progress_plan` SHALL run without worker progress events and without a worker-derived task list. `/sai-merge` runs outside the shared orchestration and SHALL render no adaptive TODO.
 
-#### Scenario: Conflict language handoff is not a worker step
+#### Scenario: adapter declares a plan
 
-- **WHEN** a conflicted merge enters language selection
-- **THEN** the coordinator keeps the language in invocation state and does not add a worker progress step for it
+- **WHEN** a phase adapter supplies a `progress_plan`
+- **THEN** the coordinator SHALL treat it as the authoritative progress plan for the invocation
+- **AND** SHALL NOT alter its order, ids, or labels
 
-#### Scenario: Strategy analysis remains adaptive
+#### Scenario: adapter declares no plan
 
-- **WHEN** the worker presents or revises a global strategy
-- **THEN** the coordinator keeps `contextual-analysis` active in the adaptive TODO without converting it into a worker progress plan
+- **WHEN** a phase adapter supplies no `progress_plan`
+- **THEN** the coordinator SHALL run the invocation without worker progress events or a worker-derived task list and SHALL NOT synthesize a worker plan

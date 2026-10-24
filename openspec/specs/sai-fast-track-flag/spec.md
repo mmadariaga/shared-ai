@@ -107,7 +107,7 @@ When `sai-archive` runs with `--fast-track`, the archive flow SHALL present no d
 - **THEN** the confirmation or collision stop remains required and fast-track does not bypass it
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
-Exactly five commands — sai-explore, sai-2-design, sai-archive, sai-backfill, and sai-merge — SHALL accept a --fast-track token in their arguments and activate fast-track on it. The token SHALL be parsed from arguments_value before downstream resolution: in the shared body file for sai-explore, in the sai-2-design worker card per its parse ownership, in the sai-archive coordinator card before the change-picker, in the sai-backfill worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body, and in the sai-merge coordinator card before forwarding the cleaned remainder to its worker. After extraction the token SHALL be removed from arguments_value, and the cleaned remainder SHALL remain authoritative downstream. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, and `/sai-build` accept and strip an explicit `--fast-track` token without activating fast-track or printing a banner. No wrapper-echo field is forwarded or used to find or clean a change name. For sai-2-design and sai-archive, the cleaned arguments_value SHALL reach downstream resolution before it resolves a name. Sai-archive SHALL NOT strip a residual --fast-track token from the picker's resolved value or perform a second flag-removal pass after picking. Sai-backfill consumes no change-picker; its cleaned request body is read by its own technical flow. The parse SHALL be single-sourced in one location per command so that all harness thin wrappers inherit identical behavior.
+Exactly four commands — sai-explore, sai-2-design, sai-archive, and sai-backfill — SHALL accept a --fast-track token in their arguments and activate fast-track on it. The token SHALL be parsed from arguments_value before downstream resolution: in the shared body file for sai-explore, in the sai-2-design worker card per its parse ownership, in the sai-archive coordinator card before the change-picker, and in the sai-backfill worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body. After extraction the token SHALL be removed from arguments_value, and the cleaned remainder SHALL remain authoritative downstream. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, `/sai-build`, and `/sai-merge` accept and strip an explicit `--fast-track` token without activating fast-track or printing a banner. No wrapper-echo field is forwarded or used to find or clean a change name. For sai-2-design and sai-archive, the cleaned arguments_value SHALL reach downstream resolution before it resolves a name. Sai-archive SHALL NOT strip a residual --fast-track token from the picker's resolved value or perform a second flag-removal pass after picking. Sai-backfill consumes no change-picker; its cleaned request body is read by its own technical flow. The parse SHALL be single-sourced in one location per command so that all harness thin wrappers inherit identical behavior.
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
 - **WHEN** a user runs /sai-archive oauth2-auth --fast-track in any token order
@@ -122,7 +122,7 @@ Exactly five commands — sai-explore, sai-2-design, sai-archive, sai-backfill, 
 - **THEN** fast-track mode is inactive and every gate behaves exactly as it did before this capability existed
 
 #### Scenario: The flag is confined to the named commands
-- **WHEN** a --fast-track token is passed to any command other than sai-explore, sai-2-design, sai-archive, sai-backfill, or sai-merge — for example sai-1-spec, sai-4-review, or sai-build
+- **WHEN** a --fast-track token is passed to any command other than sai-explore, sai-2-design, sai-archive, or sai-backfill — for example sai-1-spec, sai-4-review, sai-build, or sai-merge
 - **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag activates nothing and its gates are unaffected
 
 #### Scenario: Implement coordinator parses fast-track before dispatch
@@ -153,7 +153,7 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 
 #### Scenario: the opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-archive`, `sai-backfill`, or `sai-merge`
+- **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-archive`, or `sai-backfill`
 - **THEN** no gate beyond each command's named set changes behavior
 - **AND** `sai-explore` still presents the go/no-go, the `C1..Cn` candidate-list agreement, and the verdict menu
 
@@ -161,20 +161,6 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 
 - **WHEN** `--fast-track` is active and a POC reaches a verdict of `<Cn> wins` or `none`
 - **THEN** the verdict menu is presented rather than auto-approved
-
-### Requirement: Merge fast-track bypasses only runtime scope
-
-When `/sai-merge` runs with `--fast-track`, it SHALL pin the method to `merge`, present no squash choice, and apply every complete valid strategy automatically after coordinator validation and presentation. Normal mode SHALL retain apply/revise/decline strategy approval. Full resolution scope, continuation without a detected test suite while reporting verification as unavailable, and invocation-authorized local finalization SHALL be general merge behavior in both modes, not fast-track exemptions. Fast-track SHALL retain conflict-triggered language selection, payload validation, review and verification budgets, collision handling, unrelated questions, and safety checks. The flag SHALL NOT authorize push, destructive operations, bypassing Git checks, or unrelated changes.
-
-#### Scenario: Fast-track conflict retains strategy safety
-
-- **WHEN** a fast-track merge contains a semantically ambiguous conflict
-- **THEN** the command pins the method to merge, retains language selection and contextual analysis, validates and presents the complete strategy before automatic application, and preserves subsequent validation and safety boundaries
-
-#### Scenario: General unattended behavior is not flag-dependent
-
-- **WHEN** a merge runs without `--fast-track`
-- **THEN** it still uses full scope, reports missing verification and continues without a no-suite question, and finalizes locally without an approval question while retaining normal-mode strategy approval
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
 The `--fast-track` behavior SHALL be identical under Claude Code and opencode, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. `argument-hint` is a Claude Code command field: the Claude wrappers document `--fast-track` there, and the opencode wrappers, whose command format has no argument-hint field, carry none and need no separate consistency marker. `AGENTS.md` SHALL name `--fast-track` and its seven affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
@@ -192,7 +178,7 @@ On every surface that also validates other options, the fast-track presence-plus
 
 ### Requirement: Fast-track membership and parse ownership
 
-The set of commands that accept and parse --fast-track SHALL be exactly sai-explore, sai-2-design, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, and `/sai-build` SHALL accept and ignore the token. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
+The set of commands that accept and parse --fast-track SHALL be exactly sai-explore, sai-2-design, sai-archive, and sai-backfill per the canonical model in sai/policies/fast-track-flag.md. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, `/sai-build`, and `/sai-merge` SHALL accept and ignore the token. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
 
 #### Scenario: Design parses worker-side on routed route
 - **WHEN** /sai-2-design receives an envelope containing --fast-track on the routed route with the banner-dedup field false
@@ -217,6 +203,10 @@ The set of commands that accept and parse --fast-track SHALL be exactly sai-expl
 #### Scenario: Implement coordinator owns parse plus banner
 - **WHEN** `/sai-3-implement` receives `--fast-track` on its routed route
 - **THEN** the coordinator strips the token before dispatch and prints no banner, so banner ownership does not sit with it
+
+#### Scenario: Merge accepts and ignores the token
+- **WHEN** /sai-merge receives --fast-track
+- **THEN** the coordinator accepts the token, activates nothing, and prints no banner
 
 ### Requirement: Explore fast-track never skips the open-decision reconfirmation
 

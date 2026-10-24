@@ -7,7 +7,7 @@ Defines the eligible, recency-ordered merge branch candidates and the full-first
 
 ### Requirement: Eligible source branch selection
 
-The merge tool's preflight SHALL enumerate local branches with `git branch --no-merged HEAD`, and the coordinator SHALL build the branch options from that receipt without another branch listing, preserving exact branch names as option values and excluding branches whose commits are already reachable from the current branch.
+The merge tool's preflight SHALL enumerate local branches with `git branch --no-merged HEAD`, newest first, and when the invocation names no branch the coordinator SHALL build the branch question from that receipt without another branch listing: the newest candidates up to the native picker's capacity, each with its exact branch name as the option value, plus the picker's free text for any other branch, excluding branches whose commits are already reachable from the current branch. The coordinator SHALL fetch nothing.
 
 #### Scenario: Already-contained branches are omitted
 
@@ -17,20 +17,11 @@ The merge tool's preflight SHALL enumerate local branches with `git branch --no-
 #### Scenario: No eligible source branches exist
 
 - **WHEN** the filtered branch list is empty
-- **THEN** the coordinator offers the branch-entry option as the only option and states that no local candidates exist and that text entry is still available.
-
-### Requirement: Deterministic branch recency presentation
-
-The merge branch selector SHALL sort candidates by full committer timestamp descending and exact branch name ascending for equal timestamps, and SHALL label each option as `<branch> — last commit <YYYY-MM-DD HH:mm>`.
-
-#### Scenario: Candidate labels include date and time
-
-- **WHEN** an eligible branch is rendered in the selector
-- **THEN** its label includes the branch name and last-commit date and time in `YYYY-MM-DD HH:mm` format without replacing the exact option value.
+- **THEN** the coordinator asks for the branch in plain text, so a branch name can still be entered.
 
 ### Requirement: Full-first conflict scope presentation
 
-When conflicts exist, resolution SHALL cover every affected file in every mode. The worker and presentation seam SHALL NOT expose `Full scope (Recommended)`, `Artifacts only (specs + ADR/DDR)`, or `Code only` as scope-selection choices, and SHALL NOT derive eligible scope options or render scope-dependent deferred-file sections.
+When conflicts exist, resolution SHALL cover every affected file in every run. The worker and coordinator SHALL NOT expose `Full scope (Recommended)`, `Artifacts only (specs + ADR/DDR)`, or `Code only` as scope-selection choices, and SHALL NOT derive eligible scope options or render scope-dependent deferred-file sections.
 
 #### Scenario: Scope categories are filtered and ordered
 

@@ -406,9 +406,7 @@ test('a documented command runs instead of the detected suite, on every entry pa
   assert.equal(stored.status, 0, stored.stdout);
   assert.equal(stored.payload.data.verification_result, 'passed');
   assert.equal(stored.payload.data.command, 'node --version');
-  const entered = enterCli(cwd, ['--stage', 'verify', '--command', 'node --version', '--record', path.join(parent, 'entered.json')]);
-  assert.equal(entered.status, 0, entered.stdout);
-  assert.equal(entered.facts.data.command_source, 'documented');
+  assert.equal(stored.payload.data.command_source, 'documented');
 });
 
 test('.NET markers resolve to dotnet test and several candidates are unavailable', t => {
@@ -485,10 +483,10 @@ test('the marker-list outcome captured at run start decides every later round', 
   const fixedNpm = ['--suite', npm.payload.record, '--suite-hash', npm.payload.record_hash];
   fs.writeFileSync(path.join(cwd, 'pnpm-lock.yaml'), '');
   assert.deepEqual(merge.suite(cwd).data.command, ['pnpm', 'test'], 'detection now would select another command');
-  const entered = enterCli(cwd, ['--stage', 'verify', ...fixedNpm, '--record', path.join(parent, 'verify-npm.json')]);
-  assert.deepEqual(entered.facts.data.command, ['npm', 'test']);
-  assert.equal(entered.facts.data.command_source, 'list');
-  assert.equal(entered.facts.data.verification_result, 'passed', JSON.stringify(entered.facts.data));
+  const fixedRun = cli(cwd, ['verify', ...fixedNpm, '--record', path.join(parent, 'verify-npm.json')]).payload;
+  assert.deepEqual(fixedRun.data.command, ['npm', 'test']);
+  assert.equal(fixedRun.data.command_source, 'list');
+  assert.equal(fixedRun.data.verification_result, 'passed', JSON.stringify(fixedRun.data));
   // An ambiguous outcome at run start stays unavailable with its reason.
   fs.rmSync(path.join(cwd, 'package.json')); fs.rmSync(path.join(cwd, 'pnpm-lock.yaml'));
   fs.writeFileSync(path.join(cwd, 'A.sln'), ''); fs.writeFileSync(path.join(cwd, 'B.sln'), '');
@@ -502,117 +500,43 @@ test('the marker-list outcome captured at run start decides every later round', 
   assert.throws(() => merge.verify(cwd, undefined, merge.preflight(cwd)), /captured suite receipt required/);
 });
 
-test('the coordinator fixes the test command once in preflight and reports a not-runnable command apart', () => {
-  assert.match(merge.instructions('preflight'), /suite --record <unique-external-file>/);
-  assert.match(merge.instructions('preflight'), /a marker file\s+the integration adds or removes later does not change it/);
-  assert.match(merge.instructions('verify'), /--suite <record> --suite-hash <record_hash>/);
-  assert.match(merge.instructions('verify'), /no round detects the command again/);
-  const preflight = merge.instructions('preflight');
-  const verification = merge.instructions('verify');
-  assert.ok(preflight.indexOf('### Test command') < preflight.indexOf('### Step 3:'), 'fixed before the launch');
-  assert.ok(preflight.indexOf('`AGENTS.md` at the project root') < preflight.indexOf('`README.md` at the project root'));
-  assert.ok(preflight.indexOf('`README.md` at the project root') < preflight.indexOf('`test_command: list`'));
-  assert.match(preflight, /names several test\s+commands, none clearly the general one, names none/);
-  assert.match(preflight, /Every verification round of\s+this run uses the value fixed here/);
-  assert.match(verification, /--command '<test_command>'/);
-  assert.match(verification, /`not-runnable` result is not a failing test: it uses no round/);
-  assert.match(verification, /\*\*Not runnable\*\*/);
-  const doc = fs.readFileSync(path.join(ROOT, 'docs/commands/sai-merge.md'), 'utf8');
-  assert.match(doc, /`AGENTS\.md`, then one in `README\.md`, then the merge tool's list/);
-  assert.match(doc, /cannot start[^.]+\.? is also reported as unavailable/);
-});
-
-const COORDINATOR_STAGES = ['preflight', 'conflicts', 'verify', 'collision', 'final'];
-const WORKER_STAGES = { strategy: '### Step 6: Intent reconstruction', apply: '#### Writing the resolution',
-  'test-correction': '### Step 8: Test correction', 'renumbering-plan': '### Step 9: ADR/DDR renumbering plan' };
-
-function enterCli(cwd, args, input = '') {
-  const run = spawnSync(process.execPath, [TOOL, 'enter', ...args, '--json', '--cwd', cwd], { encoding: 'utf8', input });
-  const facts = /\n## Stage facts\n\n```json\n([\s\S]+)\n```\n$/.exec(run.stdout);
-  return { ...run, facts: facts ? JSON.parse(facts[1]) : null };
-}
-
-test('worker disclosures cover only the judgment stages and omit future bodies', () => {
-  for (const [stage, heading] of Object.entries(WORKER_STAGES)) {
-    const output = merge.instructions(stage);
-    assert.equal(merge.STAGES[stage].owner, 'worker');
-    assert.ok(output.includes(heading));
-    assert.match(output, /Execute only this disclosed stage/);
-    for (const other of Object.values(WORKER_STAGES)) if (other !== heading) assert.ok(!output.includes(other), `${stage} disclosed ${other}`);
-    assert.doesNotMatch(output, /## Stage: |## Preflight texts|### Step 10:/, `${stage} disclosed coordinator text`);
-  }
-  assert.match(merge.instructions('strategy'), /Contradicting rules/);
-  assert.match(merge.instructions('renumbering-plan'), /Ambiguous reference/);
-  assert.throws(() => merge.instructions('unknown'), /unknown active stage/);
-  assert.throws(() => merge.instructions('constructor'), /unknown active stage/);
-  for (const retired of ['detect']) assert.throws(() => merge.instructions(retired), /unknown active stage/);
-  const worker = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/worker.md'), 'utf8');
-  assert.doesNotMatch(worker, /Fetch @sai\/commands\/merge\/instructions\.md/);
-  const library = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/instructions.md'), 'utf8');
-  assert.doesNotMatch(library, /### Step (1|2|3|4|5|10):/, 'mechanical steps left the worker library');
-});
-
-test('a worker starting at a judgment point reconstructs the state it never saw', () => {
-  assert.doesNotMatch(merge.instructions('apply'), /## Evidence, not authority/);
-  for (const stage of Object.keys(WORKER_STAGES)) {
-    const output = merge.instructions(stage, true);
-    for (const heading of ['## Evidence, not authority', '## Sides', '### Merge provenance', WORKER_STAGES[stage]]) {
-      assert.equal(output.split(heading).length, 2, `${stage} --reconstruct holds ${heading} exactly once`);
-    }
-  }
-  const cards = name => fs.readFileSync(path.join(ROOT, 'sai/commands/merge', name), 'utf8');
-  const coordinator = cards('coordinator.md'); const mechanics = cards('mechanics.md');
-  assert.match(coordinator, /at the first judgment point, dispatch exactly one\s+`sai-merge-worker`/);
-  assert.match(coordinator, /usual ready handshake/);
-  assert.match(coordinator, /pointer in its `--reconstruct` form/);
-  assert.match(coordinator, /The first dispatch and a mid-run\s+replacement use this same hand-over/);
-  assert.match(coordinator, /missing state stops before writing or\s+finalizing/);
-  assert.match(coordinator, /keep the same\s+persistent worker across every conflict stop of a rebase/);
-  assert.match(coordinator, /A run with no conflict and no decision-record collision completes through\s+these stages alone: dispatch no worker/);
-  assert.match(mechanics, /A run that reaches no judgment point dispatches no worker/);
-  assert.match(cards('worker.md'), /you saw none of the\s+earlier stages/);
-  assert.match(cards('lifecycle.md'), /reaches `terminal` with no worker dispatched/);
-});
-
-test('the coordinator receives its instructions per stage instead of at start', () => {
+test('the coordinator fixes the test command once, before anything runs, and reports a not-runnable command apart', () => {
   const coordinator = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator.md'), 'utf8');
-  assert.doesNotMatch(coordinator, /Fetch @sai\/commands\/merge\/(presentation|coordinator-stages|instructions)\.md/);
-  assert.doesNotMatch(coordinator, /Fetch @sai\/policies\/commit-rules\.md/);
-  assert.doesNotMatch(coordinator, /git merge --no-ff|### Post-resolution review|### Step d/);
-  const stageText = Object.fromEntries(COORDINATOR_STAGES.map(stage => [stage, merge.instructions(stage)]));
-  for (const stage of COORDINATOR_STAGES) {
-    assert.equal(merge.STAGES[stage].owner, 'coordinator');
-    assert.ok(stageText[stage].includes(`## Stage: ${stage}`));
-    assert.match(stageText[stage], /Run this stage now and follow it to its exit/);
-    for (const other of COORDINATOR_STAGES) if (other !== stage) assert.ok(!stageText[stage].includes(`## Stage: ${other}`), `${stage} disclosed ${other}`);
-    for (const heading of Object.values(WORKER_STAGES)) assert.ok(!stageText[stage].includes(heading), `${stage} disclosed worker text`);
-  }
-  // The seam's rules arrive once, with the first stage; each fixed text arrives with the stage that prints it.
-  assert.match(stageText.preflight, /## Three values/);
-  for (const stage of COORDINATOR_STAGES.slice(1)) assert.doesNotMatch(stageText[stage], /## Three values/);
-  assert.match(stageText.preflight, /Which integration\s+method do you want to use\?/);
-  assert.match(stageText.preflight, /Which branch do you want to operate on\?/);
-  assert.match(stageText.conflicts, /Which language should I use/);
-  assert.match(stageText.conflicts, /### Post-resolution review/);
-  assert.match(stageText.verify, /automated verification is\s+unavailable/);
-  assert.match(stageText.collision, /adr_ddr_renames/);
-  assert.match(stageText.final, /### Final summary/);
-  assert.match(stageText.final, /Fetch @sai\/policies\/commit-rules\.md/);
-  assert.doesNotMatch(stageText.preflight, /### Final summary|Which language should I use/);
-  assert.match(merge.instructions('messages'), /^# Active merge stage: messages[\s\S]+## Informative messages/);
-  assert.doesNotMatch(merge.instructions('messages'), /## Stage: /);
-  // --reconstruct is the worker's hand-over; it adds nothing to a coordinator stage.
-  assert.equal(merge.instructions('verify', true), stageText.verify);
+  const fix = coordinator.indexOf('Fix the test command once');
+  assert.ok(fix > coordinator.indexOf('2. Run `merge.js preflight`'));
+  assert.ok(fix < coordinator.indexOf('Take the baseline with `merge.js verify --baseline'), 'fixed before the baseline and the launch');
+  assert.ok(coordinator.indexOf('`AGENTS.md`, then `README.md`') > fix);
+  assert.match(coordinator, /`merge\.js suite --record`/);
+  assert.match(coordinator, /a document naming several with none clearly the general one names none/);
+  assert.match(coordinator, /use it for every run of the suite/);
+  const mechanics = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/mechanics.md'), 'utf8');
+  assert.match(mechanics, /`verify` reports `unavailable` with its reason[\s\S]+not a failing test and not a pass/);
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/commands/sai-merge.md'), 'utf8');
+  assert.match(doc, /`AGENTS\.md`, then one in `README\.md`, then the project markers/);
 });
 
-test('each fixed coordinator sequence is one composite merge-tool call', t => {
+test('the tool has no stage entry points: instructions travel by pointer and the hand-over by file', () => {
+  for (const retired of ['instructions', 'enter', 'STAGES']) assert.equal(merge[retired], undefined, retired);
+  for (const args of [['enter', '--stage', 'preflight'], ['instructions', '--stage', 'strategy']]) {
+    const run = spawnSync(process.execPath, [TOOL, ...args, '--json', '--cwd', ROOT], { encoding: 'utf8' });
+    assert.equal(run.status, 2, `${args[0]} is retired`);
+  }
+  const help = spawnSync(process.execPath, [TOOL, '--help'], { encoding: 'utf8' }).stdout;
+  assert.doesNotMatch(help, /enter|--reconstruct|--stage/);
+  for (const action of ['preflight', 'provenance', 'conflicts', 'bundle', 'write', 'verify', 'collision', 'status']) {
+    assert.match(help, new RegExp(action), `${action} stays`);
+  }
+  const mechanics = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/mechanics.md'), 'utf8');
+  for (const action of ['preflight', 'provenance', 'conflicts', 'bundle', 'write', 'resolution', 'correction', 'suite', 'verify', 'collision', 'status']) {
+    assert.match(mechanics, new RegExp(`\`${action}`), `mechanics documents ${action}`);
+  }
+});
+
+test('one preflight, provenance, conflicts, resolution, collision and status sequence works through the CLI alone', t => {
   const { cwd, parent } = fixture(t);
-  const start = enterCli(cwd, ['--stage', 'preflight']);
+  const start = cli(cwd, ['preflight']);
   assert.equal(start.status, 0, start.stdout);
-  assert.match(start.stdout, /^# Active merge stage: preflight/);
-  assert.match(start.stdout, /## Stage: preflight/);
-  assert.equal(start.facts.action, 'preflight');
-  assert.deepEqual(start.facts.data.candidates.map(item => item.name), ['feature']);
+  assert.deepEqual(start.payload.data.candidates.map(item => item.name), ['feature']);
 
   // Branch validation and provenance are one call: format, existence, commit, capture.
   const missing = cli(cwd, ['provenance', '--source-ref', 'refs/heads/absent', '--method', 'merge', '--squash', 'not-applicable']);
@@ -622,79 +546,62 @@ test('each fixed coordinator sequence is one composite merge-tool call', t => {
   assert.equal(captured.status, 0, captured.payload.error);
   assert.equal(git(cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/feature'], true).status, 1);
 
-  assert.equal(enterCli(cwd, ['--stage', 'conflicts']).status, 2, 'a snapshot needs its external record');
-  const stop = enterCli(cwd, ['--stage', 'conflicts', '--record', path.join(parent, 'stop-1.json')]);
+  const stop = cli(cwd, ['conflicts', '--record', path.join(parent, 'stop-1.json')]);
   assert.equal(stop.status, 0, stop.stdout);
-  assert.match(stop.stdout, /## Stage: conflicts/);
-  assert.deepEqual(stop.facts.data.categories, { specs: 0, 'adr-ddr': 0, code: 1 });
-  assert.deepEqual(stop.facts.data.operation, { merge_in_progress: true, rebase_in_progress: false });
-  assert.equal(stop.facts.data.files[0].before, undefined);
-  assert.equal(stop.facts.record_hash, hash(fs.readFileSync(stop.facts.record)));
+  assert.deepEqual(stop.payload.data.categories, { specs: 0, 'adr-ddr': 0, code: 1 });
+  assert.deepEqual(stop.payload.data.operation, { merge_in_progress: true, rebase_in_progress: false });
+  assert.equal(stop.payload.data.files[0].before, undefined);
+  assert.equal(stop.payload.record_hash, hash(fs.readFileSync(stop.payload.record)));
 
-  const snapshot = JSON.parse(fs.readFileSync(stop.facts.record));
+  const snapshot = JSON.parse(fs.readFileSync(stop.payload.record));
   writeAuthored(cwd, snapshot); git(cwd, ['add', 'f.txt']);
-  const verified = enterCli(cwd, ['--stage', 'verify', '--record', path.join(parent, 'verify-1.json')]);
+  const verified = cli(cwd, ['verify', '--record', path.join(parent, 'verify-1.json')]);
   assert.equal(verified.status, 0, verified.stdout);
-  assert.match(verified.stdout, /## Stage: verify/);
-  assert.equal(verified.facts.data.verification_result, 'unavailable');
+  assert.equal(verified.payload.data.verification_result, 'unavailable');
   fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
-  const failed = enterCli(cwd, ['--stage', 'verify', '--record', path.join(parent, 'verify-2.json')]);
-  assert.equal(failed.status, 1, 'the composite keeps the exit code of its mechanical action');
-  assert.match(failed.stdout, /## Stage: verify/);
-  assert.equal(failed.facts.data.verification_result, 'failed');
-  assert.equal(failed.facts.data.stdout, undefined);
+  const failed = cli(cwd, ['verify', '--record', path.join(parent, 'verify-2.json')]);
+  assert.equal(failed.status, 1, 'a failed test run exits 1');
+  assert.equal(failed.payload.data.verification_result, 'failed');
+  assert.equal(failed.payload.data.stdout, undefined);
   fs.rmSync(path.join(cwd, 'package.json'));
 
-  const collided = enterCli(cwd, ['--stage', 'collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
+  const collided = cli(cwd, ['collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
   assert.equal(collided.status, 0, collided.stdout);
-  assert.match(collided.stdout, /## Stage: collision/);
-  assert.equal(collided.facts.data.applicability, 'not-applicable');
+  assert.equal(collided.payload.data.applicability, 'not-applicable');
 
-  const closing = enterCli(cwd, ['--stage', 'final']);
+  const closing = cli(cwd, ['status']);
   assert.equal(closing.status, 0, closing.stdout);
-  assert.match(closing.stdout, /## Stage: final/);
-  assert.equal(closing.facts.action, 'status');
-  assert.deepEqual(closing.facts.data.staged, ['f.txt']);
-  assert.deepEqual(closing.facts.data.unmerged, []);
-  assert.equal(closing.facts.data.merge_in_progress, true);
-  assert.equal(closing.facts.data.head, captured.payload.data.target_sha);
-
-  for (const stage of ['strategy', 'renumbering-plan', 'messages', 'unknown']) {
-    const refused = spawnSync(process.execPath, [TOOL, 'enter', '--stage', stage, '--json', '--cwd', cwd], { encoding: 'utf8' });
-    assert.equal(refused.status, 2, `${stage} is not a coordinator stage entry`);
-  }
+  assert.deepEqual(closing.payload.data.staged, ['f.txt']);
+  assert.deepEqual(closing.payload.data.unmerged, []);
+  assert.equal(closing.payload.data.merge_in_progress, true);
+  assert.equal(closing.payload.data.head, captured.payload.data.target_sha);
 });
 
-test('a clean integration reaches closure through the tool alone, skipping verification', t => {
+test('a clean integration reaches closure through the tool alone, with no conflict snapshot', t => {
   const { cwd, parent } = fixture(t);
   git(cwd, ['checkout', '-b', 'side', 'HEAD~1']);
   fs.writeFileSync(path.join(cwd, 'side.txt'), 'side\n');
   git(cwd, ['add', 'side.txt']); git(cwd, ['commit', '-m', 'side']); git(cwd, ['checkout', 'main']);
-  assert.equal(enterCli(cwd, ['--stage', 'preflight']).status, 0);
+  assert.equal(cli(cwd, ['preflight']).status, 0);
   const captured = cli(cwd, ['provenance', '--source-ref', 'refs/heads/side', '--method', 'merge', '--squash', 'not-applicable']);
   assert.equal(git(cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/side']).status, 0);
-  const collided = enterCli(cwd, ['--stage', 'collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
-  assert.equal(collided.facts.data.applicability, 'not-applicable');
-  const closing = enterCli(cwd, ['--stage', 'final']);
-  assert.deepEqual(closing.facts.data.staged, ['side.txt']);
-  // Every text this route loaded is coordinator text: no judgment stage was needed.
-  for (const output of [collided.stdout, closing.stdout]) {
-    for (const heading of Object.values(WORKER_STAGES)) assert.ok(!output.includes(heading));
-  }
-  const stages = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator-stages.md'), 'utf8');
-  assert.match(stages, /A clean integration never enters `verify` and never\s+asks for a language/);
-  assert.match(stages, /\*\*`not-applicable` or `no-collision`\*\*[\s\S]{0,160}no\s+search ran/);
-  assert.match(stages, /\*\*`needs-judgment`\*\*[\s\S]{0,200}Dispatch the worker when none is running/);
+  const collided = cli(cwd, ['collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
+  assert.equal(collided.payload.data.applicability, 'not-applicable');
+  assert.deepEqual(cli(cwd, ['status']).payload.data.staged, ['side.txt']);
 });
 
-test('existing projections install the tool and every stage library for both harnesses', () => {
+test('existing projections install the tool and every merge card for both harnesses', () => {
   for (const harness of ['claude', 'opencode']) {
     const root = path.join(os.tmpdir(), `sai-merge-parity-${harness}`);
     const destinationRoot = Object.fromEntries(['commands', 'sai', 'skills', 'agents', 'config', 'root'].map(name => [name, path.join(root, name)]));
     const expanded = expandInstallManifest(loadInstallManifest(ROOT), { harness, repoRoot: ROOT, destinationRoot });
-    for (const name of ['tools/merge.js', 'commands/merge/mechanics.md', 'commands/merge/instructions.md',
-      'commands/merge/coordinator-stages.md', 'commands/merge/presentation.md']) {
+    for (const name of ['tools/merge.js', 'commands/merge/coordinator.md', 'commands/merge/worker.md', 'commands/merge/mechanics.md',
+      'commands/merge/steps/common.md', 'commands/merge/steps/strategy.md', 'commands/merge/steps/apply.md',
+      'commands/merge/steps/test-correction.md', 'commands/merge/steps/renumbering-plan.md']) {
       assert.ok(expanded.some(item => item.harness === harness && item.destinationPath === path.join(destinationRoot.sai, name)), `${harness}: ${name}`);
+    }
+    for (const retired of ['instructions', 'coordinator-stages', 'presentation', 'lifecycle', 'command-bootstrap']) {
+      assert.ok(!expanded.some(item => item.destinationPath === path.join(destinationRoot.sai, 'commands/merge', `${retired}.md`)), `${harness}: ${retired} retired`);
     }
   }
 });
@@ -719,8 +626,9 @@ test('equivalent preflight measurement separates tool execution from instruction
   assert.equal(baseline.instruction_bytes, 30208);
   assert.match(baseline.source_revision, /^[0-9a-f]{40}$/);
   assert.match(baseline.source_sha256, /^[0-9a-f]{64}$/);
-  // The worker's first disclosure is now its judgment-point hand-over, not the preflight stage.
-  const disclosed = Buffer.byteLength(merge.instructions('strategy', true));
+  // The worker's first step is its judgment-point reading: the common file plus the strategy step.
+  const step = name => fs.readFileSync(path.join(ROOT, 'sai/commands/merge/steps', `${name}.md`), 'utf8');
+  const disclosed = Buffer.byteLength(step('common')) + Buffer.byteLength(step('strategy'));
   assert.ok(disclosed < baseline.instruction_bytes);
   t.diagnostic(JSON.stringify({ case: 'same-clean-preflight', node: process.version,
     baseline_revision: baseline.source_revision, baseline_source_sha256: baseline.source_sha256,

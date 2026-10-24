@@ -49,7 +49,7 @@ test('the shared command-execution policy defines portable shell and message tra
   assert.match(policy, /stop before mutation/);
   assert.match(policy, /failed or\s+unavailable command stops every dependent action/);
   assert.match(policy, /git commit -F -/);
-  assert.match(policy, /Do not reuse it for\s+`\/sai-merge`/);
+  assert.doesNotMatch(policy, /sai-merge/);
 });
 
 test('each affected mutation surface loads the shared execution policy', () => {
@@ -59,7 +59,6 @@ test('each affected mutation surface loads the shared execution policy', () => {
     'sai/commands/archive/archive-commit-gate.instructions.md',
     'sai/commands/archive/retirement-declaration.md',
     'sai/commands/commit/coordinator.md',
-    'sai/commands/merge/coordinator.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
   ];
 
@@ -81,7 +80,6 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   const archiveGate = read('sai/commands/archive/archive-commit-gate.instructions.md');
   const retirement = read('sai/commands/archive/retirement-declaration.md');
   const commit = read('sai/commands/commit/coordinator.md');
-  const merge = read('sai/commands/merge/coordinator-stages.md');
   const explore = read('sai/commands/explore/steps/pipeline-direct-build.md');
 
   assert.match(archiveWorker, /active command-execution tool using Bash or\s+PowerShell 7/);
@@ -99,8 +97,6 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   assert.match(commit, /commit\.js` path/);
   assert.match(commit, /authorized\s+message on stdin using the literal-message procedure/);
   assert.doesNotMatch(commit, /<<'EOF'|quoted heredoc/);
-  assert.match(merge, /literally on standard input to\s+`git commit -F -`/);
-  assert.doesNotMatch(merge, /git commit -m|\$\(cat <<'EOF'/);
   assert.ok(explore.includes('git commit -F -'));
   assert.ok(explore.includes('@sai/policies/command-execution.md'));
   assert.doesNotMatch(explore, /HEREDOC local commit/);
