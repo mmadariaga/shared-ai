@@ -71,9 +71,7 @@ test('the coordinator verifies review.md itself and spends at most 3 attempts be
   const source = read(COORDINATOR);
   assert.match(source, /every finding heading[\s\S]{0,120}carries an identifier/);
   assert.match(source, /closing `Summary:` tally matches the number of findings/);
-  assert.match(source, /budget of 3 attempts/);
-  assert.match(source, /different from the previous one/);
-  assert.match(source, /one that stops the run/);
+  assert.match(source, /Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
   assert.match(source, /no closing line/);
   assert.match(source, /A new review regenerates `review\.md` completely/);
 });

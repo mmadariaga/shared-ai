@@ -16,7 +16,7 @@
 
 ### Requirement: Review-new runs outside the shared orchestration
 
-The `/sai-4-review` coordinator SHALL load only the cross-cutting contracts that never stop a run (public chat, `remember`, `safe-operations`, the prerequisite check with its paths, and `tool-resolution`) plus `sai/policies/finding-state.md` and `sai/commands/review/options.md`. It SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`, and SHALL have no progress plan, no panel, and no interactive change picker. The command wrappers on Claude Code and opencode SHALL fetch the harness fetch skill and `sai/commands/review/coordinator.md` directly, forwarding an `InvocationEnvelope` with `command_name: review`.
+The `/sai-4-review` coordinator SHALL load only the cross-cutting contracts that never stop a run (public chat, `remember`, `safe-operations`, the prerequisite check with its paths, `tool-resolution`, and `obstacle-escalation`) plus `sai/policies/finding-state.md` and `sai/commands/review/options.md`. It SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`, and SHALL have no progress plan, no panel, and no interactive change picker. The command wrappers on Claude Code and opencode SHALL fetch the harness fetch skill and `sai/commands/review/coordinator.md` directly, forwarding an `InvocationEnvelope` with `command_name: review`.
 
 #### Scenario: Wrapper loads the coordinator directly
 

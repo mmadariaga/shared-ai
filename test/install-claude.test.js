@@ -634,9 +634,7 @@ test('installClaude re-install preserves tuned values and never recreates owners
 
 test('restore-coordinator-instruction-loading Step 3: isolated Claude installation resolves routed launcher and neutral binding references', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
-  const wrappers = [
-    ['commands/sai-commit.md', 'commit', 'commit-worker.md'],
-  ];
+  const wrappers = [];
 
   function globInstalledFiles(relativeDir = '') {
     const absoluteDir = path.join(tmpDir, relativeDir);
@@ -679,6 +677,14 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
        resolveFetches(launcherPath, available, loaded);
        resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', binding), available, loaded);
     }
+
+    // The commit wrapper fetches its goal-driven coordinator directly; the coordinator
+    // fetches the commit binding, and the binding fetches the worker card.
+    const commitWrapperPath = path.join('commands', 'sai-commit.md');
+    assert.match(readInstalled(commitWrapperPath), /Fetch @sai\/commands\/commit\/coordinator\.md/);
+    assert.equal(available.has(path.join('sai', 'commands', 'commit', 'command-bootstrap.md')), false);
+    resolveFetches(commitWrapperPath, available, loaded);
+    resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', 'commit-worker.md'), available, loaded);
 
     // The audits fetch the shared audit coordinator directly; it fetches each
     // audit's binding and worker through the same isolated root.
@@ -831,7 +837,6 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
-    'sai-commit',
   ];
   try {
     installClaude(tmpDir);
@@ -848,7 +853,7 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
       'the Claude boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md')), false,
       'the opencode boot adapter must not be installed in the Claude harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);

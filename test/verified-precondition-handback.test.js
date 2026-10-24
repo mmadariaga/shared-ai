@@ -58,6 +58,7 @@ const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
 const utilityCards = ['explore', 'retire-docs', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
 const commandCards = [...routedMinimalCards, ...utilityCards];
+const GOAL_DRIVEN_CARDS = new Set(['sai/commands/commit/coordinator.md']);
 
 function countLiteral(text, value) {
   return text.split(value).length - 1;
@@ -94,7 +95,8 @@ test('all command cards load the policy exactly once at their structural entry p
     assert.equal(countLiteral(content, policyFetch), 1, `${card} must fetch the policy exactly once`);
     const lines = content.split(/\r?\n/);
 
-    if (card.endsWith('/coordinator.md') || card.endsWith('/body.md')) {
+    // The goal-driven commit coordinator has no <TASK> wrapper: its fetch follows its H1 like a worker card.
+    if ((card.endsWith('/coordinator.md') && !GOAL_DRIVEN_CARDS.has(card)) || card.endsWith('/body.md')) {
       const taskIndex = lines.findIndex((line) => line.trim() === '<TASK>');
       assert.notEqual(taskIndex, -1, `${card} must contain <TASK>`);
       assert.equal(nextNonBlankLine(lines, taskIndex), policyFetch, `${card} fetch must follow <TASK>`);

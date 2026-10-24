@@ -6,6 +6,7 @@ Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @skills/budget-executor/SKILL.md
 Fetch @skills/budget-explorer/SKILL.md
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/finding-state.md
 Fetch @sai/policies/incremental-review.md
 
@@ -95,22 +96,20 @@ Write each deviation to `deviations.md` in the run directory as it happens: wher
 
 ## Obstacles
 
-An obstacle is anything that prevents closing a step or the run: a test you judge wrong or contrary to the spec, a failing tool, a worker whose report cannot be read, a worker that stays silent past what the step needs, or a worker that drifts from its instruction. The goal is to close the step, so respond and keep moving.
+Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. An obstacle is anything that prevents closing a step or the run: a test you judge wrong or contrary to the spec, a failing tool, a worker whose report cannot be read, a worker that stays silent past what the step needs, or a worker that drifts from its instruction. The goal is to close the step, so respond and keep moving.
 
-Name each obstacle with an identifier (`step-{n}`, or `final-suite` for the closing suite run) and give it a budget of 3 attempts. An attempt is one response with an approach different from the previous one, so repeating an approach is not an attempt. The approaches are:
+Name each obstacle `step-{n}`, or `final-suite` for the closing suite run. The approaches are:
 
 - a corrected instruction, which includes asking the same worker again when its report is unreadable, it is silent, or it drifted;
 - a plan edit, such as correcting `tasks.md` or `interfaces.md`, or having RED correct a test you judge wrong; GREEN never touches tests;
 - an override: an instruction to a worker that contradicts the plan;
-- a new worker, created when asking the same worker again did not help: it replaces the old one for that role, gets the ready handshake like any new worker, and receives a hand-over summary you write yourself in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). Never forward the old worker's history. The files in the working tree stay as they are.
+- a new worker, created when asking the same worker again did not help. It replaces the old one for that role and receives a hand-over summary you write in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). The files in the working tree stay as they are.
 
-Before each attempt, emit `attempt` for the obstacle. The response reports what is spent. When it is `rejected` as `exhaustion`, the budget is gone: escalate at once. Do not advance to another task first, because RED blocks GREEN inside a step and a skipped step breaks the test-first order.
+Before each attempt, emit `attempt` for the obstacle. Do not advance to another task first when the budget is gone, because RED blocks GREEN inside a step and a skipped step breaks the test-first order.
 
 A final suite run with a new or worsened failure compared with the baseline is the `final-suite` obstacle, with its own budget; each attempt is a new step that corrects the failure.
 
-Force majeure escalates at once, without spending an attempt: a change of intent for `proposal.md`'s What or Why, an operation that needs human authorization (push, deletion, shared-system change, missing credential, unavailable external service), or foreign work in a path the run must commit. An exhausted budget is force majeure as well.
-
-To escalate, emit `escalate` for the obstacle, then state in plain words what happened, what is done and committed, and what you tried. Ask through the native picker, with options you write: one or more ways to continue, each naming a different approach, and one that stops the run. Keep the option count within the picker's capacity. Emit `answer` with the user's choice (`continue` or `stop`). A `continue` resets that obstacle's counter; carry out the approach the user chose. A `stop` closes the run (see Close).
+Force majeure here, besides what the policy names: a change of intent for `proposal.md`'s What or Why, and foreign work in a path the run must commit. To escalate, emit `escalate` for the obstacle, and say what is done and committed. Emit `answer` with the user's choice (`continue` or `stop`). A `stop` closes the run (see Close).
 
 ## Run state
 

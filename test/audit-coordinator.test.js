@@ -30,6 +30,7 @@ test('the audit coordinator loads only the cross-cutting policies that never sto
     'sai/policies/remember.md',
     'skills/safe-operations/SKILL.md',
     'sai/policies/tool-resolution.md',
+    'sai/policies/obstacle-escalation.md',
     'sai/policies/finding-state.md',
     'sai/orchestration/workers/bindings/{audit}-worker.md',
   ]);
@@ -59,8 +60,8 @@ test('E1 to E9: the coordinator verifies, commits only the report, never pushes,
   assert.match(coordinator, /node <cited-paths-path> audit-report \{name\} --audit \{audit\}/);
   assert.match(coordinator, /`git check-ignore -q \{report\}`/);
   assert.match(coordinator, /Never force-add with `-f`, never push, and commit nothing but this one file/);
-  assert.match(coordinator, /Give each obstacle a budget of 3 attempts/);
-  assert.match(coordinator, /Ask through the native picker/);
+  assert.match(coordinator, /Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
+  assert.match(coordinator, /a question dismissed without an answer, ends the run with the report so far and no closing line/);
   assert.match(coordinator, /A scope the audit does not apply to still ends this way: the report is the Not Applicable form/);
   assert.match(coordinator, /silently: the command already runs with no human in the loop/);
   assert.match(coordinator, /A `question` is answered by you when the change, its artifacts, or the repository answer it/);
