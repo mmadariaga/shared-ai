@@ -29,9 +29,23 @@ The shared `sai/policies/command-execution.md` instruction SHALL use the active 
 - **WHEN** a command in a mutation sequence returns a failure
 - **THEN** the route reports the failure and does not run dependent actions or simulate success
 
-### Requirement: Literal commit messages use standard input
+### Requirement: Mutation surfaces load the shared command-execution policy
 
-The shared command-execution instruction SHALL require the complete commit message on standard input rather than in a command string, `git commit -m` argument, or temporary file. Bash transport SHALL use adjacent single-quoted segments and a fixed `printf '%s'` format. PowerShell 7 transport SHALL use single-quoted line literals joined with LF, UTF-8 `ProcessStartInfo` standard input, and separate `ArgumentList` entries. Both transports SHALL preserve shell-sensitive characters and the message's final-LF state. Direct Git commits SHALL use `git commit -F -`; `/sai-merge` SHALL not reuse `/sai-commit`'s `commit.js` validator.
+Every affected command-execution mutation surface SHALL load `@sai/policies/command-execution.md` before applying its mutation procedure: `sai/commands/archive/coordinator.md`, `sai/commands/archive/worker.md`, `sai/commands/archive/archive-commit-gate.instructions.md`, `sai/commands/archive/retirement-declaration.md`, `sai/commands/commit/coordinator.md`, and `sai/commands/explore/steps/pipeline-direct-build.md`. The existing managed `sai-policies` projection SHALL make the policy available to both Claude Code and opencode.
+
+#### Scenario: An affected mutation surface loads the policy
+
+- **WHEN** an affected archive, commit, or Explore mutation surface is executed
+- **THEN** it loads the shared command-execution policy before its command-execution mutation
+
+#### Scenario: Both harnesses receive the policy
+
+- **WHEN** the managed policy projection is installed
+- **THEN** the shared command-execution policy is available under both supported harness projections
+
+### Requirement: Literal commit messages travel on standard input
+
+The shared command-execution instruction SHALL require the complete commit message on standard input rather than in a command string, `git commit -m` argument, or temporary file. Bash transport SHALL use adjacent single-quoted segments and a fixed `printf '%s'` format. PowerShell 7 transport SHALL use single-quoted line literals joined with LF, UTF-8 `ProcessStartInfo` standard input, and separate `ArgumentList` entries. Both transports SHALL preserve shell-sensitive characters and the message's final-LF state. Direct Git commits under this policy SHALL use `git commit -F -`. `/sai-merge` is not a mutation surface of this policy: its coordinator sends each commit message with `git commit -F <file>` from its run directory.
 
 #### Scenario: Bash preserves a literal message
 
@@ -43,21 +57,7 @@ The shared command-execution instruction SHALL require the complete commit messa
 - **WHEN** PowerShell 7 sends a multiline message through `ProcessStartInfo` with separate arguments
 - **THEN** standard input carries the same UTF-8 message content and final-LF state without pipeline-added line endings
 
-#### Scenario: Merge or Direct Build performs an authorized Git commit
+#### Scenario: Direct Build performs an authorized Git commit
 
-- **WHEN** an authorized merge or Direct Build archive commit is required
+- **WHEN** an authorized Direct Build archive commit is required
 - **THEN** the complete message is passed on standard input to `git commit -F -` under the shared policy
-
-### Requirement: Mutation surfaces load the shared command-execution policy
-
-Every affected command-execution mutation surface SHALL load `@sai/policies/command-execution.md` before applying its mutation procedure: `sai/commands/archive/coordinator.md`, `sai/commands/archive/worker.md`, `sai/commands/archive/archive-commit-gate.instructions.md`, `sai/commands/archive/retirement-declaration.md`, `sai/commands/commit/coordinator.md`, `sai/commands/merge/coordinator.md`, and `sai/commands/explore/steps/pipeline-direct-build.md`. The existing managed `sai-policies` projection SHALL make the policy available to both Claude Code and opencode.
-
-#### Scenario: An affected mutation surface loads the policy
-
-- **WHEN** an affected archive, commit, merge, or Explore mutation surface is executed
-- **THEN** it loads the shared command-execution policy before its command-execution mutation
-
-#### Scenario: Both harnesses receive the policy
-
-- **WHEN** the managed policy projection is installed
-- **THEN** the shared command-execution policy is available under both supported harness projections

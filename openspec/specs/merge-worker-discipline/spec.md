@@ -5,39 +5,6 @@ Defines the merge worker's closed read list, its summary language before and aft
 
 ## Requirements
 
-### Requirement: Merge worker closed read list
-
-The merge worker SHALL open only the fetches its contract names: the verified-precondition handback policy, the worker-core contract, and the tool-resolution policy, plus the instruction sections disclosed for its active stage. It SHALL NOT fetch the entire merge instruction library or proactively open any other file under `sai/commands/merge/`, explicitly including `coordinator.md`, `coordinator-stages.md`, `presentation.md`, and `lifecycle.md`. It SHALL NOT proactively open policy spec records for `sai-merge-command` or `question-context-policy`, while `sai/policies/question-context.md` stays required via `worker-core`. Affected repository content reads for conflicted specs and ADR/DDR records and indexes of the affected group are permitted only when the active stage requires them and carry no closed path list.
-
-#### Scenario: Proactive supervisor and spec reads are refused
-
-- **WHEN** the worker considers opening an unnamed file under `sai/commands/merge/` or an unnamed policy spec record
-- **THEN** it does not open that file and proceeds with only its named fetches plus step-required repository content
-
-#### Scenario: Step-required repository content remains readable
-
-- **WHEN** the active merge step requires a conflicted spec or an ADR/DDR record or index of the affected group
-- **THEN** the worker reads that repository content for that step only
-
-#### Scenario: Instruction library is disclosed selectively
-
-- **WHEN** the worker receives an active-stage command
-- **THEN** it reads the returned selected sections instead of proactively fetching the whole library or future sections
-
-### Requirement: English summary default until working language selected
-
-The merge worker SHALL write summaries in English until a `working_language` is selected and in the selected working language thereafter. Pinned questions and stop texts SHALL stay verbatim in every language state.
-
-#### Scenario: Pre-handoff summary stays English
-
-- **WHEN** no `working_language` has been selected yet
-- **THEN** the worker summary is English and every pinned question and stop text is byte-identical
-
-#### Scenario: Post-handoff summary follows the selected language
-
-- **WHEN** a `working_language` has been selected through the conflict hand-off continuation
-- **THEN** later explanations, strategy revisions, and analyses use that language while pinned literals stay verbatim
-
 ### Requirement: Settled read-only checks are not repeated in the same stretch
 
 The merge worker SHALL NOT repeat a read-only check with a definitive answer while its dependencies remain valid, including across stretches. It SHALL use retained mechanical receipts instead of deriving their facts again and SHALL verify receipt validity before reuse. Writes, Git operations, new conflicts, and other state changes SHALL invalidate only receipts whose dependencies changed. Unverifiable or stale evidence SHALL be recollected; immutable captured provenance SHALL remain historical evidence after launch rather than being replaced with current SHAs. Retained semantic analysis SHALL be updated only for new context or changed evidence.
@@ -62,64 +29,56 @@ The merge worker SHALL NOT repeat a read-only check with a definitive answer whi
 - **WHEN** receipt validity cannot be verified or a recorded dependency changed
 - **THEN** the worker recollects the affected fact rather than assuming its earlier result remains true
 
-### Requirement: Active-stage merge instruction disclosure
+### Requirement: One standalone merge worker serves the run
 
-After ready and on every continuation, the coordinator SHALL provide an exact `Active stage:` pointer naming the resolved `merge.js instructions --stage <stage>` command and the complete necessary current task state. The worker SHALL execute that disclosure command, follow only its selected authoritative instruction sections, return at the active stage's hand-off, and await the next pointer. Worker stages SHALL be `strategy`, `apply`, `test-correction`, and `renumbering-plan`; preflight, conflict detection, the test run, the collision check, and closure are coordinator stages and SHALL NOT be disclosed to the worker as tasks. Ordinary same-worker continuations SHALL NOT load the entire instruction library or future stage bodies. The same persistent worker SHALL retain previously disclosed context, which SHALL NOT authorize later work. The first task of a worker and the first task of a replacement SHALL use reconstruction delivery, which adds the common evidence rules, the side mapping, and the provenance definition once.
+The merge worker SHALL keep the name `sai-merge-worker` and its worker-matrix key, and `merge` SHALL be listed in `STANDALONE_PHASES` of `bin/worker-matrix.js` so that its binding renders from the standalone worker template on both harnesses. One worker SHALL serve every conflict stop, test correction, and renumbering plan of a run. Its first dispatch SHALL carry no task and SHALL be answered with exactly `event: ready` and empty `changed_files`; the task SHALL arrive in the next message. The worker contract SHALL load only `remember` and `tool-resolution`, and the worker SHALL dispatch no subagent.
 
-#### Scenario: Initial task follows ready
+#### Scenario: Ready before the task
 
-- **WHEN** the worker returns ready and receives its first merge task
-- **THEN** it receives the pointer for the active judgment stage in its reconstruction form with the complete current state and without disclosure of future stage bodies
+- **WHEN** the coordinator creates the merge worker
+- **THEN** the worker returns the ready payload and receives its first brief in the next message to the same worker
 
-#### Scenario: Strategy revision returns to analysis
+### Requirement: Merge worker steps arrive by pointer
 
-- **WHEN** a new conflict or strategy revision changes the proposed resolution
-- **THEN** the coordinator discloses strategy work and the complete strategy is analyzed and presented before application under the existing mode-specific hand-off
+Each message to the merge worker SHALL open with `Active step: <id> — follow <path>` naming one of `sai/commands/merge/steps/strategy.md`, `apply.md`, `test-correction.md`, or `renumbering-plan.md`, followed by a complete brief. The worker SHALL fetch the named step file once per session, read the shared definitions in `steps/common.md` once, do the step, and write the report it names. A message without a pointer line SHALL leave the active step unchanged as a fix round or an answer.
 
-#### Scenario: Active task ends at its hand-off
+#### Scenario: Fix round keeps the active step
 
-- **WHEN** the worker completes a strategy, resolution, test-correction, or renumbering-plan task
-- **THEN** it returns that stage's result without executing an undisclosed later stage
+- **WHEN** the worker receives a message with findings and no pointer line
+- **THEN** it corrects exactly the listed items within the current step
 
-#### Scenario: Replacement receives common rules
+### Requirement: Merge worker reports are run-directory files
 
-- **WHEN** a replacement worker starts at the active judgment stage
-- **THEN** its disclosure includes the reconstruction option and common evidence rules before it uses stage evidence
+The merge worker SHALL write each report to the path in its brief, inside the run directory outside the repository, and SHALL return only that path as its final message, with no raw output, file contents, or logs. A report SHALL carry no time field. When something stops the worker, it SHALL return the path of a report whose `status` is `blocked` naming the blocker and the affected path, and SHALL ask the user nothing.
 
-### Requirement: Complete merge continuation and replacement state
+#### Scenario: Final message is only the path
 
-First-dispatch, continuation, and replacement disclosure SHALL carry complete stage-applicable state: the active stage, exact external references and hashes, the transfer directory path and the latest `resolution_reference` (never resolution content), affected paths with categories and region identifiers, necessary valid receipts, original provenance, working language, exact strategy and revision and confirmation state, selected semantic decisions, pending corrections, review and verification counters and outcomes with full failure references, collision applicability and complete plans, owned and staged paths, operation history, current outcome, and the changed-files union. The disclosure SHALL NOT carry stage blob identifiers; the worker obtains conflict content through the merge tool's `bundle` action on the disclosed snapshot reference and hash. Inventories SHALL be exhaustive and SHALL NOT depend on abbreviated phrases such as `and others; see earlier`. A first dispatch and a replacement SHALL both start from supplied state and verified external references rather than a prior journal or assumed prior context, because the worker saw none of the earlier stages. Missing reconstruction data or unverifiable required references SHALL stop execution before writing or finalizing.
+- **WHEN** the worker finishes a step
+- **THEN** its final message is the report path and the coordinator reads the report from the file
 
-#### Scenario: Replacement resumes from exact evidence
+### Requirement: Merge worker decides by commit intent
 
-- **WHEN** a worker is replaced during resolution or verification
-- **THEN** the replacement verifies the supplied external references and supporting receipt validity and resumes only with complete stage-applicable state
+The merge worker SHALL resolve every conflict by commit intent, judged from each side's commits, and SHALL keep declared rules (governing specs, ADRs, and DDRs), facts, and labelled inferences apart, with declared rules outranking inferred objectives. It SHALL map git stages to branches by method (for `merge`, stage 2 is the current branch and stage 3 the selected branch; for `rebase` and `rebase-squash`, stage 2 is the selected branch and stage 3 the current branch's replayed commit) and SHALL describe each choice by branch and behavior. When commit intent cannot decide between two sides, the strategy report SHALL list an escalation with what each side does, what each choice gives up, and a recommendation, and SHALL NOT pick.
 
-#### Scenario: Incomplete inventory blocks execution
+#### Scenario: Incompatible sides are escalated
 
-- **WHEN** reconstruction omits an affected path, strategy confirmation, required counter, or required evidence reference
-- **THEN** the worker reports the precise missing state and performs no write or finalization
+- **WHEN** both sides change the same behavior incompatibly and no rule or evidence prefers one
+- **THEN** the strategy report has `status: escalate` and lists that conflict instead of choosing a side
 
-#### Scenario: Full failure evidence remains reachable
+### Requirement: Merge worker writes only through the merge tool
 
-- **WHEN** a failed verification result is carried into a continuation or replacement
-- **THEN** its exact external reference and checksum preserve the full command outcome and output needed for analysis
+The merge worker SHALL change an affected file only by handing resolved text to `merge.js write`, SHALL report every path the tool placed in `changed_files`, and SHALL create no other file than its reports. It SHALL run only read-only git commands (`status`, `rev-parse`, `branch`, `diff`, `show`, `log`, `ls-files`, `merge-base`, `cat-file`), SHALL never rename a file, and SHALL leave the launch, checkouts, renames, staging, rebase continuation, commits, and every test run to the coordinator. A test correction SHALL be proposed as byte ranges the coordinator captures with `merge.js correction` before any write, and the renumbering plan SHALL be read-only.
 
-### Requirement: Merge worker runs judgment stages only
+#### Scenario: Test correction waits for captured ranges
 
-The merge worker SHALL work only at judgment points: resolving conflicts, correcting a failed test round, and planning decision-record renumbering. It SHALL NOT run the test suite, select, refresh, or validate a branch, or run any mechanical merge-tool action other than `instructions`, `valid`, `bundle`, and `write`. It SHALL read conflicts through `bundle` and SHALL change an affected file only through `write`. A test correction SHALL be returned as exact correction ranges within the affected file set before any write, and the renumbering plan SHALL be read-only.
+- **WHEN** the worker completes a test-correction step
+- **THEN** it has written nothing and its report lists the proposed byte ranges with each file's current hash
 
-#### Scenario: Failed round is corrected from the failure record
+### Requirement: Replacement merge worker starts from a hand-over file
 
-- **WHEN** the coordinator continues the worker with `test-correction`, the round number, the staged paths, and the failure record's reference and hash
-- **THEN** the worker reads the failure evidence at that reference and returns its analysis and proposed correction ranges without running the suite
+A replacement merge worker SHALL return the ready payload, then read the hand-over file the coordinator wrote in the run directory before anything else. The hand-over file SHALL hold the method, branch, provenance, current stop with its record and hash, the reports and decisions so far, the files already written, and the symptom, and the files it names SHALL be the replacement's only history. The old worker's history SHALL never be forwarded.
 
-#### Scenario: Correction is applied only to captured ranges
+#### Scenario: Replacement resumes from the hand-over
 
-- **WHEN** the coordinator continues the worker with `apply` and a captured correction snapshot
-- **THEN** the worker sends exactly those fixes for the captured ranges through the merge tool's `write` action with the correction snapshot's reference and reports every path the tool wrote in `changed_files`
-
-#### Scenario: Renumbering plan writes nothing
-
-- **WHEN** the worker completes a `renumbering-plan` task
-- **THEN** it returns the rename plan and the coordinator applies the renames and replacements
+- **WHEN** a worker is replaced during a conflict stop
+- **THEN** the new worker reads `handover-{k}.md` and continues from the files it names

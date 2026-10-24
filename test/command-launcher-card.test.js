@@ -26,14 +26,14 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-// The implement, review, build, deep-review, audit, and plan-family commands run outside the
+// The implement, review, build, deep-review, audit, plan-family, and merge commands run outside the
 // shared orchestration: their wrappers fetch the harness skill and the coordinator
 // card directly, with no boot adapter and no command bootstrap. The three audits
 // share one coordinator, `sai/commands/audit/coordinator.md`.
 const AUDIT_WRAPPERS = new Set(['sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md']);
 const DIRECT_COORDINATOR = new Set([
   'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
-  'sai-deep-review.md', ...AUDIT_WRAPPERS,
+  'sai-deep-review.md', 'sai-merge.md', ...AUDIT_WRAPPERS,
 ]);
 const bootCommands = commands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
 const emptyBootstraps = new Set(['explore', 'retire-docs', 'status', 'worktree']);
@@ -58,9 +58,6 @@ const movedDirectives = {
   ],
   backfill: [
     'Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.',
-  ],
-  merge: [
-    'Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it.',
   ],
 };
 
@@ -115,14 +112,14 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 8 harness-neutral command bootstraps exist and budget has none', () => {
+test('exactly 7 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of bootCommands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
-  assert.equal(actual.length, 8);
+  assert.equal(actual.length, 7);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
 });
 
@@ -316,6 +313,7 @@ const DIRECT_COORDINATOR_COORDINATOR = {
   'sai-4-review.md': 'Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-build.md': 'Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-deep-review.md': 'Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-merge.md': 'Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-5-security.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-6-performance.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-7-accessibility.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',

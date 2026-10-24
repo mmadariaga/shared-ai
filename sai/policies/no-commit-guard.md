@@ -44,9 +44,8 @@ A **boundary** forces the running window to close and, when another worker
 stretch follows, a new one to open. The closed list of boundaries is:
 
 1. **Human turn** — a `needs_input` result (closed or open), a nonterminal
-   extension whose handler hands the turn to the user (such as merge's
-   `conflict_detected` language question), or a user interruption that is
-   later resumed.
+   extension whose handler hands the turn to the user, or a user interruption
+   that is later resumed.
 2. **Coordinator git mutation** — any git mutation the coordinator itself runs:
    a merge launch, checkout, `git mv`, or staging, the archive CLI move and
    post-archive commit, a close's staging and commit, and a nonterminal

@@ -1,11 +1,12 @@
 ---
-description: Merge, rebase, or squash-rebase a branch — resolves all conflicts, reports unavailable tests, and finalizes locally automatically; fast-track applies presented strategies without approval.
+description: Merge, rebase, or squash-rebase a branch with no human in the loop — resolves all conflicts by commit intent, repairs ADR/DDR collisions, verifies the result against the suite baseline taken at HEAD, and finalizes locally. Accepts [<branch>] [--rebase|--squash].
 model: opencode-go/muse-spark-1.3-contributor#xhigh
+subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/adapters/opencode/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/merge/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: merge

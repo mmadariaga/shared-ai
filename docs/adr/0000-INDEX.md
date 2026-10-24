@@ -264,7 +264,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-merge`
 
 - [0173c — Merge collision suffixes ordered by ascending commit date](./0173c-merge-collision-suffix-order-by-commit-date.md) — Refs 0110a, Refs 0113
-- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
+- [0201 — `/sai-merge` leaves the shared orchestration, and the presentation seam of ADR 0175a retires](./0201-merge-leaves-the-shared-orchestration.md) — Supersedes 0175a, Refs 0173c, Refs 0194, Refs 0199, Refs 0200
 
 ### `sai-state`
 
@@ -402,7 +403,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171a — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168b, Refs 0167c, Refs 0158b
 - [0171b — Routed runner owns the terminal documentation lifecycle](./0171b-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
-- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
 - [0176 — Per-session sidecar ownership with single writer](./0176-per-session-sidecar-ownership-single-writer.md)
 - [0177 — Loopback ephemeral token file, no TLS](./0177-loopback-ephemeral-token-file-no-tls.md)
 - [0178 — Uniform envelope, code registry, pinned, idempotent](./0178-uniform-envelope-code-registry-pinned-idempotent.md)
@@ -527,7 +528,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0167c — Named Explore Auto cancellation exception in Bounded Recovery](./0167c-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158b, Refs 0159a
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
-- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
 - [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
 - [0188 — Subagents open with a ready handshake and live per role](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) — Refs 0025, Refs 0076, Refs 0077
 
@@ -556,7 +557,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0148b — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148b-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147b
 - [0150b — Supervised visible reports stay post-proceed (fetching-body order)](./0150b-supervised-visible-reports-stay-post-proceed.md) — Refs 0147b, Refs ddr:0150
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
-- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
 
 ### Explore crystallization & the review loop
 
@@ -659,6 +660,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0198](./0198-build-new-selects-and-fixes-findings-after-its-review.md) | amends | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) |
 | [0199](./0199-spec-and-design-leave-the-shared-orchestration.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0200](./0200-audits-and-deep-review-leave-the-shared-orchestration.md) | supersedes | [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md) |
+| [0201](./0201-merge-leaves-the-shared-orchestration.md) | supersedes | [0175a](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
@@ -690,6 +692,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0121 — Per-CLI launchers with a strict allowlist credential parser](./archive/0121-orca-launcher-credential-boundary.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
 - [0147a — Three-rule composition delta lives only in command-runner.md Result Loop](./0147a-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081 — *Superseded by [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md)*
 - [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — *Superseded by [0200](./0200-audits-and-deep-review-leave-the-shared-orchestration.md)*
+- [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — *Superseded by [0201](./0201-merge-leaves-the-shared-orchestration.md)*
 - [0139a — Use fresh read-only reviewers with worker-owned artifact edits](./0139a-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158c](./0158c-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0166 — Envelope-only change-name resolution for shared pickers and four cards](./archive/0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *ARCHIVED to ./archive/ — retains and forwards `wrapper_echo_value`, which the single-string envelope removed; superseded by [0171c](./0171c-single-string-invocation-envelope.md)*
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./archive/0090-centralize-copilot-inline-planning-lifecycle.md) — *Superseded by the retire-inline-harness-model change, which removed the Copilot inline adapter*

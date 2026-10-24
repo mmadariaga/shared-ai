@@ -8,7 +8,7 @@ Canonical policy for the progress task list rendered by routed SAI phases. Consu
 
 ## Scope
 
-Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_machine`; that machine preserves just-in-time worker continuity and never creates a task list or milestone stamp. The merge command's adaptive TODO is a separate coordinator-owned surface governed by [Merge adaptive TODO](#merge-adaptive-todo), not a worker `progress_plan`. It does not govern per-harness tool mechanics — those stay in the harness bindings.
+Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_machine`; that machine preserves just-in-time worker continuity and never creates a task list or milestone stamp. It does not govern per-harness tool mechanics — those stay in the harness bindings.
 
 ## List structure
 
@@ -69,110 +69,6 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
 **Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the validator's observation instant.
 
 Stamp attachment originates exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp attachment. Both CLIs emit `received_at` as the first key of their response; the worker authors no time and never renders, attaches, or formats a stamp.
-
-## Merge adaptive TODO
-
-The `/sai-merge` adaptive TODO is a merge-local coordinator surface, not a
-worker lifecycle extension and not the phase adapter's `progress_plan`. Its
-shape is unknown at dispatch because the route depends on the method, the
-selected branch, and the integration outcome.
-
-- The coordinator is the sole emitter; the worker emits no TODO or progress
-  event.
-
-### Canonical item identities and labels
-
-Every item is an object with exactly `id`, `label`, and one of the policy's
-`pending`, `in_progress`, or `completed` states. The coordinator stores the
-ordered item ids in `adaptive_todo_steps` and the completed ids in
-`adaptive_todo_marked`; the native binding receives the same ids and labels on
-every full render. The canonical item set is:
-
-| id | native label | inclusion |
-| --- | --- | --- |
-| `merge` | `Merge <source> into <target>` for method `merge`; `Rebase <target> onto <source>` for method `rebase` (same id, method-aware label) | Always after method and source-branch selection. |
-| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the language hand-off; completes after the Step 7 strategy hand-off and matching payload return. |
-| `resolve-full` | `Resolve all conflicts` | Every conflicted route. |
-| `verification` | `Verify merge result` | Every conflict-resolution route after resolution staging. |
-| `collision` | `Repair ADR/DDR collisions` | Only when collision applicability is `repair-required` or `escalation-required`. |
-| `finalization` | `Finalize merge commit` for a merge in progress; `Continue rebase` for a stopped rebase; `Commit collision repair` for a finished rebase with a staged repair (same id, state-aware label) | Whenever the corresponding local operation is ready. |
-
-Item order is fixed: `merge`, optional `contextual-analysis`, optional
-`resolve-full`, optional `verification`, optional `collision`, then optional
-`finalization`. A renderer must not invent category-specific ids, reorder items, or
-replace a canonical label with a question, summary, or worker finding.
-
-### Canonical route transitions
-
-- **Before branch selection:** render no merge TODO. A stale merge surface may
-  be cleared according to the active binding's ownership rules, but no item is
-  synthesized.
-- **After the branch resolves** (a listed branch, or a typed branch that
-  passed the coordinator's validation): render the method-aware `merge` item
-  as `merge: in_progress`; no possible conflict item is present yet. Render no
-  merge TODO while that validation is pending or after it fails.
-- **Clean route:** after a clean outcome (a merge stopped before its commit, or
-  a finished rebase), mark `merge` `completed` and remove `contextual-analysis`,
-  `resolve-full`, and `verification`. Wait for the collision result. For
-  `repair-required` or `escalation-required`, add `collision` as
-  `in_progress` and mark it `completed` after all owned repairs and reference
-  updates. Then add `finalization` as `in_progress` when the local operation is
-  ready; a finished rebase with nothing staged adds no `finalization` item.
-- **Conflicted route in either mode:** after the conflict outcome, the
-  coordinator performs the language hand-off before exposing semantic
-  analysis; the language is invocation state, not a TODO item. Keep
-  `merge: completed`, make `contextual-analysis` `in_progress`, and add
-  `resolve-full` as `pending`.
-- **Contextual analysis:** keep `contextual-analysis` `in_progress` through
-  every strategy proposal, confirmation, and open revision. Mark it
-  `completed` only after the Step 7 mode-specific hand-off in
-  `sai/commands/merge/instructions.md` and the worker's matching complete
-  marker-free payload, then make `resolve-full` `in_progress`. A new conflict or inconsistency from
-  application or verification returns the item to `in_progress` with the same
-  worker and selected language; no language question is repeated. No TODO
-  transition authorizes a write or stage.
-- **Resolution and verification:** after coordinator resolution writes and
-  staging, mark `resolve-full` `completed` and make
-  `verification` `in_progress`. Mark `verification` `completed` when the
-  suite passes, the unavailable-suite notice is reported, or the three-round cap is
-  reached; failed/cap-exhausted evidence remains in merge state and does not
-  imply a commit.
-- **Rebase stops:** after a stopped rebase's verification, add
-  `finalization` (`Continue rebase`) as `in_progress`. Once
-  `git rebase --continue` has run, remove it: a new conflicted
-  commit returns `contextual-analysis` to `in_progress` with `resolve-full`
-  and `verification` items back to `pending`; a finished rebase follows the
-  collision route.
-- **Collision route:** after the ADR/DDR pass, omit `collision` for
-  `not-applicable` or `no-collision`. When repairs or manual escalations apply,
-  make `collision` `in_progress` only after the pass result is known, and mark
-  it `completed` only after every coordinator-owned rename and canonical
-  reference update has finished. Escalations remain in the summary and do not
-  create extra TODO ids.
-- **Finalization:** add `finalization` only after final staging is complete and
-  make it `in_progress` while the local operation runs. Mark it `completed`
-  only after success. On failure, preserve the exact repository-state summary
-  and leave the operation incomplete until terminal clearing.
-- **Terminal closure:** after recording the final state, clear the
-  merge-owned TODO surface. A successful commit retains the completed state
-  until this clear; an early stop or failed finalization never leaves an
-  actionable finalization item.
-
-The list uses the same `pending`, `in_progress`, and `completed` state
-vocabulary and coordinator-owned full-list rendering discipline. Its state
-never authorizes a mutation and it never changes worker continuation or
-verification-round ownership. The active harness binding owns task-list
-mechanics, and the adaptive TODO receives no milestone stamps.
-
-### Panel ownership
-
-The merge TODO claims exclusive ownership of the active native task surface on
-its first full render. Marker-based cleanup is limited to stale entries bearing
-`sai-merge-todo` before that claim; it does not promise preservation of a
-foreign surface. Once claimed, the binding's full-list convergence may
-intentionally displace foreign entries, and no restoration is attempted at
-terminal closure. The coordinator must describe this as exclusive ownership,
-not marker-only isolation.
 
 ## Single-source reference rule
 
