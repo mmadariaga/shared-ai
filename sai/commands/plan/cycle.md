@@ -2,6 +2,8 @@
 
 How a plan segment runs, whether it runs alone (`/sai-1-spec`, `/sai-2-design`) or inside `/sai-plan`. The segment card that fetched this file names its worker binding, step machine, steps, artifact paths, mechanical checks, review criteria, commit paths, and closing report. This file owns the rest.
 
+Fetch @sai/policies/obstacle-escalation.md
+
 You are the driver of the segment. You decide, answer, check, review, and commit. The worker only writes the segment's artifacts, and never runs git. Segments exchange nothing but artifacts on disk.
 
 ## Run state
@@ -63,19 +65,15 @@ When every commit path is ignored, close the segment without a commit and say so
 
 ## Obstacles
 
-An obstacle is anything that prevents closing the segment: a failing mechanical check, a worker whose report cannot be read, a worker that stays silent past what the step needs, a worker that drifts from its instruction, or a failing tool. The goal is to close the segment, so respond and keep moving.
+Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. An obstacle is anything that prevents closing the segment: a failing mechanical check, a worker whose report cannot be read, a worker that stays silent past what the step needs, a worker that drifts from its instruction, or a failing tool. The goal is to close the segment, so respond and keep moving.
 
-Name each obstacle with an identifier (`checks`, `worker`, `report-{k}`, or the segment card's own) and give it a budget of 3 attempts. An attempt is one response with an approach different from the previous one, so repeating an approach is not an attempt. The approaches are:
+Name each obstacle `checks`, `worker`, `report-{k}`, or the segment card's own. The approaches are:
 
 - a corrected instruction, which includes asking the same worker again when its report is unreadable, it is silent, or it drifted;
 - a mechanical repair you write yourself when the defect is only mechanical, such as a delta header, a cited path with a single obvious candidate, or a heading. A repair never adds, removes, or rewrites content;
-- a new worker, created when asking the same worker again did not help: it replaces the old one, gets the ready handshake like any new worker, and receives a hand-over file you write in `handover-{segment}-{k}.md` in the run directory (the segment's goal, the files already written, the steps already reported, and the symptom). Never forward the old worker's history. The files in the working tree stay as they are. The new worker starts at the first step the artifacts on disk do not yet satisfy.
+- a new worker, created when asking the same worker again did not help. It receives a hand-over file you write in `handover-{segment}-{k}.md` in the run directory (the segment's goal, the files already written, the steps already reported, and the symptom). The files in the working tree stay as they are. The new worker starts at the first step the artifacts on disk do not yet satisfy.
 
-Before each attempt, emit `attempt` for the obstacle. The response reports what is spent. When it is `rejected` as `exhaustion`, the budget is gone: escalate at once.
-
-Force majeure escalates at once, without spending an attempt: an unanswerable question that would change the artifacts, an operation that needs human authorization (push, deletion, shared-system change, missing credential, unavailable external service), or foreign work in a path the segment must commit. An exhausted budget is force majeure as well.
-
-To escalate, emit `escalate` for the obstacle, then state in plain words what happened, what is done and committed, and what you tried. Ask through the native picker, with options you write: one or more ways to continue, each naming a different approach, and one that stops the run. Keep the option count within the picker's capacity. Emit `answer` with the user's choice (`continue` or `stop`). A `continue` resets that obstacle's counter; carry out the approach the user chose. A `stop` closes the run.
+Before each attempt, emit `attempt` for the obstacle. Force majeure here, besides what the policy names: an unanswerable question that would change the artifacts, and foreign work in a path the segment must commit. To escalate, emit `escalate` for the obstacle, and say what is done and committed. Emit `answer` with the user's choice (`continue` or `stop`). A `stop` closes the run.
 
 ## Resuming
 

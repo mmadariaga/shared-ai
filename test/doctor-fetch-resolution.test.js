@@ -194,7 +194,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
-    const phaseFolders = ['commit', 'archive', 'backfill'];
+    const phaseFolders = ['archive', 'backfill'];
     const phases = [
       'spec-worker.md',
       'design-worker.md',
@@ -343,10 +343,12 @@ describe('doctor fetch resolution', () => {
         }
         assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', 'coordinator.md')),
           `${harness} harness should install the build coordinator card`);
-  for (const card of ['coordinator.md', 'worker.md', 'command-bootstrap.md']) {
+  for (const card of ['coordinator.md', 'worker.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', card)),
-            `${harness} harness should install the routed commit ${card} card`);
+            `${harness} harness should install the goal-driven commit ${card} card`);
         }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'command-bootstrap.md')), false,
+          `${harness} harness must not install a commit command bootstrap`);
         assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'body.md')), false,
           `${harness} harness must not install the retired commit body card`);
         const buildWrapper = path.join(base, 'commands', 'sai-build.md');

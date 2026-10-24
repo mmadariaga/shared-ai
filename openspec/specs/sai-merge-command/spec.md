@@ -455,7 +455,7 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 ### Requirement: Merge coordinator loads only its own contracts
 
-Both `/sai-merge` wrappers SHALL load the harness fetch skill and `sai/commands/merge/coordinator.md` directly, with no boot adapter and no command bootstrap. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, and `incremental-review`, SHALL load no budget binding, and SHALL load none of `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, or `no-commit-guard`. The only subagent of a run SHALL be the merge worker; lookups that shared policies delegate to a `budget-explorer` SHALL be done by the coordinator itself.
+Both `/sai-merge` wrappers SHALL load the harness fetch skill and `sai/commands/merge/coordinator.md` directly, with no boot adapter and no command bootstrap. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `obstacle-escalation`, and `incremental-review`, SHALL load no budget binding, and SHALL load none of `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, or `no-commit-guard`. The only subagent of a run SHALL be the merge worker; lookups that shared policies delegate to a `budget-explorer` SHALL be done by the coordinator itself.
 
 #### Scenario: Wrapper reaches the coordinator directly
 

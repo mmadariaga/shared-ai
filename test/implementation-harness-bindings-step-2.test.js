@@ -39,13 +39,14 @@ const WORKERS = [
   ['sai-6-performance-worker', 'performance-worker.md'],
   ['sai-7-accessibility-worker', 'accessibility-worker.md'],
   ['sai-commit-worker', 'commit-worker.md'],
+  ['sai-archive-worker', 'archive-worker.md'],
 ];
 
-// The audit, spec, and design bindings render from the standalone template, which
-// leaves the lifecycle to the coordinator; the commit binding is the routed
+// The audit, spec, design, merge, and commit bindings render from the standalone template,
+// which leaves the lifecycle to the coordinator; the archive binding is the routed
 // representative that still carries the dispatch, continuation, and replacement
 // operations.
-const ROUTED_PHASE = 'commit';
+const ROUTED_PHASE = 'archive';
 
 const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [
   filename,
@@ -80,7 +81,7 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
-      if (filename === 'commit-worker.md') {
+      if (filename === `${ROUTED_PHASE}-worker.md`) {
         for (const operation of REQUIRED_OPERATIONS) {
           assert.match(binding, OPERATION_PHRASE[operation],
             `${harness} binding should define ${operation}`);
