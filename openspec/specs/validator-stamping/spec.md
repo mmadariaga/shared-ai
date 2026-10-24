@@ -17,7 +17,8 @@ TBD - created by archiving change replace-emitted-on-with-validated-at. Update P
 - **THEN** it returns `ok: false` with `errors` and no time field
 
 ### Requirement: The validate response carries received_at as its first key
-`worker-report-validator.js validate --json` SHALL read the time once per invocation and write `{received_at, ok, action, kind, errors}` with `received_at` as the first key, for valid and invalid verdicts and for all four kinds. In text mode the valid line SHALL read `valid (<kind>) received_at <ts>` and the invalid line SHALL be unchanged and carry no time. Usage errors, IO errors and exceptions SHALL go to stderr with exit 2 and carry no time. `validated_at` SHALL NOT appear anywhere, with no alias and no dual emission.
+
+`worker-report-validator.js validate --json` SHALL read the time once per invocation and place `received_at` first for valid and invalid verdicts of all four kinds. Legacy stdin mode SHALL retain exactly `{received_at, ok, action, kind, errors}`. File mode SHALL additionally return `outcome` as accepted, delivery-failed, or report-invalid and SHALL include the parsed `payload` only on acceptance. File-mode delivery or report failures SHALL exit 1 with their verdict. In text mode the valid line SHALL read `valid (<kind>) received_at <ts>` and the invalid line SHALL be unchanged and carry no time. Usage errors, uncaught IO errors and exceptions SHALL go to stderr with exit 2 and carry no time. `validated_at` SHALL NOT be emitted, with no alias or dual emission.
 
 #### Scenario: JSON response puts received_at first
 - **WHEN** a payload of any kind, valid or invalid, is piped to `validate --kind <kind> --json`
@@ -26,6 +27,10 @@ TBD - created by archiving change replace-emitted-on-with-validated-at. Update P
 #### Scenario: Text mode keeps the invalid line unchanged
 - **WHEN** a valid payload is validated in text mode
 - **THEN** the line reads `valid (<kind>) received_at <ts>`, while an invalid payload still prints `invalid (<kind>): <errors>` with no time
+
+#### Scenario: File mode extends the stamped response
+- **WHEN** validate receives all three report-reference flags with --json
+- **THEN** received_at remains first, outcome identifies delivery or validity, and only acceptance includes the parsed payload
 
 ### Requirement: One exported generator is the single clock of both CLIs
 The validator module SHALL export `generateReceivedAt` as the only time source for `worker-report-validator.js` and `bin/sai-state.js`. It SHALL return local wall-clock time with its numeric UTC offset in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, never the `Z` designator (a machine on UTC writes `+00:00`).

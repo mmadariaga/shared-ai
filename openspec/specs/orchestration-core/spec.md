@@ -200,41 +200,33 @@ The shared orchestration contract SHALL support a phase adapter declaring a clos
 
 ### Requirement: Stateless worker payload validation
 
-The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, and return a structured, timeless verdict containing an `ok` boolean and an `errors` array; its `validate` JSON response SHALL carry `received_at` in ISO-8601 with a numeric offset (never the `Z` designator) as its first key. It SHALL build that verdict through one exported pure function, and the module's exported `generateReceivedAt` SHALL be the only clock, consumed by both `validate` and `bin/sai-state.js`. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose. One exception applies: when the active adapter declares a `step_machine`, a progress payload SHALL be validated by the same validator module inside `sai-state emit <id> <machineId> --progress -`. Its `validation` block is read exactly as the `validate` verdict, and the payload is not run through a separate `validate --kind progress` call.
+The shared orchestration source SHALL define a deterministic, stateless tool at `sai/tools/worker-report-validator.js` that validates closed worker payload shapes. Existing stdin mode SHALL accept the payload with `--kind`, enumerate required fields and types, and return a timeless verdict containing `ok` and `errors` through exported pure `validateText`. The `validate` JSON response SHALL carry `received_at` in ISO-8601 with a numeric offset, never Z, as its first key. Exported `generateReceivedAt` SHALL remain the only clock for validate and `bin/sai-state.js`. The validator SHALL never repair, infer, or reformat payload values.
+
+The shared runner SHALL consume tool verdicts rather than re-derive validation. For a `step_machine` progress payload, the same validator module SHALL run inside `sai-state emit <id> <machineId> --progress -`, and its validation block SHALL replace a separate validate call. For full Direct Build only, post-ready implementation, backfill, and archive reports SHALL instead arrive as private path/hash references. The resolved validator SHALL verify the reference and validate the same single-read bytes, returning an accepted parsed payload only on success. Other routes SHALL retain their existing submission and lifecycle behavior. Delivery failure, invalid report content, and a call with no response SHALL remain distinct; report acceptance SHALL not be inferred from completed repository effects or from a missing response.
 
 #### Scenario: Validator accepts closed terminal payloads
-
 - **WHEN** the coordinator receives a terminal payload (status: completed, needs_input, failed, or cancelled)
-- **THEN** it SHALL invoke `sai/tools/worker-report-validator.js validate --kind terminal` with the payload on stdin
-- **AND** the tool SHALL return `{ok: true}` if the payload is valid, or `{ok: false, errors: [...]}` if validation fails
-- **AND** the validator SHALL require status, summary, and changed_files fields
+- **THEN** it invokes validate with kind terminal using legacy stdin or the full Direct Build reference-based exception, requires status, summary, and changed_files, and consumes the valid verdict or concrete validation errors
 
 #### Scenario: validated_at uses a numeric offset without Z
-
 - **WHEN** a CLI emits `received_at` on a JSON response
-- **THEN** the value SHALL have the format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset
-- **AND** it SHALL never use the `Z` designator (a machine on UTC writes `+00:00`)
+- **THEN** the value has format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset and never uses Z, including +00:00 on UTC
 
 #### Scenario: Validator rejects malformed payloads without repair
-
 - **WHEN** a payload carries a missing field, wrong field type, or invalid enum value
-- **THEN** the validator SHALL return an error list identifying each violation
-- **AND** it SHALL never attempt to repair, infer, or reformat the value
-- **AND** the coordinator SHALL handle the verdict and stop further processing
+- **THEN** the validator returns errors without correction, and the coordinator does not process it as an accepted report or advance ordinary lifecycle handling before applicable recovery resolves it
 
 #### Scenario: Validator checks notice, progress, and conflict_detected kinds
-
 - **WHEN** the coordinator receives a notice, progress, or conflict_detected payload
-- **THEN** it SHALL invoke the validator with `--kind notice`, `--kind progress`, or `--kind conflict_detected` respectively, except that a progress payload under a `step_machine` adapter is validated with kind `progress` inside the `sai-state` progress emit
-- **AND** the validator SHALL check the closed-shape contract for that kind
-- **AND** it SHALL return a verdict
+- **THEN** it validates through the corresponding kind and consumes the verdict, using the same module inside the progress emit for a step_machine progress payload
 
 #### Scenario: Coordinator consumes verdict instead of prose validation
-
 - **WHEN** a coordinator result-processing loop receives a payload
-- **THEN** it SHALL run the validator tool, or the `sai-state` progress emit for a `step_machine` progress payload, and read the verdict
-- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `received_at` format rules in its own prose or logic
-- **AND** any validation logic SHALL be implemented as code in the tool, not duplicated in the coordinator or other consumers
+- **THEN** it reads the tool verdict or progress emit validation block rather than duplicating shape, field-type, or timestamp checks in prose or consumer logic
+
+#### Scenario: Full Direct Build consumes verified report references
+- **WHEN** a full Direct Build worker returns a post-ready path/hash reference
+- **THEN** the coordinator passes reference values to file-mode validation and consumes only its accepted parsed payload without copying or re-reading the report
 
 ### Requirement: Progress registration precedes same-turn presentation and continuation
 

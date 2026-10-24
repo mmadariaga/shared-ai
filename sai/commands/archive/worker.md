@@ -32,6 +32,11 @@ described below, never on an initial dispatch.
 
 ## Lifecycle
 
+When the task-disclosure continuation carries the full Direct Build route's
+outermost `--report-dir` line, Fetch @sai/policies/direct-build-report-transport.md
+and use it for every prepare, execute, and correction report. Standalone
+behavior is unchanged.
+
 The phase declares no progress plan: emit no progress events and no notice.
 Every stretch opens with `event: ready` before any expensive work. Every run
 closes with exactly one terminal status — `completed`, `needs_input`, `failed`,

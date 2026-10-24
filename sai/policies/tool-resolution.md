@@ -64,7 +64,9 @@ takes one — never substitute one for the other.
   `--cwd`.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
-  them).
+  them). Full Direct Build uses `--report-dir <authorized-dir> --report-file
+  <path> --report-hash <sha256> --json` instead of stdin, per
+  `@sai/policies/direct-build-report-transport.md`.
 - `risk-signals.js`: `node <tool-path> compute --parent <branch> [--cwd
   <project-root>]`, and `node <tool-path> validate --parent <branch> --file
   <review.md> [--cwd <project-root>]`. It always prints one JSON object
