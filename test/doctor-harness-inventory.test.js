@@ -252,10 +252,12 @@ describe('doctor harness inventory', () => {
         }
         assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', 'coordinator.md')),
           `${harness} should install the build coordinator card`);
-  for (const card of ['coordinator.md', 'worker.md', 'command-bootstrap.md']) {
+  for (const card of ['coordinator.md', 'worker.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', card)),
-            `${harness} should install the routed commit ${card} card`);
+            `${harness} should install the goal-driven commit ${card} card`);
         }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'command-bootstrap.md')), false,
+          `${harness} must not install a commit command bootstrap`);
         assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'body.md')), false,
           `${harness} must not install the retired commit body card`);
         assert.ok(fs.existsSync(path.join(base, 'commands', 'sai-build.md')),

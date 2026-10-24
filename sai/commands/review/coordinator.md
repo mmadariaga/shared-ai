@@ -4,6 +4,7 @@ Fetch @sai/policies/public-chat.md and follow it exactly.
 Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/finding-state.md
 Fetch @sai/commands/review/options.md. It declares the options this command accepts and the form of the parent branch.
 
@@ -70,14 +71,14 @@ A new review regenerates `review.md` completely: earlier findings, their ` (FIXE
 
 ## Obstacles
 
-The only obstacle is the worker's report: an unreadable or invalid `review.md` (the Verify check fails), a worker that returns no ready, a worker that stays silent past what the review needs, or a worker that drifts from its instruction. The goal is a valid report, so respond and keep moving.
+Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. The only obstacle is the worker's report: an unreadable or invalid `review.md` (the Verify check fails), a worker that returns no ready, a worker that stays silent past what the review needs, or a worker that drifts from its instruction. The goal is a valid report, so respond and keep moving.
 
-Give the obstacle a budget of 3 attempts. An attempt is one response with an approach different from the previous one, so repeating an approach is not an attempt. The approaches are:
+The approaches are:
 
 - a corrected instruction to the same worker that names the defect and where it is, which includes asking again when the worker is silent or drifted;
-- a new worker, created the same way as the first. It replaces the old one, gets the ready handshake, and receives a hand-over note you write that names the symptom. It never receives the old worker's history, and it reviews from the first step;
+- a new worker, created the same way as the first. It receives a hand-over note you write that names the symptom, and it reviews from the first step;
 - a mechanical repair you write yourself when the defect is only mechanical, such as a `Summary:` tally that miscounts the findings. A repair never adds, removes, or rewrites a finding.
 
-An exhausted budget escalates at once. State in plain words what happened, what you tried, and that nothing is committed. Ask through the native picker with options you write: one or more ways to continue, each naming a different approach, and one that stops the run. A `continue` resets the budget and you carry out the chosen approach; a `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no `review.md` and no commit.
+When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no `review.md` and no commit.
 
 Before ending in any outcome, `close` the `sai-state` session.

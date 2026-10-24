@@ -55,11 +55,11 @@ const IMPLEMENT_ROLES = Object.freeze([
   }),
 ]);
 
-// The implement, review, spec, design, audit, and merge roles render from their
-// own binding templates, which carry only the create and continue calls: their
-// coordinator owns the lifecycle. The spec, design, audit, and merge phases keep
-// their positions and names in PHASE_ORDER; only their binding template differs
-// from the other phases.
+// The implement, review, spec, design, audit, merge, and commit roles render from
+// their own binding templates, which carry only the create and continue calls:
+// their coordinator owns the lifecycle. The spec, design, audit, merge, and
+// commit phases keep their positions and names in PHASE_ORDER; only their binding
+// template differs from the other phases.
 const STANDALONE_PHASES = new Set([
   ...IMPLEMENT_ROLES.map(role => role.phase),
   'spec',
@@ -68,6 +68,7 @@ const STANDALONE_PHASES = new Set([
   'performance',
   'accessibility',
   'merge',
+  'commit',
 ]);
 // Every role that pins its own contract and is validated by position after the
 // canonical phases.

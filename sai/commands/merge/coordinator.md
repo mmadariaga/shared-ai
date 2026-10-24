@@ -4,6 +4,7 @@ Fetch @sai/policies/public-chat.md and follow it exactly.
 Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/incremental-review.md
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: `[<branch>] [--rebase|--squash]`. Where `remember.md` and `incremental-review.md` say to dispatch a `budget-explorer`, you do that lookup yourself: the only subagent of this run is the merge worker. You write in the language of the chat.
@@ -58,11 +59,11 @@ Use Conventional Commits. The subject is imperative, lowercase after the colon, 
 
 ## Obstacles
 
-An obstacle is anything that prevents closing a stop or the run: a resolution that fails the check or the review, a new failure, a worker whose report cannot be read, a worker that stays silent or drifts from its instruction, a git refusal, or a tool error. The goal is to close the stop, so respond and keep moving.
+Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. An obstacle here is anything that prevents closing a stop or the run: a resolution that fails the check or the review, a new failure, a worker whose report cannot be read, a worker that stays silent or drifts from its instruction, a git refusal, or a tool error. The goal is to close the stop, so respond and keep moving.
 
-Name each obstacle (`stop-{n}`, `new-failure`, `collision`) and give it a budget of 3 attempts. An attempt is one response with an approach different from the previous one: a corrected instruction (asking the same worker again when its report is unreadable, silent, or drifted), a different correction of the work (a different region text, or a whole-side choice where commit intent allows it), or a new worker. A new worker replaces the old one, gets the ready handshake, and receives `handover-{k}.md` that you write in the run directory: method, branch, the provenance, the current stop and its record and hash, the reports and decisions so far, the files already written, and the symptom. Never forward the old worker's history. Before each attempt emit `attempt`; when it is rejected as `exhaustion`, escalate at once.
+Name each obstacle `stop-{n}`, `new-failure`, or `collision`. The approaches are a corrected instruction (asking the same worker again when its report is unreadable, silent, or drifted), a different correction of the work (a different region text, or a whole-side choice where commit intent allows it), or a new worker. A new worker gets `handover-{k}.md`, which you write in the run directory: method, branch, the provenance, the current stop and its record and hash, the reports and decisions so far, the files already written, and the symptom. Before each attempt emit `attempt`.
 
-Force majeure escalates at once without spending an attempt: commit intent that cannot decide (step 3 of a stop), an operation that needs human authorization, or an exhausted budget. To escalate, emit `escalate`, then state in plain words what happened, what is done, and what you tried, and ask through the native picker with options you write: ways to continue, each a different approach; one that accepts the new failure and finalizes when the obstacle is `new-failure`; one that leaves everything as it is; and, while a merge or rebase is in progress, one that aborts it. Emit `answer` with `continue` or `stop` for the user's choice. A dismissed question closes the run `escalated`, with the merge or rebase left in progress.
+Force majeure here, besides what the policy names: commit intent that cannot decide (step 3 of a stop). When escalating, emit `escalate`, and write the options so they include: ways to continue, each a different approach; one that accepts the new failure and finalizes when the obstacle is `new-failure`; one that leaves everything as it is; and, while a merge or rebase is in progress, one that aborts it. Emit `answer` with `continue` or `stop` for the user's choice. A dismissed question closes the run `escalated`, with the merge or rebase left in progress.
 
 ## Run state
 
