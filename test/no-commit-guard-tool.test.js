@@ -313,5 +313,5 @@ test('the allow_commit carrier and the direct-build windows are wired in explore
   const archive = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'commands', 'archive', 'coordinator.md'), 'utf8');
   assert.match(archive, /--allow-commit/);
   const backfill = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'commands', 'backfill', 'coordinator.md'), 'utf8');
-  assert.match(backfill, /no backfill window\s*\n\s*carries `allow_commit`/);
+  assert.match(backfill, /no backfill window carries `allow_commit`/);
 });

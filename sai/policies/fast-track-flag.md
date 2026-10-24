@@ -4,13 +4,19 @@ Canonical model for the `--fast-track` opt-in. This file is the single source
 for parse ownership, banner ownership, and the state-channel name. Consuming
 cards reference it; they SHALL NOT restate or redefine the model inline.
 
+## Scope
+
+The model governs `/sai-archive` and `/sai-backfill`, the two commands where
+the flag skips real questions and gates. No other command takes part in it:
+the commands listed under the exceptions below accept the token and ignore it,
+and `sai-explore` keeps its own parse.
+
 ## Canonical model
 
-1. **Owner** — the coordinator (or the main session on surfaces without a
-   routed coordinator) owns BOTH the parse and the banner for `sai-explore`
-   and `sai-archive`. Workers
-   never parse `--fast-track` for activation and never emit the activation
-   banner; `sai-backfill` is the phase-owned exception below.
+1. **Owner** — the coordinator owns BOTH the parse and the banner for
+   `sai-archive`. Workers never parse `--fast-track` for activation and never
+   emit the activation banner; `sai-backfill` is the phase-owned exception
+   below.
 2. **Parse** — inspect the opaque request string for the positional token
    `--fast-track`. On presence: activate fast-track, remove the token, trim
    surrounding whitespace, and use the cleaned remainder downstream.
@@ -25,12 +31,9 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
    invocation-scoped session state named exactly `fast_track_active`
    (boolean). It is never written to `.openspec.yaml`, configuration, or any
    file.
-5. **Canonical parse order** — on every surface that also parses other
-   options, the fast-track presence-plus-strip parse runs FIRST, and every
-   other flag validation (for example `--overview-lang`) runs afterwards on
-   the cleaned remainder. The banner, when due, prints at its owning parse.
-   This order keeps banner timing identical across surfaces that share the
-   same halt literals.
+5. **Canonical parse order** — the fast-track presence-plus-strip parse runs
+   FIRST, and every other validation runs afterwards on the cleaned
+   remainder. The banner, when due, prints at its owning parse.
 
 ## Deliberate documented exceptions
 
@@ -38,12 +41,16 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
 
 - `sai-backfill` parses `--fast-track` and the diff-source tokens
   (`--staged | --unstaged | --diff <sha>`) in its own worker card
-  (phase-owned parse, no banner).
+  (phase-owned parse, no banner). Standalone, it keeps its interview as user
+  questions; the flag skips exactly the generated reconciliation questions,
+  the spec-conflict decision, and the change-name confirmation.
 - `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-deep-review`, `/sai-build`,
   `/sai-3-implement`, and `/sai-4-review` accept and ignore an explicit
   `--fast-track` token: they commit locally by
   invocation and ask for no approval, so the token activates nothing and
   prints no banner. Runs with and without the token behave identically.
+- `sai-explore` keeps its own parse and the behaviors that follow; they are
+  outside this model.
 - `sai-explore`'s POC lane does NOT auto-approve or skip any of its three stops
   under `--fast-track`: the go/no-go at the close of stage 1, the `C1..Cn`
   candidate-list agreement, and the verdict menu. All three are always

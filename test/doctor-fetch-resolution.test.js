@@ -297,8 +297,9 @@ describe('doctor fetch resolution', () => {
 
       for (const [index, folder] of phaseFolders.entries()) {
         for (const base of [claudeBase, opencodeBase]) {
-          const launcherPath = path.join(base, 'sai', 'commands', folder, 'command-bootstrap.md');
-          assert.ok(fs.existsSync(launcherPath), `launcher for ${folder} should be installed`);
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', folder, 'coordinator.md')), `coordinator for ${folder} should be installed`);
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', folder, 'command-bootstrap.md')), false,
+            `${folder} has no installed command bootstrap`);
         }
       }
     } finally {
@@ -329,13 +330,13 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} harness should install the ${utility} utility body card`);
         }
-  for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'archive', card)),
-            `${harness} harness should install the routed archive ${card} card`);
-        }
-        for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'backfill', card)),
-            `${harness} harness should install the routed backfill ${card} card`);
+  for (const name of ['archive', 'backfill']) {
+          for (const card of ['coordinator.md', 'worker.md']) {
+            assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', name, card)),
+              `${harness} harness should install the goal-driven ${name} ${card} card`);
+          }
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', name, 'command-bootstrap.md')), false,
+            `${harness} harness must not install a ${name} command bootstrap`);
         }
         for (const card of ['coordinator.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'deep-review', card)),

@@ -238,13 +238,13 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} should install the ${utility} utility body card`);
         }
-  for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'archive', card)),
-            `${harness} should install the routed archive ${card} card`);
-        }
-        for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'backfill', card)),
-            `${harness} should install the routed backfill ${card} card`);
+  for (const name of ['archive', 'backfill']) {
+          for (const card of ['coordinator.md', 'worker.md']) {
+            assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', name, card)),
+              `${harness} should install the goal-driven ${name} ${card} card`);
+          }
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', name, 'command-bootstrap.md')), false,
+            `${harness} must not install a ${name} command bootstrap`);
         }
         for (const card of ['coordinator.md']) {
            assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'deep-review', card)),
