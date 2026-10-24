@@ -6,34 +6,24 @@ Define the routed coordinator/worker architecture for `/sai-commit`: a minimal-l
 
 ## Requirements
 
-### Requirement: Routed card set and boot routing
-
-`sai-commit` SHALL be a routed-shaped command whose card set is exactly `sai/commands/commit/coordinator.md` and `sai/commands/commit/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `commit` among the routed names so that selecting it fetches `@sai/commands/commit/coordinator.md`, and SHALL exclude `commit` from the utility-name lists; no boot path SHALL select a commit `body.md`.
-
-#### Scenario: Both boots route commit to the coordinator card
-
-- **WHEN** either supported harness boots with `command_name` set to `commit`
-- **THEN** `commit` appears in that boot adapter's routed-name list and the selected card is `@sai/commands/commit/coordinator.md`
-- **AND** `commit` does not appear in the boot's utility-name list
-
-#### Scenario: The utility body surface is retired
-
-- **WHEN** `sai/commands/commit/` is inspected after the change
-- **THEN** no `body.md` exists and no adapter, launcher, or test fixture selects one for `sai-commit`
-
 ### Requirement: Minimal lifecycle adapter
 
-The commit coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is exactly the opaque single-string `arguments_value` received from the active wrapper byte-for-byte; `dispatch_operation` dispatches exactly one `sai-commit-worker` through the active commit-worker binding using that envelope; `continuation_operation` continues the same worker forwarding the selected answer value; `allowed_nonterminal_extensions` is none. The adapter SHALL declare NO `progress_plan` — no progress event exists in this lifecycle, no panel plan renders, and no acknowledgement literal is defined — and NO `recovery_policy`: the coordinator SHALL NOT fetch `@sai/policies/bounded-recovery.md`, keep no recovery ledger, and perform no recovery continuations. A replacement worker SHALL reconstruct only from the complete original envelope, the opaque input history (including forwarded authorization answers), and the ordered duplicate-free changed-files union.
+The commit coordinator SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections, and SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. It SHALL keep `arguments_value` byte-for-byte and hand it to the worker unchanged, reading from it only whether the user typed `--allow-attribution`. It SHALL create exactly one `sai-commit-worker` through the commit-worker binding with the ready prompt alone, send `arguments_value` to the same worker after `event: ready`, and continue that worker with each forwarded answer value. The run SHALL declare no progress plan, no progress event, no acknowledgement literal, and no recovery ledger. A worker without ready or a readable result and a failing `commit.js` call SHALL be obstacles handled under `sai/policies/obstacle-escalation.md`, with the attempt count kept in the conversation; the authorization question, the pushed-amend and sensitive-file confirmations, a declined answer, and validation violations SHALL remain planned stops. A replacement worker SHALL start from the ready handshake and receive a hand-over written by the coordinator that carries the original `arguments_value`, the questions already answered with their answer values, and the symptom.
 
 #### Scenario: A commit run carries no progress or recovery machinery
 
 - **WHEN** the commit coordinator card is read
-- **THEN** it declares no `progress_plan`, defines no progress event or acknowledgement literal, declares no `recovery_policy`, and never fetches the bounded-recovery policy
+- **THEN** it declares no progress plan, defines no progress event or acknowledgement literal, and fetches none of the command runner, worker core, bounded-recovery, stop-options, or unattended-runtime-recovery contracts
 
 #### Scenario: Envelope stays opaque end-to-end
 
 - **WHEN** a `/sai-commit` invocation forwards its request to the worker
 - **THEN** the worker receives exactly the original single-string `arguments_value` and no parsed, cleaned, or persisted variant of it
+
+#### Scenario: A worker without a readable result is an obstacle
+
+- **WHEN** the commit worker returns no ready or a result that is not one of its defined shapes
+- **THEN** the coordinator handles it as an obstacle under the shared obstacle policy instead of stopping with a contract stop text
 
 ### Requirement: Worker owns authoring and never mutates git
 
@@ -49,14 +39,14 @@ The dispatched `sai-commit-worker` SHALL perform the technical procedure of call
 
 ### Requirement: Authorization transport and coordinator-only execution
 
-The authorization ask SHALL be returned by the worker as a `needs_input` lifecycle result carrying the question "Run `git commit` on the staged changes above?" (for an amend, "Run `git commit --amend` with the message above?") with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL present the exact question and options through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the exact answer value to the same worker. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it invokes `node sai/tools/commit.js apply --json --cwd <repo>` with the worker-authored message on stdin using a heredoc, adding `--amend` when an amend was requested and `--acknowledge-secrets <list>` with the sensitive-file list the user already confirmed, captures the result, and on success shows the message output. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` or no answer the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal output SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
+The authorization ask SHALL be returned by the worker as a `needs_input` result carrying the question "Run `git commit` on the staged changes above?" (for an amend, "Run `git commit --amend` with the message above?") with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL print the worker's `summary` as ordinary text, present the exact question and options through the native option-picker, and forward the exact answer value to the same worker; an off-option reply or silence SHALL re-present the same question unchanged. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it invokes `commit.js apply --json --cwd <repo>` with the worker-authored message on stdin through the literal-message procedure of `sai/policies/command-execution.md`, adding `--amend` when an amend was requested and `--acknowledge-secrets <list>` with the sensitive-file list the user already confirmed, and on success shows the resulting commit SHA and subject. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal output SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
 
 #### Scenario: Authorized answer triggers coordinator execution
 - **WHEN** the user selects `yes` at the presented ask
-- **THEN** the forwarded answer returns a completed worker payload restating the exact message, the coordinator alone runs `node sai/tools/commit.js apply` with the worker-authored message on stdin, and the run closes with the summary followed by exactly `Commit done.`
+- **THEN** the forwarded answer returns a completed worker result, the coordinator alone runs `commit.js apply` with the worker-authored message on stdin, and the run closes with the summary followed by exactly `Commit done.`
 
 #### Scenario: Decline executes nothing
-- **WHEN** the user selects `no` or gives no answer
+- **WHEN** the user selects `no`
 - **THEN** no git mutation runs, the worker-authored summary is printed verbatim noting the message remains ready to copy, and the stop carries no completion literal
 
 #### Scenario: Session grant skips later asks in the same session
@@ -97,3 +87,17 @@ The commit coordinator SHALL run the guard's `snapshot` step at each window open
 
 - **WHEN** the worker returns the result carrying the authorization ask and the user authorizes the commit
 - **THEN** the coordinator verifies the window before presenting the ask and executes the authorized commit only after that verify, outside the window
+
+### Requirement: Direct card set and wrapper fetch
+
+`sai-commit` SHALL run on the goal-driven shape. Its card set SHALL be exactly `sai/commands/commit/coordinator.md`, `sai/commands/commit/worker.md`, and `sai/commands/commit/instructions.md`, with no `invocation.md`, no `body.md`, and no `command-bootstrap.md`. Both `/sai-commit` wrappers (`commands/claude/sai-commit.md` and `commands/opencode/sai-commit.md`) SHALL fetch the harness fetch skill, carry the clean-start line, and fetch `sai/commands/commit/coordinator.md` directly, forwarding the InvocationEnvelope with `command_name: commit`; they SHALL fetch no boot adapter and no command bootstrap. Neither harness boot adapter SHALL list `commit` among its routed or utility names. The retired `sai/commands/commit/command-bootstrap.md` destination SHALL be recorded as a retired install-manifest entry so that an upgrade install removes it from the installed roots of both harnesses.
+
+#### Scenario: The wrappers reach the coordinator card directly
+
+- **WHEN** either harness's `sai-commit.md` wrapper is read
+- **THEN** it fetches the harness fetch skill and `sai/commands/commit/coordinator.md`, names no boot adapter or `command-bootstrap.md`, and neither boot adapter lists `commit` as a routed or utility name
+
+#### Scenario: The utility body surface is retired
+
+- **WHEN** `sai/commands/commit/` is inspected after the change
+- **THEN** no `body.md` and no `command-bootstrap.md` exists and no adapter, launcher, or test fixture selects one for `sai-commit`

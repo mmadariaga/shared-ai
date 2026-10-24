@@ -69,6 +69,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/prereqs-check.md',
     '@sai/policies/prereqs-paths.md',
     '@sai/policies/tool-resolution.md',
+    '@sai/policies/obstacle-escalation.md',
     '@skills/budget-executor/SKILL.md',
     '@skills/budget-explorer/SKILL.md',
     '@sai/policies/incremental-review.md',
@@ -253,13 +254,10 @@ test('the three commands have usage pages that the references link', () => {
 test('the coordinator carries the resilience contract: attempt budget, escalation, replacement, resumption, closing report', () => {
   const source = read(COORDINATORS[0]);
   assert.match(source, /implement-run@1/);
-  assert.match(source, /budget of 3 attempts/);
-  assert.match(source, /different from the previous one/);
-  assert.match(source, /`exhaustion`, the budget is gone: escalate at once/);
+  assert.match(source, /Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
   assert.match(source, /Do not advance to another task first/);
   assert.match(source, /`final-suite` obstacle/);
-  assert.match(source, /resets that obstacle's counter/);
-  assert.match(source, /one that stops the run/);
+  assert.match(source, /GREEN never touches tests/);
   assert.match(source, /a new worker/);
   assert.match(source, /handover-\{role\}-\{k\}\.md/);
   assert.match(source, /mkdtemp --harness <claude\|opencode> --prefix implement-\{name\}-/);
@@ -351,7 +349,7 @@ test('the implement and review bindings render from the standalone template and 
         : `implement/${item.phase}-worker`;
       assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
     }
-    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'commit');
+    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'archive');
     assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
   }
 });

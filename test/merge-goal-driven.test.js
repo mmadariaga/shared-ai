@@ -26,13 +26,14 @@ const fetches = text => text.split('\n').filter(line => line.startsWith('Fetch @
 const coordinator = () => read('sai/commands/merge/coordinator.md');
 const STEPS = ['strategy', 'apply', 'test-correction', 'renumbering-plan'];
 
-test('the coordinator is one goal-driven card that loads only the five policies and no budget binding', () => {
+test('the coordinator is one goal-driven card that loads only the six policies and no budget binding', () => {
   const card = coordinator();
-  assert.deepEqual(fetches(card).slice(0, 5), [
+  assert.deepEqual(fetches(card).slice(0, 6), [
     'Fetch @sai/policies/public-chat.md',
     'Fetch @sai/policies/remember.md',
     'Fetch @skills/safe-operations/SKILL.md',
     'Fetch @sai/policies/tool-resolution.md',
+    'Fetch @sai/policies/obstacle-escalation.md',
     'Fetch @sai/policies/incremental-review.md',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery',
@@ -103,7 +104,7 @@ test('E4: a rebase runs the suite once on the final tree and corrects a new fail
   assert.match(final, /the corrections go in one additional local commit on top of the rebased branch, made when verification shows no new failure/);
   assert.match(final, /On a merge the corrections join the merge commit/);
   assert.match(coordinator(), /another unmerged stop starts a new stop with the same worker/);
-  assert.match(coordinator(), /Name each obstacle \(`stop-\{n\}`, `new-failure`, `collision`\) and give it a budget of 3 attempts/);
+  assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `new-failure`, or `collision`/);
 });
 
 test('E5, E10: commit intent that cannot decide escalates through the picker with written options, and abort is only explicit', () => {
@@ -139,8 +140,8 @@ test('E8: an interrupted run resumes from the store and the git state, and a rep
   assert.match(resume, /Without the store, rebuild from the git state and the run directory/);
   assert.match(resume, /give it a hand-over file/);
   assert.match(card, /A `running` or `escalated` stage whose git state shows no merge or rebase in progress is a run that ended outside this command/);
-  assert.match(card, /receives `handover-\{k\}\.md` that you write in the run directory/);
-  assert.match(card, /Never forward the old worker's history/);
+  assert.match(card, /gets `handover-\{k\}\.md`, which you write in the run directory/);
+  assert.match(read('sai/policies/obstacle-escalation.md'), /Never forward the old worker's history/);
   assert.doesNotMatch(card, /replacement_reconstruction_fields|--reconstruct/);
 });
 

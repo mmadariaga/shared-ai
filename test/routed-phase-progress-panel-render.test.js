@@ -9,7 +9,8 @@ const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifes
 
 const repoRoot = path.join(__dirname, '..');
 const routedPhases = [
-  'commit',
+  'archive',
+  'backfill',
 ];
 
 function read(relativePath) {
@@ -82,8 +83,8 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
       assert.match(binding.text, /worker never emits panel tool calls/);
     }
 
-    const standaloneBindings = bindings.filter(item => ['spec', 'design', 'security', 'performance', 'accessibility', 'red', 'green', 'review'].includes(item.phase));
-    assert.equal(standaloneBindings.length, 8, `${harness} should retain spec, design, the three audits, RED, GREEN, and review bindings`);
+    const standaloneBindings = bindings.filter(item => ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'red', 'green', 'review'].includes(item.phase));
+    assert.equal(standaloneBindings.length, 9, `${harness} should retain spec, design, the three audits, commit, RED, GREEN, and review bindings`);
     for (const binding of standaloneBindings) {
       assert.doesNotMatch(binding.text, /panel-render\.md/,
         `${harness}/${binding.destinationName} must not bind the progress panel for a standalone coordinator`);

@@ -122,6 +122,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     ],
     'sai/commands/plan/cycle.md': [
       '@sai/commands/plan/worker-common.md', '@sai/policies/incremental-review.md', '@sai/policies/artifact-review-contract.md',
+      '@sai/policies/obstacle-escalation.md',
     ],
   };
   for (const [file, targets] of Object.entries(allowed)) {
@@ -207,8 +208,8 @@ test('the shared cycle owns the goal-driven rules for questions, checks, review,
   assert.match(cycle, /Never force-add with `-f`/);
   assert.match(cycle, /never push/);
   assert.match(cycle, /When every commit path is ignored, close the segment without a commit and say so in the closing report/);
-  assert.match(cycle, /budget of 3 attempts/);
-  assert.match(cycle, /different from the previous one/);
+  assert.match(cycle, /Fetch @sai\/policies\/obstacle-escalation\.md/);
+  assert.match(cycle, /Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
   assert.match(cycle, /hand-over file/);
   assert.match(cycle, /The disk wins over the store/);
   assert.match(cycle, /in a repository that ignores `openspec\/changes\/\*\*` it leaves no commit to find/);

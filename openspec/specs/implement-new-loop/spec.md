@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Implement-new loads only non-stopping cross-cutting policies
 
-The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `artifact-review-contract` for the step review, `finding-state` for the audit findings, and `sai-learnings-format` for the learnings promotion at run close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
+The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `obstacle-escalation` for its obstacles and escalation, `artifact-review-contract` for the step review, `finding-state` for the audit findings, and `sai-learnings-format` for the learnings promotion at run close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
 
 #### Scenario: Shared stopping orchestration is absent
 
