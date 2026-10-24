@@ -35,32 +35,6 @@ test('Step 1 security worker card loads the shared audit rules and no shared-orc
   }
 });
 
-test('security coordinator declares the canonical five-step progress plan in order with labels', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-
-  for (const id of ['resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'resolve-sca', 'close-security-outcome']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
-      `the plan should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /resolve-security-scope[\s\S]{0,300}discover-module-map[\s\S]{0,300}resolve-sast-analysis[\s\S]{0,300}resolve-sca[\s\S]{0,300}close-security-outcome/,
-    'the five canonical step ids should be declared in order'
-  );
-  assert.match(coordinator, /resolve-security-scope[\s\S]{0,200}Resolve security scope/i);
-  assert.match(coordinator, /discover-module-map[\s\S]{0,200}Discover modules and trust boundaries/i);
-  assert.match(coordinator, /resolve-sast-analysis[\s\S]{0,200}Resolve SAST analysis/i);
-  assert.match(coordinator, /resolve-sca[\s\S]{0,200}Audit dependencies/i);
-  assert.match(coordinator, /close-security-outcome[\s\S]{0,200}Close security outcome/i);
-});
-
-test('security coordinator admits the progress shape as the sole nonterminal extension', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-
-  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}(?:progress|sole nonterminal)/i);
-  assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
-});
-
 test('security transport: the audit coordinator carries arguments_value, the worker gets a brief, and the bindings keep their harness calls', () => {
   const coordinator = artifact('sai/commands/audit/coordinator.md');
   const worker = artifact('sai/commands/security/worker.md');
@@ -82,16 +56,6 @@ test('security transport: the audit coordinator carries arguments_value, the wor
   assert.match(bindings[1], /task\(task_id: "<captured task ID>"/);
 });
 
-test('security coordinator renders at dispatch and reconciles at run-closing results', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-
-  assert.match(coordinator, /at dispatch/i);
-  assert.match(coordinator, /completed[\s\S]{0,240}unmarked[\s\S]{0,160}completed/i);
-  assert.match(coordinator, /(?:failed|cancelled)[\s\S]{0,200}(?:as last rendered|freeze)/i);
-  assert.match(coordinator, /needs_input[\s\S]{0,240}(?:unchanged|as last rendered)/i);
-  assert.match(coordinator, /continue_after_progress[\s\S]{0,160}protocol[- ]?only/i);
-});
-
 test('security worker contract enumerates the five ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/security/worker.md');
 
@@ -108,48 +72,8 @@ test('security worker contract enumerates the five ids and pins the batch semant
   assert.doesNotMatch(worker, /progress event|needs_input/i, 'the worker reports step-done batches and asks through the shared rules');
 });
 
-test('security coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-  const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/commands/security/worker.md');
-
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
-    'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
-    'the policy should state the declared-step threshold');
-  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
-    'no task list / todowrite call should be emitted below the threshold');
-  assert.doesNotMatch(coordinator, /fewer than three|below three/,
-    'the coordinator should reference the policy and not restate the threshold constant');
-  assert.match(policy, /coordinator session/i,
-    'the policy should record the coordinator-only emission ownership');
-  assert.doesNotMatch(coordinator, /date \+%H:%M/,
-    'the coordinator should carry no per-harness wall-clock command');
-
-  assert.match(policy, /todowrite/i,
-    'the policy should name the opencode todowrite tool');
-  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
-    'the policy should tie the disabled-by-default tool to the subagent context');
-  assert.doesNotMatch(coordinator, /Get-Date/,
-    'the coordinator should carry no PowerShell wall-clock command');
-
-  assert.doesNotMatch(worker, /no Milestone Stamp/i,
-    'the worker never renders stamps, so its contract states nothing about them');
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-});
-
 // ─── audit-step-gated-instructions (step-gated delivery replicated onto the audit family) ──
 
-const SECURITY_PLAN_STEPS = [
-  ['resolve-security-scope', 'Resolve security scope'],
-  ['discover-module-map', 'Discover modules and trust boundaries'],
-  ['resolve-sast-analysis', 'Resolve SAST analysis'],
-  ['resolve-sca', 'Audit dependencies'],
-  ['close-security-outcome', 'Close security outcome'],
-];
 const SECURITY_STEP_MAP = {
   'resolve-security-scope': null,
   'discover-module-map': 'sai/commands/security/steps/discover-module-map.md',
@@ -157,55 +81,6 @@ const SECURITY_STEP_MAP = {
   'resolve-sca': 'sai/commands/security/steps/resolve-sca.md',
   'close-security-outcome': 'sai/commands/security/steps/close-security-outcome.md',
 };
-
-test('step-gated: the security coordinator declares step_machine and loads stage-machine.md', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-
-  assert.match(coordinator, /step_machine: security-standalone@1/,
-    'the coordinator should declare step_machine: security-standalone@1');
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.doesNotMatch(coordinator, /step_pointer_map/,
-    'the static step_pointer_map should not be declared');
-});
-
-test('step-gated: progress continuations carry exactly two lines with the deterministic Active step pointer', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-  assert.match(stageMachine, /the two-line continuation/i,
-    'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /`Active step: none` line/,
-    'stage-machine.md should specify the terminal pointer line');
-});
-
-test('step-gated: non-progress continuations carry no pointer line', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /do not invoke emit and do not consult the machine/,
-    'stage-machine.md should state that non-progress continuations do not invoke emit');
-  assert.match(stageMachine, /active step file persists/,
-    'stage-machine.md should state that the active step file persists');
-});
-
-test('step-gated: replacement reconstruction includes active_step_id', () => {
-  const coordinator = artifact('sai/commands/security/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /replacement_reconstruction_fields[\s\S]{0,400}active_step_id/,
-    'replacement reconstruction should include the departing worker active_step_id');
-  assert.match(stageMachine, /A replacement worker re-resolves/,
-    "stage-machine.md should describe replacement re-resolution");
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-});
 
 test('step-gated: the security worker loads steps/common.md at dispatch and executes only the active step', () => {
   const worker = artifact('sai/commands/security/worker.md');

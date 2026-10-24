@@ -39,14 +39,6 @@ test('no-op events render nothing and milestone stamps retain their validator so
   assert.match(policy, /The render precedes the dispatch call itself/);
 });
 
-test('all three audit coordinators defer progress batching to the runner without a render-first override', () => {
-  for (const phase of ['security', 'performance', 'accessibility']) {
-    const card = read(`sai/commands/${phase}/coordinator.md`);
-    assert.doesNotMatch(card, /through the shared command runner before worker continuation/, phase);
-    assert.match(card, /command-runner\.md/, phase);
-  }
-});
-
 test('existing dependency work remains installed without expanding review/audit consumers', () => {
   for (const harness of ['claude', 'opencode']) {
     const fetch = read(`skills/${harness}/fetch/SKILL.md`);
@@ -58,7 +50,7 @@ test('existing dependency work remains installed without expanding review/audit 
     const worker = read(`sai/commands/${phase}/worker.md`);
     assert.doesNotMatch(worker, /Fetch @sai\/policies\/prereqs-check\.md|prereqs\.js/);
   }
-  assert.match(read('sai/commands/deep-review/coordinator.md'), /runs no OpenSpec prerequisite check/);
+  assert.doesNotMatch(read('sai/commands/deep-review/coordinator.md'), /Fetch @sai\/policies\/prereqs/);
 });
 
 test('combined startup retains failure, legitimate early-outcome and reconstruction contracts', () => {

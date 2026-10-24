@@ -96,7 +96,7 @@ A new audit run SHALL regenerate the report completely and SHALL NOT resume an i
 
 ### Requirement: Audit step machines deliver the step files by pointer
 
-`sai-state` SHALL register `security-steps@1`, `performance-steps@1`, and `accessibility-steps@1`, each built with `sai-state/machines/linear-steps.js`, whose first step is the audit's fileless scope step and whose remaining steps point at the files under `sai/commands/{audit}/steps/`. The former `*-standalone@1` machines SHALL remain registered while `/sai-deep-review` still composes the former audit coordinators.
+`sai-state` SHALL register `security-steps@1`, `performance-steps@1`, and `accessibility-steps@1`, each built with `sai-state/machines/linear-steps.js`, whose first step is the audit's fileless scope step and whose remaining steps point at the files under `sai/commands/{audit}/steps/`. The former `security-standalone@1`, `performance-standalone@1`, and `accessibility-standalone@1` machines SHALL NOT be registered, and `/sai-deep-review` SHALL drive the same `{audit}-steps@1` machines in its audit cycles.
 
 #### Scenario: Reset names the first filed step
 - **WHEN** the coordinator resets `security-steps@1`

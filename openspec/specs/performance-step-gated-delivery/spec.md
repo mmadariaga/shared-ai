@@ -19,20 +19,6 @@ per non-fileless plan step (`map-stack-hot-paths`,
 - **WHEN** any file under `sai/commands/performance/steps/` other than `common.md` is read
 - **THEN** it names exactly its own active step id in an `Active step:` declaration
 
-### Requirement: Performance Coordinator Pointer Continuations
-
-The performance coordinator SHALL send every progress-event continuation as exactly two lines whose second line is the deterministic `Active step:` pointer derived from the step machine per `@sai/policies/stage-machine.md` § Step machines. The coordinator SHALL deliver the terminal `Active step: none` line once the plan is fully marked. It SHALL open the post-ready task disclosure with the `map-stack-hot-paths` pointer returned by the segment-start `reset`, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. It SHALL carry no pointer line on any other continuation that is not a progress-event continuation. Replacement reconstruction fields SHALL include `active_step_id`, which is `map-stack-hot-paths` before the first progress event.
-
-#### Scenario: All-marked plan delivers the terminal pointer
-
-- **WHEN** a progress event marks the last unmarked plan step
-- **THEN** the next continuation's pointer line reads `Active step: none — complete remaining work and return your terminal result.`
-
-#### Scenario: Non-progress continuation keeps the active step
-
-- **WHEN** a picker answer is forwarded as a non-progress continuation
-- **THEN** the payload carries no pointer line and the worker retains its previously named active step
-
 ### Requirement: Performance Worker Active Step Execution
 
 The performance worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-performance-scope` from the brief and that surface before following the first pointer, which arrives as the first line of the task message before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-performance-scope` and `map-stack-hot-paths` together in its first `step-done` batch, and a stage it skips because it does not apply SHALL be reported in the batch of the step that decided the skip.

@@ -136,7 +136,7 @@ without re-spelling the verbs):
 
 ```text
 sai-state spawn --key <stable-key>
-sai-state reset <id> security-standalone@1
+sai-state reset <id> security-steps@1
 echo '{"intent":"next-step"}' | node <tool-path> emit <id> explore-idea@1 -
 sai-state close <id>
 ```

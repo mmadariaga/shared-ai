@@ -31,7 +31,7 @@ Worker cards MUST NOT reference the stage machine emission surface. The stage ma
 
 #### Scenario: Lint fails on new machine IDs
 
-- **WHEN** a worker card references `review-steps@1`, `implement-run@1`, or `security-standalone@1`
+- **WHEN** a worker card references `review-steps@1`, `implement-run@1`, `security-steps@1`, `performance-steps@1`, or `accessibility-steps@1`
 - **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
 
 ### Requirement: Lint check coverage of emission surface

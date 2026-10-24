@@ -6,7 +6,7 @@ This invocation starts clean: disregard prior conversational context except wher
 2. Read `command_name` and `arguments_value` from the wrapper's InvocationEnvelope.
    Before card selection, Fetch @sai/policies/tool-access.md and check the wrapper's required capability profile.
 3. Select the card from `command_name`:
-   - Routed names (`spec`, `design`, `security`, `performance`, `accessibility`, `deep-review`, `commit`, `archive`, `backfill`, `merge`) select the coordinator card, e.g. `@sai/commands/security/coordinator.md`, `@sai/commands/deep-review/coordinator.md`.
+   - Routed names (`commit`, `archive`, `backfill`, `merge`) select the coordinator card, e.g. `@sai/commands/commit/coordinator.md`, `@sai/commands/merge/coordinator.md`.
    - Utility names (`explore`, `retire-docs`, `status`, `worktree`) select the body card, e.g. `@sai/commands/explore/body.md`.
 4. Once the wrapper's command bootstrap has loaded, fetch the selected card — `Fetch @sai/commands/{name}/coordinator.md` for a routed name, `Fetch @sai/commands/{name}/body.md` for a utility name — and follow it, handing it `arguments_value` byte-for-byte; the card owns every parse of it.
 

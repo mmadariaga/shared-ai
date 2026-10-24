@@ -44,22 +44,22 @@ test('the review command keeps reviewing the diff and retires the positional par
 
 test('/sai-deep-review forwards to each segment only the options its command declares', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
-  const bootstrap = read('sai/commands/deep-review/command-bootstrap.md');
 
   for (const command of Object.keys(DECLARED)) {
     assert.match(coordinator, new RegExp(`@sai/commands/${command}/options\\.md`));
-    assert.match(coordinator, new RegExp(`command_name: ${command}, arguments_value: \\{name\\} \\{options-for-${command}\\}`));
   }
+  assert.match(coordinator, /`\{options-for-X\}` is the possibly empty list of the options that `sai\/commands\/X\/options\.md` declares/);
+  assert.match(coordinator, /`\{options-for-audit\}`/);
   assert.match(coordinator, /union of the options/);
-  assert.match(coordinator, /composition keeps no list of its own/);
-  assert.match(coordinator, /names that option/);
-  assert.match(coordinator, /options are kept/);
+  assert.match(coordinator, /this command keeps no list of its own/);
+  assert.match(coordinator, /Cannot start \/sai-deep-review: unknown or malformed argument '\{token\}'/);
   assert.match(coordinator, /`--fast-track` token/);
   assert.match(coordinator, /never receives `--full` or `--path`/);
-  assert.match(coordinator, /had no effect/);
+  assert.match(coordinator, /had no effect|stating that it had no effect/);
   assert.match(coordinator, /even with `--full` or `--path`/);
-  assert.match(bootstrap, /`--full` or `--path` activates all three without the triage parse/);
-  assert.match(bootstrap, /Error close below does\s+not apply/);
+  assert.match(coordinator, /With `--full` or `--path`, no triage runs: all three audits are activated/);
+  assert.match(coordinator, /the Error close below does not apply/);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/deep-review/command-bootstrap.md')), false);
 });
 
 test('no audit asks mid-run: --runtime is the whole authorization and the URL is an input', () => {
@@ -78,7 +78,7 @@ test('no audit asks mid-run: --runtime is the whole authorization and the URL is
 });
 
 test('both harness wrappers announce the options', () => {
-  const wrappers = { 'sai-deep-review': ['--full', '--path', '--tier', '--runtime', '--parent-branch'], 'sai-4-review': ['--parent-branch'], 'sai-5-security': DECLARED.security, 'sai-6-performance': DECLARED.performance, 'sai-7-accessibility': DECLARED.accessibility };
+  const wrappers = { 'sai-deep-review': ['--full', '--path', '--tier', '--runtime', '--url', '--parent-branch'], 'sai-4-review': ['--parent-branch'], 'sai-5-security': DECLARED.security, 'sai-6-performance': DECLARED.performance, 'sai-7-accessibility': DECLARED.accessibility };
   for (const harness of ['claude', 'opencode']) {
     for (const [wrapper, flags] of Object.entries(wrappers)) {
       const text = read(`commands/${harness}/${wrapper}.md`);

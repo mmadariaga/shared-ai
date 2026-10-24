@@ -49,9 +49,6 @@ try { register('explore-idea@1', require('./machines/explore-idea.js')); } catch
 try { register('explore-slice@1', require('./machines/explore-slice.js')); } catch (err) {}
 try { register('spec-steps@1', require('./machines/spec-steps.js')); } catch (err) {}
 try { register('design-steps@1', require('./machines/design-steps.js')); } catch (err) {}
-try { register('security-standalone@1', require('./machines/security-standalone.js')); } catch (err) {}
-try { register('performance-standalone@1', require('./machines/performance-standalone.js')); } catch (err) {}
-try { register('accessibility-standalone@1', require('./machines/accessibility-standalone.js')); } catch (err) {}
 try { register('red-steps@1', require('./machines/red-steps.js')); } catch (err) {}
 try { register('green-steps@1', require('./machines/green-steps.js')); } catch (err) {}
 try { register('review-steps@1', require('./machines/review-steps.js')); } catch (err) {}

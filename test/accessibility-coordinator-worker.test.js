@@ -406,28 +406,6 @@ test('Step 3 audit worker results accept only the closed fields', () => {
 
 // ─── Step 5: accessibility-phase progress surfaces ──────────────────────────
 
-test('accessibility coordinator declares the canonical five-step progress plan in order with labels', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-
-  for (const id of ['resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'resolve-runtime-audit', 'close-accessibility-outcome']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
-      `the plan should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /resolve-accessibility-scope[\s\S]{0,300}map-ui-framework[\s\S]{0,300}resolve-static-audit[\s\S]{0,300}resolve-runtime-audit[\s\S]{0,300}close-accessibility-outcome/,
-    'the five canonical step ids should be declared in order'
-  );
-  assert.match(coordinator, /resolve-accessibility-scope[\s\S]{0,200}Resolve accessibility scope and runtime mode/i);
-  assert.match(coordinator, /map-ui-framework[\s\S]{0,200}Map UI components and framework/i);
-  assert.match(coordinator, /resolve-static-audit[\s\S]{0,200}Resolve static accessibility audit/i);
-  assert.match(coordinator, /resolve-runtime-audit[\s\S]{0,200}Resolve runtime-audit gate/i);
-  assert.match(coordinator, /close-accessibility-outcome[\s\S]{0,200}Close accessibility outcome/i);
-  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}(?:progress|sole nonterminal)/i);
-  assert.match(coordinator, /at dispatch/i);
-  assert.match(coordinator, /continue_after_progress[\s\S]{0,160}protocol[- ]?only/i);
-});
-
 test('accessibility worker contract enumerates the five ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
 
@@ -444,48 +422,8 @@ test('accessibility worker contract enumerates the five ids and pins the batch s
   assert.doesNotMatch(worker, /progress event|needs_input/i);
 });
 
-test('accessibility coordinator and policy carry a Progress rendering contract with threshold reference and no stamp', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/commands/accessibility/worker.md');
-
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
-    'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
-    'the policy should state the declared-step threshold');
-  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
-    'no task list / todowrite call should be emitted below the threshold');
-  assert.doesNotMatch(coordinator, /fewer than three|below three/,
-    'the coordinator should reference the policy and not restate the threshold constant');
-  assert.match(policy, /coordinator session/i,
-    'the policy should record the coordinator-only emission ownership');
-  assert.doesNotMatch(coordinator, /date \+%H:%M/,
-    'the coordinator should carry no per-harness wall-clock command');
-
-  assert.match(policy, /todowrite/i,
-    'the policy should name the opencode todowrite tool');
-  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
-    'the policy should tie the disabled-by-default tool to the subagent context');
-  assert.doesNotMatch(coordinator, /Get-Date/,
-    'the coordinator should carry no PowerShell wall-clock command');
-
-  assert.doesNotMatch(worker, /no Milestone Stamp/i,
-    'the worker never renders stamps, so its contract states nothing about them');
-  assert.match(coordinator, /todo-structure\.md/,
-    'the coordinator should reference the neutral todo-structure policy');
-});
-
 // ─── audit-step-gated-instructions (step-gated delivery replicated onto the audit family) ──
 
-const ACCESSIBILITY_PLAN_STEPS = [
-  ['resolve-accessibility-scope', 'Resolve accessibility scope and runtime mode'],
-  ['map-ui-framework', 'Map UI components and framework'],
-  ['resolve-static-audit', 'Resolve static accessibility audit'],
-  ['resolve-runtime-audit', 'Resolve runtime-audit gate'],
-  ['close-accessibility-outcome', 'Close accessibility outcome'],
-];
 const ACCESSIBILITY_STEP_MAP = {
   'resolve-accessibility-scope': null,
   'map-ui-framework': 'sai/commands/accessibility/steps/map-ui-framework.md',
@@ -493,55 +431,6 @@ const ACCESSIBILITY_STEP_MAP = {
   'resolve-runtime-audit': 'sai/commands/accessibility/steps/resolve-runtime-audit.md',
   'close-accessibility-outcome': 'sai/commands/accessibility/steps/close-accessibility-outcome.md',
 };
-
-test('step-gated: the accessibility coordinator declares step_machine and loads stage-machine.md', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-
-  assert.match(coordinator, /step_machine: accessibility-standalone@1/,
-    'the coordinator should declare step_machine: accessibility-standalone@1');
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.doesNotMatch(coordinator, /step_pointer_map/,
-    'the static step_pointer_map should not be declared');
-});
-
-test('step-gated: progress continuations carry exactly two lines with the deterministic Active step pointer', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-  assert.match(stageMachine, /the two-line continuation/i,
-    'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /`Active step: none` line/,
-    'stage-machine.md should specify the terminal pointer line');
-});
-
-test('step-gated: non-progress continuations carry no pointer line', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
-    'the coordinator should fetch stage-machine.md');
-  assert.match(stageMachine, /do not invoke emit and do not consult the machine/,
-    'stage-machine.md should state that non-progress continuations do not invoke emit');
-  assert.match(stageMachine, /active step file persists/,
-    'stage-machine.md should state that the active step file persists');
-});
-
-test('step-gated: replacement reconstruction includes active_step_id', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const stageMachine = artifact('sai/policies/stage-machine.md');
-
-  assert.match(coordinator, /replacement_reconstruction_fields[\s\S]{0,400}active_step_id/,
-    'replacement reconstruction should include the departing worker active_step_id');
-  assert.match(stageMachine, /A replacement worker re-resolves/,
-    "stage-machine.md should describe replacement re-resolution");
-  assert.match(stageMachine, /## Step machines/,
-    'stage-machine.md should have a Step machines section');
-});
 
 test('step-gated: the accessibility worker loads steps/common.md at dispatch and executes only the active step', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');

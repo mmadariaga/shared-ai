@@ -34,10 +34,9 @@ test('audits keep the proposal gate in the shared coordinator without environmen
   }
 });
 
-test('deep-review retains the artifact table without a preflight', () => {
+test('deep-review runs no preflight of its own: the review and implement segments run theirs', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
-  assert.match(coordinator, /## Artifact paths/);
-  assert.match(coordinator, /runs no OpenSpec prerequisite check/);
-  assert.match(coordinator, /Fetch @sai\/policies\/prereqs-paths\.md/);
-  assert.doesNotMatch(coordinator, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
+  assert.doesNotMatch(coordinator, /Fetch @sai\/policies\/prereqs(?:-check|-paths)?\.md|prereqs\.js/);
+  assert.match(read('sai/commands/review/coordinator.md'), /Fetch @sai\/policies\/prereqs-check\.md and run its check/);
+  assert.match(read('sai/commands/implement/coordinator.md'), /Fetch @sai\/policies\/prereqs-check\.md and run its check/);
 });

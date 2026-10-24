@@ -231,12 +231,11 @@ test('the build and implement commands hold a coordinator profile that can edit,
   }
 });
 
-test('the build, implement, and review wrappers fetch their coordinator directly and the deep review keeps its boot adapter', () => {
+test('the build, implement, review, and deep-review wrappers fetch their coordinator directly with no boot adapter', () => {
   for (const harness of ['claude', 'opencode']) {
-    for (const file of ['sai-build.md', 'sai-3-implement.md', 'sai-4-review.md']) {
+    for (const file of ['sai-build.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-deep-review.md']) {
       assert.doesNotMatch(read(`commands/${harness}/${file}`), /@sai\/adapters\//, `${harness}/${file}`);
     }
-    assert.match(read(`commands/${harness}/sai-deep-review.md`), new RegExp(`@sai/adapters/${harness}/boot\\.md`), `${harness}/sai-deep-review.md`);
     for (const retired of ['sai-4-apply.md', 'sai-5-review.md', 'sai-review.md', 'sai-build-new.md', 'sai-3-implement-new.md', 'sai-4-review-new.md']) {
       assert.equal(fs.existsSync(path.join(repoRoot, 'commands', harness, retired)), false, `${harness}/${retired} must be retired`);
     }

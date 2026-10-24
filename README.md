@@ -78,7 +78,7 @@ Start with an idea in `/sai-explore`, or import existing work using the
 /sai-explore                       # clarify the change and choose a route
 # Choose Plan - Unattended, review the plan, then:
 /sai-build <change-name>            # write tests, implement, review, and fix
-/sai-deep-review <change-name>      # deeper review, audits, and the fixes you select
+/sai-deep-review <change-name>      # deeper review, audits, and the fixes it judges justified
 /sai-archive <change-name>          # sync specs and archive when ready
 ```
 
@@ -89,8 +89,8 @@ for the findings it judges justified. Run those two commands on their own for
 step-by-step control.
 
 Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-deep-review`.
-Use `--runtime` to request performance diagnostics and browser checks (with your
-permission), or `--parent-branch <branch>` to choose the comparison branch.
+Use `--runtime` to run performance diagnostics and browser checks (the flag is the
+authorization; add `--url <url>` for the accessibility dev server), or `--parent-branch <branch>` to choose the comparison branch.
 See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
 If you choose to fix findings at the end of the deep review, the fixes run through
@@ -128,7 +128,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
 | [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design | `proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`, and one local commit per segment |
 | [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
-| [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings you select | Reports and, if you select fixes, one local commit per fix step |
+| [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings it judges justified, with no human in the loop | Reports, a commit per audit report, and one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
 
 For phase-by-phase control, use the seven [numbered commands](docs/sequential-pipeline.md), numbered continuously from 1 to 7. Security is 5, performance is 6, and accessibility is 7 in both Claude Code and OpenCode. See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.

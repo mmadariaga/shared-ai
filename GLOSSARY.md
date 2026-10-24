@@ -49,7 +49,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Change Overview**: "The per-change `change-overview.md` faithful source-oriented review projection of selected Proposal and Design content followed by Tasks-ordered Step blocks joining Interfaces, Test assertions, and Files Affected by Step number; `specs/**` corroborates sources without adding overview content. Generated or regenerated only when the invocation opts in — initially after the sai-2 feedback loop closes and once after each later source-modifying request — while unopted source edits may leave an existing overview stale; a derived projection that is never a source of truth."
 *Avoid*: change summary, change review, review projection, target-state document, overview doc
 
-**Chained Phase Composition**: "The **Orchestration Core** rule set that lets one supervising invocation run an ordered sequence of **Phase Adapter**s — non-final `terminal_navigation` resolves to the authorized transition, and a chained Isolation Mode preamble does not reset supervisor session state."
+**Chained Phase Composition**: "Retired with `sai/orchestration/composition.md` (ADR 0200): the **Orchestration Core** rule set that once let one supervising invocation run an ordered sequence of **Phase Adapter**s. No command chains phase adapters any more; `/sai-plan`, `/sai-build`, and `/sai-deep-review` follow coordinator cards as **Segment**s of one session."
 *Avoid*: pipeline supervisor, explore Auto chain, multi-command batch, phase pipeline (unqualified)
 
 **Command Card**: "The self-contained source folder for one `/sai-*` command, shaped as a routed card or a utility card and extending shared root protocols without duplicating them."
@@ -317,8 +317,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Command Card** belongs to exactly one `/sai-*` command and is either routed, with coordinator and worker surfaces, or utility, with a body-only surface.
 - A **Harness Boot Adapter** is the supported-harness boot entry at the **adapter seam**; harness-specific dispatch mechanics live there, and paired non-worker runtime glue may also live under `sai/adapters/{harness}/`.
 - A **Phase Adapter** belongs to one routed phase and is consumed by the **Orchestration Core** shared runner; it is not a **Harness Boot Adapter**.
-- **Chained Phase Composition** orders one or more **Phase Adapter** segments inside a single supervising invocation; only the final adapter's `terminal_navigation` closes a successful multi-adapter run.
-- The **Build Command** orders `/sai-3-implement`, `/sai-4-review`, and a second `/sai-3-implement` run in one session; it is not a distinct worker identity and it is not a consumer of **Chained Phase Composition**.
+- The **Build Command** orders `/sai-3-implement`, `/sai-4-review`, and a second `/sai-3-implement` run in one session; it is not a distinct worker identity. `/sai-deep-review` orders `/sai-4-review`, the activated audits, an Assessment pass, and a `/sai-3-implement` run the same way.
 - The **Plan Command** orders `/sai-1-spec` and `/sai-2-design` in one session, runs both **Segments** unattended through the shared plan cycle, records its **Assumptions** in its run directory and closing report only, and is what the explore `Plan - Unattended` route follows.
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - An **Architecture Snapshot** relates to an external-first **External Surface** block and an **Internal Public Surface** block.

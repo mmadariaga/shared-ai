@@ -45,3 +45,5 @@ an interrupted run is not resumed. The command ends with `Security audit done.`.
 Use [review scope and fix selection](../review-triage.md) to combine this audit
 with the other phases, and [`/sai-3-implement`](sai-3-implement.md) to act on open
 findings.
+
+[`/sai-deep-review`](sai-deep-review.md) runs this audit as one cycle of the same coordinator, in parallel with the other activated audits. Inside that run, the audit asks you only what nothing else can answer: a worker question is answered from the repository and listed as an assumption, and is put to you through the picker only when nothing answers it and the answer would change the report (the other audits keep running meanwhile), and an audit that fails or runs out of attempts is reported as failed while the others finish.

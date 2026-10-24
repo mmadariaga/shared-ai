@@ -2,7 +2,7 @@
 
 All artifact paths below resolve under `openspec/changes/{change-name}/` (referred to as `{c}` for brevity).
 
-These are the numbered phase commands (continuous sequence 1–7). [`/sai-plan`](commands/sai-plan.md) chains `spec` → `design` from a `Ready to Propose` block, [`/sai-build`](commands/sai-build.md) chains `implement` → `review` → a second `implement` run for the findings it selects, while [`/sai-deep-review`](commands/sai-deep-review.md) chains `review` → whichever audits its triage recommends → an `implement` run for the findings you select. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
+These are the numbered phase commands (continuous sequence 1–7). [`/sai-plan`](commands/sai-plan.md) chains `spec` → `design` from a `Ready to Propose` block, [`/sai-build`](commands/sai-build.md) chains `implement` → `review` → a second `implement` run for the findings it selects, while [`/sai-deep-review`](commands/sai-deep-review.md) chains `review` → whichever audits its triage recommends → an Assessment pass → an `implement` run for the findings the pass leaves. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
@@ -28,7 +28,7 @@ Both harnesses preserve the same durable artifacts, gate wordings, and stop text
 
 ## Fast-track mode (`--fast-track`)
 
-For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-4-review`, `/sai-build`, and `/sai-deep-review` are not members: each accepts and ignores an explicit `--fast-track` token, because invoking them already authorizes their local commits and they ask nothing mid-run (`/sai-deep-review` asks one findings round at the end, and a runtime question only with `--runtime`).
+For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-4-review`, `/sai-build`, and `/sai-deep-review` are not members: each accepts and ignores an explicit `--fast-track` token, because invoking them already authorizes their local commits and they ask nothing mid-run (`/sai-deep-review` asks only for the accessibility dev-server URL, when `--runtime` comes without `--url`).
 
 The on-demand members are also listed in [On-demand commands](on-demand-commands.md#fast-track-mode---fast-track).
 
