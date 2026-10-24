@@ -1,244 +1,85 @@
-<TASK>
+# `/sai-merge` coordinator
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @sai/policies/command-execution.md and follow it exactly.
-  Fetch @sai/policies/remember.md
-  Fetch @sai/policies/question-context.md
-  Fetch @sai/commands/merge/lifecycle.md and use it as the merge lifecycle
-  validation seam.
-  Fetch @sai/commands/merge/mechanics.md and follow its deterministic evidence
-  and stage delivery contract.
-  Fetch @sai/adapters/claude/panel-render.md when the active harness is Claude
-  Code, or Fetch @sai/adapters/opencode/panel-render.md when the active
-  harness is opencode, and use that harness-native task-list binding for the
-  merge TODO.
+Fetch @sai/policies/public-chat.md and follow it exactly.
+Fetch @sai/policies/remember.md
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/incremental-review.md
 
-  These fetches are everything every stage needs. The presentation seam
-  (`presentation.md`) and your stage instructions (`coordinator-stages.md`)
-  arrive from the merge tool when a stage starts (§ Stages); fetch neither file
-  whole.
+You are the driver of the run. The invocation carries one string, `arguments_value`: `[<branch>] [--rebase|--squash]`. Where `remember.md` and `incremental-review.md` say to dispatch a `budget-explorer`, you do that lookup yourself: the only subagent of this run is the merge worker. You write in the language of the chat.
 
-  ## OpenSpec independence
+Resolve `merge.js`, `temp-root.js`, `review-delta.js`, and the `sai-state` CLI per `tool-resolution.md`. Fetch @sai/commands/merge/mechanics.md for what each `merge.js` call gives.
 
-  `sai-merge` operates on git state only and needs no `openspec` binary,
-  `openspec/` directory, or `schema: sai-workflow`. Without `openspec/`, the
-  merge tool classifies spec paths as code.
+## Goal
 
-  ## Fast-track parse
+Integrate the named branch into the current branch and finish locally with no human in the loop. The default method is a merge, `--rebase` replays the current branch onto the branch, and `--squash` first turns the current branch's own commits since the merge base into one local commit and then rebases it. `--squash` wins when both are given.
 
-  Before the first stage, inspect the boot-provided `arguments_value` for the
-  positional token `--fast-track`:
-  - If the token is present anywhere in `arguments_value`:
-    1. Set the in-conversation boolean `fast_track_active` to true.
-    2. Remove the `--fast-track` token from `arguments_value` and trim
-       surrounding whitespace.
-    3. Print the exact line `> FAST-TRACK MODE ACTIVE` as ordinary conversation
-       text (do not write it to any file).
-    4. Use the cleaned remainder as the effective request for all downstream
-       steps.
-  - If the token is absent:
-    1. Leave `fast_track_active` false.
-    2. Use `arguments_value` verbatim.
+The run is done when the merge or rebase is finalized, every conflict is resolved by commit intent and reviewed, ADR and DDR number collisions are repaired, and the integrated tree shows no new test failure against the baseline taken at `HEAD` before the launch. Everything the run does is local and nothing is pushed. A human is needed only when commit intent cannot decide between two sides, or when an obstacle outlives its budget.
 
-  Fast-track pins the method to `merge`; strategy application follows
-  `instructions.md` Step 7. The language question and all unrelated gates
-  stay.
+**Terms.** The **baseline** is the suite result taken once at `HEAD` before the launch. A **new failure** is a test that passes in the baseline and fails after the resolution on two consecutive runs: it is the only failure that blocks. A **pre-existing failure** already fails in the baseline: it is reported and never blocks. A **stop** is one conflict stop: a merge has at most one, a rebase may have several. **Commit intent** is what each side meant to achieve according to its commits, and it is the criterion for every resolution. The **run directory** holds the baseline, worker reports, reviews, and hand-over files; it is outside the repository.
 
-  ## Transfer directory
+**Authority.** Invoking the command authorizes these local operations and nothing else: the launch (including the squash), `git checkout --ours` or `--theirs` for a whole-side choice, staging, the ADR/DDR repair edits and `git mv`, the merge commit, the squash commit, each `git rebase --continue`, the correction commit of the final tree, and the repair commit. Never push, amend, force, bypass a hook, or abort an operation unless the user chose it. Unrelated working-tree changes stay as they are. Send a commit message with `git commit -F <file>`, the file in the run directory.
 
-  The worker's complete resolution result reaches you as a transfer file, not
-  as message text. Resolve `transfer.js` per `@sai/policies/tool-resolution.md`,
-  substituting `transfer.js` for the filename placeholder `<name>`. At the
-  start of the invocation, before the first stage, run
-  `node <tool-path> open --harness <claude|opencode>` (the active harness) and
-  keep the returned `dir` as invocation-scoped state. Exit 2 (for example a
-  missing harness temp root, which the helper never creates or repairs) is a
-  blocker: report the verbatim error and stop with no dispatch and no write.
-  Deliver the directory to the worker only in the task-disclosure continuation,
-  as one extra first line `--transfer-dir <dir>` ahead of the `Active stage:`
-  pointer of the worker's first task and of every replacement's first task,
-  never in the dispatch envelope (the initial dispatch carries no task content,
-  and `original_envelope` stays exactly the fast-track-cleaned
-  `arguments_value`). Run `node <tool-path> close --dir <dir>` when the
-  invocation closes, whether it completed, failed, or was cancelled, before
-  handing the final summary or stop report to `terminal_navigation`; `close`
-  removes only that directory, and the directory stays available until then,
-  including through every replacement and review correction.
+## Start
 
-  A **reference** is `{path, sha256}`: the absolute path of one transfer file
-  inside the directory and its sha256; merge references carry no destination.
-  The terminal `completed` payload of a resolution or correction carries
-  exactly one `resolution_reference` beside its application-outcome `summary`.
-  Verify it before use (`coordinator-stages.md` § Resolution validation). A
-  corrected result supersedes every earlier reference; use only the latest.
-  Never receive, send, or reconstruct the complete resolution content on any
-  continuation or reconstruction; strategy confirmations stay separate
-  coordinator evidence and are not part of the transfer.
+1. Parse `arguments_value`. Accept and ignore `--fast-track`, with no banner. A second branch, or an option other than `--rebase`, `--squash`, and `--fast-track`, ends the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]`, writing nothing.
+2. Run `merge.js preflight`. When a merge or rebase is in progress, find the run that owns it (see Resuming). A run of this command resumes only when the invocation names the same branch and the store holds a `running` or `escalated` run under `merge-{branch}`: follow Resuming and skip the rest of Start. Otherwise print why the run stops and which branch the run in progress integrates, when a recorded run owns it, touch nothing, and end the run.
+3. Without a branch in the arguments, ask which branch to integrate through the native picker: the newest `candidates` of the preflight up to the picker capacity, with the picker's free text for any other branch, or plain text when there are none. An argument starting with `origin/` names `refs/remotes/origin/<rest>`; every other name is `refs/heads/<name>`. Fetch nothing.
+4. Staged content before the launch would enter the commit: when any `dirty` entry of the preflight is staged, end the run naming those paths. Unstaged changes do not stop the run; git decides whether the launch can go on. For a rebase or squash, git refuses to start with tracked unstaged changes (unless `rebase.autoStash` is set), so check that before the first mutation and end the run with the cause, since a squash would otherwise commit before the refusal.
+5. Run `merge.js provenance` for the method (`merge`; `rebase` with `--squash no`; `--squash yes` for a squash) and keep its receipt as `provenance.json` in the run directory. A failure ends the run with the cause and nothing launched. When `source_sha` is already an ancestor of `HEAD`, close with no changes and say so.
+6. Open the run state. `spawn` a `sai-state` session and keep its id (key `merge-{branch}`), then emit `status` to `merge-run@1`. A `running` or `escalated` stage whose git state shows no merge or rebase in progress is a run that ended outside this command: emit `close` with outcome `stopped`, report that, and end the run. Any other stage starts fresh: create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-` and emit `start` with its `dir`. When the tool reports `ok: false`, print its `error` and end the run.
+7. Fix the test command once, before anything runs, and use it for every run of the suite. Take the first explicit command: `AGENTS.md`, then `README.md` (a test invocation written literally, such as `npm test`; a document naming several with none clearly the general one names none). Otherwise capture the marker list with `merge.js suite --record`. With no command, or several ambiguous ones, the baseline and the verification are unavailable: the run goes on and the report says so.
+8. Take the baseline with `merge.js verify --baseline --record <run>/baseline.json`, passing the fixed command. Emit `launch` with the method, branch, pre-launch `HEAD` (the `target_sha` of the provenance), and the baseline path (omit it when unavailable). Check the provenance with `merge.js valid` and recapture it when stale.
+9. Launch. A merge runs `git merge --no-ff --no-commit <source_ref>`, so every merge stops before its commit. A rebase runs `git rebase <source_ref>`. A squash, when `merge_base` differs from `target_sha`, runs `git reset --soft <merge_base>` and one `git commit` with the squash message (see Commit messages), then `git rebase <source_ref>`; with nothing to squash it is the plain rebase. A launch that git refuses ends the run with git's message and the exact state. An unmerged index after the launch is a conflict stop; a clean launch has no stop.
 
-  ## Command-local authorization
+## A conflict stop
 
-  Invoking `/sai-merge` authorizes exactly these local finalization operations
-  for this integration: the merge commit, `git rebase --continue` at each
-  resolved stop, and a collision-repair commit after a finished rebase. Run
-  them **unprompted** after the existing review, verification, collision, and
-  staging checks: report as ordinary text, then execute, with no picker. This
-  grant expires when this invocation closes; it is not a session
-  grant and applies to no other command. It authorizes no push, amend, force,
-  hook bypass, destructive operation, or unrelated change. All remaining
-  safety confirmations and error paths stay in force.
+A stop is closed when its conflicts are resolved to match the intent of both sides, reviewed, and staged. Emit `stop` with its number first.
 
-  ## Roles
+1. **Capture.** `merge.js conflicts --record <run>/stop-{n}.json` before any worker write. Keep the record path and hash. A launch that failed with no unmerged path is a launch failure, not a stop.
+2. **Strategy.** Create the worker when none exists (its first use of a stop, `Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it.`); the creation dispatch carries only the ready prompt, and the first brief goes to the same worker in the next message. Send `Active step: strategy — follow sai/commands/merge/steps/strategy.md` with the brief: method, provenance file, stop number, the record and its hash, the run directory, and the report path `reports/stop-{n}-strategy-{k}.yaml`. Read the report. It must cover every affected file; a gap is a corrected instruction.
+3. **Escalation.** When commit intent cannot decide (the report lists an escalation), the run decides nothing by itself. Escalate at once, without spending an attempt: state each conflict's two sides in plain words and ask through the native picker with options you write, for example resolving it for the current branch's behavior, resolving it for the selected branch's behavior, leaving the operation in progress without finalizing, and aborting it (`git merge --abort` or `git rebase --abort`). The run aborts only when the user chose that. A chosen resolution is the decision for those conflicts; send the strategy step again with it.
+4. **Apply.** Write the decisions of the accepted strategy to `stop-{n}-confirmed.json` (the array of `{conflict_id, decision}`), then send `Active step: apply — follow sai/commands/merge/steps/apply.md` with the record, the strategy report, and the report path `reports/stop-{n}-apply-{k}.json`. Check it with `merge.js resolution --record <record> --record-hash <hash> --source <apply report> --confirmed <confirmed file> --phase authored`. A rejection lists what is wrong: send it back as a corrected instruction. For each `git-ours` or `git-theirs` file, run `git checkout --ours` or `--theirs` on that path (Git's stage naming, `steps/common.md` § Sides) and check with `--phase materialized`.
+5. **Review.** The worker wrote the resolution, so attack it as a separate session, in at most 3 fix rounds under `incremental-review.md`: take a `review-delta.js snapshot` before the first pass and again after each fix round, review the first pass in full and later passes over the delta only. The criteria are fidelity to the commit intent of both sides, any change outside the conflict regions, and leftover conflict markers. Read both sides from `merge.js bundle`, not from the worker's report. Write each round's findings to `reviews/stop-{n}-round-{k}.md`. Send open findings as one ordered list to the worker with the `apply` pointer, the same record, and a new report path; a finding that would change what the strategy decided returns to step 2. Findings still open after round 3 are pending: write them to `findings.md`, emit `record` (`finding`) the first time, and go on.
+6. **Stage.** `git add` the resolved paths and require `git diff --cached --check` to be clean.
+7. **Continue.** A merge goes to Final. A rebase runs `GIT_EDITOR=true git rebase --continue`: another unmerged stop starts a new stop with the same worker, a finished rebase goes to Final, and a refusal is an obstacle.
 
-  You are the user-facing merge coordinator. Three parties share the run:
+## Final
 
-  - **The merge tool** (`sai/tools/merge.js`) computes every mechanical
-    result: preflight facts, provenance, the conflict snapshot, the test run,
-    the collision frontier, and the closing repository state.
-  - **You** run the mechanical stages through the tool, author the Batch 1
-    questions and the final summary from the seam's fixed texts, and own the
-    presentation seam, the lifecycle check, the working-language question, the
-    adaptive TODO, the post-resolution review, and every git mutation: branch
-    refresh with `git fetch --prune origin`, the launch and squash,
-    `git checkout --ours/--theirs`, collision replacements and `git mv`,
-    staging, `git rebase --continue`, and commits.
-  - **The worker** is the judgment session. It reconstructs intent, proposes
-    and writes the resolution, corrects failing tests, and plans decision-record
-    renumbering (`@sai/commands/merge/instructions.md`, delivered to it by
-    stage). Conflict file contents stay in its context, and you review what it
-    wrote as a separate session.
+1. **Verify.** The suite runs once, on the final tree: after the resolution is staged for a merge, and after the last stop for a rebase, never per stop. Run `merge.js verify --baseline-record <run>/baseline.json --baseline-hash <hash> --record <run>/verify-{k}.json` with the fixed command. Report the `comparison` result as it comes: `preexisting`, `flaky`, and `not-comparable` are reported and never block, and `unavailable` is reported as unavailable. A `new` failure is the obstacle `new-failure`. Its attempts send `Active step: test-correction — follow sai/commands/merge/steps/test-correction.md` with the failure record (the file of the run that decided it) and the new failing tests: capture the ranges it proposes with `merge.js correction --record <file>`, send `apply` with that snapshot, review the diff, stage, and verify again. On a merge the corrections join the merge commit. On a rebase, the final tree is already committed, so the corrections go in one additional local commit on top of the rebased branch, made when verification shows no new failure.
+2. **Collision.** Run `merge.js collision --record <run>/collision-{k}.json` with the provenance on standard input. `needs-judgment` is a judgment point: send `Active step: renumbering-plan — follow sai/commands/merge/steps/renumbering-plan.md` with the provenance file and the collision record. For a `repair-required` plan, apply exactly the replacements the worker listed (`old_h1` to `new_h1`, `old_index_label` to `new_index_label`, and each reference update), then `git mv` each record; never rename onto a path another final record holds. Orphan, ambiguous, and delete/modify escalations are reported and never modified. Stage the repair.
+3. **Finalize.** Stage only content the run owns, and stop if unrelated staged content would enter the commit. A merge ends with its local merge commit. A finished rebase has nothing to commit unless a correction or a repair is staged; each is its own local commit, and a finished rebase with nothing staged creates no extra commit. Do not skip hooks. Check `merge.js status` after the last operation.
 
-  Your own tool use is read-only except for the git mutations above. Leave
-  conflict analysis and resolution content to the worker; confine the worker
-  to its write boundary.
+A clean launch has no stop and no worker: it goes straight to Final.
 
-  ## Stages
+## Commit messages
 
-  The run is a sequence of mechanical stages — `preflight`, `conflicts`,
-  `verify`, `collision`, `final` — selected by the lifecycle seam. Enter each
-  stage the first time with its one composite call from `mechanics.md`
-  § Stage delivery: it returns that stage's instructions, its fixed
-  presentation texts, and its mechanical facts together. Follow the returned
-  stage text until its exit. On a later entry to a stage whose text you already
-  hold (a second rebase stop, a second test round), run only the stage's bare
-  mechanical action.
+Use Conventional Commits. The subject is imperative, lowercase after the colon, without a trailing period, at most 50 characters, and names the integrated work. Add no AI attribution; human co-author credits are allowed. A merge or squash message is an inventory of contained work, not a summary: after a blank line, list every contained commit in order with `git log --reverse --format=%s <range>`, one literal `- <first line>` per output line, none dropped, none reworded, no hash, each bullet on one line however long. The range is `merge_base..source_sha` for a merge and `merge_base..HEAD` (taken before the soft reset) for a squash. With no contained commit emit the subject alone. A correction or repair commit describes only its own change. Plain rebase continuation commits carry no message of the run.
 
-  A run with no conflict and no decision-record collision completes through
-  these stages alone: dispatch no worker.
+## Obstacles
 
-  ## Judgment-point dispatch
+An obstacle is anything that prevents closing a stop or the run: a resolution that fails the check or the review, a new failure, a worker whose report cannot be read, a worker that stays silent or drifts from its instruction, a git refusal, or a tool error. The goal is to close the stop, so respond and keep moving.
 
-  A **judgment point** is the first moment that needs a decision the tool
-  cannot compute: a conflict to resolve, a failing test to correct, or
-  decision records in collision to renumber. The first judgment point of a run
-  is always a conflict or a collision.
+Name each obstacle (`stop-{n}`, `new-failure`, `collision`) and give it a budget of 3 attempts. An attempt is one response with an approach different from the previous one: a corrected instruction (asking the same worker again when its report is unreadable, silent, or drifted), a different correction of the work (a different region text, or a whole-side choice where commit intent allows it), or a new worker. A new worker replaces the old one, gets the ready handshake, and receives `handover-{k}.md` that you write in the run directory: method, branch, the provenance, the current stop and its record and hash, the reports and decisions so far, the files already written, and the symptom. Never forward the old worker's history. Before each attempt emit `attempt`; when it is rejected as `exhaustion`, escalate at once.
 
-  Declare the minimal phase-adapter field set:
-  - `original_envelope` — the fast-track-cleaned `arguments_value`, one opaque
-    string; the stripped token survives only in `fast_track_active`.
-  - `dispatch_operation` — at the first judgment point, dispatch exactly one
-    `sai-merge-worker` through the active merge-worker binding
-    (`Fetch @sai/orchestration/workers/bindings/merge-worker.md`) with the
-    usual ready handshake, declaring `fast_track_active` beside the envelope as
-    session state, never as an envelope key. After ready, disclose the task
-    with the `--transfer-dir <dir>` line (§ Transfer directory), then the
-    `Active stage:` pointer in its `--reconstruct` form and the
-    complete state of `replacement_reconstruction_fields`: the worker saw none
-    of the earlier stages.
-  - `continuation_operation` — continue the same worker through the binding's
-    continuation mechanism at every later judgment point, forwarding the
-    answer value, an open-input answer unchanged, a named correction, or an
-    operation outcome. Prefix every continuation with the exact
-    `Active stage:` pointer selected by `mechanics.md` § Stage delivery.
-    Include the complete current task state and necessary valid receipts;
-    deliver no future stage body. This applies identically to Claude Code's
-    and opencode's respective binding continuation mechanisms; keep the same
-    persistent worker across every conflict stop of a rebase.
-  - `allowed_nonterminal_extensions` — the merge-only closed
-    `conflict_detected` extension `{event: conflict_detected,
-    summary: string, changed_files: string[], affected_files:
-    string[], continuation_state: language-selection|strategy-analysis}`.
-    It is the only nonterminal extension, not a worker status or a progress
-    event, and it arrives after ready. The worker returns it only with
-    `strategy-analysis`; you detect the first conflict yourself.
-  - `extension_handlers` — for `conflict_detected`, validate the payload,
-    record `affected_files` as the conflict inventory (never as a worker
-    write), and route per the `conflicts` stage's new-problem rule.
-    This adapter declares NO worker `progress_plan`: no progress event exists
-    and no acknowledgement literal is defined. The merge TODO is separate
-    coordinator state; it never travels in the envelope.
-  - `replacement_reconstruction_fields` — the original envelope, the opaque
-    input history (ordered `{id, question, options, answer_value}` pairs,
-    including any coordinator-owned open branch-entry answer),
-    `fast_track_active`, the transfer directory path and the latest
-    `resolution_reference` (never resolution content), `branch_selection_source`, `branch_entry` when set,
-    `working_language` once selected, the merge provenance, and the ordered
-    duplicate-free changed-files union, plus `active_stage`, complete
-    `affected_files` and categories/region ids/stage OIDs, all receipt
-    references and hashes, the exact current strategy and
-    revision/confirmation state, complete selected semantic decisions, pending
-    corrections, review and verification round counters/outcomes/full failure
-    references, collision applicability and complete plan, owned/staged paths,
-    operation history and exact current outcome. Each inventory is exhaustive,
-    never `and others; see earlier`. The first dispatch and a mid-run
-    replacement use this same hand-over: the worker starts at the active
-    judgment point from these fields alone. Validate the state and its
-    referenced records before sending; missing state stops before writing or
-    finalizing. Do not send prior journals or artifact contents; send exact
-    external references with verified hashes.
-  - `terminal_navigation` — hand the final summary and the presentation state
-    to the seam's terminal renderer: it prints the summary, then `Merge done.`
-    only when `commit_executed` is true, and stops.
-  - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
-    without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
-    keep no recovery ledger, and perform no recovery continuations.
+Force majeure escalates at once without spending an attempt: commit intent that cannot decide (step 3 of a stop), an operation that needs human authorization, or an exhausted budget. To escalate, emit `escalate`, then state in plain words what happened, what is done, and what you tried, and ask through the native picker with options you write: ways to continue, each a different approach; one that accepts the new failure and finalizes when the obstacle is `new-failure`; one that leaves everything as it is; and, while a merge or rebase is in progress, one that aborts it. Emit `answer` with `continue` or `stop` for the user's choice. A dismissed question closes the run `escalated`, with the merge or rebase left in progress.
 
-  Keep `branch_selection_source` and `branch_entry` as invocation-scoped state
-  beside the opaque input history, never as keys in `original_envelope`, a
-  worker payload, or a persistent artifact.
+## Run state
 
-  Keep one invocation-scoped ordered, duplicate-free changed-files union and an
-  opaque input history. The union holds only target-repository paths the
-  worker wrote or you materialized, renamed, or updated, in first-seen order;
-  fetched contracts and installed bindings are never target paths. Validate
-  every worker result against the shared runner's closed-payload rules before
-  acting on it, and route it through the presentation seam before presenting
-  it or moving on.
+The `merge-run@1` machine in `sai-state` is your memory outside the conversation. It holds identifiers and paths only: the method, branch, stop index, baseline path, pre-launch `HEAD`, the attempts per obstacle, the open escalation, and the paths of the files that hold obstacles, findings, and assumptions. Free text lives in the run directory and never in an event. Emit an event by piping its JSON to `emit <id> merge-run@1 -`. The events are `start`, `launch`, `stop`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. Write each obstacle you work on to `obstacles.md` and each assumption you make (a documented test command you took, a candidate you chose) to `assumptions.md`, and emit `record` (`obstacle`, `assumption`) the first time each file is written. When an emit still fails after two retries with a corrected delivery form, keep the same facts in `run-state.md` in the run directory and carry on.
 
-  Pass the received source bytes to validation, not a reconstructed envelope
-  with shortened summary or substituted fields: for a resolution result the
-  received source is the transfer file, piped to the validator and passed as
-  `--source`. Keep the validated original result's exact external source
-  reference/hash (the transfer file's `path` and `sha256`) for resolution
-  checking and replacement; compact presentation is a separate view, not
-  validator input. Unknown fields keep the shared validator's existing
-  treatment.
+## Resuming
 
-  ## No-commit guard
+To name the branch of a run in progress that the invocation did not name, take the commit the operation integrates (`MERGE_HEAD`, or the `onto` of the rebase directory) and look for a `running` or `escalated` `merge-run@1` session under the key `merge-{branch}` of each local branch that points at it. A merge or rebase that no recorded run owns was not started by this command.
 
-  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
-  every `sai-merge-worker` stretch: `snapshot` opens a window, holding the returned SHA as
-  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict,
-  remediate exactly as the policy prescribes, then continue the route. Your
-  own git mutations always run between guard windows, never inside one. No
-  merge window carries `allow_commit`. A run that dispatches no worker opens no
-  window.
+After a context compaction, or when Start finds a run of this branch in progress, you may remember little. Emit `status` first, read the files the state references, and compare them with the git state: `MERGE_HEAD` or the rebase directory, the unmerged and staged paths, `git log`. The git state wins over the store. Continue at the first unfinished part of the stop: a stop whose resolution is written but not staged is reviewed as it stands, a stop not written starts at the strategy, and an operation with nothing left to resolve goes to Final. Without the store, rebuild from the git state and the run directory (`temp-root.js resolve` gives the root; the directory is the newest `merge-*` child that holds `provenance.json` for this branch); a run directory that is gone leaves the baseline unavailable, which the report says. A worker handle may be gone: create a new one, which spends no attempt, and give it a hand-over file. An `escalated` stage means the question was not answered: ask it again.
 
-  ## Lifecycle check
+## Close
 
-  Before each operation, call `validate_transition` from the lifecycle seam
-  with the current state, the state the operation enters, and its context.
-  Proceed on `valid`; on `invalid`, halt as the seam prescribes.
+The run closes when the merge or rebase is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when the escalation was dismissed. In each case:
 
-  ## Content assignment
+1. Remove the run directory with `temp-root.js remove --harness <claude|opencode> --dir <run directory>` only when the run completed. A stopped, escalated, or unanswered run keeps it; say where. A failed removal fails nothing: add one line saying the directory stays at its path.
+2. Print the closing report, in the language of the chat, with these facts: the method, the target and source branches, and the operation done with the resulting `HEAD` and the commits the run made (subject each); the conflicts resolved per stop, each file with how it was decided; the verification against the baseline with every `new`, `flaky`, `preexisting`, and `not-comparable` test named, or that it was unavailable and why; the findings still pending after round 3; the collision repairs and reported escalations; the assumptions and the escalations with their answers; and whatever remains open. For every run that changed the branch, name the `HEAD` recorded before the launch and the command that restores the branch to it (`git reset --hard <sha>`). When a rebase or squash rewrote commits the branch's upstream already holds (`upstream.force_push_needed` of the provenance), say that the next push needs a force push. When the run did not complete, add the blocker, the options offered, and the answer.
+3. Emit `close` with the outcome (`completed`, `stopped`, or `escalated`), then `close` the `sai-state` session.
 
-  `@sai/commands/merge/instructions.md` is the worker's: intent
-  reconstruction, the strategy and payload, resolution-content writes, test
-  correction, and the renumbering plan. `coordinator-stages.md`,
-  `presentation.md`, and `@sai/commands/merge/lifecycle.md` are yours: the
-  mechanical stages, rendering, fixed texts, channels, TODO, and the state
-  machine. Every git mutation and the post-resolution review are yours alone.
-
-</TASK>
-
-Follow instruction on <TASK> step by step
+A run that finalized the integration ends with exactly `Merge done.`. Every other run ends with its report and no closing line.

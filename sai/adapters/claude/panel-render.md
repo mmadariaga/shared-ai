@@ -1,6 +1,6 @@
 # Claude Panel Render Binding
 
-This harness has a native task panel (`panel: native`), declared here — never runtime-detected. It serves routed progress plans, the `sai-explore` stage TODO and idea list, and the `sai-merge` adaptive TODO; each surface's list, ownership, and timing rules live in its own contract.
+This harness has a native task panel (`panel: native`), declared here — never runtime-detected. It serves routed progress plans and the `sai-explore` stage TODO and idea list; each surface's list, ownership, and timing rules live in its own contract.
 
 - **Marker carrier.** The machine-readable marker carrier is the task's `description` field. The task `metadata` field stays unused because `TaskList` and `TaskGet` do not show it.
 - **Render.** Each render converges the panel to the surface's full list: update existing entries in place with `TaskUpdate`, create new entries, and delete entries absent from the list with `TaskUpdate` `{"status": "deleted"}`. Updating in place keeps task ids stable, preserving each entry's identity.

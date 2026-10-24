@@ -2,25 +2,14 @@
 
 ## Purpose
 Defines how the merge branch selector keeps a canonical English source question and renders it in the ambient conversation language while preserving exact branch values and date labels.
+
 ## Requirements
-### Requirement: Branch selector uses canonical English source
-The merge branch selector SHALL ask the canonical English source Which branch do you want to operate on? as its worker source, with coordinator ambient rendering that never opens the working-language question early because selection happens before working_language is known.
 
-#### Scenario: Canonical source replaces fixed literal
-- **WHEN** the merge worker returns the branch-selection gate
-- **THEN** the worker source SHALL be Which branch do you want to operate on? and the coordinator SHALL render it in the ambient conversation language without opening the working-language question early
+### Requirement: Missing branch is asked by the coordinator in the chat language
 
-### Requirement: Ambient render preserves values and labels
-The branch selector SHALL preserve exact option values and readable date labels across languages: Spanish keeps ¿Sobre qué rama quieres operar?, English uses the canonical, any other language falls back to the canonical, while values stay exact branch names and labels stay <branch> — last commit <YYYY-MM-DD HH:mm>.
+When `/sai-merge` is invoked without a branch, the coordinator itself SHALL ask which branch to integrate, in the chat language, through the native picker with the newest preflight candidates up to the picker capacity and the picker's free text, or in plain text when there are none; exact branch names SHALL be kept as option values. The worker SHALL return no branch-selection gate.
 
-#### Scenario: Stable values across languages
-- **WHEN** the branch selector is rendered in any ambient language
-- **THEN** option values SHALL stay exact branch names and labels SHALL stay <branch> — last commit <YYYY-MM-DD HH:mm> while the concise wording follows the ambient rule
+#### Scenario: Branch is asked only when missing
 
-### Requirement: Adjacent summary carries detailed context
-The adjacent gate summary SHALL carry the detailed current branch, candidate timestamps, and merge rationale in the ambient conversation language, keeping detailed context outside the concise question.
-
-#### Scenario: Summary keeps timestamps and rationale
-- **WHEN** the branch selector gate is presented
-- **THEN** the adjacent summary SHALL present the current branch, candidate timestamps, and merge rationale in the ambient conversation language
-
+- **WHEN** the invocation names a branch
+- **THEN** no branch question is asked

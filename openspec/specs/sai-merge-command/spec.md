@@ -6,49 +6,6 @@ Defines the `/sai-merge` routed command: pre-merge environment guards, the metho
 
 ## Requirements
 
-### Requirement: Pre-merge environment guards
-
-The system SHALL run pre-merge environment checks before any merge work and SHALL refuse to start when the repository is unsafe.
-
-#### Scenario: In-progress merge blocks a new run
-
-- **WHEN** a `/sai-merge` invocation starts while `MERGE_HEAD` exists
-- **THEN** the command stops with "Merge already in progress. Resolve or abort the current merge first (`git merge --continue` or `git merge --abort`)." and performs no merge step
-
-#### Scenario: In-progress rebase blocks a new run
-
-- **WHEN** a `/sai-merge` invocation starts while a rebase is in progress and no `MERGE_HEAD` exists
-- **THEN** the command stops with "Rebase already in progress. Resolve or abort the current rebase first (`git rebase --continue` or `git rebase --abort`)." and performs no merge step
-
-#### Scenario: Dirty worktree requires confirmation
-
-- **WHEN** the worktree reports modified, untracked, or staged files and no other guard fired
-- **THEN** Batch 1 carries the dirty-worktree question, and a `no` answer closes the run without any mutation
-
-### Requirement: Method and branch selection
-
-The system SHALL offer the methods `Merge`, `Rebase`, and `Rebase with squash`, and SHALL retain listed local branches from `git branch --no-merged HEAD` ordered by full committer timestamp descending with exact branch name ascending as tie-break, each with the exact branch name as value and `<branch> — last commit <YYYY-MM-DD HH:mm>` as label, plus the routing choice `sai:enter-branch` labeled `Enter a branch name` always present including when the list is empty. An empty candidate list SHALL NOT close the run. The canonical branch question SHALL remain `Which branch do you want to operate on?`. When `sai:enter-branch` is chosen and the dirty answer is not `no`, the coordinator SHALL collect one local branch name or one `origin/<branch>` reference as open text and SHALL forward it as `branch_entry`; on that sentinel path the exact typed value SHALL select the free-text path even when it matches a listed branch. When the dirty answer is not `no` and the branch answer is picker free text, the coordinator SHALL forward the exact typed value as `branch_entry` with no second prompt, as classified by `Harness-neutral branch picker answer classification`.
-
-#### Scenario: User picks method and branch in one trip
-
-- **WHEN** at least one eligible branch exists and fast-track is inactive
-- **THEN** the method and branch answers arrive together in Batch 1 and the selected branch is the merge source for `merge` and the new base for `rebase`
-
-#### Scenario: Squash with nothing to squash
-
-- **WHEN** `rebase-squash` is selected and `merge_base` equals the current `HEAD`
-- **THEN** the coordinator runs the plain rebase without a squash commit
-
-#### Scenario: Empty list still allows text entry
-
-- **WHEN** no unmerged local branch remains
-- **THEN** the branch item still offers `sai:enter-branch` and the run continues to text entry instead of closing
-
-#### Scenario: Sentinel text wins over a matching listed branch
-
-- **WHEN** the user chooses `sai:enter-branch` and types text that exactly matches a listed branch
-- **THEN** the coordinator forwards that text as `branch_entry` with `branch_selection_source: free-text` and validates it through the free-text path
-
 ### Requirement: Every merge stops before its commit
 
 The coordinator SHALL launch the `merge` method with `git merge --no-ff --no-commit <source_ref>` where `source_ref` is `refs/heads/<name>` for a listed candidate or an unprefixed free-text entry and `refs/remotes/origin/<name>` for an `origin/<name>` entry. Clean and conflicted merges SHALL stop before committing so the existing collision, review, verification, and staging checks applicable to the route precede automatic local finalization under command-local authorization. A fast-forward SHALL never occur.
@@ -63,20 +20,6 @@ The coordinator SHALL launch the `merge` method with `git merge --no-ff --no-com
 - **WHEN** a validated free-text entry resolves to its exact `source_ref`
 - **THEN** the merge launches with that ref and stops before commit for the applicable checks and automatic coordinator finalization
 
-### Requirement: Rebase continues per stop and finishes without a spurious gate
-
-For the `rebase` method, each conflicted stop SHALL pass through resolution, verification, and final staging before the coordinator automatically runs `GIT_EDITOR=true git rebase --continue` under command-local authorization. A new conflicted commit SHALL re-enter strategy analysis with the same worker and selected working language. After the rebase finishes, the collision pass SHALL run on the final state; a staged collision repair SHALL be committed automatically, and when nothing remains staged no additional commit SHALL be created.
-
-#### Scenario: Clean rebase reports and closes
-
-- **WHEN** a rebase finishes without conflicts and no collision repair is staged
-- **THEN** the run reports the new `HEAD` and that `target_sha` is the pre-rebase `HEAD`, without an authorization question or additional commit
-
-#### Scenario: Multi-commit rebase stops again
-
-- **WHEN** `git rebase --continue` stops at another conflicted commit
-- **THEN** the coordinator reports the outcome to the same worker, which returns `conflict_detected` with `continuation_state: strategy-analysis` and no language question is repeated
-
 ### Requirement: Method-aware side mapping
 
 The worker SHALL map git stages to branches by method: for `merge`, stage 2 (`--ours`) is the current branch and stage 3 (`--theirs`) the selected branch; for `rebase`, stage 2 is the selected branch and stage 3 the current branch's replayed commit. Decision values `ours` / `theirs` and payload sources `git-ours` / `git-theirs` SHALL always denote the git stage, and alternatives SHALL be described to the human by branch and behavior.
@@ -85,49 +28,6 @@ The worker SHALL map git stages to branches by method: for `merge`, stage 2 (`--
 
 - **WHEN** during a rebase the confirmed strategy keeps the current branch's version of a file
 - **THEN** the payload records `git-theirs` for that file and `git checkout --theirs` materializes the current branch's version
-
-### Requirement: Coordinator-only mutation surface
-
-The system SHALL confine state-changing Git operations to the coordinator, including branch refresh with `git fetch --prune origin`, the launch and squash, `git checkout --ours/--theirs`, collision replacements and `git mv`, staging, `git rebase --continue`, and commits. The worker SHALL run only read-only Git commands and SHALL supply only resolution content authorized by normal-mode strategy approval or the coordinator's fast-track presentation-and-application continuation, as resolved text handed to the merge tool's `write` action, which places it in the working tree; the worker SHALL NOT edit an affected file by any other means, and SHALL never run fetch or exact-ref validation for branch selection. For a command-authorized merge finalization or staged repair commit, the coordinator SHALL pass the complete informative message literally on standard input to `git commit -F -` under `sai/policies/command-execution.md`, using Bash or PowerShell 7 without `git commit -m`, a Bash-only heredoc, or the `/sai-commit` `commit.js` path.
-
-#### Scenario: Worker never executes git mutations
-
-- **WHEN** the worker analyzes conflicts, proposes resolutions, scans collisions, or verifies the suite
-- **THEN** it performs read-only inspection, hands authorized content for conflicted regions within scope to the merge tool's `write` action, returns payloads, and leaves all Git state changes to the coordinator
-
-#### Scenario: Coordinator reviews materialized content before staging
-
-- **WHEN** the merge tool has placed the worker's resolution content in the working tree
-- **THEN** the coordinator reviews it against the confirmed strategy and either stages it or returns the named divergence to the worker, for at most three rounds
-
-#### Scenario: Worker never validates branch entries
-
-- **WHEN** a free-text branch entry requires refresh and exact-ref checks
-- **THEN** the coordinator runs the fetch and exact-ref checks while the worker performs no Git mutation
-
-#### Scenario: Authorized merge commit uses literal standard-input delivery
-
-- **WHEN** command-local authorization permits a merge finalization or staged repair commit after the applicable checks
-- **THEN** the coordinator sends the informative message unchanged to `git commit -F -` through the active supported shell
-
-### Requirement: Categorized conflict analysis with declared rules
-
-The system SHALL classify each conflicted file as specs, ADR/DDR, or code upon conflict detection. The analysis SHALL read, at the captured SHAs, the governing specs, ADRs, and DDRs forwarded as `target_rules` and `source_rules`, treat declared rules as normative Facts that outrank inferred objectives, label Inferences explicitly, and mark a region with no governing rule as `[No declared rule found for this region]`. A region is obvious when a declared rule or a simple textual pattern settles it, and semantic otherwise; contradicting rules, a conflicted arbiter, a rule rejecting both sides, and a spec contradiction SHALL always be semantic.
-
-#### Scenario: Declared rule governs the resolution
-
-- **WHEN** a governing rule explicitly constrains a conflict region
-- **THEN** the worker reports it as a Fact with its source and applies it ahead of inferred objectives
-
-#### Scenario: Missing declared rule generates a notice
-
-- **WHEN** a conflict region has no governing rule
-- **THEN** the Conflict Analysis carries `[No declared rule found for this region]` and the resolution rests on textual context
-
-#### Scenario: True contradiction is never auto-selected
-
-- **WHEN** both sides change the same requirement or scenario incompatibly
-- **THEN** the conflict is presented as a semantic decision inside the strategy, and when no safe combination exists it is escalated rather than resolved
 
 ### Requirement: Region-scoped alternatives
 
@@ -148,64 +48,6 @@ When every region of a file resolves to the same stage, the alternative SHALL co
 - **WHEN** the captured stage-checkout check establishes that a same-stage alternative preserves the combined content
 - **THEN** the strategy may use the unchanged Git-sourced alternative for coordinator materialization
 
-### Requirement: Global strategy gates resolution
-
-The worker SHALL produce one prose strategy over the whole affected conflict set, stating per file what is kept, adopted, combined, or escalated, with Facts, Inferences, objectives, contracts, trade-offs, risks, and the alternatives considered. Per-conflict decisions SHALL live inside that strategy; no per-conflict picker SHALL exist. In normal mode, the coordinator SHALL require `apply-strategy` before any resolution write, marker removal, or staging; `revise-strategy` SHALL return an open empty-options request whose free-form answer continues the same worker, and `decline-strategy` SHALL close without a resolution write at that stop while reporting the exact repository state. In fast-track, the worker SHALL return the complete strategy as `completed` before writing any resolution; the coordinator SHALL validate and present it, then continue the same worker to apply the presented strategy without a picker or recorded user answer. Every later strategy SHALL follow the same mode-specific hand-off. A strategy without a valid resolution SHALL stop or escalate rather than be applied.
-
-#### Scenario: Strategy is confirmed before mutation
-
-- **WHEN** the user selects `apply-strategy` in normal mode
-- **THEN** the worker writes the confirmed resolution and returns the complete payload, and nothing was written before that answer
-
-#### Scenario: Strategy is revised without mutation
-
-- **WHEN** the user selects `revise-strategy` in normal mode
-- **THEN** the same worker requests open context with empty `options`, rebuilds the strategy from the answer, and the repository remains unchanged during that revision
-
-#### Scenario: Fast-track presents before applying
-
-- **WHEN** a complete valid strategy is returned while fast-track is active
-- **THEN** the coordinator validates and prints it before continuing the same worker to apply it, without invoking a picker or fabricating an answer
-
-#### Scenario: Later conflicts retain mode-specific strategy handling
-
-- **WHEN** application, verification, or a later rebase stop requires a new strategy
-- **THEN** the same worker and language are retained and the strategy is presented before normal-mode approval or fast-track automatic application
-
-### Requirement: Complete resolution payload validation
-
-Before staging, the coordinator SHALL atomically validate the original received worker result and its `complete resolution payload`: exactly one record per affected conflicted file with the worker's path and category; `source` of `git-ours` / `git-theirs` with empty `regions` or `authored` with complete captured region entries; decisions matching those stated by the confirmed strategy; and no conflict marker, diff, hunk, or complete file in region text. Obvious authored regions SHALL NOT require an invented semantic decision. The original received worker result SHALL be the worker's verified transfer file: the coordinator SHALL pipe it to the shared validator and pass its path unchanged as `--source` to resolution checking, rather than constructing a shortened substitute, copying the file, or reading its content into coordinator context. Mechanical resolution checks SHALL validate the retained snapshot hash, immutable HEAD/index/operation identity, complete inventories, confirmed decisions, protected content, and unrelated content before checkout and before staging. Authored files SHALL equal the captured working file with only declared replacements, each replacement stored with the line endings and byte-order mark of the captured pre-write file as the merge tool's `write` action places it; Git-sourced files SHALL remain untouched by the worker and SHALL equal the captured stage after coordinator checkout. Independent semantic review SHALL also pass before staging. Any failure SHALL reject the whole payload, leaving every conflict untouched by coordinator checkout and unstaged.
-
-#### Scenario: Fragmentary payload is rejected atomically
-
-- **WHEN** a payload holds a diff, hunk, complete file, invalid source, missing region, marker, missing file, unexpected path, or a decision the strategy did not state
-- **THEN** the coordinator rejects the entire payload and stages no path
-
-#### Scenario: Git-sourced files are materialized by checkout
-
-- **WHEN** every record passes validation
-- **THEN** the coordinator materializes `git-ours` / `git-theirs` files with `git checkout --ours` / `--theirs`, leaves the `authored` files as the merge tool wrote them, and never reconstructs content from prose
-
-#### Scenario: Original envelope is required
-
-- **WHEN** resolution checking receives a reduced payload instead of the original worker result or the original result lacks a required field
-- **THEN** checking fails rather than validating a fabricated replacement envelope
-
-#### Scenario: Protected content differs
-
-- **WHEN** an authored result changes content outside captured replacement ranges or changes unrelated content
-- **THEN** mechanical checking rejects the result and no path is staged
-
-#### Scenario: Repository identity changes before review
-
-- **WHEN** HEAD, index entries, or operation identity no longer match the retained resolution snapshot
-- **THEN** the check reports stale evidence rather than accepting the resolution against a different state
-
-#### Scenario: Mechanical success does not replace semantic review
-
-- **WHEN** resolution checking succeeds
-- **THEN** the coordinator independently reviews the materialized tree against the confirmed strategy and stages only when both checks pass
-
 ### Requirement: Runtime resolution scope gate
 
 Resolution scope SHALL always include every affected conflicted file in every mode. The worker and coordinator SHALL NOT offer partial-scope choices, derive eligible scope options, ask a scope-selection question, or defer files because of a selected scope.
@@ -219,69 +61,6 @@ Resolution scope SHALL always include every affected conflicted file in every mo
 
 - **WHEN** the affected conflict set includes specs, ADR/DDR records, and code
 - **THEN** the strategy and complete resolution payload cover every affected file without partial-scope options or deferred-scope entries
-
-### Requirement: Bounded verification loop
-
-The coordinator SHALL fix the project's test command once in preflight, from the project's documentation or the merge tool's marker list, and SHALL run that fixed command through the merge tool after a conflict stop's resolution is staged, for at most three started executions per conflict stop. Every round SHALL use the command fixed in preflight. Each started execution, including one that reaches the execution timeout, SHALL consume a round; increasing the timeout SHALL NOT reset the budget.
-
-After a failed first or second round, the coordinator SHALL continue the worker for failure analysis and SHALL choose exactly one retry-or-close branch before another execution:
-- An applied correction SHALL permit a repeat only after tool evidence confirms changed bytes in authorized files against the current round's pre-write snapshot, the correction passes independent review, and the corrected files are re-staged. A proposal, report, no-op write, or cumulative `changed_files` union SHALL NOT establish a current-round applied correction.
-- Without an applied correction, a repeat SHALL require a concrete, evidence-backed reason recorded before execution that explains how another execution can provide useful new information. Speculation about intermittent failures SHALL NOT qualify. A started run interrupted by the execution timeout MAY justify increasing that timeout within the same budget. This reason SHALL authorize neither environment changes nor scope expansion.
-- When failure analysis completes without an applied correction and without a concrete repeat reason, the coordinator SHALL record `verification_result: failed-no-correction` and close verification immediately. Proposed but unapplied corrections SHALL follow this branch. The coordinator SHALL retain the consumed rounds and every remaining failure, SHALL NOT describe unused rounds as exhausted, and SHALL continue integration through the same navigation as `cap-exhausted` with failed status rather than a pass.
-
-A failed third round SHALL record `cap-exhausted`. Re-entry to the same conflict stop, including after a new-problem strategy correction, SHALL retain consumed rounds. Each new rebase conflict stop SHALL receive fresh verification and its own three-round budget; earlier unresolved failures SHALL remain available for the final summary. Retry decisions and `failed-no-correction` SHALL remain coordinator state rather than stateless-tool retry management or worker response fields.
-
-A missing suite, an ambiguous suite, or a test command that cannot start SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A command that cannot start SHALL consume no round. A clean integration SHALL skip verification.
-
-#### Scenario: Suite failure exhausts the budget
-
-- **WHEN** the fixed test command still fails after the third round
-- **THEN** the coordinator records `cap-exhausted`, reports the remaining failures in the final summary, and continues on the existing post-verification path to invocation-authorized automatic local finalization without an additional approval, while the resolved state stays staged and uncommitted until finalization and without claiming verification passed
-
-#### Scenario: Unavailable verification continues the run
-
-- **WHEN** verification returns `unavailable` because no suite was detected, the suite is ambiguous, or the command cannot start
-- **THEN** the coordinator prints the matching notice, reports that resolution has already been applied and staged, records `verification_result: unavailable`, and continues automatically to the merge collision pass or stopped-rebase finalization without a question or simulated answer and without claiming a pass
-
-#### Scenario: No correction or repeat reason closes verification early
-
-- **WHEN** failure analysis after a failed first or second round completes without an applied correction and without a concrete repeat reason
-- **THEN** the coordinator records `failed-no-correction`, stops verification without consuming another round, retains the actual round count and failures, and continues through the exhausted-budget navigation with failed status
-
-#### Scenario: Proposed but unapplied correction does not justify a retry
-
-- **WHEN** failure analysis proposes a correction but no correction is applied and no concrete repeat reason exists
-- **THEN** verification closes as `failed-no-correction` rather than repeating the suite or reporting budget exhaustion
-
-#### Scenario: Current-round correction permits a bounded repeat
-
-- **WHEN** tool evidence confirms changed bytes in authorized files against this round's pre-write snapshot and the corresponding independent review passes
-- **THEN** the coordinator re-stages the corrected files and repeats the fixed verification command only within the remaining three-round budget
-
-#### Scenario: Reports and earlier changes do not prove a correction
-
-- **WHEN** the offered correction evidence consists only of a proposal, report, no-op write, or cumulative changed-file list
-- **THEN** the coordinator does not count it as an applied correction for the current round
-
-#### Scenario: Concrete evidence permits a repeat without correction
-
-- **WHEN** no correction was applied but the coordinator records evidence before execution that another run can provide useful new information
-- **THEN** another execution may use the remaining budget with the same fixed command without authorizing environment changes or scope expansion
-
-#### Scenario: Timeout consumes an attempt
-
-- **WHEN** a started verification execution reaches the execution timeout and a longer timeout justifies another run
-- **THEN** the timed-out execution remains counted and any repeat consumes another round within the same maximum of three
-
-#### Scenario: Same-stop re-entry retains attempts
-
-- **WHEN** verification re-enters the same conflict stop after a new-problem strategy correction
-- **THEN** the coordinator retains that stop's consumed rounds rather than resetting its verification budget
-
-#### Scenario: New rebase stop receives fresh verification
-
-- **WHEN** rebase continuation reaches a new conflict stop
-- **THEN** that stop receives fresh verification with its own three-round budget while earlier unresolved failures remain reportable
 
 ### Requirement: Incremental ADR/DDR collision pass
 
@@ -316,128 +95,6 @@ The system SHALL run the ADR/DDR collision pass on the final integration state u
 
 - **WHEN** an introduced record is missing at its captured path in the final state
 - **THEN** the mechanical result requests survival-or-rename reconciliation and the worker establishes its disposition without assuming no collision work exists
-
-### Requirement: Explicit finalization authorization
-
-Invoking `/sai-merge` SHALL supply command-local authorization for exactly the local merge commit, `git rebase --continue` at each resolved stop, and a collision-repair commit after a finished rebase. This authorization SHALL expire when the invocation closes, SHALL NOT create a session grant or affect another command, and SHALL NOT authorize push, amend, force, hook bypass, destructive operations, or unrelated changes. After the applicable review, verification, collision, and staging checks, the coordinator SHALL present a compact summary of method, target and source branch, verification status, conflict result, collision result with applicability, and staged-file count without the staged-file list, then execute the corresponding operation directly without a finalization question or fabricated answer. Other safety confirmations SHALL remain required. Finalization SHALL include only integration-owned staged content; unrelated working-tree changes SHALL be retained, and unrelated staged content that would enter a commit SHALL stop finalization. Git failure SHALL preserve and report the exact state without claiming success.
-
-#### Scenario: Authorization declined
-
-- **WHEN** the run reaches local finalization after the applicable checks
-- **THEN** no finalization approval or refusal choice is presented; the coordinator executes the invocation-authorized operation or reports the blocking state without claiming completion
-
-#### Scenario: Completion literal follows finalization
-
-- **WHEN** the run ends with the merge commit executed, or with the rebase finished and any repair committed
-- **THEN** the terminal prints the coordinator-written final summary followed by `Merge done.`; every other closure omits it
-
-#### Scenario: Unrelated staged content blocks finalization
-
-- **WHEN** a finalization commit would include unrelated staged content
-- **THEN** the coordinator stops without committing that content and reports the exact repository state
-
-#### Scenario: Git finalization failure remains visible
-
-- **WHEN** the local finalization operation fails
-- **THEN** the coordinator reports the error and exact repository state without bypassing Git checks or claiming successful finalization
-
-### Requirement: Conflict-triggered language hand-off
-
-Clean integrations SHALL never ask for a working language or strategy. On the first conflict stop the coordinator SHALL detect the conflict itself from the conflict snapshot, print one concise notice with the affected paths and no semantic analysis, and ask the working language in Batch 2 before any worker analysis. The language question SHALL run once per run. No scope item, eligible-scope set, or scope-selection answer SHALL be produced, and the strategy SHALL cover every affected conflicted file. The worker SHALL return `event: conflict_detected` only with `continuation_state: strategy-analysis`, `changed_files: []`, and the current `affected_files` inventory, when a write or a test correction exposes a new problem, and later conflicts SHALL reuse the selected language and the same worker.
-
-#### Scenario: Clean integration needs no language
-
-- **WHEN** an integration completes without conflicts
-- **THEN** the run proceeds to the collision check without a language question or strategy
-
-#### Scenario: New problem re-enters strategy analysis
-
-- **WHEN** resolution application or verification exposes a new conflict or inconsistent contract
-- **THEN** the same worker rebuilds the strategy in the selected language and follows normal-mode approval or fast-track presentation-and-application before the next write
-
-### Requirement: Fast-track changes only method and scope
-
-Merge fast-track SHALL pin the method to `merge` and automatically apply each complete valid strategy only after coordinator validation and presentation. Normal mode SHALL retain apply/revise/decline strategy approval. Full resolution scope, unavailable-suite continuation, and command-local finalization SHALL apply identically in both modes rather than being fast-track opt-outs. Conflict-triggered language selection, complete payload validation, review and verification budgets, collision handling, remaining questions, and safety checks SHALL remain in force.
-
-#### Scenario: Fast-track conflict retains strategy safety
-
-- **WHEN** `--fast-track` is active for a conflicted merge
-- **THEN** Batch 1 has no method item, Batch 2 carries only the language item, and each complete strategy is validated and presented before automatic application with no strategy-confirmation picker
-
-### Requirement: The merge coordinator validates operation boundaries
-
-The merge coordinator SHALL call `validate_transition(current_state, target_state, operation_context)` before each operation and SHALL halt when it returns `invalid`.
-
-#### Scenario: Invalid coordinator transition halts safely
-
-- **WHEN** lifecycle validation reports an invalid transition
-- **THEN** the coordinator reports the violation and performs no operation, worker dispatch, mutation, or presentation update
-
-### Requirement: Harness-parity merge contract
-
-Claude Code and opencode SHALL use the same neutral worker and coordinator contracts. Given the same worker payloads, mode, and operation outcomes, both SHALL preserve the same remaining question texts, option values and order, mode-specific strategy and revision semantics, mutation ownership, payload validation, verification reporting, automatic local finalization, exact failure-state reporting, and completion literal; only the native question and task-list mechanisms differ.
-
-#### Scenario: Both harnesses preserve merge decisions
-
-- **WHEN** the same conflicted integration is handled through Claude Code or opencode in the same mode
-- **THEN** both present the same strategy, require the same normal-mode approval or fast-track presentation hand-off before resolution, preserve validation and staging checks, and finalize under the same command-local authorization
-
-### Requirement: Merge guard windows keep coordinator mutations outside every window
-
-The merge coordinator SHALL run the guard's `snapshot` step at each window opening and its `verify` step immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), holding the returned SHA as invocation-scoped `guard_base`, and SHALL act on a progress event or notice with no guard call. The coordinator's own git mutations — the launch, squash commit, `git rebase --continue`, `git checkout --ours/--theirs`, `git mv`, staging, and authorized commits — SHALL run between windows and never inside one. No merge window carries `allow_commit`.
-
-#### Scenario: The authorized merge commit runs between windows
-
-- **WHEN** the coordinator stages and commits the merge
-- **THEN** those mutations run after the verify that closed the preceding window and before the next window's fresh snapshot
-
-### Requirement: Free-text branch entry validation
-
-The coordinator SHALL validate a free-text `branch_entry` by running `git fetch --prune origin` before any ref check, deriving exactly one ref without trimming or normalization where a value beginning with the exact prefix `origin/` maps to `refs/remotes/origin/<remainder>` and every other value maps to `refs/heads/<value>`, then running `git check-ref-format`, `git show-ref --verify --quiet`, and `git rev-parse --verify` with the full ref as one literal argument. The coordinator SHALL NOT fetch for a listed candidate, SHALL NOT create a local branch for an `origin/<branch>` entry, SHALL NOT resolve arbitrary revisions, and SHALL stop without provenance capture or integration when the fetch fails or the exact ref does not resolve.
-
-#### Scenario: Failed fetch stops before integration
-
-- **WHEN** the fetch fails or the exact ref does not resolve
-- **THEN** the run closes stating no integration started with no provenance captured and no local branch created
-
-### Requirement: Harness-neutral branch picker answer classification
-
-The merge coordinator SHALL classify the branch answer the picker returns, in this order and without naming or depending on any harness: an answer equal to the exact value or the exact label of a listed candidate or of the `sai:enter-branch` option SHALL be that option's selection and SHALL be mapped to its value before classification; an exact listed candidate value SHALL set `branch_selection_source: listed` and SHALL trigger no fetch, including picker free text that exactly matches a listed value; the sentinel `sai:enter-branch` SHALL lead to the branch-entry open prompt; any other non-empty answer SHALL be picker free text that becomes `branch_entry` exactly as typed, with `branch_selection_source: free-text`, no second prompt, and only its existing Batch 1 history pair recorded, never an added `branch-entry` pair; and an empty or whitespace-only answer SHALL NOT be a branch and SHALL repeat the branch question with no fetch. A `no` dirty answer SHALL be applied before this classification, ignoring any branch text. Picker free text SHALL then follow the existing `Free-text branch entry validation` unchanged. The coordinator branch-classification block and the presentation Branch entry gate SHALL name no harness.
-
-#### Scenario: Picker free text becomes the branch entry directly
-
-- **WHEN** the dirty answer is not `no` and the user types `origin/main` into the branch picker, matching no option value or label
-- **THEN** the coordinator forwards `origin/main` as `branch_entry` with `branch_selection_source: free-text`, shows no branch-entry prompt, and validates it through the free-text branch entry validation
-
-#### Scenario: Picker free text matching a listed value counts as listed
-
-- **WHEN** the picker free text exactly equals the value of a listed candidate
-- **THEN** the coordinator sets `branch_selection_source: listed` and runs no fetch
-
-#### Scenario: Picker returns an option label
-
-- **WHEN** the picker answer equals the exact label of a listed candidate or of the `Enter a branch name` option
-- **THEN** the coordinator treats it as that option's selection, mapped to its value before classification
-
-#### Scenario: Empty picker answer repeats the branch question
-
-- **WHEN** the branch answer is empty or whitespace-only
-- **THEN** the coordinator repeats the branch question and runs no fetch
-
-#### Scenario: Picker free text is accepted with no candidates
-
-- **WHEN** no unmerged local branch remains and the user types a branch into the picker instead of choosing `Enter a branch name`
-- **THEN** the coordinator accepts the typed text as `branch_entry` with no second prompt while `sai:enter-branch` stays offered
-
-#### Scenario: Dirty refusal ignores picker free text
-
-- **WHEN** the dirty answer is `no` and the branch answer carries typed text
-- **THEN** the coordinator forwards the batch as answered and no fetch, validation, or mutation runs
-
-#### Scenario: Branch gate names no harness
-
-- **WHEN** the coordinator branch-classification block and the presentation Branch entry gate are read
-- **THEN** neither names `Claude Code` nor `opencode`
 
 ### Requirement: Informative merge finalization message
 The system SHALL compose the merge finalization commit with the subject as today within 50 characters followed by a body listing every contained commit in `merge_base..source_sha`, enumerated with `git log --reverse --format=%s` in chronological order, one `- <first line>` body line per commit, literal with no reformat, translation, or hash, all commits with no truncation, with a blank line between subject and list and each bullet kept on one line even past 72 characters with no rewrap or trim.
@@ -541,86 +198,6 @@ The mechanical comparison SHALL compare equivalent preflight facts against the s
 - **WHEN** a full-runtime comparison follows the documented protocol
 - **THEN** paired cases retain equivalent repository and model configuration, record human waiting and tool and test intervals separately, and verify correct resolution and preserved guarantees on both harnesses
 
-### Requirement: Coordinator-run mechanical merge stages
-
-The merge coordinator SHALL run the mechanical stages `preflight`, `conflicts`, `verify`, `collision`, and `final` itself through `sai/tools/merge.js`. Its own tool use SHALL be read-only except for the Git mutations it already owns. Conflict analysis, resolution content, test correction, and decision-record renumbering plans SHALL remain worker work, and the coordinator SHALL review what the worker wrote as a separate session.
-
-#### Scenario: Clean integration completes through the tool alone
-
-- **WHEN** a merge or rebase launches without conflicts and the collision receipt is `not-applicable` or `no-collision`
-- **THEN** the run enters `collision` and then `final`, never enters `verify`, and closes with no worker dispatched
-
-#### Scenario: Failed launch without conflicts closes the run
-
-- **WHEN** a launch fails and the conflict snapshot holds an empty inventory
-- **THEN** the coordinator surfaces the Git error and closes the run with the exact repository state instead of treating it as a conflict
-
-### Requirement: Composite stage entry
-
-The merge tool SHALL provide `enter --stage <stage>` for the coordinator stages `preflight`, `conflicts`, `verify`, `collision`, and `final`. One call SHALL return that stage's instructions, its fixed presentation texts, and a `## Stage facts` JSON block holding the stage's receipt. Entry to `conflicts`, `verify`, and `collision` SHALL require `--record` naming a new file outside the repository. The exit code SHALL be that of the stage's mechanical action. A stage name outside the coordinator stages SHALL be rejected as a usage error.
-
-#### Scenario: Failed test run still returns the stage text
-
-- **WHEN** the coordinator enters `verify` and the detected suite fails
-- **THEN** the call exits 1 and still returns the complete stage text with the verification receipt
-
-#### Scenario: Recorded stage without a record file is refused
-
-- **WHEN** `enter --stage conflicts` is called without `--record`
-- **THEN** the tool reports a usage error and collects nothing
-
-#### Scenario: Later entry runs the bare action
-
-- **WHEN** the coordinator re-enters a stage whose text it already holds, such as a second rebase stop or a second test round
-- **THEN** it runs only that stage's bare mechanical action with a new record file
-
-### Requirement: Stage-gated coordinator instructions
-
-At start the merge coordinator SHALL load only what every stage needs. Its stage instructions in `sai/commands/merge/coordinator-stages.md` and the fixed texts in `sai/commands/merge/presentation.md` SHALL arrive from the merge tool when a stage starts, and the coordinator SHALL NOT fetch either file whole. A stage's text SHALL be in force from its entry to its exit and SHALL grant no authority to run a later stage.
-
-#### Scenario: Preflight entry carries the seam rules once
-
-- **WHEN** the coordinator enters `preflight`
-- **THEN** the returned text holds the presentation seam's rules, the preflight stage instructions, and the preflight texts, and holds no later stage body
-
-#### Scenario: Squash launch reads the message rules alone
-
-- **WHEN** a `rebase-squash` launch needs the informative-message rules before the `final` stage
-- **THEN** `instructions --stage messages` returns those rules alone
-
-### Requirement: Judgment-point worker dispatch
-
-The coordinator SHALL dispatch exactly one merge worker at the first judgment point of a run: a conflict stop, or a collision receipt whose result is `needs-judgment`. It SHALL continue that same worker at every later judgment point, including later rebase stops and failed test rounds. A run that reaches no judgment point SHALL dispatch no worker and SHALL open no no-commit guard window. The dispatch SHALL use the ready handshake and SHALL then disclose the task with the `--reconstruct` form of the `Active stage:` pointer and the complete reconstruction state. The `strategy` disclosure SHALL NOT carry stage blob OIDs: the worker SHALL read the conflicts through the merge tool's `bundle` action on the disclosed snapshot reference and hash.
-
-#### Scenario: First conflict dispatches the worker
-
-- **WHEN** the first conflict stop of a run is detected and no worker is running
-- **THEN** the coordinator dispatches one worker and discloses `strategy` with the affected inventory, the snapshot reference and hash, the provenance receipt, the method, and the working language
-
-#### Scenario: Collision alone dispatches the worker
-
-- **WHEN** a clean integration's collision receipt is `needs-judgment` and no worker is running
-- **THEN** the coordinator dispatches one worker and discloses `renumbering-plan` without asking for a working language
-
-#### Scenario: Later rebase stop reuses the worker
-
-- **WHEN** `git rebase --continue` stops on a new conflicted commit
-- **THEN** the coordinator captures a fresh snapshot and continues the same worker with the language already selected
-
-### Requirement: Coordinator-authored preflight and closure
-
-The coordinator SHALL build Batch 1, the in-progress guard closings, the integration proposal, and the final summary from the fixed texts the merge tool serves with each stage. It SHALL take the preflight facts from the `preflight` receipt and the closing facts from the `status` receipt rather than listing branches or re-running status checks itself.
-
-#### Scenario: In-progress guard closes without a question
-
-- **WHEN** the `preflight` receipt reports a merge or rebase in progress
-- **THEN** the coordinator prints the matching pinned closing text and closes the run with no question and no launch
-
-#### Scenario: Final summary is written from the final texts
-
-- **WHEN** no finalization operation remains
-- **THEN** the coordinator writes the final summary from the final texts' template and hands it to terminal navigation
-
 ### Requirement: Provenance capture validates the exact source ref
 
 The merge tool's `provenance` action SHALL check the source ref's format, its existence, and its commit before capturing the merge provenance, in one call. A ref that fails any check SHALL produce no provenance receipt.
@@ -665,7 +242,7 @@ The merge coordinator SHALL fix the test command once in preflight, before the i
 
 ### Requirement: Verification runs the fixed test command
 
-The merge tool's `verify` action and `enter --stage verify` SHALL accept `--command <line>` for a documented command, or `--suite <record> --suite-hash <sha256>` for a suite record captured in preflight, and the coordinator SHALL pass one of the two on every verification call so that no round detects the command again. A documented command SHALL run instead of the marker list and its receipt SHALL carry `command_source: documented`; a marker-list command SHALL carry `command_source: list`. A captured suite record SHALL decide the command, or the absence of one, whatever marker files the integration later adds or removes. The tool MUST refuse with a usage or collection error a `--suite` without a matching `--suite-hash`, a record whose bytes do not match the hash, a record that is not a suite receipt, and `--command` together with `--suite`.
+The merge tool's `verify` action SHALL accept `--command <line>` for a documented command, or `--suite <record> --suite-hash <sha256>` for a suite record captured before the launch, and the coordinator SHALL pass one of the two on every verification call, including the baseline and the comparison against it, so that no run of the suite detects the command again. A documented command SHALL run instead of the marker list and its receipt SHALL carry `command_source: documented`; a marker-list command SHALL carry `command_source: list`. A captured suite record SHALL decide the command, or the absence of one, whatever marker files the integration later adds or removes. The tool MUST refuse with a usage or collection error a `--suite` without a matching `--suite-hash`, a record whose bytes do not match the hash, a record that is not a suite receipt, and `--command` together with `--suite`.
 
 #### Scenario: Documented command runs instead of the detected suite
 
@@ -739,3 +316,180 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 - **WHEN** verification returns `unavailable` with `unavailable_reason: not-runnable`
 - **THEN** the coordinator prints the not-runnable notice, records `verification_result: unavailable`, starts no test correction, and continues without a question
+
+### Requirement: Merge runs unattended from its arguments
+
+`/sai-merge` SHALL run as one goal-driven, always-unattended coordinator, `sai/commands/merge/coordinator.md`, whose invocation is `/sai-merge [<branch>] [--rebase|--squash]`. The default method SHALL be a merge, `--rebase` SHALL replay the current branch onto the named branch, and `--squash` SHALL first turn the current branch's own commits since the merge base into one local commit and then rebase it; `--squash` SHALL win when both options are given. `--fast-track` SHALL be accepted and ignored with no banner. A second branch or any other option SHALL end the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]` before anything is written. The run SHALL ask no method, working-language, dirty-tree, or strategy question, and its closing report SHALL use the language of the chat.
+
+#### Scenario: Both method options select the squash
+
+- **WHEN** `/sai-merge feature --rebase --squash` is invoked
+- **THEN** the run squashes the current branch's own commits into one local commit and rebases it onto `feature`
+
+#### Scenario: Fast-track is ignored
+
+- **WHEN** `/sai-merge feature --fast-track` is invoked
+- **THEN** the run merges `feature` exactly as without the token and prints no fast-track banner
+
+#### Scenario: Unknown option ends the run before any write
+
+- **WHEN** the arguments carry an option other than `--rebase`, `--squash`, or `--fast-track`
+- **THEN** the run prints the usage line with the cause and writes nothing
+
+### Requirement: Merge start guards
+
+Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resume an in-progress merge or rebase only when the invocation names the same branch and the run store holds a `running` or `escalated` `merge-run@1` run under `merge-{branch}`; any other in-progress operation SHALL be left untouched and the run SHALL end with the reason and, when a recorded run owns it, that run's branch. Without a branch argument, the coordinator SHALL ask which branch to integrate through the native picker with the newest preflight candidates up to the picker capacity and the picker's free text, or in plain text when there are none, mapping an `origin/<rest>` answer to `refs/remotes/origin/<rest>` and any other name to `refs/heads/<name>` and fetching nothing. Staged content before the launch SHALL end the run naming those paths. Unstaged changes SHALL NOT stop a merge, and for a rebase or squash the coordinator SHALL check git's refusal on tracked unstaged changes before the first mutation. A provenance failure, such as a branch that does not exist, SHALL end the run with the cause and nothing launched, and a branch whose head is already an ancestor of `HEAD` SHALL close the run with no changes.
+
+#### Scenario: Foreign operation is never touched
+
+- **WHEN** a merge or rebase is in progress that no recorded `/sai-merge` run of the named branch owns
+- **THEN** the run explains why it stops, names the branch of the recorded run when one owns it, and changes nothing
+
+#### Scenario: Staged content stops the run
+
+- **WHEN** the preflight reports a staged path before the launch
+- **THEN** the run ends naming the staged paths and launches nothing
+
+#### Scenario: Already integrated branch closes with no changes
+
+- **WHEN** the named branch's head is already an ancestor of `HEAD`
+- **THEN** the run closes with no changes and says so
+
+### Requirement: Suite baseline before the launch
+
+The coordinator SHALL fix the test command once before anything runs and SHALL take the baseline with `merge.js verify --baseline --record <run directory>/baseline.json` at `HEAD` before the launch, using that fixed command. The baseline mode SHALL run the suite once and store its result with the failing tests named when the output allows it. With no detectable suite or several ambiguous ones, the baseline and the later verification SHALL be marked unavailable, the run SHALL continue, and the closing report SHALL say so.
+
+#### Scenario: Baseline is taken once before the launch
+
+- **WHEN** a run with a fixed test command reaches its launch
+- **THEN** the suite has run exactly once at the pre-launch `HEAD` and its record is kept in the run directory
+
+#### Scenario: No suite leaves verification unavailable
+
+- **WHEN** no test command can be fixed
+- **THEN** the run continues and the closing report states that the baseline and verification were unavailable and why
+
+### Requirement: Final-tree verification against the baseline
+
+The suite SHALL run once on the final tree, after the resolution is staged for a merge and after the last stop for a rebase, never per stop, through `merge.js verify --baseline-record <file> --baseline-hash <sha256>`. The tool SHALL refuse a baseline record whose bytes do not match the hash or that is not a baseline. A failing test that is not in the baseline SHALL be rerun once with the whole suite and SHALL count as a new failure only when it fails on both runs; the comparison status SHALL be `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`, and `verification_result` SHALL be `failed` only for a new failure. When the suite names no individual test and the baseline already failed, the result SHALL be not comparable. Failing tests SHALL be named from the output formats of common runners, and a runner's summary header ending with a colon SHALL NOT count as a test name. Only a new failure SHALL block: it SHALL be the obstacle `new-failure`, corrected through the worker's test-correction and apply steps; on a merge the correction SHALL join the merge commit, and on a rebase it SHALL be one additional local commit on top of the rebased branch.
+
+#### Scenario: Failure that passes on the rerun is flaky
+
+- **WHEN** a test that passed in the baseline fails after the integration and passes on the rerun
+- **THEN** it is reported as flaky and does not block finalization
+
+#### Scenario: Pre-existing failure does not block
+
+- **WHEN** a test that already failed in the baseline fails on the final tree
+- **THEN** it is reported as pre-existing, is not rerun for confirmation, and does not block
+
+#### Scenario: Confirmed new failure blocks
+
+- **WHEN** a test that passed in the baseline fails on two consecutive runs after the integration
+- **THEN** `comparison.status` is `new`, `verification_result` is `failed`, and the coordinator works the `new-failure` obstacle before finalizing
+
+#### Scenario: Summary header is not a test
+
+- **WHEN** a `node --test` run prints a `failing tests:` summary header followed by the failing test names
+- **THEN** the named failing tests are the real tests only and the header is not counted
+
+### Requirement: Conflict stop cycle
+
+Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write, have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git diff --cached --check` clean, and a rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
+
+#### Scenario: Clean launch needs no worker
+
+- **WHEN** the launch leaves no unmerged path
+- **THEN** no worker is created and the run proceeds to final-tree verification and the ADR/DDR collision check
+
+#### Scenario: Findings open after round three are pending
+
+- **WHEN** review findings on a stop's resolution remain open after the third fix round
+- **THEN** they are recorded as pending in `findings.md`, appear in the closing report, and the run continues
+
+#### Scenario: Later rebase stop reuses the worker
+
+- **WHEN** `git rebase --continue` stops at another conflicted commit
+- **THEN** the coordinator starts a new stop with the same worker and its own obstacle budgets
+
+### Requirement: Escalation when commit intent cannot decide
+
+When the worker's strategy report lists an escalation because commit intent cannot decide between two sides, the coordinator SHALL decide nothing by itself and SHALL escalate at once, without spending an attempt, through the native picker with options it writes: at least resolving for the current branch's behavior, resolving for the selected branch's behavior, leaving the operation in progress without finalizing, and aborting it with `git merge --abort` or `git rebase --abort`. The run SHALL abort only when the user chose that option. A chosen resolution SHALL be sent back to the worker's strategy step as the decision for those conflicts. A whole-side-only conflict that commit intent cannot decide SHALL follow the same escalation.
+
+#### Scenario: Abort happens only on explicit choice
+
+- **WHEN** an escalation is answered with the option that leaves the operation in progress
+- **THEN** the merge or rebase stays in progress, nothing is aborted, and the run closes with its report
+
+### Requirement: Merge obstacles and escalation
+
+An obstacle SHALL be anything that prevents closing a stop or the run, including a rejected or unreviewable resolution, a new failure, an unreadable report, a silent or drifting worker, a git refusal, or a tool error. Each named obstacle SHALL have a budget of three attempts, each a different approach, and the coordinator SHALL emit `attempt` before each one and escalate at once when the budget is exhausted. Escalation SHALL state what happened, what is done, and what was tried, and SHALL ask through the native picker with options the coordinator writes, including one that accepts the new failure and finalizes when the obstacle is `new-failure`, one that leaves everything as it is, and, while a merge or rebase is in progress, one that aborts it. A dismissed question SHALL close the run `escalated` with the operation left in progress.
+
+#### Scenario: Exhausted budget escalates
+
+- **WHEN** the third attempt on an obstacle fails
+- **THEN** the coordinator escalates through the native picker instead of making a fourth attempt
+
+### Requirement: Command-local authority of a merge run
+
+Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch (including the squash), `git checkout --ours` or `--theirs` for a whole-side choice, staging, the ADR/DDR repair edits and `git mv`, the merge commit, the squash commit, each `git rebase --continue`, the correction commit of the final tree, and the repair commit. The run SHALL never push, amend, force, bypass a hook, or abort an operation unless the user chose it, SHALL leave unrelated working-tree changes as they are, and SHALL stop if unrelated staged content would enter a commit. Each commit message SHALL be sent with `git commit -F <file>`, the file in the run directory. A finished rebase with nothing staged SHALL create no extra commit.
+
+#### Scenario: Nothing is pushed
+
+- **WHEN** a run finalizes a merge or rebase
+- **THEN** every commit and `rebase --continue` stays local and no push is run
+
+### Requirement: Merge closing report
+
+The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
+
+#### Scenario: Restore command for a changed branch
+
+- **WHEN** a run created a merge commit on the current branch
+- **THEN** the closing report names the pre-launch `HEAD` and `git reset --hard <that sha>`
+
+#### Scenario: Force-push notice after rewriting published commits
+
+- **WHEN** a rebase rewrote commits the current branch's upstream already holds
+- **THEN** the closing report says that the next push needs a force push
+
+### Requirement: Merge coordinator loads only its own contracts
+
+Both `/sai-merge` wrappers SHALL load the harness fetch skill and `sai/commands/merge/coordinator.md` directly, with no boot adapter and no command bootstrap. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, and `incremental-review`, SHALL load no budget binding, and SHALL load none of `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, or `no-commit-guard`. The only subagent of a run SHALL be the merge worker; lookups that shared policies delegate to a `budget-explorer` SHALL be done by the coordinator itself.
+
+#### Scenario: Wrapper reaches the coordinator directly
+
+- **WHEN** either harness's `sai-merge.md` wrapper is read
+- **THEN** it fetches the harness fetch skill and `sai/commands/merge/coordinator.md` and names no boot adapter or `command-bootstrap.md`
+
+### Requirement: Provenance records upstream rewrite facts
+
+The merge tool's `provenance` action SHALL also record the current branch's upstream facts: the upstream ref or none, the number of commits a rebase or squash rewrites, how many of them the upstream already holds, and `force_push_needed`, true only when that shared count is positive. A merge SHALL rewrite no commits, and a branch without an upstream SHALL need no force push.
+
+#### Scenario: Rebase of published commits needs a force push
+
+- **WHEN** provenance is captured for a rebase whose rewritten commits include commits the upstream already holds
+- **THEN** `upstream.shared_with_upstream` is positive and `upstream.force_push_needed` is true
+
+#### Scenario: No upstream needs no force push
+
+- **WHEN** the current branch has no upstream
+- **THEN** `upstream.ref` is null and `upstream.force_push_needed` is false
+
+### Requirement: Merge tool has no stage entry points
+
+`sai/tools/merge.js` SHALL offer only its fact and write actions (`preflight`, `provenance`, `conflicts`, `correction`, `bundle`, `write`, `valid`, `resolution`, `suite`, `verify`, `collision`, and `status`) and SHALL NOT offer `enter --stage`, `instructions --stage`, or `--reconstruct`. Worker instructions SHALL travel by pointer to the step files under `sai/commands/merge/steps/`, and replacement state SHALL travel by hand-over file.
+
+#### Scenario: Retired entry point is unknown
+
+- **WHEN** the merge tool's usage text is printed
+- **THEN** it lists neither `enter` nor `instructions`
+
+### Requirement: Harness-parity goal-driven merge
+
+Claude Code and opencode SHALL run `/sai-merge` from the same coordinator, worker contract, step files, and `merge.js` engine, with the same arguments, authority, escalation options, and closing report; only the native picker, the standalone worker binding, and the continuation mechanics of each harness SHALL differ.
+
+#### Scenario: Both harnesses render the same standalone binding
+
+- **WHEN** the worker matrix materializes the merge worker binding for Claude Code and opencode
+- **THEN** both render from their harness's standalone worker template and fetch the same `sai/commands/merge/worker.md`

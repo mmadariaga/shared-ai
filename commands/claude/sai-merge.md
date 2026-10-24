@@ -1,14 +1,14 @@
 ---
-description: Merge, rebase, or squash-rebase a branch — resolves all conflicts, reports unavailable tests, and finalizes locally automatically; fast-track applies presented strategies without approval.
-argument-hint: "[--fast-track]"
+description: Merge, rebase, or squash-rebase a branch with no human in the loop — resolves all conflicts by commit intent, repairs ADR/DDR collisions, verifies the result against the suite baseline taken at HEAD, and finalizes locally. Accepts [<branch>] [--rebase|--squash].
+argument-hint: "[<branch>] [optional: --rebase | --squash]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/adapters/claude/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/merge/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: merge

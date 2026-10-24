@@ -1,6 +1,6 @@
 # Portable Command Execution
 
-Use this policy at the command-execution mutation points in commit, merge,
+Use this policy at the command-execution mutation points in commit,
 archive, and Direct Build close flows.
 Tool paths remain owned by `@sai/policies/tool-resolution.md`; this policy
 governs how to invoke a resolved path and deliver its input.
@@ -96,8 +96,4 @@ start `git` with `commit`, `-F`, and `-` as separate arguments. Set the process
 working directory to the repository when the invocation requires it.
 
 `commit.js apply` remains the `/sai-commit` execution path because it validates
-that route's message and sensitive-file authorization. Do not reuse it for
-`/sai-merge`: it also imposes the `/sai-commit` Conventional Commits validator
-and sensitive-file gate, while merge keeps its own message and authorization
-contract. Merge sends its authorized informative message directly to
-`git commit -F -`.
+that route's message and sensitive-file authorization.

@@ -1,6 +1,6 @@
 # Opencode Panel Render Binding
 
-This harness has a native task panel (`panel: native`), declared here — never runtime-detected. It serves routed progress plans, the `sai-explore` stage TODO and idea list, and the `sai-merge` adaptive TODO; each surface's list, ownership, and timing rules live in its own contract.
+This harness has a native task panel (`panel: native`), declared here — never runtime-detected. It serves routed progress plans and the `sai-explore` stage TODO and idea list; each surface's list, ownership, and timing rules live in its own contract.
 
 - **Marker carrier.** The machine-readable marker carrier is the todo entry's `priority` field. It accepts any string, so the consuming surface's marker value takes the place of `high`/`medium`/`low`.
 - **Render.** Each render sends the surface's full `todos` array to `todowrite`, replacing the panel's current content.

@@ -41,7 +41,7 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 #### Scenario: Standalone bindings leave the lifecycle to their coordinator
 
-- **WHEN** the `red`, `green`, or `review` binding is materialized for either harness
+- **WHEN** the `red`, `green`, `review`, or `merge` binding is materialized for either harness
 - **THEN** it renders from that harness's `standalone-worker-template.md`, carries only the create and continue calls, and names neither `sai/orchestration/command-runner.md`, guard windows, nor `replacement_reconstruction_fields`.
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements

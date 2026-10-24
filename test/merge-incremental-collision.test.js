@@ -16,89 +16,81 @@ function read(relativePath) {
 function section(text, startHeading, endHeading) {
   const start = text.indexOf(startHeading);
   assert.notEqual(start, -1, `${startHeading} should exist`);
-  const end = endHeading ? text.indexOf(endHeading, start) : -1;
+  const end = endHeading ? text.indexOf(endHeading, start + startHeading.length) : -1;
   return end === -1 ? text.slice(start) : text.slice(start, end);
 }
 
-test('merge provenance is defined once in the worker instructions and consumed by pointer', () => {
-  const instructions = read('sai/commands/merge/instructions.md');
+test('merge provenance is read from the captured file and its definition lives once, in the common step reading', () => {
+  const common = read('sai/commands/merge/steps/common.md');
   const coordinator = read('sai/commands/merge/coordinator.md');
-  const worker = read('sai/commands/merge/worker.md');
-  const stages = read('sai/commands/merge/coordinator-stages.md');
-  const provenance = section(instructions, '### Merge provenance', '### Step 6:');
+  const provenance = section(common, '## Provenance', '## Commit intent');
 
-  for (const token of ['target_sha', 'source_ref', 'source_sha', 'merge_base', 'target_rules', 'source_rules']) {
+  for (const token of ['target_sha', 'source_ref', 'source_sha', 'merge_base', 'target_rules', 'source_rules', 'upstream']) {
     assert.match(provenance, new RegExp(token));
   }
-  assert.match(provenance, /source_sha.*git rev-parse --verify <source_ref>\^\{commit\}/);
-  assert.match(provenance, /git diff --name-status --diff-filter=A --find-renames --find-copies --find-copies-harder/);
-  assert.match(provenance, /Renames and\s+copies are not introductions/);
-  assert.match(provenance, /docs\/adr\/0000-INDEX\.md/);
-  assert.match(provenance, /never\s+recompute\s+them from\s+post-launch `HEAD`/);
-  assert.match(provenance, /before the squash commit/);
-
-  assert.match(stages, /Then run `merge\.js provenance` with this exact `source_ref`/);
-  for (const card of [coordinator, stages]) {
-    assert.doesNotMatch(card, /--find-copies-harder/, 'the coordinator captures through the tool instead of restating the definition');
+  assert.match(provenance, /never recompute its values from the current `HEAD`/);
+  assert.doesNotMatch(coordinator, /--find-copies-harder/, 'the coordinator captures through the tool instead of restating the definition');
+  assert.match(coordinator, /Run `merge\.js provenance` for the method/);
+  assert.match(coordinator, /keep its receipt as `provenance\.json` in the run directory/);
+  for (const step of ['strategy', 'apply', 'test-correction', 'renumbering-plan']) {
+    assert.match(read(`sai/commands/merge/steps/${step}.md`), /Fetch @sai\/commands\/merge\/steps\/common\.md/, step);
   }
-  assert.match(worker, /§ Merge provenance/);
 });
 
 test('merge collision pass is incremental, family-aware, and runs on the final integration state', () => {
-  const instructions = read('sai/commands/merge/instructions.md');
-  const collisionStep = section(instructions, '### Step 9:', '### Step 10:');
+  const plan = read('sai/commands/merge/steps/renumbering-plan.md');
 
-  assert.match(collisionStep, /\*\*final integration state\*\*/);
-  assert.match(collisionStep, /An in-progress rebase skips it until the rebase finishes/);
-  assert.match(collisionStep, /its frontier is the source-introduced records/);
-  assert.match(collisionStep, /`not-applicable`: skip the pass entirely/);
-  assert.match(collisionStep, /`\(family, numeric prefix\)`: `adr:0010` and\s+`ddr:0010` differ/);
-  assert.match(collisionStep, /Groups whose key is not in the frontier stay\s+untouched, even when they already collide/);
-  assert.match(collisionStep, /`NNNN-\*\.md` or\s+`NNNN\[a-z\]\+-\*\.md`/);
-  assert.match(collisionStep, /excluding the two index\s+paths/);
-  assert.match(collisionStep, /but only for\s+the old identifiers of renamed records/);
-  assert.match(collisionStep, /`no-collision`[\s\S]{0,80}`repair-required`[\s\S]{0,120}`escalation-required`/);
-  assert.match(collisionStep, /claims no repository-wide scan/);
+  assert.match(plan, /on the final integrated tree/);
+  assert.match(plan, /The plan is read-only: the coordinator applies it/);
+  assert.match(plan, /`not-applicable`/);
+  assert.match(plan, /`\(family, numeric prefix\)`[^.]*`adr:0010` and `ddr:0010` differ/);
+  assert.match(plan, /Groups outside that frontier stay untouched even when they already collide/);
+  assert.match(plan, /`NNNN-\*\.md` and\s+`NNNN\[a-z\]\+-\*\.md`/);
+  assert.match(plan, /excluding the two index\s+files/);
+  assert.match(plan, /for the old identifiers of renamed records only/);
+  assert.match(plan, /applicability: not-applicable \| no-collision \| repair-required \| escalation-required/);
+  assert.match(plan, /claims no repository-wide scan/);
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  assert.match(coordinator, /`merge\.js collision --record <run>\/collision-\{k\}\.json` with the provenance on standard input/);
+  assert.match(coordinator, /`needs-judgment` is a judgment point/);
 });
 
 test('merge collision dating uses captured refs, path following, and the method-aware stage mapping', () => {
-  const instructions = read('sai/commands/merge/instructions.md');
-  const collisionStep = section(instructions, '### Step 9:', '### Step 10:');
+  const plan = read('sai/commands/merge/steps/renumbering-plan.md');
 
-  assert.match(collisionStep, /from the captured refs, never from `HEAD` history/);
-  assert.match(collisionStep, /git log --follow --find-renames --name-status --format=/);
-  assert.match(collisionStep, /take the earliest `A` event, following `R\*` entries back to the original\s+path/);
-  assert.match(collisionStep, /git ls-files --unmerged --stage -- docs\/adr\/ docs\/ddr\//);
-  assert.match(collisionStep, /through \[Sides\]\(#sides\) \(stage 1 anchors to `merge_base`\)/);
-  assert.match(collisionStep, /\(introduction_timestamp, introduction_commit, family, numeric prefix, final_path\)/);
-  assert.match(collisionStep, /reassign the whole group as one plan/);
-  assert.match(collisionStep, /oldest `a`, next `b`/);
-  assert.match(collisionStep, /introduction anchor: source_sha\|target_sha\|merge_base/);
+  assert.match(plan, /from the captured refs, never from `HEAD` history/);
+  assert.match(plan, /git log --follow --find-renames --name-status --format=/);
+  assert.match(plan, /take the earliest `A` event, following renames back/);
+  assert.match(plan, /git ls-files --unmerged --stage -- docs\/adr\/ docs\/ddr\//);
+  assert.match(plan, /through the Sides mapping \(stage 1 anchors to `merge_base`\)/);
+  assert.match(plan, /\(introduction_timestamp, introduction_commit, family, numeric prefix, final_path\)/);
+  assert.match(plan, /reassign the whole group as one plan/);
+  assert.match(plan, /oldest `a`, then `b`/);
+  assert.match(plan, /introduction_anchor: source_sha\|target_sha\|merge_base/);
 });
 
-test('merge collision repair data flows from the worker plan to coordinator execution and presentation', () => {
-  const coordinator = read('sai/commands/merge/coordinator-stages.md');
-  const presentation = read('sai/commands/merge/presentation.md');
+test('merge collision repair data flows from the worker plan to coordinator execution', () => {
+  const plan = read('sai/commands/merge/steps/renumbering-plan.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
 
-  assert.match(coordinator, /first record its\s+worker data in the seam's `adr_ddr_renames`/);
-  assert.match(coordinator, /never rename onto a path\s+another final-state record occupies/);
-  assert.match(coordinator, /Apply\s+only replacements the worker supplied/);
-  for (const field of ['introduction_anchor', 'introduction_timestamp', 'old_h1', 'new_index_label', 'source_introduced_adr_ddr_records']) {
-    assert.match(presentation, new RegExp(field));
+  for (const field of ['introduction_anchor', 'introduction_timestamp', 'old_h1', 'new_h1', 'old_index_label', 'new_index_label']) {
+    assert.match(plan, new RegExp(field));
+    if (/h1|label/.test(field)) assert.match(coordinator, new RegExp(field));
   }
-  assert.match(presentation, /Groups outside the source frontier\s+never render/);
-  assert.match(presentation, /never rereads an artifact to fill a missing field/);
+  assert.match(coordinator, /apply exactly the replacements the worker listed/);
+  assert.match(coordinator, /never rename onto a path another final record holds/);
+  assert.match(coordinator, /Orphan, ambiguous, and delete\/modify escalations are reported and never modified/);
+  assert.match(plan, /are escalations: list them with their candidates, and change nothing for them/);
 });
 
 test('collision repair finalizes automatically only after the final integration state', () => {
-  const coordinator = read('sai/commands/merge/coordinator-stages.md');
-  const lifecycle = read('sai/commands/merge/lifecycle.md');
-  const finalization = section(coordinator, '### Step 10:', '## Informative messages');
-  assert.match(finalization, /rebase finished, collision repair staged \| local collision-repair commit/);
-  assert.match(finalization, /A rebase that finished with nothing staged needs no operation/);
-  assert.match(coordinator, /finished rebase with a staged repair[\s\S]+git commit -F -/);
-  assert.match(coordinator, /finished\s+rebase goes to the\s+collision pass/);
-  assert.match(lifecycle, /adr-ddr\s+finalization\s+applicability resolved; repairs applied; final staging done/);
-  assert.match(lifecycle, /adr-ddr\s+terminal\s+rebase finished with nothing staged/);
-  assert.doesNotMatch(finalization, /needs_input|yes \(Recommended\)|On `no`/);
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const final = section(coordinator, '## Final', '## Commit messages');
+
+  assert.ok(final.indexOf('**Verify.**') < final.indexOf('**Collision.**'));
+  assert.ok(final.indexOf('**Collision.**') < final.indexOf('**Finalize.**'));
+  assert.match(final, /A finished rebase has nothing to commit unless a correction or a repair is staged; each is its own local commit/);
+  assert.match(final, /a finished rebase with nothing staged creates no extra commit/);
+  assert.match(final, /Stage only content the run owns, and stop if unrelated staged content would enter the commit/);
+  assert.doesNotMatch(final, /needs_input|yes \(Recommended\)|On `no`/);
 });
