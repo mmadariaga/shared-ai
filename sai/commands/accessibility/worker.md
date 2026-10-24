@@ -1,76 +1,18 @@
 # Accessibility Worker
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/orchestration/worker-core.md and follow it exactly.
-Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
+The coordinator that dispatches you (`sai/commands/audit/coordinator.md`) resolved the change, verified its `proposal.md`, and validated the options. You audit the selected scope against WCAG 2.2 Level AA and write `openspec/changes/{change-name}/accessibility.md`.
+
+Fetch @sai/commands/audit/worker-common.md and keep it in force for the entire run.
 Fetch @sai/commands/accessibility/steps/common.md and keep it in force for the entire run.
 
-## Invocation Envelope
+## Steps
 
-The worker receives exactly one opaque string and no binding-owned input:
+The plan has these step ids, in order. Each is reported in a `step-done` batch, as `worker-common.md` says.
 
-- `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator.
+- `resolve-accessibility-scope` — no file; run inline from the brief and `common.md`: read the change artifacts, resolve the selected scope, the runtime mode, the dev-server URL, and the parent branch, and filter the scope to UI files. It reports together with `map-ui-framework`.
+- `map-ui-framework` — maps UI files, frameworks, component types, and design tokens. When the scope holds no UI file, the audit does not apply, even with `--runtime`: the first batch also carries `resolve-static-audit` and `resolve-runtime-audit`, no scanner runs, and `close-accessibility-outcome` writes the Not Applicable report.
+- `resolve-static-audit` — the static batch. Without `--runtime`, the batch also carries `resolve-runtime-audit`.
+- `resolve-runtime-audit` — the runtime batch, with `--runtime`: the scanners run, or are recorded as unavailable.
+- `close-accessibility-outcome` — writes and checks the report, then returns `completed`.
 
-Binding identifiers and continuation references are not worker input and must never be written to artifacts or returned.
-
-## Change Resolution and Proposal Gate
-
-OpenSpec prerequisite checks belong to `/sai-explore` alone; change resolution and the `proposal.md` gate below still apply.
-
-Use `arguments_value` directly. Parse it per `options.md`: an optional kebab-case change name, then the declared options. The first token that does not start with `--` and is not an option's value is the change name; a leading `--` token means no name was supplied. An unknown `--` option, a second positional value, or an option missing its value returns `failed` before any resolution, naming the token (a second positional value is answered with: the parent branch is passed as `--parent-branch <branch>`). Preserve the complete scope, runtime, and parent values; do not scan parent conversation history. When `arguments_value` supplies no change name, run `openspec list --json`.
-
-The worker must resolve the change with the established 0/1/N picker protocol. For zero changes, return `failed` with exactly: "No active changes found. Run `/sai-1-spec` to create one." For one change, ask exactly `Use change '{name}'?` with ordered closed options `yes` and `no`; `yes` resolves the change and `no` returns `cancelled`. For multiple changes, ask exactly `Which change?` with options in CLI order and repeat after invalid input without a retry cap. All picker questions and options are worker-authored and are forwarded unchanged.
-
-After resolution, before analysis or any write, verify `openspec/changes/{change-name}/proposal.md`. If it is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
-
-Every post-resolution lifecycle payload includes `resolved_change_name`. Every payload includes the current ordered duplicate-free `changed_files` list and a metadata-only `summary`. No payload contains artifact contents, continuation identifiers, binding metadata, journal content, report content, or evidence.
-
-## Progress Reporting
-
-This phase declares a progress plan with exactly these canonical step ids, in order:
-
-- `resolve-accessibility-scope` — "Resolve accessibility scope and runtime mode"
-- `map-ui-framework` — "Map UI components and framework"
-- `resolve-static-audit` — "Resolve static accessibility audit"
-- `resolve-runtime-audit` — "Resolve runtime-audit gate"
-- `close-accessibility-outcome` — "Close accessibility outcome"
-
-Return exactly one progress event per completed batch after change resolution completes, whenever one or more plan steps complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event is returned as the worker's result, the turn ends there, and the coordinator resumes the worker with `continue_after_progress`. Composing the event as text inside this session marks nothing. The startup act (change selection + proposal gate + UI-scope and no-UI decision + runtime flag + parent) completes `resolve-accessibility-scope` and must pass before dispatching any `budget-explorer`, running any scanner, or beginning the static audit; per `@sai/orchestration/worker-core.md` § Step-machine task disclosure, it reports in one batch together with `map-ui-framework`; the static-audit batch carries `resolve-static-audit`; the runtime batch carries `resolve-runtime-audit`, reported completed when the runtime request, server-confirmation, and per-command authorization gates are resolved whether the applicable runtime checks run or are legitimately skipped; the outcome batch carries `close-accessibility-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — a no-UI run reports `resolve-accessibility-scope` before writing its Not Applicable report and returning `completed`. Report ids in plan order; `changed_files` lists every path written since the preceding result. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause (the runtime server-confirmation and authorize-or-skip questions are such pauses) — the run always closes with exactly one terminal lifecycle status.
-
-## Active Step Execution
-
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-accessibility-scope` runs from it before the first progress event with the first delivered pointer targeting `map-ui-framework`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
-
-## Accessibility Audit
-
-Reconstruct `$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values. The default is static-only. Runtime processing is enabled only by `--runtime`.
-
-Execute only the active step named by the coordinator's most recent `Active step:` pointer line, following that step file exactly.
-
-For diff scope, select the parent branch per `steps/common.md` § Scope. Compute the name-status and stat for `{parent}...HEAD`, and inspect the selected scope only. `--full` audits all UI files; `--path {dir}` audits that path. UI files are those `steps/common.md` § Scope lists. If none are in scope, skip the audit: write `openspec/changes/{change-name}/accessibility.md` from `sai/commands/accessibility/accessibility-report.template.md` with only its header and the `## Not Applicable` section justifying that no UI surface is touched, verify it, and return `completed`.
-
-For five or fewer UI files, source inspection is direct worker inspection; explorer delegation is not mandatory for this small scope. For more than five UI files, delegate bounded per-component inspection to `budget-explorer`. Parallelize only independent component areas, never dependent work, and allow no more than eight explorer calls total. Each delegated result must contain only `file:line`, WCAG Success Criterion, finding category, and a one-line note capped at 200 words for contextual research or at most 80 words per finding for file inspection; return no raw code blocks.
-
-Audit against WCAG 2.2 Level AA and the accepted project scope. Every finding requires a precise `file:line` or selector, exact evidence, WCAG Success Criterion code and name, severity, and framework-aligned remediation. Use exactly the severity taxonomy `Critical`, `High`, `Medium`, `Low`, and `Informational`. `Critical` is a task-blocking or Level A failure; `High` is an AA failure; `Medium` covers predictable friction, AAA scope, or strong AA-borderline issues; `Low` is minor polish or cognitive cost; `Informational` is a best practice without a direct WCAG mapping. Classify any regression as `High` at minimum, or `Critical` when the Critical criteria apply.
-
-Respect accepted accessibility trade-offs as `Acknowledged`. Evaluate semantics and structure, ARIA and naming, keyboard and focus, forms, visual and non-text contrast, media, dynamic content, responsive/reflow behavior, and the applicable UI framework. State `No instances detected` for every evaluated clean category. Do not modify production code, components, styles, configuration, dependencies, manifests, or lockfiles.
-
-## Runtime Authorization
-
-Runtime state is transient and is never included in a lifecycle payload, replacement reconstruction, journal passed to a replacement, or report except for the final runtime-tools-used statement. First ask exactly one server-confirmation question, which also collects the dev-server URL the scanners take as `{url}`, and wait for confirmation before any scanner command. For each applicable fixed scanner command, ask one separate authorize-or-skip question. Never batch scanner questions, never retry a declined or failed command, and execute only an explicitly authorized command:
-
-- `npx @axe-core/cli {url} --exit`
-- `npx pa11y {url} --reporter cli`
-- `npx lhci autorun --only-categories=accessibility`
-
-Keyboard walkthroughs and screen-reader smoke tests are user-verified checks, not automatically executed commands. Record their requested paths and user-provided results only when supplied. Cross-reference runtime results with static findings and distinguish verified evidence from inference.
-
-If continuation or waiting fails, replacement reconstruction restarts runtime processing from the beginning. It receives no prior runtime authorization, command results, tools-used state, journal, report content, or evidence; it must ask for server confirmation and each applicable authorize-or-skip decision again.
-
-## Lifecycle Outcomes and Report
-
-Return `needs_input` for change pickers, server confirmation, scanner authorization, and user verification questions, with the exact question and ordered options. Continue the same operation with the exact selected value. Return `cancelled` for a deliberate decline and `failed` for blockers. Return `completed` only after successfully writing and verifying a non-empty `openspec/changes/{change-name}/accessibility.md`.
-
-The report must contain the WCAG 2.2 AA scope, severity counts for exactly the five closed severities, a severity-prefixed identifier (`C1`/`H1`/`M1`/`L1`/`I1`) on every finding, when there are any, a closing `Summary: Critical=<n> High=<n> Medium=<n> Low=<n> Informational=<n>` tally line whose counts match the report's findings, clean-category statements, accepted trade-offs, the selected parent branch where applicable, the runtime-tools-used statement, a re-test checklist, and the top Critical/High findings when present. The worker-authored summary contains severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch or no-UI/static-only state. Successful `changed_files` contains only `openspec/changes/{change-name}/accessibility.md`; no other lifecycle outcome may claim a report path unless it was actually written.
-
-Replacement reconstruction uses only the original `arguments_value`, ordered duplicate-free changed-files union, exact opaque input history, and `resolved_change_name` when available. This worker never emits a design notice and never returns artifact contents.
+The report takes the shape of `sai/commands/accessibility/accessibility-report.template.md`. Keyboard walkthroughs and screen-reader smoke tests are checks only a person can run: they go into the report as pending manual checks, and the worker never presents them as verified. Statements about what a screen reader announces are inferences. The worker-authored `summary` holds the severity counts, up to three Critical or High findings when present, the report path, and the selected parent branch or the no-UI and static-only state.

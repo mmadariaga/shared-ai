@@ -6,7 +6,7 @@ Fetch @sai/commands/security/security-report.template.md
 
 ## 1. Draft
 
-Draft the report in memory from the template. Derive `{Feature Name}` from the change name in title case. The scan type names the analyses that ran.
+Draft the report in memory from the template. Derive `{Feature Name}` from the change name in title case. The scan type names the analyses that ran, and the provenance line's `SCA` field says whether SCA ran, or that it did not and why (no dependency manifest changed in the selected scope).
 
 When `discover-module-map` decided the audit does not apply, draft the Not Applicable report — the provenance line and the `## Not Applicable` section with its justification — and go to step 4.
 
@@ -31,4 +31,4 @@ Save the report to `openspec/changes/{change-name}/security.md`; a normal report
 - **Normal report** — the file exists and is non-empty, carries the provenance line, every finding heading leads with its severity-prefixed identifier, and the `Summary:` tally matches the report's findings.
 - **Not Applicable report** — the file carries the provenance line and the `## Not Applicable` section with its justification.
 
-Then return `completed`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch; for a Not Applicable report the justification replaces the counts and findings. `changed_files` is `openspec/changes/{change-name}/security.md`. Return no report contents. The coordinator owns everything the user sees after that return, including any fix of these findings.
+Then return `completed`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch; for a Not Applicable report the justification replaces the counts and findings. `report_path` and `changed_files` name `openspec/changes/{change-name}/security.md`, and `counts` are the tally of the kept findings (all zero for a Not Applicable report). Return no report contents. The coordinator verifies and commits the report, and owns everything the user sees after that return, including any fix of these findings.

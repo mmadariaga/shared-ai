@@ -1,6 +1,6 @@
 # Security Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, and hard rules. `resolve-security-scope` has no step file of its own and runs from the worker contract plus this file.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, and hard rules. `resolve-security-scope` has no step file of its own and runs from the brief plus this file.
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
@@ -8,7 +8,7 @@ Fetch @sai/commands/security/options.md
 
 ## Input
 
-The first argument is the change name (kebab-case). Read from `openspec/changes/{change-name}/`:
+The brief names the change (kebab-case). Read from `openspec/changes/{change-name}/`:
 
 - `proposal.md` — feature goal and accepted/discarded decisions.
 - `design.md` — architecture decisions and trust boundaries (may be absent for backfilled changes; proceed if missing).

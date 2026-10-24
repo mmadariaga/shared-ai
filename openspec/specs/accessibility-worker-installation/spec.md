@@ -21,17 +21,17 @@ The installer SHALL register one managed worker identity for `sai-8-accessibilit
 
 ### Requirement: Routed accessibility wrappers and bindings preserve harness parity
 
-The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to their terminal-only coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument passthrough behavior. The Claude projection SHALL include the managed worker identity and the new `tunable-seed` handling (no `.<basename>.owner.json` sidecar; the destination's `model` and `effort` values are preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`). The opencode projection SHALL include its task-dispatch metadata. The active installation projections SHALL contain only Claude Code and opencode worker assets and SHALL not include a compatibility worker, binding, forwarding skill, or managed-agent projection.
+The Claude Code and opencode `/sai-7-accessibility` wrappers SHALL load the harness fetch skill and the shared audit coordinator `sai/commands/audit/coordinator.md` with `command_name: accessibility` and the complete `arguments_value`, while preserving their harness-specific model behavior; the coordinator SHALL fetch the matching neutral worker-binding destination. The Claude projection SHALL include the managed worker identity and the `tunable-seed` handling (no `.<basename>.owner.json` sidecar; the destination's `model` and `effort` values are preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`). The opencode projection SHALL include its task-dispatch metadata. The active installation projections SHALL contain only Claude Code and opencode worker assets and SHALL not include a compatibility worker, binding, forwarding skill, or managed-agent projection.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the Claude Code projection is generated
-- **THEN** the wrapper, coordinator, Claude binding, and managed agent resolve to the accessibility worker
+- **THEN** the wrapper, the shared audit coordinator, the Claude binding, and the managed agent resolve to the accessibility worker
 - **AND** the `tunable-seed` installer handles the agent file with the destination's `model` and `effort` values preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`
-- **AND** the full invocation arguments remain available to worker-owned parsing
+- **AND** the full invocation arguments reach coordinator-owned parsing
 
 #### Scenario: opencode projection is installed
 - **WHEN** the opencode projection is generated
-- **THEN** the wrapper, coordinator, opencode binding, and task metadata resolve to the accessibility worker
+- **THEN** the wrapper, the shared audit coordinator, the opencode binding, and task metadata resolve to the accessibility worker
 - **AND** its continuation uses the opencode task reference
 
 #### Scenario: Compatibility projection is excluded

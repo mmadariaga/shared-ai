@@ -9,10 +9,11 @@ Detects performance problems introduced by the changes. It looks for operations 
 - `--full`: audits the whole repository instead of only the diff.
 - `--path <dir>`: audits one path.
 - `--tier backend|frontend|db|queue`: audits a single tier. By default every detected tier is audited.
-- `--runtime`: runs read-only diagnostics that firm up the numbers in the findings, each after you authorize it. It is the only option that makes the command ask a question mid-run.
+- `--runtime`: runs read-only diagnostics that firm up the numbers in the findings. The flag is the whole authorization: no question is asked. A diagnostic whose tool or target is not available is marked unavailable in the report, and the static analysis goes on.
 - `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
+- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 
-It receives the change name. Without `--runtime` it asks nothing between choosing the change and finishing and takes no new runtime measurements; unmeasured numbers are explicitly marked as estimates.
+Without a change name, the command takes the only active change that has a `proposal.md`; with none or several it prints the candidates and stops. It asks nothing between resolving the change and finishing. Without `--runtime` it takes no new runtime measurements; unmeasured numbers are explicitly marked as estimates.
 
 ## In detail
 
@@ -26,6 +27,17 @@ The result states which part of the change could be expensive, in which scenario
 optional acknowledged trade-offs, and a tally. Every number is measured or
 marked `estimated — verify with {method}`; even High/Critical findings can use
 explicit estimates. Runtime diagnostics replace estimates with measurements
-where possible. A scope with no performance surface after the tier filter
-produces `Not Applicable` with a justification. See
+where possible. A scope with no performance surface after the tier filter, or an
+empty diff, produces `Not Applicable` with a justification. See
 [review scope and fix selection](../review-triage.md) for combined runs.
+
+The command checks the finished report itself: the template structure, the
+`Critical`/`High`/`Medium`/`Low`/`Informational` subset and its `Summary:` tally,
+a tally that matches the findings, and that every cited path exists. When the
+worker cannot produce a valid report, the command tries up to 3 different
+approaches and then asks you how to continue, with an option to stop.
+
+`performance.md` is staged alone and committed in one local commit only when the
+project's ignore rules do not ignore it. An ignored report stays on disk, and
+nothing is force-added or pushed. A new run regenerates the report from scratch;
+an interrupted run is not resumed. The command ends with `Performance audit done.`.

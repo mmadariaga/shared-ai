@@ -1,12 +1,14 @@
 # Accessibility Step — Close Accessibility Outcome
 
-Active step: close-accessibility-outcome. The step is done when `accessibility.md` is saved and verified per the worker contract and `completed` is returned with the worker contract's summary.
+Active step: close-accessibility-outcome. The step is done when `accessibility.md` is saved and verified and `completed` is returned with the summary defined below.
 
 Fetch @sai/commands/accessibility/accessibility-report.template.md
 
 ## 1. Draft
 
 Draft the report in memory from the template. Derive `{Feature Name}` from the change name in title case.
+
+When the scope held no UI file, draft the Not Applicable report — the header and the `## Not Applicable` section with its justification, every other section omitted — and go to step 4.
 
 ## 2. Self-critique
 
@@ -30,6 +32,11 @@ When the draft has no finding, go to step 4. Otherwise dispatch exactly one `bud
 
 You have the last word: accept or reject each verdict on its own. The report shows only the outcome — a discarded finding is absent, an accepted downgrade appears at its final severity — with no trace of the dispute. When the dispatch fails, times out, or returns a malformed report, keep your own findings and continue.
 
-## 4. Save and return
+## 4. Save, verify, and return
 
-Save the report to `openspec/changes/{change-name}/accessibility.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Verify it per the worker contract, then return `completed` with the summary the worker contract defines. The coordinator owns everything the user sees after that return, including any fix of these findings.
+Save the report to `openspec/changes/{change-name}/accessibility.md`, with the closing `Summary:` tally and the Executive Summary table counted over the kept findings at final severity. Verify the saved file in its form:
+
+- **Normal report** — the file exists and is non-empty, carries the WCAG 2.2 AA scope, the five-severity table and the `Summary:` tally matching the findings, the clean-category statements, the accepted trade-offs, the runtime-tools-used statement, the pending manual checks, and the re-test checklist; every finding heading leads with its severity-prefixed identifier.
+- **Not Applicable report** — the file carries the header and the `## Not Applicable` section with its justification.
+
+Then return `completed`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch or the no-UI and static-only state; for a Not Applicable report the justification replaces the counts and findings. `report_path` and `changed_files` name `openspec/changes/{change-name}/accessibility.md`, and `counts` are the tally of the kept findings (all zero for a Not Applicable report). Return no report contents. The coordinator verifies and commits the report, and owns everything the user sees after that return, including any fix of these findings.

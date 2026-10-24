@@ -1,6 +1,6 @@
 # Security Step — Discover Module Map
 
-Active step: discover-module-map. Map modules, entry points, trust boundaries, and the SCA gate for the selected scope. The step is done when every file in the selected scope is assigned to a module and every dependency manifest has its SCA gate decision; then report the `discover-module-map` progress event per the worker contract.
+Active step: discover-module-map. Map modules, entry points, trust boundaries, and the SCA gate for the selected scope. The step is done when every file in the selected scope is assigned to a module and every dependency manifest has its SCA gate decision; then report `step-done` for `discover-module-map`.
 
 ### Discovery & Module Mapping
 
@@ -19,4 +19,4 @@ Use **`budget-explorer`** subagents in parallel when independent areas need code
 
 ### Not applicable
 
-When the selected scope has no attack surface and the gate admits no manifest — an empty diff is this case — the audit does not apply. Report `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` together in this step's progress event; `close-security-outcome` then writes the Not Applicable report.
+When the selected scope has no attack surface and the gate admits no manifest — an empty diff is this case — the audit does not apply. Report `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` together in this step's `step-done` batch; `close-security-outcome` then writes the Not Applicable report.

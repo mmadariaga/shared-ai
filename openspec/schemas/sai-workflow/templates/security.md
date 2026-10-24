@@ -1,6 +1,6 @@
 # Security Report — <!-- Feature Name -->
 
-**Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` --> · **Scan type:** <!-- SAST | SCA | SAST+SCA --> · **Date:** <!-- YYYY-MM-DD -->
+**Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` --> · **Scan type:** <!-- SAST | SCA | SAST+SCA --> · **SCA:** <!-- ran on <manifests> | did not run — <why> --> · **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
 <!-- Keep only when the security audit does not apply to this change, with its justification; delete this heading otherwise. -->
