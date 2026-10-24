@@ -38,16 +38,15 @@ const CURRENT_CENSUS = [
   'sai-merge-worker',
 ];
 const UTILITY_COMMANDS = {
-  'sai-archive': 'archive',
   'sai-explore': 'explore',
   'sai-retire-docs': 'retire-docs',
   'sai-status': 'status',
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
-  backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
+  archive: ['archive-commit-gate.instructions.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
+  backfill: ['coordinator.md', 'instructions.md', 'worker.md'],
+  commit: ['coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'list-writing.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
@@ -247,9 +246,9 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     const installDir = path.join(scratchDir, 'opencode');
     fs.mkdirSync(installDir, { recursive: true });
     installOpencode(installDir);
-    // The review, spec, design, audit, merge, and commit workers render from the standalone binding
+    // The review, spec, design, audit, merge, commit, archive, and backfill workers render from the standalone binding
     // template, which their coordinators drive with their own continuation shape.
-    const STANDALONE_WORKERS = ['sai-4-review-worker', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-5-security-worker', 'sai-6-performance-worker', 'sai-7-accessibility-worker', 'sai-merge-worker', 'sai-commit-worker'];
+    const STANDALONE_WORKERS = ['sai-4-review-worker', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-5-security-worker', 'sai-6-performance-worker', 'sai-7-accessibility-worker', 'sai-merge-worker', 'sai-commit-worker', 'sai-archive-worker', 'sai-backfill-worker'];
     for (const workerName of CURRENT_CENSUS.filter(name => !STANDALONE_WORKERS.includes(name))) {
       const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
@@ -1643,9 +1642,13 @@ test('installOpencode active projection carries the neutral root protocols, rout
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `opencode should project the utility card sai/commands/${utility}/body.md`);
     }
-    for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md', 'instructions.md']) {
-      assert.ok(sourceSet.has(`sai/commands/archive/${card}`),
-        `opencode should project the routed archive card sai/commands/archive/${card}`);
+    for (const name of ['archive', 'backfill']) {
+      for (const card of ['coordinator.md', 'worker.md', 'instructions.md']) {
+        assert.ok(sourceSet.has(`sai/commands/${name}/${card}`),
+          `opencode should project the goal-driven ${name} card sai/commands/${name}/${card}`);
+      }
+      assert.equal(sourceSet.has(`sai/commands/${name}/command-bootstrap.md`), false,
+        `opencode must not project a ${name} command bootstrap`);
     }
     assert.ok(sourceSet.has('sai/commands/archive/archive-commit-gate.instructions.md'),
       'opencode should project the archive commit-gate instruction');
@@ -1685,7 +1688,7 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
       'the opencode boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'boot.md')), false,
       'the Claude boot adapter must not be installed in the opencode harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-archive', 'sai-backfill', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
@@ -1719,8 +1722,10 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
     assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
       'the opencode boot should forward envelope values byte-for-byte');
 
-    assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/coordinator\.md/,
-      'routed selection should target the matching coordinator card');
+    assert.doesNotMatch(boot, /\/coordinator\.md/,
+      'the boot selects no coordinator card: every coordinator command fetches its card directly');
+    assert.doesNotMatch(boot, /Routed names|`archive`|`backfill`/,
+      'the opencode boot has no routed names: archive and backfill fetch their coordinators directly');
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {

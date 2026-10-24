@@ -40,13 +40,15 @@ const WORKERS = [
   ['sai-7-accessibility-worker', 'accessibility-worker.md'],
   ['sai-commit-worker', 'commit-worker.md'],
   ['sai-archive-worker', 'archive-worker.md'],
+  ['sai-backfill-worker', 'backfill-worker.md'],
+  ['sai-direct-build-worker', 'direct-build-worker.md'],
 ];
 
-// The audit, spec, design, merge, and commit bindings render from the standalone template,
-// which leaves the lifecycle to the coordinator; the archive binding is the routed
+// The audit, spec, design, merge, commit, archive, and backfill bindings render from the standalone
+// template, which leaves the lifecycle to the coordinator; the direct-build binding is the routed
 // representative that still carries the dispatch, continuation, and replacement
 // operations.
-const ROUTED_PHASE = 'archive';
+const ROUTED_PHASE = 'direct-build';
 
 const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [
   filename,

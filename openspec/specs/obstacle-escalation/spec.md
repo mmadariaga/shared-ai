@@ -7,12 +7,17 @@ TBD - created by archiving change goal-driven-commit. Update Purpose after archi
 
 ### Requirement: One shared obstacle and escalation policy
 
-`sai/policies/obstacle-escalation.md` SHALL be the single source for the two meanings that goal-driven command cards share: stopping on an obstacle with recovery options, and escalating to the user. A card that loads it SHALL name only its own obstacles, their identifiers, the approaches that suit it, where it writes the hand-over of a new worker, where it keeps its counters, and its own force-majeure cases, and SHALL NOT restate the policy's rules. The `/sai-commit`, `/sai-merge`, `/sai-3-implement`, and `/sai-4-review` coordinators, the audit coordinator, and the plan segment cycle SHALL load it.
+`sai/policies/obstacle-escalation.md` SHALL be the single source for the two meanings that goal-driven command cards share: stopping on an obstacle with recovery options, and escalating to the user. A card that loads it SHALL name only its own obstacles, their identifiers, the approaches that suit it, where it writes the hand-over of a new worker, where it keeps its counters, and its own force-majeure cases, and SHALL NOT restate the policy's rules. The `/sai-commit`, `/sai-archive`, `/sai-backfill`, `/sai-merge`, `/sai-3-implement`, and `/sai-4-review` coordinators, the audit coordinator, and the plan segment cycle SHALL load it.
 
 #### Scenario: A goal-driven card defers to the policy
 
 - **WHEN** the `/sai-merge` coordinator card is read
 - **THEN** it fetches `sai/policies/obstacle-escalation.md` and keeps only its own obstacle identifiers, approaches, and force-majeure case instead of restating the budget and escalation rules
+
+#### Scenario: Archive and backfill name only their own obstacles
+
+- **WHEN** the `/sai-archive` and `/sai-backfill` coordinator cards are read
+- **THEN** each fetches `sai/policies/obstacle-escalation.md` and names only its own obstacles (`worker` for archive; `worker` and `draft` for backfill) and its planned stops, keeping the attempt count in the conversation
 
 ### Requirement: Obstacles spend a budget of three attempts
 

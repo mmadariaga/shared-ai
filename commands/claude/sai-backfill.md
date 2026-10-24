@@ -6,9 +6,9 @@ effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/adapters/claude/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/backfill/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/backfill/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: backfill

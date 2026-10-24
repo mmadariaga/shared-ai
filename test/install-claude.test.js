@@ -48,7 +48,6 @@ const CLAUDE_GENERIC_AGENTS = {
 };
 
 const UTILITY_COMMANDS = {
-  'sai-archive': 'archive',
   'sai-explore': 'explore',
   'sai-retire-docs': 'retire-docs',
   'sai-status': 'status',
@@ -56,9 +55,9 @@ const UTILITY_COMMANDS = {
 };
 
 const UTILITY_CARD_CONTENTS = {
-  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
-  backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
+  archive: ['archive-commit-gate.instructions.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
+  backfill: ['coordinator.md', 'instructions.md', 'worker.md'],
+  commit: ['coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'list-writing.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
@@ -686,6 +685,16 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     resolveFetches(commitWrapperPath, available, loaded);
     resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', 'commit-worker.md'), available, loaded);
 
+    // The archive and backfill wrappers fetch their goal-driven coordinators directly; each
+    // coordinator fetches its worker binding, and the binding fetches the worker card.
+    for (const name of ['archive', 'backfill']) {
+      const wrapperPath = path.join('commands', `sai-${name}.md`);
+      assert.match(readInstalled(wrapperPath), new RegExp(`Fetch @sai/commands/${name}/coordinator\\.md`));
+      assert.equal(available.has(path.join('sai', 'commands', name, 'command-bootstrap.md')), false);
+      resolveFetches(wrapperPath, available, loaded);
+      resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', `${name}-worker.md`), available, loaded);
+    }
+
     // The audits fetch the shared audit coordinator directly; it fetches each
     // audit's binding and worker through the same isolated root.
     for (const name of ['sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
@@ -805,18 +814,22 @@ test('installClaude active projection carries the neutral root protocols, routed
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `Claude should project the utility card sai/commands/${utility}/body.md`);
     }
-    for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md', 'instructions.md']) {
+    for (const card of ['coordinator.md', 'worker.md', 'instructions.md']) {
       assert.ok(sourceSet.has(`sai/commands/archive/${card}`),
-        `Claude should project the routed archive card sai/commands/archive/${card}`);
+        `Claude should project the goal-driven archive card sai/commands/archive/${card}`);
     }
+    assert.equal(sourceSet.has('sai/commands/archive/command-bootstrap.md'), false,
+      'Claude must not project an archive command bootstrap');
     assert.ok(sourceSet.has('sai/commands/archive/archive-commit-gate.instructions.md'),
       'Claude should project the archive commit-gate instruction');
     assert.equal(sourceSet.has('sai/commands/archive/body.md'), false,
       'Claude must not project the retired archive body card');
-    for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md', 'instructions.md']) {
+    for (const card of ['coordinator.md', 'worker.md', 'instructions.md']) {
       assert.ok(sourceSet.has(`sai/commands/backfill/${card}`),
-        `Claude should project the routed backfill card sai/commands/backfill/${card}`);
+        `Claude should project the goal-driven backfill card sai/commands/backfill/${card}`);
     }
+    assert.equal(sourceSet.has('sai/commands/backfill/command-bootstrap.md'), false,
+      'Claude must not project a backfill command bootstrap');
     assert.equal(sourceSet.has('sai/commands/backfill/body.md'), false,
       'Claude must not project the retired backfill body card');
     for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md']) {
@@ -853,7 +866,7 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
       'the Claude boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md')), false,
       'the opencode boot adapter must not be installed in the Claude harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-archive', 'sai-backfill', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
@@ -887,8 +900,8 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
     assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
       'the Claude boot should forward envelope values byte-for-byte');
 
-    assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/coordinator\.md/,
-      'routed selection should target the matching coordinator card');
+    assert.doesNotMatch(boot, /\/coordinator\.md/,
+      'the boot selects no coordinator card: every coordinator command fetches its card directly');
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
@@ -900,14 +913,10 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
       'the Claude boot must not select a card for deep-review, which fetches its coordinator directly');
     assert.doesNotMatch(boot, /@sai\/commands\/apply\//,
       'the Claude boot must no longer select any apply card');
-    assert.match(boot, /Routed names \([^)]*`archive`/,
-      'the Claude boot must classify archive as a routed name');
-    assert.doesNotMatch(boot, /Utility names \([^)]*`archive`/,
-      'the Claude boot must not classify archive as a utility name');
-    assert.match(boot, /Routed names \([^)]*`backfill`/,
-      'the Claude boot must classify backfill as a routed name');
-    assert.doesNotMatch(boot, /Utility names \([^)]*`backfill`/,
-      'the Claude boot must not classify backfill as a utility name');
+    assert.doesNotMatch(boot, /Routed names/,
+      'the Claude boot has no routed names: archive and backfill fetch their coordinators directly');
+    assert.doesNotMatch(boot, /`archive`|`backfill`/,
+      'the Claude boot must not name archive or backfill');
 
     assert.doesNotMatch(boot, /\btask\s*\(/,
       'the Claude boot adapter must not mention the opencode task dispatch primitive');
