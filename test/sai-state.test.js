@@ -452,10 +452,10 @@ test('CLI: reset clears one machine state in a fresh session', () => {
 
   try {
     // Reset a machine that has no prior state (fresh session)
-    const reset = invokeCommand('reset', id, 'security-standalone@1');
+    const reset = invokeCommand('reset', id, 'security-steps@1');
     assert.equal(reset.exitCode, 0, 'reset on fresh session should succeed');
     const json = JSON.parse(reset.stdout);
-    assert.equal(json.reset, 'security-standalone@1', 'reset should return the machine id');
+    assert.equal(json.reset, 'security-steps@1', 'reset should return the machine id');
   } finally {
     cleanup([id]);
   }
@@ -472,19 +472,19 @@ test('CLI: reset resets one machine to initial state and preserves others', () =
     const emit1 = invokeCommand('emit', id, 'explore-idea@1', event1);
     assert.equal(emit1.exitCode, 0);
 
-    // Emit to security-standalone to establish state
+    // Emit to security-steps to establish state
     const event2 = JSON.stringify({ step_ids: ['resolve-security-scope'] });
-    const emit2 = invokeCommand('emit', id, 'security-standalone@1', event2);
+    const emit2 = invokeCommand('emit', id, 'security-steps@1', event2);
     assert.equal(emit2.exitCode, 0);
     const json2 = JSON.parse(emit2.stdout);
     assert.equal(json2.stage, 'discover-module-map', 'security should be past first step');
 
-    // Reset only security-standalone
-    const reset = invokeCommand('reset', id, 'security-standalone@1');
+    // Reset only security-steps
+    const reset = invokeCommand('reset', id, 'security-steps@1');
     assert.equal(reset.exitCode, 0);
 
     // Verify security is back to initial state
-    const project = invokeCommand('emit', id, 'security-standalone@1', JSON.stringify({}));
+    const project = invokeCommand('emit', id, 'security-steps@1', JSON.stringify({}));
     assert.equal(project.exitCode, 0);
     const json3 = JSON.parse(project.stdout);
     assert.equal(json3.stage, 'resolve-security-scope', 'security should be reset to initial step');
@@ -556,7 +556,7 @@ test('CLI: concurrent emits to different machines preserve both done sets', () =
     const staleRecord = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
     // First writer: security via CLI.
     const secEvent = JSON.stringify({ step_ids: ['resolve-security-scope'] });
-    const secRes = invokeCommand('emit', id, 'security-standalone@1', secEvent);
+    const secRes = invokeCommand('emit', id, 'security-steps@1', secEvent);
     assert.equal(secRes.exitCode, 0, 'security emit should succeed');
     // Second writer: performance from the stale snapshot (simulates a concurrent
     // reader that read before security wrote). Fresh re-read inside persist must
@@ -564,10 +564,10 @@ test('CLI: concurrent emits to different machines preserve both done sets', () =
     // TOCTOU window while still exercising the stale-snapshot merge.
     const perfNext = { stage: 'map-stack-hot-paths', done: ['resolve-performance-scope'] };
     const perfWire = { stage: perfNext.stage, next: { follow: 'sai/commands/performance/steps/map-stack-hot-paths.md', hint: 'fetch the map-stack-hot-paths step' } };
-    persistMachineOutcome(id, staleRecord, 'performance-standalone@1', perfNext, '', perfWire);
+    persistMachineOutcome(id, staleRecord, 'performance-steps@1', perfNext, '', perfWire);
     const stored = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
-    const secEntry = stored.stateByMachine && stored.stateByMachine['security-standalone@1'];
-    const perfEntry = stored.stateByMachine && stored.stateByMachine['performance-standalone@1'];
+    const secEntry = stored.stateByMachine && stored.stateByMachine['security-steps@1'];
+    const perfEntry = stored.stateByMachine && stored.stateByMachine['performance-steps@1'];
     const secDone = secEntry && secEntry.state && secEntry.state.done;
     const perfDone = perfEntry && perfEntry.state && perfEntry.state.done;
     assert.ok(Array.isArray(secDone) && secDone.indexOf('resolve-security-scope') !== -1, 'security done should survive concurrent emit');
@@ -688,9 +688,6 @@ test('stdin emit: non-delivery failures return their error without reason', () =
 const FIRST_FILED = [
   ['spec-steps@1', 'spec-intake', 'research', 'proposal', 'sai/commands/spec/steps/research.md'],
   ['design-steps@1', 'design-intake', 'research', 'design', 'sai/commands/design/steps/research.md'],
-  ['security-standalone@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
-  ['performance-standalone@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
-  ['accessibility-standalone@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
   ['security-steps@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
   ['performance-steps@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
   ['accessibility-steps@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
@@ -700,7 +697,7 @@ function progressPayload(stepIds) {
   return JSON.stringify({ event: 'progress', step_ids: stepIds, changed_files: [] });
 }
 
-test('CLI: reset returns the first filed step pointer for all eight step machines', () => {
+test('CLI: reset returns the first filed step pointer for the spec, design, and audit step machines', () => {
   const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-first-filed').stdout).id;
   try {
     for (const [machineId, , second, , follow] of FIRST_FILED) {

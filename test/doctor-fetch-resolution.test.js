@@ -194,7 +194,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
-    const phaseFolders = ['security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+    const phaseFolders = ['commit', 'archive', 'backfill'];
     const phases = [
       'spec-worker.md',
       'design-worker.md',
@@ -337,7 +337,7 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'backfill', card)),
             `${harness} harness should install the routed backfill ${card} card`);
         }
-        for (const card of ['command-bootstrap.md', 'coordinator.md', 'findings-selection.md']) {
+        for (const card of ['coordinator.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'deep-review', card)),
             `${harness} harness should install the deep-review ${card} card`);
         }

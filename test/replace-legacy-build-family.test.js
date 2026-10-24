@@ -27,6 +27,8 @@ test('the legacy cards, machines, tool, wrappers, pages, and plan template are g
     'sai/commands/implement/worker.md', 'sai/commands/implement/steps/plan-generation.md',
     'sai/commands/implement/implementation-plan.template.md', 'sai/commands/review/command-bootstrap.md',
     'sai/commands/deep-review/direct-build-close.md', 'sai/commands/deep-review/review-fix-worker.md',
+    'sai/commands/deep-review/command-bootstrap.md', 'sai/commands/deep-review/findings-selection.md',
+    'sai/orchestration/composition.md',
     'sai-state/machines/apply-standalone.js', 'sai-state/machines/implement-standalone.js',
     'sai-state/machines/review-standalone.js', 'sai-state/machines/red-new-steps.js',
     'sai/tools/apply-step.js', 'openspec/schemas/sai-workflow/templates/implementation.md',
@@ -56,7 +58,6 @@ test('the files shared with surviving commands stay in the promoted directories'
     'sai/commands/implement/green-worker.md', 'sai/commands/implement/worker-common.md',
     'sai/commands/review/coordinator.md', 'sai/commands/review/worker.md',
     'sai/commands/build/coordinator.md', 'sai/commands/deep-review/coordinator.md',
-    'sai/commands/deep-review/command-bootstrap.md', 'sai/commands/deep-review/findings-selection.md',
     'sai-state/machines/implement-run.js', 'sai-state/machines/red-steps.js',
     'sai-state/machines/green-steps.js', 'sai-state/machines/review-steps.js',
   ]) {
@@ -139,23 +140,21 @@ test('sai-archive and file-manifest no longer depend on implementation.md or app
     { directory: 'g', family: 'a*.sql' }, { directory: 'g', family: 'ab*.sql' }), true);
 });
 
-test('the deep review reviews, audits, selects, and fixes through the implement segment', () => {
+test('the deep review reviews, audits, assesses, and fixes through the implement segment with no human selection', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
-  const bootstrap = read('sai/commands/deep-review/command-bootstrap.md');
-  assert.match(coordinator, /Fetch `@sai\/commands\/review\/coordinator\.md`\s+and follow it exactly as the review segment/);
-  assert.match(coordinator, /Fetch @sai\/commands\/implement\/coordinator\.md and follow it\s+exactly as the fix segment/);
-  assert.match(coordinator, /Fetch @sai\/commands\/deep-review\/findings-selection\.md/);
-  assert.match(coordinator, /commits `review\.md` once through the review segment, then once per fix\s+step/);
+  assert.match(coordinator, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly as the first segment/);
+  assert.match(coordinator, /follow `sai\/commands\/implement\/coordinator\.md` exactly as the fix segment/i);
+  assert.match(coordinator, /Fetch @sai\/commands\/audit\/coordinator\.md/);
+  assert.match(coordinator, /Assessment pass/);
   assert.match(coordinator, /even with `--full` or `--path`/);
-  assert.match(coordinator, /`no-changes`/);
+  assert.match(coordinator, /`no-changes`|found no changes against the parent branch/);
   assert.match(coordinator, /Cannot start \/sai-3-implement for \{name\}: missing \{list of the absent items\}\./);
-  assert.match(coordinator, /start no fix segment, write no mark, make no commit/);
-  assert.match(coordinator, /` \(EXCLUDED: not selected in the \/sai-deep-review round\)`/);
-  assert.match(coordinator, /Never\s+mark a Question, answered or not/);
+  assert.match(coordinator, /` \(EXCLUDED: <reason>\)`/);
+  assert.match(coordinator, /Never mark a Question/);
   assert.match(coordinator, /Composition reports/);
   assert.match(coordinator, /@sai\/commands\/review\/options\.md/);
-  assert.doesNotMatch(coordinator, /direct-build-close|review-fix-worker|sai-5-review-worker/);
-  assert.match(bootstrap, /position 4 — fix segment/);
+  assert.match(coordinator, /End with exactly `Deep review done\.`/);
+  assert.doesNotMatch(coordinator, /direct-build-close|review-fix-worker|sai-5-review-worker|findings-selection|findings round|not selected in the/);
   assert.match(read('sai/commands/implement/coordinator.md'), /\*\*Composition reports\.\*\*/);
   assert.match(read('sai/commands/review/coordinator.md'), /Inside `\/sai-build` and `\/sai-deep-review` the line of that command replaces this one/);
   const finding = read('sai/policies/finding-state.md');

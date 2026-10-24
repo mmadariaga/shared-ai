@@ -59,21 +59,21 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 - **WHEN** the final step `close-accessibility-outcome` is marked completed
 - **THEN** the state SHALL transition to done with next.follow returning none and the hint indicating all steps are complete
 
-### Requirement: Every-activation scope with byte-identical pointers
+### Requirement: Every accessibility activation routes through accessibility-steps@1
 
-The direct `/sai-7-accessibility` activation SHALL route through the shared audit coordinator and the `accessibility-steps@1` machine, in a `sai-state` session keyed `accessibility-{name}`; when the store fails, the coordinator SHALL send pointers from the static step order. The `accessibility-standalone@1` machine SHALL govern only the chained activation (as an audit segment of a chained `/sai-deep-review` invocation) while `/sai-deep-review` still composes the former accessibility coordinator. Both machines SHALL carry the same step ids and step files. No shared sessions or state exist between activations.
+Both the direct `/sai-7-accessibility` activation and the `/sai-deep-review` activation SHALL run the accessibility audit as one cycle of the shared audit coordinator on the `accessibility-steps@1` machine, in a `sai-state` session keyed `accessibility-{name}`; when the store fails, the coordinator SHALL send pointers from the static step order. The `accessibility-standalone@1` machine SHALL NOT be registered, and its file under `sai-state/machines/` SHALL be retired. No session or state SHALL be shared between activations.
 
 #### Scenario: Direct activation consults the machine
 
 - **WHEN** `/sai-7-accessibility` is invoked directly
 - **THEN** the shared audit coordinator resets `accessibility-steps@1` and sends each pointer from its responses
 
-#### Scenario: Chained activation consults the same machine
+#### Scenario: Deep-review activation consults the same machine
 
-- **WHEN** the accessibility adapter runs as an audit segment of a chained `/sai-deep-review` invocation
-- **THEN** the `accessibility-standalone@1` machine arbitrates step routing with the same step ids and step files as the direct path, with no supervised-transition fallback or separate static map
+- **WHEN** `/sai-deep-review` activates the accessibility audit
+- **THEN** its accessibility cycle resets `accessibility-steps@1` in the session `accessibility-{name}` and sends the same pointers as the direct path
 
-#### Scenario: Store failure during chained segment stops the chain
+#### Scenario: Retired machine is unregistered
 
-- **WHEN** the machine emits and the store reports a failure during the accessibility segment of a chained `/sai-deep-review` invocation
-- **THEN** the run stops per stage-machine.md and the `/sai-deep-review` invocation stops with it
+- **WHEN** `sai-state/registry.js` is loaded
+- **THEN** `accessibility-standalone@1` is not registered and `accessibility-steps@1` is

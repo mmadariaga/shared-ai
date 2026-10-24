@@ -112,10 +112,9 @@ test('active orchestration capability declares the optional recovery seam', () =
   assert.match(spec, /never dispatch a replacement worker from that recovery path/i);
 });
 
-test('composition scopes the recovery pool per recovery scope and keeps the changed-files union across transitions', () => {
-  // Composition rules live in composition.md, layered on the runner (ADR 0187).
-  const runner = `${artifact('sai/orchestration/command-runner.md')}
-${artifact('sai/orchestration/composition.md')}`;
+test('the recovery pool is scoped per recovery scope', () => {
+  // composition.md is retired (ADR 0200): the runner and the policy carry the scoping rules.
+  const runner = artifact('sai/orchestration/command-runner.md');
   const policy = artifact('sai/policies/bounded-recovery.md');
   const composed = `${runner}\n${policy}`;
   assert.match(composed, /recovery scope|segment-scoped|active adapter segment/i,
@@ -130,10 +129,6 @@ ${artifact('sai/orchestration/composition.md')}`;
     'a later recovery_policy: true segment must receive a fresh three-attempt pool');
   assert.match(composed, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining|spent)/i,
     'a later segment must not inherit a depleted budget');
-  assert.match(composed, /changed[-_ ]files[\s\S]{0,200}(?:across|span)[\s\S]{0,120}(?:transition|segment)/i,
-    'the changed-files union must continue across segment transitions');
-  assert.match(composed, /(?:shall not|must not|never)[\s\S]{0,80}reset[\s\S]{0,80}(?:at a )?transition/i,
-    'the union must not reset at a transition');
 });
 
 test('worker-core keeps routing diagnosis coordinator-only and closes an unpassable apply RED/GREEN STOP as a worker failure', () => {

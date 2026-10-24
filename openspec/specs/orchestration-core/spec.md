@@ -65,65 +65,13 @@ For an eligible in-scope or owner-in-run planning diagnosis, the shared runner S
 - **AND** SHALL spend zero recovery slots and SHALL not continue the worker
 
 ### Requirement: Shared coordinator contract
-The canonical orchestration source SHALL define one shared coordinator contract for lifecycle result validation, progress-event handling, changed-file aggregation — including every path reported on progress events, added in first-seen order and never reset by them — same-worker continuation, bounded same-worker recovery, replacement-worker fallback, and terminal result reporting. Routed phase coordinators SHALL apply that contract rather than maintain independent copies of those mechanics. Each routed phase SHALL supply a phase adapter containing its initial worker envelope, binding dispatch and continuation operations, permitted nonterminal extensions and handlers, an optional static ordered progress plan declaration, an optional static `recovery_policy` declaration, replacement-worker reconstruction fields, and terminal navigation action. The shared runner SHALL own the fixed recovery acknowledgement `continue_after_recovery`; it SHALL not be an additional phase-adapter field. Recovery eligibility SHALL be limited by the `Recovery eligibility and worker veto` requirement in the `bounded-worker-recovery` capability, rather than by the mere presence of `recovery_policy`. The adapter SHALL NOT reimplement payload validation, progress marking, changed-file union, recovery budgeting, continuation-first ordering, or fallback control flow. When a supervising invocation declares an ordered sequence of phase adapters, the shared contract SHALL execute that sequence under the three rules of `Chained phase composition`; optional `progress_plan` and `recovery_policy` declarations are immutable for the active adapter segment and are rebound when the next adapter activates. A one-adapter invocation keeps segment scope identical to the pre-composition contract.
+The canonical orchestration source SHALL define one shared coordinator contract for lifecycle result validation, progress-event handling, changed-file aggregation — including every path reported on progress events, added in first-seen order and never reset by them — same-worker continuation, bounded same-worker recovery, replacement-worker fallback, and terminal result reporting. Routed phase coordinators SHALL apply that contract rather than maintain independent copies of those mechanics. Each routed phase SHALL supply a phase adapter containing its initial worker envelope, binding dispatch and continuation operations, permitted nonterminal extensions and handlers, an optional static ordered progress plan declaration, an optional static `recovery_policy` declaration, replacement-worker reconstruction fields, and terminal navigation action. The shared runner SHALL own the fixed recovery acknowledgement `continue_after_recovery`; it SHALL not be an additional phase-adapter field. Recovery eligibility SHALL be limited by the `Recovery eligibility and worker veto` requirement in the `bounded-worker-recovery` capability, rather than by the mere presence of `recovery_policy`. The adapter SHALL NOT reimplement payload validation, progress marking, changed-file union, recovery budgeting, continuation-first ordering, or fallback control flow. An invocation SHALL execute exactly one phase adapter, as a single segment that spans the whole invocation, under `Single phase segment per invocation`; optional `progress_plan` and `recovery_policy` declarations are immutable for that segment.
 
 #### Scenario: Routed phases use the shared contract
 - **WHEN** a routed coordinator receives a worker lifecycle result
 - **THEN** it SHALL process the result through the same canonical coordinator contract
 - **AND** the shared contract SHALL invoke the phase adapter only at the declared extension points
 - **AND** phase-specific navigation SHALL remain in the adapter rather than a duplicated lifecycle loop
-
-### Requirement: Chained phase composition
-
-The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters. The composition rules SHALL live in `sai/orchestration/composition.md`, layered on `sai/orchestration/command-runner.md`, and only composition coordinators SHALL fetch that file; the runner SHALL name it without fetching it. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing.
-
-#### Scenario: Ordered sequence runs through the shared runner
-
-- **WHEN** a supervising invocation declares two or more phase adapters in order
-- **THEN** the shared contract SHALL execute each adapter segment in declaration order and rebind that segment's fields
-- **AND** it SHALL preserve the changed-files union across transitions
-
-#### Scenario: Progress events flow through the contract
-
-- **WHEN** a worker returns a nonterminal progress event
-- **THEN** the shared contract SHALL mark the reported step ids in the adapter-declared plan and continue the same worker through the binding
-
-#### Scenario: Progress changed files join the union
-
-- **WHEN** a progress event reports changed files
-- **THEN** the shared contract SHALL add every reported path to the invocation-scoped union in first-seen order
-- **AND** SHALL never reset the union on a progress event
-
-#### Scenario: Recovery flows through the contract
-
-- **WHEN** an adapter declares `recovery_policy` and a worker returns an eligible failed outcome under the `bounded-worker-recovery` capability
-- **THEN** the shared contract SHALL announce and budget same-worker recovery
-- **AND** SHALL continue the worker with the fixed `continue_after_recovery` acknowledgement
-- **AND** SHALL never dispatch a replacement worker from that recovery path
-
-#### Scenario: E10 recovery exhaustion cannot advance a build segment
-
-- **WHEN** an opted-in segment exhausts its three-slot diagnosis ledger without a coordinator-verified clean result
-- **THEN** the supervising composition SHALL close at that segment
-- **AND** it SHALL not re-enter an earlier segment, skip to a later adapter, or emit successful terminal navigation
-
-#### Scenario: Non-final completion transitions only to the successor
-
-- **WHEN** a non-final adapter completes successfully with an authorized transition and no unresolved non-clean closure
-- **THEN** the shared contract SHALL activate only the adapter at position `i + 1`
-- **AND** it SHALL not print the non-final adapter's standalone completion, SHALL not skip ahead to a later list entry, and SHALL only apply a declared conditional-activation rule that resolves the consecutive successor
-
-#### Scenario: Segment recovery pools are independent
-
-- **WHEN** two consecutive segments both declare `recovery_policy: true`
-- **THEN** each segment SHALL receive its own fresh three-slot diagnosis ledger, with one attempt per new diagnosis key
-- **AND** the later segment SHALL not inherit a depleted ledger or a diagnosis from the earlier segment
-
-#### Scenario: Single-phase invocation remains unchanged
-
-- **WHEN** an invocation supplies exactly one phase adapter
-- **THEN** shared runner behavior and standalone terminal navigation SHALL match the one-phase contract
-- **AND** the new diagnosis route SHALL add no phase-specific prompt, artifact, or lifecycle field unless that adapter opts into it
 
 ### Requirement: Separate phase worker contracts
 The orchestration source SHALL retain a separate design-worker contract that layers phase policy over the shared worker lifecycle, and separate RED and GREEN worker contracts (`sai-3-red-worker`, `sai-3-green-worker`) for implementation behavior. The workers SHALL NOT be merged into a conditional all-phase prompt.
@@ -301,3 +249,35 @@ The shared runner SHALL validate each progress result before acting on it and SH
 - **WHEN** a spec, design, review, security, performance, or accessibility worker receives its post-ready task disclosure
 - **THEN** the first filed step pointer opens the task continuation, the worker runs the fileless startup act first, and a successful ordinary startup reports the first two completed ids together
 - **AND** a resolution failure returns before analysis or the first filed step, a legitimate early outcome reports only actually completed steps, design seeds its selected variant on the first emit, and reconstruction preserves the active step id
+
+### Requirement: Single phase segment per invocation
+
+An invocation of the shared runner `sai/orchestration/command-runner.md` SHALL execute one phase adapter through its Result Loop, as a single segment that spans the whole invocation, and no orchestration file SHALL chain adapters. A `completed` terminal result SHALL close the worker's current dispatch phase, and its resumability for recovery SHALL end when the run closes. The runner SHALL NOT name or fetch `sai/orchestration/composition.md`, and the installer SHALL project no `composition.md` and SHALL retire an installed managed copy.
+
+#### Scenario: Single-phase invocation runs one segment
+
+- **WHEN** a routed command runs one phase adapter through the shared runner
+- **THEN** the adapter runs as one segment spanning the whole invocation, and the runner names no composition file
+
+#### Scenario: Progress events flow through the contract
+
+- **WHEN** a worker returns a nonterminal progress event
+- **THEN** the shared contract SHALL mark the reported step ids in the adapter-declared plan and continue the same worker through the binding
+
+#### Scenario: Progress changed files join the union
+
+- **WHEN** a progress event reports changed files
+- **THEN** the shared contract SHALL add every reported path to the invocation-scoped union in first-seen order
+- **AND** SHALL never reset the union on a progress event
+
+#### Scenario: Recovery flows through the contract
+
+- **WHEN** an adapter declares `recovery_policy` and a worker returns an eligible failed outcome under the `bounded-worker-recovery` capability
+- **THEN** the shared contract SHALL announce and budget same-worker recovery
+- **AND** SHALL continue the worker with the fixed `continue_after_recovery` acknowledgement
+- **AND** SHALL never dispatch a replacement worker from that recovery path
+
+#### Scenario: Retired composition file is not installed
+
+- **WHEN** the installer expands the manifest
+- **THEN** it projects no `orchestration/composition.md` and retires a managed copy through its retirement entry

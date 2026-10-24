@@ -307,12 +307,16 @@ test('installOpencode projects grouped SAI command assets and excludes former co
   }
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', 'implement', 'invocation.md')), false,
     'implement/invocation.md should not be projected after retirement');
-  for (const file of [path.join('build', 'coordinator.md'), path.join('deep-review', 'coordinator.md'), path.join('deep-review', 'command-bootstrap.md'), path.join('review', 'coordinator.md')]) {
+  for (const file of [path.join('build', 'coordinator.md'), path.join('deep-review', 'coordinator.md'), path.join('review', 'coordinator.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
   for (const retired of ['apply', 'meta-build', 'meta-review', 'implement-new', 'review-new', 'build-new']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', retired)), false, `${retired} should not be projected`);
   }
+  for (const retired of [path.join('deep-review', 'command-bootstrap.md'), path.join('deep-review', 'findings-selection.md'), path.join('security', 'coordinator.md')]) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', retired)), false, `${retired} should be retired`);
+  }
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'composition.md')), false, 'composition.md should be retired');
   for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), false, `${file} should not be projected`);
   }
@@ -1616,8 +1620,9 @@ test('installOpencode active projection carries the neutral root protocols, rout
       assert.ok(sourceSet.has(protocol), `opencode should project the neutral root protocol ${protocol}`);
     }
     for (const { phase } of Object.values(WORKER_CONTRACT_BY_NAME)) {
-      assert.ok(sourceSet.has(`sai/commands/${phase}/coordinator.md`),
-        `every routed card should carry a coordinator: sai/commands/${phase}/coordinator.md`);
+      const coordinatorFolder = ['security', 'performance', 'accessibility'].includes(phase) ? 'audit' : phase;
+      assert.ok(sourceSet.has(`sai/commands/${coordinatorFolder}/coordinator.md`),
+        `every routed card should carry a coordinator: sai/commands/${coordinatorFolder}/coordinator.md`);
       assert.ok(sourceSet.has(`sai/commands/${phase}/worker.md`),
         `every routed card should carry a worker: sai/commands/${phase}/worker.md`);
     }
@@ -1664,7 +1669,6 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
-    'sai-deep-review',
   ];
   try {
     installOpencode(tmpDir);
@@ -1681,7 +1685,7 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
       'the opencode boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'boot.md')), false,
       'the Claude boot adapter must not be installed in the opencode harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
@@ -1724,8 +1728,8 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the opencode boot must not select a coordinator card for the ${name} utility`);
     }
-    assert.match(boot, /@sai\/commands\/deep-review\/coordinator\.md/,
-      'the opencode boot must select the routed coordinator card for deep-review');
+    assert.doesNotMatch(boot, /@sai\/commands\/deep-review\//,
+      'the opencode boot must not select a card for deep-review, which fetches its coordinator directly');
     assert.doesNotMatch(boot, /@sai\/commands\/apply\//,
       'the opencode boot must no longer select any apply card');
 

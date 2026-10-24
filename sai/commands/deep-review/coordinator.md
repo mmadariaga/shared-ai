@@ -1,258 +1,114 @@
-<TASK>
+# `/sai-deep-review` coordinator
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/public-chat.md and follow it exactly.
-  Fetch @sai/orchestration/composition.md and follow it as part of the shared runner.
+Fetch @sai/policies/public-chat.md and follow it exactly.
+Fetch @sai/policies/remember.md
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/finding-state.md
 
-  ## Deep-Review composition coordinator
-  You are the user-facing `/sai-deep-review` composition supervisor. You are an ordinary
-  routed composition coordinator — not the `sai-explore` supervision pattern.
-  Resolve the change from disk-backed change-picker / envelope inputs. Do not hold
-  dispatch state in conversation text.
+You chain the segments of one deep-review run in a single session. The invocation carries one string, `arguments_value`: an optional change name and the options of step 1 of Start.
 
-  Fetch @sai/commands/deep-review/command-bootstrap.md and follow its segment list
-  and triage parse exactly.
+## Goal
 
-  ## No-commit guard
+Review a change, audit the areas the review flags, and fix the findings an Assessment pass leaves to fix, with no human in the loop. The run is done when `review.md` is written, every activated audit has its report or its failed status, and the fix segment has fixed what the Assessment pass left (or nothing was left). The run asks the user nothing between its start and its close. The only questions it can ask are the accessibility dev-server URL (an input, asked once, before the audits start), an audit worker question that nothing answers and whose answer would change the report (it pauses only that audit), and the escalation of an obstacle in the review or fix segment, as those coordinators define it.
 
-  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
-  the audit worker stretches of this composition: `snapshot` opens a window,
-  holding the returned SHA as invocation-scoped `guard_base`, and `verify`
-  closes it before each boundary. Take the snapshot after the review segment has
-  committed `review.md`, so that commit is never a violation. One window spans
-  the concurrent audit batch; it closes after every activated segment's Result
-  Loop and before the combined terminal. On a `violation` verdict, remediate
-  exactly as the policy prescribes, then continue the route. No window carries
-  `allow_commit`. The review segment and the fix segment follow their own
-  coordinator contracts, which authorize their own local commits and open no
-  window of this composition.
+Commits are local only and nothing is pushed. Only the `/sai-3-implement` fix segment changes code.
 
-  ## Pre-resolution envelope normalization
-  Before change resolution, strip every `--fast-track` token from the selected
-  `arguments_value` in any token order. Stripping does NOT make `/sai-deep-review` a
-  fast-track mode, and does NOT activate a review-local fast-track mode.
-  Explicit `--fast-track` on `/sai-deep-review` is a behavioral no-op for phase order,
-  injection, and gates. `/sai-deep-review` asks nothing mid-run unless the user
-  passes `--runtime`; with it, each segment's runtime question pauses only that
-  segment. The findings round at the end is the one planned interaction.
+## Segments
 
-  Then split the remainder into the change name and the options. Fetch
-  `@sai/commands/review/options.md`, `@sai/commands/security/options.md`,
-  `@sai/commands/performance/options.md`, and
-  `@sai/commands/accessibility/options.md`: the options `/sai-deep-review` accepts
-  are exactly the union of the options those four declarations list, and the
-  composition keeps no list of its own.
+1. `/sai-4-review`: Fetch @sai/commands/review/coordinator.md and follow it exactly as the first segment. It resolves the change, reviews the diff in a fresh worker, and writes and commits `review.md`. It fixes nothing. Its closing line `Review done.` is replaced by this command's.
+2. Triage: read the audit activation from `review.md` (see Triage).
+3. Audits: the audits the triage activated run in parallel, each as one cycle of `sai/commands/audit/coordinator.md` (see Audits).
+4. Assessment pass: you judge the findings of `review.md` and of this run's audit reports (see Assessment pass).
+5. `/sai-3-implement`: follow `sai/commands/implement/coordinator.md` exactly as the fix segment (see Fix segment). It starts only when the Assessment pass leaves at least one finding to fix.
 
-  - A token that starts with `--` is an option; an option that takes a value
-    (`--path`, `--tier`, `--parent-branch`) consumes the next token as its
-    value. The one token left over is the change name. A second leftover
-    token stops the command before any dispatch, naming the token; the
-    parent branch is written `--parent-branch <branch>`.
-  - An option that no declaration lists, or an option missing its value, stops
-    the command before any dispatch with a message that names that option.
-  - The change name is the input to the standard change-consuming resolution
-    order. With options and no change name, the picker resolves the change and
-    the options are kept.
+No review or audit runs after the fix segment: the next `/sai-deep-review` run reviews the fixed tree.
 
-  ## Single change resolution
-  Resolve the target OpenSpec change name exactly once at the start of the
-  invocation using the established change-consuming resolution order (trimmed
-  non-empty `arguments_value`, then the zero/one/multiple picker when it is
-  empty). Retain the resolved name as supervisor-owned invocation state.
-  No segment re-enters a harness boot adapter or command wrapper.
+A segment starts only when the previous one completed. When segment 1 or segment 5 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
 
-  ## Artifact paths
-  This coordinator runs no OpenSpec prerequisite check; that check belongs to
-  `/sai-explore` alone. The review and fix segments run theirs at their own
-  startup, as their contracts say. Fetch @sai/policies/prereqs-paths.md for the
-  artifact path table.
+## Start
 
-  ## Composition-minted segment envelopes
-  After resolution of `{name}`, each segment receives the change name followed
-  by only the options its own `options.md` declares, in the order and with the
-  values the user wrote them. `{options-for-X}` is that possibly empty list:
+1. Drop every `--fast-track` token from `arguments_value`, silently: the command already runs with no human in the loop. Fetch @sai/commands/review/options.md, @sai/commands/security/options.md, @sai/commands/performance/options.md, and @sai/commands/accessibility/options.md. The options this command accepts are exactly the union of the options those four files declare; this command keeps no list of its own. A token that starts with `--` is an option, and an option that takes a value consumes the next token as its value. The one token left over, when there is one, is the change name. An unknown option, a second leftover token, an option without its value, or a value outside the set a declaration lists prints this and ends the run, writing nothing: `Cannot start /sai-deep-review: unknown or malformed argument '{token}'. The parent branch is passed as --parent-branch <branch>.`
+2. Run segment 1 with `arguments_value` set to the change name followed by `{options-for-review}`. `{options-for-X}` is the possibly empty list of the options that `sai/commands/X/options.md` declares, in the order and with the values the user wrote them. The review never receives `--full` or `--path`: it keeps reviewing the diff. An empty change name takes the only change with a `proposal.md`, as that segment says; keep the name it resolves for the rest of the run.
 
-  - **Review envelope**:
-    `{command_name: review, arguments_value: {name} {options-for-review}}`
-  - **Security envelope** (when activated):
-    `{command_name: security, arguments_value: {name} {options-for-security}}`
-  - **Performance envelope** (when activated):
-    `{command_name: performance, arguments_value: {name} {options-for-performance}}`
-  - **Accessibility envelope** (when activated):
-    `{command_name: accessibility, arguments_value: {name} {options-for-accessibility}}`
-  - **Fix envelope** (when the findings round selects a finding):
-    `{command_name: implement, arguments_value: {name}}`
+Report the options aimed only at an audit and given to a run in which that audit did not run, as the Close says.
 
-  Each envelope is composition-built; segments do not re-run change-picker or
-  prerequisite checks. The review segment never receives `--full` or `--path`:
-  it keeps reviewing the diff.
+## Triage
 
-  ## Review segment execution
-  Position 0 (review) always runs. Fetch `@sai/commands/review/coordinator.md`
-  and follow it exactly as the review segment, with the review envelope's
-  `arguments_value`. The name is given, so its change resolution is skipped. It
-  dispatches `sai-4-review-worker`, regenerates `review.md` from the current
-  diff, verifies it, commits it as its own contract says, and prints its closing
-  report; its closing line `Review done.` is replaced by this command's close.
+With `--full` or `--path`, no triage runs: all three audits are activated, because those options ask to look beyond the diff, and the Error close below does not apply.
 
-  The review segment drives its own step machine, `review-steps@1`, under its
-  own `sai-state` session. Those step ids stay internal to it: the composition
-  renders no panel steps for the review segment and carries nothing from them
-  except the changed-files path it reports. Map its results onto this
-  composition:
+Otherwise, after segment 1 completes, read exactly three values from `openspec/changes/{name}/review.md`: the `**Surface touched:**` field under each of `## Security Surface Triage`, `## Performance Surface Triage`, and `## Accessibility Surface Triage`. A value of exactly `Yes` activates the matching audit. A value of exactly `No` leaves it inactive. Any other value is illegible: that audit does not run, and the Close carries a warning line naming it. An illegible value gives no authority to correct it.
 
-  - `completed` — the review segment wrote `review.md`. Perform the triage parse
-    declared in `command-bootstrap.md` and activate the audit segments it
-    returns; with `--full` or `--path`, skip the triage and activate all three
-    audit segments. Activating an audit always regenerates its artifact
-    (overwriting any existing one silently), while an inactive audit never
-    touches its existing artifact.
-  - `no-changes` — the diff is empty. The review segment has printed
-    `No changes detected against {parent-branch}. Nothing to review.`, written no
-    `review.md`, and committed nothing. Close the invocation cleanly: run no
-    audit and no findings round, even with `--full` or `--path`, and start no fix
-    segment.
-  - `failed`, or an escalation the user stopped or left unanswered — close the
-    invocation without activating any audit segment.
+**Error close.** When `review.md` is missing, or none of the three values is legible, run no audit, no Assessment pass, and no fix segment. Print the gap (the path of `review.md` and the values that were not legible) and end the run without a closing line.
 
-  On the two closing outcomes, report the review segment's summary and the
-  accumulated changed-files union, followed by one line per option aimed only at
-  an audit, stating that it had no effect.
+Activating an audit always regenerates its report, replacing any existing one. An inactive audit never touches its existing report. The activated audits keep the fixed order: security, performance, accessibility.
 
-  ## Soft-parallel audit dispatch
-  When one or more audit segments are activated, dispatch their workers
-  concurrently in one harness-native batch:
-  - **opencode**: multiple same-turn `task()` calls
-  - **Claude Code**: parallel agent dispatches
+## Audits
 
-  Worker dispatch stays parallel; only store operations serialize. The
-  coordinator processes their Result Loops sequentially in fixed order
-  (security → performance → accessibility). `sai-state` emits and resets
-  against the same session `id` run one-writer-at-a-time in that same fixed
-  order. Each audit writes a disjoint artifact (`security.md`,
-  `performance.md`, `accessibility.md`), so artifact concurrency is safe. A
-  `needs_input` from one audit pauses only its own segment through the native
-  picker; multiple pending ones process sequentially in the fixed order.
+Fetch @sai/commands/audit/coordinator.md. For each activated audit, run the cycle that file defines (its step 5 of Start, and its The worker, Close, and Obstacles sections), with `command_name` set to the audit and these values in place of its Start steps 1 to 4, which this command has already done: the change is `{name}`, the options are `{options-for-audit}`, and the report is `openspec/changes/{name}/{audit}.md`.
 
-  An audit segment that returns `failed` or `cancelled` does not close the
-  composition, an exception to `@sai/orchestration/composition.md` § 2 that
-  applies to audit segments only: the other audits continue, nothing retries
-  and review does not re-run, and the combined terminal shows each audit's
-  status.
+**Accessibility URL.** When accessibility is activated, the run has `--runtime`, and the run has no `--url`, ask the user for the dev-server URL now, before any audit worker exists, in one question that also lets them decline, as that coordinator's step 4 describes. An answer that is a URL joins the accessibility options. A decline hands the accessibility worker `--runtime` without a URL, and the runtime part of its report is marked unavailable. After this point, only a worker question that nothing answers and whose answer would change a report can reach the user, and it pauses only its own audit (see below).
 
-  ## Non-final terminal navigation
-  When an audit segment runs as non-final (position `i` where `i + 1` is still
-  in range), its positional `terminal_navigation` resolves to the
-  composition-owned authorized transition only. Communicate the audit summary
-  and changed-files union as required by the shared runner. Do NOT print the
-  standalone audit completion literal.
+**Parallel cycles.** Fetch the binding of each activated audit, `@sai/orchestration/workers/bindings/{audit}-worker.md`, and use it. Create the activated workers in one batch: several `Agent` calls in one turn on Claude Code, several `task` calls on opencode, each creation carrying only the ready prompt. Send the task messages, and every later message to a worker, the same way. Each cycle keeps its own `sai-state` session (key `{audit}-{name}`) and its own step machine `{audit}-steps@1`. The audit workers run in parallel; you do not. You issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility, among the results that are ready, and you commit each verified report alone, with only its own path, under the Commit rule of that coordinator.
 
-  ## Final terminal navigation
-  When the final activated audit segment completes (or the review segment
-  completes with zero audits activated), use the final adapter's
-  `terminal_navigation` action. Print a combined terminal report with:
+**Differences from the standalone audit.**
 
-  1. **Per-audit outcome lines** — one line per activated audit showing its
-     status (completed / failed / cancelled) and the path to its artifact.
-  2. **Cross-segment changed-files union** — the ordered, duplicate-free union
-     across all segments in first-seen order.
-  3. **Unused options** — one line for each option aimed only at a segment that
-     did not run (for example `--tier` when performance did not run), stating
-     that it had no effect and naming the segment. These lines print before the
-     run's standard close, which stays unchanged.
-  4. **Zero-audit standard close** — when zero audits were activated, use
-     exactly this literal as the standard close for the findings round
-     below:
+- A worker `question` is answered by you when the change, its artifacts, or the repository answer it: send the answer to the same worker and keep it as an assumption for the Close. When nothing answers it and the answer would change the report, put it to the user through the native picker, with options you write that each name a different way forward, as that coordinator's The worker section says. Only that audit's cycle waits for the answer: keep driving the other cycles meanwhile. When several questions are pending, ask them one at a time in the fixed order security, performance, accessibility. A question whose answer would not change the report is answered with your best reading and kept as an assumption.
+- A worker that returns `failed`, or an obstacle whose budget of 3 attempts is exhausted, does not close the run and does not escalate. Record that audit as `failed` with its summary or last obstacle, commit nothing for it, and leave any earlier report of that audit as it was. The other audits finish.
+- The closing line `{Audit} audit done.` and each cycle's own closing report are replaced by this command's Close. The `sai-state` session of a cycle is closed when that cycle ends.
 
-     `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.`
+A failed audit's findings never enter the Assessment pass and are never handed to the fix segment.
 
-     After successful review and a legible triage parse, apply the findings
-     round below with only the freshly regenerated `review.md`.
-     When no report qualifies for the round, print the literal unchanged and
-     stop; retain any warning the run produced. Open fixable findings and open
-     Questions receive the round, with no fix started before the user chooses
-     to fix.
+## Fixing
 
-  When one or more audits were activated, print the combined terminal. Do not
-  invent a distinct deep-review-only success message that replaces the
-  pinned completion texts. Then apply the findings round below and stop.
+The fix tail runs only when segment 1 completed and at least one report holds a fixable finding. The reports are `review.md` plus the report of each audit that completed in this run, in the order review, security, performance, accessibility. Reports of audits that did not run, or failed, are not reports of this run: they stay unread and untouched. Fixable, open, and Question mean what `finding-state.md` says. When no report holds a fixable finding (zero findings, or Questions only), run no Assessment pass and no fix segment.
 
-  ## Findings round and fix segment
+**Startable check.** Before the Assessment pass, check that `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/`. When any is absent, run no Assessment pass and no fix segment, write nothing, and carry on to the Close, which prints `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.` after the summary. The review and the audits stay done.
 
-  The caller's standard close is the zero-audit literal above when zero audits
-  were activated; otherwise it is the combined terminal above. Every path of the
-  findings round and the fix segment uses this same run-specific standard close.
+### Assessment pass
 
-  The findings round and the fix segment are the only tail of the run. They do
-  not run when the Error close of `command-bootstrap.md` applies, when the
-  review segment ended with `no-changes`, `failed`, or an unanswered
-  escalation, or when no report qualifies.
+You run this pass yourself, once, after the audits end, over the reports above. It never runs in a worker.
 
-  1. **Startable check.** Check that `openspec/changes/{name}/` has
-     `proposal.md`, `tasks.md`, and at least one file under `specs/`. When any is
-     absent, ask no round, start no fix segment, and print the implement
-     startup literal for the absent items,
-     `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`,
-     then the run-specific standard close. The review and the audits stay done.
-  2. **Round.** Fetch @sai/commands/deep-review/findings-selection.md and follow it
-     with:
-     - `input` — `review.md` plus `security.md`, `performance.md`, and
-       `accessibility.md` only when each audit was activated and regenerated in
-       this same run; with zero audits, input is only the freshly regenerated
-       `review.md`. Existing non-activated audit reports stay untouched and are
-       excluded from the round and from the fix segment.
-     - `decline-close` = the run-specific standard close plus guidance to run
-       `/sai-3-implement {name}` by hand.
+1. Read each report. Read the code behind a finding whenever the heading and body do not let you judge it.
+2. Judge each fixable finding that carries no ` (EXCLUDED: …)` mark on its own: leave it to fix or exclude it. Use your judgment. Impact, the cost of the correction, and the risk of the correction are things you may weigh, never mandatory checks. No fixed selection rule, threshold, or severity cutoff applies: a High finding may be excluded and a Low one left to fix.
+3. Append the exclusion mark to the end of each excluded finding's heading line: the literal ` (EXCLUDED: <reason>)` of `finding-state.md`. The reason is concrete, one line, and says why the fix is unwarranted. Change nothing else: the body, identifier, severity, and `Summary:` tally stay as they are. Never mark a Question. Questions stay open for the user.
+4. For each report in which you wrote at least one mark, in report order, commit that report alone under the Commit rule of `sai/commands/review/coordinator.md` § Close: check the path with `git check-ignore -q` first, `git add` it alone only when it is not ignored, and `git commit -m "<subject>" -- <path>`. The subject is a Conventional Commits message of at most 50 characters, for example `docs(review): mark excluded findings` or `docs(security): mark excluded findings`. Authorship credits follow that same Commit rule. When the path is ignored, the marks stay on disk uncommitted. Never force-add with `-f`, never push, and commit nothing else. Invoking the command authorizes these local commits.
+5. Count the fixable findings with no mark, across the reports. Start the fix segment only when that count is above zero. When you excluded every fixable finding, run no fix and go to the Close.
 
-     When the round returns no selected findings, or the picker is dismissed,
-     start no fix segment, write no mark, make no commit, and run
-     `decline-close`.
-  3. **Exclusion marks.** Otherwise, before the fix segment starts, append the
-     excluded mark of `@sai/policies/finding-state.md` to the end of the heading
-     line of every unselected fixable finding in the `input` reports:
-     ` (EXCLUDED: not selected in the /sai-deep-review round)`. Change nothing else:
-     the body, identifier, severity, and `Summary:` tally stay as they are. Never
-     mark a Question, answered or not. Write no other change to the reports.
-  4. **Fix segment.** Fetch @sai/commands/implement/coordinator.md and follow it
-     exactly as the fix segment, with the fix envelope's `arguments_value`. Hand
-     it the `input` reports as its Composition reports, and the user's answer to
-     each answered Question, verbatim. It applies the open fixable findings of
-     those reports that carry no excluded mark, one RED/GREEN cycle per step with
-     its own local commit, marks each fixed finding, and runs the suites against
-     the baseline it recorded. Its closing line `Implement done.` is replaced by
-     this command's close. When it ends blocked (an escalation the user did not
-     resolve), stopped, or with a failed precondition, print its report and end
-     the run without a standard close.
-  5. **Close.** After the fix segment completes, print its closing report, then
-     the run-specific standard close.
+The assessment keeps no memory: a rerun regenerates `review.md` and the activated audit reports without earlier marks and judges every finding again.
 
-  The run commits `review.md` once through the review segment, then once per fix
-  step through the fix segment, then once more for the inherent-risk ratings block
-  that the fix segment stores in `review.md` at its close when it fixed a finding;
-  it adds no other commit. A report the project ignores stays on disk uncommitted. No review or audit runs after the fix
-  segment; run `/sai-deep-review {name}` again to review the fixed tree.
+### Fix segment
 
-  ## Changed-files union
-  Preserve one ordered, duplicate-free changed-files union across all segment
-  activations. Progress events and terminal payloads from any segment add paths
-  in first-seen order without resetting the union on segment activation.
+Follow `sai/commands/implement/coordinator.md` exactly as segment 5, with the change name as `arguments_value`. Hand it the reports above as its Composition reports. It applies every open fixable finding of those reports that carries no ` (EXCLUDED: …)` mark, one RED and GREEN cycle per step with its own local commit, marks each finding it fixes, and runs the suites against the baseline it recorded. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says. Its closing line `Implement done.` is replaced by this command's.
 
-  ## Workers
-  Position 0 dispatches `sai-4-review-worker` through the review coordinator.
-  Activated audit segments dispatch their respective existing workers
-  (`sai-5-security-worker`, `sai-6-performance-worker`,
-  `sai-7-accessibility-worker`). The fix segment dispatches `sai-3-red-worker`
-  and `sai-3-green-worker` through the implement coordinator. Deep-review
-  declares no other managed worker of its own.
+An interrupted fix segment resumes through that coordinator's own Resuming rule. Nothing else of this command resumes.
 
-  ## Re-entry
-  Re-entry after interruption or partial audit execution goes through the review
-  segment again. Never resume the audit loops directly while skipping review
-  re-generation. On-disk `review.md` triage sections remain the activation
-  record. An interrupted fix segment resumes under its own Resuming rule only
-  when a later `/sai-3-implement {name}` runs; a new `/sai-deep-review` run starts
-  from a new review.
+## Audit obstacles
 
-</TASK>
+An audit worker can fail to reach ready, stay silent, drift, or produce a report that fails the Verify check of the audit coordinator. Respond as that coordinator's Obstacles section says, per audit, with its budget of 3 attempts, except that an exhausted budget records the audit as `failed` instead of escalating (see Audits).
 
-Follow instruction on <TASK> step by step
+## Close
+
+After the last segment that ran ends, print the report of each segment. A segment's own closing line is replaced by this command's.
+
+- **Segment 1 completed** (it wrote `review.md`): read `openspec/changes/{name}/review.md` again (the Assessment pass and the fix segment changed its headings) and print the finding counts from its `Summary:` tally by category (Critical, High, Medium, Low, Questions) and the `## Recommended Audits` block of segment 1's report. Then print, each only when it has entries:
+  - **Audits**: one line per audit that ran, with its status (`completed` with the counts of its `Summary:` tally and its report path, or `failed` with its reason) and whether its report was committed or left uncommitted because the project ignores it. When no audit was activated, say that no audit ran.
+  - **Warnings**: one line for each triage value that was illegible, naming the audit that did not run because of it.
+  - **Unused options**: one line for each option given to the run that only an audit that did not run declares, such as `--tier` when performance did not run, stating that it had no effect and naming the audit.
+  - **Assumptions**: the assumptions you recorded for audit worker questions.
+  - **Fixed**: the findings whose heading carries ` (FIXED)`, with source-qualified identifier (for example `review:C1` or `security:C1`) and title.
+  - **Excluded**: the findings whose heading carries ` (EXCLUDED: …)`, with source-qualified identifier, title, and reason, followed by the recovery instruction: to apply one, remove its ` (EXCLUDED: …)` mark from the heading in its report and run `/sai-3-implement {name}`.
+  - **Left open by the fix segment**: each finding left to fix that the fix segment did not fix and left without a mark (its fix rounds ran out, it judged the finding mistaken, or the run stopped on an obstacle), with the reason from that segment's report. Never list it as excluded.
+  - **Questions**: say that Questions stay open until the user answers them, because the fix segment applies only fixable findings.
+  - With zero findings, report the zero counts and print none of the finding lists.
+  - When the startable check failed, print `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`
+  - End with exactly `Deep review done.`
+- **Segment 1 found no changes against the parent branch**: say that no review ran, because there was nothing to review, and that no audit, Assessment pass, or fix ran even with `--full` or `--path`. Print the unused-options lines for every option given that only an audit declares, then end with exactly `Deep review done.`
+- **Segment 1 failed, was stopped, or could not start**: print its report and end the run without a closing line.
+- **Error close**: it ended the run already, without a closing line.
+
+The run commits `review.md` once through segment 1, then each verified audit report once, then each report in which the Assessment pass wrote marks once, then once per fix step through segment 5, then once more for the inherent-risk ratings block that segment 5 stores in `review.md` when it fixed a finding. It adds no other commit. A report the project ignores stays on disk uncommitted.
+
+## Re-entry
+
+A rerun of an interrupted `/sai-deep-review` goes through segment 1 again: it regenerates `review.md` and the activated audit reports and runs the Assessment pass again, because the assessment keeps no memory. Only the fix segment resumes, through the Resuming rule of `/sai-3-implement`.

@@ -50,7 +50,7 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers every routed phase
 
-The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by the `spec-steps@1` and `design-steps@1` machines, whose segment-start `reset` pointer opens the task message. The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Every shared-orchestration coordinator that declares a `step_machine` SHALL also open the post-ready task disclosure with the first filed step's pointer line returned by the segment-start `reset`, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Adapters without a step machine SHALL send a progress continuation of exactly `continue_after_progress`.
+The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by the `spec-steps@1` and `design-steps@1` machines, whose segment-start `reset` pointer opens the task message. The implement and review coordinators SHALL deliver the same two-line continuation through their step machines per `@sai/policies/stage-machine.md` § Step machines. The security, performance, and accessibility audits SHALL be served by the shared audit coordinator `sai/commands/audit/coordinator.md`, which declares no `step_machine` adapter field, resets `{audit}-steps@1`, opens the task message with the first pointer line from that `reset`, and sends `Active step: <stage> — follow <next.follow>` after each `step-done`. Adapters without a step machine SHALL send a progress continuation of exactly `continue_after_progress`.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
@@ -59,10 +59,10 @@ The spec and design coordinators SHALL declare no `step_pointer_map`, and their 
 
 #### Scenario: the audit coordinators declare their step machines
 
-- **WHEN** the accessibility coordinator activates
-- **THEN** it declares no `step_pointer_map`, and its audit plan ids are routed by its declared `step_machine: accessibility-standalone@1`
+- **WHEN** the shared audit coordinator activates for accessibility
+- **THEN** it declares no `step_pointer_map` and no `step_machine` field, and its step ids are routed by `accessibility-steps@1`, which it resets in the session `accessibility-{name}`
 
 #### Scenario: implement and review coordinators deliver pointers through their machines
 
-- **WHEN** the implement, review, security, performance, or accessibility coordinator activates and sends a progress-event continuation
-- **THEN** the two-line continuation format is delivered via its step machine and the stage-machine.md policy, and its earlier task disclosure opened with the first filed step's pointer line
+- **WHEN** the implement or review coordinator activates and sends a step continuation, or the shared audit coordinator answers a `step-done`
+- **THEN** the pointer line is derived from its step machine, and its earlier task disclosure opened with the first filed step's pointer line

@@ -186,9 +186,7 @@ test('every routed surface restating the progress shape is timeless with no time
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md',
     'sai/commands/review/coordinator.md',
-    'sai/commands/security/coordinator.md',
-    'sai/commands/performance/coordinator.md',
-    'sai/commands/accessibility/coordinator.md',
+    'sai/commands/audit/coordinator.md',
     'sai/commands/deep-review/coordinator.md',
     'sai/commands/implement/red-worker.md',
     'sai/commands/implement/green-worker.md'

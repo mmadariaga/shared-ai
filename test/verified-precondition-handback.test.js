@@ -51,18 +51,13 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
 // The plan family (spec, design, plan) runs outside the shared orchestration, like the
 // implement family, and loads none of the shared hand-back policy.
-// The audit workers and the shared audit coordinator run outside it too; only the
-// former audit coordinators, which /sai-deep-review still composes, keep the policy.
-const routedPhases = ['security', 'performance', 'accessibility'];
-const routedCards = routedPhases.map((phase) => `sai/commands/${phase}/coordinator.md`);
-const designCards = [];
-const compositionCards = ['sai/commands/deep-review/coordinator.md'];
+// The audit workers, the shared audit coordinator, and /sai-deep-review run outside it too.
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
 );
 const utilityCards = ['explore', 'retire-docs', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
-const commandCards = [...routedCards, ...designCards, ...compositionCards, ...routedMinimalCards, ...utilityCards];
+const commandCards = [...routedMinimalCards, ...utilityCards];
 
 function countLiteral(text, value) {
   return text.split(value).length - 1;
@@ -91,7 +86,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 14);
+  assert.equal(commandCards.length, 10);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);

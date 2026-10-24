@@ -624,26 +624,6 @@ test('Step 2: progress_plan is an optional static ordered adapter field, fully k
     'progress_plan immutability accepts invocation or active-adapter-segment scope');
 });
 
-test('chained phase composition: consecutive-only activation, malformed close, isolation continuity, final-only terminal', () => {
-  // Composition rules live in composition.md, layered on the runner (ADR 0187).
-  const runner = `${artifact('sai/orchestration/command-runner.md')}
-${artifact('sai/orchestration/composition.md')}`;
-  assert.match(runner, /ordered[\s\S]{0,80}(?:sequence|list)[\s\S]{0,80}phase adapter/i,
-    'composition must declare ordered multi-adapter execution');
-  assert.match(runner, /(?:only|exactly)[\s\S]{0,80}(?:successor|adapter)[\s\S]{0,80}i\s*\+\s*1|position `?i\s*\+\s*1`?/i,
-    'only the consecutive successor at i+1 may activate');
-  assert.match(runner, /malformed[\s\S]{0,200}(?:close|without advancing)|without advancing/i,
-    'malformed transitions and failed/cancelled outcomes close without advancing');
-  assert.match(runner, /Isolation Mode[\s\S]{0,200}(?:shall not|must not|does not)[\s\S]{0,120}(?:clear|reset)[\s\S]{0,120}supervisor/i,
-    'chained Isolation Mode must preserve supervisor state');
-  assert.match(runner, /(?:final|sole)[\s\S]{0,120}terminal_navigation|only the final adapter/i,
-    'only the final (or sole) adapter emits the closing terminal');
-  assert.match(runner, /single phase adapter[\s\S]{0,160}(?:unchanged|one-phase)|one-adapter[\s\S]{0,160}(?:unchanged|identical)/i,
-    'single-phase invocation must remain unchanged');
-  assert.match(runner, /progress_plan[\s\S]{0,240}(?:active adapter segment|immutable for the active)/i,
-    'progress_plan immutability is per active adapter segment under composition');
-});
-
 test('Step 2: a progress event reporting an undeclared step id is ignored; the plan is never extended or amended', () => {
   const coordinator = artifact('sai/orchestration/command-runner.md');
 
@@ -1297,14 +1277,9 @@ test('Step 5: schema keeps the pre-change design graph and does not advertise En
   }
 });
 
-test('composition rules load only in composition coordinators (ADR 0187)', () => {
+test('composition.md is retired: the file is gone and no card or the runner loads it (ADR 0200)', () => {
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/orchestration/composition.md')), false);
   const runner = artifact('sai/orchestration/command-runner.md');
-  assert.match(runner, /`sai\/orchestration\/composition\.md`/,
-    'the runner should name the composition file');
-  assert.doesNotMatch(runner, /Fetch @sai\/orchestration\/composition\.md/,
-    'the runner must not load composition rules for every command');
-  for (const card of ['sai/commands/deep-review/coordinator.md']) {
-    assert.match(artifact(card), /Fetch @sai\/orchestration\/composition\.md/,
-      `${card} should load the composition rules`);
-  }
+  assert.doesNotMatch(runner, /composition\.md/, 'the runner must not name the retired composition file');
+  assert.doesNotMatch(artifact('sai/commands/deep-review/coordinator.md'), /composition\.md/);
 });

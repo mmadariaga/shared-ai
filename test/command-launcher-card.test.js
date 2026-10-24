@@ -26,18 +26,17 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-// The implement, review, build, audit, and plan-family commands run outside the
+// The implement, review, build, deep-review, audit, and plan-family commands run outside the
 // shared orchestration: their wrappers fetch the harness skill and the coordinator
 // card directly, with no boot adapter and no command bootstrap. The three audits
 // share one coordinator, `sai/commands/audit/coordinator.md`.
 const AUDIT_WRAPPERS = new Set(['sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md']);
 const DIRECT_COORDINATOR = new Set([
   'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
-  ...AUDIT_WRAPPERS,
+  'sai-deep-review.md', ...AUDIT_WRAPPERS,
 ]);
 const bootCommands = commands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
 const emptyBootstraps = new Set(['explore', 'retire-docs', 'status', 'worktree']);
-const loadFreeBootstraps = new Set([...emptyBootstraps, 'deep-review']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
   const foldersByFile = new Map(commands);
@@ -63,7 +62,6 @@ const movedDirectives = {
   merge: [
     'Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it.',
   ],
-  'deep-review': [],
 };
 
 function read(relativePath) {
@@ -117,14 +115,14 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 9 harness-neutral command bootstraps exist and budget has none', () => {
+test('exactly 8 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of bootCommands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
-  assert.equal(actual.length, 9);
+  assert.equal(actual.length, 8);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
 });
 
@@ -140,9 +138,6 @@ test('command bootstrap content is exact, ordered, and harness-neutral', () => {
       assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
       assert.match(source, /has no command-specific loads, and this file is complete as written/);
       assert.match(source, /Execution continues with the card selected by the harness boot adapter/);
-    } else if (loadFreeBootstraps.has(folder)) {
-      assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
-      assert.match(source, /segment list/);
     } else {
       assert.deepEqual(fetchLines(source), movedDirectives[folder], `${folder} launcher directive order`);
     }
@@ -320,6 +315,7 @@ const DIRECT_COORDINATOR_COORDINATOR = {
   'sai-3-implement.md': 'Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-4-review.md': 'Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-build.md': 'Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-deep-review.md': 'Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-5-security.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-6-performance.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-7-accessibility.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
@@ -337,11 +333,11 @@ test('the direct-coordinator wrappers fetch the harness skill and their coordina
         `${harness}/${file} should match its baseline entry`);
       assert.ok(source.split(/\r?\n/).includes(CLEAN_START), `${harness}/${file} should carry the session-clean preamble`);
       assert.doesNotMatch(source, /@sai\/adapters\/|command-bootstrap\.md/, `${harness}/${file} must not load a boot adapter or bootstrap`);
-      // The audit folders keep their former bootstrap and coordinator cards until
-      // /sai-deep-review stops composing them; the wrappers no longer load them.
-      if (!AUDIT_WRAPPERS.has(file)) {
-        assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'command-bootstrap.md')), false,
-          `${folder} has no command bootstrap`);
+      assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'command-bootstrap.md')), false,
+        `${folder} has no command bootstrap`);
+      if (AUDIT_WRAPPERS.has(file)) {
+        assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'coordinator.md')), false,
+          `${folder} keeps no coordinator of its own: the three audits share sai/commands/audit/coordinator.md`);
       }
       assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', AUDIT_WRAPPERS.has(file) ? 'audit' : folder, 'coordinator.md')), true,
         `${folder} has its coordinator card`);
