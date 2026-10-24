@@ -7,7 +7,7 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: One transfer directory per backfill invocation
 
-The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transfer.js open --harness <claude|opencode>` before the first backfill worker dispatch and retain its returned directory as invocation-scoped state. Exit 2 SHALL report the verbatim error and stop before dispatch or final writes. Ordinary backfill SHALL retain its invocation-close cleanup. Direct Build SHALL retain its transfer directory through archive, including corrections, rather than closing it at Step 6 acceptance, and SHALL close it at terminal cleanup. The coordinator SHALL run `transfer.js close` to remove only that directory when the applicable completed, failed, or cancelled invocation or route closes.
+The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transfer.js open --harness <claude|opencode>` before the first backfill worker dispatch and retain its returned directory as invocation-scoped state. Exit 2 SHALL report the verbatim error and stop before dispatch or final writes. Ordinary backfill SHALL retain its invocation-close cleanup and close only its named directory on completed, failed, or cancelled closure. Direct Build SHALL retain its separate draft directory through archive, corrections, validation, recovery, interruption, and exhausted or otherwise unresolved closure. Its report and draft evidence SHALL be cleaned up only after accepted route closure when no continuation or recovery needs them.
 
 #### Scenario: A missing temp root stops before dispatch
 - **WHEN** `open` exits 2 at backfill invocation start
@@ -15,16 +15,23 @@ The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transf
 
 #### Scenario: The directory survives until close
 - **WHEN** a Direct Build backfill stage moves from prepare to execute
-- **THEN** the transfer directory still exists and remains available through archive and corrections until terminal cleanup
+- **THEN** the transfer directory still exists through archive and corrections and remains available until accepted terminal closure permits cleanup
+
+#### Scenario: Unresolved close retains drafts
+- **WHEN** Direct Build closes with interrupted or exhausted report verification
+- **THEN** the draft transfer directory and references remain retained with the report evidence rather than being removed at that unresolved close
 
 ### Requirement: Transfer directory disclosed only in task disclosure
 
-The coordinator SHALL deliver the transfer directory to the backfill worker only in the task-disclosure continuation, as one first line `--transfer-dir <dir>` ahead of the envelope, never in the initial dispatch; `original_envelope` SHALL remain exactly `arguments_value`. The worker SHALL strip that line before any other parse and keep the path as invocation-scoped state outside `$ARGUMENTS`. A dispatch that needs the line and lacks it SHALL return `failed` with no changes and a summary naming the missing line, with no inline-content fallback. The archive `--fix-delta-headers` envelope SHALL carry no such line and SHALL keep its inline contract.
+The coordinator SHALL deliver the transfer directory to the backfill worker only in the task-disclosure continuation through `--transfer-dir <dir>` ahead of the envelope, never in the initial dispatch; `original_envelope` SHALL remain exactly `arguments_value`. For ordinary backfill that line SHALL be first. For the full Direct Build route the outermost `--report-dir <absolute path>` line SHALL precede it; the worker SHALL strip the report line first, then the transfer line, and keep both paths as invocation-scoped state outside `$ARGUMENTS`. A dispatch needing the transfer line and lacking it SHALL return `failed` with no changes and a summary naming the missing line, with no inline draft-content fallback. Full-route reports SHALL use private report references, with draft references retained inside the report and their own separate directory. The archive `--fix-delta-headers` envelope SHALL carry no transfer line and SHALL keep its inline contract.
 
 #### Scenario: A missing transfer line fails closed
-
 - **WHEN** an ordinary or Direct Build backfill task disclosure lacks the `--transfer-dir` line
-- **THEN** the worker returns `failed` naming the missing line and returns no draft content
+- **THEN** the worker reports failed naming the missing line, performs no draft writes, and returns no draft content, using full-route private report transport only when that mode applies
+
+#### Scenario: Full Direct Build has two separate directory lines
+- **WHEN** full Direct Build discloses the backfill task after ready
+- **THEN** report-dir is outermost, transfer-dir follows it, and both are stripped before ordinary envelope parsing without changing standalone behavior
 
 ### Requirement: Worker hands drafts over as references
 

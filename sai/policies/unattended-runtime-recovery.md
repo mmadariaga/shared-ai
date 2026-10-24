@@ -52,6 +52,14 @@ mutation authorizations.
 
 ## Precedence
 
+Full Direct Build report delivery and validation use
+`@sai/policies/direct-build-report-transport.md`. Establish delivery, report
+validity, and repository effects as separate facts. Recover the pending
+verification autonomously within this policy's existing attempts, using an
+approach supported by the evidence rather than repeating a known failure.
+No response to a call means neither acceptance nor rejection. Preserve the
+report and references while verification remains unresolved.
+
 At each worker hand-off, use the first applicable existing contract before
 considering runtime repair:
 
@@ -166,6 +174,15 @@ every other dispatch. Guard the dispatch with its own window of
 unchanged.
 
 ## Execute orders
+
+A delivery or validation failure after independently confirmed operations is
+a pending report check, not a failed execution order. Recover that check or
+request a report of the existing effects without repeating them. A confirmed
+archive move or commit stays confirmed even when the report is invalid or the
+validator call was interrupted. Apply the no-effect rule below only when
+execution itself is failed or uncertain; report recovery never authorizes an
+execute-order replay. Exhausted verification closes with completed operations
+and unresolved checks reported, within the same existing attempt budget.
 
 Take an order snapshot immediately before sending any execute order and hold
 it as `order_snapshot`, listing the order's target paths

@@ -80,6 +80,10 @@ time is the response's top-level `received_at`, never a verdict field. Every oth
 progress result under an adapter without a `step_machine`, keeps the separate
 `validate --kind <kind>` call.
 
+Full Direct Build uses `@sai/policies/direct-build-report-transport.md` instead
+of stdin submission: workers return private report references, and the validator
+checks the hash and validates one buffer. Other routes keep the input above.
+
 Pass every payload to the validator exactly as received: never rewrite,
 re-serialize, or repair it first. In an unattended lane, a malformed payload is
 a failure under the resilience rule of `@sai/policies/unattended-runtime-recovery.md`,
