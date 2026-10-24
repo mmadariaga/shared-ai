@@ -1,6 +1,6 @@
 # Performance Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, and hard rules. `resolve-performance-scope` has no step file of its own and runs from the worker contract plus this file.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, and hard rules. `resolve-performance-scope` has no step file of its own and runs from the brief plus this file.
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
@@ -8,7 +8,7 @@ Fetch @sai/commands/performance/options.md
 
 ## Input
 
-The first argument is the change name (kebab-case). Read from `openspec/changes/{change-name}/`:
+The brief names the change (kebab-case). Read from `openspec/changes/{change-name}/`:
 
 - `proposal.md` — feature goal, accepted/discarded decisions, and any explicitly accepted performance trade-offs (e.g. spec explicitly accepts O(n) scan for a low-cardinality table).
 - `design.md` — architecture decisions and expected load characteristics (may be absent for backfilled changes; proceed if missing).
@@ -21,7 +21,7 @@ The first argument is the change name (kebab-case). Read from `openspec/changes/
 Optional, default = diff vs parent branch:
 
 - `--full` audits the whole repository; `--path` audits that path; `--tier` keeps a single tier.
-- `--runtime` enables the diagnostics of `resolve-diagnostics`; without it the command asks no question.
+- `--runtime` authorizes the diagnostics of `resolve-diagnostics` and nothing more is asked; without it no diagnostic runs.
 - Otherwise: diff vs parent branch. Detection order:
     - If `--parent-branch` was given, use it.
     - Else read the repo default from `git symbolic-ref --short refs/remotes/origin/HEAD` (strip the `origin/` prefix).

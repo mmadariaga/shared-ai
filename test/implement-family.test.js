@@ -335,6 +335,12 @@ test('both coordinator review loops follow the incremental review policy and sta
 
 test('the implement and review bindings render from the standalone template and leave the lifecycle to the coordinator', () => {
   for (const harness of ['claude', 'opencode']) {
+    for (const phase of ['security', 'performance', 'accessibility']) {
+      const audit = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === phase);
+      assert.doesNotMatch(audit.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} ${phase}`);
+      assert.match(audit.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(audit.text, new RegExp(`Fetch @sai/commands/${phase}/worker\\.md`));
+    }
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
       .filter(item => item.kind === 'binding' && ['red', 'green', 'review'].includes(item.phase));
     assert.deepEqual(bindings.map(item => item.destinationName), ['red-worker.md', 'green-worker.md', 'review-worker.md'], harness);
@@ -346,7 +352,7 @@ test('the implement and review bindings render from the standalone template and 
         : `implement/${item.phase}-worker`;
       assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
     }
-    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'security');
+    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'commit');
     assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
   }
 });

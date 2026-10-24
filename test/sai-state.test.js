@@ -691,13 +691,16 @@ const FIRST_FILED = [
   ['security-standalone@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
   ['performance-standalone@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
   ['accessibility-standalone@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
+  ['security-steps@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
+  ['performance-steps@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
+  ['accessibility-steps@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
 ];
 
 function progressPayload(stepIds) {
   return JSON.stringify({ event: 'progress', step_ids: stepIds, changed_files: [] });
 }
 
-test('CLI: reset returns the first filed step pointer for all five step machines', () => {
+test('CLI: reset returns the first filed step pointer for all eight step machines', () => {
   const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-first-filed').stdout).id;
   try {
     for (const [machineId, , second, , follow] of FIRST_FILED) {

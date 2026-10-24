@@ -1,6 +1,6 @@
 # Performance Step — Map Stack and Hot Paths
 
-Active step: map-stack-hot-paths. Discover the stack components, hot paths, and baseline reference for the selected scope. The step is done when every file of the selected scope is assigned a tier or recorded as having no performance surface, and the stack components per tier, the hot paths, the baseline reference, and the accepted trade-offs exist; then report the `map-stack-hot-paths` progress event per the worker contract.
+Active step: map-stack-hot-paths. Discover the stack components, hot paths, and baseline reference for the selected scope. The step is done when every file of the selected scope is assigned a tier or recorded as having no performance surface, and the stack components per tier, the hot paths, the baseline reference, and the accepted trade-offs exist; then report `step-done` for `map-stack-hot-paths`.
 
 1. **Read the change artifacts** first and record the accepted trade-offs (`common.md` § Input). They anchor every later step.
 2. **Collect the selected scope.** For diff mode:
@@ -24,4 +24,4 @@ Use **`budget-explorer`** subagents in parallel for file inspection and for cont
 
 ### Not applicable
 
-When the diff is empty, or the selected scope (after `--tier`) has no performance surface — no new queries, endpoints, consumers, hot components, dependencies, loops over unbounded input, or caching changes — the audit does not apply. Report `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, and `resolve-diagnostics` together in this step's progress event; `close-performance-outcome` then writes the Not Applicable report, naming the tier filter in its justification when the filter excluded the touched surface.
+When the diff is empty, or the selected scope (after `--tier`) has no performance surface — no new queries, endpoints, consumers, hot components, dependencies, loops over unbounded input, or caching changes — the audit does not apply. Report `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, and `resolve-diagnostics` together in this step's `step-done` batch; `close-performance-outcome` then writes the Not Applicable report, naming the tier filter in its justification when the filter excluded the touched surface.

@@ -17,6 +17,9 @@
  *   ready-to-propose <file>              Check that a file follows ready-to-propose format
  *                                        (delegates to sai/tools/ready-to-propose.js, dispatchable profile).
  *   artifact-review <file>               Check that artifact review findings follow the contract.
+ *   audit-report <file> --audit <name>   Check that a security, performance, or accessibility
+ *                                        report keeps its template structure, its audit's severity
+ *                                        subset and Summary form, and a tally matching its findings.
  *   sai-learnings-format <file>          Check that SAI_LEARNINGS.md follows learnings format.
  *   step-contract <file>                 Check that interfaces.md follows step contract format.
  *   worker-emission-ownership <file>     Check that a worker card does not reference emit or sai-state.
@@ -27,6 +30,7 @@
  *   node sai/tools/lint.js glossary-format <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js ready-to-propose <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js artifact-review <file> [--json] [--cwd <dir>]
+ *   node sai/tools/lint.js audit-report <file> --audit <security|performance|accessibility> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js sai-learnings-format <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js step-contract <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js worker-emission-ownership <file> [--json] [--cwd <dir>]
@@ -394,6 +398,163 @@ function checkArtifactReview(content) {
   return violations;
 }
 
+const AUDIT_LEVELS = Object.freeze({
+  security: Object.freeze(['Critical', 'High', 'Medium', 'Low']),
+  performance: Object.freeze(['Critical', 'High', 'Medium', 'Low', 'Informational']),
+  accessibility: Object.freeze(['Critical', 'High', 'Medium', 'Low', 'Informational']),
+});
+
+const AUDIT_REQUIRED_SECTIONS = Object.freeze({
+  security: Object.freeze([]),
+  performance: Object.freeze([]),
+  accessibility: Object.freeze(['Executive Summary', 'Coverage Notes', 'Pending Manual Checks', 'Re-Test Checklist']),
+});
+
+/**
+ * Check a security, performance, or accessibility audit report.
+ * Validates per docs/adr/0107b-unified-audit-severity-vocabulary.md and the
+ * report templates under sai/commands/{audit}/:
+ *   - Title, provenance line, and (accessibility) the template's fixed sections
+ *   - Not Applicable form: the section with its justification, no findings, no tally
+ *   - Every finding heading under a "Findings" section leads with a severity-prefixed
+ *     identifier whose letter belongs to the audit's own level subset, numbered 1..n per severity
+ *   - One closing Summary line in the audit's own form (security has no Informational counter)
+ *   - The Summary tally (and the accessibility severity table) match the findings
+ */
+function checkAuditReport(content, audit) {
+  const levels = AUDIT_LEVELS[audit];
+  if (!levels) throw new ToolError(`unknown audit: ${audit}`, 2);
+  const violations = [];
+  const add = (line, problem, detail) => violations.push({ file: 'audit-report', line, problem, detail });
+  const lines = String(content ?? '').replace(/\r\n?/g, '\n').split('\n');
+  const title = audit[0].toUpperCase() + audit.slice(1);
+  const initials = levels.map(level => level[0]);
+  const summaryForm = `Summary: ${levels.map(level => `${level}=<count>`).join(' ')}`;
+
+  // Collect the structure outside fenced code blocks.
+  let fence = null;
+  let section = null;
+  let firstLine = null;
+  let scopeLine = null;
+  let naLine = null;
+  let justification = false;
+  let lastNonEmpty = null;
+  const summaries = [];
+  const headings = [];
+  const sections = new Set();
+  const tableRows = {};
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
+    const fenceMatch = line.match(/^\s*(```|~~~)/);
+    if (fenceMatch) {
+      if (fence === null) fence = fenceMatch[1];
+      else if (fence === fenceMatch[1]) fence = null;
+      continue;
+    }
+    if (fence !== null || line.trim() === '') continue;
+    lastNonEmpty = { line: i + 1, text: line };
+    if (firstLine === null) firstLine = { line: i + 1, text: line };
+    if (scopeLine === null && /^\*\*Scope:\*\*/.test(line)) scopeLine = i + 1;
+    const h2 = line.match(/^## (.+)$/);
+    if (h2) {
+      section = h2[1].trim();
+      sections.add(section);
+      if (section === 'Not Applicable') naLine = i + 1;
+      continue;
+    }
+    if (section === 'Not Applicable' && /^\*\*Justification:\*\*\s*\S/.test(line)) justification = true;
+    const h3 = line.match(/^### (.+)$/);
+    if (h3 && section !== null && /Findings$/.test(section)) headings.push({ line: i + 1, text: h3[1].trim() });
+    if (line.startsWith('Summary:')) summaries.push({ line: i + 1, text: line });
+    const row = line.match(/^\|\s*(Critical|High|Medium|Low|Informational|\*\*Total\*\*|Total)\s*\|\s*([^|]*?)\s*\|\s*$/);
+    if (row && section === 'Executive Summary') tableRows[row[1].replace(/\*/g, '')] = { line: i + 1, value: row[2].replace(/\*/g, '') };
+  }
+
+  if (!firstLine || !new RegExp(`^# ${title} Report — \\S`).test(firstLine.text)) {
+    add(firstLine ? firstLine.line : 1, 'MISSING_TITLE', `the report must open with: # ${title} Report — {Feature Name}`);
+  }
+  if (scopeLine === null) {
+    add(1, 'MISSING_PROVENANCE', 'the report must carry the provenance line that starts with **Scope:**');
+  }
+
+  if (naLine !== null) {
+    if (!justification) add(naLine, 'MISSING_JUSTIFICATION', 'the Not Applicable section must carry a **Justification:** line with its text');
+    if (headings.length > 0) add(headings[0].line, 'NOT_APPLICABLE_WITH_FINDINGS', 'a Not Applicable report has no findings');
+    if (summaries.length > 0) add(summaries[0].line, 'NOT_APPLICABLE_WITH_TALLY', 'a Not Applicable report has no Summary tally');
+    return violations;
+  }
+
+  for (const name of AUDIT_REQUIRED_SECTIONS[audit]) {
+    if (!sections.has(name)) add(1, 'MISSING_SECTION', `the report must carry the template section "## ${name}"`);
+  }
+
+  // Findings: identifiers, severity subset, numbering.
+  const parsed = Object.fromEntries(levels.map(level => [level, []]));
+  for (const heading of headings) {
+    const match = heading.text.match(/^([A-Z])(\d+)(?:\s+\[([A-Za-z]+)\])?(?:\s|$)/);
+    if (!match) {
+      add(heading.line, 'FINDING_WITHOUT_IDENTIFIER', `every finding heading must lead with a severity-prefixed identifier (${initials.join('/')} followed by a number)`);
+      continue;
+    }
+    const level = levels.find(item => item[0] === match[1]);
+    if (!level) {
+      add(heading.line, 'INVALID_IDENTIFIER_FORMAT', `identifier ${match[1]}${match[2]} is outside the ${audit} severity subset: ${levels.join(', ')}`);
+      continue;
+    }
+    if (match[3] && match[3].toLowerCase() !== level.toLowerCase()) {
+      add(heading.line, 'SEVERITY_IDENTIFIER_MISMATCH', `identifier ${match[1]}${match[2]} belongs to ${level}, but the heading says [${match[3]}]`);
+    }
+    parsed[level].push({ line: heading.line, number: Number(match[2]) });
+  }
+  for (const level of levels) {
+    const numbers = parsed[level].map(item => item.number);
+    const expected = numbers.map((_, index) => index + 1);
+    if (numbers.slice().sort((a, b) => a - b).join(',') !== expected.join(',')) {
+      add(parsed[level][0].line, 'IDENTIFIER_SEQUENCE', `${level} identifiers must be ${level[0]}1 to ${level[0]}${numbers.length}, each once (found ${numbers.map(n => level[0] + n).join(', ')})`);
+    }
+  }
+
+  // Closing Summary tally.
+  if (summaries.length === 0) {
+    add(lines.length, 'MISSING_SUMMARY', `the report must close with: ${summaryForm}`);
+    return violations;
+  }
+  if (summaries.length > 1) add(summaries[1].line, 'DUPLICATE_SUMMARY', 'the report carries exactly one Summary line');
+  const summary = summaries[summaries.length - 1];
+  const formPattern = new RegExp(`^Summary: ${levels.map(level => `${level}=(\\d+)`).join(' ')}$`);
+  const formMatch = summary.text.match(formPattern);
+  if (!formMatch) {
+    add(summary.line, 'INVALID_SUMMARY_FORMAT', `Summary line must be: ${summaryForm}`);
+    return violations;
+  }
+  if (summary.line !== lastNonEmpty.line) add(summary.line, 'SUMMARY_NOT_LAST', 'the Summary line closes the report');
+  const tally = Object.fromEntries(levels.map((level, index) => [level, Number(formMatch[index + 1])]));
+  const found = Object.fromEntries(levels.map(level => [level, parsed[level].length]));
+  if (levels.some(level => tally[level] !== found[level])) {
+    add(summary.line, 'SUMMARY_TALLY_MISMATCH', `Summary counts must match the findings (found ${levels.map(level => `${level}=${found[level]}`).join(' ')})`);
+  }
+
+  // Accessibility severity table.
+  if (audit === 'accessibility') {
+    for (const level of levels) {
+      const row = tableRows[level];
+      if (!row) {
+        add(1, 'MISSING_SEVERITY_TABLE_ROW', `the Executive Summary table must carry a ${level} row`);
+      } else if (!/^\d+$/.test(row.value)) {
+        add(row.line, 'SEVERITY_TABLE_NOT_NUMERIC', `the ${level} count of the Executive Summary table must be a number`);
+      } else if (Number(row.value) !== found[level]) {
+        add(row.line, 'SEVERITY_TABLE_MISMATCH', `the ${level} count of the Executive Summary table is ${row.value}, the findings hold ${found[level]}`);
+      }
+    }
+    const total = tableRows.Total;
+    const sum = levels.reduce((acc, level) => acc + found[level], 0);
+    if (total && /^\d+$/.test(total.value) && Number(total.value) !== sum) {
+      add(total.line, 'SEVERITY_TABLE_MISMATCH', `the Total of the Executive Summary table is ${total.value}, the findings hold ${sum}`);
+    }
+  }
+  return violations;
+}
+
 /**
  * Check SAI_LEARNINGS.md format.
  * Validates per sai/policies/sai-learnings-format.md:
@@ -624,7 +785,7 @@ function checkStepContract(content) {
  * The stage machine emission surface includes:
  *   - sai-state commands (emit, spawn, close, reset, etc.)
  *   - bin/sai-state.js file reference
- *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-steps@1, design-steps@1, plan-run@1, implement-run@1, review-steps@1, security-standalone@1)
+ *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-steps@1, design-steps@1, plan-run@1, implement-run@1, review-steps@1, security-standalone@1, security-steps@1)
  *   - Legacy /emit HTTP command
  */
 function checkWorkerEmissionOwnership(content) {
@@ -638,7 +799,7 @@ function checkWorkerEmissionOwnership(content) {
   const saiStateBinPattern = /bin\/sai-state\.js/;
   const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|reset|run)`/;
   // 3. Stage machine IDs in the format name@version
-  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-steps|design-steps|plan-run|implement-run|review-steps|security-standalone)@\d+/;
+  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-steps|design-steps|plan-run|implement-run|review-steps|security-standalone|security-steps|performance-steps|accessibility-steps)@\d+/;
   // 4. Legacy /emit HTTP command
   const legacyEmitPattern = /\/emit\b/;
 
@@ -714,11 +875,13 @@ function usage() {
     '                      - glossary-format: Validate GLOSSARY.md format',
     '                      - ready-to-propose: Validate Ready to Propose block format',
     '                      - artifact-review: Validate artifact review finding format',
+    '                      - audit-report: Validate a security, performance, or accessibility report (needs --audit)',
     '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
     '                      - step-contract: Validate interfaces.md step contract format',
     '                      - worker-emission-ownership: Validate worker card emission ownership',
     '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
     '  --json              Emit the report as JSON on stdout',
+    '  --audit <name>      Audit of an audit-report check: security, performance, or accessibility',
     '  --allow-attribution Allow user-requested AI credit in commit-rules only',
     '  --cwd <dir>         Working directory for file resolution (default: current directory)',
   ].join('\n');
@@ -743,6 +906,8 @@ function parseArgs(argv) {
       opts.help = true;
     } else if (arg === '--cwd') {
       opts.cwd = argv[++i];
+    } else if (arg === '--audit') {
+      opts.audit = argv[++i];
     } else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
     } else if (opts.check === null) {
@@ -816,6 +981,13 @@ function main(argv) {
       case 'artifact-review':
         violations = checkArtifactReview(content);
         break;
+      case 'audit-report':
+        if (!AUDIT_LEVELS[opts.audit]) {
+          process.stderr.write(`audit-report needs --audit <${Object.keys(AUDIT_LEVELS).join('|')}>.\n${usage()}\n`);
+          return 2;
+        }
+        violations = checkAuditReport(content, opts.audit);
+        break;
       case 'sai-learnings-format':
         violations = checkSaiLearningsFormat(content);
         break;
@@ -863,6 +1035,7 @@ module.exports = {
   checkGlossaryFormat,
   checkReadyToPropose,
   checkArtifactReview,
+  checkAuditReport,
   checkSaiLearningsFormat,
   checkStepContract,
   checkWorkerEmissionOwnership,

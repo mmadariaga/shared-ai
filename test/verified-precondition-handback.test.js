@@ -51,10 +51,10 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
 // The plan family (spec, design, plan) runs outside the shared orchestration, like the
 // implement family, and loads none of the shared hand-back policy.
+// The audit workers and the shared audit coordinator run outside it too; only the
+// former audit coordinators, which /sai-deep-review still composes, keep the policy.
 const routedPhases = ['security', 'performance', 'accessibility'];
-const routedCards = routedPhases.flatMap((phase) =>
-  ['coordinator.md', 'worker.md'].map((name) => `sai/commands/${phase}/${name}`)
-);
+const routedCards = routedPhases.map((phase) => `sai/commands/${phase}/coordinator.md`);
 const designCards = [];
 const compositionCards = ['sai/commands/deep-review/coordinator.md'];
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
@@ -91,7 +91,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 17);
+  assert.equal(commandCards.length, 14);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);

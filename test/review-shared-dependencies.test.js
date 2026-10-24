@@ -12,27 +12,25 @@ const phases = [
   ['accessibility', 'resolve-accessibility-scope', 'map-ui-framework'],
 ];
 
-test('review and audits keep proposal gates without environment prerequisite startup', () => {
+test('audits keep the proposal gate in the shared coordinator without environment prerequisite startup', () => {
+  const coordinator = read('sai/commands/audit/coordinator.md');
+  assert.ok(coordinator.includes('Cannot start {command} for {name}: missing proposal.md.'));
+  assert.doesNotMatch(coordinator, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
+  const workerCommon = read('sai/commands/audit/worker-common.md');
+  assert.doesNotMatch(workerCommon, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
   for (const [phase, startup, firstFiled] of phases) {
     const worker = read(`sai/commands/${phase}/worker.md`);
-    // Review, security, and performance no longer carry the prerequisite sentence (the rule belongs to /sai-explore alone).
-    if (phase !== 'review' && phase !== 'security' && phase !== 'performance') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
+    assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
     assert.doesNotMatch(worker, /startup act \(prerequisite checks|the three steps above/);
-    assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
-    assert.ok(worker.includes(`first delivered pointer targets \`${firstFiled}\``)
-      || worker.includes(`first delivered pointer targeting \`${firstFiled}\``));
+    assert.doesNotMatch(worker, /proposal\.md not found/, 'the coordinator owns the proposal gate');
     assert.ok(worker.includes(`\`${startup}\``));
-    assert.match(worker, /reports (?:together with|in one batch together with)/);
+    assert.ok(worker.includes(`together with \`${firstFiled}\``));
     const common = read(`sai/commands/${phase}/steps/common.md`);
     assert.match(common, /Fetch @skills\/budget-ro\/SKILL\.md/);
     assert.doesNotMatch(common, /Fetch @skills\/budget\/SKILL\.md/);
     for (const content of [worker, common]) {
       assert.doesNotMatch(content, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
     }
-    // Review, security, and performance own the pointer rule in their worker card; the others keep it in common.md.
-    if (phase === 'review') assert.ok(worker.includes(`reports together with \`${firstFiled}\``));
-    else if (phase === 'security' || phase === 'performance') assert.ok(worker.includes(`\`${startup}\``) && worker.includes(`together with \`${firstFiled}\``));
-    else assert.ok(common.includes(`report \`${startup}\` and \`${firstFiled}\` together`));
   }
 });
 

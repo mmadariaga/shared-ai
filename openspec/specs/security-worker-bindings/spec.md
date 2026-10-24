@@ -2,21 +2,22 @@
 
 ## Purpose
 TBD - created by syncing change sai-6-security-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
 
 ### Requirement: Claude Code and opencode bindings dispatch the security worker
 
-The Claude Code and opencode security-worker bindings SHALL dispatch the canonical managed security worker with the complete original envelope, attempt same-worker continuation first, and permit at most one replacement-worker recovery when the binding can provide the required reconstruction fields. They SHALL preserve opaque input history and resolved lifecycle state without sending artifact contents as a substitute for reconstruction data.
+The Claude Code and opencode security-worker bindings SHALL render from the standalone worker template and carry only the create and continue calls for `sai-5-security-worker`: Claude Code creates it with `Agent` and continues it with `SendMessage` to the captured agent ID, and opencode creates it with `task` and continues it with the captured `task_id`. The creation dispatch SHALL carry only the ready prompt. The shared audit coordinator that fetches the binding SHALL own the lifecycle: when to create the worker, what each message carries, and when to replace it under its obstacle budget, a replacement receiving only the coordinator's hand-over note and no prior history or report contents.
 
 #### Scenario: Routed security worker is dispatched
-- **WHEN** a Claude Code or opencode coordinator starts a security invocation
-- **THEN** its matching binding dispatches the numbered security worker with the complete original envelope
+- **WHEN** the audit coordinator starts a security run on Claude Code or opencode
+- **THEN** its matching binding creates the security worker with the ready prompt alone
 - **AND** the other harness binding is not involved in the invocation
 
 #### Scenario: Same-worker continuation fails
-- **WHEN** the active binding cannot continue the security worker
-- **THEN** it attempts no more than one replacement dispatch with the preserved envelope and required reconstruction fields
-- **AND** it does not invent missing lifecycle data or send report contents as replacement context
+- **WHEN** the security worker returns no ready, stays silent, or drifts
+- **THEN** the coordinator may create a replacement with the same binding call, within its attempt budget
+- **AND** the replacement receives a hand-over note naming the symptom, not the old worker's history or report contents
 
 ### Requirement: Security bindings authorize read-only research and bounded dependency audits
 
@@ -32,16 +33,11 @@ The bindings SHALL authorize read-only `explore` research with the existing secu
 - **THEN** the binding rejects the operation
 - **AND** the security audit remains read-only
 
-### Requirement: Binding results preserve the shared lifecycle contract
+### Requirement: Security binding results stay closed and unchanged
 
-The bindings SHALL forward `completed`, `needs_input`, `failed`, and `cancelled` results without changing worker-authored summaries, questions, ordered options, or `changed_files`. After change resolution, forwarded results SHALL retain `resolved_change_name`; `needs_input` SHALL retain binding-owned continuation metadata. GitHub Copilot SHALL remain outside these routed bindings and use the shared inline security invocation core instead.
-
-#### Scenario: Worker asks the user to select a change
-- **WHEN** a worker returns `needs_input` with ordered change options
-- **THEN** the binding forwards the exact question, options, and continuation metadata to the coordinator
-- **AND** it does not resolve or select a change on the user's behalf
+The bindings SHALL return the worker's closed results — `step-done`, `question`, `completed`, and `failed` — to the coordinator unchanged, with worker-authored summaries, questions, `report_path`, `counts`, and `changed_files` intact. The security worker SHALL NOT ask the user to select a change, because the coordinator resolves the change before creating it. GitHub Copilot SHALL remain outside these bindings.
 
 #### Scenario: Worker completes after resolution
-- **WHEN** a worker returns `completed` after resolving a change
-- **THEN** the binding forwards `resolved_change_name`, the worker-authored summary, and the changed-file paths unchanged
-- **AND** the Copilot inline path remains independent of the routed binding
+- **WHEN** the security worker returns `completed`
+- **THEN** the coordinator receives the worker-authored summary, the report path, the counts, and the changed-file paths unchanged
+- **AND** no Copilot binding is involved

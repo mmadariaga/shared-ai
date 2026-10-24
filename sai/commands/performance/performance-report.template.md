@@ -1,7 +1,7 @@
 ```markdown
 # Performance Report — {Feature Name}
 
-**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`} · **Tiers:** {backend / frontend / db / queue — only the tiers audited} · **Baseline:** {prior benchmark / SLO / observability dashboard | absolute thresholds — no baseline} · **Date:** {YYYY-MM-DD}
+**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`} · **Tiers:** {backend / frontend / db / queue — only the tiers audited} · **Baseline:** {prior benchmark / SLO / observability dashboard | absolute thresholds — no baseline} · **Diagnostics:** {not requested | ran: {list} | unavailable: {which, why}} · **Date:** {YYYY-MM-DD}
 
 {Write a section only when it has content: omit every section with nothing to record instead of filling it with "N/A" or an empty table.}
 

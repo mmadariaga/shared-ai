@@ -29,9 +29,10 @@ function artifact(relativePath) {
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
 }
 
-test('Step 1 performance card uses neutral root protocols and retires flat canonical sources', () => {
+test('Step 1 performance worker card loads the shared audit rules and no shared-orchestration protocol', () => {
   const worker = artifact('sai/commands/performance/worker.md');
-  assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
+  assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
+  assert.doesNotMatch(worker, /worker-core\.md|bounded-dispatch-retry|verified-precondition-handback/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
@@ -106,11 +107,10 @@ test('performance coordinator performs no technical prerequisite or research I/O
   }
 });
 
-test('canonical performance worker accepts the scope grammar and names the installed protocol files', () => {
-  const worker = artifact('sai/commands/performance/worker.md');
+test('performance scope grammar lives in options.md, validated by the audit coordinator and applied by common.md', () => {
   const common = artifact('sai/commands/performance/steps/common.md');
-
   const options = artifact('sai/commands/performance/options.md');
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
 
   for (const flag of ['--full', '--path <dir>', '--tier backend|frontend|db|queue', '--runtime', '--parent-branch <branch>']) {
     assert.ok(options.includes(`\`${flag}\``), `options.md should declare ${flag}`);
@@ -118,10 +118,10 @@ test('canonical performance worker accepts the scope grammar and names the insta
   for (const flag of ['--full', '--path', '--tier', '--runtime', '--parent-branch']) {
     assert.ok(common.includes(`\`${flag}\``), `common.md § Scope should apply ${flag}`);
   }
-  assert.match(worker, /per `options\.md`/);
   assert.match(common, /Fetch @sai\/commands\/performance\/options\.md/);
-  assert.match(artifact('sai/commands/performance/coordinator.md'), /Fetch @sai\/commands\/performance\/options\.md/);
-  assert.match(worker, /second positional value/);
+  assert.match(coordinator, /Fetch @sai\/commands\/\{audit\}\/options\.md/);
+  assert.match(coordinator, /a value outside the set `options\.md` declares/);
+  assert.match(coordinator, /a second positional value/);
   assert.match(common, /^## Scope$/m);
   assert.match(common, /## Scope[\s\S]*?parent branch\. Detection order/);
   assert.doesNotMatch(common, /§ Prerequisites/, 'no reference may point to a Prerequisites section');
@@ -131,15 +131,15 @@ test('canonical performance worker accepts the scope grammar and names the insta
   assert.doesNotMatch(common, /^## (?:Remember|Prerequisites)$/m);
 });
 
-test('performance worker keeps the no-active-changes and proposal-gate failure texts', () => {
+test('the audit coordinator owns change resolution and the proposal gate for performance', () => {
   const worker = artifact('sai/commands/performance/worker.md');
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
 
-  assert.ok(worker.includes('No active changes found. Run `/sai-1-spec` to create one.'));
-  assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
-  assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
-  assert.match(worker, /resolved_change_name/);
-  assert.match(worker, /^## Change Resolution and Proposal Gate$/m);
-  assert.match(worker, /^## Continuation and Reconstruction$/m);
+  assert.ok(coordinator.includes('Cannot start {command}: name the change ({candidates, or none}).'));
+  assert.ok(coordinator.includes('Cannot start {command} for {name}: missing proposal.md.'));
+  assert.match(coordinator, /An empty change name takes the only change directory under `openspec\/changes\/` \(archive excluded\) that has a `proposal\.md`/);
+  assert.doesNotMatch(worker, /openspec list|No active changes found|Use change '|Which change\?/, 'the worker no longer resolves the change');
+  assert.match(worker, /^## Steps$/m);
 });
 
 test('performance close step writes and verifies only performance.md in its two forms', () => {
@@ -198,7 +198,10 @@ test('performance step files and tier checklists follow the single-source layout
   }
   assert.match(tierAudit, /### Cross-cutting checklist/);
   assert.match(tierAudit, /Without `--runtime`/);
-  assert.match(artifact('sai/commands/performance/steps/resolve-diagnostics.md'), /`Run diagnostics` \/ `Skip diagnostics`/);
+  const diagnostics = artifact('sai/commands/performance/steps/resolve-diagnostics.md');
+  assert.match(diagnostics, /`--runtime` is the whole authorization: ask no question, and never wait for an answer/);
+  assert.doesNotMatch(diagnostics, /`Run diagnostics` \/ `Skip diagnostics`|needs_input/);
+  assert.match(diagnostics, /record it as unavailable in the report's `Diagnostics` field/);
 });
 
 test('performance wrappers accept --runtime on both harnesses', () => {
@@ -215,11 +218,13 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
       name: 'Claude',
       binding: matrixBinding('claude', 'performance'),
       mechanism: 'Agent',
+      continuation: 'SendMessage(to: "<captured agent ID>"',
     },
     {
       name: 'opencode',
       binding: matrixBinding('opencode', 'performance'),
       mechanism: 'task',
+      continuation: 'task(task_id: "<captured task ID>"',
     },
   ];
 
@@ -227,35 +232,25 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
     const source = binding.binding;
     assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-6-performance-worker`, 'i'),
       `${binding.name} binding should dispatch only its canonical worker`);
-    assert.match(source, /original (InvocationEnvelope|envelope)/i,
-      `${binding.name} dispatch should preserve the original envelope`);
-    assert.match(source, /Continue on the same (?:worker|task)/i,
-      `${binding.name} should attempt same-worker continuation first`);
-    assert.match(source, /one bounded replacement|replacement/i,
-      `${binding.name} should permit at most one replacement`);
+    assert.ok(source.includes('Fetch @sai/commands/performance/worker.md and follow it exactly'),
+      `${binding.name} binding should hand the worker its own contract`);
+    assert.ok(source.includes(binding.continuation),
+      `${binding.name} binding should continue the same worker`);
+    assert.doesNotMatch(source, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/,
+      `${binding.name} binding leaves the lifecycle to the audit coordinator`);
     assert.doesNotMatch(source, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 
-test('performance transport carries only arguments_value and contract metadata across dispatch, continuation, reconstruction, and progress', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
+test('performance transport: the audit coordinator carries arguments_value and the worker gets a brief', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
   const worker = artifact('sai/commands/performance/worker.md');
   const bindings = [matrixBinding('claude', 'performance'), matrixBinding('opencode', 'performance')];
 
-  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
-    'initial performance dispatch must retain the original envelope as coordinator state');
-  assert.match(coordinator, /dispatch[_ ]operation|dispatch.*worker/i,
-    'initial performance dispatch must use the routed worker operation');
-  assert.match(coordinator, /continuation[_ ]operation|continue.*same worker/i,
-    'performance continuation must use the binding-owned operation');
-  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
-    'performance replacement must use the reconstruction contract');
-  assert.match(coordinator, /Mark steps only from worker progress-event|coordinator[\s\S]{0,120}renders? the (?:full )?plan/i,
-    'performance progress ownership must remain with the coordinator');
-
+  assert.match(coordinator, /one string, `arguments_value`/);
+  assert.match(coordinator, /The task message opens with the first pointer line/);
+  assert.doesNotMatch(worker, /arguments_value/, 'the worker receives a brief, not the raw argument string');
   for (const source of [coordinator, worker, ...bindings]) {
-    assert.match(source, /arguments_value/,
-      'each performance transport surface must carry arguments_value');
     assert.doesNotMatch(source, /wrapper_echo_value/,
       'no performance transport surface may carry wrapper_echo_value');
   }
@@ -274,7 +269,8 @@ test('performance steps bound delegated research and rejected writes', () => {
   assert.ok(map.includes('total LOC ≤ 500') && map.includes('total LOC > 500'), 'the mapping step owns the 500-LOC cutover');
   assert.ok(common.includes('The only file written is `openspec/changes/{change-name}/performance.md`'));
   assert.match(common, /never modify production code, schemas, migrations, configuration, dependencies, manifests, or lockfiles/);
-  assert.match(diagnostics, /explicit user authorization/);
+  assert.match(diagnostics, /read-only measurements/);
+  assert.match(diagnostics, /never against a production target/);
 });
 
 test('Step 3 coordinator preserves worker lifecycle results and owns the continuation operation', () => {
@@ -304,10 +300,10 @@ test('Step 3 managed-agent identity and binding remain while forwarding skill so
   assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'opencode', identity, 'SKILL.md')), false);
 });
 
-test('Step 4 routed performance wrappers fetch only their matching launcher and the launcher fetches binding and coordinator', () => {
-  const launcher = artifact('sai/commands/performance/command-bootstrap.md');
-  assert.match(launcher, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
-    'launcher should fetch the matching neutral binding');
+test('Step 4 performance wrappers fetch the shared audit coordinator, which fetches the binding', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
+  assert.match(coordinator, /Fetch @sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md and use it/,
+    'the coordinator should fetch the matching neutral binding');
 
   const wrappers = [
     {
@@ -335,8 +331,11 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
       assert.doesNotMatch(source, wrapper.forbiddenVariant,
         `${wrapper.name} wrapper should not carry a separate variant line`);
     }
-    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]command-bootstrap\.md/,
-      `${wrapper.name} wrapper should fetch the performance launcher`);
+    assert.match(source, /Fetch @sai\/commands\/audit\/coordinator\.md and follow it exactly/,
+      `${wrapper.name} wrapper should fetch the shared audit coordinator`);
+    assert.match(source, /command_name: performance/, `${wrapper.name} wrapper should name its audit`);
+    assert.doesNotMatch(source, /command-bootstrap\.md|@sai\/adapters\//,
+      `${wrapper.name} wrapper should load no bootstrap and no boot adapter`);
     assert.doesNotMatch(source, /Fetch @skills\/sai-6-performance-worker\/SKILL\.md/,
       `${wrapper.name} wrapper should not fetch the worker forwarding skill`);
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
@@ -374,13 +373,11 @@ test('performance worker contract enumerates the five ids and pins the batch sem
     /resolve-performance-scope[\s\S]{0,800}map-stack-hot-paths[\s\S]{0,800}audit-performance-tiers[\s\S]{0,800}resolve-diagnostics[\s\S]{0,800}close-performance-outcome/,
     'the performance worker contract should enumerate the same five ids in the same order'
   );
-  assert.match(worker, /startup act/i);
-  assert.match(worker, /resolve-performance-scope/);
-  assert.match(worker, /diagnostics[\s\S]{0,240}(?:authorization|not applicable|skip)/i);
-  assert.match(worker, /resolve-diagnostics/);
-  assert.match(worker, /empty diff[\s\S]{0,240}(?:no-change|completed)/i);
-  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
-  assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
+  assert.match(worker, /`resolve-performance-scope` — no file; run inline from the brief and `common\.md`/);
+  assert.match(worker, /reports together with `map-stack-hot-paths`/);
+  assert.match(worker, /Without `--runtime`, the batch also carries `resolve-diagnostics`/);
+  assert.match(worker, /empty diff[\s\S]{0,240}Not Applicable report/i);
+  assert.doesNotMatch(worker, /progress event|needs_input|authorization question/i);
 });
 
 test('performance coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
@@ -484,21 +481,19 @@ test('step-gated: replacement reconstruction includes active_step_id', () => {
 
 test('step-gated: the performance worker loads steps/common.md at dispatch and executes only the active step', () => {
   const worker = artifact('sai/commands/performance/worker.md');
+  const shared = artifact('sai/commands/audit/worker-common.md');
 
   assert.match(worker, /Fetch @sai\/commands\/performance\/steps\/common\.md and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
-  assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan and active-step execution in one Steps section');
-  assert.doesNotMatch(worker, /^## (?:Progress Reporting|Active Step Execution|Performance Audit)$/m,
-    'the retired worker sections should stay merged into Steps');
-  assert.match(worker, /this contract plus common\.md is the sealed initial surface/i);
-  assert.match(worker, /`resolve-performance-scope` runs from it before the first progress event/,
-    'the fileless first step should run from the sealed surface before the first pointer');
-  assert.match(worker, /each step file is opened when its pointer arrives/,
-    'the worker must execute only the coordinator-named step');
+  assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan in one Steps section');
+  assert.match(shared, /Fetch the file the pointer names, and skip the fetch when you already loaded it in this session/,
+    'the worker executes only the coordinator-named step');
+  assert.match(shared, /Run the audit's scope step inline: it has no file/,
+    'the fileless first step should run before the first pointer');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/performance\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
-  assert.match(worker, /A gated stage resolved by legitimate skip still reports its milestone/,
-    'a legitimately skipped gated stage still advances the pointer past it');
+  assert.match(shared, /A step you decided to skip because it does not apply is complete: report it in the same batch/,
+    'a legitimately skipped stage still advances the pointer past it');
 });
 
 test('step-gated: the step library is the only performance instruction surface', () => {
