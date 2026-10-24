@@ -44,12 +44,12 @@ test('policy covers existing choices, single path, and required reports (E3-E5)'
   assert.match(text, /report first, then the options/);
 });
 
-test('policy covers unattended, Direct Build, and composition stops (E6-E8)', () => {
+test('policy covers unattended and Direct Build stops and names no retired composition (E6-E8)', () => {
   const text = policy();
   assert.match(text, /unattended-runtime-recovery\.md/);
   assert.match(text, /implementation-closing-report\.md/);
   assert.match(text, /stop options follow Execution details as a separate decision prompt, outside the report/);
-  assert.match(text, /closes once, at the supervisor/);
+  assert.doesNotMatch(text, /composition|\/sai-deep-review|at the supervisor/);
 });
 
 test('policy keeps scope and authority unchanged and uses the picker (E9-E11)', () => {

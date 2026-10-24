@@ -7,12 +7,12 @@ TBD - created by syncing change sai-6-security-coordinator-worker-split. Update 
 
 ### Requirement: Installer registers and projects every routed security surface
 
-The managed-worker registry SHALL define the numbered security worker, its Claude managed-agent identity and owner metadata, and its opencode worker identity. The installation manifest SHALL deterministically project the security coordinator and invocation core, numbered worker contract, Claude and opencode bindings, and Claude managed agent to their established destinations. It SHALL NOT project either harness's retired forwarding skill.
+The managed-worker registry SHALL define the numbered security worker, its Claude managed-agent identity and owner metadata, and its opencode worker identity. The installation manifest SHALL deterministically project the shared audit coordinator, the numbered worker contract, Claude and opencode bindings, and Claude managed agent to their established destinations. It SHALL NOT project either harness's retired forwarding skill, and it SHALL project neither `commands/security/coordinator.md` nor `commands/security/command-bootstrap.md`, retiring installed managed copies through retirement entries.
 
 #### Scenario: Fresh installation runs
 - **WHEN** the installer expands the manifest for Claude Code and opencode
 - **THEN** every active routed security surface is projected to its expected destination
-- **AND** neither retired forwarding skill is projected
+- **AND** neither retired forwarding skill nor a retired security coordinator or command bootstrap is projected
 - **AND** repeated installation produces the same projection and ownership metadata
 
 ### Requirement: Claude security-worker ownership is collision-safe

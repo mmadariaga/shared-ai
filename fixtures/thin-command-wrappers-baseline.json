@@ -89,7 +89,7 @@
       ],
       "sai-deep-review.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it."
+        "Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-status.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -168,7 +168,7 @@
       ],
       "sai-deep-review.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it."
+        "Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-status.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

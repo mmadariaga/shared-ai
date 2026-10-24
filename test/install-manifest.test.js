@@ -617,12 +617,6 @@ test('Installer projects deterministic routed performance surfaces with ownershi
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-performance-worker-projections'));
   const expected = {
-    'sai/commands/performance/coordinator.md': {
-      harnesses: ['claude', 'opencode'],
-      destination: 'commands/performance/coordinator.md',
-      strategy: 'copy',
-      ownership: 'managed',
-    },
     'sai/commands/performance/worker.md': {
       harnesses: ['claude', 'opencode'],
       destination: 'commands/performance/worker.md',

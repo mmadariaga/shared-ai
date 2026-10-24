@@ -8,20 +8,20 @@ Defines the combined terminal report format for the `/sai-review` composition, i
 
 ### Requirement: Combined terminal report on the final segment
 
-When the final activated audit segment completes, or the review segment completes with zero audits activated, the composition SHALL print a combined terminal report containing (1) one per-audit outcome line per activated audit showing its status (completed / failed / cancelled) and the path to its artifact, and (2) the cross-segment changed-files union — the ordered, duplicate-free union across all segments in first-seen order. A non-final audit segment SHALL NOT print its standalone audit completion literal; its terminal navigation resolves to the composition-owned authorized transition only.
+After the last segment that ran, `/sai-deep-review` SHALL print one close for the whole run. When the review segment completed, the close SHALL carry the finding counts of the re-read `review.md` and its `## Recommended Audits` block, and one line per audit that ran with its status (`completed` with the counts of its `Summary:` tally and its report path, or `failed` with its reason) and whether its report was committed or left uncommitted because the project ignores it, and SHALL end with exactly `Deep review done.`. The closing lines of the segments (`Review done.`, `{Audit} audit done.`, `Implement done.`) SHALL NOT be printed.
 
 #### Scenario: Combined report lists every activated audit
 - **WHEN** a run activates security and accessibility and both complete
-- **THEN** the terminal report SHALL contain one outcome line per activated audit with its artifact path, followed by the cross-segment changed-files union, and SHALL NOT contain any standalone audit completion literal
+- **THEN** the close SHALL contain one status line per activated audit with its report path and commit state, SHALL end with `Deep review done.`, and SHALL NOT contain any audit closing line
 
-### Requirement: Zero-audit terminal literal
+### Requirement: Zero-audit run closes with the deep-review close
 
-After successful review and a legible triage parse, when zero audits were activated, the composition SHALL run the findings round using only the freshly generated `review.md`. When no report qualifies for the findings round, its standard close SHALL print exactly the literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` and stop, preserving any warning the run produced. Open fixable findings and open Questions SHALL receive the findings round, with no fix dispatch before the user chooses to fix. The composition SHALL NOT invent a distinct meta-review-only success message that replaces the pinned completion texts. All shared-close paths SHALL retain this run-specific standard close; decline paths SHALL retain the existing guidance to run `/sai-3-implement {name}` by hand.
+After a completed review and a legible triage parse that activates no audit, `/sai-deep-review` SHALL say in its close that no audit ran. When `review.md` holds a fixable finding, the Assessment pass and the fix segment SHALL run over `review.md` alone; otherwise neither runs. The run SHALL end with exactly `Deep review done.` and SHALL keep every warning it produced.
 
-#### Scenario: Zero-audit literal is exact
-- **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and `review.md` has no open fixable finding and no open Question
-- **THEN** the terminal output SHALL preserve exactly `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` with the resolved change name substituted, followed by the accumulated changed-files union, retaining any existing warnings
+#### Scenario: Zero audits and no fixable finding
+- **WHEN** the triage activates no audit and `review.md` holds no fixable finding
+- **THEN** no Assessment pass and no fix segment run, the close says that no audit ran, and the run ends with `Deep review done.`
 
-#### Scenario: Zero-audit eligible findings receive the existing close
-- **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and the freshly generated `review.md` contains an open fixable finding or an open Question
-- **THEN** the composition SHALL run the findings round, apply the exclusion marks, and start the fix segment with its per-step commit boundaries, without activating an audit
+#### Scenario: Zero audits with fixable findings
+- **WHEN** the triage activates no audit and `review.md` holds an open fixable finding
+- **THEN** the Assessment pass judges the findings of `review.md` and the fix segment fixes the ones it leaves, with one commit per fix step

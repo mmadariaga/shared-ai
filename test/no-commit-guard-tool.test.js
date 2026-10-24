@@ -278,14 +278,10 @@ test('the incident line is pinned in the guard policy, not restated in cards', (
 
 test('every coordinator card that dispatches a routed worker carries the guard policy', () => {
   const cards = [
-    'sai/commands/security/coordinator.md',
-    'sai/commands/performance/coordinator.md',
-    'sai/commands/accessibility/coordinator.md',
     'sai/commands/commit/coordinator.md',
     'sai/commands/archive/coordinator.md',
     'sai/commands/backfill/coordinator.md',
     'sai/commands/merge/coordinator.md',
-    'sai/commands/deep-review/coordinator.md',
   ];
   for (const card of cards) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
@@ -299,6 +295,7 @@ test('every coordinator card that dispatches a routed worker carries the guard p
   for (const card of [
     'sai/commands/implement/coordinator.md', 'sai/commands/review/coordinator.md', 'sai/commands/build/coordinator.md',
     'sai/commands/spec/coordinator.md', 'sai/commands/design/coordinator.md', 'sai/commands/plan/coordinator.md',
+    'sai/commands/audit/coordinator.md', 'sai/commands/deep-review/coordinator.md',
   ]) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
     assert.ok(!body.includes('@sai/policies/no-commit-guard.md'), `${card} runs outside the shared guard windows`);
