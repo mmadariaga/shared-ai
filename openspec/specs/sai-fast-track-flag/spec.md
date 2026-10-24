@@ -216,3 +216,17 @@ The set of commands that accept and parse --fast-track SHALL be exactly sai-expl
 
 - **WHEN** `sai-explore` runs with `--fast-track` and enters `Crystallize` with an open decision
 - **THEN** the notice is shown and every open decision is asked before any block is printed
+
+### Requirement: The canonical fast-track policy is scoped to archive and backfill
+
+`sai/policies/fast-track-flag.md` SHALL state in a Scope section that its canonical model governs only `/sai-archive` and `/sai-backfill`, the two commands where the flag skips real questions and gates. The policy SHALL name the archive coordinator as the owner of both the parse and the banner for `sai-archive`, SHALL keep `sai-backfill` as the phase-owned worker-side parse exception with no banner, and SHALL state that `sai-explore` keeps its own parse and the behaviors that follow outside the model. The canonical parse order SHALL run the fast-track presence-plus-strip parse first and every other validation afterwards on the cleaned remainder. The backfill exception SHALL state that a standalone run keeps its interview as user questions and that the flag skips exactly the generated reconciliation questions, the spec-conflict decision, and the change-name confirmation. `/sai-archive` with `--fast-track` SHALL skip exactly the gates it skipped before this scoping, and without the flag every archive gate SHALL still ask.
+
+#### Scenario: The policy names its two governed commands
+
+- **WHEN** `sai/policies/fast-track-flag.md` is read
+- **THEN** its Scope section states that the model governs `/sai-archive` and `/sai-backfill`, and its owner rule names the coordinator as parse and banner owner for `sai-archive` only
+
+#### Scenario: Explore stays outside the model
+
+- **WHEN** the policy's documented exceptions are read
+- **THEN** `sai-explore` is listed as keeping its own parse and behaviors outside the model, and the policy no longer names `sai-explore` as a parse-and-banner owner

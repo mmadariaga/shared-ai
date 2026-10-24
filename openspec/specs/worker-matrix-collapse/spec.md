@@ -22,7 +22,7 @@ The canonical worker matrix SHALL define exactly thirteen entries: the nine cano
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
-Each materialized worker agent SHALL preserve its harness-specific frontmatter identity and user-tunable fields while its managed body begins with the harness-specific fetch-skill bootstrap and remains a thin Fetch wrapper for the canonical worker contract. Each materialized binding SHALL preserve the shared two-string invocation envelope, same-worker continuation before bounded replacement reconstruction, closed lifecycle payloads, progress-plan rules, and the harness-specific dispatch primitive. Direct Build materialization SHALL use the `sai-direct-build-worker` contract and the same lifecycle rules without exposing the retired auto-fast or hands identities. No worker template or generated worker payload SHALL expose continuation identifiers, dispatch metadata, or artifact contents. The `commit` phase SHALL be a member of `STANDALONE_PHASES` in `bin/worker-matrix.js`, so its binding renders from the standalone worker template like the `red`, `green`, `review`, `spec`, `design`, audit, and `merge` bindings.
+Each materialized worker agent SHALL preserve its harness-specific frontmatter identity and user-tunable fields while its managed body begins with the harness-specific fetch-skill bootstrap and remains a thin Fetch wrapper for the canonical worker contract. Each materialized binding SHALL preserve the shared two-string invocation envelope, same-worker continuation before bounded replacement reconstruction, closed lifecycle payloads, progress-plan rules, and the harness-specific dispatch primitive. Direct Build materialization SHALL use the `sai-direct-build-worker` contract and the same lifecycle rules without exposing the retired auto-fast or hands identities. No worker template or generated worker payload SHALL expose continuation identifiers, dispatch metadata, or artifact contents. The `commit`, `archive`, and `backfill` phases SHALL be members of `STANDALONE_PHASES` in `bin/worker-matrix.js`, so their bindings render from the standalone worker template like the `red`, `green`, `review`, `spec`, `design`, audit, and `merge` bindings.
 
 #### Scenario: Thin agent wrappers resolve the canonical contract
 
@@ -41,7 +41,7 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 #### Scenario: Standalone bindings leave the lifecycle to their coordinator
 
-- **WHEN** the `red`, `green`, `review`, `merge`, or `commit` binding is materialized for either harness
+- **WHEN** the `red`, `green`, `review`, `merge`, `commit`, `archive`, or `backfill` binding is materialized for either harness
 - **THEN** it renders from that harness's `standalone-worker-template.md`, carries only the create and continue calls, and names neither `sai/orchestration/command-runner.md`, guard windows, nor `replacement_reconstruction_fields`.
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements

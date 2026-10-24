@@ -31,7 +31,7 @@ The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` com
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 17 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, `sai-explore`'s additional harness-specific loads, and `sai-explore`'s one `Receipt:` context-pointer line placed first after the frontmatter. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path.
+The wrapper template SHALL be the same for all 17 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, `sai-explore`'s additional harness-specific loads, and `sai-explore`'s one `Receipt:` context-pointer line placed first after the frontmatter. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path. The wrappers of the goal-driven commands, `sai-archive` and `sai-backfill` included, SHALL replace the boot-adapter line with the clean-start line and SHALL call their coordinator card in place of a command bootstrap.
 
 #### Scenario: sai-build follows the shared template
 
@@ -45,8 +45,9 @@ The wrapper template SHALL be the same for all 17 wrappers in each harness, with
 - **THEN** its frontmatter is followed by a body that reads:
 
     Fetch @skills/fetch/SKILL.md
-    Fetch @sai/adapters/claude/boot.md and follow it.
-    Fetch @sai/commands/archive/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+    This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
+    Required capability profile: {{capabilityProfile}}.
+    Fetch @sai/commands/archive/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
     InvocationEnvelope:
       command_name: archive
@@ -56,6 +57,7 @@ The wrapper template SHALL be the same for all 17 wrappers in each harness, with
 - **THEN** it does NOT contain `User input: $ARGUMENTS`
 - **THEN** it does NOT contain `Fetch @commands/sai/sai-archive.md` (forbidden legacy path)
 - **THEN** it does NOT contain a flat `Fetch @sai/commands/sai-archive.md` body path
+- **THEN** it does NOT contain a boot-adapter fetch or `Fetch @sai/commands/archive/command-bootstrap.md`
 - **THEN** the body has no trailing label after the envelope block
 
 #### Scenario: opencode example mirrors the shape

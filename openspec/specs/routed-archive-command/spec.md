@@ -6,39 +6,24 @@ Define the routed coordinator/worker architecture for `/sai-archive`: a minimal-
 
 ## Requirements
 
-### Requirement: Routed card set and boot routing
-
-`sai-archive` SHALL be a routed-shaped command whose card set is exactly `sai/commands/archive/coordinator.md` and `sai/commands/archive/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `archive` among the routed names so that selecting it fetches `@sai/commands/archive/coordinator.md`, and SHALL exclude `archive` from the utility-name lists byte-symmetrically; no boot path SHALL select an archive `body.md`.
-
-#### Scenario: Both boots route archive to the coordinator card
-
-- **WHEN** either supported harness boots with `command_name` set to `archive`
-- **THEN** `archive` appears in that boot adapter's routed-name list and the selected card is `@sai/commands/archive/coordinator.md`
-- **AND** `archive` does not appear in the boot's utility-name list
-
-#### Scenario: The utility body surface is retired
-
-- **WHEN** `sai/commands/archive/` is inspected after the change
-- **THEN** no `body.md` exists and no adapter, launcher, or test fixture selects one for `sai-archive`
-
 ### Requirement: Minimal lifecycle adapter with fast-track session state
 
-The archive coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is the opaque single-string fast-track-cleaned request; `dispatch_operation` dispatches exactly one `sai-archive-worker` through the active archive-worker binding; `continuation_operation` continues the same worker while forwarding only the selected answer value; `allowed_nonterminal_extensions` is none; and no `progress_plan` or `recovery_policy` is declared. The coordinator SHALL parse `--fast-track` before resolution, retain `fast_track_active` as invocation-scoped session state, and never place it in the envelope. A replacement worker SHALL reconstruct only from the original envelope, opaque input history, resolved change name, fast-track state, Direct Build state, validated execution order, execution state, and ordered duplicate-free changed-files union.
+The archive coordinator SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections, and SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. It SHALL parse `--fast-track` from `arguments_value` before change resolution, print `> FAST-TRACK MODE ACTIVE` exactly once when the token is present, retain `fast_track_active` as invocation-scoped session state, and never place it in the worker task. It SHALL create exactly one `sai-archive-worker` through the archive-worker binding with the ready prompt alone and send the resolved change name to the same worker after `event: ready`, declaring `fast_track_active` beside it. The run SHALL declare no progress plan, no progress event, no acknowledgement literal, and no recovery ledger. A worker without ready or a readable result SHALL be a `worker` obstacle handled under `sai/policies/obstacle-escalation.md`, with the attempt count kept in the conversation; the CORE stop, a retirement refusal, the post-archive gates, every CLI archive stop, and the change-picker stops SHALL remain planned stops. A replacement worker SHALL start from the ready handshake and receive a hand-over written by the coordinator that carries the resolved change name, `fast_track_active`, the Direct Build mode with its validated closed execution order and execution state when there is one, the questions already answered with their answer values, and the symptom.
 
 #### Scenario: An archive run carries no progress or recovery machinery
 
 - **WHEN** the archive coordinator card is read
-- **THEN** it declares no progress plan, progress event, acknowledgement literal, recovery policy, bounded-recovery fetch, or recovery continuation
+- **THEN** it declares no progress plan, progress event, acknowledgement literal, or recovery ledger, and fetches none of the command runner, worker core, bounded-recovery, stop-options, or unattended-runtime-recovery contracts
 
 #### Scenario: Fast-track survives only as session state
 
-- **WHEN** `/sai-archive {name} --fast-track` dispatches its worker
-- **THEN** the envelope carries the cleaned request, `fast_track_active` remains session state, and the banner is printed exactly once
+- **WHEN** `/sai-archive {name} --fast-track` sends its task to the worker
+- **THEN** the worker receives the cleaned change name, `fast_track_active` remains session state beside it, and the banner is printed exactly once
 
 #### Scenario: Replacement reconstructs without replay
 
-- **WHEN** a replacement worker reconstructs after an executed order
-- **THEN** it SHALL reconstruct only from the declared fields and never replay an executed order
+- **WHEN** a replacement worker starts after an executed order
+- **THEN** it SHALL start from the ready handshake with only the coordinator-written hand-over and never replay an executed order
 
 ### Requirement: Worker owns the read-only pre-flight and never mutates
 
@@ -110,12 +95,12 @@ The archive coordinator SHALL run the guard's `snapshot` step at each window ope
 
 ### Requirement: Direct Build backfill-artifact correction routing
 
-The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. A CLI failure on this route SHALL follow the Direct Build supervision contract, whose recovery and execute-order re-issue rule is `sai/policies/unattended-runtime-recovery.md`, and the coordinator SHALL keep the classified content-fix loop ordinary-route only. A stop SHALL report the exact state. A late continuation after success SHALL be rejected without mutation. A stop SHALL carry no finality and SHALL run new retries only at explicit user request. The coordinator SHALL never fall back to the ordinary-route mutation surface.
+The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. A failed or cancelled execute result on this route SHALL stay with the Direct Build supervision contract (`sai/commands/explore/steps/pipeline-direct-build.md`), which owns the check that the earlier order had no effect and the re-issue of an order; the archive coordinator SHALL issue no order of its own and SHALL keep the classified content-fix loop ordinary-route only. A stop SHALL report the exact state. A late continuation after success SHALL be rejected without mutation. A stop SHALL carry no finality and SHALL run new retries only at explicit user request. The coordinator SHALL never fall back to the ordinary-route mutation surface.
 
 #### Scenario: Backfill-artifact CLI failure routes to correction
 
 - **WHEN** the Direct Build archive CLI fails with a backfill-artifact error
-- **THEN** the coordinator SHALL follow the recovery policy for the correction and the execute-order re-issue, without staging or committing a partial plan
+- **THEN** the failure stays with the Direct Build supervision contract for the correction and any execute-order re-issue, and no partial plan is staged or committed
 
 ### Requirement: Archive independently checks current scenario preservation
 
@@ -140,3 +125,17 @@ Immediately before the ordinary archive CLI or authorization of a Direct Build a
 #### Scenario: Metadata stays out of archive outputs
 - **WHEN** archive uses temporary exception metadata
 - **THEN** that metadata is neither an owned staging path, an archive input artifact, nor a commit artifact
+
+### Requirement: Direct card set and wrapper fetch
+
+`sai-archive` SHALL run on the goal-driven shape. Its card set SHALL be `sai/commands/archive/coordinator.md` and `sai/commands/archive/worker.md` with their supporting instruction files, with no `invocation.md`, no `body.md`, and no `command-bootstrap.md`. Both `/sai-archive` wrappers (`commands/claude/sai-archive.md` and `commands/opencode/sai-archive.md`) SHALL fetch the harness fetch skill, carry the clean-start line, and fetch `sai/commands/archive/coordinator.md` directly, forwarding the InvocationEnvelope with `command_name: archive`; they SHALL fetch no boot adapter and no command bootstrap, and the opencode wrapper SHALL declare `subtask: false`. Neither harness boot adapter SHALL list `archive` among its routed or utility names. The coordinator SHALL fetch the `archive-worker.md` binding itself, and the `backfill-worker.md` binding for the header-fix reroute. The retired `sai/commands/archive/command-bootstrap.md` destination SHALL be recorded as a retired install-manifest entry so that an upgrade install removes it from the installed roots of both harnesses.
+
+#### Scenario: The wrappers reach the coordinator card directly
+
+- **WHEN** either harness's `sai-archive.md` wrapper is read
+- **THEN** it fetches the harness fetch skill and `sai/commands/archive/coordinator.md`, names no boot adapter or `command-bootstrap.md`, and neither boot adapter lists `archive` as a routed or utility name
+
+#### Scenario: The retired bootstrap leaves installed roots
+
+- **WHEN** an upgrade install runs after the change on either harness
+- **THEN** the install manifest lists `commands/archive/command-bootstrap.md` as a retired destination for both harnesses and the file no longer exists in `sai/commands/archive/`

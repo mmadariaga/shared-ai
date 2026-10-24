@@ -349,7 +349,7 @@ test('the implement and review bindings render from the standalone template and 
         : `implement/${item.phase}-worker`;
       assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
     }
-    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'archive');
+    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'direct-build');
     assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
   }
 });
