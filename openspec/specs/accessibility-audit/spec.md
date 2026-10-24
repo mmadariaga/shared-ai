@@ -5,25 +5,21 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
-### Requirement: Mandatory budget-explorer delegation in accessibility audit Discovery
-The accessibility audit main agent SHALL NOT read any diff files directly. All source code inspection, diff-file reading, component categorization, and codebase context lookup MUST be delegated to budget-explorer subagents with explicit output contracts. Delegation is unconditional — not gated on "independent areas" or any other heuristic.
 
-When multiple independent component areas exist in the diff, the main agent SHALL spawn budget-explorer subagents in parallel. Total subagent invocations per audit SHALL be capped at ≤8.
+### Requirement: Mandatory budget-explorer delegation in accessibility audit Discovery
+The accessibility worker SHALL inspect UI files directly when the scope holds five or fewer, and delegation SHALL NOT be mandatory in that case. When the scope holds more than five UI files, the worker SHALL delegate the per-component scan to budget-explorer subagents with explicit output contracts (file:line + WCAG SC + finding category + ≤80 words), in parallel across independent component areas. Total subagent invocations per audit SHALL be capped at ≤8.
 
 #### Scenario: Main agent attempts to read diff file directly
-- **WHEN** the accessibility audit agent encounters a diff file that needs inspection
-- **THEN** the agent MUST delegate reading to a budget-explorer subagent with an output contract (file:line + WCAG SC + 1-line note, ≤200 words, no raw code blocks)
-- **THEN** the main agent MUST NOT read the file itself under any circumstances
+- **WHEN** the scope holds five or fewer UI files
+- **THEN** the worker MAY read them directly without delegating
 
 #### Scenario: Independent component areas exist in diff
-- **WHEN** the diff contains multiple independent component areas needing codebase context
-- **THEN** the agent SHALL spawn budget-explorer subagents in parallel, one per area
-- **THEN** each subagent receives an output contract specifying exact fields, length cap, and "no raw code blocks"
+- **WHEN** the scope holds more than five UI files in multiple independent component areas
+- **THEN** the worker SHALL spawn budget-explorer subagents in parallel, one per area, each with an output contract specifying exact fields, length cap, and no raw code blocks
 
 #### Scenario: Single component area in diff
-- **WHEN** the diff contains only a single component area
-- **THEN** the agent SHALL still delegate to a budget-explorer subagent (delegation is mandatory, not conditional)
-- **THEN** the agent MUST NOT rationalize skipping delegation by claiming areas are "not independent"
+- **WHEN** the scope holds a single component area of five or fewer UI files
+- **THEN** the worker inspects it directly and spawns no subagent
 
 ### Requirement: Operating Principles — explicit prohibition on main-agent diff reading
 The accessibility audit Operating Principles section SHALL include a hard requirement stating the main agent MUST NOT read a single diff file itself. All source code inspection is subagent work. The main agent's job is to interpret the subagent's structured output against WCAG SC, not to read raw markup.

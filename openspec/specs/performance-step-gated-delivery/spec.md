@@ -35,7 +35,7 @@ The performance coordinator SHALL send every progress-event continuation as exac
 
 ### Requirement: Performance Worker Active Step Execution
 
-The performance worker SHALL load `steps/common.md` at dispatch as part of its sealed initial surface. It SHALL run the fileless `resolve-performance-scope` from that surface before following the first pointer, which arrives as the first line of the task-disclosure continuation before `arguments_value`. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file. It SHALL report `resolve-performance-scope` and `map-stack-hot-paths` together in its first progress event.
+The performance worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-performance-scope` from the brief and that surface before following the first pointer, which arrives as the first line of the task message before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-performance-scope` and `map-stack-hot-paths` together in its first `step-done` batch, and a stage it skips because it does not apply SHALL be reported in the batch of the step that decided the skip.
 
 #### Scenario: Worker ignores unnamed step files
 

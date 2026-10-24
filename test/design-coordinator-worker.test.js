@@ -759,13 +759,15 @@ test('Step 6: the policy renders no task list / todowrite call below the three-d
 
 // ─── Step 6: command-progress-plan-protocol (audit documentation) ───────────
 
-test('documentation records the audit progress-plan orientation section', () => {
+test('documentation records the audit orientation section, which retired the panel progress plan', () => {
   const agents = artifact('AGENTS.md');
 
   assert.match(agents, /### Audit coordinators and workers/,
     'AGENTS.md should record the audit coordinator/worker orientation section');
-  assert.match(agents, /each completed step carries its `Milestone Stamp`/,
-    'the audit orientation section should state audit plans carry Milestone Stamps like every routed phase plan');
+  const section = agents.slice(agents.indexOf('### Audit coordinators and workers'), agents.indexOf('### Commit coordinator and worker'));
+  assert.match(section, /run outside the shared orchestration, in the shape of `\/sai-4-review`/);
+  assert.doesNotMatch(section, /Milestone Stamp|progress plan|todo-structure/,
+    'the audit orientation section states no panel plan: the audits render none');
 });
 
 // ─── Step 3: retired-party prose guard ──────────────────────────────────────

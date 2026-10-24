@@ -17,6 +17,10 @@
  *   - `**Files Affected**` entries (tasks.md steps, with A/M/D/R prefix)
  *   - `### Precise file locations` sections (where present)
  *   - `interfaces.md` spec-anchor paths (`**Test assertions**` backticked paths)
+ *   - audit-report mode: the backticked `path/with/slash.ext[:line]` spans of the
+ *     `**File:**` and `**Location:**` fields of a security, performance, or
+ *     accessibility report's findings; endpoints, selectors, components, URLs, and
+ *     bare file names are not paths here and are never checked
  *
  * Semantics:
  *   - sai-1 (spec evidence): every extracted path must exist (E1).
@@ -25,6 +29,8 @@
  *   - Rename (`R <src> -> <dst>`): the origin must exist, the destination may
  *     be absent; both missing is an error (E3).
  *   - Paths outside designated sections are never checked (E4).
+ *   - audit-report (`--audit <security|performance|accessibility>`): every path a
+ *     finding cites must exist; the report is `openspec/changes/<name>/<audit>.md`.
  *   - Report mode (`--findings`) reuses the same binary read-only and maps
  *     each violation to a `High` artifact-review finding (E5).
  *   - On a miss the tool suggests basename candidates but never rewrites the
@@ -35,6 +41,8 @@
  * Usage:
  *   node sai/tools/check-cited-paths.js <sai-1|sai-2> <change-name> [--json]
  *     [--findings] [--root <dir>] [--change-dir <dir>]
+ *   node sai/tools/check-cited-paths.js audit-report <change-name> --audit <audit>
+ *     [--json] [--root <dir>] [--change-dir <dir>]
  *
  * Exit codes: 0 = all cited paths resolve (or report emitted in --findings
  * mode); 1 = missing/unresolvable paths found (blocking modes only);
@@ -53,12 +61,15 @@ class ToolError extends Error {
 
 function usage() {
   return [
-    'Usage: node sai/tools/check-cited-paths.js <sai-1|sai-2> <change-name> [--json] [--findings] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]',
+    'Usage: node sai/tools/check-cited-paths.js <sai-1|sai-2|audit-report> <change-name> [--audit <audit>] [--json] [--findings] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]',
     '',
     '  <sai-1|sai-2>     Evidence mode: sai-1 requires every cited path to',
     '                     exist; sai-2 lets `A` paths stay absent while `M`/`D`/`R`',
     '                     and unprefixed paths must exist.',
+    '                     audit-report requires every path cited by the findings of',
+    '                     <change-dir>/<audit>.md to exist.',
     '  <change-name>     OpenSpec change whose artifacts are checked.',
+    '  --audit <audit>   security, performance, or accessibility (audit-report only).',
     '  --json            Emit the report as JSON on stdout.',
     '  --findings        Report mode for the explore review-loop: emit violations',
     '                     as an artifact-review findings block (High) and exit 0',
@@ -72,7 +83,7 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const opts = { mode: null, name: null, json: false, findings: false, root: null, changeDir: null, help: false };
+  const opts = { mode: null, name: null, json: false, findings: false, root: null, changeDir: null, audit: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
@@ -81,6 +92,7 @@ function parseArgs(argv) {
     else if (arg === '--root') opts.root = argv[++i];
     else if (arg === '--cwd') opts.root = argv[++i];
     else if (arg === '--change-dir') opts.changeDir = argv[++i];
+    else if (arg === '--audit') opts.audit = argv[++i];
     else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
     else if (opts.mode === null) opts.mode = arg;
     else if (opts.name === null) opts.name = arg;
@@ -245,6 +257,37 @@ function collectFromContent(content, fileLabel) {
   return out;
 }
 
+const AUDITS = Object.freeze(['security', 'performance', 'accessibility']);
+
+/**
+ * Collect the paths cited by the findings of an audit report: the backticked
+ * `path/with/slash.ext[:line]` spans of the `**File:**` and `**Location:**`
+ * fields, outside fenced code blocks.
+ */
+function collectFromAuditReport(content) {
+  const out = [];
+  let fence = null;
+  content.split('\n').forEach((raw, index) => {
+    const line = raw.replace(/\r$/, '');
+    const fenceMatch = line.match(/^\s*(```|~~~)/);
+    if (fenceMatch) {
+      if (fence === null) fence = fenceMatch[1];
+      else if (fence === fenceMatch[1]) fence = null;
+      return;
+    }
+    if (fence !== null) return;
+    const field = line.match(/^\s*[-*]\s+\*\*(?:File|Location):\*\*\s*(.*)$/);
+    if (!field) return;
+    for (const span of field[1].match(/`([^`]+)`/g) || []) {
+      const token = span.slice(1, -1).trim().replace(/:\d+(?:-\d+)?(?::\d+)?$/, '');
+      if (!token || /\s/.test(token) || isUnresolvable(token)) continue;
+      if (!/^[A-Za-z0-9_.@-]+(\/[A-Za-z0-9_.@-]+)*\/[A-Za-z0-9_.@-]+\.[A-Za-z0-9]+$/.test(token)) continue;
+      out.push({ cited: token, kind: 'EVIDENCE', line: index + 1 });
+    }
+  });
+  return out;
+}
+
 /** Parse inline or bullet text of the `**Local files**:` field into evidence citations. */
 function parseLocalFieldText(text, lineNum, out) {
   const stripped = text.replace(/<!--.*?-->/g, '').trim();
@@ -349,9 +392,12 @@ function citedExists(root, changeDir, normalized) {
   return existsUnderRoot(root, normalized) || existsUnderChangeDir(changeDir, normalized);
 }
 
-function collectArtifactFiles(mode, changeDir) {
+function collectArtifactFiles(mode, changeDir, audit) {
   const files = [];
-  if (mode === 'sai-1') {
+  if (mode === 'audit-report') {
+    const report = path.join(changeDir, `${audit}.md`);
+    if (fs.existsSync(report)) files.push(report);
+  } else if (mode === 'sai-1') {
     const proposal = path.join(changeDir, 'proposal.md');
     if (fs.existsSync(proposal)) files.push(proposal);
     const specsRoot = path.join(changeDir, 'specs');
@@ -376,8 +422,8 @@ function collectArtifactFiles(mode, changeDir) {
   return files;
 }
 
-function checkChange(mode, root, changeDir) {
-  const files = collectArtifactFiles(mode, changeDir);
+function checkChange(mode, root, changeDir, audit) {
+  const files = collectArtifactFiles(mode, changeDir, audit);
   const violations = [];
   let checkedPaths = 0;
 
@@ -389,7 +435,7 @@ function checkChange(mode, root, changeDir) {
       throw new ToolError(`cannot read artifact: ${file}`);
     }
     const rel = path.relative(root, file).split(path.sep).join('/') || file;
-    const citations = collectFromContent(content, rel);
+    const citations = mode === 'audit-report' ? collectFromAuditReport(content) : collectFromContent(content, rel);
 
     for (const c of citations) {
       const normalized = normalizeSeparators(c.cited);
@@ -432,10 +478,10 @@ function checkChange(mode, root, changeDir) {
           cited: c.cited,
           normalized,
           kind: c.kind,
-          problem: mode === 'sai-1' ? 'EVIDENCE_PATH_MISSING' : 'PLANNED_PATH_MISSING',
-          detail: mode === 'sai-1'
-            ? 'cited evidence path does not exist'
-            : 'planned path with prefix M/D/R must exist (A may be absent)',
+          problem: mode === 'sai-2' ? 'PLANNED_PATH_MISSING' : 'EVIDENCE_PATH_MISSING',
+          detail: mode === 'sai-2'
+            ? 'planned path with prefix M/D/R must exist (A may be absent)'
+            : 'cited evidence path does not exist',
           candidates: suggestCandidates(root, normalized),
         });
       }
@@ -474,12 +520,20 @@ function main(argv) {
     process.stdout.write(`${usage()}\n`);
     return 0;
   }
-  if (opts.mode !== 'sai-1' && opts.mode !== 'sai-2') {
-    process.stderr.write(`mode required: sai-1 or sai-2.\n${usage()}\n`);
+  if (opts.mode !== 'sai-1' && opts.mode !== 'sai-2' && opts.mode !== 'audit-report') {
+    process.stderr.write(`mode required: sai-1, sai-2, or audit-report.\n${usage()}\n`);
+    return 2;
+  }
+  if (opts.mode === 'audit-report' && !AUDITS.includes(opts.audit)) {
+    process.stderr.write(`audit-report requires --audit <${AUDITS.join('|')}>.\n${usage()}\n`);
     return 2;
   }
   if (!opts.name && !opts.changeDir) {
     process.stderr.write(`change name required.\n${usage()}\n`);
+    return 2;
+  }
+  if (opts.mode === 'audit-report' && opts.findings) {
+    process.stderr.write(`--findings does not apply to audit-report.\n${usage()}\n`);
     return 2;
   }
   if (opts.json && opts.findings) {
@@ -503,9 +557,14 @@ function main(argv) {
     return 2;
   }
 
+  if (opts.mode === 'audit-report' && !fs.existsSync(path.join(changeDir, `${opts.audit}.md`))) {
+    process.stderr.write(`audit report not found: ${path.join(changeDir, `${opts.audit}.md`)}\n`);
+    return 2;
+  }
+
   let result;
   try {
-    result = checkChange(opts.mode, root, changeDir);
+    result = checkChange(opts.mode, root, changeDir, opts.audit);
   } catch (err) {
     if (err instanceof ToolError) {
       process.stderr.write(`${err.message}\n`);
@@ -553,6 +612,7 @@ function main(argv) {
 module.exports = {
   checkChange,
   collectFromContent,
+  collectFromAuditReport,
   normalizeSeparators,
   suggestCandidates,
   formatFindings,

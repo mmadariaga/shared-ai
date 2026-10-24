@@ -1,9 +1,9 @@
 # Performance Step — Resolve Diagnostics Gate
 
-Active step: resolve-diagnostics. The step is done when the diagnostics gate is resolved — an authorized run, the user's skip, or no diagnostic that would firm up a finding — and the `resolve-diagnostics` progress event is reported per the worker contract.
+Active step: resolve-diagnostics. The step is done when every diagnostic that firms up a finding has run or is recorded as unavailable, and `step-done` is reported for `resolve-diagnostics`.
 
-Without `--runtime`, resolve the gate as legitimately skipped without asking; the findings keep their numbers marked as estimated. With it, diagnostics are read-only measurements (`EXPLAIN`, `EXPLAIN ANALYZE` inside a rolled-back transaction, `lighthouse`, bundle analyzers, profilers in measurement mode) that firm up the numbers of tier-analysis findings; run them only after explicit user authorization, in bounded measurement mode.
+This step runs only with `--runtime`; without it the gate is resolved with no diagnostic, and the findings keep their numbers marked as estimated. `--runtime` is the whole authorization: ask no question, and never wait for an answer. Diagnostics are read-only measurements (`EXPLAIN`, `EXPLAIN ANALYZE` inside a rolled-back transaction, `lighthouse`, bundle analyzers, profilers in measurement mode), run in bounded measurement mode against a local or development target the repository configuration names, never against a production target.
 
-1. When no diagnostic would firm up a finding in hand, resolve the gate without asking.
-2. Otherwise return one `needs_input`, shaped per `@sai/policies/question-context.md`: list each proposed command with its target (database, environment, or URL) and the finding it serves, with options `Run diagnostics` / `Skip diagnostics`.
-3. On `Run diagnostics`, run exactly the listed commands and quote their outputs exactly as the findings' evidence; each measured number replaces the estimate it firms up. On `Skip diagnostics`, the findings keep their numbers marked as estimated.
+1. List the diagnostics that would firm up a finding in hand, each with its target and the finding it serves. When none would, the gate is resolved.
+2. Run each one. Quote its output exactly as the finding's evidence, and let the measured number replace the estimate it firms up.
+3. A diagnostic whose tool is not installed, whose target is not reachable, or that has no safe target is not an obstacle: record it as unavailable in the report's `Diagnostics` field with the reason, keep the estimated mark on the numbers it would have firmed up, and go on.

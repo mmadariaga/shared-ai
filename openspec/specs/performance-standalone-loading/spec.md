@@ -16,12 +16,12 @@ The machine SHALL expose exactly the five progress-plan ids in order as its clos
 
 ### Requirement: Minimal boot with just-in-time follow loads
 
-The standalone run SHALL boot from the nucleus only, worker contract plus steps/common.md, with resolve-performance-scope carrying follow none. Each of the four step files under sai/commands/performance/steps/ SHALL load only when next.follow names it, and the initial dispatch SHALL bear no Active step line with the first pointer targeting map-stack-hot-paths.
+The performance worker SHALL boot from its worker card plus `sai/commands/audit/worker-common.md` and `sai/commands/performance/steps/common.md` only, with resolve-performance-scope carrying follow none. Each of the four step files under sai/commands/performance/steps/ SHALL load only when the pointer names it, and the creation dispatch SHALL carry only the ready prompt, with the first pointer, targeting map-stack-hot-paths, opening the task message.
 
 #### Scenario: Step file loads at its point of use
 
-- **WHEN** the stage machine emits next.follow naming a step file
-- **THEN** the coordinator SHALL fetch that single file at that point and at no earlier point
+- **WHEN** the step machine returns a next.follow naming a step file
+- **THEN** the coordinator sends that pointer and the worker fetches that single file at that point and at no earlier point
 
 ### Requirement: No-whitelist follow-load with stop-on-failure
 
@@ -61,19 +61,19 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 
 ### Requirement: Every-activation scope with byte-identical pointers
 
-The machine SHALL govern the performance adapter for every activation — direct (`/sai-6-performance`) and chained (as an audit segment of a chained `/sai-deep-review` invocation). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
+The direct `/sai-6-performance` activation SHALL route through the shared audit coordinator and the `performance-steps@1` machine, in a `sai-state` session keyed `performance-{name}`; when the store fails, the coordinator SHALL send pointers from the static step order. The `performance-standalone@1` machine SHALL govern only the chained activation (as an audit segment of a chained `/sai-deep-review` invocation) while `/sai-deep-review` still composes the former performance coordinator. Both machines SHALL carry the same step ids and step files. No shared sessions or state exist between activations.
 
 #### Scenario: Direct activation consults the machine
 
 - **WHEN** `/sai-6-performance` is invoked directly
-- **THEN** the machine arbitrates step routing via the coordinator's declared `step_machine: performance-standalone@1` and delivers the two-line continuation
+- **THEN** the shared audit coordinator resets `performance-steps@1` and sends each pointer from its responses
 
 #### Scenario: Chained activation consults the same machine
 
 - **WHEN** the performance adapter runs as an audit segment of a chained `/sai-deep-review` invocation
-- **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, with no supervised-transition fallback or separate static map
+- **THEN** the `performance-standalone@1` machine arbitrates step routing with the same step ids and step files as the direct path, with no supervised-transition fallback or separate static map
 
 #### Scenario: Store failure during chained segment stops the chain
 
-- **WHEN** the machine emits and the store reports a failure during a chained `/sai-deep-review` segment
-- **THEN** the run stops per stage-machine.md, and `/sai-deep-review` does not proceed to the next segment
+- **WHEN** the machine emits and the store reports a failure during the performance segment of a chained `/sai-deep-review` invocation
+- **THEN** the run stops per stage-machine.md and the `/sai-deep-review` invocation stops with it

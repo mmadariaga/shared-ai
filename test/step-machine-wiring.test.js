@@ -176,6 +176,23 @@ test('accessibility-standalone@1 machine is properly registered', () => {
   assert.equal(typeof machine.project, 'function', 'must have project function');
 });
 
+for (const audit of ['security', 'performance', 'accessibility']) {
+  test(`${audit}-steps@1 machine is registered and routes by pointer, skipped stages included`, () => {
+    const id = `${audit}-steps@1`;
+    const machine = registry.get(id);
+    assert.ok(machine, `${id} must be registered`);
+    assert.equal(machine.machineId, id);
+    assert.equal(machine.STAGE_FILES[machine.STEPS[0]], 'none', 'the first step runs inline');
+    for (const step of machine.STEPS.slice(1)) {
+      assert.equal(machine.STAGE_FILES[step], `sai/commands/${audit}/steps/${step}.md`);
+    }
+    // A batch that skips stages advances the machine past every id it carries.
+    const skipped = machine.transition(machine.initialState, { step_ids: machine.STEPS.slice(0, -1) });
+    assert.equal(skipped.state.stage, machine.STEPS[machine.STEPS.length - 1]);
+    assert.equal(skipped.next.follow, machine.STAGE_FILES[machine.STEPS[machine.STEPS.length - 1]]);
+  });
+}
+
 // ─── First pointer with the task disclosure (step-pointer-with-task) ────────
 
 function readRepo(relativePath) {
@@ -236,20 +253,18 @@ test('the plan commands deliver the first filed pointer with the task message an
   }
 });
 
-test('every step-machine worker and common.md adopt the task-disclosure pointer rule', () => {
+test('every audit worker adopts the shared pointer rule and reports the scope step with the first filed step', () => {
+  const shared = readRepo('sai/commands/audit/worker-common.md');
+  assert.match(shared, /Each message opens with the pointer line `Active step: <id> — follow <path>`/);
+  assert.match(shared, /The first batch carries the scope step with the first filed step/);
   for (const name of ['security', 'performance', 'accessibility']) {
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
-    assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
-    // Security and performance state the pointer rule once, in their worker card; their common.md carries no pointer rule.
-    if (name === 'security' || name === 'performance') {
-      assert.match(worker, /Each progress-event continuation carries one pointer line/, `${name} worker should carry the step-delivery rule`);
-      assert.doesNotMatch(common, /first line of the task-disclosure continuation/, `${name} common.md should not repeat the step-delivery rule`);
-    } else {
-      assert.match(common, /first line of the task-disclosure continuation/, `${name} common.md should carry the step-delivery rule`);
-      assert.match(common, /in the first progress event/, `${name} common.md should report both ids together`);
-    }
-    assert.doesNotMatch(worker, /is the Startup Handshake/, `${name} worker should no longer return the first step alone`);
+    assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/, `${name} worker should load the shared rules`);
+    assert.doesNotMatch(worker, /Startup Handshake|worker-core\.md|§ Step-machine task disclosure/, `${name} worker keeps no shared-orchestration rule`);
+    assert.doesNotMatch(common, /progress event|worker contract's Active Step Execution/, `${name} common.md keeps no progress-event rule`);
+    const machine = require(`../sai-state/machines/${name}-steps.js`);
+    assert.match(worker, new RegExp(`\`${machine.STEPS[0]}\` — no file`), `${name} worker runs the fileless first step inline`);
   }
 });
 

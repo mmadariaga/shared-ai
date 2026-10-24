@@ -6,7 +6,7 @@ TBD - created by archiving change cited-path-existence-check. Update Purpose aft
 ## Requirements
 
 ### Requirement: Cited-path checker validates designated sections with mode-specific existence semantics
-The checker SHALL extract cited paths from designated sections only (`Local files` as a heading or as the bold inline field `**Local files**:` with inline paths or bullets below it, `Files Affected` with `A`/`M`/`D`/`R` prefixes, `Precise file locations`, `interfaces.md` test-assertion paths) and report unresolvable out-of-root paths and URLs without checking disk. A `**Local files**:` value of `None`, an empty value, or a placeholder comment SHALL NOT be treated as a path. In `sai-1` mode every extracted path SHALL exist; in `sai-2` mode `A` paths MAY be absent while every `M`/`D`/`R` and unprefixed evidence path SHALL exist. Separators SHALL be normalized and resolution SHALL be relative to the repository root, with `specs/` and bare `proposal.md` shorthand resolving inside the change directory. On a miss the checker SHALL suggest up to three same-basename candidates and SHALL never rewrite any artifact.
+The checker SHALL extract cited paths from designated sections only (`Local files` as a heading or as the bold inline field `**Local files**:` with inline paths or bullets below it, `Files Affected` with `A`/`M`/`D`/`R` prefixes, `Precise file locations`, `interfaces.md` test-assertion paths, and, in `audit-report` mode, the backticked `path/with/slash.ext[:line]` spans of the `**File:**` and `**Location:**` fields of an audit report's findings) and report unresolvable out-of-root paths and URLs without checking disk. A `**Local files**:` value of `None`, an empty value, or a placeholder comment SHALL NOT be treated as a path. In `sai-1` mode every extracted path SHALL exist; in `sai-2` mode `A` paths MAY be absent while every `M`/`D`/`R` and unprefixed evidence path SHALL exist; in `audit-report` mode every extracted path SHALL exist and a miss SHALL be reported as `EVIDENCE_PATH_MISSING`. Separators SHALL be normalized and resolution SHALL be relative to the repository root, with `specs/` and bare `proposal.md` shorthand resolving inside the change directory. On a miss the checker SHALL suggest up to three same-basename candidates and SHALL never rewrite any artifact.
 
 #### Scenario: Hallucinated evidence path fails fast
 - **WHEN** `proposal.md` cites a non-existent evidence path, under a `Local files` heading or in the `**Local files**:` field, and the checker runs in `sai-1` mode
@@ -19,6 +19,10 @@ The checker SHALL extract cited paths from designated sections only (`Local file
 #### Scenario: Local files field with no path cites nothing
 - **WHEN** the `**Local files**:` field is `None`, empty, or only a placeholder comment
 - **THEN** the checker extracts no path from it and reports no violation for the field
+
+#### Scenario: Audit report cites a missing file
+- **WHEN** the checker runs in `audit-report` mode and a finding's `**File:**` field cites a path that does not exist
+- **THEN** it exits 1 reporting `EVIDENCE_PATH_MISSING` and modifies no file
 
 ### Requirement: Rename citations enforce origin existence
 For a rename citation (`R <src> -> <dst>`) the checker SHALL require the origin to exist while the destination MAY be absent, and SHALL report `RENAME_ORIGIN_MISSING` when the origin is absent.

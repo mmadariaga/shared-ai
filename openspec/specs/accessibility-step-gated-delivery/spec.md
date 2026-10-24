@@ -40,9 +40,9 @@ The accessibility coordinator SHALL send every progress-event continuation as ex
 
 ### Requirement: Accessibility Worker Active Step Execution
 
-The accessibility worker SHALL load `steps/common.md` at dispatch as part of its sealed initial surface. It SHALL run the fileless `resolve-accessibility-scope` step from that surface before following the first pointer, which arrives as the first line of the task-disclosure continuation before `arguments_value`. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file. It SHALL report `resolve-accessibility-scope` and `map-ui-framework` together in its first progress event unless scope resolution closes the run early. A legitimately skipped runtime-audit gate SHALL still report its milestone and advance past its step.
+The accessibility worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-accessibility-scope` step from the brief and that surface before following the first pointer, which arrives as the first line of the task message before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-accessibility-scope` and `map-ui-framework` together in its first `step-done` batch. A runtime-audit stage that does not apply (no `--runtime`, or no UI file in scope) SHALL be reported in the batch of the step that decided the skip, so the next pointer lands on the step that still has work.
 
 #### Scenario: Runtime gate skip advances the pointer
 
-- **WHEN** the applicability gate resolves the runtime check as legitimately skipped
-- **THEN** the worker reports the `resolve-runtime-audit` milestone completed and the next delivered pointer names `close-accessibility-outcome`
+- **WHEN** the run has no `--runtime` and the static audit completes
+- **THEN** the worker reports `resolve-runtime-audit` in the `resolve-static-audit` `step-done` batch and the next delivered pointer names `close-accessibility-outcome`

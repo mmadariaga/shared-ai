@@ -1,6 +1,6 @@
 # Security Step — Resolve SAST Analysis
 
-Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection to the selected scope. The step is done when every file in the selected scope has been checked against every flaw category below, every external input source is traced to its sinks, and every flaw is recorded with its fields; then report the `resolve-sast-analysis` progress event per the worker contract.
+Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection to the selected scope. The step is done when every file in the selected scope has been checked against every flaw category below, every external input source is traced to its sinks, and every flaw is recorded with its fields; then report `step-done` for `resolve-sast-analysis`.
 
 ### SAST — Static Analysis
 

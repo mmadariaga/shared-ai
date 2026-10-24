@@ -15,11 +15,15 @@ TBD - created by archiving change trim-performance-report-and-instructions. Upda
 
 ### Requirement: Authorized read-only diagnostics
 
-With `--runtime`, `resolve-diagnostics` SHALL resolve the gate without asking when no diagnostic would firm up a finding. Otherwise it SHALL return one `needs_input` that lists each proposed command with its target and the finding it serves, with options `Run diagnostics` / `Skip diagnostics`. On `Run diagnostics`, the worker SHALL run exactly the listed commands in bounded read-only measurement mode and quote their outputs exactly; each measured number SHALL replace the estimate it firms up. On `Skip diagnostics`, the findings SHALL keep their estimated marks.
+With `--runtime`, `resolve-diagnostics` SHALL ask no question: `--runtime` is the whole authorization. It SHALL resolve the gate with no diagnostic when none would firm up a finding. Otherwise the worker SHALL list each diagnostic with its target and the finding it serves, run each one in bounded read-only measurement mode against a local or development target the repository configuration names, never a production target, and quote its output exactly; each measured number SHALL replace the estimate it firms up. A diagnostic whose tool is not installed, whose target is not reachable, or that has no safe target SHALL be recorded as unavailable with its reason in the report's `Diagnostics` field, and the findings it would have firmed up SHALL keep their estimated marks.
 
 #### Scenario: Authorized diagnostics
-- **WHEN** `--runtime` is set, a finding would be firmed up by `EXPLAIN ANALYZE`, and the user selects `Run diagnostics`
-- **THEN** the worker runs only the listed command read-only and replaces that finding's estimated number with the measured one
+- **WHEN** `--runtime` is set and a finding would be firmed up by `EXPLAIN ANALYZE`
+- **THEN** the worker runs that command read-only with no question and replaces that finding's estimated number with the measured one
+
+#### Scenario: Diagnostic tool unavailable
+- **WHEN** `--runtime` is set and the profiler a diagnostic needs is not installed
+- **THEN** the report's `Diagnostics` field marks it unavailable with the reason and the audit completes with the estimate kept
 
 ### Requirement: Per-tier checklist loading
 

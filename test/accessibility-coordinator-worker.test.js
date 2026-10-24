@@ -71,9 +71,10 @@ function collectOutput() {
   return { out, text: () => Buffer.concat(chunks).toString('utf8') };
 }
 
-test('Step 1 accessibility card uses neutral root protocols and retires flat canonical sources', () => {
+test('Step 1 accessibility worker card loads the shared audit rules and no shared-orchestration protocol', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
+  assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
+  assert.doesNotMatch(worker, /worker-core\.md|bounded-dispatch-retry|verified-precondition-handback/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
@@ -84,152 +85,152 @@ test('Step 1 accessibility card uses neutral root protocols and retires flat can
   }
 });
 
-test('accessibility scope, runtime, and parent arguments reach the worker unchanged', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const worker = artifact('sai/commands/accessibility/worker.md');
+test('accessibility scope, runtime, url, and parent arguments reach the worker as the options of the run', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
   const claudeWrapper = artifact('commands/claude/sai-7-accessibility.md');
   const opencodeWrapper = artifact('commands/opencode/sai-7-accessibility.md');
-  const argumentsValue = '--full --path src/components --runtime feature-branch';
 
-  assert.match(coordinator, /arguments_value/);
+  assert.match(coordinator, /one string, `arguments_value`/);
   assert.doesNotMatch(coordinator, /wrapper_echo_value/,
-    'the accessibility coordinator must not construct or forward wrapper_echo_value');
-  assert.match(coordinator, /preserving the complete argument string/);
+    'the audit coordinator must not construct or forward wrapper_echo_value');
+  assert.match(coordinator, /the options of the run exactly as given \(the `--url` value included when one was collected\)/);
   assert.match(claudeWrapper, /command_name:\s*accessibility/);
   assert.match(claudeWrapper, /arguments_value:\s*\$ARGUMENTS/);
   assert.match(opencodeWrapper, /command_name:\s*accessibility/);
   assert.doesNotMatch(opencodeWrapper, /wrapper_echo_value/,
     'the opencode accessibility wrapper must not construct or forward wrapper_echo_value');
   assert.match(opencodeWrapper, /arguments_value:\s*\$ARGUMENTS/);
-  assert.match(worker, /Reconstruct `\$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values/,
-    `complete arguments should reach the worker: ${argumentsValue}`);
+  for (const wrapper of [claudeWrapper, opencodeWrapper]) {
+    assert.match(wrapper.match(/^description:.*$/m)[0], /--url <url>/, 'the wrapper announces --url');
+  }
 });
 
 test('accessibility review defaults to static-only without a runtime scanner', () => {
   const common = artifact('sai/commands/accessibility/steps/common.md');
   const runtimeStep = artifact('sai/commands/accessibility/steps/resolve-runtime-audit.md');
 
-  assert.match(common, /`--runtime` enables browser-based[\s\S]{0,160}Default:\s*static-only/i);
-  assert.match(runtimeStep, /Without `--runtime`, resolve the gate as legitimately skipped without asking/);
-  assert.match(artifact('sai/commands/accessibility/worker.md'), /## Runtime Authorization/);
+  assert.match(common, /`--runtime` authorizes the browser-based[\s\S]{0,200}Default:\s*static-only/i);
+  assert.match(runtimeStep, /Without `--runtime`, resolve the gate with no scanner/);
 });
 
 // ─── Step 2: routed accessibility lifecycle ─────────────────────────────────
 
-test('Step 2 accessibility coordinator dispatches one worker and performs no technical I/O', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
+test('Step 2 the audit coordinator creates one worker per cycle and never audits itself', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
 
-  assert.match(coordinator, /dispatch[\s\S]{0,160}exactly one[\s\S]{0,160}sai-7-accessibility-worker/i);
-  assert.equal((coordinator.match(/sai-7-accessibility-worker/g) || []).length, 1);
-  for (const operation of ['prerequisite', 'argument', 'git', 'source', 'scanner', 'research', 'artifact']) {
-    assert.match(
-      coordinator,
-      new RegExp(`(?:SHALL NOT|MUST NOT|does not|no)[^\\n]{0,180}${operation}`, 'i'),
-      `coordinator should prohibit ${operation} I/O`
-    );
+  assert.match(coordinator, /Create the audit's worker once for the run/);
+  assert.match(coordinator, /The command only audits: it fixes no finding/);
+  assert.match(coordinator, /The cycle holds no state outside its own `sai-state` session/);
+  assert.match(coordinator, /key: `\{audit\}-\{name\}`/);
+  assert.match(coordinator, /commit nothing but this one file/);
+  for (const loaded of ['public-chat', 'remember', 'safe-operations', 'tool-resolution', 'finding-state']) {
+    assert.match(coordinator, new RegExp(`Fetch @(?:sai/policies|skills)/${loaded}`), `the coordinator loads ${loaded}`);
+  }
+  for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition']) {
+    assert.doesNotMatch(coordinator, new RegExp(`Fetch @[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);
   }
 });
 
-test('Step 2 accessibility worker preserves input precedence, grammar, change resolution, and scope ownership', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
+test('Step 2 accessibility options, change resolution, and scope ownership', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
+  const options = artifact('sai/commands/accessibility/options.md');
+  const common = artifact('sai/commands/accessibility/steps/common.md');
 
-  assert.match(worker, /arguments_value/);
-  assert.doesNotMatch(worker, /wrapper_echo_value/,
-    'the accessibility worker must use arguments_value as its sole request source');
-  assert.match(worker, /--full/);
-  assert.match(worker, /--path/);
-  assert.match(worker, /--runtime/);
-  assert.match(worker, /resolve[\s-]+(?:the )?change/);
-  assert.match(worker, /scope/);
+  for (const flag of ['--full', '--path', '--runtime', '--url', '--parent-branch']) {
+    assert.ok(options.includes(`\`${flag}`), `options.md declares ${flag}`);
+  }
+  assert.match(coordinator, /An empty change name takes the only change directory under `openspec\/changes\/`/);
+  assert.match(common, /^## Scope$/m);
+  assert.match(common, /`--full` audits all UI files in the repo; `--path` audits that path/);
 });
 
 test('Step 2 accessibility findings use the closed severity set', () => {
+  const common = artifact('sai/commands/accessibility/steps/common.md');
   const worker = artifact('sai/commands/accessibility/worker.md');
 
   for (const severity of ['Critical', 'High', 'Medium', 'Low', 'Informational']) {
-    assert.match(worker, new RegExp(`\\b${severity}\\b`));
+    assert.match(common, new RegExp(`^\\| ${severity} \\|`, 'm'));
   }
-  assert.doesNotMatch(worker, /\bMajor\b/,
-    'the binding carries only the closed Critical/High/Medium/Low/Informational taxonomy');
+  assert.doesNotMatch(common + worker, /\bMajor\b/,
+    'the audit carries only the closed Critical/High/Medium/Low/Informational taxonomy');
 });
 
 test('Step 2 accessibility worker owns small-scope inspection without mandatory explorer delegation', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
+  const mapping = artifact('sai/commands/accessibility/steps/map-ui-framework.md');
 
-  assert.match(worker, /five or fewer|<=\s*5|at most five/i);
-  assert.match(worker, /source inspection[\s\S]{0,180}(?:worker|direct)/i);
-  assert.match(worker, /without mandatory explorer|explorer delegation is not mandatory|no mandatory explorer/i);
+  assert.match(mapping, /With five or fewer UI files, inspect them directly; delegating is not mandatory/);
 });
 
 test('Step 2 accessibility worker delegates large-scope inspection in bounded parallel areas', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
+  const mapping = artifact('sai/commands/accessibility/steps/map-ui-framework.md');
 
-  assert.match(worker, /more than five|>\s*5|six or more/i);
-  assert.match(worker, /per-component inspection|component[s-]level inspection/i);
-  assert.match(worker, /parallel(?:ize|ized| independent)/i);
-  assert.match(worker, /no more than eight|eight explorer|8 explorer/i);
+  assert.match(mapping, /With more than five, delegate per-component scan to \*\*`budget-explorer`\*\* subagents/);
+  assert.match(mapping, /in parallel when independent component areas need codebase context/);
+  assert.match(mapping, /≤8 per audit/);
 });
 
-test('Step 2 runtime mode asks for server confirmation before any scanner command', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
+test('Step 2 runtime mode takes the dev-server URL as an input and asks no server question', () => {
+  const runtimeStep = artifact('sai/commands/accessibility/steps/resolve-runtime-audit.md');
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
+  const options = artifact('sai/commands/accessibility/options.md');
 
-  assert.match(worker, /runtime/);
-  assert.match(worker, /server confirmation|confirm.*server|server.*question/i);
-  assert.match(worker, /one server question|exactly one.*server|single.*server/i);
-  assert.match(worker, /before[\s\S]{0,160}(?:scanner command|scanner)/i);
+  assert.match(runtimeStep, /against the dev server at `--url`/);
+  assert.match(runtimeStep, /Without a `--url` value, or when the URL does not respond, no scanner can run: record the runtime part as unavailable/);
+  assert.match(coordinator, /the run has `--runtime` without `--url`, ask the user for the dev-server URL in one question that also lets them decline/);
+  assert.match(coordinator, /The URL is an input, not an authorization/);
+  assert.match(options, /with `--runtime` and no `--url`, the command asks for it before the audit starts/);
+  assert.doesNotMatch(runtimeStep, /server[- ]confirmation/i);
 });
 
-test('Step 2 applicable scanners require one authorize-or-skip question and explicit authorization', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
+test('Step 2 --runtime authorizes every scanner and an unavailable scanner never blocks', () => {
+  const runtimeStep = artifact('sai/commands/accessibility/steps/resolve-runtime-audit.md');
 
-  assert.match(worker, /applicable scanner|scanner.*applicable/i);
-  assert.match(worker, /authorize/);
-  assert.match(worker, /skip/);
-  assert.match(worker, /one authorize[/-]or[/-]skip question|exactly one.*authorize.*skip|single.*authorize.*skip/i);
-  assert.match(worker, /only.*explicitly authorized|execute only.*authorized|authorized command/i);
+  assert.match(runtimeStep, /`--runtime` is the whole authorization: ask no question, and never wait for an answer/);
+  for (const command of ['npx @axe-core/cli {url} --exit', 'npx pa11y {url} --reporter cli', 'npx lhci autorun --only-categories=accessibility']) {
+    assert.ok(runtimeStep.includes(`\`${command}\``), `${command} is a runtime scanner`);
+  }
+  assert.match(runtimeStep, /A scanner that is not installed or fails to start is not an obstacle: record it as unavailable/);
+  assert.match(runtimeStep, /Never retry a failed command/);
+  assert.doesNotMatch(runtimeStep, /authorize-or-skip|needs_input/);
 });
 
-test('Step 2 Claude and opencode bindings continue the same worker with the continuation payload', () => {
-  for (const harness of ['claude', 'opencode']) {
+test('Step 2 Claude and opencode bindings continue the same worker with the coordinator message', () => {
+  for (const [harness, continuation] of [['claude', 'SendMessage(to: "<captured agent ID>"'], ['opencode', 'task(task_id: "<captured task ID>"']]) {
     const binding = matrixBinding(harness, 'accessibility');
-    assert.match(binding, /Continue on the same (?:worker|task)|same[- ]?(?:worker|task) continuation/i,
-      'the binding should continue the same worker');
-    assert.match(binding, /<continuation payload>/,
-      'the binding should forward the continuation payload');
+    assert.ok(binding.includes(continuation), 'the binding should continue the same worker');
+    assert.match(binding, /message: "<message>"|prompt: "<message>"/,
+      'the binding should forward the coordinator message');
     assert.doesNotMatch(binding, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 
-test('Step 2 replacement restart excludes prior authorization, results, evidence, journal, and report content', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.match(worker, /replacement/i,
-    'the worker contract should define the replacement path');
-  for (const item of ['authorization', 'command results', 'evidence', 'journal', 'artifact contents']) {
-    assert.match(
-      worker,
-      new RegExp(`(?:no|without|never)[^\\n]{0,160}${item}`, 'i'),
-      `the replacement restart should exclude ${item}`
-    );
-  }
+test('Step 2 a replacement worker starts from a hand-over note, never from the old worker or its report', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
+
+  assert.match(coordinator, /a new worker, created the same way as the first/);
+  assert.match(coordinator, /It never receives the old worker's history, and it audits from the first step/);
+  assert.match(coordinator, /an interrupted run is not resumed/);
+  assert.match(coordinator, /no earlier report is read/);
 });
 
 test('Step 2 completion writes only accessibility.md and prints the exact completion line', () => {
-  const worker = artifact('sai/commands/accessibility/worker.md');
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
+  const shared = artifact('sai/commands/audit/worker-common.md');
+  const close = artifact('sai/commands/accessibility/steps/close-accessibility-outcome.md');
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
 
-  assert.match(worker, /openspec\/changes\/\{change-name\}\/accessibility\.md/);
-  assert.match(worker, /changed_files[\s\S]{0,180}only[\s\S]{0,120}accessibility\.md/i);
-  assert.match(coordinator, /worker-authored summary/);
-  assert.match(coordinator, /ordered duplicate-free changed_files/);
-  assert.ok(coordinator.includes('Accessibility audit done.'));
+  assert.match(shared, /Write only the report, `openspec\/changes\/\{change-name\}\/\{audit\}\.md`/);
+  assert.match(shared, /`changed_files` holds only the report path when you wrote it/);
+  assert.match(close, /`report_path` and `changed_files` name `openspec\/changes\/\{change-name\}\/accessibility\.md`/);
+  assert.match(coordinator, /Then end the run with exactly `\{Audit\} audit done\.`/);
+  assert.match(coordinator, /`\{Audit\}` is the audit name with a capital initial/);
 });
 
 // ─── Step 3: installation and inventory projections ─────────────────────────
 
-test('Step 3 Claude Code and opencode wrappers load the launcher and the launcher loads the coordinator and direct worker binding', () => {
-  const launcher = artifact('sai/commands/accessibility/command-bootstrap.md');
-  assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/accessibility-worker\.md/,
-    'launcher should load the neutral accessibility binding');
+test('Step 3 Claude Code and opencode wrappers fetch the shared audit coordinator, which fetches the worker binding', () => {
+  const coordinator = artifact('sai/commands/audit/coordinator.md');
+  assert.match(coordinator, /Fetch @sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md and use it/,
+    'the coordinator should load the neutral audit binding');
 
   const wrappers = [
     ['claude', 'commands/claude/sai-7-accessibility.md', 'claude'],
@@ -238,8 +239,10 @@ test('Step 3 Claude Code and opencode wrappers load the launcher and the launche
 
   for (const [harness, wrapperPath, bindingHarness] of wrappers) {
     const wrapper = artifact(wrapperPath);
-    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]command-bootstrap\.md/,
-      `${harness} should load the accessibility command bootstrap`);
+    assert.match(wrapper, /Fetch @sai\/commands\/audit\/coordinator\.md and follow it exactly/,
+      `${harness} should fetch the shared audit coordinator`);
+    assert.doesNotMatch(wrapper, /command-bootstrap\.md|@sai\/adapters\//,
+      `${harness} should load no bootstrap and no boot adapter`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-7-accessibility-worker\/SKILL\.md/,
       `${harness} should not load the worker forwarding skill`);
@@ -390,19 +393,15 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
   }
 });
 
-test('Step 3 routed accessibility worker contract accepts only closed lifecycle fields', () => {
+test('Step 3 audit worker results accept only the closed fields', () => {
+  const shared = artifact('sai/commands/audit/worker-common.md');
   const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.match(worker, /Accessibility Worker|sai-7-accessibility-worker/);
-  const payloadContract = worker.match(/(?:payload includes|closed payload|lifecycle result)[\s\S]{0,800}/i);
-  assert.ok(payloadContract, 'the worker contract should define a closed lifecycle result contract');
-  for (const field of ['completed', 'needs_input', 'failed', 'cancelled', 'status', 'question', 'options', 'changed_files', 'summary']) {
-    assert.match(worker, new RegExp(`\\b${field}\\b`, 'i'),
-      `the worker result should expose only the declared lifecycle field set`);
+  assert.match(worker, /Accessibility Worker/);
+  for (const field of ['event: step-done', 'step_ids', 'event: question', 'status: completed', 'status: failed', 'changed_files', 'summary', 'report_path', 'counts']) {
+    assert.ok(shared.includes(field), `the worker result should expose ${field}`);
   }
-  for (const forbidden of ['continuation identifier', 'command results', 'report content', 'binding metadata']) {
-    assert.match(worker, new RegExp(`(?:must not|shall not|exclude|without|never|no)[^\\n]{0,180}${forbidden}`, 'i'),
-      `the worker result should reject ${forbidden}`);
-  }
+  assert.match(shared, /A result carries no time field and no artifact contents/);
+  assert.doesNotMatch(shared, /needs_input|cancelled|continuation identifier/);
 });
 
 // ─── Step 5: accessibility-phase progress surfaces ──────────────────────────
@@ -437,13 +436,12 @@ test('accessibility worker contract enumerates the five ids and pins the batch s
     /resolve-accessibility-scope[\s\S]{0,800}map-ui-framework[\s\S]{0,800}resolve-static-audit[\s\S]{0,800}resolve-runtime-audit[\s\S]{0,800}close-accessibility-outcome/,
     'the accessibility worker contract should enumerate the same five ids in the same order'
   );
-  assert.match(worker, /startup act/i);
-  assert.match(worker, /resolve-accessibility-scope/);
-  assert.match(worker, /runtime[\s\S]{0,240}(?:authorization|not applicable|skip)/i);
-  assert.match(worker, /resolve-runtime-audit/);
-  assert.match(worker, /no-?UI[\s\S]{0,240}Not Applicable report[\s\S]{0,80}`completed`/i);
-  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
-  assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
+  assert.match(worker, /`resolve-accessibility-scope` — no file; run inline from the brief and `common\.md`/);
+  assert.match(worker, /It reports together with `map-ui-framework`/);
+  assert.match(worker, /Without `--runtime`, the batch also carries `resolve-runtime-audit`/);
+  assert.match(worker, /When the scope holds no UI file, the audit does not apply, even with `--runtime`: the first batch also carries `resolve-static-audit` and `resolve-runtime-audit`, no scanner runs, and `close-accessibility-outcome` writes the Not Applicable report/);
+  assert.match(worker, /pending manual checks/);
+  assert.doesNotMatch(worker, /progress event|needs_input/i);
 });
 
 test('accessibility coordinator and policy carry a Progress rendering contract with threshold reference and no stamp', () => {
@@ -547,19 +545,19 @@ test('step-gated: replacement reconstruction includes active_step_id', () => {
 
 test('step-gated: the accessibility worker loads steps/common.md at dispatch and executes only the active step', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
+  const shared = artifact('sai/commands/audit/worker-common.md');
 
   assert.match(worker, /Fetch @sai\/commands\/accessibility\/steps\/common\.md and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
-  assert.match(worker, /## Active Step Execution/, 'the worker contract should own active-step execution');
-  assert.match(worker, /this contract plus common\.md is the sealed initial surface/);
-  assert.match(worker, /`resolve-accessibility-scope` runs from it before the first progress event/,
-    'the fileless first step should run from the sealed surface before the first pointer');
-  assert.match(worker, /never prefetch, open, or follow any other step instruction file/,
-    'the worker must execute only the coordinator-named step');
+  assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan in one Steps section');
+  assert.match(shared, /Fetch the file the pointer names, and skip the fetch when you already loaded it in this session/,
+    'the worker executes only the coordinator-named step');
+  assert.match(shared, /Run the audit's scope step inline: it has no file/,
+    'the fileless first step should run before the first pointer');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/accessibility\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
-  assert.match(worker, /A gated stage resolved by legitimate skip still reports its milestone/,
-    'a legitimately skipped gated stage still advances the pointer past it');
+  assert.match(shared, /A step you decided to skip because it does not apply is complete: report it in the same batch/,
+    'a legitimately skipped stage still advances the pointer past it');
 });
 
 test('step-gated: the step library is the only accessibility instruction surface', () => {
@@ -593,7 +591,6 @@ test('accessibility defects: triggers, mapping criterion, markdown definition, n
   const mapping = artifact('sai/commands/accessibility/steps/map-ui-framework.md');
   const audit = artifact('sai/commands/accessibility/steps/resolve-static-audit.md');
   const common = artifact('sai/commands/accessibility/steps/common.md');
-  const worker = artifact('sai/commands/accessibility/worker.md');
   assert.match(mapping, /`UI files in scope`, `frameworks detected`, `component types`, `design tokens`, and `accepted trade-offs`, each as a list or `none`/);
   const triggers = [...audit.matchAll(/^Trigger: component types include ([a-z ]+)\.$/gm)].map(m => m[1]);
   assert.deepEqual(triggers, ['forms', 'media', 'dynamic content']);
@@ -603,5 +600,5 @@ test('accessibility defects: triggers, mapping criterion, markdown definition, n
   assert.match(audit, /every triggered checklist/);
   assert.match(common, /Component-bearing markdown is `\.mdx` files, plus `\.md` files containing an HTML element or a capitalized component tag/);
   assert.match(common, /prefixed `Inferred:`/);
-  assert.match(worker, /No active changes found\. Run `\/sai-1-spec` to create one\./);
+  assert.ok(artifact('sai/commands/audit/coordinator.md').includes('Cannot start {command}: name the change ({candidates, or none}).'));
 });

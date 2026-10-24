@@ -247,9 +247,9 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     const installDir = path.join(scratchDir, 'opencode');
     fs.mkdirSync(installDir, { recursive: true });
     installOpencode(installDir);
-    // The review, spec, and design workers render from the standalone binding
+    // The review, spec, design, and audit workers render from the standalone binding
     // template, which their coordinators drive with their own continuation shape.
-    const STANDALONE_WORKERS = ['sai-4-review-worker', 'sai-1-spec-proposal-worker', 'sai-2-design-worker'];
+    const STANDALONE_WORKERS = ['sai-4-review-worker', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-5-security-worker', 'sai-6-performance-worker', 'sai-7-accessibility-worker'];
     for (const workerName of CURRENT_CENSUS.filter(name => !STANDALONE_WORKERS.includes(name))) {
       const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
@@ -1665,9 +1665,6 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
     'sai-deep-review',
-    'sai-5-security',
-    'sai-6-performance',
-    'sai-7-accessibility',
   ];
   try {
     installOpencode(tmpDir);
@@ -1684,7 +1681,7 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
       'the opencode boot adapter should be installed');
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'boot.md')), false,
       'the Claude boot adapter must not be installed in the opencode harness');
-    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build']) {
+    for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);

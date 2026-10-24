@@ -1,6 +1,6 @@
 # Accessibility Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, hard rules, and standing reminders. Step delivery follows the worker contract's Active Step Execution; `resolve-accessibility-scope` has no step file of its own and runs from the worker contract plus this file. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `resolve-accessibility-scope` inline, then follow that pointer, and report `resolve-accessibility-scope` and `map-ui-framework` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, hard rules, and standing reminders. Step delivery follows `sai/commands/audit/worker-common.md`; `resolve-accessibility-scope` has no step file of its own and runs from the brief plus this file. The first pointer arrives as the first line of the task message: run `resolve-accessibility-scope` inline, then follow that pointer, and report `resolve-accessibility-scope` and `map-ui-framework` together in the first `step-done`.
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
@@ -8,7 +8,7 @@ Fetch @sai/commands/accessibility/options.md
 
 ## Input
 
-The first argument is the change name (kebab-case). Read from `openspec/changes/{change-name}/`:
+The brief names the change (kebab-case). Read from `openspec/changes/{change-name}/`:
 
 - `proposal.md` — feature goal, accepted/discarded decisions, and any explicitly accepted accessibility trade-offs (e.g. spec explicitly accepts no-JS fallback for an internal-only admin panel → *Acknowledged*, not a defect).
 - `design.md` — architecture decisions and UX constraints (may be absent for backfilled changes; proceed if missing).
@@ -27,7 +27,7 @@ Optional, default = diff vs parent branch:
     - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
     - Name the selected parent branch in the terminal summary.
 
-**Runtime mode** (optional): `--runtime` enables browser-based axe/pa11y/Lighthouse checks and keyboard walks through `resolve-runtime-audit`. Default: static-only, and the command asks no question.
+**Runtime mode** (optional): `--runtime` authorizes the browser-based axe/pa11y/Lighthouse scanners of `resolve-runtime-audit` by itself, against the dev server at `--url`. Default: static-only. A scanner that is not installed, or a URL that does not respond, makes the runtime part unavailable, never a blocker: the static audit goes on.
 
 UI files are `.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, and component-bearing markdown. Component-bearing markdown is `.mdx` files, plus `.md` files containing an HTML element or a capitalized component tag such as `<Button>`; a `.md` file with neither is not a UI file.
 

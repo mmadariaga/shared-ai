@@ -1,6 +1,6 @@
 # Performance Report — <!-- Feature Name -->
 
-**Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` --> · **Tiers:** <!-- backend / frontend / db / queue — only the tiers audited --> · **Baseline:** <!-- prior benchmark / SLO / observability dashboard | absolute thresholds — no baseline --> · **Date:** <!-- YYYY-MM-DD -->
+**Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` --> · **Tiers:** <!-- backend / frontend / db / queue — only the tiers audited --> · **Baseline:** <!-- prior benchmark / SLO / observability dashboard | absolute thresholds — no baseline --> · **Diagnostics:** <!-- not requested | ran: <list> | unavailable: <which, why> --> · **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
 <!-- Keep only when the performance audit does not apply to this change, with its justification; delete this heading otherwise. -->

@@ -24,6 +24,9 @@
 ## Coverage Notes
 <!-- Summarize the files, static review, and runtime coverage. -->
 
+## Pending Manual Checks
+<!-- List the keyboard and screen-reader checks only a person can run. -->
+
 ## Prioritized Remediation Plan
 <!-- Order remediation work by release urgency. -->
 

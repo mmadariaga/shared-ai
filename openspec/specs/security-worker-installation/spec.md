@@ -2,6 +2,7 @@
 
 ## Purpose
 TBD - created by syncing change sai-6-security-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
 
 ### Requirement: Installer registers and projects every routed security surface
@@ -30,12 +31,12 @@ Installer flow SHALL define the numbered Claude security-worker agent filename c
 
 ### Requirement: Routed wrappers preserve three-harness entrypoint parity
 
-Claude Code and opencode security wrappers SHALL be thin routed wrappers that load the shared security coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument behavior. The Copilot security prompt SHALL remain inline and SHALL receive no routed binding, managed agent, or routed manifest projection. Structural verification SHALL assert this intentional exclusion and all required Claude/opencode surfaces.
+Claude Code and opencode security wrappers SHALL be thin wrappers that load the harness fetch skill and the shared audit coordinator `sai/commands/audit/coordinator.md` with `command_name: security` and the complete `arguments_value`, while preserving their harness-specific model behavior; the coordinator, not the wrapper, SHALL fetch the matching security-worker binding. The wrappers SHALL run under the `security-command` capability profile, which extends the shared `audit-command` profile (coordinator plus write, shell, and `safe-operations`) and delegates only to `sai-5-security-worker`. The Copilot security prompt SHALL receive no routed binding, managed agent, or routed manifest projection. Structural verification SHALL assert this intentional exclusion and all required Claude/opencode surfaces.
 
 #### Scenario: Routed wrappers are inspected
-- **WHEN** the Claude Code or opencode `/sai-6-security` wrapper is loaded
-- **THEN** it fetches the coordinator and matching binding only
-- **AND** it preserves the complete argument value for worker-owned parsing
+- **WHEN** the Claude Code or opencode `/sai-5-security` wrapper is loaded
+- **THEN** it fetches the fetch skill and the shared audit coordinator only, with `command_name: security`
+- **AND** it forwards the complete argument value for coordinator-owned parsing
 
 #### Scenario: Parity verification finds a missing surface
 - **WHEN** a required worker, binding, wrapper, skill, agent, registry entry, or manifest projection is missing or mismatched

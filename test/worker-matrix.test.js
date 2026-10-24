@@ -442,9 +442,9 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
         item.kind === 'binding' && item.harness === harness && item.phase === phase);
       assert.equal(binding.destinationName, `${phase}-worker.md`,
         `${harness}/${phase} binding destination should be bindingStem-derived`);
-      // The spec and design commands run outside the shared orchestration, so their
-      // bindings render from the standalone template like the implement and review roles.
-      const standalonePhase = ['spec', 'design'].includes(phase);
+      // The spec, design, and audit commands run outside the shared orchestration, so
+      // their bindings render from the standalone template like the implement and review roles.
+      const standalonePhase = ['spec', 'design', 'security', 'performance', 'accessibility'].includes(phase);
       assert.equal(binding.templateName,
         standalonePhase ? `${harness}StandaloneBinding` : (harness === 'claude' ? 'claudeBinding' : 'opencodeBinding'),
         `${harness}/${phase} binding should use its harness binding template`);

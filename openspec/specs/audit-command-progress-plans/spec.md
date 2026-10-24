@@ -8,66 +8,66 @@ Define the five-step progress plans for the audit commands (`sai-5-review`, `sai
 
 ### Requirement: audit-adapters-declare-five-step-plans
 
-Security, performance, and accessibility SHALL declare immutable five-step plans. Each worker SHALL enumerate its adapter's stable ids and labels in order. OpenSpec preflight belongs only to `/sai-explore`; startup retains change selection, proposal gate, and scope rules.
+Security, performance, and accessibility SHALL each keep an immutable five-step plan of stable ids, delivered by pointer through `security-steps@1`, `performance-steps@1`, and `accessibility-steps@1`, and each worker card SHALL enumerate its plan's ids in order. The standalone audit commands SHALL declare no panel `progress_plan` and render no task list. OpenSpec preflight belongs only to `/sai-explore`; the shared audit coordinator owns change selection and the proposal gate, and the worker's scope step owns the scope rules.
 
-| Command | Ordered progress steps and completion conditions |
+| Command | Ordered step ids and completion conditions |
 | --- | --- |
-| `sai-5-security` | `resolve-security-scope` - Resolve security scope: selection, proposal gate, scope flags, and parent complete; `discover-module-map` - Discover modules and trust boundaries: ecosystems, modules, entry points, trust boundaries, SCA gate decision, and not-applicable decision complete; `resolve-sast-analysis` - Resolve SAST analysis: taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - Audit dependencies: every manifest the SCA gate admitted is audited, or the step is reported with the SAST batch when the gate admits no manifest; `close-security-outcome` - Close security outcome: result and artifact verification complete |
-| `sai-6-performance` | `resolve-performance-scope` - Resolve performance scope and tier: selection, proposal gate, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: detection, baseline, mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: authorization or applicability resolved, diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: result and artifact verification complete |
-| `sai-7-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: selection, proposal gate, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization resolved, checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: result and artifact verification complete |
+| `sai-5-security` | `resolve-security-scope` - brief read, scope and parent branch resolved; `discover-module-map` - modules, entry points, trust boundaries, SCA gate decision, and not-applicable decision complete; `resolve-sast-analysis` - taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - every manifest the SCA gate admitted is audited, or the step is reported with the SAST batch when the gate admits no manifest; `close-security-outcome` - report written and verified |
+| `sai-6-performance` | `resolve-performance-scope` - brief read, scope, tier filter, runtime flag, and parent branch resolved; `map-stack-hot-paths` - detection, baseline, mapping, and 500-LOC cutover complete; `audit-performance-tiers` - applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - every diagnostic that firms up a finding has run or is recorded as unavailable, or the step is reported with the tier batch without `--runtime`; `close-performance-outcome` - report written and verified |
+| `sai-7-accessibility` | `resolve-accessibility-scope` - brief read, scope, runtime mode, dev-server URL, and parent branch resolved; `map-ui-framework` - UI filtering, detection, component mapping, and delegation choice complete; `resolve-static-audit` - semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - every applicable scanner has run or is recorded as unavailable, or the step is reported with the static batch without `--runtime`; `close-accessibility-outcome` - report written and verified |
 
-Adapters SHALL render through the shared policy and SHALL NOT add passes, tools, severities, or delegation units as steps. Completed steps SHALL receive closure-only Milestone Stamps from the marking response's `received_at`, not a clock call. The Idea Progress List remains separate.
+Plans SHALL NOT add passes, tools, severities, or delegation units as steps. The Idea Progress List remains separate.
 
 #### Scenario: review declares its canonical plan
 - **WHEN** `/sai-4-review` dispatches its worker
 - **THEN** its command declares no `progress_plan`: its steps are routed by the `review-steps@1` machine, which creates no task list, and the worker enumerates no progress ids
 
 #### Scenario: security declares its canonical plan
-- **WHEN** `sai-5-security` dispatches its worker
-- **THEN** its adapter declares the five security steps in the specified order with the specified labels
-- **AND** the worker enumerates the same five ids
+- **WHEN** `sai-5-security` creates its worker
+- **THEN** the coordinator resets `security-steps@1`, whose steps are the five security ids in the specified order
+- **AND** the worker card enumerates the same five ids
 
 #### Scenario: performance declares its canonical plan
-- **WHEN** `sai-6-performance` dispatches its worker
-- **THEN** its adapter declares the five performance steps in the specified order with the specified labels
-- **AND** the worker enumerates the same five ids
+- **WHEN** `sai-6-performance` creates its worker
+- **THEN** the coordinator resets `performance-steps@1`, whose steps are the five performance ids in the specified order
+- **AND** the worker card enumerates the same five ids
 
 #### Scenario: accessibility declares its canonical plan
-- **WHEN** `sai-7-accessibility` dispatches its worker
-- **THEN** its adapter declares the five accessibility steps in the specified order with the specified labels
-- **AND** the worker enumerates the same five ids
+- **WHEN** `sai-7-accessibility` creates its worker
+- **THEN** the coordinator resets `accessibility-steps@1`, whose steps are the five accessibility ids in the specified order
+- **AND** the worker card enumerates the same five ids
 
 #### Scenario: audit plans receive payload-derived milestone stamps
-- **WHEN** an audit adapter renders its plan
-- **THEN** Claude Code and opencode render each completed step's stamp from the marking response's `received_at` without a coordinator clock call
-- **AND** ids, labels, order, and states remain governed by `sai/policies/todo-structure.md`
+- **WHEN** a standalone audit runs on Claude Code or opencode
+- **THEN** no panel task list is rendered and no milestone stamp is written
+- **AND** step state lives only in the cycle's `sai-state` session
 
 #### Scenario: security SCA step label
-- **WHEN** the `sai-5-security` plan is rendered
-- **THEN** the `resolve-sca` step carries the label "Audit dependencies" and keeps its id
+- **WHEN** the security worker card names the `resolve-sca` step
+- **THEN** the step keeps its id `resolve-sca`
 
 ### Requirement: audit-workers-report-completed-milestones
 
-Each worker SHALL return additive progress events after declared milestones complete, with ids in plan order and paths written since the preceding result. Resolution, proposal gate, and scope SHALL pass before events. The first filed pointer SHALL arrive with task disclosure, and the normal first event SHALL report startup and first filed step together. Complete security, performance, and accessibility paths SHALL retain four events. Existing empty-diff and no-UI mappings and terminal behavior SHALL remain, except for security: when its discovery decides the audit does not apply (an empty diff is this case), the first event SHALL also carry `resolve-sast-analysis` and `resolve-sca`, and the run SHALL write the Not Applicable report and return `completed`. Steps SHALL remain distinct and delivered just-in-time; workers SHALL NOT prefetch or own machine state or panel rendering.
+Each worker SHALL return a `step-done` result after its steps complete, carrying every newly completed id in plan order. The first pointer SHALL arrive with the task message, and the first batch SHALL report the fileless scope step with the first filed step. A step the worker skips because it does not apply SHALL be reported in the batch of the step that decided the skip. When security discovery decides the audit does not apply (an empty diff is this case), the first batch SHALL also carry `resolve-sast-analysis` and `resolve-sca`; when performance mapping decides it does not apply, the first batch SHALL also carry `audit-performance-tiers` and `resolve-diagnostics`; when accessibility mapping finds no UI file, the first batch SHALL also carry `resolve-static-audit` and `resolve-runtime-audit`; each then writes the Not Applicable report and returns `completed`. Steps SHALL remain distinct and delivered just-in-time; workers SHALL NOT prefetch or own machine state.
 
 #### Scenario: audit worker reports a completed batch
-- **WHEN** an audit worker completes one or more milestones
-- **THEN** it returns their canonical ids in plan order
-- **AND** the coordinator acknowledges with `continue_after_progress` without treating it as user input
+- **WHEN** an audit worker completes one or more steps
+- **THEN** it returns `step-done` with their canonical ids in plan order
+- **AND** the coordinator emits them to the audit's step machine and sends the next pointer, without treating the batch as user input
 
 #### Scenario: audit workers continue under step-gated instruction delivery
-- **WHEN** a security, performance, or accessibility worker continues between milestones
-- **THEN** it follows only the most recent `Active step:` pointer into its step library loaded through common.md instead of fetching a monolith
-- **AND** ids, labels, order, gated semantics, and report artifacts stay as declared
+- **WHEN** a security, performance, or accessibility worker continues between steps
+- **THEN** it follows only the most recent `Active step:` pointer into its step library instead of fetching a monolith
+- **AND** ids, order, gated semantics, and report artifacts stay as declared
 
 #### Scenario: security empty diff reports the not-applicable batch
 - **WHEN** the security selected diff is empty
-- **THEN** the first progress event carries `resolve-security-scope`, `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca`
+- **THEN** the first `step-done` batch carries `resolve-security-scope`, `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca`
 - **AND** the worker writes the Not Applicable report and returns `completed`
 
 ### Requirement: optional-audit-milestones-reconcile-at-applicability
 
-Security `resolve-sca`, performance `resolve-diagnostics`, and accessibility `resolve-runtime-audit` SHALL complete when their applicability gates resolve, whether execution occurs or legitimate skip applies. Skipped milestones SHALL remain visible without claiming execution. 
+Security `resolve-sca`, performance `resolve-diagnostics`, and accessibility `resolve-runtime-audit` SHALL complete when their applicability gates resolve, whether execution occurs or the stage does not apply. A stage that does not apply SHALL be reported without claiming execution, and the report SHALL say why it did not run.
 
 #### Scenario: review mutation analysis is gated
 - **WHEN** review reaches the end of its passes 1–11
@@ -76,37 +76,36 @@ Security `resolve-sca`, performance `resolve-diagnostics`, and accessibility `re
 
 #### Scenario: security SCA is gated
 - **WHEN** security resolves the manifest-change gate
-- **THEN** it reports `resolve-sca` complete after execution or legitimate skip
+- **THEN** it reports `resolve-sca` complete after execution, or with the SAST batch when no manifest is admitted
 - **AND** its existing SCA behavior and severity vocabulary remain
 
 #### Scenario: performance diagnostics are gated
-- **WHEN** performance resolves diagnostics authorization or applicability
-- **THEN** it reports `resolve-diagnostics` complete after authorized execution or legitimate skip
-- **AND** its existing diagnostics outcome remains
+- **WHEN** performance resolves diagnostics applicability
+- **THEN** it reports `resolve-diagnostics` complete after the diagnostics ran or were recorded as unavailable, or with the tier batch without `--runtime`
+- **AND** no authorization question is asked
 
 #### Scenario: accessibility runtime checks are gated
-- **WHEN** accessibility resolves runtime request, server, and authorization gates
-- **THEN** it reports `resolve-runtime-audit` complete after execution or legitimate skip
+- **WHEN** accessibility resolves its runtime gate
+- **THEN** it reports `resolve-runtime-audit` complete after the scanners ran or were recorded as unavailable, or with the static batch without `--runtime`
 - **AND** its static-only and runtime behavior remain
 
 ### Requirement: audit-terminal-reconciliation-preserves-outcomes
 
-The coordinator SHALL mark remaining steps completed on `completed`, and preserve last rendered states on `needs_input`, `failed`, or `cancelled`. Early outcomes SHALL report completed milestones: security empty diff, or any security scope with no attack surface and no admitted manifest, reports its first four ids together, writes the Not Applicable report, and returns `completed`, reconciling all five steps; performance empty diff returns existing no-change `completed` after its first two ids and reconciles all five steps; accessibility no-UI writes Not Applicable and returns `completed` after its scope id, reconciling all five. Progress SHALL NOT replace, delay, or rewrite terminal messages, report-writing rules, or changed-file results.
+The audit coordinator SHALL close the cycle's `sai-state` session in every outcome. On `completed` it SHALL verify and commit the report and print the closing report; on `failed` it SHALL print the worker's summary with no closing line and commit nothing. Not Applicable outcomes (security with no attack surface and no admitted manifest, performance with no performance surface, accessibility with no UI file) SHALL write the Not Applicable report, return `completed`, and be verified and committed like any report. Step state SHALL NOT replace, delay, or rewrite terminal messages, report-writing rules, or changed-file results.
 
 #### Scenario: successful audit closes the plan
-- **WHEN** a worker returns its existing `completed` result
-- **THEN** the coordinator marks all five audit steps complete
-- **AND** summary, artifact behavior, changed-file union, and terminal message remain
+- **WHEN** a worker returns `completed`
+- **THEN** the coordinator verifies and commits the report, prints the closing report, and closes the session
+- **AND** summary, artifact behavior, and changed-file results remain
 
 #### Scenario: failed or cancelled audit freezes the plan
-- **WHEN** a worker returns its existing `failed` or `cancelled` result
-- **THEN** the coordinator preserves last rendered states
-- **AND** failure or cancellation behavior remains
+- **WHEN** a worker returns `failed`
+- **THEN** the coordinator prints the worker's summary, commits nothing, and closes the session
 
 #### Scenario: empty diff or no UI is detected
-- **WHEN** security or performance reaches empty diff or accessibility reaches no UI
-- **THEN** progress preserves that command's terminal message and artifact behavior, with security writing the Not Applicable report
-- **AND** the plan reconciles to its explicit early-outcome state without forcing a findings report or inventing findings
+- **WHEN** security or performance reaches an empty diff or accessibility reaches no UI
+- **THEN** the worker writes the Not Applicable report and returns `completed`, and the coordinator verifies and commits it
+- **AND** no findings report is forced and no finding is invented
 
 ### Requirement: audit-progress-does-not-change-idea-progress-list
 
