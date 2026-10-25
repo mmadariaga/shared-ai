@@ -7,16 +7,16 @@ TBD - created by archiving change shared-tool-resolution-rule. Update Purpose af
 
 ### Requirement: Delta header tool path resolution
 
-The system SHALL resolve `check-delta-headers.js` per the shared tool-resolution rule, taking the first existing candidate per harness and copying it verbatim. If none exists it SHALL name the tried candidates and stop without a prose fallback. It SHALL invoke `node <tool-path> <change-name> --delta-dir <dir>/specs` for temporary draft checks with the confirmed change name, where `<dir>` is the backfill transfer directory or the archive correction staging directory. It SHALL preserve the accepted `--json`, `--root`, `--delta-dir`, and `--specs-dir` flags, add `--scenario-exceptions <temporary-json-file>` for the applicable temporary metadata, and never pass `--cwd`. Main specifications SHALL resolve from the project root rather than from the temporary draft directory. Claude Code and opencode SHALL use the same validation semantics through the shared checker.
+The system SHALL resolve `check-delta-headers.js` by the shared tool-resolution policy, taking the first existing harness candidate verbatim and reporting tried candidates without a prose fallback when none exists. Temporary checks SHALL invoke `node <tool-path> <change-name> --delta-dir <dir>/specs`, with the confirmed name and transfer or correction directory. Accepted flags SHALL remain `--json`, `--root`, `--delta-dir`, and `--specs-dir`, never `--cwd` or the retired `--scenario-exceptions`. Main specs SHALL resolve from the project root. Claude Code and opencode SHALL share these validation semantics.
 
 #### Scenario: Preflight via resolved copy
-- **WHEN** backfill or archive runs the delta-header preflight
-- **THEN** it uses the resolved copy with the confirmed change name and unchanged flags
+- **WHEN** backfill or archive runs header preflight
+- **THEN** it uses the resolved tool copy, confirmed name, and accepted flags
 
 #### Scenario: Backfill preflight targets the transfer directory
-- **WHEN** the backfill coordinator runs the delta-header preflight
-- **THEN** it passes `<transfer-dir>/specs` as `--delta-dir`
+- **WHEN** backfill checks temporary drafts
+- **THEN** it uses the transfer directory specs as --delta-dir
 
 #### Scenario: Temporary exceptions supplement the invocation
-- **WHEN** a boundary check uses independently approved temporary scenario exceptions
-- **THEN** it supplies their file through `--scenario-exceptions` without changing project-root resolution or using `--cwd`
+- **WHEN** a boundary check receives a request to supply temporary scenario exceptions
+- **THEN** it uses no exception file or flag and enforces mandatory preservation against project-root main specs

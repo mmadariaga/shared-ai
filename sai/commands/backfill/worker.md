@@ -120,8 +120,8 @@ Return each ask as its own `needs_input` result, shaped per
 ## Draft transfer
 
 Fetch @sai/policies/scenario-preservation.md and apply its author boundary before
-returning completed drafts, including corrected drafts. Return its temporary
-`scenario_exception_reference` separately from `draft_references`.
+returning completed drafts, including corrected drafts. These preliminary checks
+do not replace receiver-side CLI validation.
 
 The worker never returns draft content in a message. After composing the drafts
 (instruction Phase 6), write each one with
@@ -146,7 +146,8 @@ The Direct Build (unattended) coordinator may continue the same prepared worker 
 has validated the complete draft set against the sai-workflow schema and has
 authorized execution. The continuation is one opaque payload whose first line
 is exactly `--direct-build-execute`; the remaining content is a closed execution
-order containing the confirmed change name and, for every prepared draft, the
+order containing the confirmed change name, the receiver's accepted validation
+fingerprint, and, for every prepared draft, the
 reference `{path, sha256, destination}` and no draft content. The order is not
 a new plan: it must be an exact one-to-one representation of the worker's
 latest prepared references and may name only these destinations:
@@ -160,8 +161,11 @@ The worker validates the marker, change name, destination allow-list,
 duplicate-free destination set, reference identity (each `path` and `sha256`
 equal to the prepared reference), and pending execution state before writing.
 It then runs `transfer.js verify` for every reference, repeats the scenario
-preservation check against current main specs using the prepared, coordinator-
-approved exception metadata, and only when all pass
+preservation check against current main specs, and applies the pre-write check:
+Fetch @sai/policies/backfill-draft-validation.md and follow its worker boundary
+with the receiver's accepted fingerprint and complete reference set. A missing
+fingerprint or failed freshness check writes nothing and returns the diagnostic
+for repeated receiver validation. Only when all checks pass, it
 runs `transfer.js materialize --dir <transfer-dir> --path <path> --sha256
 <sha256> --destination <destination>` for each, which copies the verified bytes
 byte-for-byte and creates only the parent directories those destinations need.
@@ -175,12 +179,13 @@ After a successful execution, a repeated execute continuation carrying the same 
 Correction feedback is the other accepted continuation after execution: the same
 run may continue this worker with the verbatim archive failure plus the named
 draft sections to recompose. Recompose only those sections from the staged diff,
-the block grounding, and the CLI error. Put corrected drafts and metadata into
+the block grounding, and the CLI error. Put corrected drafts into
 transfer files, run the author preservation check, and return the complete latest
 references without rewriting repository files. After the coordinator independently
 validates them under the receiver boundary, it may continue this correction with
 explicit authorization of those exact corrected references. Verify them again,
-repeat the preservation check, and materialize only the named corrected drafts;
+repeat the preservation and accepted-fingerprint checks on the complete set,
+and materialize only the named corrected drafts;
 report every rewritten path in `changed_files`. This completes the pending
 correction, not a replay of the consumed initial execute order. Corrections carry
 no commit authorization. A defect that repeats without progress after correction
@@ -221,7 +226,7 @@ state-changing git commands.
 For the ordinary route and the prepare stretch, NEVER write any repository
 file — no artifact, no draft on disk in the repository, no `.openspec.yaml` key,
 nothing outside reporting duties. The only files the worker creates there are
-the transfer files and temporary scenario metadata written through `transfer.js put` under Draft transfer,
+the transfer files written through `transfer.js put` under Draft transfer,
 outside the repository. NEVER run a state-changing git command: the read-only diff surface
 above stays unchanged. Schema validation and every final write into
 `openspec/changes/{name}/` belong exclusively to the coordinator unless the

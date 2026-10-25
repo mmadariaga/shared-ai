@@ -57,17 +57,17 @@ test('E9: unapproved rename fails', t => {
   assert.equal(fixture(t, modified(['One', 'Renamed'])).run().status, 1);
 });
 
-test('E10: exact removal and rename exceptions pass', t => {
-  assert.equal(fixture(t, modified(['One'])).run([exception()]).status, 0);
+test('retired exception flag cannot authorize removal or rename', t => {
+  assert.equal(fixture(t, modified(['One'])).run([exception()]).status, 2);
   assert.equal(fixture(t, modified(['One', 'Renamed'])).run([
     exception('rename', { new_name: 'Renamed' }),
-  ]).status, 0);
+  ]).status, 2);
 });
 
-test('E10: exception permits only the named difference', t => {
+test('retired exception flag is rejected even for a named difference', t => {
   const result = fixture(t, modified(['New'])).run([exception()]);
-  assert.equal(result.status, 1);
-  assert.deepEqual(result.report.violations.map(v => v.scenario), ['One']);
+  assert.equal(result.status, 2);
+  assert.equal(result.report, null);
 });
 
 test('E10: moving a scenario to another requirement does not preserve it', t => {
@@ -80,12 +80,12 @@ test('E10: moving a scenario to another requirement does not preserve it', t => 
 
 test('E10: rename target must be in the same requirement', t => {
   const f = fixture(t, modified(['One']) + `## ADDED Requirements\n${requirement('New', ['Renamed'])}`);
-  assert.equal(f.run([exception('rename', { new_name: 'Renamed' })]).status, 1);
+  assert.equal(f.run([exception('rename', { new_name: 'Renamed' })]).status, 2);
 });
 
 for (const override of [{ capability: 'different' }, { requirement: 'Other' }, { original_name: 'two' }]) {
   test(`E10: exception identity is exact ${JSON.stringify(override)}`, t => {
-    assert.equal(fixture(t, modified(['One'])).run([exception('remove', override)]).status, 1);
+    assert.equal(fixture(t, modified(['One'])).run([exception('remove', override)]).status, 2);
   });
 }
 
@@ -98,7 +98,7 @@ test('E10: another capability cannot conceal a missing scenario', t => {
 
 test('exceptions are narrow, unique, and applicable', t => {
   const f = fixture(t);
-  assert.equal(f.run([exception()]).status, 1, 'unused removal');
+  assert.equal(f.run([exception()]).status, 2, 'retired flag');
   for (const invalid of [true, [{}], [exception('anything')], [exception(), exception()],
     [exception('rename')], [exception('remove', { new_name: 'New' })],
     [exception('rename', { new_name: 'Two' })], [exception('remove', { approved: true })]]) {
@@ -166,12 +166,21 @@ test('requirement-header E1-E5 regression: absent mains, duplicates, missing, mi
   assert.equal(fixture(t, modified(['one', 'Two'])).run().status, 1);
 });
 
+test('replacement requires a distinct non-colliding requirement name', t => {
+  const replace = name => '## REMOVED Requirements\n### Requirement: Existing\n' + `## ADDED Requirements\n${requirement(name, ['One'])}`;
+  assert.equal(fixture(t, replace('Existing')).run().report.violations[0].problem, 'ADDED_DUPLICATE');
+  assert.equal(fixture(t, replace('Replacement')).run().status, 0);
+  const f = fixture(t, replace('Replacement'), requirement('Existing', ['One', 'Two']) + requirement('Replacement', ['Other']));
+  assert.equal(f.run().report.violations[0].problem, 'ADDED_DUPLICATE');
+});
+
 test('shared contracts enforce separate author, receiver, and archive checks on both harnesses', () => {
   const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const policy = read('sai/policies/scenario-preservation.md');
   assert.match(policy, /Claude Code and opencode/);
-  assert.match(policy, /worker declaration,[\s\S]*not approval/);
-  assert.match(policy, /Metadata is temporary, never a scenario or repository artifact/);
+  assert.match(policy, /Preservation in MODIFIED is mandatory, with no exception mechanism/);
+  assert.match(policy, /distinct, non-colliding requirement name/);
+  assert.doesNotMatch(policy, /scenario_exception_reference|--scenario-exceptions/);
   for (const file of ['sai/commands/backfill/worker.md', 'sai/commands/backfill/coordinator.md',
     'sai/commands/archive/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {
     assert.match(read(file), /Fetch @sai\/policies\/scenario-preservation\.md/);
