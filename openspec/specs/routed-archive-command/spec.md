@@ -104,27 +104,27 @@ The Direct Build execute continuation SHALL stop staging and commit on any CLI f
 
 ### Requirement: Archive independently checks current scenario preservation
 
-Immediately before the ordinary archive CLI or authorization of a Direct Build archive execution order, the coordinator SHALL independently run the shared header and scenario-preservation checker on current on-disk deltas against current published specifications. It SHALL supply only temporary exceptions individually verified against explicit approved scope. The header-fix handoff SHALL NOT authorize scenario removal or renaming. A failed or incomplete check SHALL prevent synchronization, archive, and commit of the affected drafts until correction. The coordinator SHALL repeat this boundary after every content correction before retrying synchronization. The checks SHALL NOT edit published specifications and SHALL preserve the existing CLI mutation ownership and authorization rules.
+Immediately before ordinary archive CLI execution or authorization of a Direct Build archive order, the coordinator SHALL independently run the shared header and scenario-preservation checker on current on-disk deltas against current main specs, with mandatory preservation and no exception mechanism. Header fixes SHALL grant no scenario-removal or rename permission. Failed or incomplete checks SHALL prevent synchronization, archive, and commit until correction, and SHALL repeat after each content correction before retry. Temporary-project validation SHALL replace neither this check nor archive CLI controls. Published specs SHALL remain read-only checker inputs; mutation ownership and authorization SHALL remain unchanged.
 
 #### Scenario: Ordinary archive detects unapproved loss
-- **WHEN** a current MODIFIED delta omits an existing scenario without a scope-verified exception
-- **THEN** the coordinator prevents the archive CLI, synchronization, and commit of those drafts until the affected content is corrected
+- **WHEN** a MODIFIED delta omits an existing scenario
+- **THEN** the coordinator prevents archive CLI execution, synchronization, and commit until correction
 
 #### Scenario: Direct Build independently verifies approval
-- **WHEN** Direct Build reaches archive authorization with retained temporary exception metadata
-- **THEN** the coordinator re-verifies that metadata and each exception against the approved block rather than trusting the backfill worker before running the current-delta check
+- **WHEN** Direct Build reaches archive authorization after backfill validation
+- **THEN** the coordinator independently checks current deltas without trusting author checks or accepting exception metadata
 
 #### Scenario: Header correction grants no removal permission
-- **WHEN** a content correction changes delta classification or scenario content
-- **THEN** the coordinator repeats preservation checking and requires independent approval for each removal or rename before any CLI retry
+- **WHEN** a correction changes header classification or scenario content
+- **THEN** the coordinator repeats mandatory preservation before retrying the archive CLI
 
 #### Scenario: Ordinary archive does not depend on prior temporary state
-- **WHEN** an ordinary archive session needs an exception after the previous backfill session has ended
-- **THEN** it derives temporary metadata from explicit approved change scope and verifies it independently instead of treating absent prior state as approval
+- **WHEN** ordinary archive runs after the previous backfill session ended
+- **THEN** it checks current deltas directly without requiring or deriving temporary scenario exceptions
 
 #### Scenario: Metadata stays out of archive outputs
-- **WHEN** archive uses temporary exception metadata
-- **THEN** that metadata is neither an owned staging path, an archive input artifact, nor a commit artifact
+- **WHEN** archive receives legacy temporary exception metadata
+- **THEN** it grants no bypass and does not become an archive input, owned staging path, or commit artifact
 
 ### Requirement: Direct card set and wrapper fetch
 

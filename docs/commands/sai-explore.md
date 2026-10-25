@@ -130,6 +130,12 @@ still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
 it never pushes. For slices, the selector repeats per slice.
 
+Before writing retroactive specs, Direct Build applies the same
+[complete-draft OpenSpec validation as standalone backfill](sai-backfill.md#in-detail),
+in a private temporary project against current specifications. Changed inputs
+require validation again; a rejected or incomplete check authorizes no draft
+writes. Independent archive checks still run.
+
 An interrupted Direct Build can resume in the same conversation. It retains
 its agents, accepted work, verification references, recovery counters, and the
 original authorization for one local commit. Resumption continues the first

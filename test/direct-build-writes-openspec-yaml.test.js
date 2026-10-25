@@ -69,7 +69,7 @@ test('direct-build artifact set includes .openspec.yaml metadata file', () => {
     'Step 5 must state that the artifact set includes .openspec.yaml in canonical form');
 
   // Step 6 includes .openspec.yaml in the validated draft references (drafts travel as transfer-file references)
-  assert.match(explore, /6\. \*\*Backfill execution\*\*[\s\S]*?containing only the validated draft references[^.]*?including the reference whose destination is `openspec\/changes\/\{name\}\/\.openspec\.yaml`/,
+  assert.match(explore, /6\. \*\*Backfill execution\*\*[\s\S]*?containing the validated draft references[^.]*?and accepted validation fingerprint, including the reference whose destination is `openspec\/changes\/\{name\}\/\.openspec\.yaml`/,
     'Step 6 must include .openspec.yaml in the validated draft references');
 
   // Reference the canonical form in backfill/instructions.md section 6a

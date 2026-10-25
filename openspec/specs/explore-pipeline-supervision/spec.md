@@ -250,23 +250,23 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 ### Requirement: Build spec review checks MODIFIED-delta completeness
 
-The Direct Build - Unattended route's step-4 spec review SHALL apply the shared scenario-preservation receiver boundary to temporary backfill drafts and their separate exception reference. It SHALL verify references, independently approve every exception against the approved block, and run the deterministic checker against current published specifications, comparing scenario names within each capability and MODIFIED requirement. Unapproved missing scenarios SHALL be High completeness findings routed to the same backfill worker within the existing findings budget. A failed or incomplete comparison SHALL NOT be accepted through review-round cap exhaustion. Verified temporary metadata and approval evidence SHALL remain available through archive, and the coordinator SHALL repeat the independent archive boundary on current deltas immediately before archive execution. Worker-authored exceptions alone SHALL grant no approval.
+Direct Build step-4 SHALL verify temporary references and independently check mandatory preservation against current main specs within each capability and MODIFIED requirement, without exception approval or metadata. Missing scenarios SHALL be High completeness findings continued to the same worker within the findings budget. Failed or incomplete checks SHALL never become acceptable through review-cap exhaustion. The receiver SHALL validate the complete latest draft set with the shared OpenSpec CLI temporary-project validator and retain accepted fingerprint evidence and diagnostics. Before execute or correction authorization it SHALL recheck freshness; the worker SHALL repeat this check before writes. Transfer drafts and validation evidence SHALL remain available for archive corrections, and independent current-delta archive checking and CLI controls SHALL remain mandatory.
 
 #### Scenario: A draft MODIFIED drops an existing scenario
-- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds without an applicable exception independently approved against the accepted scope
-- **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget.
+- **WHEN** step-4 finds a MODIFIED requirement missing any original scenario
+- **THEN** explore records a High completeness finding and requests correction from the same worker within the findings budget
 
 #### Scenario: Approved exception permits only its named difference
-- **WHEN** an exception explicitly covered by the approved block permits one scenario removal or rename
-- **THEN** the checker permits only that difference and still reports any unrelated missing scenario
+- **WHEN** approved scope requests a scenario removal or rename in MODIFIED
+- **THEN** the exception is rejected; preservation or an explicitly chosen distinct requirement replacement is required
 
 #### Scenario: Exhausted review budget does not accept invalid preservation
-- **WHEN** the review budget is exhausted but the scenario comparison still fails or cannot complete
-- **THEN** the affected drafts are not accepted for materialization or archive
+- **WHEN** the findings budget is exhausted with preservation or CLI validation failing or incomplete
+- **THEN** the drafts are not accepted and no execute order authorizes materialization or archive
 
 #### Scenario: Metadata survives until the archive check
-- **WHEN** validated backfill drafts have been materialized but archive has not completed
-- **THEN** the transfer directory and verified metadata remain available for the independent archive check and any corrections until terminal cleanup
+- **WHEN** validated drafts have been materialized but archive is incomplete
+- **THEN** the transfer directory and validation evidence remain available for independent archive checks and corrections until accepted cleanup
 
 ### Requirement: The Direct Build run has three guard windows
 

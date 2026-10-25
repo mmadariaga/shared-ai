@@ -22,55 +22,55 @@ Each requirement SHALL be placed by verbatim existence of its exact Requirement 
 
 ### Requirement: Deterministic header check script decides classification
 
-The repository SHALL provide a deterministic script at `sai/tools/check-delta-headers.js` that decides every ADDED, MODIFIED, and REMOVED header by verbatim existence, never by inference. It SHALL preserve the existing delta-dir, specs-dir, root, and json options and skip RENAMED sections. For each correctly classified MODIFIED requirement, it SHALL compare the existing scenario names in the matching capability and requirement against the draft. Existing names MUST remain in that requirement unless an applicable exact removal or rename exception is supplied. New scenarios and changes to scenario order or body text SHALL be permitted. The script SHALL exit 0 only when both header classification and scenario preservation pass, exit 1 with concrete header or scenario violations, and exit 2 for usage, IO, invalid exception metadata, or a comparison that cannot complete.
+The repository SHALL provide `sai/tools/check-delta-headers.js` to classify ADDED, MODIFIED, and REMOVED requirements by verbatim existence, preserve delta-dir, specs-dir, root, and json options, and skip RENAMED sections. Every correctly classified MODIFIED requirement MUST retain every original scenario name within the matching capability and requirement, without exceptions. Scenario text and order may change and new scenarios may be added. Exit 0 SHALL require correct headers and complete preservation, exit 1 SHALL identify concrete violations, and exit 2 SHALL indicate usage, IO, or incomplete comparison. The retired `--scenario-exceptions` flag SHALL be rejected as an unknown flag.
 
 #### Scenario: ADDED duplicate fails the check
-- **WHEN** an ADDED heading already exists verbatim in the matching main spec
-- **THEN** the script reports an ADDED_DUPLICATE violation and exits 1
+- **WHEN** an ADDED requirement already exists verbatim in the matching main spec
+- **THEN** the script exits 1 with ADDED_DUPLICATE
 
 #### Scenario: REMOVED without a match fails the check
-- **WHEN** a REMOVED heading has no verbatim match in the matching main spec
-- **THEN** the script reports a REMOVED_MISSING violation and exits 1
+- **WHEN** a REMOVED requirement has no matching original heading
+- **THEN** the script exits 1 with REMOVED_MISSING
 
 #### Scenario: New capability without a main spec requires ADDED
-- **WHEN** a capability has no matching main spec file
-- **THEN** every requirement of that capability passes only under the ADDED section
+- **WHEN** a capability has no main spec
+- **THEN** its requirements pass only as ADDED
 
 #### Scenario: Changed order and content preserve scenario identities
-- **WHEN** a MODIFIED requirement retains all existing scenario names but changes their order or text or adds new scenarios
-- **THEN** scenario preservation passes without requiring exceptions
+- **WHEN** all original scenario names remain but bodies, ordering, or added scenarios differ
+- **THEN** preservation succeeds
 
 #### Scenario: Missing scenario is identified concretely
-- **WHEN** a MODIFIED requirement omits an existing scenario without an applicable exception
-- **THEN** the script exits 1 and identifies the capability, requirement, and missing scenario as MODIFIED_SCENARIO_MISSING
+- **WHEN** any original scenario name is missing from its MODIFIED requirement
+- **THEN** the script exits 1 with MODIFIED_SCENARIO_MISSING identifying the capability, requirement, and scenario without offering an exception
 
 #### Scenario: Moving a scenario does not conceal omission
-- **WHEN** an existing scenario is absent from its original MODIFIED requirement but appears under another requirement or capability
-- **THEN** the script reports the omission from the original requirement
+- **WHEN** a missing scenario appears elsewhere under another requirement or capability
+- **THEN** the original MODIFIED requirement still fails
 
 #### Scenario: Comparison cannot be completed
-- **WHEN** a compared specification is unreadable or has invalid encoding, ambiguous requirement or scenario headings, duplicate scenario names, absent or unparseable scenario headings in a compared requirement, or an unterminated fenced block
-- **THEN** the script exits 2 without declaring scenario preservation successful
+- **WHEN** a specification is unreadable, invalidly encoded, structurally ambiguous, duplicates names, lacks parseable scenarios, or contains an unterminated fence
+- **THEN** the script exits 2 without claiming successful preservation
 
 #### Scenario: Fenced examples are not structural evidence
-- **WHEN** a fenced code example contains requirement or scenario headings
-- **THEN** those example headings do not count as real requirements or preserved scenarios
+- **WHEN** example headings appear inside fenced code
+- **THEN** they do not count as real requirements or preserved scenarios
 
 ### Requirement: Backfill coordinator runs mandatory pre-write delta-header preflight
 
-The backfill coordinator SHALL run the deterministic header and scenario-preservation script as a mandatory pre-write check before writing anything, directly on the worker's verified transfer files under `<transfer-dir>/specs`, with the confirmed change name and no staging copy. It SHALL independently approve each proposed scenario exception against explicit accepted scope before supplying its temporary metadata to the checker. Exit 0 permits validated writes; exit 1 SHALL write nothing into the change directory and continue the same worker with the verbatim report and applicable classification or preservation rule; exit 2 SHALL write nothing and report the incomplete check or tooling failure verbatim. Corrected drafts SHALL pass the same check again.
+The backfill coordinator SHALL run the shared header and scenario-preservation checker on the complete verified transfer draft specs against current main specs before any repository write. Missing scenarios SHALL fail without exception approval or metadata. Exit 1 SHALL return the verbatim diagnostic to the same worker for correction without writes; exit 2 SHALL report incomplete comparison or tooling failure without writes. Corrected drafts SHALL repeat checking. A passing preflight SHALL NOT alone authorize writes: complete receiver-side OpenSpec CLI validation and accepted-input freshness checking SHALL also pass.
 
 #### Scenario: Clean preflight proceeds to writes
-- **WHEN** the draft specs in the transfer directory exit the header script with 0
-- **THEN** the coordinator proceeds to validated writes
+- **WHEN** the temporary draft specs pass header and preservation preflight
+- **THEN** the coordinator proceeds to mandatory receiver-side CLI validation, not directly to materialization
 
 #### Scenario: Misclassified headers return to the same worker
-- **WHEN** the draft specs in the transfer directory exit the header script with 1
-- **THEN** the coordinator writes nothing and continues the same worker with the verbatim report and cited headers
+- **WHEN** temporary drafts fail header or preservation preflight
+- **THEN** the coordinator returns the verbatim report and cited headers to the same worker and writes nothing
 
 #### Scenario: Missing scenario prevents materialization
-- **WHEN** the checker reports unapproved scenario loss in temporary drafts
-- **THEN** the coordinator returns the report to the same worker and writes no change artifact before corrected drafts pass
+- **WHEN** the checker reports any missing original scenario in MODIFIED
+- **THEN** no draft is materialized until correction and all required checks pass
 
 ### Requirement: Header tooling stays out of install and projection surfaces
 The change SHALL add only the new script under sai/tools plus the backfill and archive cards, and SHALL NOT modify the install manifest, harness projections, or installer scripts.
@@ -107,27 +107,3 @@ The script at `sai/tools/check-delta-headers.js` SHALL use the working directory
 
 - **WHEN** the script is run with `--help`
 - **THEN** the `--root` line states that the default is the working directory
-
-### Requirement: Scenario exceptions are exact and locally applicable
-
-The checker SHALL accept `--scenario-exceptions <temporary-json-file>` containing a JSON array. Each exception MUST identify exact `capability`, `requirement`, `original_name`, and `operation` values, with operation `remove` or `rename`; a rename MUST also identify `new_name`. No other fields SHALL be accepted. A rename MUST have a different new name present in the same draft requirement. Exceptions SHALL apply only to the named missing original scenario, never to another loss. Duplicate or malformed exceptions SHALL exit 2; unused exceptions SHALL produce SCENARIO_EXCEPTION_UNUSED violations and exit 1. Without exceptions, every existing name SHALL be preserved.
-
-#### Scenario: Exact removal is allowed
-- **WHEN** a valid removal exception names the capability, MODIFIED requirement, and existing scenario omitted from its draft
-- **THEN** that omission is permitted without permitting any other missing scenario
-
-#### Scenario: Exact rename requires its target locally
-- **WHEN** a valid rename exception identifies the missing original scenario and its new name is present in that same requirement
-- **THEN** the named rename is permitted
-
-#### Scenario: Rename target in another requirement is insufficient
-- **WHEN** an exception's new name appears only under a different requirement or capability
-- **THEN** the original requirement's missing scenario is still a violation
-
-#### Scenario: Unused exception fails
-- **WHEN** an exception does not match an actual omission or rename in the identified requirement
-- **THEN** the checker exits 1 with SCENARIO_EXCEPTION_UNUSED
-
-#### Scenario: Invalid exception metadata cannot bypass comparison
-- **WHEN** exception metadata is unreadable, malformed, duplicated, has unsupported fields or operations, or declares a rename without a distinct new name
-- **THEN** the checker exits 2 rather than skipping comparison or granting a broad bypass
