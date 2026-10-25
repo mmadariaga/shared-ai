@@ -2,22 +2,22 @@
 
 ## Purpose
 
-Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
+Enables the `--fast-track` per-invocation flag on `sai-archive` and `sai-backfill`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track. The goal-driven commands that already run unattended accept and ignore the token.
 
 ## Requirements
 
-### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
+### Requirement: sai-2-design accepts and ignores fast-track and keeps its automatic specs approval
 
-`--fast-track` remains accepted by `sai-2-design`, and its parsing, preflight ordering, and `> FAST-TRACK MODE ACTIVE` banner are unchanged. The specs approval gate SHALL not be treated as part of any opt-out set for `sai-2-design`, because that gate is an automatic stamp presented to nobody: the flag has no approval question to auto-answer, and the approval metadata is written identically with and without the flag.
+`/sai-2-design` SHALL accept an explicit `--fast-track` token and ignore it: the token SHALL activate nothing and SHALL print no `> FAST-TRACK MODE ACTIVE` banner, and `/sai-2-design` SHALL NOT be a member of the fast-track parser. The specs approval is an automatic stamp presented to nobody, so the token has no approval question to auto-answer, and the approval metadata SHALL be written identically with and without the token.
 
 #### Scenario: fast-track does not change approval behavior
 
 - **WHEN** `/sai-2-design {name} --fast-track` runs and `/sai-2-design {name}` runs on an otherwise identical change
 - **THEN** both invocations stamp `approval.specs.approved_at` (only when absent or empty) and `approval.specs.notes` as an empty string, with no question presented in either case
 
-#### Scenario: fast-track membership and banner unchanged
-- **WHEN** the fast-track command membership list or the `sai-2-design` banner behavior is evaluated
-- **THEN** `sai-2-design` SHALL remain in the membership list and SHALL still emit the fast-track banner exactly once per session after universal prerequisites pass
+#### Scenario: the token is ignored with no banner
+- **WHEN** `/sai-2-design {name} --fast-track` runs
+- **THEN** no fast-track banner is printed and the run behaves exactly as `/sai-2-design {name}`
 
 ### Requirement: sai-archive under fast-track auto-proceeds the unchecked-items gate and conditionally the delta-spec sync gate
 
