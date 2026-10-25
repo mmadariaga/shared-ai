@@ -250,57 +250,47 @@ auto-advancing and ask the user for an explicit next step; the progression
 continues in degraded mode without re-deriving the transition table in prose.
 Version-mismatch and closed-session outcomes fall to this degraded path
 rather than continuing against a mismatched machine. A command that declares
-its own store-failure fallback (for example apply's degraded-store fallback)
-follows it instead. Coordinators that declare a `step_machine` never run
-degraded: see § Step machines.
+its own store-failure fallback follows it instead. The goal-driven
+coordinators that drive a linear step machine never run degraded: their
+fallback is their static step order (see § Step machines).
 
 ## Step machines
 
-A coordinator whose adapter declares `step_machine: <name>@<version>` routes
-its worker through a linear step machine: advance-only, routing-only, one
-happy-path sequence of step files. The machine definition (step ids, step
-files, stage table, initial state) is a data module in `sai-state/machines/`.
+A linear step machine is advance-only, routing-only, one happy-path sequence
+of step files. The machine definition (step ids, step files, stage table,
+initial state) is a data module in `sai-state/machines/`. No card declares a
+`step_machine` adapter field any more: the goal-driven coordinators (for
+example `red-steps@1`, `green-steps@1`, `review-steps@1`, the audit
+`{audit}-steps@1`, `spec-steps@1`, and `design-steps@1`) drive their machines
+from their own card, which names the events it emits and its static step order.
+The rules below hold for every one of them.
 
 1. **Segment start**: `spawn`, then immediately `reset <id> <machineId>`.
-   Retain the returned `stage` and `next`: they name the first filed step. The
-   first step of every step machine is fileless (`follow: none`), so its
-   progress event would only relay that pointer. Instead, send the pointer
-   line `Active step: <stage> — follow <next.follow>` as the first line of the
-   post-ready task-disclosure continuation, before the task. The worker runs
-   the fileless first step inline, follows that pointer, and reports both ids
-   in its first progress event. The first emit after reset therefore normally
-   carries two ids; when it carries only the first, the machine returns the
-   same pointer again, with no error. This rule is phase-neutral: it applies
-   to every coordinator or supervising surface that declares a `step_machine`,
-   with no per-phase exception.
-2. **Each progress event**: pipe the worker's progress payload, as received,
-   into the progress emit (`sai-state emit <id> <machineId> --progress -`); it
-   validates the payload and advances the machine in one call, deriving
-   `{"step_ids":[...]}` from the worker's reported completed ids in order (an
-   empty list when it reported none). Do not hand-compose event JSON. Pass any
-   initialization option declared by the owning phase contract on the first
-   emit after reset. An invalid `validation` block is a malformed payload,
-   treated as a malformed payload; the machine
-   is untouched. The machine advances on declared new ids and
-   ignores the rest. Send the returned `next.follow` in a two-line continuation: the
-   protocol continuation line, then `Active step: <id> — follow <path>`;
-   `next.follow: none` is terminal and maps to the line `Active step: none —
-   complete remaining work and return your terminal result.`
-3. **Questions, feedback, and recovery** (`needs_input`,
-   `continue_after_recovery`)
-   do not invoke emit and do not consult the machine:
-   the active step file persists across them, and the machine stays parked
-   until the next progress event. A replacement worker re-resolves its
+   `reset` returns `{stage, next: {follow, hint}}` for its first filed step.
+   Retain the returned `stage` and `next`. The first step of every step
+   machine is fileless (`follow: none`), so its report would only relay that
+   pointer. Instead, send the pointer line `Active step: <stage> — follow
+   <next.follow>` as the first line of the task message, before the task. The
+   worker runs the fileless first step inline, follows that pointer, and
+   reports both ids in its first step report. The first emit after reset
+   therefore normally carries two ids; when it carries only the first, the
+   machine returns the same pointer again, with no error. This rule is
+   phase-neutral: it applies to every card that drives a step machine, with no
+   per-phase exception.
+2. **Each step report**: emit `{"step_ids":[...]}` with the ids the worker
+   reported, in order, as its card says. The machine advances on declared new
+   ids and ignores the rest. Send the returned `next.follow` as
+   `Active step: <id> — follow <path>`; `next.follow: none` is terminal.
+3. **Questions and replacements** do not invoke emit and do not consult the
+   machine: the active step file persists across them, and the machine stays
+   parked until the next step report. A replacement worker re-resolves its
    active step from the surviving session's machine state without re-emitting.
    Before the first progress event, that active step is the first filed step
-   from the `reset` response, so the replacement's first continuation carries
-   its pointer line, never the fileless first step's `none`.
-4. **Run close** (`completed`, `failed`, `cancelled`): `reset <id> <machineId>`
-   again, so a later run in the same chat starts at step zero.
+   from the `reset` response, so the replacement's first message carries its
+   pointer line, never the fileless first step's `none`.
+4. **Run close**: `reset <id> <machineId>` again, so a later run starts at
+   step zero.
 
-A store failure (unreachable, `SESSION_FILE_CORRUPT`, version mismatch, or
-unknown machine) stops the coordinator: surface the error with its context and
-wait for user instructions. A progress emit that hits a store failure still
-returns its valid `validation` block unaltered. There is no degraded
-continuation, no static pointer map, and no Bounded Recovery. A delivery
-failure first gets § Corrective retry.
+The store never gates these runs. When the store is unreachable or an emit
+still fails after § Corrective retry, the card sends the next pointer from the
+static step order it lists and carries on.
