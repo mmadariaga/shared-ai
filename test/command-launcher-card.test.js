@@ -209,15 +209,16 @@ test('final wrappers: InvocationEnvelope block follows launcher fetch with exact
          `${harness}/${file} must not construct or forward wrapper_echo_value`);
        assert.match(source, /arguments_value:\s*\$ARGUMENTS/, `${harness}/${file} should use $ARGUMENTS arguments_value`);
         const envelopeStart = source.indexOf('InvocationEnvelope:') + 'InvocationEnvelope:'.length;
-        const envelopeLines = source
-          .slice(envelopeStart)
+         const envelopeLines = source
+           .slice(envelopeStart)
+           .split('<!-- User customizations below this line -->')[0]
           .trim()
           .split(/\r?\n/)
           .map(line => line.trim());
         assert.deepEqual(envelopeLines, [
           `command_name: ${folder}`,
           'arguments_value: $ARGUMENTS',
-        ], `${harness}/${file} should have exactly the ordered two-key envelope with no trailing content`);
+        ], `${harness}/${file} should have exactly the ordered two-key envelope before the customization section`);
 
         const argumentLines = source
           .split(/\r?\n/)

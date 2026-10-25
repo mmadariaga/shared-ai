@@ -13,3 +13,5 @@ Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the I
 InvocationEnvelope:
   command_name: accessibility
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

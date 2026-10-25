@@ -66,9 +66,8 @@ test('all 34 Claude shipped roles match the audit-renumbered OPUS preset exactly
   }
 });
 
-test('generated opencode agents, command wrappers, and configuration match the audit-renumbered snapshot', () => {
-  // Includes the shared budget-* generic-agent filenames and dispatch grants;
-  // reversing only those names reproduces the previous snapshot fingerprint.
+test('generated opencode agents, command wrappers, and configuration match the customizable-definition snapshot', () => {
+  // Includes the shared budget-* identities, dispatch grants, and customization markers.
   const { base, entries } = projections('opencode');
   const output = entries.map(entry => [
     path.relative(base, entry.destinationPath).split(path.sep).join('/'),
@@ -76,5 +75,5 @@ test('generated opencode agents, command wrappers, and configuration match the a
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 40);
-  assert.equal(hash(JSON.stringify(output)), '6c7200aab5ae23ad336847365662d9e01f3f65620dabc9344c933094fff63b85');
+  assert.equal(hash(JSON.stringify(output)), '1b8cbea16b7eb739ddc8d9b49f1f71cfe052ad88bdc17fec15593d36b4973269');
 });

@@ -13,3 +13,5 @@ Fetch @sai/commands/plan/coordinator.md and follow it exactly, forwarding the In
 InvocationEnvelope:
   command_name: plan
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

@@ -104,7 +104,7 @@ test('autofast rename retirements cover step files, contract, binding, and agent
       assert.ok(binding.destinationPath.endsWith(path.join('bindings', 'autofast-implement-worker.md')));
       assert.ok(agent.destinationPath.endsWith('sai-autofast-implement-worker.md'));
 
-      // Matching managed bytes are deleted; user-owned bytes are preserved.
+      // Every declared retired file is deleted, regardless of its old contents.
       fs.mkdirSync(path.dirname(binding.destinationPath), { recursive: true });
       fs.mkdirSync(path.dirname(agent.destinationPath), { recursive: true });
       const matchingHash = binding.managedHashes[0];
@@ -116,12 +116,12 @@ test('autofast rename retirements cover step files, contract, binding, and agent
         const results = cleanupRetiredProjections(harness, roots);
         assert.equal(results.find(result => result.id === binding.id).action, 'deleted');
         assert.equal(fs.existsSync(binding.destinationPath), false);
-        // Agent uses a different managed hash set — force preserved path for non-matching bytes
+        // Agent uses a different managed hash set; the installer still deletes it.
         crypto.createHash = () => ({ update: () => ({ digest: () => 'a'.repeat(64) }) });
         fs.writeFileSync(agent.destinationPath, Buffer.from('user-owned agent body\n'));
         const second = cleanupRetiredProjections(harness, roots);
-        assert.equal(second.find(result => result.id === agent.id).action, 'preserved');
-        assert.equal(fs.readFileSync(agent.destinationPath, 'utf8'), 'user-owned agent body\n');
+        assert.equal(second.find(result => result.id === agent.id).action, 'deleted');
+        assert.equal(fs.existsSync(agent.destinationPath), false);
       } finally {
         crypto.createHash = originalCreateHash;
       }
