@@ -94,14 +94,6 @@ test('Direct Build keeps dispatching the archive and backfill workers through st
   assert.match(read('sai/commands/backfill/worker.md'), /--direct-build-execute/);
 });
 
-test('the boot adapters no longer name archive or backfill as routed commands', () => {
-  for (const harness of ['claude', 'opencode']) {
-    const boot = read(`sai/adapters/${harness}/boot.md`);
-    assert.doesNotMatch(boot, /Routed names|`archive`|`backfill`|coordinator\.md/);
-    assert.match(boot, /Utility names|utility names/);
-  }
-});
-
 test('the fast-track policy is scoped to archive and backfill', () => {
   const policy = read('sai/policies/fast-track-flag.md');
   assert.match(policy, /## Scope\n\nThe model governs `\/sai-archive` and `\/sai-backfill`/);

@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change repair-dead-cross-references. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: main-spec citations resolve to existing files and current line numbers
 
 Citations inside main capability specs SHALL resolve to existing files and current line numbers, or name stable anchors that do not drift with file edits.
@@ -10,7 +12,7 @@ Citations inside main capability specs SHALL resolve to existing files and curre
 #### Scenario: Checked-in template citation for dispatcher bindings
 
 - **WHEN** a spec cites a dispatcher binding location
-- **THEN** the citation names `sai/orchestration/workers/bindings/claude/worker-template.md:24`, the checked-in template, not per-phase projections absent from the repository
+- **THEN** the citation names `sai/orchestration/workers/bindings/claude/standalone-worker-template.md:16`, the checked-in template, not per-phase projections absent from the repository
 
 #### Scenario: Worker contract citation for routed workers
 
@@ -26,4 +28,3 @@ Citations inside main capability specs SHALL resolve to existing files and curre
 
 - **WHEN** a spec cites an artifact within an archived change
 - **THEN** the citation names a path that exists in the archived change (e.g. `openspec/changes/archive/2026-08-06-retire-inline-harness-model/proposal.md:25`), not a path that never existed in that change
-

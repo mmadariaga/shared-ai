@@ -49,7 +49,7 @@ Authorized archive execution SHALL first, and only when the prepared plan record
 
 ### Requirement: Archive execution failure is explicit
 
-The worker MUST stop after a failed CLI invocation, classification, staging operation, message-authoring operation, or commit operation, report the exact completed and uncompleted state with its failure class, and MUST NOT silently retry or continue to a later action. A CLI failure or invalid JSON MUST stop before staging and commit: the worker SHALL return `failed` with the exact error, verbatim, and end the order there, because recovery belongs to the coordinator. A failed order SHALL leave the state as it is for the coordinator to verify. A successful execution SHALL consume the order, and any later execute continuation or replacement SHALL be rejected without mutation. The worker SHALL accept a new execute order only after an order that failed before its first mutation; the coordinator issues one under `sai/policies/unattended-runtime-recovery.md` § Execute orders, and it SHALL be validated like the first.
+The worker MUST stop after a failed CLI invocation, classification, staging operation, message-authoring operation, or commit operation, report the exact completed and uncompleted state with its failure class, and MUST NOT silently retry or continue to a later action. A CLI failure or invalid JSON MUST stop before staging and commit: the worker SHALL return `failed` with the exact error, verbatim, and end the order there, because recovery belongs to the coordinator. A failed order SHALL leave the state as it is for the coordinator to verify. A successful execution SHALL consume the order, and any later execute continuation or replacement SHALL be rejected without mutation. The worker SHALL accept a new execute order only after an order that failed before its first mutation; the coordinator issues one under the Execute orders rule of `sai/commands/explore/direct-build-coordinator.md`, and it SHALL be validated like the first.
 
 #### Scenario: CLI archive failure stops the order
 
@@ -63,7 +63,7 @@ The worker MUST stop after a failed CLI invocation, classification, staging oper
 
 #### Scenario: A new order follows a failure before the first mutation
 
-- **WHEN** an execute order failed before its first mutation and the coordinator issues a new order under the recovery policy
+- **WHEN** an execute order failed before its first mutation and the coordinator issues a new order under its Execute orders rule
 - **THEN** the worker validates the new order like the first and executes it
 
 ### Requirement: The execute continuation verify carries allow_commit

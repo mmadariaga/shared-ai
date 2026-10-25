@@ -52,7 +52,7 @@ The crystallization close SHALL invoke no route selector when no complete block 
 
 ### Requirement: Language-gate continuation resumes at block emission
 
-The crystallization close SHALL resume at Ready to Propose block emission after a language-gate answer and SHALL not jump directly to route interpretation. It SHALL ask no overview-language question at emission, reserving that decision for supervised Plan activation; fast-track SHALL skip only the language question without auto-selecting a route.
+The crystallization close SHALL resume at Ready to Propose block emission after a language-gate answer and SHALL not jump directly to route interpretation. It SHALL ask no overview-language question at emission, reserving that decision for supervised Plan activation, and SHALL auto-select no route. A `--fast-track` token passed to `/sai-explore` SHALL skip neither the language question nor any other step.
 
 #### Scenario: Gate answer leads to block emission
 

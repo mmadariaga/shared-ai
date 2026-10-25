@@ -73,7 +73,7 @@ test('I9: every explore stop point references the obstacle policy', () => {
     assert.doesNotMatch(source, /stop-options|bounded-recovery|unattended-runtime-recovery/, `${file} drops the legacy recovery policies`);
   }
   for (const policy of ['stop-options', 'bounded-recovery', 'unattended-runtime-recovery']) {
-    assert.ok(fs.existsSync(path.join(repoRoot, `sai/policies/${policy}.md`)), `${policy}.md stays on disk for its other consumers`);
+    assert.equal(fs.existsSync(path.join(repoRoot, `sai/policies/${policy}.md`)), false, `${policy}.md is deleted: nothing references it any more`);
   }
 });
 
@@ -92,7 +92,7 @@ test('I8: the direct-build, backfill, and archive workers no longer load worker-
 
 test('I8: sai-direct-build-worker renders from the standalone template on both harnesses', () => {
   const matrix = read('bin/worker-matrix.js');
-  assert.match(matrix, /\.\.\.DIRECT_BUILD_ROLES\.map\(role => role\.phase\)/);
+  assert.doesNotMatch(matrix, /STANDALONE_PHASES|claudeBinding|opencodeBinding/, 'every binding renders from the standalone template, with no routed branch');
   const manifest = loadInstallManifest(repoRoot);
   for (const harness of ['claude', 'opencode']) {
     const binding = matrixRenderFor(manifest, harness, repoRoot)

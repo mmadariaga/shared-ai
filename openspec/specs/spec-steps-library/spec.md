@@ -53,17 +53,3 @@ The `proposal` step SHALL load project context on every run from the `context` s
 #### Scenario: missing project config does not block the step
 - **WHEN** `openspec/config.yaml` and `openspec/config.yml` are both missing or unreadable
 - **THEN** the worker continues the proposal step without project context
-
-### Requirement: Spec-phase restatements of shared contracts require a recorded justification
-
-The `/sai-1-spec` worker contract (`sai/commands/spec/worker.md`) and its step files under `sai/commands/spec/steps/` SHALL restate a rule whose source is another file only when a decision record or an observed failure justifies the restatement; otherwise they SHALL reference the source file instead. Spec-specific rules SHALL stay in the spec worker: the mapping of spec failures to `generation-error`, `validation-failed`, and `blocking-contradiction`, the rule that a failure `summary` states observed evidence and never logs, tracebacks, command output, or file contents, and the `continue_after_recovery` correction flow. Generic lifecycle and failure-classification rules SHALL remain in force through `sai/orchestration/worker-core.md`.
-
-#### Scenario: post-resolution failure points to the shared classification
-
-- **WHEN** `sai/commands/spec/worker.md` describes post-resolution `failed` results
-- **THEN** it references `@sai/orchestration/worker-core.md` § Failure classification and keeps only the spec-specific evidence rule and failure-class mapping
-
-#### Scenario: worker-core restatements are absent
-
-- **WHEN** `sai/commands/spec/worker.md` is read
-- **THEN** it contains no sentence restating that progress events are returned lifecycle results or listing coordinator-only progress duties

@@ -6,7 +6,7 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: skips the artifact-review and crystallization language gates. Also skips the overview-language question of round 3 of the route round and selects no overview unless a language was explicitly supplied. A [project setting](../project-settings.md) for the crystallization or overview language question answers it before fast-track applies. It never skips the backlog and branch questions, closing route selector, uncertainty decisions, or POC choices.
+- `--fast-track`: accepted and ignored. The token is stripped silently and has no effect, so every question and gate behaves as it does without it.
 - `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 
@@ -85,7 +85,7 @@ assignee conflict adds an interaction outside the rounds. Answer Yes, No, or
 free text with instructions or a clarification request. No skips only that
 action; ambiguous intent is clarified before anything runs. Each accepted skill
 runs in the current conversation and keeps its details, validation, errors, and
-cancellation handling. These questions remain explicit with `--fast-track` on
+cancellation handling. These questions are always asked on
 Claude Code and opencode, and branch preparation permits no code edits. The backlog
 question and option descriptions retain the word `backlog` in every language
 (for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
@@ -96,7 +96,7 @@ never renamed.
 
 A single change keeps the Yes/No branch question. A slice set (more than one
 recorded change) gets one three-choice question instead, in your language, which
-also stays explicit with `--fast-track` (for example, “¿Quieres crear una nueva
+is always asked (for example, “¿Quieres crear una nueva
 rama?”):
 
 - `Sí, crea una única para la issue principal` (`shared`): one branch, created
@@ -128,8 +128,7 @@ segment, one local commit per segment, then it stops for your review before `/sa
 A worker question that nothing in the block, the artifacts, or the repository settles
 still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
-it never pushes. For slices, the selector repeats per slice. Fast-track does
-not skip these authorizations or the reconfirmation of unresolved decisions.
+it never pushes. For slices, the selector repeats per slice.
 
 An interrupted Direct Build can resume in the same conversation. It retains
 its agents, accepted work, verification references, recovery counters, and the

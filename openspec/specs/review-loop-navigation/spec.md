@@ -294,26 +294,6 @@ Regeneration after handed-off corrections SHALL be conditioned on the change's p
 - **THEN** no amendment is applied
 - **AND** the finding remains open for a later consented request
 
-### Requirement: language-gate-reuse
-
-Before producing any review content for a `Review sai-1's artifacts` or `Review sai-2's artifacts` turn, the loop SHALL evaluate item 3's artifact-review language gate (including its Persistence rule), naming the exact artifact set of the current review turn as the tracked target so that re-asks fire automatically: a different artifact set or a different change triggers a re-ask; the same set on the same change reuses the previously chosen language. The control prompts (the global Yes/No question and the per-change picker) SHALL be asked in the conversation's ambient language every time and SHALL NOT be suppressed by `--fast-track`; the five per-change option labels remain the fixed English literals declared by the picker contract. The `--fast-track` signal SHALL skip only the language-gate question for review content.
-
-#### Scenario: review turns use the existing language gate
-
-- **WHEN** the user selects a review action and the language gate's conditions apply
-- **THEN** the agent evaluates the existing artifact-review language gate before producing the review content
-
-#### Scenario: switching artifact set re-asks per the Persistence rule
-
-- **WHEN** the user reviews the sai-1 set of a change and then, on the re-shown picker, selects `Review sai-2's artifacts` for that same change (a different artifact set)
-- **THEN** the language gate re-asks before the sai-2 review, because the tracked review target changed, per item 3's Persistence rule
-
-#### Scenario: fast-track skips only the language question
-
-- **WHEN** the `--fast-track` signal is active during the loop
-- **THEN** the agent skips the language-gate question and produces reviews directly in English
-- **AND** the agent still asks the global Yes/No question and the per-change picker
-
 ### Requirement: review-in-progress-state-wiring
 
 While the loop processes a change, the navigation SHALL set and resolve the slice's active review-item in-progress state exactly per the `explore-idea-list` capability's `idea-list-review-in-progress-state` requirement: the active review item renders `in_progress` from loop-processing start, persists across review transactions and per-change picker re-shows until it is marked completed, and is resolved to render `pending` by `Skip`, `Exit review loop`, or loop close. Setting, advancing, or resolving the state SHALL be render-only: it SHALL NOT mark or clear any item, and the evidence-based marking hooks of `explore-review-evidence-marking` SHALL apply unchanged.
@@ -384,3 +364,23 @@ The loop SHALL NOT auto-emit a new `Ready to Propose` block. If the user wants t
 
 - **WHEN** the user explicitly requests re-crystallization after reviewing
 - **THEN** item 8's crystallization language gate is evaluated afresh and a revised block may be emitted
+
+### Requirement: Review turns reuse the language gate without a fast-track skip
+
+Before producing any review content for a `Review sai-1's artifacts` or `Review sai-2's artifacts` turn, the loop SHALL evaluate item 3's artifact-review language gate (including its Persistence rule), naming the exact artifact set of the current review turn as the tracked target so that re-asks fire automatically: a different artifact set or a different change triggers a re-ask; the same set on the same change reuses the previously chosen language. The control prompts (the global Yes/No question and the per-change picker) SHALL be asked in the conversation's ambient language every time; the five per-change option labels remain the fixed English literals declared by the picker contract. A `--fast-track` token passed to `/sai-explore` SHALL skip neither the language-gate question nor any control prompt.
+
+#### Scenario: review turns use the existing language gate
+
+- **WHEN** the user selects a review action and the language gate's conditions apply
+- **THEN** the agent evaluates the existing artifact-review language gate before producing the review content
+
+#### Scenario: switching artifact set re-asks per the Persistence rule
+
+- **WHEN** the user reviews the sai-1 set of a change and then, on the re-shown picker, selects `Review sai-2's artifacts` for that same change (a different artifact set)
+- **THEN** the language gate re-asks before the sai-2 review, because the tracked review target changed, per item 3's Persistence rule
+
+#### Scenario: a fast-track token skips nothing
+
+- **WHEN** `/sai-explore` was invoked with `--fast-track` and a non-English review turn reaches the language gate
+- **THEN** the agent asks the language-gate question as it does without the token
+- **AND** the agent still asks the global Yes/No question and the per-change picker

@@ -19,7 +19,7 @@ The overview-language value SHALL remain conversation-only and SHALL be forwarde
 The overview-language gate (gate 9) applies only within `sai-explore`. It SHALL be asked as a conditional question in round 3 of the post-crystallization route round, beside the route question, when the pre-check before round 3 leaves the overview language unresolved for the crystallized idea or slice set; it SHALL NOT be a separate interaction after the route answer. Its answer SHALL take effect only when the same round's route answer is `Plan - Unattended`, and the resolved value SHALL be used after deterministic selection confirms a dispatchable change and before `active_change` is set or the first spec-worker dispatch occurs. When the route answer is `Plan - Unattended` and the round-3 overview answer is missing or cancelled, gate 9 SHALL ask on its own exactly once before the first spec-worker dispatch. Gate 9 SHALL NOT be asked at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, or on the transition to Implement, and the standalone fallback ask SHALL NOT occur on Manual, on the Direct Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the fallback. No other `sai-*` command is affected.
 
 #### Scenario: Plan activation evaluates the gate
-- **WHEN** round 3 is presented without explicit `--overview-lang`, a direct user statement, a stored value for the set, an `explore.overviewLanguage` setting, or active fast-track, and its route answer is `Plan - Unattended` for a dispatchable change
+- **WHEN** round 3 is presented without explicit `--overview-lang`, a direct user statement, a stored value for the set, or an `explore.overviewLanguage` setting, and its route answer is `Plan - Unattended` for a dispatchable change
 - **THEN** round 3 carried the overview question as a conditional question beside the route question, its answer resolves the overview language before any spec-worker dispatch, and no question ran when the block was emitted at crystallization
 
 #### Scenario: Plan route applies the round-3 answer
@@ -89,29 +89,9 @@ When the overview-language ask fires at a supervised Plan (unattended) activatio
 - **THEN** gate 9 asks the two-option do-not-create/`English` form
 - **AND** it does not silently apply `sai/policies/remember.md` or skip the decision
 
-### Requirement: Preserve explicit and fast-track resolution
-
-An explicit `--overview-lang <language>` value or a direct user statement of the language SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, without a resolved value for the same crystallized set, and without an `explore.overviewLanguage` setting, the overview language MUST resolve to `None` without asking, in the pre-check before round 3 of the route round, so round 3 carries no overview question. A configured `explore.overviewLanguage` SHALL take precedence over the fast-track `None`. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
-
-#### Scenario: Fast-track at Plan activation without the flag opts out
-- **WHEN** `--fast-track` is active before round 3 of the route round without `--overview-lang`, a direct user statement, a resolved value for the set, or an `explore.overviewLanguage` setting
-- **THEN** the round-3 pre-check resolves the overview-language value to `None`, round 3 carries no overview question, and no overview is generated
-
-#### Scenario: Fast-track with an explicit flag opts in
-- **WHEN** `--fast-track` and `--overview-lang spanish` are both active
-- **THEN** gate 9 asks no question, and the overview-language value resolves to `spanish`
-
-#### Scenario: Setting wins over fast-track
-- **WHEN** `--fast-track` is active without `--overview-lang` and `explore.overviewLanguage` is `Español`
-- **THEN** gate 9 asks no question, and the overview-language value resolves to `Español`
-
-#### Scenario: fast-track never bypasses stages
-- **WHEN** `--fast-track` is active
-- **THEN** the staged progression, including mandatory edge-case review, runs exactly as without fast-track
-
 ### Requirement: An explicit --overview-lang option suppresses the gate
 
-When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Plan (unattended) activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Direct Build (unattended) branch the explicit option is a documented no-op, because the build route generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
+When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Plan (unattended) activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Direct Build (unattended) branch the explicit option is a documented no-op, because the build route generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own project-setting and English-skip rules.
 
 #### Scenario: an explicit option skips the gate everywhere
 - **WHEN** the invocation carried `--overview-lang spanish` and a supervised Plan (unattended) activation confirms a dispatchable change
@@ -194,7 +174,7 @@ The resolved overview-language value is held in conversation-only state without 
 
 ### Requirement: Project setting answers gate 9
 
-Before round 3 of the route round is presented, when neither an explicit `--overview-lang`, a direct user statement of the language, nor a value already resolved for the same crystallized idea or slice set answers gate 9, the agent SHALL run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>` once, before the fast-track rule, resolving `project-settings.js` through the tool-resolution policy. A returned `value` (`English`, `None`, or a language name) SHALL resolve `overview_language` without asking, round 3 SHALL carry no overview question, and the agent SHALL print `Project setting explore.overviewLanguage: <value>` once before the first worker dispatch of a Plan route, never for Direct Build or Manual. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue. The setting SHALL NOT be used by Manual, by Direct Build (unattended), or by standalone `/sai-2-design`, and SHALL NOT change the `**Overview language**` block field.
+Before round 3 of the route round is presented, when neither an explicit `--overview-lang`, a direct user statement of the language, nor a value already resolved for the same crystallized idea or slice set answers gate 9, the agent SHALL run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>` once, resolving `project-settings.js` through the tool-resolution policy. A returned `value` (`English`, `None`, or a language name) SHALL resolve `overview_language` without asking, round 3 SHALL carry no overview question, and the agent SHALL print `Project setting explore.overviewLanguage: <value>` once before the first worker dispatch of a Plan route, never for Direct Build or Manual. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue. The setting SHALL NOT be used by Manual, by Direct Build (unattended), or by standalone `/sai-2-design`, and SHALL NOT change the `**Overview language**` block field.
 
 #### Scenario: Setting answers gate 9
 - **WHEN** `explore.overviewLanguage` is `Español` before round 3 with no explicit override and no resolved value, and the route answer is `Plan - Unattended`
@@ -210,7 +190,7 @@ Before round 3 of the route round is presented, when neither an explicit `--over
 
 #### Scenario: Unavailable setting falls through
 - **WHEN** the settings tool exits non-zero or returns `value: null`
-- **THEN** the agent prints the warnings or one failure line and continues with the fast-track rule or the round-3 overview question
+- **THEN** the agent prints the warnings or one failure line and continues with the round-3 overview question
 
 ### Requirement: Non-Plan route answers ignore the round-3 overview answer
 
@@ -223,3 +203,19 @@ When round 3 carries the overview question and the route answer is `Direct Build
 #### Scenario: A later Plan round asks again
 - **WHEN** an earlier round 3 returned Manual with an overview answer and a later round 3 is presented for the same set with nothing else resolving the overview language
 - **THEN** that later round 3 carries the overview question again
+
+### Requirement: Preserve explicit overview-language resolution
+
+An explicit `--overview-lang <language>` value or a direct user statement of the language SHALL suppress gate 9 and become the selected conversation-only language. A `--fast-track` token SHALL NOT resolve the overview language: `/sai-explore` strips it silently, so without an explicit option, a direct statement, a resolved value for the same crystallized set, or an `explore.overviewLanguage` setting, round 3 SHALL carry the overview question. An absent flag SHALL never become a generation request, and no stage SHALL be skipped, weakened, or auto-completed.
+
+#### Scenario: An explicit flag opts in
+- **WHEN** `--overview-lang spanish` is active
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `spanish`
+
+#### Scenario: A fast-track token leaves the question in round 3
+- **WHEN** `--fast-track` was passed to `/sai-explore` without `--overview-lang`, a direct user statement, a resolved value for the set, or an `explore.overviewLanguage` setting
+- **THEN** the overview language is not resolved to `None` on the token's account, and round 3 carries the overview question
+
+#### Scenario: stages are never bypassed
+- **WHEN** `--fast-track` was passed to `/sai-explore`
+- **THEN** the staged progression, including mandatory edge-case review, runs exactly as without the token

@@ -6,15 +6,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
-test('progress validation and registration precede independent same-turn presentation and continuation', () => {
-  const runner = read('sai/orchestration/command-runner.md');
-  assert.match(runner, /After validation and registration, issue the independent panel updates and same-worker continuation in one assistant turn/);
-  assert.match(runner, /Do not wait for the panel result before issuing the continuation/);
-  assert.match(runner, /initial render still precedes the first dispatch/);
-  assert.doesNotMatch(runner, /before continuing, so the user sees the mark|before sending\s+the two-line continuation/);
-  assert.match(runner, /no new guard window/);
-});
-
 for (const [harness, panel, continuation] of [
   ['claude', 'TaskUpdate', 'SendMessage'],
   ['opencode', 'todowrite', 'task'],
@@ -54,12 +45,6 @@ test('existing dependency work remains installed without expanding review/audit 
 });
 
 test('combined startup retains failure, legitimate early-outcome and reconstruction contracts', () => {
-  const core = read('sai/orchestration/worker-core.md');
-  assert.match(core, /return its terminal status\. Do not follow the pointer and emit no progress/);
-  assert.match(core, /report only the ids it completed/);
-  assert.match(core, /carries both ids in plan order/);
-  const runner = read('sai/orchestration/command-runner.md');
-  assert.match(runner, /before the first progress event it is the first filed step/);
   assert.match(read('sai/commands/accessibility/worker.md'), /When the scope holds no UI file, the audit does not apply, even with `--runtime`: the first batch also carries `resolve-static-audit` and `resolve-runtime-audit`/);
   const design = require('../sai-state/machines/design-steps.js');
   assert.equal(design.firstFiled().stage, 'research');

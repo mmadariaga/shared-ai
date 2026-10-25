@@ -309,7 +309,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('Step 2: installed harness boots and utility body cards resolve with exactly one own adapter', async () => {
+  test('Step 2: installed utility body cards resolve with no boot adapter, command runner, or bootstrap', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-boot-claude-');
     const opencodeBase = makeTempDir('sai-dr-boot-opencode-');
@@ -322,13 +322,17 @@ describe('doctor fetch resolution', () => {
         [claudeBase, 'claude', 'opencode'],
         [opencodeBase, 'opencode', 'claude'],
       ]) {
-        assert.ok(fs.existsSync(path.join(base, 'sai', 'adapters', harness, 'boot.md')),
-          `${harness} harness should install its own boot adapter`);
-        assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', foreign, 'boot.md')), false,
-          `${harness} harness must not install the ${foreign} boot adapter`);
+        for (const adapter of [harness, foreign]) {
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', adapter, 'boot.md')), false,
+            `${harness} harness must not install the ${adapter} boot adapter`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'orchestration', 'command-runner.md')), false,
+          `${harness} harness must not install the command runner`);
         for (const utility of utilities) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} harness should install the ${utility} utility body card`);
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'command-bootstrap.md')), false,
+            `${harness} harness must not install a ${utility} command bootstrap`);
         }
   for (const name of ['archive', 'backfill']) {
           for (const card of ['coordinator.md', 'worker.md']) {
@@ -376,7 +380,7 @@ describe('doctor fetch resolution', () => {
         assert.ok(section, `${sectionName} section should exist`);
         const refErrors = (section['fetch-ref'] || []).filter(r => r.severity === 'error');
         assert.equal(refErrors.length, 0,
-          `${sectionName} should resolve every Fetch reference including the boot adapter and the routed deep-review cards`);
+          `${sectionName} should resolve every Fetch reference including the utility body cards and the routed deep-review cards`);
       }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });

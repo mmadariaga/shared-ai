@@ -3,9 +3,9 @@ description: Manage linked git worktrees — list them, then safely create or de
 model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/adapters/opencode/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/worktree/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/worktree/body.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: worktree
