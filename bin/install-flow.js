@@ -19,6 +19,7 @@ try {
 
 const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
+const { splitCustomizations, preserveCustomizations } = require('./managed-customizations');
 
 const TUNABLE_SCALAR = /^([A-Za-z0-9_-]+):\s*(.*)$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
@@ -138,6 +139,10 @@ function stripTunableLines(bytes, tunableKeys) {
   return Buffer.from([split.header, ...kept, ...split.rest].join('\n'), 'utf8');
 }
 
+function managedDefinitionBytes(bytes, tunableKeys) {
+  return stripTunableLines(Buffer.from(splitCustomizations(bytes.toString('utf8')).managed), tunableKeys);
+}
+
 function deleteSidecarUnderShapeGuard(destinationPath) {
   const sidecarPath = path.join(path.dirname(destinationPath), `.${path.basename(destinationPath, '.md')}.owner.json`);
   if (!fs.existsSync(sidecarPath)) return false;
@@ -168,10 +173,12 @@ function tunableSeedInstaller(projection) {
   } else {
     const destinationBytes = fs.readFileSync(destination);
     const keys = projection.harness === 'opencode' ? OPENCODE_TUNABLE_KEYS : CLAUDE_TUNABLE_KEYS;
-    const differs = !stripTunableLines(sourceBytes, keys).equals(stripTunableLines(destinationBytes, keys));
+    const differs = !managedDefinitionBytes(sourceBytes, keys).equals(managedDefinitionBytes(destinationBytes, keys));
     outcome = differs ? 'overwritten' : 'reused';
     if (differs) {
-      fs.writeFileSync(destination, preserveAgentTunables(sourceBytes.toString('utf8'), destinationBytes.toString('utf8'), keys));
+      const source = sourceBytes.toString('utf8');
+      const previous = destinationBytes.toString('utf8');
+      fs.writeFileSync(destination, preserveCustomizations(preserveAgentTunables(source, previous, keys), previous));
       console.log(`Notice: managed agent differs from source; overwritten ${destination}`);
     }
   }
@@ -1238,15 +1245,19 @@ function installProjection(projection, targetPath, notices) {
     return;
   }
   if (projection.strategy === 'tunable-seed') {
-    installRenamedGenericAgent(projection, notices);
+    installAgentProjection(projection, notices);
     return;
   }
-  if (require('./audit-name-migration').isAuditCommand(projection.destinationPath)
-      && fs.existsSync(projection.destinationPath)) {
+  if (projection.strategy === 'customizable-copy') {
     const source = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
-    const previous = fs.readFileSync(projection.destinationPath, 'utf8');
-    const keys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
-    fs.writeFileSync(projection.destinationPath, spliceTunables(source, previous, keys));
+    let text = source;
+    if (fs.existsSync(projection.destinationPath)) {
+      const previous = fs.readFileSync(projection.destinationPath, 'utf8');
+      const keys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+      text = preserveCustomizations(spliceTunables(source, previous, keys), previous);
+    }
+    ensureDir(path.dirname(projection.destinationPath));
+    fs.writeFileSync(projection.destinationPath, text);
     return;
   }
   if (projection.strategy === 'owned-copy') {
@@ -1270,64 +1281,58 @@ function installProjection(projection, targetPath, notices) {
   copy(projection.sourcePath, projection.destinationPath);
 }
 
-// Only the global install's exact managed predecessor is eligible for cleanup.
-function installRenamedGenericAgent(projection, notices) {
-  const legacyNames = {
-    'budget-explorer.md': 'explore.md',
-    'budget-executor.md': 'executor.md',
-    'budget-subagent.md': 'budget.md',
-  };
-  const legacyName = projection.harness === 'opencode' && legacyNames[path.basename(projection.destinationPath)];
-  if (legacyName) {
-    let destinationStat;
-    try {
-      // lstat also sees dangling links, which existsSync treats as absent.
-      destinationStat = fs.lstatSync(projection.destinationPath);
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
-    if (destinationStat && !destinationStat.isFile()) {
-      emitInstallerNotice(notices, `Skipped generic agent installation: ${projection.destinationPath} is a symbolic link or other non-regular destination. The destination and any legacy predecessor were left unchanged. Review this path manually and provide a regular agent file or an absent destination before reinstalling.`);
-      return 'skipped';
-    }
+function installAgentProjection(projection, notices) {
+  let stat;
+  try { stat = fs.lstatSync(projection.destinationPath); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
   }
-  const legacyPath = legacyName && path.join(path.dirname(projection.destinationPath), legacyName);
-  if (!legacyPath || !fs.existsSync(legacyPath)) return tunableSeedInstaller(projection);
-  const source = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
-  // A symlink can name an unrelated definition outside this install.
-  const regular = fs.lstatSync(legacyPath).isFile();
-  const previous = regular ? fs.readFileSync(legacyPath, 'utf8') : null;
-  const owned = regular && stripTunableLines(Buffer.from(source), OPENCODE_TUNABLE_KEYS)
-    .equals(stripTunableLines(Buffer.from(previous), OPENCODE_TUNABLE_KEYS));
-  const destinationExists = fs.existsSync(projection.destinationPath);
-  if (previous !== null && destinationExists) {
-    const current = fs.readFileSync(projection.destinationPath, 'utf8');
-    if (preserveAgentTunables(source, previous, OPENCODE_TUNABLE_KEYS)
-        !== preserveAgentTunables(source, current, OPENCODE_TUNABLE_KEYS)) {
-      emitInstallerNotice(notices, `Conflicting legacy agent settings in ${legacyPath}; settings in ${projection.destinationPath} take precedence.`);
-    }
+  if (stat && !stat.isFile()) {
+    emitInstallerNotice(notices, `Skipped managed agent installation: ${projection.destinationPath} is a symbolic link or other non-regular destination. This destination was left unchanged. Review this path manually and provide a regular agent file or an absent destination before reinstalling.`);
+    return 'skipped';
   }
-  const migrated = owned && !destinationExists
-    ? { ...projection, sourceText: preserveAgentTunables(source, previous, OPENCODE_TUNABLE_KEYS) }
-    : projection;
-  const outcome = tunableSeedInstaller(migrated);
-  // Installation must succeed before any predecessor is removed. Recheck identity
-  // after writing so a concurrently modified predecessor is protected as well.
-  if (owned && fs.lstatSync(legacyPath).isFile() && fs.readFileSync(legacyPath, 'utf8') === previous) {
-    fs.unlinkSync(legacyPath);
-  } else {
-    emitInstallerNotice(notices, `Preserved legacy agent ${legacyPath}; migrate it manually. A retained explore.md can still override OpenCode's built-in explore.`);
-  }
-  return outcome;
+  return tunableSeedInstaller(projection);
 }
 
-function expandForInstall(harness, roots) {
-  const manifest = loadInstallManifest(REPOSITORY_ROOT);
+function expandForInstall(harness, roots, repoRoot = REPOSITORY_ROOT) {
+  const manifest = loadInstallManifest(repoRoot);
   return expandInstallManifest(manifest, {
     harness,
-    repoRoot: REPOSITORY_ROOT,
+    repoRoot,
     destinationRoot: destinationRoots(harness, roots),
   });
+}
+
+function projectOverrideProjections(harness, projectPath, repoRoot = REPOSITORY_ROOT) {
+  const base = path.resolve(projectPath, harness === 'claude' ? '.claude' : '.opencode');
+  return expandForInstall(harness, { base }, repoRoot)
+    .filter(projection => ['customizable-copy', 'tunable-seed'].includes(projection.strategy));
+}
+
+// Updating the global installation cannot refresh the local definitions that
+// shadow it. Refresh only existing, manifest-owned files in the named project.
+function refreshProjectOverrides(harness, projectPath, { notices } = {}) {
+  const base = path.resolve(projectPath, harness === 'claude' ? '.claude' : '.opencode');
+  if (!fs.existsSync(base)) return;
+  cleanupRetiredProjections(harness, { base }, { notices });
+  for (const projection of projectOverrideProjections(harness, projectPath)) {
+    let safe = true;
+    for (const candidate of [base, path.dirname(projection.destinationPath), projection.destinationPath]) {
+      let stat;
+      try { stat = fs.lstatSync(candidate); } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        safe = false;
+        break;
+      }
+      if (candidate === projection.destinationPath ? !stat.isFile() : !stat.isDirectory()) {
+        emitInstallerNotice(notices, `Skipped project-local definition: ${candidate} is a symbolic link or other non-regular path.`);
+        safe = false;
+        break;
+      }
+    }
+    if (!safe) continue;
+    if (projection.strategy === 'tunable-seed') tunableSeedInstaller(projection);
+    else installProjection(projection, base, notices);
+  }
 }
 
 function assertProjectionInputsUseOneStringEnvelope(projections, harness) {
@@ -1340,7 +1345,7 @@ function assertProjectionInputsUseOneStringEnvelope(projections, harness) {
   }
 }
 
-function cleanupRetiredProjections(harness, roots) {
+function cleanupRetiredProjections(harness, roots, { notices } = {}) {
   const manifest = loadInstallManifest(REPOSITORY_ROOT);
   const retirements = expandRetirementManifest(manifest, {
     harness,
@@ -1348,18 +1353,33 @@ function cleanupRetiredProjections(harness, roots) {
     destinationRoot: destinationRoots(harness, roots),
   });
   const results = [];
+  const base = path.resolve(roots.base);
   for (const retirement of retirements) {
-    if (!fs.existsSync(retirement.destinationPath)) {
-      results.push({ ...retirement, action: 'not-found' });
-      continue;
+    const parents = [];
+    for (let directory = path.dirname(retirement.destinationPath); ; directory = path.dirname(directory)) {
+      parents.unshift(directory);
+      if (directory === base) break;
     }
-    if (!require('./retirement-identity').recognizedRetirement(fs.readFileSync(retirement.destinationPath), retirement)) {
-      console.warn(`Pending resolution: customized retired file preserved: ${retirement.destinationPath}`);
-      results.push({ ...retirement, action: 'preserved' });
-      continue;
+    let action;
+    for (const [index, candidate] of [...parents, retirement.destinationPath].entries()) {
+      let stat;
+      try { stat = fs.lstatSync(candidate); } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        action = 'not-found';
+        break;
+      }
+      const isFile = index === parents.length;
+      if (isFile ? !stat.isFile() && !stat.isSymbolicLink() : !stat.isDirectory()) {
+        action = 'skipped';
+        emitInstallerNotice(notices, `Skipped retired path: ${candidate} is a non-regular file or linked directory; no recursive or external deletion was performed.`);
+        break;
+      }
     }
-    fs.unlinkSync(retirement.destinationPath);
-    results.push({ ...retirement, action: 'deleted' });
+    if (!action) {
+      fs.unlinkSync(retirement.destinationPath);
+      action = 'deleted';
+    }
+    results.push({ ...retirement, action });
   }
   return results;
 }
@@ -1416,19 +1436,20 @@ function assertInstalledMarkdownSourcesUseOneStringEnvelope() {
   }
 }
 
-function installClaude(destBase) {
+function installClaude(destBase, { projectPath, notices } = {}) {
   assertHarnessCommandsUseOneStringEnvelope('claude');
   validateClaudeWorkerBindings();
   assertInstalledMarkdownSourcesUseOneStringEnvelope();
   const targetPath = destBase || CLAUDE_BASE;
   require('./audit-name-migration').prepare(targetPath);
-  cleanupRetiredProjections('claude', { base: targetPath });
+  cleanupRetiredProjections('claude', { base: targetPath }, { notices });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
+  if (projectPath) refreshProjectOverrides('claude', projectPath, { notices });
 
   writeVersionMarker(targetPath);
 }
 
-function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } = {}) {
+function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices, projectPath } = {}) {
   assertHarnessCommandsUseOneStringEnvelope('opencode');
   validateOpencodeWorkerBindings();
   assertInstalledMarkdownSourcesUseOneStringEnvelope();
@@ -1439,15 +1460,9 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } 
   const projections = expandForInstall('opencode', { base: targetPath });
   assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
   require('./audit-name-migration').prepare(targetPath);
-  cleanupRetiredProjections('opencode', { base: targetPath });
+  cleanupRetiredProjections('opencode', { base: targetPath }, { notices });
   for (const projection of projections) installProjection(projection, targetPath, notices);
-
-  for (const name of ['explore', 'executor', 'budget']) {
-    const local = path.resolve('.opencode', 'agents', `${name}.md`);
-    if (fs.existsSync(local)) {
-      emitInstallerNotice(notices, `Preserved project-local legacy agent ${local}; migrate its settings and references manually to the matching budget-* name. A retained explore.md can still override OpenCode's built-in explore.`);
-    }
-  }
+  if (projectPath) refreshProjectOverrides('opencode', projectPath, { notices });
 
   writeVersionMarker(targetPath);
 }
@@ -1798,7 +1813,7 @@ async function main() {
   const notices = [];
 
   if (choices.includes('Claude Code')) {
-    installClaude();
+    installClaude(undefined, { projectPath: process.cwd(), notices });
     console.log(`Claude commands installed to: ${path.join(CLAUDE_BASE, 'commands')}`);
     console.log(`Claude SAI commands/instructions installed to: ${path.join(CLAUDE_BASE, 'sai')}`);
     console.log(`Claude skills installed to: ${path.join(CLAUDE_BASE, 'skills')}`);
@@ -1807,7 +1822,7 @@ async function main() {
   if (choices.includes('Opencode')) {
     if (choices.includes('Claude Code')) console.log();
     await offerOpencodeInstall({ notices });
-    installOpencode(resolvedOpencodeBase, { notices });
+    installOpencode(resolvedOpencodeBase, { notices, projectPath: process.cwd() });
     console.log(`Opencode commands installed to: ${path.join(resolvedOpencodeBase, 'commands')}`);
     console.log(`Opencode SAI commands/instructions installed to: ${path.join(resolvedOpencodeBase, 'sai')}`);
     console.log(`Opencode skills installed to: ${path.join(resolvedOpencodeBase, 'skills')}`);
@@ -1850,6 +1865,8 @@ module.exports = {
   listMdFilesRecursive,
   installClaude,
   installOpencode,
+  refreshProjectOverrides,
+  projectOverrideProjections,
   copyOpencodeConfig,
   main,
   promptChecklist,
@@ -1913,6 +1930,7 @@ module.exports = {
   tunableSeedInstaller,
   deleteSidecarUnderShapeGuard,
   stripTunableLines,
+  managedDefinitionBytes,
   spliceTunables,
   matrixBindings,
   matrixWorkerRoster,

@@ -17,9 +17,8 @@ The install manifest SHALL register the former `command-runner.md` and `worker-c
 
 ### Requirement: Modified retired copies are preserved
 
-Install, doctor, and uninstall SHALL preserve a former root destination whose bytes match none of its harness retirement hashes.
+Installation and project refresh SHALL delete an exact declared retired former root regular file or file symlink even when it matches no historical hash. Doctor SHALL report without mutation and recommend installer removal without migration. Guarded uninstall SHALL continue preserving unrecognized customized copies. Installation SHALL skip directories and paths through linked directories.
 
 #### Scenario: Retired copy has local modifications
-
 - **WHEN** a former root destination is modified or unrecognized
-- **THEN** the file remains in place rather than being removed
+- **THEN** installation deletes the exact retired file, doctor reports it without deletion, and guarded uninstall preserves unrecognized content

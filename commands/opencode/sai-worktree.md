@@ -10,3 +10,5 @@ Fetch @sai/commands/worktree/body.md and follow it exactly, forwarding the Invoc
 InvocationEnvelope:
   command_name: worktree
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

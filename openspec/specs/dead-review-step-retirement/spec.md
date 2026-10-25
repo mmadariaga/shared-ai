@@ -7,12 +7,15 @@ TBD - created by archiving change remove-dead-review-steps. Update Purpose after
 
 ### Requirement: Retired review-step surfaces are registered for install cleanup
 
-`sai/install-manifest.json` SHALL carry `retirements` records for the `sai` destination class, for both the `claude` and `opencode` harnesses, covering `tools/validate-findings.js` (id `retired-validate-findings-tool`), `commands/spec/steps/review.md` (id `retired-spec-review-step`), and `commands/design/steps/review.md` (id `retired-design-review-step`). Each record SHALL list the managed content hashes of the previously shipped copies so that an upgrade removes an installed copy that is still managed.
+The manifest SHALL retain sai-class retirement records for both harnesses for tools/validate-findings.js (retired-validate-findings-tool), commands/spec/steps/review.md (retired-spec-review-step), and commands/design/steps/review.md (retired-design-review-step). Historical hashes SHALL remain diagnostic and guarded-uninstall metadata. Installation and project refresh SHALL remove exact retired regular files or file symlinks even when edited or unrecognized, without migration, while skipping directories and linked parents.
 
 #### Scenario: upgrade removes a managed retired copy
-
 - **WHEN** an install upgrade runs against a harness root whose `sai/tools/validate-findings.js`, `sai/commands/spec/steps/review.md`, or `sai/commands/design/steps/review.md` matches a registered managed hash
 - **THEN** the installer retires that copy under the corresponding `retirements` record
+
+#### Scenario: Customized retired review step is removed
+- **WHEN** installation encounters an edited regular file at a retired review-step path
+- **THEN** it deletes that exact file regardless of content hash without touching unrelated paths
 
 ### Requirement: The findings-format validator tool is removed from the source tree
 

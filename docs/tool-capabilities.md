@@ -71,8 +71,13 @@ managed content while preserving the destination's model and effort/variant
 lines, including omitted optional tunables. First installation still seeds the
 repository defaults, and no ownership sidecar is introduced. This restores the
 documented user-owned-tunable boundary: the prior installer compared full bytes
-and reset tuning on every divergent reinstall. Project-local overrides,
-managed policies, configuration merge ownership, and confirmations stay unchanged.
+and reset tuning on every divergent reinstall. Commands use the same ownership
+boundary through `customizable-copy`. Both commands and agents preserve the exact
+suffix after `<!-- User customizations below this line -->`; all other managed
+content is refreshed, including existing local definitions in the current project
+on installation or in the named project on setup. See
+[model configuration](models.md#keeping-your-configuration). Managed policies,
+configuration merge ownership, and confirmations stay unchanged.
 
 ## Notices
 

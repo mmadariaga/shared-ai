@@ -345,7 +345,7 @@
       "harnesses": [
         "claude"
       ],
-      "strategy": "copy",
+      "strategy": "customizable-copy",
       "recursive": true,
       "include": [
         "*.md"
@@ -363,7 +363,7 @@
       "harnesses": [
         "opencode"
       ],
-      "strategy": "copy",
+      "strategy": "customizable-copy",
       "recursive": true,
       "include": [
         "*.md"
@@ -1331,6 +1331,9 @@
     }
   ],
   "retirements": [
+    { "id": "retired-opencode-generic-explore", "destination": { "class": "agents", "path": "explore.md" }, "harnesses": ["opencode"], "managedHashes": ["af943b677447e7e6b4377529f75bed40f25ff7cc37bcfa283501920472b3882b"], "managedBodyHashes": ["07265bcd889d37f1202759557045d69796e206ee34c58c57794b415998a96789"], "tunableKeys": ["model", "variant"] },
+    { "id": "retired-opencode-generic-executor", "destination": { "class": "agents", "path": "executor.md" }, "harnesses": ["opencode"], "managedHashes": ["f39cc58669b05502b9ae4c95859caf4a269c028e3a280253cb0f91f3d5e72c41"], "managedBodyHashes": ["187ff679c6cb676169511175edb6fae658166b83340fbf04747349356e13d397"], "tunableKeys": ["model", "variant"] },
+    { "id": "retired-opencode-generic-budget", "destination": { "class": "agents", "path": "budget.md" }, "harnesses": ["opencode"], "managedHashes": ["54539691af19535436062dea01eb0af665f669971716c959999daabf72519b8a"], "managedBodyHashes": ["82e8e8bba7db716ba051a04c971a0acb742d738af312f87c2c4ce6f01f322ba1"], "tunableKeys": ["model", "variant"] },
     { "id": "retired-sai-pr-claude", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["claude"], "managedHashes": ["c0571888d02f3a4d5cb92c2c9328c37ac42453703db3592e871f049b495d0dfa", "895c177fa529659d34d0d94344775cc3779d7236ec6c3671012de4ec708f33d9"] },
     { "id": "retired-sai-pr-opencode", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["opencode"], "managedHashes": ["b5464e822849b6499d4054c4acaa62df4b6d699beda80f48c44ada59a6922c68", "757f4406f2db41f40744bd3dd0b4055441a90d90d5d2618497e93637bdd8c12b"] },
     { "id": "retired-pr-body", "destination": { "class": "sai", "path": "commands/pr/body.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["634f3094b588e912e2ede4d7273afcb15f25f48437caddd3ccac56d701da32f4"] },

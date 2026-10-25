@@ -51,34 +51,23 @@ When newly introduced root protocol files and command-card sources under the new
 
 ### Requirement: Deterministic two-harness projection
 
-`sai/install-manifest.json` SHALL describe the command-card and adapter sources for both Claude Code and opencode. The manifest expansion module, installer, doctor, and uninstall SHALL consume that inventory; they SHALL preserve managed ownership, content-drift detection, collision checks, and existing modified-file safeguards across active projections and hash-gated retired destinations.
+The manifest SHALL describe command-card and adapter sources for both supported harnesses. Expansion, installation, doctor, and uninstall SHALL consume that inventory with collision checks and harness isolation. Commands SHALL use customizable-copy and managed agents tunable-seed, preserving current tuning and exact user suffixes during managed refresh. Doctor SHALL ignore tuning and suffixes for managed identity; guarded uninstall SHALL retain custom suffixes and other body changes. Exact retired-path installation cleanup SHALL be independent of historical hashes and SHALL NOT migrate old settings; doctor and guarded uninstall SHALL retain historical recognition.
 
 #### Scenario: relocation is reflected by every inventory consumer
-
-- **WHEN** install, doctor, or uninstall evaluates the moved idea-list render binding
-- **THEN** it derives the active harness-qualified adapter destination and retired old destination from the manifest inventory
-- **AND** it applies the existing managed ownership and modified-file safeguards
+- **WHEN** install, doctor, or uninstall evaluates the relocated idea-list render binding
+- **THEN** all derive active and retired paths from the manifest; installation deletes exact retired files without hash gating while doctor and guarded uninstall retain their respective protections
 
 #### Scenario: Fresh installation projects the new layout
-
 - **WHEN** a supported harness is installed from the manifest
-- **THEN** its managed SAI destination SHALL contain the command cards
-- **AND** it SHALL contain only that harness's adapter files (`idea-list-render.md` and `panel-render.md`) and no boot adapter
-- **AND** it SHALL not recreate the retired `orchestration/workers/bindings/idea-list-render.md` destination
+- **THEN** its managed SAI destination SHALL contain the command cards; it SHALL contain only that harness's adapter files (`idea-list-render.md` and `panel-render.md`) and no boot adapter; it SHALL not recreate the retired `orchestration/workers/bindings/idea-list-render.md` destination
 
 #### Scenario: Both harnesses are re-projected in one change
-
 - **WHEN** the manifest is expanded for Claude Code and opencode
-- **THEN** both harness inventories SHALL be generated from the same manifest change
-- **AND** their neutral command-card and routed worker content SHALL remain equivalent
-- **AND** each inventory SHALL differ at the adapter seam only by its harness-specific sources
+- **THEN** both harness inventories SHALL be generated from the same manifest change; their neutral command-card and routed worker content SHALL remain equivalent; each inventory SHALL differ at the adapter seam only by its harness-specific sources
 
 #### Scenario: Doctor and uninstall share the active inventory
-
 - **WHEN** doctor or uninstall evaluates an installed projection
-- **THEN** it SHALL derive expected and removable paths from the same manifest expansion used by install
-- **AND** doctor SHALL report missing, unexpected, or drifted active projections and retired-path mismatches
-- **AND** uninstall SHALL retain locally modified managed files under the existing ownership safeguard
+- **THEN** it SHALL derive expected and removable paths from the same manifest expansion used by install; doctor SHALL report missing, unexpected, or drifted active projections and retired-path mismatches; uninstall SHALL retain locally modified managed files under the existing ownership safeguard
 
 ### Requirement: Shared policy fetch targets are preserved
 The layout migration SHALL leave `sai/policies/` as the shared policy projection target. Generic budget, executor, and explore agents or skills SHALL continue fetching `sai/policies/{budget,executor,explore}-agent.md`, and new command cards SHALL use the established `@sai/...` fetch namespace for root protocol, command-card, adapter, instruction, and policy files.

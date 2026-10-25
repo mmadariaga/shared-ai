@@ -11,3 +11,5 @@ Fetch @sai/commands/spec/coordinator.md and follow it exactly, forwarding the In
 InvocationEnvelope:
   command_name: spec
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

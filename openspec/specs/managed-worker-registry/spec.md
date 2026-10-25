@@ -39,7 +39,7 @@ The installer SHALL preserve one declarative managed-worker registry keyed by wo
 
 ### Requirement: Manifest projection parity and fresh-install preservation
 
-The registry relationship with `sai/install-manifest.json` SHALL remain deterministic: every current managed-worker projection MUST remain covered exactly once, and opencode agent projections SHALL mirror Claude projections' agents destination class, tunable-seed strategy, and managed ownership. Manifest expansion, projection ordering, harness isolation, and collision handling SHALL remain preserved. Fresh installation SHALL write compiled harness-native content, including profile-derived grants, rather than require obsolete pre-capability file bytes. A managed file SHALL be identified by its body and non-tunable frontmatter; differing tunable values SHALL NOT change that identity.
+The registry relationship with `sai/install-manifest.json` SHALL remain deterministic: every current managed-worker projection MUST remain covered exactly once, and opencode agent projections SHALL mirror Claude projections' agents destination class, tunable-seed strategy, and managed ownership. Manifest expansion, projection ordering, harness isolation, and collision handling SHALL remain preserved. Fresh installation SHALL write compiled harness-native content, including profile-derived grants, rather than require obsolete pre-capability file bytes. Installation and doctor SHALL identify managed content through the first standalone customization marker and non-tunable frontmatter, excluding tuning and the user suffix. Guarded uninstall SHALL compare the full body with tuning excluded and SHALL retain custom instruction suffixes.
 
 #### Scenario: Existing managed projections remain complete
 - **WHEN** installer, doctor, or uninstall expands the install manifest
@@ -55,12 +55,11 @@ The registry relationship with `sai/install-manifest.json` SHALL remain determin
 
 ### Requirement: Downstream worker-consumer compatibility
 
-The registry change MUST preserve the values observed through existing exported Claude worker agent filename constants. OWNER_BY_CLAUDE_AGENT, CLAUDE_*_WORKER_OWNER, LEGACY_CLAUDE_WORKERS, and migrateLegacyClaudeWorkers SHALL remain removed, and the legacy Claude migration code path SHALL remain retired. OPENCODE_MANAGED_AGENTS and getOpencodeManagedAgents SHALL remain removed. Doctor and uninstall SHALL enumerate current manifest-projected opencode agent files through tunable-seed projections and compare compiled content using the body-and-non-tunable identity rule.
+The registry change MUST preserve the values observed through existing exported Claude worker agent filename constants. OWNER_BY_CLAUDE_AGENT, CLAUDE_*_WORKER_OWNER, LEGACY_CLAUDE_WORKERS, and migrateLegacyClaudeWorkers SHALL remain removed, and the legacy Claude migration code path SHALL remain retired. OPENCODE_MANAGED_AGENTS and getOpencodeManagedAgents SHALL remain removed. Doctor and uninstall SHALL enumerate current manifest-projected opencode agent files through tunable-seed projections and compare compiled content with tuning excluded. Doctor SHALL additionally ignore the explicit user suffix; uninstall SHALL retain custom instruction suffixes and other body differences.
 
 #### Scenario: Doctor enumeration observes every projected opencode worker
-- **WHEN** doctor enumerates Claude worker agents and opencode worker agent files
-- **THEN** it observes the preserved Claude identities and every current manifest-projected opencode worker
-- **AND** its identity check compares only body and non-tunable frontmatter
+- **WHEN** doctor enumerates Claude workers and projected opencode worker files
+- **THEN** it observes every current worker and compares managed content and non-tunable frontmatter while excluding tuning and the user suffix
 
 ### Requirement: Behavior-preservation regression coverage
 
@@ -72,7 +71,7 @@ The installer test harness MUST verify registry completeness, the derived Claude
 
 ### Requirement: Opencode workers are projected as managed markdown agent files
 
-The manifest SHALL declare one tunable-seed projection per current opencode worker, mirroring Claude destination class agents and managed ownership. Generated worker sources SHALL come from the opencode worker template and worker matrix with canonical capability assignments. Each projected file SHALL carry mode, model, optional variant, and ordered V2 permissions, followed by the harness fetch bootstrap, profile disclosure, access-check reference, and canonical worker-contract Fetch. Registration SHALL NOT rely on the configuration agent map. Existing workers MUST retain registration identity, subagent mode, and shipped model and variant seeds. Managed updates SHALL replace divergent body and non-tunable frontmatter with compiled source content while preserving destination model and variant blocks; compatible content SHALL remain untouched.
+The manifest SHALL declare one tunable-seed projection per current opencode worker, mirroring Claude destination class agents and managed ownership. Generated worker sources SHALL come from the opencode worker template and worker matrix with canonical capability assignments. Each projected file SHALL carry mode, model, optional variant, and ordered V2 permissions, followed by the harness fetch bootstrap, profile disclosure, access-check reference, and canonical worker-contract Fetch. Registration SHALL NOT rely on the configuration agent map. Existing workers MUST retain registration identity, subagent mode, and shipped model and variant seeds. Managed updates SHALL replace divergent body and non-tunable frontmatter with compiled source content while preserving destination model and variant blocks and the exact customization suffix; compatibility SHALL ignore tuning and the suffix, and compatible content SHALL remain untouched.
 
 #### Scenario: Fresh opencode installation projects every worker file
 - **WHEN** a fresh opencode installation expands the manifest
@@ -83,13 +82,16 @@ The manifest SHALL declare one tunable-seed projection per current opencode work
 - **THEN** each supported-harness worker contains its expected first body bootstrap before the canonical contract Fetch
 
 #### Scenario: A projected worker file already exists with a different body
-- **WHEN** a projected worker destination has body or non-tunable frontmatter differing from compiled source
-- **THEN** installation replaces managed content, preserves destination tunable blocks at a top-level structural anchor, and emits a notice naming the destination
-- **AND** installation does not throw
+- **WHEN** a worker has divergent managed body or non-tunable frontmatter
+- **THEN** installation replaces managed content while retaining destination tuning at the top-level anchor and its exact customization suffix, emitting a notice without throwing
 
 #### Scenario: A projected worker file exists with body match and tunable changes
 - **WHEN** destination body and non-tunable frontmatter match compiled source but tunables differ
 - **THEN** installation reuses the file untouched without an overwrite notice
+
+#### Scenario: User suffix alone does not trigger replacement
+- **WHEN** a projected worker matches managed content but carries a custom suffix
+- **THEN** installation reuses its bytes without an overwrite notice
 
 ### Requirement: Tunable-seed projection installs the manifest source path
 

@@ -9,3 +9,5 @@ tools: {{capabilityTools}}
 Fetch @skills/fetch/SKILL.md
 Required capability profile: {{capabilityProfile}}.
 Fetch @sai/policies/explore-agent.md
+
+<!-- User customizations below this line -->

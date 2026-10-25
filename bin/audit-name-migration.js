@@ -25,18 +25,7 @@ function migratePreset(preset) {
 }
 
 function prepare(base) {
-  for (const [oldName, newName] of Object.entries(AUDIT_RENAMES)) {
-    for (const [folder, suffix] of [['commands', ''], ['agents', '-worker']]) {
-      const oldPath = path.join(base, folder, `${oldName}${suffix}.md`);
-      const destination = path.join(base, folder, `${newName}${suffix}.md`);
-      if (!fs.existsSync(oldPath) && !fs.existsSync(destination)) continue;
-      const previous = fs.readFileSync(fs.existsSync(destination) ? destination : oldPath, 'utf8');
-      if (!fs.existsSync(destination)) {
-        fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.writeFileSync(destination, previous.replaceAll(oldName, newName));
-      }
-    }
-  }
+  // Preset keys migrate; retired command/agent files and their tunables do not.
   const presets = path.join(base, 'sai', 'presets');
   function visit(directory) {
     if (!fs.existsSync(directory)) return;

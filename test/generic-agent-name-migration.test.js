@@ -59,7 +59,7 @@ test('fresh installs share names and generated dispatch grants across both harne
   assert.match(commandRequirements, /budget-executor/);
 });
 
-test('migration preserves all models and optional variant absence over repeat installation', t => {
+test('renamed agents are deleted and replacements receive shipped defaults over repeat installation', t => {
   const f = fixture(t);
   const originals = f.projections.map((p, i) => {
     const content = tuned(p.sourceText, i !== 1);
@@ -69,7 +69,7 @@ test('migration preserves all models and optional variant absence over repeat in
   flow.installOpencode(f.base);
   for (const item of originals) {
     assert.equal(fs.existsSync(item.path), false);
-    assert.equal(fs.readFileSync(item.projection.destinationPath, 'utf8'), item.content);
+    assert.equal(fs.readFileSync(item.projection.destinationPath, 'utf8'), item.projection.sourceText);
   }
 });
 
@@ -83,10 +83,10 @@ test('new-name settings win conflicts, including structured model settings', t =
   flow.installOpencode(f.base, { notices });
   assert.equal(fs.readFileSync(p.destinationPath, 'utf8'), current);
   assert.equal(fs.existsSync(old), false);
-  assert.ok(notices.some(line => /Conflicting legacy agent settings/.test(line)));
+  assert.ok(!notices.some(line => /Conflicting legacy agent settings/.test(line)), 'obsolete tunables are not compared or migrated');
 });
 
-test('modified legacy definitions and project-local overrides remain byte-exact on repeat runs', t => {
+test('modified legacy definitions are removed globally and from the named project', t => {
   const f = fixture(t);
   const p = f.projections.find(item => item.destinationPath.endsWith('budget-explorer.md'));
   const content = `${tuned(p.sourceText)}\nUser instructions.\n`;
@@ -97,33 +97,34 @@ test('modified legacy definitions and project-local overrides remain byte-exact 
   const notices = [];
   flow.installOpencode(f.base, { notices });
   flow.installOpencode(f.base, { notices });
-  const child = spawnSync(process.execPath, ['-e', `require(${JSON.stringify(path.join(repoRoot, 'bin/install-flow.js'))}).installOpencode(${JSON.stringify(f.base)})`], { cwd: f.root, encoding: 'utf8' });
+  const child = spawnSync(process.execPath, ['-e', `require(${JSON.stringify(path.join(repoRoot, 'bin/install-flow.js'))}).installOpencode(${JSON.stringify(f.base)}, { projectPath: process.cwd() })`], { cwd: f.root, encoding: 'utf8' });
   assert.equal(child.status, 0, child.stderr);
-  assert.match(child.stdout, /Preserved project-local legacy agent/);
-  assert.equal(fs.readFileSync(old, 'utf8'), content);
-  assert.equal(fs.readFileSync(local, 'utf8'), 'independent local definition');
-  assert.ok(notices.some(line => /Preserved legacy agent/.test(line) && /built-in explore/.test(line)));
+  assert.doesNotMatch(child.stdout, /Preserved project-local legacy agent/);
+  assert.equal(fs.existsSync(old), false);
+  assert.equal(fs.existsSync(local), false);
+  assert.ok(!notices.some(line => /Preserved legacy agent/.test(line)));
   assert.equal(fs.readFileSync(p.destinationPath, 'utf8'), p.sourceText);
 });
 
-test('blocked non-regular replacement leaves predecessor intact and partial migration resumes safely', t => {
+test('retirement is separate from the non-regular replacement guard and repeat installation is safe', t => {
   const f = fixture(t);
   const [first, second] = f.projections;
   const firstOld = legacy(f, first, tuned(first.sourceText));
   const secondOld = legacy(f, second, tuned(second.sourceText, false));
   flow.installProjection(first, f.base);
-  assert.equal(fs.existsSync(firstOld), false);
+  assert.equal(fs.existsSync(firstOld), true, 'a single projection does not run manifest retirement');
   fs.mkdirSync(second.destinationPath);
   const notices = [];
   flow.installProjection(second, f.base, notices);
   assert.ok(fs.lstatSync(second.destinationPath).isDirectory());
-  assert.ok(notices.some(line => /Skipped generic agent installation/.test(line)));
+  assert.ok(notices.some(line => /Skipped managed agent installation/.test(line)));
   assert.ok(fs.existsSync(secondOld));
   fs.rmdirSync(second.destinationPath);
   flow.installOpencode(f.base);
   assert.equal(fs.existsSync(secondOld), false);
-  assert.equal(fs.readFileSync(first.destinationPath, 'utf8'), tuned(first.sourceText));
-  assert.equal(fs.readFileSync(second.destinationPath, 'utf8'), tuned(second.sourceText, false));
+  assert.equal(fs.existsSync(firstOld), false);
+  assert.equal(fs.readFileSync(first.destinationPath, 'utf8'), first.sourceText);
+  assert.equal(fs.readFileSync(second.destinationPath, 'utf8'), second.sourceText);
 });
 
 for (const withLegacy of [false, true]) {
@@ -178,7 +179,7 @@ for (const withLegacy of [false, true]) {
     assert.equal(read(p.destinationPath, 'utf8'), 'protected destination');
     assert.equal(read(target, 'utf8'), 'Unrelated external content.\n');
     if (old) assert.equal(read(old, 'utf8'), original);
-    assert.ok(notices.some(line => /Skipped generic agent installation/.test(line)));
+    assert.ok(notices.some(line => /Skipped managed agent installation/.test(line)));
   });
 }
 

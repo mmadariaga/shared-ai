@@ -13,3 +13,5 @@ Fetch @sai/commands/archive/coordinator.md and follow it exactly, forwarding the
 InvocationEnvelope:
   command_name: archive
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

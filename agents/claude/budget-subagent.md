@@ -10,3 +10,5 @@ Fetch @skills/fetch/SKILL.md
 Required capability profile: {{capabilityProfile}}.
 Fetch @sai/policies/tool-access.md; check access after task disclosure.
 Fetch @sai/policies/budget-agent.md
+
+<!-- User customizations below this line -->

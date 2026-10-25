@@ -614,7 +614,7 @@ test('E9 / I2 / I10: both harnesses retain thin explicit-invocation wrappers and
   }
 });
 
-test('E9 / I1 / I2 / I10: both harnesses install to-pr and retire managed sai-pr copies while preserving modified and user documents', t => {
+test('E9 / I1 / I2 / I10: both harnesses install to-pr and delete retired sai-pr copies while preserving unrelated user documents', t => {
   const flow = require('../bin/install-flow');
   const capabilities = require('../bin/capabilities');
   // Pin to the last revision that still shipped sai-pr, so the test survives later commits.
@@ -636,7 +636,8 @@ test('E9 / I1 / I2 / I10: both harnesses install to-pr and retire managed sai-pr
     assert.equal(fs.readFileSync(path.join(directory, 'pr.md'), 'utf8'), 'User document');
     fs.writeFileSync(file, 'User override');
     flow.cleanupRetiredProjections(harness, { base: directory });
-    assert.equal(fs.readFileSync(file, 'utf8'), 'User override');
+    assert.equal(fs.existsSync(file), false);
+    assert.equal(fs.readFileSync(path.join(directory, 'pr.md'), 'utf8'), 'User document');
   }
 });
 
