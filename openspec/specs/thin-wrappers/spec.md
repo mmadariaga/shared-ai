@@ -22,7 +22,7 @@ This capability keeps Claude Code and opencode command wrappers thin by constrai
 
 ### Requirement: Wrapper file inventory
 
-The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each loading the harness fetch skill and then `sai/commands/merge/coordinator.md` directly, forwarding its InvocationEnvelope with no boot adapter and no command bootstrap.
+The per-harness wrapper file list SHALL contain exactly nineteen `sai-*.md` files, eighteen command wrappers plus the `sai-context-cache-ttl-benchmark.md` skill launcher, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each loading the harness fetch skill and then `sai/commands/merge/coordinator.md` directly, forwarding its InvocationEnvelope with no boot adapter and no command bootstrap.
 
 #### Scenario: sai-merge wrapper present on both harnesses
 

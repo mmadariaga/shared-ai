@@ -395,10 +395,12 @@ test('final wrappers: sai/install-manifest.json has no command-bootstrap.md entr
   assert.doesNotMatch(manifest, /command-bootstrap\.md/, 'install manifest should have no command-bootstrap.md entry');
 });
 
-test('Command Bootstrap glossary term and relationship remain canonical', () => {
+test('the glossary marks the boot-layer terms retired', () => {
   const glossary = read('GLOSSARY.md');
-  assert.match(glossary, /\*\*Command Bootstrap\*\*: "The harness-neutral per-command card at `sai\/commands\/\{name\}\/command-bootstrap\.md`/);
-  assert.match(glossary, /- A \*\*Command Bootstrap\*\* is loaded by one \/sai-\* wrapper after its \*\*Harness Boot Adapter\*\*/);
+  for (const term of ['Boot Request', 'Command Bootstrap', 'Harness Boot Adapter', 'Orchestration Core', 'Phase Policy']) {
+    assert.match(glossary, new RegExp(`\\*\\*${term}\\*\\*: "Retired`), `${term} should read as retired`);
+  }
+  assert.doesNotMatch(glossary, /- A \*\*Command Bootstrap\*\* is loaded by one \/sai-\* wrapper/);
 });
 
 
