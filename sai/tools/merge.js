@@ -785,7 +785,13 @@ function compareToBaseline(cwd, reference, explicit, fixed) {
   const again = failingTests(second.data);
   const confirmed = candidates.includes(WHOLE_SUITE) ? again.length ? again : [WHOLE_SUITE]
     : again.length ? candidates.filter(name => again.includes(name)) : candidates;
-  return settle(second, 'new', { new: confirmed, flaky: candidates.filter(name => name !== WHOLE_SUITE && !confirmed.includes(name)), preexisting }, [first, second]);
+  // A test that failed in only one of the two runs is flaky, whichever run it
+  // failed in; one already failing in the baseline stays pre-existing.
+  const rerunOnly = again.filter(name => !candidates.includes(name) && !confirmed.includes(name));
+  const flaky = [...candidates.filter(name => name !== WHOLE_SUITE && !confirmed.includes(name)), ...rerunOnly.filter(name => !known.has(name))];
+  const found = { new: confirmed, flaky: [...new Set(flaky)].sort(compare),
+    preexisting: [...new Set([...preexisting, ...rerunOnly.filter(name => known.has(name))])].sort(compare) };
+  return settle(second, confirmed.length ? 'new' : 'flaky', found, [first, second]);
 }
 
 function saveReceipt(cwd, result, filename) {
