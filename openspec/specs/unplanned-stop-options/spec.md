@@ -93,12 +93,12 @@ In unattended lanes, the "what the user must decide" part of the stop notice in 
 
 ### Requirement: Direct Build final report keeps four sections
 
-Full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for its closing report instead of the former Direct Build four-section presentation. Next step SHALL name the required decision, and applicable stop options SHALL follow Execution details as a separate decision prompt outside the report. Existing choices and planned-stop exclusions SHALL remain in force; a pending execution question SHALL remain a pause rather than a terminal closing. The `--no-specs` POC SHALL retain its own closing behavior. The `/sai-build` closing line is defined by its coordinator and is not governed by this requirement.
+Full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for its closing report instead of the former Direct Build four-section presentation. Next step SHALL name the required decision, and after an escalation the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate decision prompt outside the report. Existing choices and planned-stop exclusions SHALL remain in force; cancellation and a stop the user chose SHALL get no options; a pending execution question SHALL remain a pause rather than a terminal closing. The `--no-specs` POC SHALL retain its own closing behavior. The `/sai-build` closing line is defined by its coordinator and is not governed by this requirement.
 
 #### Scenario: Direct Build run ends incomplete
 
 - **WHEN** a full Direct Build run ends incomplete and its final report is printed
-- **THEN** the shared stopped report identifies the required decision in Next step and applicable stop options follow Execution details as a separate decision prompt outside the report
+- **THEN** the shared stopped report identifies the required decision in Next step and the escalation options of `sai/policies/obstacle-escalation.md` follow Execution details as a separate decision prompt outside the report
 
 ### Requirement: Options rest on evidence already held
 

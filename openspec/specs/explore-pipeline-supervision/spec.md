@@ -139,9 +139,9 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 ### Requirement: Direct Build - Unattended eight-step unattended flow
 
-On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
+On a Direct Build - Unattended selection, explore SHALL follow the Direct Build coordinator card and run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
 
-At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and local commit short SHA and subject and state `Nothing was pushed.` If archiving or the commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. Unplanned-stop options SHALL follow Execution details as a separate question; cancellation and user-chosen stops SHALL retain existing exclusions.
+At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and local commit short SHA and subject and state `Nothing was pushed.` If archiving or the commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. After an escalation, the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate question; cancellation and a stop the user chose SHALL get no options.
 
 Execution details SHALL preserve the work and commit record, original tool-generated commit reports, and the Verification and Incidents diagnostic records. Verification SHALL always state the Step 2b suite-gate command and its observed result (green, red with the failing tests, cannot run with the error, or `no test suite found`), SHALL list pre-existing failures classified at `base_sha` separately from failures introduced or worsened by the run, and SHALL list every test file the implementer touched in a gate round. It SHALL state `No known verification issues.` only when the suite gate ran green, no pre-existing failure was found, and no test file was touched in a gate round. A pre-existing test failure SHALL remain a verification limitation, not an incident. Incidents SHALL report run-caused execution problems and contract violations with their violated rule and known effect and identify expected generated files excluded from the commit with their reasons.
 
@@ -149,7 +149,7 @@ The report SHALL omit routine execution telemetry and verbatim worker summaries 
 
 #### Scenario: Unattended run reaches an archived, committed change
 
-- **WHEN** the eight Direct Build steps complete without a recovery interruption
+- **WHEN** the eight Direct Build steps complete without an escalation
 - **THEN** the flow presents the shared outcome-first report, names the archive destination and local commit short SHA and subject, states `Nothing was pushed.`, and reaches the terminal archived-and-committed state
 
 #### Scenario: Direct Build reports a completed archive and commit
@@ -226,16 +226,16 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with one key per step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), each allowing three attempts for its failed step, initialized to zero only by a new slice and persisting across a same-slice resume, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only in the card's Run state, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempts of one budget of 3 per step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), initialized to zero only by a new slice and persisting across a same-slice resume, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every non-clean outcome after dispatch SHALL be an obstacle of the step it blocks under `sai/policies/obstacle-escalation.md`; `failure_class` and `unrecoverable` SHALL be evidence for the response, never an eligibility gate. A backfill or archive worker failure SHALL be answered as an obstacle first, and the run SHALL stop only when the step's budget is spent or a force-majeure case applies. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state, which SHALL be force majeure. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
-- **WHEN** the archive worker reports a CLI, staging, message-authoring, or commit failure and the resilience rule answers no
+- **WHEN** the archive worker reports a CLI, staging, message-authoring, or commit failure and the step's budget is spent or a force-majeure case applies
 - **THEN** the flow preserves and reports the exact state, issues no order onto it, and does not mark the slice complete
 
 #### Scenario: Hands-worker failure stops clean
 
-- **WHEN** the backfill or archive worker returns a failure before completing its closed order and the resilience rule answers no
+- **WHEN** the backfill or archive worker returns a failure before completing its closed order and the step's budget is spent
 - **THEN** the run stops before the next mutation stage and manual `/sai-archive` and `/sai-commit` guidance is reported
 
 #### Scenario: Backfill partial-mutation failure stops before archive
@@ -246,26 +246,26 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 #### Scenario: A failed order without effect is corrected and issued again
 
 - **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the failed step has an attempt left
-- **THEN** the route corrects the cause through the recovery path and issues a new order to the step's owner
+- **THEN** the route answers it as an obstacle with a different correction and issues a new order to the step's owner
 
 ### Requirement: Explore worker bindings load at their dispatch points
 
-The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/steps/pipeline-direct-build.md`, not in `sai/commands/explore/command-bootstrap.md`. The Plan - Unattended route SHALL likewise load the `spec-worker` and `design-worker` bindings at its phase-aware dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the envelope carries the binding's `Worker contract: Fetch …` + `InvocationEnvelope:` framing and the worker returns closed lifecycle payloads.
+The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/direct-build-coordinator.md`, not in `sai/commands/explore/command-bootstrap.md`. The Plan - Unattended route SHALL likewise load the `spec-worker` and `design-worker` bindings at its phase-aware dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the worker returns `event: ready` before its task and closed lifecycle results afterwards.
 
 #### Scenario: The implementer binding is fetched before the step-1 dispatch
 
 - **WHEN** the Direct Build route reaches its step-1 implement dispatch
-- **THEN** `pipeline-direct-build.md` fetches `@sai/orchestration/workers/bindings/direct-build-worker.md` and uses it before dispatching `sai-direct-build-worker`.
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/direct-build-worker.md` and uses it before dispatching `sai-direct-build-worker`.
 
 #### Scenario: The backfill binding is fetched before the step-3 dispatch
 
 - **WHEN** the Direct Build route reaches its backfill dispatch
-- **THEN** `pipeline-direct-build.md` fetches `@sai/orchestration/workers/bindings/backfill-worker.md` and uses it before dispatching `sai-backfill-worker`.
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/backfill-worker.md` and uses it before dispatching `sai-backfill-worker`.
 
 #### Scenario: The archive binding is fetched before the step-7 dispatch
 
 - **WHEN** the Direct Build route reaches its archive dispatch
-- **THEN** `pipeline-direct-build.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching `sai-archive-worker`.
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching `sai-archive-worker`.
 
 #### Scenario: The Plan bindings are fetched before the first Plan dispatch
 
@@ -299,7 +299,7 @@ The Direct Build - Unattended route's step-4 spec review SHALL apply the shared 
 
 ### Requirement: The Direct Build run has three guard windows
 
-Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 staging, or before the stop report when the suite gate stops the route; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — spanning the findings and execute continuations with no guard call between them, and verified after the Step 6 execute terminal before acting on it; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch and closed by a normal verify immediately before the Step 8 execute continuation, which carries `allow_commit` and therefore always opens its own isolated window from a fresh snapshot, verified with `--allow-commit` over that window only, because that continuation's validated closed order contains the one pre-authorized local commit. Progress events and notices inside a window SHALL take no guard call; a human turn inside any window (an escalated question) SHALL be a boundary per the no-commit-guard policy: verify before presenting it and snapshot again after the answer, before forwarding it. A recovery hand-off to the budget agent SHALL take its own window per the no-commit-guard policy's recovery hand-off isolation. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes, then continues the route.
+Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 staging, or before the stop report when the suite gate stops the route; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — spanning the findings and execute continuations with no guard call between them, and verified after the Step 6 execute terminal before acting on it; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch and closed by a normal verify immediately before the Step 8 execute continuation, which carries `allow_commit` and therefore always opens its own isolated window from a fresh snapshot, verified with `--allow-commit` over that window only, because that continuation's validated closed order contains the one pre-authorized local commit. Progress events and notices inside a window SHALL take no guard call; a human turn inside any window (an escalated question) SHALL be a boundary per the no-commit-guard policy: verify before presenting it and snapshot again after the answer, before forwarding it. A new worker started as an obstacle approach SHALL be a dispatch guarded like any other, inside the window of the step it serves. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes, then continues the route.
 
 #### Scenario: the backfill prepare window opens after staging
 
@@ -328,8 +328,8 @@ Every dispatch of a Direct Build (unattended) run SHALL be guarded by the determ
 
 #### Scenario: a recovery hand-off takes its own window
 
-- **WHEN** the coordinator hands a failed step off to the budget agent during the run
-- **THEN** the hand-off runs in its own guard window without `allow_commit`
+- **WHEN** the coordinator starts a new worker for a failed step with its written hand-over during the run
+- **THEN** that dispatch runs inside the guard window of the step it serves, without `allow_commit` unless it is the Step 8 execute continuation
 
 ### Requirement: Direct Build slice-machine emits
 
@@ -352,17 +352,17 @@ After a valid native picker answer for `Direct Build - Unattended` activates `ro
 
 ### Requirement: Direct Build archive failure correction routing
 
-The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the failed step's own key (`step-7` or `step-8`). Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
+The card SHALL answer an archive preparation or execution failure as an obstacle of the failed step (`step-7` or `step-8`) under `sai/policies/obstacle-escalation.md`, within that step's own budget of 3 attempts, continuing the same worker with a correction or starting a new worker with the card's hand-over. Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the card's Execute orders rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
 
 #### Scenario: Backfill-artifact archive failure relaunches after correction
 
-- **WHEN** an archive execution fails on a backfill-artifact error, the no-effect check verifies that the order changed nothing, and the cause is corrected through the recovery path
+- **WHEN** an archive execution fails on a backfill-artifact error, the no-effect check verifies that the order changed nothing, and the cause is corrected as an obstacle of the step
 - **THEN** the supervision SHALL issue a new archive execute order with the corrected artifacts
 
 #### Scenario: Repeated defect without progress closes as failed-retryable
 
-- **WHEN** the same diagnosis repeats after a correction or the failed step's three attempts are spent
-- **THEN** the supervision SHALL stop with the policy's stop notice and the verbatim failure in view, and the slice stays retryable at explicit user request
+- **WHEN** the same defect repeats after a correction or the failed step's three attempts are spent
+- **THEN** the supervision SHALL escalate with a stop report and options with the verbatim failure in view, and the slice stays retryable at explicit user request
 
 ### Requirement: Plan slice-machine emits
 
@@ -382,20 +382,6 @@ After a valid native picker answer for `Plan - Unattended` activates `route-choi
 - **WHEN** the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds while explore-slice has no pending slice
 - **THEN** Explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
 
-### Requirement: Direct Build - Unattended activates the policy only for the full route
-
-The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow and apply its resilience rule to every non-clean outcome after dispatch/startup handling, payload validation, and accepted-result Bounded Recovery. Where a step says to stop on a failure, the route SHALL stop only when the rule answers no, and it SHALL issue an execute order again only under the policy's execute-order rule. The pinned `--no-specs` POC profile SHALL remain outside this policy.
-
-#### Scenario: Full Direct Build reaches runtime recovery
-
-- **WHEN** the full Direct Build - Unattended route has a non-clean outcome after its existing dispatch, validation, and Bounded Recovery handling
-- **THEN** the route evaluates the shared resilience rule without changing its worker order
-
-#### Scenario: The POC profile remains excluded
-
-- **WHEN** the Direct Build `--no-specs` POC profile is active
-- **THEN** the route does not load or apply the resilience rule
-
 ### Requirement: Direct Build implementer accepts a bounded verification note
 
 During Direct Build Steps 1–2, `sai-direct-build-worker` SHALL accept the policy-authorized same-worker verification note only as one reversible correction to the already-disclosed crystallized block. The note SHALL state verified current effects, one in-scope correction, and one concrete verification check; it SHALL add no requirement, task, artifact authority, mutation authority, or review/fix-loop round.
@@ -412,7 +398,7 @@ During Direct Build Steps 1–2, `sai-direct-build-worker` SHALL accept the poli
 
 ### Requirement: Direct Build mutation workers retain one-shot order boundaries
 
-Direct Build backfill and archive workers SHALL retain their role-specific validated preparation and execution contracts. A successful order SHALL be consumed and never issued again. A new backfill draft order or archive order SHALL be issued only after the previous order failed and the no-effect check verified that it changed nothing; an order SHALL never be issued over completed, partial, or unknown effects. A backfill-artifact failure SHALL be corrected through the recovery path of `sai/policies/unattended-runtime-recovery.md`.
+Direct Build backfill and archive workers SHALL retain their role-specific validated preparation and execution contracts. A successful order SHALL be consumed and never issued again. A new backfill draft order or archive order SHALL be issued only after the previous order failed and the no-effect check verified that it changed nothing; an order SHALL never be issued over completed, partial, or unknown effects. A backfill-artifact failure SHALL be corrected as an obstacle of the failed step under `sai/policies/obstacle-escalation.md`.
 
 #### Scenario: Archive mutation is incomplete
 
@@ -422,7 +408,7 @@ Direct Build backfill and archive workers SHALL retain their role-specific valid
 #### Scenario: Backfill-artifact correction remains route-owned
 
 - **WHEN** a valid archive failure is identified as a backfill-artifact error
-- **THEN** the route corrects it through the recovery path, continuing the current subagent or handing off to the budget agent
+- **THEN** the route corrects it as an obstacle of its step, continuing the same backfill worker or starting a new worker with the card's hand-over
 
 ### Requirement: Unattended runtime recovery preserves route gates
 
@@ -456,7 +442,7 @@ The Direct Build - Unattended route SHALL classify every observation of its func
 
 ### Requirement: Direct Build owns retained same-conversation execution state
 
-The full Direct Build route SHALL define its retained execution state once in `pipeline-direct-build.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed, original envelopes, exact opaque continuation histories, required reconstruction metadata and replacement usage, first-seen changed-path union, findings, draft validation evidence, the backfill transfer directory path and the latest draft references (never draft content), suite results, verification references, existing recovery counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
+The full Direct Build route SHALL define its retained execution state once in the Run state section of `sai/commands/explore/direct-build-coordinator.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed with its original envelope and the messages it received, first-seen changed-path union, findings, draft validation evidence, the backfill transfer directory path and the latest draft references (never draft content), suite results, the report directory, verification references, the per-step attempt counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
 
 Parking the slice SHALL release machine active state without clearing this conversation execution state. Guard baseline state SHALL remain local to its live window; a human interruption SHALL close and verify that window, and subsequent worker work SHALL open a fresh window under the existing guard policy. Resumption SHALL introduce no new persistent storage and SHALL not support a new conversation.
 
@@ -498,30 +484,30 @@ The coordinator SHALL recheck accepted-step evidence against repository state, p
 
 ### Requirement: Direct Build continues the corresponding agent before replacement
 
-For pending agent work, the coordinator SHALL first attempt same-worker continuation with the retained handle through the existing native binding: Claude Code's captured agent handle or opencode's task session identifier. Failed delivery and permitted replacement SHALL follow existing command-runner continuation, replacement, reconstruction, and unattended recovery contracts. Replacement work SHALL require complete reconstruction and SHALL retain replacement usage and recovery counters. Each pending step SHALL continue its corresponding role rather than dispatching a new implementer for backfill or archive.
+For pending agent work, the coordinator SHALL first attempt same-worker continuation with the retained handle through the existing native binding: Claude Code's captured agent handle or opencode's task session identifier. A new worker SHALL be an obstacle approach under `sai/policies/obstacle-escalation.md`: it SHALL receive a hand-over written by the coordinator (the change name, the role and step, the retained references, the validated closed order and its execution state when there is one, the findings already sent, and the symptom), never draft content or the old worker's history, SHALL start again from the ready handshake, and SHALL never replay an executed order. The step's attempt counters SHALL persist across the replacement. Each pending step SHALL continue its corresponding role rather than dispatching a new implementer for backfill or archive.
 
 #### Scenario: Existing role agent remains available
 
 - **WHEN** pending work can continue through its retained agent handle
-- **THEN** the coordinator continues that same agent before considering permitted replacement
+- **THEN** the coordinator continues that same agent before considering a new worker
 
 #### Scenario: Continuation delivery fails
 
 - **WHEN** same-agent continuation cannot be delivered
-- **THEN** the coordinator applies only the replacement and reconstruction permitted by existing contracts and remains stopped if reconstruction is incomplete
+- **THEN** the coordinator starts a new worker with its written hand-over as an attempt of that step, and keeps the route stopped when the pending operation needs information the run state does not hold
 
 ### Requirement: Rejected responses preserve work and remain pending
 
-Every Direct Build response SHALL reach the active validator exactly as received. Invalid output SHALL preserve existing repository changes, keep the step pending, and request a fresh validator-compatible response from its author through existing recovery rules. Rejected output SHALL supply no accepted status or changed-path claim. Recoverable errors SHALL follow the existing unattended recovery procedure before a user decision. An exhausted budget SHALL leave the step pending and report the cause; choosing resumption SHALL not reopen that budget.
+Every Direct Build response SHALL reach the active validator exactly as received. Invalid output SHALL preserve existing repository changes, keep the step pending, and request a fresh valid report from its author as an obstacle of that step. Rejected output SHALL supply no accepted status or changed-path claim. Recoverable errors SHALL be answered as obstacles under `sai/policies/obstacle-escalation.md` before a user decision. An exhausted budget SHALL leave the step pending and report the cause; choosing resumption SHALL not reopen that budget.
 
 #### Scenario: Agent returns invalid output
 
 - **WHEN** an agent response fails active payload validation
-- **THEN** the coordinator preserves existing changes and requests corrected output from the author within the existing recovery budget without advancing the step
+- **THEN** the coordinator preserves existing changes and requests corrected output from the author within the step's attempt budget without advancing the step
 
 #### Scenario: Recovery budget is exhausted
 
-- **WHEN** a pending step has exhausted its existing recovery attempts
+- **WHEN** a pending step has spent its three attempts
 - **THEN** the coordinator reports the cause and keeps the step pending without granting another attempt merely because resumption was requested
 
 ### Requirement: Plan - Unattended follows the /sai-plan coordinator
@@ -537,3 +523,27 @@ The explore route `Plan - Unattended` SHALL export the first pending slice's sto
 
 - **WHEN** the spec segment of the followed `/sai-plan` run ends stopped
 - **THEN** explore emits `{intent: fail}`, no design segment starts, and a later `Plan - Unattended` answer retries the slice
+
+### Requirement: Direct Build - Unattended follows the Direct Build coordinator card
+
+The explore route `Direct Build - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/explore/direct-build-coordinator.md` in the explore session with `--block-file` and `--block-hash`, as it follows `sai/commands/plan/coordinator.md` for Plan. The card SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections; it SHALL own the eight steps, the Step 2b suite gate, the three guard windows, the run state, the Execute orders rule, resumption, and the terminal report; it SHALL dispatch only `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`; and it SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. Obstacles SHALL follow `sai/policies/obstacle-escalation.md` with one budget of 3 attempts per step, named `step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`. `sai/commands/explore/steps/pipeline-direct-build.md` SHALL keep only what is explore's own: the delegated write-scope exception, ordered slice selection, the dispatchable-blocks rule, the stored-block export, the fetch of the card with its arguments, the `--no-specs` POC profile, the slice-machine emits, the route projection, and the slice completion transition. On `BLOCK_NOT_FOUND` or `BLOCK_EXPORT_FAILED`, explore SHALL dispatch nothing and escalate under the obstacle policy with options that include retrying the export and re-emitting the block (`--amend` for one pending or stopped slice). The `--no-specs` POC profile SHALL run only the card's Step 1 and Step 2 and SHALL spend no recovery attempt.
+
+#### Scenario: Direct Build route follows the card
+
+- **WHEN** the user selects `Direct Build - Unattended` for a dispatchable slice
+- **THEN** explore exports the slice's block and follows `sai/commands/explore/direct-build-coordinator.md` with the block reference, and the card dispatches the three Direct Build workers
+
+#### Scenario: The card carries no legacy orchestration
+
+- **WHEN** `sai/commands/explore/direct-build-coordinator.md` is read
+- **THEN** it fetches `sai/policies/obstacle-escalation.md` and none of the command runner, worker core, bounded-recovery, stop-options, or unattended-runtime-recovery contracts
+
+#### Scenario: An unexportable block stops before dispatch
+
+- **WHEN** the stored-block export returns `BLOCK_NOT_FOUND` or `BLOCK_EXPORT_FAILED`
+- **THEN** explore dispatches nothing and escalates with options that include retrying the export and re-emitting the block with `--amend`
+
+#### Scenario: A POC failure spends no attempt
+
+- **WHEN** the `--no-specs` POC profile ends with a failed implementer result
+- **THEN** no recovery attempt is spent and the POC lane forms its verdict from the observed result

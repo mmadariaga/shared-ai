@@ -4,9 +4,6 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const {
-  REQUIRED_OPERATIONS,
-} = require('../fixtures/implementation-harness-bindings.js');
 const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
@@ -44,29 +41,29 @@ const WORKERS = [
   ['sai-direct-build-worker', 'direct-build-worker.md'],
 ];
 
-// The audit, spec, design, merge, commit, archive, and backfill bindings render from the standalone
-// template, which leaves the lifecycle to the coordinator; the direct-build binding is the routed
-// representative that still carries the dispatch, continuation, and replacement
-// operations.
-const ROUTED_PHASE = 'direct-build';
+// Every worker binding renders from the standalone template, which carries only the create and
+// continue calls and leaves the lifecycle to the coordinator. The routed template stays in the
+// source tree until its last consumer retires.
 
 const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [
   filename,
   filename.replace('-worker.md', ''),
 ]));
 
-const OPERATION_PHRASE = {
-  dispatch_worker: /Dispatch the worker once|dispatch\s+/i,
-  continue_same_worker: /Continue on the same (?:worker|task)/i,
-  dispatch_one_replacement_worker: /one bounded replacement|replacement dispatch/i,
+const STANDALONE_OPERATION_PHRASE = {
+  dispatch_worker: /Create the worker with the ready prompt alone/,
+  continue_same_worker: /Send every later message[\s\S]*to the captured handle/,
 };
 
-test('Step 2 routed harness bindings expose the required lifecycle symbols', () => {
+test('Step 2 standalone harness bindings expose the create and continue calls and carry no replacement machinery', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, ROUTED_PHASE);
-    for (const operation of REQUIRED_OPERATIONS) {
-      assert.match(binding, OPERATION_PHRASE[operation],
-        `${harness} binding should expose ${operation}`);
+    for (const [, filename] of WORKERS) {
+      const binding = matrixBinding(harness, BINDING_PHASE[filename]);
+      for (const [operation, phrase] of Object.entries(STANDALONE_OPERATION_PHRASE)) {
+        assert.match(binding, phrase, `${harness} ${filename} binding should expose ${operation}`);
+      }
+      assert.doesNotMatch(binding, /replacement_reconstruction_fields|continue_after_|command-runner/,
+        `${harness} ${filename} binding leaves the lifecycle to its coordinator`);
     }
   }
 });
@@ -83,11 +80,8 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
-      if (filename === `${ROUTED_PHASE}-worker.md`) {
-        for (const operation of REQUIRED_OPERATIONS) {
-          assert.match(binding, OPERATION_PHRASE[operation],
-            `${harness} binding should define ${operation}`);
-        }
+      for (const [operation, phrase] of Object.entries(STANDALONE_OPERATION_PHRASE)) {
+        assert.match(binding, phrase, `${harness} binding should define ${operation}`);
       }
     }
   }
@@ -125,11 +119,11 @@ test('Step 2 routed coordinator failed needs_input continuation allows one repla
       `the coordinator should reconstruct ${field}`);
   }
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, ROUTED_PHASE);
-    assert.match(binding, /one bounded replacement|replacement/i,
-      `${harness} binding should carry the replacement path`);
-    assert.match(binding, /reconstruction[ _]fields|originating binding context/i,
-      `${harness} binding should carry the reconstruction fields`);
+    const template = artifact(`sai/orchestration/workers/bindings/${harness}/worker-template.md`);
+    assert.match(template, /one bounded replacement|replacement/i,
+      `${harness} routed template should carry the replacement path`);
+    assert.match(template, /reconstruction[ _]fields|originating binding context/i,
+      `${harness} routed template should carry the reconstruction fields`);
   }
 });
 

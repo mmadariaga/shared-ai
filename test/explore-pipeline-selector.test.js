@@ -24,6 +24,7 @@ const exploreSources = [
   'sai/commands/explore/steps/poc-lane.md',
   'sai/commands/explore/steps/pipeline-plan-unattended.md',
   'sai/commands/explore/steps/pipeline-direct-build.md',
+  'sai/commands/explore/direct-build-coordinator.md',
   'sai/commands/explore/steps/idea-list.md',
   'sai/commands/explore/body.md',
   'commands/claude/sai-explore.md',
@@ -51,50 +52,54 @@ function supervisionContract() {
   ].join('\n');
 }
 
-test('Direct Build retains execution context and accepts steps only after checks', () => {
-  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
-  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Dispatchable blocks only**'));
+function directBuildCard() {
+  const card = spec('sai/commands/explore/direct-build-coordinator.md');
+  return {
+    card,
+    runState: card.slice(card.indexOf('## Run state'), card.indexOf('## The run')),
+    resume: card.slice(card.indexOf('## Resume'), card.indexOf('## Obstacles')),
+  };
+}
+
+test('Direct Build retains run state and accepts steps only after checks', () => {
+  const { runState, resume } = directBuildCard();
   for (const field of ['pending_step', 'base_sha', 'guard_base', 'slice_snapshot', 'order_snapshot',
-    'fix_rounds', 'gate_rounds', 'diagnosis_rounds.direct_build', 'direct_build_commit_authorized',
-    'validated_execution_order', 'execution_state']) assert.ok(retained.includes(field), field);
-  assert.match(retained, /each role's captured Handle/);
-  assert.match(retained, /first attempt same-worker continuation using its retained Handle/);
-  assert.match(retained, /original envelopes and exact opaque continuation histories/);
-  assert.match(retained, /Continuation and replacement/);
-  assert.match(retained, /Reconstruction must be complete before replacement work/);
-  assert.match(retained, /Only a new slice execution initializes counters to zero/);
-  assert.match(retained, /first pending internal step/);
-  assert.match(retained, /completed worker stretch alone does not accept a step/);
-  assert.match(retained, /all that step's checks/);
-  assert.match(retained, /preserve replacement usage and all recovery counters/);
-  assert.match(retained, /Claude Code[\s\S]*opencode/);
+    'fix_rounds', 'gate_rounds', '`attempts`', 'direct_build_commit_authorized',
+    'validated_execution_order', 'execution_state']) assert.ok(runState.includes(field), field);
+  assert.match(runState, /Each role's captured handle/);
+  assert.match(runState, /original envelope and the messages it received/);
+  assert.match(runState, /Only a new slice resets the counters/);
+  assert.match(resume, /continue the retained handle first/);
+  assert.match(resume, /first pending internal step/);
+  assert.match(resume, /completed worker stretch alone does not accept a step/);
+  assert.match(resume, /all that step's checks/);
+  assert.match(resume, /A new worker \(an obstacle approach\) gets the hand-over of Obstacles below and the ready handshake/);
+  assert.doesNotMatch(runState + resume, /command-runner|Continuation and replacement|replacement usage|diagnosis_rounds/);
 });
 
 test('Direct Build resumption separates immutable slice references from window-local guard state', () => {
-  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
-  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Entry and same-conversation resumption**'));
-  assert.match(retained, /retain `guard_base` only within its live window/);
-  assert.match(retained, /no-commit-guard\.md` § Window pairing/);
-  assert.match(retained, /including a user interruption: close and verify the running window/);
-  assert.match(retained, /After the human turn, open a fresh window[\s\S]*before forwarding worker work/);
-  assert.match(retained, /`guard_base` is never carried across a boundary/);
-  assert.match(retained, /immutable slice references `base_sha` and `slice_snapshot` through resumption/);
-  assert.match(retained, /fresh guard snapshot replaces only the window-local baseline, not those slice references/);
-  assert.doesNotMatch(retained, /Reuse[^\n]*`guard_base`/);
+  const { runState } = directBuildCard();
+  assert.match(runState, /Retain `guard_base` only within its live window/);
+  assert.match(runState, /no-commit-guard\.md` § Window pairing/);
+  assert.match(runState, /including a user interruption: close and verify the running window/);
+  assert.match(runState, /After the human turn, open a fresh window[\s\S]*before forwarding worker work/);
+  assert.match(runState, /`guard_base` is never carried across a boundary/);
+  assert.match(runState, /immutable slice references `base_sha` and `slice_snapshot` through resumption/);
+  assert.match(runState, /fresh guard snapshot replaces only the window-local baseline, not those slice references/);
+  assert.doesNotMatch(runState, /Reuse[^\n]*`guard_base`/);
 });
 
 test('format and commit recovery preserve work and the original single-commit grant', () => {
-  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
-  assert.match(route, /every response to the active validator exactly as received/);
-  assert.match(route, /invalid output, preserve existing changes, keep the step pending/);
-  assert.match(route, /fresh validator-compatible response from the authoring agent/);
-  assert.match(route, /unattended-runtime-recovery\.md` § Precedence and § Attempts/);
-  assert.match(route, /resume choice alone does not reopen any budget/);
-  assert.match(route, /confirmed to have occurred, record its reference and consumption once/);
-  assert.match(route, /confirmed absent[\s\S]*no-effect check/);
-  assert.match(route, /absence of a commit does not authorize replay of a partially applied archive order/);
-  assert.match(route, /inconclusive check keeps execution stopped/);
-  assert.match(route, /consumed order or commit grant is never renewed by resumption; never push/);
+  const { resume } = directBuildCard();
+  assert.match(resume, /every report to the validator exactly as received/);
+  assert.match(resume, /invalid report, preserve existing changes, keep the step pending/);
+  assert.match(resume, /fresh valid report as an obstacle of that step/);
+  assert.match(resume, /resume choice alone does not reopen any budget/);
+  assert.match(resume, /confirmed to have occurred, record its reference and consumption once/);
+  assert.match(resume, /confirmed absent[\s\S]*no-effect check/);
+  assert.match(resume, /absence of a commit does not authorize replay of a partially applied archive order/);
+  assert.match(resume, /inconclusive check keeps execution stopped/);
+  assert.match(resume, /consumed order or commit grant is never renewed by resumption; never push/);
 });
 
 test('pending Direct Build decisions precede the initial picker and retain parked references', () => {
@@ -785,7 +790,7 @@ test('Step 4: successful Plan (unattended) emits the build handoff and never dis
 test('Direct Build continuation starts the next ordered slice only after clean success and explicit consent', () => {
   const source = exploreContract();
   const transitionStart = source.indexOf('**Successful slice completion transition');
-  const transitionEnd = source.indexOf('**Failures**', transitionStart);
+  const transitionEnd = source.indexOf('This transition is never entered', transitionStart);
   assert.ok(transitionStart >= 0 && transitionEnd > transitionStart,
     'the Build completion transition should be present');
 
@@ -800,7 +805,7 @@ test('Direct Build continuation starts the next ordered slice only after clean s
   assert.match(transition, /never select a completed name or re-run a name already in `completed_changes`/i);
   assert.match(transition, /Choosing `Manual` through the native route picker starts no additional slice/i);
   assert.match(transition, /require a later explicit request before any pending slice runs/i);
-  assert.match(transition, /Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results do not mark a slice completed or start or select a later slice/i);
+  assert.match(transition, /Failed, cancelled, escalated, coordinator-disproved, or STOP-bearing results do not mark a slice completed or start or select a later slice/i);
 });
 
 test('Plan completion and Direct Build continuation use the native route picker', () => {
@@ -820,13 +825,12 @@ test('Plan completion and Direct Build continuation use the native route picker'
 });
 
 test('Direct Build final report is outcome-first and leaves the audit layout to the corrections entries', () => {
-  const directBuild = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const directBuild = spec('sai/commands/explore/direct-build-coordinator.md');
   const auditLayout = spec('sai/policies/autonomy-audit-log.md');
-  const reportStart = directBuild.indexOf('**Direct Build terminal report**');
-  const reportEnd = directBuild.indexOf('**Successful slice completion transition', reportStart);
+  const reportStart = directBuild.indexOf('## Close');
 
-  assert.ok(reportStart >= 0 && reportEnd > reportStart, 'the Direct Build terminal-report contract should exist');
-  const report = directBuild.slice(reportStart, reportEnd);
+  assert.ok(reportStart >= 0, 'the Direct Build terminal-report contract should exist');
+  const report = directBuild.slice(reportStart);
   assert.match(report, /@sai\/policies\/implementation-closing-report\.md.*single format authority/);
   const sections = ['**What you need to know**', '**Next step**', '**Execution details**', '**Verification**', '**Incidents**'];
   let previous = -1;

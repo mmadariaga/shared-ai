@@ -12,10 +12,10 @@ the coordinator after ready. Strip it before parsing the invocation envelope
 same-worker continuations. A full Direct Build task without this directory
 cannot proceed; report the missing transport to the coordinator without work.
 
-Compose the ordinary closed worker-core report, including any role-specific
-fields. Save its complete JSON or YAML unchanged with `transfer.js put --dir
-<report-dir> --path <unique-role-and-stretch-name>.json` (report on standard
-input), resolving the helper per `@sai/policies/tool-resolution.md`. Each
+Compose the ordinary closed report of the worker's contract, including any
+role-specific fields and the failure fields below. Save its complete JSON or
+YAML unchanged with `transfer.js put --dir <report-dir> --path
+<unique-role-and-stretch-name>.json` (report on standard input), resolving the helper per `@sai/policies/tool-resolution.md`. Each
 response, including `needs_input` and failures, uses a new file; previous
 reports remain available. Return only `{path, sha256}`, exactly as printed by
 `put`. This reference replaces the inline report, not its lifecycle shape.
@@ -25,6 +25,25 @@ If report creation fails, return the transport error as evidence, not a
 substitute accepted lifecycle report. On a fresh-result request, recover the
 report of the already-performed work; perform no effects again. Corrections to
 an invalid report come from its author, never from coordinator transcription.
+
+## Failed reports
+
+A `failed` report that carries `resolved_change_name` also carries
+`failure_class` and `unrecoverable`, exactly:
+
+```yaml
+status: failed
+summary: string
+changed_files: string[]
+resolved_change_name: string
+failure_class: blocking-contradiction|validation-failed|generation-error|dispatch-failed|envelope-contract-violation|unclassified-worker-fault
+unrecoverable: boolean
+```
+
+`failure_class` is worker-authored evidence, not an eligibility gate: the
+coordinator decides what to do under `@sai/policies/obstacle-escalation.md`.
+Set `unrecoverable: true` only when your own evidence shows that continuing is
+unsafe. Neither field is ever written into a repository artifact.
 
 ## Receiver boundary
 
@@ -54,9 +73,9 @@ acceptance nor rejection.
 
 The goal is an accepted report of the work actually performed, with the
 ordinary step checks satisfied. Recover delivery or request a corrected report
-using the available evidence and the existing per-step attempts and replacement
-limits of `@sai/policies/unattended-runtime-recovery.md`. Choose an approach
-that can work; do not repeat a mechanism already shown to fail. Recoverable
+using the available evidence, as an obstacle under
+`@sai/policies/obstacle-escalation.md`. Choose an approach that can work; do
+not repeat a mechanism already shown to fail. Recoverable
 transport problems require no user instructions. Missing authority or facts
 needed for safe continuation require intervention.
 
