@@ -7,7 +7,7 @@ Defines the shared pass, findings-ledger, and Pre-existing rules that let the co
 
 ### Requirement: One shared policy governs the two coordinator review-fix loops
 
-The pass rules of the `/sai-3-implement` step review and of the Direct Build functional fix loop (Step 2 of `sai/commands/explore/steps/pipeline-direct-build.md`) SHALL live in `sai/policies/incremental-review.md`, which both loops SHALL fetch. `/sai-4-review`, the Direct Build suite-gate rounds (Step 2b), and every other review loop SHALL NOT load the policy and SHALL keep their own behavior. The starting point of a loop SHALL be `base_sha` in Direct Build and HEAD before the step in `/sai-3-implement`.
+The pass rules of the `/sai-3-implement` step review and of the Direct Build functional fix loop (Step 2 of `sai/commands/explore/direct-build-coordinator.md`) SHALL live in `sai/policies/incremental-review.md`, which both loops SHALL fetch. `/sai-4-review`, the Direct Build suite-gate rounds (Step 2b), and every other review loop SHALL NOT load the policy and SHALL keep their own behavior. The starting point of a loop SHALL be `base_sha` in Direct Build and HEAD before the step in `/sai-3-implement`.
 
 #### Scenario: The review command stays a full review
 - **WHEN** `/sai-4-review` runs

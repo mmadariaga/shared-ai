@@ -303,7 +303,7 @@ test('every coordinator card that dispatches a routed worker carries the guard p
 
 test('the allow_commit carrier and the direct-build windows are wired in explore', () => {
   const pipeline = fs.readFileSync(
-    path.join(REPO_ROOT, 'sai', 'commands', 'explore', 'steps', 'pipeline-direct-build.md'),
+    path.join(REPO_ROOT, 'sai', 'commands', 'explore', 'direct-build-coordinator.md'),
     'utf8',
   );
   assert.ok(pipeline.includes('@sai/policies/no-commit-guard.md'));

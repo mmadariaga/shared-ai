@@ -31,14 +31,14 @@ Before the native route picker, inspect the retained conversation state and the
 first pending slice's parked mode under `slice.md`. If it is a pending Direct
 Build execution, use this branch; initial selection, completed-slice selection,
 and Plan behavior keep the picker below. Reach
-`pipeline-direct-build.md`'s **Retained execution state** and **Entry and
-same-conversation resumption** only for this pending execution.
+`direct-build-coordinator.md`'s **Run state** and **Resume** only for this
+pending execution.
 
-1. Apply the existing unattended recovery procedure to a recoverable error
-   before asking for a decision. Keep the original route identity, scope, and
+1. Respond to a recoverable error as an obstacle under
+   `@sai/policies/obstacle-escalation.md` before asking for a decision. Keep the original route identity, scope, and
    one-local-commit authorization. A recovery hand-off is not route selection.
 2. When user intervention is needed, present only executable actions under
-   `@sai/policies/stop-options.md` and `@sai/policies/question-context.md`, using
+   `@sai/policies/obstacle-escalation.md` and `@sai/policies/question-context.md`, using
    the harness-native picker per the "Closed-choice prompts" rule in
    `sai/policies/remember.md` (`AskUserQuestion` on Claude Code, `question` on opencode). Name the change,
    accepted work, pending operation, blocking cause, and remaining budget.

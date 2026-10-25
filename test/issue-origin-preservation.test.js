@@ -49,7 +49,7 @@ test('backfill and both Direct Build validators allow origin independently of in
   const instruction = read('sai/commands/backfill/instructions.md');
   assert.match(instruction, /optional `backlog_origin` key/g);
   assert.match(instruction, /independent of usable intent/);
-  for (const file of ['sai/commands/backfill/coordinator.md', 'sai/commands/explore/steps/pipeline-direct-build.md']) {
+  for (const file of ['sai/commands/backfill/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {
     const content = read(file);
     assert.match(content, /optional validated `backlog_origin`/);
     assert.match(content, /issue-origin-preservation\.md/);

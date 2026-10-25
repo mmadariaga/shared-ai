@@ -23,11 +23,12 @@ function section(document, title) {
   return compact(document.slice(bodyStart, nextHeading === -1 ? undefined : nextHeading));
 }
 
-test('recovery is reached from the Direct Build route only, not Plan, POC, or other selectors', () => {
+test('no explore route loads the retained recovery policy: Direct Build follows the obstacle policy', () => {
   const policyPath = 'sai/policies/unattended-runtime-recovery.md';
   const policy = read(policyPath);
   const plan = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  const directBuild = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
+  const pipeline = read('sai/commands/explore/steps/pipeline-direct-build.md');
   const selector = read('sai/commands/explore/steps/route-selector.md');
   const pocLane = read('sai/commands/explore/steps/poc-lane.md');
   const manifest = JSON.parse(read('sai/install-manifest.json'));
@@ -35,8 +36,10 @@ test('recovery is reached from the Direct Build route only, not Plan, POC, or ot
 
   assert.ok(policy.length > 0, `${policyPath} should exist and have content`);
   assert.doesNotMatch(plan, /unattended-runtime-recovery/, 'the Plan route follows /sai-plan and its own obstacle budget');
-  assert.match(directBuild, /For the full `direct-build-unattended` route only, Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
-  assert.match(directBuild, /Do not load or apply it to the pinned `--no-specs` POC profile/);
+  assert.match(directBuild, /Fetch @sai\/policies\/obstacle-escalation\.md/);
+  assert.doesNotMatch(directBuild, /unattended-runtime-recovery|bounded-recovery|stop-options/);
+  assert.doesNotMatch(pipeline, /unattended-runtime-recovery|bounded-recovery|stop-options/);
+  assert.match(pipeline, /The profile spends no recovery attempt, because a POC failure is the experiment's observation/);
   assert.doesNotMatch(selector, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
   assert.doesNotMatch(pocLane, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
   assert.deepEqual(policyProjection.harnesses, ['claude', 'opencode']);
@@ -103,7 +106,7 @@ test('a failed execute order is issued again only after a verified no-effect fai
   const noEffect = section(scope, 'No-effect check');
   const backfill = compact(read('sai/commands/backfill/worker.md'));
   const archive = compact(read('sai/commands/archive/worker.md'));
-  const directBuild = compact(read('sai/commands/explore/steps/pipeline-direct-build.md'));
+  const directBuild = compact(read('sai/commands/explore/direct-build-coordinator.md'));
 
   assert.match(orders, /Take an order snapshot immediately before sending any execute order and hold it as `order_snapshot`/);
   assert.match(orders, /\*\*No effect verified\*\* — the order changed nothing\..*?then issue a new order to the step's owner/);
@@ -112,11 +115,13 @@ test('a failed execute order is issued again only after a verified no-effect fai
   assert.match(noEffect, /run `verify` with `order_snapshot` and an empty standard input/);
   assert.match(noEffect, /`clean` — the order had no effect/);
   assert.match(section(scope, 'Foreign changes'), /A path in `foreign` is a repository file foreign to the slice that changed: the caller reports those exact paths/);
-  assert.match(backfill, /A new execute order is accepted only after an order that failed before its first write; the coordinator issues one under `@sai\/policies\/unattended-runtime-recovery\.md` § Execute orders/);
-  assert.match(archive, /A new execute order is accepted only after an order that failed before its first mutation; the coordinator issues one under `@sai\/policies\/unattended-runtime-recovery\.md` § Execute orders/);
+  assert.match(backfill, /A new execute order is accepted only after an order that failed before its first write; the coordinator issues one under the \*\*Execute orders\*\* rule of `sai\/commands\/explore\/direct-build-coordinator\.md`/);
+  assert.match(archive, /A new execute order is accepted only after an order that failed before its first mutation; the coordinator issues one under the \*\*Execute orders\*\* rule of `sai\/commands\/explore\/direct-build-coordinator\.md`/);
   assert.doesNotMatch(backfill, /no order is refired onto that partially mutated state/);
   assert.doesNotMatch(archive, /there is no manual fallback and no retry here/);
-  assert.match(directBuild, /Issue an execute order again only under its § Execute orders/);
+  assert.match(directBuild, /\*\*Execute orders\.\*\* Take the `order_snapshot` immediately before sending any execute order/);
+  assert.match(directBuild, /A completed, partial, or unknown state issues no order: it is force majeure/);
+  assert.match(directBuild, /a new order goes to its owner after a different correction/);
   assert.doesNotMatch(directBuild, /Never use it to replay an execution order/);
   assert.equal(directBuild.split('take the `order_snapshot`, then continue the SAME').length - 1, 2, 'both execute orders take the order snapshot first');
 });
@@ -124,7 +129,7 @@ test('a failed execute order is issued again only after a verified no-effect fai
 test('each failed step allows three attempts shared by both paths on the counters the route already keeps', () => {
   const policy = read('sai/policies/unattended-runtime-recovery.md');
   const attempts = section(policy, 'Attempts');
-  const directBuild = compact(read('sai/commands/explore/steps/pipeline-direct-build.md'));
+  const directBuild = compact(read('sai/commands/explore/direct-build-coordinator.md'));
   const charge = attempts.indexOf("Charge the route's existing counter immediately before sending the attempt");
   const nonRefund = attempts.indexOf('does not refund or reset the charge');
   const directBuildCounter = attempts.indexOf('`diagnosis_rounds.direct_build`, keyed by the');
@@ -142,7 +147,9 @@ test('each failed step allows three attempts shared by both paths on the counter
   assert.match(attempts, /when a Direct Build step's counter reaches three with that\s+step still failing, or when the budget agent returns the diagnosis the\s+previous attempt already returned/);
   assert.match(attempts, /dispatch-retry limit, replacement limit, three-round review\/fix limits, and mutation gates remain unchanged/);
   assert.doesNotMatch(policy, /one-shot diagnosis allowance|Whichever is first consumes it/);
-  assert.match(directBuild, /`diagnosis_rounds\.direct_build` holds one counter per step, `step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`, each starting at `0`/);
+  assert.match(directBuild, /`attempts`, one budget of 3 per step/);
+  assert.match(directBuild, /named by the step it blocks \(`step-1`, `step-2`, `step-2b`, `step-3` through `step-8`\)/);
+  assert.match(directBuild, /A step's attempts never draw on another step's budget/);
 });
 
 test('one open resilience rule leads the policy and agreed content passes through unchanged', () => {
@@ -191,7 +198,7 @@ test('success comes from the step check through its owner, never from a correcti
 });
 
 test('recovery preserves Direct Build selection, execution-order, and commit gates', () => {
-  const directBuild = compact(read('sai/commands/explore/steps/pipeline-direct-build.md'));
+  const directBuild = compact(`${read('sai/commands/explore/steps/pipeline-direct-build.md')}\n${read('sai/commands/explore/direct-build-coordinator.md')}`);
   const stop = section(read('sai/policies/unattended-runtime-recovery.md'), 'Stop condition');
 
   assert.match(directBuild, /Selecting it consents delegated writes \(item 1\) AND pre-authorizes one local commit for the current slice/);

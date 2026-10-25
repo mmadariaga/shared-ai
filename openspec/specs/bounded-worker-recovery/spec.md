@@ -571,25 +571,6 @@ The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1`
 - **WHEN** an `implement-run@1` event is emitted through `bin/sai-state.js`
 - **THEN** the emitted response SHALL carry the machine's `run` view and `budgets` verbatim
 
-### Requirement: Cause Locus is decided by ownership, not artifact kind
-
-The shared bounded-recovery policy SHALL decide `out-of-scope` by ownership and never by the kind of artifact the cause sits in. `out-of-scope` SHALL mean that no in-run worker holds an authorized correction boundary over the concrete point — a declared interface, forbidden artifact, external or shared system, or any other boundary with no in-run owner. `owner-in-run` SHALL mean that the evidence identifies a concrete point in an authorized artifact, production or test, whose authorized correction boundary is held by a named worker still resumable in this run. A cause located in a test file SHALL therefore be `owner-in-run` whenever a test-owning worker is still resumable in this run, and the correction SHALL be routed to that owner and never to a worker whose contract forbids test files. The coordinator SHALL read ownership only from its in-run owner roster and SHALL NOT infer a missing worker or boundary. This classification SHALL reach every consumer of the shared policy, including the Direct Build (unattended) route, whose single implementer already owns both tests and production and whose behavior is therefore unchanged.
-
-#### Scenario: A test-located cause with a resumable test owner is owner-in-run
-
-- **WHEN** coordinator evidence places a concrete point in a test file whose authorized correction boundary is held by a worker still resumable in this run
-- **THEN** the coordinator SHALL assign `Cause Locus: owner-in-run` and route the correction to that owner rather than classifying the cause out-of-scope for being a test
-
-#### Scenario: No in-run owner makes the cause out-of-scope
-
-- **WHEN** coordinator evidence places a concrete point at a boundary over which no worker in the in-run roster holds an authorized correction boundary
-- **THEN** the coordinator SHALL assign `Cause Locus: out-of-scope`, spend zero worker-recovery attempts, and use the hand-back route
-
-#### Scenario: Direct Build is inside the classification radius with no behavior change
-
-- **WHEN** the Direct Build (unattended) route applies the shared Bounded Recovery policy to a test-located cause
-- **THEN** the cause SHALL remain inside its single implementer's correction boundary exactly as before, because that implementer already owns both tests and production
-
 ### Requirement: Recovery hand-backs read budget tallies from the ledger response
 
 A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from the ledger machine's response rather than from recalled conversation text. The machine SHALL supply those tallies on every outcome as `budgets` — `{worker: {spent, limit}, coordinator: {spent, limit}}` — and SHALL name the budget that ran out as `exhausted` on an exhaustion, so a long unattended run never has to remember what each budget spent. These temporary values SHALL never enter project artifacts.
@@ -611,7 +592,7 @@ A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from
 
 ### Requirement: Unattended runtime repair follows existing precedence
 
-The selected Plan - Unattended and Direct Build - Unattended routes SHALL apply the unattended resilience rule to a non-clean outcome only after task disclosure and after existing dispatch, startup, replacement, payload-validation, accepted-result, review, feedback, and role-specific one-shot handling. Where that existing handling would end the run, or the route names none, the rule SHALL apply before stopping. A finding or feedback continuation SHALL belong to its existing review/fix-round loop, not to the rule's extra corrections.
+The selected Plan - Unattended route SHALL apply the unattended resilience rule to a non-clean outcome only after task disclosure and after existing dispatch, startup, replacement, payload-validation, accepted-result, review, feedback, and role-specific one-shot handling. Where that existing handling would end the run, or the route names none, the rule SHALL apply before stopping. A finding or feedback continuation SHALL belong to its existing review/fix-round loop, not to the rule's extra corrections. The Direct Build - Unattended route SHALL NOT apply the rule: its coordinator card answers non-clean outcomes through `sai/policies/obstacle-escalation.md`.
 
 #### Scenario: Existing lifecycle handling wins
 
@@ -642,25 +623,6 @@ An automatic correction SHALL be eligible only while the resilience rule answers
 - **WHEN** any invariant is unknown or false
 - **THEN** the affected work stops without automatic correction and without a new authorization
 
-### Requirement: Runtime repair uses worker-compatible continuations
-
-A correction SHALL reach a worker only through a continuation form that worker's contract already accepts. Plan - Unattended spec and design workers SHALL use the existing `continue_after_recovery` record, the Direct Build implementer SHALL use its verification-note contract, and every other worker SHALL use its ordinary fresh-result request or its route-defined correction feedback. Repair content SHALL be input to the worker, never a new result shape or execute order. A Direct Build execute order that failed SHALL be issued again only after the no-effect check verifies that it changed nothing, and an order whose mutation completed or whose state is partial or unknown SHALL never be issued again.
-
-#### Scenario: A compatible Plan worker resumes
-
-- **WHEN** a Plan spec or design worker has a concrete in-boundary correction and accepts `continue_after_recovery`
-- **THEN** the coordinator forwards the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` record to that same worker
-
-#### Scenario: A one-shot worker cannot be replayed
-
-- **WHEN** a Direct Build backfill or archive execute order completed its mutation or left a partial or unknown state
-- **THEN** no order is issued again and the route stops reporting the exact state
-
-#### Scenario: A failed order without effect is issued again
-
-- **WHEN** a Direct Build execute order fails and the no-effect check verifies that it changed nothing
-- **THEN** the cause is corrected through the recovery path and a new order is issued to the step's owner
-
 ### Requirement: Fresh repaired results gate ordinary progression
 
 The active validator SHALL validate a fresh result exactly as received before the coordinator acts on it. The coordinator SHALL infer neither success, changed files, nor completed phases, steps, or slices from a correction note or rejected result, SHALL union only paths established by normal route evidence, and SHALL advance only when ordinary completion conditions pass.
@@ -686,7 +648,7 @@ When the resilience rule answers no because an invariant blocks the correction, 
 
 #### Scenario: Existing gates remain required
 
-- **WHEN** an automatic correction reaches a Plan review or approval boundary or a Direct Build scope, execution-order, or local-commit boundary
+- **WHEN** an automatic correction reaches a Plan review or approval boundary
 - **THEN** the route keeps the existing gate and obtains any required confirmation before its action
 
 ### Requirement: The recovery ledger tracks worker vetoes and authorized veto overrides
@@ -751,21 +713,25 @@ The coordinator SHALL add every `changed_files` path reported by the original re
 - **WHEN** the ledger is reset on entry to a new recovery scope after earlier results reported changed paths
 - **THEN** the coordinator SHALL preserve the first-seen ordered union of those paths unchanged
 
-### Requirement: Runtime repair consumes the Direct Build step allowance
+### Requirement: Cause Locus is decided by ownership
 
-An attempt SHALL be charged on the route's existing counter immediately before it is sent, and the route SHALL keep one budget per scope shared between the two recovery paths. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), which allows three attempts per failed step; a step's attempts SHALL never draw on another step's key. A route diagnosis or Bounded Recovery continuation in a step SHALL be an attempt on that step's key. Plan - Unattended SHALL charge no explore counter: it follows `/sai-plan`, whose coordinator keeps its own budget of three attempts per obstacle.
+The shared bounded-recovery policy SHALL decide `out-of-scope` by ownership and never by the kind of artifact the cause sits in. `out-of-scope` SHALL mean that no in-run worker holds an authorized correction boundary over the concrete point — a declared interface, forbidden artifact, external or shared system, or any other boundary with no in-run owner. `owner-in-run` SHALL mean that the evidence identifies a concrete point in an authorized artifact, production or test, whose authorized correction boundary is held by a named worker still resumable in this run. A cause located in a test file SHALL therefore be `owner-in-run` whenever a test-owning worker is still resumable in this run, and the correction SHALL be routed to that owner and never to a worker whose contract forbids test files. The coordinator SHALL read ownership only from its in-run owner roster and SHALL NOT infer a missing worker or boundary. This classification SHALL reach every consumer of the shared policy; the Direct Build - Unattended route is not a consumer.
 
-#### Scenario: A Direct Build implementer uses one slice allowance
+#### Scenario: A test-located cause with a resumable test owner is owner-in-run
 
-- **WHEN** an attempt is selected for a Direct Build implementer during Step 1, Step 2, or Step 2b
-- **THEN** the attempt is charged on the failed step's own key with three attempts for that step, rather than on one counter shared by the implementer's steps
+- **WHEN** coordinator evidence places a concrete point in a test file whose authorized correction boundary is held by a worker still resumable in this run
+- **THEN** the coordinator SHALL assign `Cause Locus: owner-in-run` and route the correction to that owner rather than classifying the cause out-of-scope for being a test
 
-#### Scenario: A spent allowance cannot stack
+#### Scenario: No in-run owner makes the cause out-of-scope
 
-- **WHEN** progress, a question answer, a continuation, a review round, a transport retry, a replacement, a step transition, a delivery failure, or a repeated error follows a charged attempt
-- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the budget of that step
+- **WHEN** coordinator evidence places a concrete point at a boundary over which no worker in the in-run roster holds an authorized correction boundary
+- **THEN** the coordinator SHALL assign `Cause Locus: out-of-scope`, spend zero worker-recovery attempts, and use the hand-back route
 
-#### Scenario: The Plan route keeps no explore diagnosis counter
+### Requirement: Runtime repair reaches workers through accepted continuations
 
-- **WHEN** a segment of the `/sai-plan` run followed by the Plan route meets an obstacle
-- **THEN** the plan coordinator charges its own per-obstacle attempt budget and explore charges no `diagnosis_rounds` key
+A correction SHALL reach a worker only through a continuation form that worker's contract already accepts. Plan - Unattended spec and design workers SHALL use the existing `continue_after_recovery` record, and every other worker SHALL use its ordinary fresh-result request or its route-defined correction feedback. Repair content SHALL be input to the worker, never a new result shape or execute order.
+
+#### Scenario: A compatible Plan worker resumes
+
+- **WHEN** a Plan spec or design worker has a concrete in-boundary correction and accepts `continue_after_recovery`
+- **THEN** the coordinator forwards the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` record to that same worker
