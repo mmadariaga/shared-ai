@@ -4,7 +4,7 @@ Dedicated instruction that resolves a missing OpenSpec change name for `sai-stat
 
 ## Envelope-only resolution source
 
-The boot envelope provides `arguments_value`. After trimming surrounding whitespace, a non-empty `arguments_value` is the sole authoritative supplied change-name source. No other source may supply or override a change name.
+The wrapper's InvocationEnvelope provides `arguments_value`. After trimming surrounding whitespace, a non-empty `arguments_value` is the sole authoritative supplied change-name source. No other source may supply or override a change name.
 
 The resolution itself — the supplied-name short-circuit and the 0/1/N branches over the active change list — is made by `sai/tools/change-picker.js`, the same tool `change-picker.md` runs, not re-derived here. The tool resolves; you ask. Run the tool, read its outcome, and present the matching prompt below. Do not list the changes yourself, do not second-guess an outcome, and do not let the tool phrase a question.
 

@@ -8,12 +8,12 @@ This capability keeps Claude Code and opencode command wrappers thin by constrai
 
 ### Requirement: wrapper-shape
 
-`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives, the two-key invocation envelope placement, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative. No wrapper-echo forwarding data is permitted.
+`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives, the clean-start line, the two-key invocation envelope placement, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative. No wrapper-echo forwarding data is permitted.
 
 #### Scenario: fetch-skill is allowed in wrappers
 
 - **WHEN** a wrapper is read
-- **THEN** it MAY contain `Fetch @skills/fetch/SKILL.md` (Claude Code) or `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` (OpenCode) — this is the only skill fetch the wrapper is permitted to make; all other skill fetches live in the `sai/commands/{name}/` cards or the command's `command-bootstrap.md`
+- **THEN** it MAY contain `Fetch @skills/fetch/SKILL.md` (Claude Code) or `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` (OpenCode) — this is the only skill fetch the wrapper is permitted to make; all other skill fetches live in the `sai/commands/{name}/` cards
 
 #### Scenario: body shape verified at the owned contract
 
@@ -31,12 +31,12 @@ The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` com
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 17 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, `sai-explore`'s additional harness-specific loads, and `sai-explore`'s one `Receipt:` context-pointer line placed first after the frontmatter. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path. The wrappers of the goal-driven commands, `sai-archive` and `sai-backfill` included, SHALL replace the boot-adapter line with the clean-start line and SHALL call their coordinator card in place of a command bootstrap.
+The wrapper template SHALL be the same for every in-scope wrapper in each harness, with exactly these permitted per-file variances: the card named in the card-fetch line, the envelope's `command_name` value, `sai-explore`'s additional harness-specific load, and `sai-explore`'s one `Receipt:` context-pointer line placed first after the frontmatter. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path. Every wrapper SHALL carry the clean-start line and SHALL fetch its card directly, with no boot-adapter line and no command bootstrap.
 
 #### Scenario: sai-build follows the shared template
 
 - **WHEN** `commands/claude/sai-build.md` is read in its canonical form
-- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/build/coordinator.md` and `command_name: build`
+- **THEN** it uses the same three-directive skeleton with the card fetch `@sai/commands/build/coordinator.md` and `command_name: build`
 - **AND** it does not embed phase logic inline
 
 #### Scenario: example wrapper after rewrite
@@ -53,17 +53,17 @@ The wrapper template SHALL be the same for all 17 wrappers in each harness, with
       command_name: archive
       arguments_value: $ARGUMENTS
 
-- **THEN** it does NOT contain a `## Sai Archive` heading (the rewrite drops the legacy section heading)
-- **THEN** it does NOT contain `User input: $ARGUMENTS`
-- **THEN** it does NOT contain `Fetch @commands/sai/sai-archive.md` (forbidden legacy path)
-- **THEN** it does NOT contain a flat `Fetch @sai/commands/sai-archive.md` body path
-- **THEN** it does NOT contain a boot-adapter fetch or `Fetch @sai/commands/archive/command-bootstrap.md`
-- **THEN** the body has no trailing label after the envelope block
+- **AND** it does NOT contain a `## Sai Archive` heading (the rewrite drops the legacy section heading)
+- **AND** it does NOT contain `User input: $ARGUMENTS`
+- **AND** it does NOT contain `Fetch @commands/sai/sai-archive.md` (forbidden legacy path)
+- **AND** it does NOT contain a flat `Fetch @sai/commands/sai-archive.md` body path
+- **AND** it does NOT contain a boot-adapter fetch or `Fetch @sai/commands/archive/command-bootstrap.md`
+- **AND** the body has no trailing label after the envelope block
 
 #### Scenario: opencode example mirrors the shape
 
 - **WHEN** `commands/opencode/sai-status.md` is read in its canonical form
-- **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the command bootstrap call to `@sai/commands/status/command-bootstrap.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
+- **THEN** it contains the opencode fetch-skill line, the clean-start line, the capability-profile line, the card fetch `Fetch @sai/commands/status/body.md and follow it exactly, forwarding the InvocationEnvelope block below.`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
 
 #### Scenario: sai-explore receipt pointer is a permitted variance
 

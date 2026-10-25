@@ -21,17 +21,16 @@ The README keeps short [Main commands](../README.md#main-commands) and [Utility 
 
 ## Fast-track mode (`--fast-track`)
 
-For low-risk or high-trust runs, three commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-4-review`, `/sai-build`, `/sai-deep-review`, and `/sai-merge` are not members: each accepts and ignores an explicit `--fast-track` token, because invoking them already authorizes their local commits and they ask nothing mid-run (`/sai-deep-review` asks only for the accessibility dev-server URL, when `--runtime` comes without `--url`; `/sai-merge` asks only when commit intent cannot decide a conflict, or for a branch it was not given).
+For low-risk or high-trust runs, two commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-4-review`, `/sai-build`, `/sai-deep-review`, `/sai-merge`, and `/sai-explore` are not members: each accepts and ignores an explicit `--fast-track` token, because invoking them already authorizes their local commits and they ask nothing mid-run (`/sai-deep-review` asks only for the accessibility dev-server URL, when `--runtime` comes without `--url`; `/sai-merge` asks only when commit intent cannot decide a conflict, or for a branch it was not given).
 
 The numbered pipeline members are also listed in [Sequential pipeline](sequential-pipeline.md#fast-track-mode---fast-track).
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
-| `/sai-explore` | Skips both language gates (artifact review and crystallization). In round 3 of the route round (applied only for Plan (unattended)), skips the overview-language ask and resolves `overview_language` to `None`. An explicit `--overview-lang` still suppresses the ask in every mode; under Direct Build (unattended) it is a no-op. A [project setting](project-settings.md) for the crystallization or overview language question answers it before fast-track applies. |
 | `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
 | `/sai-archive` | Skips the commit selector after the archive and creates the local commit directly. Other safety confirmations remain. |
 
-Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, never skips an input question (a missing diff-source token still asks), and never bypasses `/sai-explore`'s close selector or its POC go/no-go — the gates that authorize delegated writes are deliberately outside its reach.
+Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, and never skips an input question (a missing diff-source token still asks). `/sai-explore` strips the token silently and behaves the same with and without it.
 
 ## Skipping the full SAI workflow while keeping specs updated
 

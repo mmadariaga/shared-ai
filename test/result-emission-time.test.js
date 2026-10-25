@@ -13,84 +13,6 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
-// ─── worker-core: payloads are timeless, CLI responses carry received_at ───────
-
-test('worker-core keeps closed payloads timeless with no time field', () => {
-  const core = artifact('sai/orchestration/worker-core.md');
-
-  const blocks = [
-    ['completed', /status:\s*completed\s*\n\s*summary:\s*string/],
-    ['needs_input', /status:\s*needs_input\s*\n\s*summary:\s*string/],
-    ['failed|cancelled', /status:\s*failed\|cancelled\s*\n\s*summary:\s*string/],
-    ['classified failed', /status:\s*failed\s*\n\s*summary:\s*string[\s\S]{0,200}failure_class:/],
-    ['notice', /event:\s*notice\s*\n\s*message:\s*string/],
-    ['progress', /event:\s*progress\s*\n\s*step_ids:\s*string\[\]/]
-  ];
-
-  for (const [name, pattern] of blocks) {
-    assert.match(core, pattern,
-      `the ${name} payload should be timeless without a time field`);
-  }
-});
-
-test('the runner fixes received_at as the CLI-reception ISO-8601 response key', () => {
-  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
-
-  assert.match(core, /received_at/,
-    'received_at should be the response time key');
-  assert.match(core, /CLI reception time/i,
-    'received_at should be CLI reception time');
-  assert.doesNotMatch(core, /validated_at/,
-    'validated_at should be gone with no alias');
-  assert.match(core, /YYYY-MM-DDTHH:MM:SS±HH:MM/,
-    'the exact wire form should be stated');
-  assert.match(core, /local wall-clock time/i,
-    'the value should be local time plus a numeric offset');
-  assert.match(core, /never the `Z` designator/i,
-    'the Z designator should be excluded');
-  assert.match(core, /no time field/i,
-    'payloads should be described as timeless');
-  assert.match(core, /unknown.*ignored|ignored.*unknown/i,
-    'unknown fields should be ignored');
-});
-
-test('the validator owns the clock with reception-time semantics', () => {
-  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
-
-  assert.match(core, /reception time substitutes emission time|transport delta/i,
-    'reception-time semantics should be recorded');
-  assert.match(core, /Time is observation, not claim|observation, not claim/i,
-    'time-as-observation should be recorded');
-  assert.match(core, /never reads a clock|never.*clock/i,
-    'the worker should never read a clock');
-});
-
-test('received_at is validator-module-owned and the coordinator never rewrites it', () => {
-  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
-
-  assert.match(artifact('sai/orchestration/worker-core.md'), /command-runner\.md` § Validation/,
-    'worker-core should point to the runner-owned sidecar definition');
-  assert.match(core, /validator.*own|owns the only clock/i,
-    'the clock should be validator-owned');
-  assert.match(core, /verbatim[\s\S]{0,160}(?:invent|re-derive|reformat)/i,
-    'the coordinator should forward the verdict verbatim without re-deriving it');
-  assert.match(core, /never[\s\S]{0,40}reconstruct/i,
-    'reconstruction should not carry observation time');
-});
-
-test('received_at is the sole source of the Milestone Stamp', () => {
-  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
-
-  assert.match(core, /sole source of the\s+Milestone Stamp/i,
-    'the stamp should be sourced from the verdict value');
-  assert.match(core, /never reads a clock/i,
-    'the coordinator should read no clock');
-  assert.match(core, /todo-structure\.md/,
-    'the stamp rendering should stay owned by the todo-structure policy');
-  assert.match(core, /never renders, attaches, or formats a stamp/i,
-    'the worker should still not render or attach stamps');
-});
-
 // ─── the stamp derives from received_at end to end ─────────────────────────
 
 test('the three planning wrappers carry no shell grant now that stamps need no clock', () => {
@@ -110,8 +32,6 @@ test('the three planning wrappers carry no shell grant now that stamps need no c
 test('no production surface asks a coordinator to acquire a wall-clock time', () => {
   for (const relativePath of [
     'sai/policies/todo-structure.md',
-    'sai/orchestration/command-runner.md',
-    'sai/orchestration/worker-core.md',
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md'
@@ -152,36 +72,10 @@ test('both decision indexes carry the new records', () => {
     'ADR 0117 should appear in the superseded list');
 });
 
-// ─── command-runner: the coordinator consumes the validator verdict ─────────
-
-test('the command runner consumes received_at on every closed payload', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(runner, /received_at/,
-    'terminal-result validation should include received_at');
-  assert.match(runner, /YYYY-MM-DDTHH:MM:SS±HH:MM/,
-    'the runner should pin the same wire form as worker-core');
-  assert.match(runner, /resolves no zone|no conversion/i,
-    'the coordinator should do no timezone work');
-  assert.match(runner, /\{event: "notice", message: string, changed_files: string\[\]\}/,
-    'the notice shape should be timeless');
-  assert.match(runner, /\{event: "progress", step_ids: string\[\], changed_files: string\[\]\}/,
-    'the progress shape should be timeless');
-  assert.match(runner, /malformed payload/i,
-    'a missing required field should be handled as a malformed payload');
-  assert.match(runner, /verbatim/i,
-    'the coordinator should forward the verdict verbatim');
-  assert.match(runner, /Milestone Stamp/,
-    'the runner should keep the Milestone Stamp separate from received_at');
-  assert.match(runner, /prompt[\s\S]{0,80}terminal[\s\S]{0,40}progress|terminal[\s\S]{0,40}progress[\s\S]{0,80}prompt/i,
-    'the coordinator should surface received_at in its prompt for terminal and progress');
-});
-
 // ─── every routed surface restating the progress shape agrees ───────────────
 
 test('every routed surface restating the progress shape is timeless with no time field', () => {
   const surfaces = [
-    'sai/orchestration/command-runner.md',
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md',

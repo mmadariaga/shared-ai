@@ -201,12 +201,10 @@ test('E15: the retired cards, entry points, and shared surfaces other commands u
   }
   for (const kept of ['coordinator', 'worker', 'mechanics']) assert.ok(exists(`sai/commands/merge/${kept}.md`), kept);
   assert.match(read('sai/commands/merge/mechanics.md'), /^# Merge mechanical evidence/);
-  for (const shared of ['sai/policies/no-commit-guard.md', 'sai/orchestration/worker-core.md', 'sai/tools/transfer.js',
-    'sai/orchestration/workers/bindings/claude/worker-template.md']) assert.ok(exists(shared), `${shared} stays`);
+  for (const shared of ['sai/policies/no-commit-guard.md', 'sai/tools/transfer.js']) assert.ok(exists(shared), `${shared} stays`);
   const todo = read('sai/policies/todo-structure.md');
   assert.doesNotMatch(todo, /Merge adaptive TODO|sai-merge-todo/);
   assert.doesNotMatch(read('sai/adapters/claude/panel-render.md') + read('sai/adapters/opencode/panel-render.md'), /sai-merge/);
-  assert.doesNotMatch(read('sai/adapters/claude/boot.md') + read('sai/adapters/opencode/boot.md'), /merge/);
   assert.doesNotMatch(read('sai/policies/command-execution.md'), /merge/);
   for (const file of ['sai/commands/merge/coordinator.md', 'sai/commands/merge/worker.md', 'sai/commands/merge/mechanics.md']) {
     assert.doesNotMatch(read(file), /presentation seam|render_gate|render_terminal|lifecycle seam|validate_transition/, file);
@@ -235,7 +233,7 @@ test('E14: fast-track no longer lists /sai-merge, and the guard policy drops mer
   for (const doc of ['docs/on-demand-commands.md', 'docs/sequential-pipeline.md']) {
     const text = read(doc);
     assert.doesNotMatch(text, /\| `\/sai-merge` \| Pins the method/, doc);
-    assert.match(text, /three commands accept a `--fast-track` argument/, doc);
+    assert.match(text, /two commands accept a `--fast-track` argument/, doc);
   }
 });
 

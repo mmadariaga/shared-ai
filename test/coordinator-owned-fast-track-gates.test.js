@@ -23,10 +23,16 @@ test('published build specification keeps fast-track out of build and with the i
   assert.match(read('sai/commands/implement/coordinator.md'), /Drop any `--fast-track` token from `arguments_value`/);
 });
 
-test('fast-track never skips the explore open-decision reconfirmation', () => {
+test('explore strips the fast-track token silently and keeps no fast-track state or skip', () => {
   const policy = read('sai/policies/fast-track-flag.md');
-  assert.match(policy, /open-decision reconfirmation at `Crystallize` entry\s+\(`sai\/commands\/explore\/steps\/open-decisions\.md`\) runs unchanged under\s+`--fast-track`/);
-  assert.match(policy, /every open decision is asked/);
-  assert.match(read('AGENTS.md'), /open-decision reconfirmation at Crystallize entry \(`sai\/commands\/explore\/steps\/open-decisions\.md`\) always runs/);
-  assert.match(read('sai/commands/explore/steps/open-decisions.md'), /`--fast-track` leaves this step unchanged \(`sai\/policies\/fast-track-flag\.md`\)/);
+  assert.match(policy, /`\/sai-explore` strips the token silently and treats the remainder as the\s+request: no banner, no `fast_track_active` state, and no behavioral effect/);
+  assert.doesNotMatch(policy, /keeps its own parse|open-decision reconfirmation|POC lane/);
+  const body = read('sai/commands/explore/body.md');
+  assert.match(body, /Remove the `--fast-track` token from `arguments_value` and trim surrounding whitespace, silently: no banner, no signal, and no behavioral effect/);
+  assert.doesNotMatch(body, /FAST-TRACK MODE ACTIVE/);
+  const stepsDirectory = path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps');
+  for (const file of fs.readdirSync(stepsDirectory)) {
+    assert.doesNotMatch(read(`sai/commands/explore/steps/${file}`), /fast[- ]track/i, `explore step ${file} names no fast-track behavior`);
+  }
+  assert.doesNotMatch(read('AGENTS.md'), /sai-explore`, `sai-archive`, and `sai-backfill`/, 'AGENTS.md lists no explore fast-track parse');
 });

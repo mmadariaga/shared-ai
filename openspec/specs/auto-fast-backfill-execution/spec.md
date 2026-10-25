@@ -32,25 +32,6 @@ The execution continuation SHALL write only the validated `.openspec.yaml`, `pro
 - **WHEN** the coordinator forwards a valid execution order
 - **THEN** the worker SHALL materialize the verified transfer-file bytes byte-for-byte to the named destinations and report an ordered duplicate-free `changed_files` union
 
-### Requirement: Backfill execution is one-shot
-
-The worker MUST reject a repeated execution continuation carrying the same closed order after successful execution. A write or parent-directory failure SHALL return a closed failed result with the exact completed and uncompleted state, SHALL set unrecoverable true only when the evidence establishes that continuation is unsafe, and SHALL end the order there: the worker leaves the state as it is for the coordinator to verify. The worker SHALL accept a new execute order only after an order that failed before its first write; the coordinator issues one under `sai/policies/unattended-runtime-recovery.md` § Execute orders, after the no-effect check passes. Otherwise the coordinator SHALL report the worker's concrete partial state and stop, and SHALL never fall back to coordinator-side writes.
-
-#### Scenario:
-
-- **WHEN** an execution continuation or replacement attempts to repeat a completed mutation
-- **THEN** the worker SHALL reject it without another write
-
-#### Scenario: Partial-mutation failure reports without refire
-
-- **WHEN** a write or parent-directory failure leaves a partial mutation
-- **THEN** the worker SHALL report the exact completed and uncompleted state and end the order there, and no new order is issued onto that state
-
-#### Scenario: A new order follows a failure before the first write
-
-- **WHEN** an execute order failed before its first write and the coordinator's no-effect check passes
-- **THEN** the worker SHALL accept the new execute order the coordinator issues
-
 ### Requirement: Backfill correction feedback after execution
 
 The worker SHALL accept same-run correction feedback carrying the verbatim archive failure plus the named draft sections to recompose. The worker SHALL recompose only those named sections from the staged diff, the block grounding, and the CLI error, SHALL rewrite only those draft files, SHALL report every rewritten path in the invocation-scoped changed_files union, and SHALL carry no commit authorization. A defect that repeats without progress after correction SHALL end this worker's corrections: the worker returns `failed` with the verbatim failure.
@@ -64,3 +45,22 @@ The worker SHALL accept same-run correction feedback carrying the verbatim archi
 
 - **WHEN** the same defect is reported without progress after a correction
 - **THEN** the worker SHALL return `failed` with the verbatim failure
+
+### Requirement: Backfill execute orders are one-shot
+
+The worker MUST reject a repeated execution continuation carrying the same closed order after successful execution. A write or parent-directory failure SHALL return a closed failed result with the exact completed and uncompleted state, SHALL set unrecoverable true only when the evidence establishes that continuation is unsafe, and SHALL end the order there: the worker leaves the state as it is for the coordinator to verify. The worker SHALL accept a new execute order only after an order that failed before its first write; the coordinator issues one under the Execute orders rule of `sai/commands/explore/direct-build-coordinator.md`, after the no-effect check passes. Otherwise the coordinator SHALL report the worker's concrete partial state and stop, and SHALL never fall back to coordinator-side writes.
+
+#### Scenario: A repeated completed order is rejected
+
+- **WHEN** an execution continuation or replacement attempts to repeat a completed mutation
+- **THEN** the worker SHALL reject it without another write
+
+#### Scenario: Partial-mutation failure reports without refire
+
+- **WHEN** a write or parent-directory failure leaves a partial mutation
+- **THEN** the worker SHALL report the exact completed and uncompleted state and end the order there, and no new order is issued onto that state
+
+#### Scenario: A new order follows a failure before the first write
+
+- **WHEN** an execute order failed before its first write and the coordinator's no-effect check passes
+- **THEN** the worker SHALL accept the new execute order the coordinator issues

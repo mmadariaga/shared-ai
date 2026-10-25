@@ -95,14 +95,6 @@ On the Direct Build route, the `--direct-build-execute` order SHALL carry the co
 - **WHEN** current main specs cause preservation checking to fail before the execute continuation materializes drafts
 - **THEN** the worker writes no draft destination and reports the failed comparison
 
-### Requirement: Backfill terminal payload carries references, not content
-
-The shared worker core SHALL state that backfill returns `draft_references` to worker-prepared transfer files and never draft content, with a separate `scenario_exception_reference: {path, sha256}` for temporary exception metadata. Merge SHALL return only its application outcome and one `resolution_reference: {path, sha256}` for the complete resolution result, never region text. The archive reroute's corrected delta specs SHALL remain the only terminal payload returning artifact content for the coordinator to write.
-
-#### Scenario: Worker core lists the content exceptions
-- **WHEN** `sai/orchestration/worker-core.md` is read
-- **THEN** it names the archive reroute's corrected delta specs as the only content-returning payload and states that backfill and merge return references
-
 ### Requirement: Transfer helper grants on command profiles
 
 `sai/install-manifest.json` SHALL add the shell grant `node {sai}/tools/transfer.js *` to the `archive-command` and `backfill-command` profiles alongside their existing grants, and SHALL add no new tool for either harness. The `merge-command` profile SHALL carry no `transfer.js` grant, because `/sai-merge` no longer uses transfer files.
@@ -143,3 +135,12 @@ After a Direct Build archive failure, the same backfill worker SHALL recompose o
 #### Scenario: Correction does not replay execution or authorize commit
 - **WHEN** an authorized correction finishes
 - **THEN** it closes the pending correction without replaying the original execute order or gaining commit authorization
+
+### Requirement: The backfill worker contract states its reference-only payload
+
+`sai/commands/backfill/worker.md` SHALL state that the backfill worker returns `draft_references` to worker-prepared transfer files and never draft content, with a separate `scenario_exception_reference: {path, sha256}` for temporary exception metadata. The archive reroute's header-fix continuation SHALL remain the only backfill payload that returns artifact content for the coordinator to write.
+
+#### Scenario: The worker contract names its content exception
+
+- **WHEN** `sai/commands/backfill/worker.md` is read
+- **THEN** its Draft transfer section returns references only, and its Delta header fix continuation is the one place that returns corrected spec content

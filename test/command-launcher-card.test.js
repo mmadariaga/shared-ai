@@ -26,17 +26,17 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-// The implement, review, build, deep-review, audit, plan-family, merge, commit, archive, and backfill commands run outside the
-// shared orchestration: their wrappers fetch the harness skill and the coordinator
-// card directly, with no boot adapter and no command bootstrap. The three audits
-// share one coordinator, `sai/commands/audit/coordinator.md`.
+// Every command runs outside the shared orchestration: the wrappers fetch the
+// harness skill and the command's card directly, with no boot adapter and no
+// command bootstrap. Most commands load a `coordinator.md`; the four utility
+// commands (explore, retire-docs, status, worktree) load their `body.md`. The
+// three audits share one coordinator, `sai/commands/audit/coordinator.md`.
 const AUDIT_WRAPPERS = new Set(['sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md']);
 const DIRECT_COORDINATOR = new Set([
   'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
   'sai-deep-review.md', 'sai-merge.md', 'sai-commit.md', 'sai-archive.md', 'sai-backfill.md', ...AUDIT_WRAPPERS,
 ]);
-const bootCommands = commands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
-const emptyBootstraps = new Set(['explore', 'retire-docs', 'status', 'worktree']);
+const BODY_WRAPPERS = new Set(['sai-explore.md', 'sai-retire-docs.md', 'sai-status.md', 'sai-worktree.md']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
   const foldersByFile = new Map(commands);
@@ -48,9 +48,6 @@ function activeWrapperCommands(harness) {
 
 const CONTEXT_PRESERVING = new Set(['sai-context-cache-ttl-benchmark.md']);
 const wrapperCommands = activeWrapperCommands('claude').filter(([file]) => !CONTEXT_PRESERVING.has(file));
-const bootWrapperCommands = wrapperCommands.filter(([file]) => !DIRECT_COORDINATOR.has(file));
-// Every remaining command bootstrap is empty: the archive and backfill coordinators load their worker bindings themselves.
-const movedDirectives = {};
 
 function read(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -102,35 +99,6 @@ function fetchLines(source) {
     .map(line => line.trim())
     .filter(line => line.startsWith('Fetch @'));
 }
-
-test('exactly 4 harness-neutral command bootstraps exist and budget has none', () => {
-  const actual = [];
-  for (const [, folder] of bootCommands) {
-    const relative = `sai/commands/${folder}/command-bootstrap.md`;
-    assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
-    actual.push(relative);
-  }
-  assert.equal(actual.length, 4);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
-});
-
-test('command bootstrap content is exact, ordered, and harness-neutral', () => {
-  for (const [, folder] of bootCommands) {
-    const relative = `sai/commands/${folder}/command-bootstrap.md`;
-    assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
-    const source = read(`sai/commands/${folder}/command-bootstrap.md`);
-    assert.doesNotMatch(source, /claude|opencode/i, `${folder} launcher must be harness-neutral`);
-    assert.doesNotMatch(source, /@sai\/adapters\//, `${folder} launcher must not fetch an adapter`);
-    assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/);
-    if (emptyBootstraps.has(folder)) {
-      assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
-      assert.match(source, /has no command-specific loads, and this file is complete as written/);
-      assert.match(source, /Execution continues with the card selected by the harness boot adapter/);
-    } else {
-      assert.deepEqual(fetchLines(source), movedDirectives[folder], `${folder} launcher directive order`);
-    }
-  }
-});
 
 test('baseline fixture captures the pre-change directive inventory', () => {
   const fixture = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
@@ -216,10 +184,6 @@ const HARNESS_FETCH = {
   claude: 'Fetch @skills/fetch/SKILL.md',
   opencode: 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
 };
-const BOOT_ADAPTER = {
-  claude: 'Fetch @sai/adapters/claude/boot.md and follow it.',
-  opencode: 'Fetch @sai/adapters/opencode/boot.md and follow it.',
-};
 
 const OPENCODE_LABEL_PREFIXES = [
   '**Spec request argument:**',
@@ -234,23 +198,6 @@ const OPENCODE_LABEL_PREFIXES = [
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
-function bootstrapCallDirective(folder) {
-  return `Fetch @sai/commands/${folder}/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.`;
-}
-
-test('final wrappers: first fetch is harness skill, second is boot adapter, launcher fetch appears exactly once', () => {
-  for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of bootWrapperCommands) {
-      const lines = fetchLines(read(`commands/${harness}/${file}`));
-      assert.equal(lines[0], HARNESS_FETCH[harness], `${harness}/${file} first fetch should be the harness fetch skill`);
-      assert.equal(lines[1], BOOT_ADAPTER[harness], `${harness}/${file} second fetch should be the boot adapter`);
-      const bootstrapCalls = lines.filter(line => line.includes(`/commands/${folder}/command-bootstrap.md`));
-      assert.equal(bootstrapCalls.length, 1, `${harness}/${file} should fetch its command bootstrap exactly once`);
-      assert.equal(bootstrapCalls[0], bootstrapCallDirective(folder), `${harness}/${file} command bootstrap fetch should match the canonical directive`);
-    }
-  }
-});
 
 test('final wrappers: InvocationEnvelope block follows launcher fetch with exactly command_name and arguments_value', () => {
   for (const harness of ['claude', 'opencode']) {
@@ -337,6 +284,47 @@ test('the direct-coordinator wrappers fetch the harness skill and their coordina
   }
 });
 
+test('no command has a command bootstrap, and no wrapper or card loads the boot adapter or command runner', () => {
+  for (const [, folder] of commands) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'command-bootstrap.md')), false,
+      `${folder} has no command bootstrap`);
+  }
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
+  for (const harness of ['claude', 'opencode']) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'adapters', harness, 'boot.md')), false, `${harness} has no boot adapter`);
+  }
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'orchestration', 'command-runner.md')), false);
+});
+
+test('the utility wrappers fetch the harness skill and their body card directly, with no boot adapter or bootstrap', () => {
+  const fixture = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
+  for (const harness of ['claude', 'opencode']) {
+    for (const [file, folder] of wrapperCommands.filter(([name]) => BODY_WRAPPERS.has(name))) {
+      const source = read(`commands/${harness}/${file}`);
+      const expected = [HARNESS_FETCH[harness]];
+      if (folder === 'explore') expected.push(`Fetch @sai/adapters/${harness}/idea-list-render.md and use it.`);
+      expected.push(`Fetch @sai/commands/${folder}/body.md and follow it exactly, forwarding the InvocationEnvelope block below.`);
+      assert.deepEqual(fetchLines(source), expected, `${harness}/${file} should fetch only the harness skill, its renderer, and its body card`);
+      assert.deepEqual(fixture.wrappers[harness][file], fetchLines(source), `${harness}/${file} should match its baseline entry`);
+      assert.ok(source.split(/\r?\n/).includes(CLEAN_START), `${harness}/${file} should carry the session-clean preamble`);
+      assert.match(source, /^Required capability profile: \{\{capabilityProfile\}\}\.$/m, `${harness}/${file} should declare its capability profile`);
+      assert.doesNotMatch(source, /@sai\/adapters\/(?:claude|opencode)\/boot\.md|command-bootstrap\.md/, `${harness}/${file} must not load a boot adapter or bootstrap`);
+      assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'body.md')), true, `${folder} has its body card`);
+    }
+  }
+});
+
+test('the utility body cards check the capability profile and load public chat and the obstacle policy themselves', () => {
+  for (const folder of ['explore', 'retire-docs', 'status', 'worktree']) {
+    const card = read(`sai/commands/${folder}/body.md`);
+    assert.match(card, /Fetch @sai\/policies\/public-chat\.md and follow it exactly\./, `${folder} loads public chat`);
+    assert.match(card, /First step: Fetch @sai\/policies\/tool-access\.md and check the wrapper's required capability profile\./, `${folder} checks its capability profile`);
+    assert.match(card, /Fetch @sai\/policies\/obstacle-escalation\.md and close the stop with its § Escalate to the user\./, `${folder} closes unplanned stops through the obstacle policy`);
+    assert.match(card, /Fetch @sai\/policies\/verified-precondition-handback\.md/, `${folder} keeps the precondition hand-back policy`);
+    assert.doesNotMatch(card, /boot-provided|command-runner|stop-options|boot adapter/i, `${folder} names no retired entry surface`);
+  }
+});
+
 test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/commands/<name>.md, isolation block, prerequisite section, or behavior-skill fetch', () => {
   for (const harness of ['claude', 'opencode']) {
     for (const [file, folder] of wrapperCommands) {
@@ -357,8 +345,6 @@ test('final wrappers: both sai-explore wrappers keep idea-list-render while the 
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
   assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
-  const exploreBootstrap = read('sai/commands/explore/command-bootstrap.md');
-  assert.doesNotMatch(exploreBootstrap, /Fetch @/, 'explore command bootstrap should preload nothing');
   const planRoute = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
   assert.match(planRoute, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
   assert.doesNotMatch(planRoute, /bindings\/(?:spec|design)-worker\.md/, 'the Plan route dispatches no worker itself');
@@ -379,32 +365,6 @@ test('final wrappers: all known labelled argument lines are absent after the env
       assert.doesNotMatch(source, trailingLabel,
         `${harness}/${file} should not retain a trailing labelled argument line`);
     }
-  }
-});
-
-test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () => {
-  const fixture = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
-  for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of bootWrapperCommands) {
-      const wrapperFetch = fetchLines(read(`commands/${harness}/${file}`));
-      const bootstrapFetch = fetchLines(read(`sai/commands/${folder}/command-bootstrap.md`));
-      const bootstrapCall = bootstrapCallDirective(folder);
-      const combined = wrapperFetch
-        .filter(line => line !== bootstrapCall)
-        .concat(bootstrapFetch)
-        .sort();
-      const baseline = [...fixture.wrappers[harness][file]].sort();
-      assert.deepEqual(combined, baseline,
-        `${harness}/${file} + command bootstrap (minus bootstrap-call) sorted should match baseline sorted`);
-    }
-  }
-});
-
-test('final wrappers: every launcher has no envelope fields and remains harness-neutral', () => {
-  for (const [, folder] of bootWrapperCommands) {
-    const source = read(`sai/commands/${folder}/command-bootstrap.md`);
-    assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/,
-      `${folder} launcher should have no envelope fields`);
   }
 });
 

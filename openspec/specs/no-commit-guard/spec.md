@@ -121,11 +121,11 @@ The guard SHALL detect a violation when its window closes at the next boundary, 
 - **WHEN** a worker commits inside a window that spans several worker stretches and the window reaches its closing boundary
 - **THEN** the closing verify reports the violation, the mixed reset returns HEAD to the window's `guard_base` with all content preserved unstaged, and one incident line carries the evidence for every commit in the window
 
-### Requirement: A recovery hand-off to the budget agent opens its own guard window
+### Requirement: A new worker created for an obstacle opens its own guard window
 
-A recovery hand-off to the budget agent, as defined by `sai/policies/unattended-runtime-recovery.md`, SHALL always open its own guard window and SHALL never carry `allow_commit`: the coordinator SHALL run a normal `verify` on any running window immediately before the hand-off, take a fresh `snapshot`, and run a normal `verify` when the agent's report returns, before acting on it.
+A new worker created for an obstacle under `sai/policies/obstacle-escalation.md` SHALL always open its own guard window and SHALL never carry `allow_commit`: the coordinator SHALL run a normal `verify` on any running window immediately before creating it, take a fresh `snapshot`, and run a normal `verify` when the worker's report returns, before acting on it. `sai/policies/no-commit-guard.md` SHALL state this rule as "Recovery worker isolation".
 
-#### Scenario: a hand-off is isolated from the running window
+#### Scenario: a recovery worker is isolated from the running window
 
-- **WHEN** the coordinator is about to hand a failed step off to the budget agent while a guard window is running
+- **WHEN** the coordinator is about to create a new worker for an obstacle while a guard window is running
 - **THEN** it closes the running window with a normal `verify`, opens a fresh window from a new `snapshot`, and verifies that window without `--allow-commit` when the report returns

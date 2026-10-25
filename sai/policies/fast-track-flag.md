@@ -8,8 +8,7 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 
 The model governs `/sai-archive` and `/sai-backfill`, the two commands where
 the flag skips real questions and gates. No other command takes part in it:
-the commands listed under the exceptions below accept the token and ignore it,
-and `sai-explore` keeps its own parse.
+the commands listed under the exceptions below accept the token and ignore it.
 
 ## Canonical model
 
@@ -49,20 +48,6 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   `--fast-track` token: they commit locally by
   invocation and ask for no approval, so the token activates nothing and
   prints no banner. Runs with and without the token behave identically.
-- `sai-explore` keeps its own parse and the behaviors that follow; they are
-  outside this model.
-- `sai-explore`'s POC lane does NOT auto-approve or skip any of its three stops
-  under `--fast-track`: the go/no-go at the close of stage 1, the `C1..Cn`
-  candidate-list agreement, and the verdict menu. All three are always
-  presented, and fast-track cannot alter the lane's pinned Direct Build
-  `--no-specs` profile. The late explicit entry into the lane from stages 2
-  through 4 is a user request, not a stop: fast-track neither triggers it nor
-  suppresses it. Fast-track bypasses only the crystallization language
-  gate and the overview-language ask, never the POC lane machinery. It fixes
-  only the language questions that no project setting answers: a configured
-  `explore.readyToProposeLanguage` or `explore.overviewLanguage` answers its
-  gate first (`docs/project-settings.md`).
-- `sai-explore`'s open-decision reconfirmation at `Crystallize` entry
-  (`sai/commands/explore/steps/open-decisions.md`) runs unchanged under
-  `--fast-track`: the notice is shown and every open decision is asked, and
-  each outcome — answered or left open — is the user's own choice.
+- `/sai-explore` strips the token silently and treats the remainder as the
+  request: no banner, no `fast_track_active` state, and no behavioral effect,
+  so runs with and without the token behave identically.

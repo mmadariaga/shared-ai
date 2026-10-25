@@ -18,5 +18,3 @@ Any other reply — ambiguous, missing, or a dismissed picker — leaves the ope
 **Sliced ideas.** The step runs once per idea. When the slicing assessment then cuts the idea, attribute each answered decision and each `Undecided:` entry to the block of the change it belongs to.
 
 **Resumed crystallization.** When crystallization is interrupted and resumed with the idea unchanged, the recorded outcomes stand: ask only the open decisions that have no outcome yet, without repeating the notice.
-
-`--fast-track` leaves this step unchanged (`sai/policies/fast-track-flag.md`).

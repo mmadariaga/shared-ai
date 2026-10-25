@@ -86,7 +86,7 @@ The idea-list render binding for each supported harness SHALL be a harness-speci
 
 - **WHEN** the routed worker matrix is projected or audited
 - **THEN** `idea-list-render.md` is not included in the seven routed worker destinations
-- **AND** `sai/orchestration/workers/bindings/` retains `worker-template.md` and the routed worker binding sources remain unchanged
+- **AND** `sai/orchestration/workers/bindings/{claude,opencode}/` retains only `standalone-worker-template.md` and the routed worker binding sources remain unchanged
 
 #### Scenario: wrappers resolve the matching adapter
 
@@ -198,43 +198,6 @@ The list SHALL NOT be rendered while it holds only the research item; it SHALL f
 - **WHEN** the idea-list state changes on a supported harness
 - **THEN** the relocated adapter update is emitted by the coordinator session
 - **AND** no worker subagent emits the panel update
-
-### Requirement: idea-list-panel-ownership
-
-While a `sai-explore` chat is active and the idea progress list has rendered — from its first render at the first slice identification onward — the harness's native task panel's declared owner SHALL be the session's idea progress list, exclusive in that the list never coexists with entries from any other surface and every one of its renders leaves the panel holding exactly the full idea list with no foreign entries, realized through the render outcome of `idea-list-panel-lifecycle`. Before the idea list's first render, the panel's declared owner SHALL be the pre-crystallization stage TODO (`explore-pre-crystallization-stages`), which renders during active exploration and is cleared at crystallization when the idea list takes the panel. A future surface that needs the panel during an active explore chat SHALL renegotiate the ownership rule rather than write alongside the idea progress list. The ownership rule SHALL be stated in `sai/commands/explore/instructions.md` and SHALL NOT be written into any routed worker binding file or idea-list adapter file under `sai/adapters/{claude,opencode}/`. The supervised run is the illustrative case: during supervised coordination no adapter-declared progress plan is in force, so dispatched workers' progress events SHALL be received and processed per the shared command-runner contract (`sai/orchestration/command-runner.md`) for their plan-independent obligations — every path in the event's `changed_files` is added to the supervision report in first-seen order, and the same worker is continued with exactly `continue_after_progress`; step marking has no application, since marking is defined only against an adapter-declared plan and none exists in the supervised flow. No plan-based list renders on the panel, because the neutral task-list policy (`sai/policies/todo-structure.md`) and the worker bindings govern routed phases whose adapters declare a progress plan and the supervised flow declares none. The ownership rule therefore SHALL change no observable supervised-run behavior. Standalone `/sai-1-spec` and `/sai-2-design` progress rendering SHALL remain unchanged, governed by their own phase adapters' declared progress plans.
-
-#### Scenario: ownership excludes other emitters
-
-- **WHEN** a supervised run is active and the idea progress list holds panel ownership
-- **THEN** no other producer emits to the panel: no routed phase plan or other list appears alongside the idea progress list
-
-#### Scenario: pre-crystallization ownership belongs to the stage TODO
-
-- **WHEN** a `sai-explore` chat is actively exploring and no slice has been identified yet
-- **THEN** the panel holds the pre-crystallization stage TODO and no idea-list entry renders
-
-#### Scenario: exclusivity holds outside supervised runs
-
-- **WHEN** a `sai-explore` chat is active outside a supervised run and the idea progress list renders
-- **THEN** no other surface's entries appear alongside the idea progress list: the render displaces whatever the panel holds, and the list never coexists with foreign entries
-
-#### Scenario: the rule lives in explore's contract
-
-- **WHEN** the ownership rule's location is inspected
-- **THEN** it is stated in `sai/commands/explore/instructions.md`
-- **AND** it is absent from every routed worker binding and idea-list adapter file
-
-#### Scenario: progress events are processed, not rendered
-
-- **WHEN** a supervised run is active and a dispatched worker emits a progress event
-- **THEN** the supervisor adds every path in the event's `changed_files` to the supervision report in first-seen order and continues the same worker with exactly `continue_after_progress`
-- **AND** the event's step ids are not rendered on the panel, whose declared owner is the idea progress list
-
-#### Scenario: standalone progress rendering is unchanged
-
-- **WHEN** `/sai-1-spec` or `/sai-2-design` runs standalone through its routed coordinator
-- **THEN** its declared progress plan renders on the panel as before
-- **AND** the ownership rule does not suppress it
 
 ### Requirement: idea-list-panel-lifecycle
 
@@ -403,3 +366,28 @@ The Plan - Unattended route SHALL set no review item `in_progress`: it renders o
 
 - **WHEN** the Plan - Unattended route follows `/sai-plan` for a slice
 - **THEN** `sai-1` renders `in_progress` while the spec segment runs and no reviewed-sai-1 or reviewed-sai-2 item is set `in_progress` by the route
+
+### Requirement: Idea-list panel ownership
+
+While a `sai-explore` chat is active and the idea progress list has rendered — from its first render at the first slice identification onward — the harness's native task panel's declared owner SHALL be the session's idea progress list, exclusive in that the list never coexists with entries from any other surface and every one of its renders leaves the panel holding exactly the full idea list with no foreign entries, realized through the render outcome of `idea-list-panel-lifecycle`. Before the idea list's first render, the panel's declared owner SHALL be the pre-crystallization stage TODO (`explore-pre-crystallization-stages`), which renders during active exploration and is cleared at crystallization when the idea list takes the panel. A future surface that needs the panel during an active explore chat SHALL renegotiate the ownership rule rather than write alongside the idea progress list. The ownership rule SHALL be stated in `sai/commands/explore/instructions.md` and SHALL NOT be written into any routed worker binding file or idea-list adapter file under `sai/adapters/{claude,opencode}/`. No plan-based list SHALL render on the panel during a supervised run, and standalone `/sai-1-spec` and `/sai-2-design` progress rendering SHALL remain governed by their own cards.
+
+#### Scenario: ownership excludes other emitters
+
+- **WHEN** a supervised run is active and the idea progress list holds panel ownership
+- **THEN** no other producer emits to the panel: no routed phase plan or other list appears alongside the idea progress list
+
+#### Scenario: pre-crystallization ownership belongs to the stage TODO
+
+- **WHEN** a `sai-explore` chat is actively exploring and no slice has been identified yet
+- **THEN** the panel holds the pre-crystallization stage TODO and no idea-list entry renders
+
+#### Scenario: exclusivity holds outside supervised runs
+
+- **WHEN** a `sai-explore` chat is active outside a supervised run and the idea progress list renders
+- **THEN** no other surface's entries appear alongside the idea progress list: the render displaces whatever the panel holds, and the list never coexists with foreign entries
+
+#### Scenario: the rule lives in explore's contract
+
+- **WHEN** the ownership rule's location is inspected
+- **THEN** it is stated in `sai/commands/explore/instructions.md`
+- **AND** it is absent from every routed worker binding and idea-list adapter file

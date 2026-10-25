@@ -42,9 +42,8 @@ test('answer combinations: each question keeps its own scope and condition', () 
   assert.match(round1, /record the answer as not applicable: it authorizes nothing/);
   assert.match(round1, /`assign`[\s\S]*`keep`[\s\S]*`replace`[\s\S]*`skip`/);
   assert.match(round1, /assignment executes only when implementation starts/);
-  assert.match(round2, /A prior general grant, unattended mode, `--fast-track`, or any round 1 Yes is not publication approval/);
+  assert.match(round2, /A prior general grant, unattended mode, or any round 1 Yes is not publication approval/);
   assert.match(round2, /Never choose a base automatically/);
-  assert.match(actions, /All questions remain explicit under `--fast-track`/);
 });
 
 test('conditional questions share a round with the answer they depend on', () => {
@@ -97,7 +96,7 @@ test('round 3 carries the overview question as a conditional question resolved o
 
   assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation and the change overview question/);
   assert.match(overview, /Round 3 carries it as a conditional question beside the route question/);
-  assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?`--fast-track`/);
+  assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?round 3 carries the overview question/);
   assert.match(overview, /first match wins and no overview question joins the round/);
   assert.match(overview, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/);
   assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and the fallback ask below asks gate 9 on its own before the plan coordinator is followed/);

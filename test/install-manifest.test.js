@@ -499,8 +499,6 @@ test('canonical manifest projects implement assets to neutral matrix destination
     assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
     assert.deepEqual(destinations, [...destinations].sort((a, b) => a.localeCompare(b)), `${harness} destinations should be ordered`);
     for (const source of [
-      'sai/orchestration/command-runner.md',
-      'sai/orchestration/worker-core.md',
       'sai/commands/implement/coordinator.md',
       'sai/commands/implement/red-worker.md',
       'sai/commands/implement/green-worker.md',
@@ -534,16 +532,8 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const expectedSources = {
-    claude: [
-      'sai/orchestration/command-runner.md',
-      'sai/orchestration/worker-core.md',
-      'sai/commands/spec/worker.md',
-    ],
-    opencode: [
-      'sai/orchestration/command-runner.md',
-      'sai/orchestration/worker-core.md',
-      'sai/commands/spec/worker.md',
-    ],
+    claude: ['sai/commands/spec/worker.md'],
+    opencode: ['sai/commands/spec/worker.md'],
   };
   const destinationRoot = {
     commands: path.join(os.tmpdir(), 'sai-spec-commands'),
@@ -1444,7 +1434,7 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
   }
 });
 
-test('canonical manifest projects exactly one harness boot adapter and the utility body cards per harness', () => {
+test('canonical manifest projects no boot adapter or command runner and the utility body cards per harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = {
@@ -1475,11 +1465,14 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     const sources = projections.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
     const sourceSet = new Set(sources);
 
-    assert.ok(sourceSet.has(`sai/adapters/${harness}/boot.md`),
-      `${harness} should project its own boot adapter`);
-    const foreign = harness === 'claude' ? 'sai/adapters/opencode/boot.md' : 'sai/adapters/claude/boot.md';
-    assert.equal(sourceSet.has(foreign), false,
-      `${harness} must not project the foreign boot adapter ${foreign}`);
+    for (const retired of [
+      'sai/adapters/claude/boot.md',
+      'sai/adapters/opencode/boot.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
+    ]) {
+      assert.equal(sourceSet.has(retired), false, `${harness} must not project the retired ${retired}`);
+    }
 
     for (const utility of utilities) {
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
@@ -1514,10 +1507,9 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
         `${harness} must not project the flat utility source ${flat}`);
     }
 
-    const adapter = projections.find(projection =>
-      projection.destinationPath.endsWith(path.join('adapters', harness, 'boot.md')));
-    assert.ok(adapter, `${harness} should land its boot adapter at sai/adapters/${harness}/boot.md`);
-    assert.equal(adapter.harness, harness, `${harness} boot adapter projection should be harness-scoped`);
+    assert.equal(projections.some(projection =>
+      projection.destinationPath.endsWith(path.join('adapters', harness, 'boot.md'))), false,
+    `${harness} should land no boot adapter at sai/adapters/${harness}/boot.md`);
     for (const utility of utilities) {
       const card = projections.find(projection =>
         projection.destinationPath.endsWith(path.join('commands', utility, 'body.md')));
