@@ -28,23 +28,27 @@ Customize them through project `setup` or the corresponding agent overrides.
 
 ### Migrating existing opencode agents
 
-Global installation migrates SAI-owned `explore.md`, `executor.md`, and `budget.md`
-to the matching `budget-*` names, preserving the configured model and optional
-variant (including an absent variant). If the new name already exists, its
-settings win; the installer reports conflicting legacy settings. It removes a
-SAI-owned predecessor only after installing its replacement. Modified or unrelated
-legacy files remain in place, with a notice. Reinstallation creates no aliases.
-Claude Code's existing names do not change.
+Installation deletes the retired `explore.md`, `executor.md`, and `budget.md`
+agent files from the opencode global root and the current project's `.opencode/`
+root, including customized copies. It does not migrate their models, variants,
+or instruction text. Existing `budget-*` definitions retain their own tunables
+and customization section; absent global definitions receive shipped defaults.
+The installer creates no local replacement files or aliases. Claude Code's
+generic-agent names do not change.
 
-Project-local `.opencode/agents/` definitions are never rewritten by global
-installation. Manually move each needed override to the corresponding new name,
-update external dispatch references, permissions, and saved custom preset targets,
-and review old definitions
-before removing them. A retained global or project-local `explore.md` (or an
-`agent.explore` config entry) can still override OpenCode's built-in explore.
-Review legacy config entries manually; SAI never rewrites them. Restart the
-harness after migration. Doctor and uninstall use the new names and retain
-their managed-content protections for user files.
+Installation refreshes existing, current-name project-local SAI definitions in
+the current project, preserving tunables and the customization section described
+in [model configuration](models.md#keeping-your-configuration). Both harnesses
+delete all exact file paths declared retired in `sai/install-manifest.json`,
+regardless of their contents. Unrelated filenames stay intact. A retired file
+symlink is unlinked without touching its target; directories and paths through
+linked directories are skipped, never recursively removed.
+
+Update external dispatch references, permissions, and saved custom preset targets
+to use current names. Review legacy configuration entries manually: an
+`agent.explore` config entry can still override OpenCode's built-in explore,
+and SAI never rewrites those entries. Doctor remains read-only, and uninstall
+retains its managed-content protections for user files.
 
 ## Optional third-party skill
 

@@ -10,3 +10,5 @@ Fetch @sai/commands/retire-docs/body.md and follow it exactly, forwarding the In
 InvocationEnvelope:
   command_name: retire-docs
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

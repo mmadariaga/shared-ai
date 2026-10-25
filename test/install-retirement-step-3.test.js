@@ -111,7 +111,7 @@ test('retirement cleanup deletes matching bytes for every accepted historical wo
   }
 });
 
-test('idea-list render retirement records delete every accepted digest and preserve edited or unknown bytes', () => {
+test('idea-list render retirement records delete accepted, edited, and unknown bytes', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const retirements = manifest.retirements.filter(retirement =>
@@ -164,14 +164,14 @@ test('idea-list render retirement records delete every accepted digest and prese
       fs.writeFileSync(target.destinationPath, modifiedBytes);
       const modifiedResult = cleanupRetiredProjections(harness, roots(base))
         .find(result => result.id === retirement.id);
-      assert.equal(modifiedResult.action, 'preserved');
-      assert.deepEqual(fs.readFileSync(target.destinationPath), modifiedBytes);
+      assert.equal(modifiedResult.action, 'deleted');
+      assert.equal(fs.existsSync(target.destinationPath), false);
 
       fs.writeFileSync(target.destinationPath, unknownBytes);
       const unknownResult = cleanupRetiredProjections(harness, roots(base))
         .find(result => result.id === retirement.id);
-      assert.equal(unknownResult.action, 'preserved');
-      assert.deepEqual(fs.readFileSync(target.destinationPath), unknownBytes);
+      assert.equal(unknownResult.action, 'deleted');
+      assert.equal(fs.existsSync(target.destinationPath), false);
     } finally {
       fs.rmSync(base, { recursive: true, force: true });
     }
@@ -203,7 +203,7 @@ test('retirement cleanup deletes a destination whose bytes match a registered ha
   }
 });
 
-test('retirement cleanup preserves modified and unknown destination bytes', () => {
+test('retirement cleanup deletes modified and unknown destination bytes', () => {
   const base = tempDir();
   try {
     const [modifiedRetirement, unknownRetirement] = retirementPaths(base)
@@ -219,16 +219,16 @@ test('retirement cleanup preserves modified and unknown destination bytes', () =
     fs.writeFileSync(unknownPath, unknownBytes);
 
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.find(result => result.id === modifiedRetirement.id).action, 'preserved');
-    assert.equal(results.find(result => result.id === unknownRetirement.id).action, 'preserved');
-    assert.deepEqual(fs.readFileSync(modifiedPath), modifiedBytes);
-    assert.deepEqual(fs.readFileSync(unknownPath), unknownBytes);
+    assert.equal(results.find(result => result.id === modifiedRetirement.id).action, 'deleted');
+    assert.equal(results.find(result => result.id === unknownRetirement.id).action, 'deleted');
+    assert.equal(fs.existsSync(modifiedPath), false);
+    assert.equal(fs.existsSync(unknownPath), false);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
 });
 
-test('retirement cleanup preserves unknown bytes for every former worker binding destination', () => {
+test('retirement cleanup deletes unknown bytes for every former worker binding destination', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const retirements = manifest.retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
   const base = tempDir();
@@ -249,8 +249,8 @@ test('retirement cleanup preserves unknown bytes for every former worker binding
       ...cleanupRetiredProjections('opencode', roots(base)),
     ];
     for (const destination of destinations) {
-      assert.equal(results.find(result => result.id === destination.id).action, 'preserved');
-      assert.deepEqual(fs.readFileSync(destination.destinationPath), bytes);
+      assert.ok(results.some(result => result.destinationPath === destination.destinationPath && result.action === 'deleted'));
+      assert.equal(fs.existsSync(destination.destinationPath), false);
     }
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
@@ -286,7 +286,7 @@ test('ADR template retirement cleanup deletes a former compatibility copy for ea
   }
 });
 
-test('ADR template retirement cleanup preserves a modified former compatibility copy', () => {
+test('ADR template retirement cleanup deletes a modified former compatibility copy', () => {
   const base = tempDir();
   try {
     const retirement = retirementPaths(base).find(record => record.id === 'retired-adr-index-template');
@@ -296,14 +296,14 @@ test('ADR template retirement cleanup preserves a modified former compatibility 
     fs.writeFileSync(destinationPath, bytes);
 
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'preserved');
-    assert.deepEqual(fs.readFileSync(destinationPath), bytes);
+    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'deleted');
+    assert.equal(fs.existsSync(destinationPath), false);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
 });
 
-test('ADR template retirement cleanup preserves an unrecognized former compatibility copy', () => {
+test('ADR template retirement cleanup deletes an unrecognized former compatibility copy', () => {
   const base = tempDir();
   try {
     const retirement = retirementPaths(base).find(record => record.id === 'retired-adr-index-template');
@@ -313,14 +313,14 @@ test('ADR template retirement cleanup preserves an unrecognized former compatibi
     fs.writeFileSync(destinationPath, bytes);
 
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'preserved');
-    assert.deepEqual(fs.readFileSync(destinationPath), bytes);
+    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'deleted');
+    assert.equal(fs.existsSync(destinationPath), false);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
 });
 
-test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve modified copies', () => {
+test('STEP1_RETIRE_INLINE: retired routed loaders are deleted even when modified', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const retiredLoaderPaths = [
@@ -370,8 +370,8 @@ test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve 
       fs.writeFileSync(target.destinationPath, 'modified routed loader bytes');
       const result = cleanupRetiredProjections(retirement.harnesses[0], roots(base))
         .find(record => record.id === retirement.id);
-      assert.equal(result.action, 'preserved');
-      assert.equal(fs.readFileSync(target.destinationPath, 'utf8'), 'modified routed loader bytes');
+      assert.equal(result.action, 'deleted');
+      assert.equal(fs.existsSync(target.destinationPath), false);
     } finally {
       fs.rmSync(base, { recursive: true, force: true });
     }

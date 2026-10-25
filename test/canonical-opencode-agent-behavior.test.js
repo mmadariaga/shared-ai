@@ -186,7 +186,7 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
         `${name} frontmatter should use permission instead of the deprecated tools field`);
     }
 
-    const body = source.slice(frontmatter[0].length).trim();
+    const body = source.slice(frontmatter[0].length).split('<!-- User customizations below this line -->')[0].trim();
     assert.ok(body.startsWith(OPENCODE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch @sai/policies/${name}-agent.md`),
       `${name} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,
@@ -274,7 +274,7 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
       }
     }
 
-    const body = source.slice(frontmatter[0].length).trim();
+    const body = source.slice(frontmatter[0].length).split('<!-- User customizations below this line -->')[0].trim();
     assert.ok(body.startsWith(CLAUDE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch ${agent.fetchTarget}`),
       `${agent.fileName} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,

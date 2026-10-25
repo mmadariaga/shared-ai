@@ -96,3 +96,11 @@ Preset migration SHALL map command and worker entries for security 6 to 5, perfo
 #### Scenario: Preset cannot be migrated
 - **WHEN** installation cannot parse or migrate a preset JSON file
 - **THEN** it reports that file as pending resolution and continues without inventing replacement settings
+
+### Requirement: Preset-key migration is separate from definition retirement
+
+Existing targeted audit preset-key migration SHALL remain separate from definition refresh and retirement. Preset preparation SHALL NOT clone legacy command or agent files or transfer their tuning or instructions into renamed definitions. Existing preset-key precedence and unrelated-entry preservation SHALL remain unchanged.
+
+#### Scenario: Preset compatibility does not clone definitions
+- **WHEN** installation prepares old audit preset keys and encounters retired audit definitions
+- **THEN** preset entries follow the existing role-key mapping while exact retired files are deleted without importing their settings or instructions into current-name definitions

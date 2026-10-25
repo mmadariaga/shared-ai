@@ -10,6 +10,7 @@ const {
 
 const STRATEGIES = Object.freeze([
   'copy',
+  'customizable-copy',
   'copy-if-absent',
   'tunable-seed',
   'merge-jsonc',
@@ -297,6 +298,12 @@ function validateRetirements(manifest, projectionIds) {
       throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills" | "agents" | "commands", path }`);
     }
     const destination = `${retirement.destination.class}/${normalizeRelative(retirement.destination.path)}`;
+    const relativePath = retirement.destination.path;
+    if (!relativePath || path.posix.isAbsolute(relativePath) || path.win32.isAbsolute(relativePath)
+        || /[\0\r\n*?\[\]:]/.test(relativePath)
+        || relativePath.split(/[\\/]/).some(part => !part || part === '.' || part === '..')) {
+      throw new Error(`Retirement ${retirement.id} path must name an exact relative file`);
+    }
     if (!Array.isArray(retirement.harnesses) || retirement.harnesses.length === 0 || retirement.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {
       throw new Error(`Retirement ${retirement.id} has invalid harnesses`);
     }

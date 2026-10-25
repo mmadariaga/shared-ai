@@ -10,3 +10,5 @@ Fetch @sai/commands/status/body.md and follow it exactly, forwarding the Invocat
 InvocationEnvelope:
   command_name: status
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

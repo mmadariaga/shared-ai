@@ -163,6 +163,9 @@ async function main(options = {}) {
 
   try {
     copySchemaTemplates(projectPath);
+    for (const harness of ['claude', 'opencode']) {
+      require('./install-flow').refreshProjectOverrides(harness, projectPath);
+    }
     await postSetupWorkflow({ projectPath, readline: rl });
   } catch (err) {
     rl.close();

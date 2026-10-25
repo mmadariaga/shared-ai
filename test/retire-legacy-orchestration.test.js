@@ -150,7 +150,7 @@ test('the three stops that named the legacy recovery policies point to the obsta
 });
 
 for (const [harness, install] of [['claude', installClaude], ['opencode', installOpencode]]) {
-  test(`${harness}: a fresh install lands none of the retired files and an upgrade removes recognized ones and keeps customized ones (E3, E10, E11)`, t => {
+  test(`${harness}: a fresh install lands none of the retired files and an upgrade removes all declared obsolete copies`, t => {
     t.mock.method(console, 'warn', () => {});
     const fresh = fs.mkdtempSync(path.join(os.tmpdir(), `sai-retire-fresh-${harness}-`));
     const upgraded = fs.mkdtempSync(path.join(os.tmpdir(), `sai-retire-upgrade-${harness}-`));
@@ -170,11 +170,7 @@ for (const [harness, install] of [['claude', installClaude], ['opencode', instal
       install(upgraded);
       for (const item of mine) {
         const destination = path.join(upgraded, 'sai', item.destination);
-        if (item.destination.endsWith('command-bootstrap.md')) {
-          assert.equal(fs.existsSync(destination), false, `${item.destination} matches a managed hash and is removed`);
-        } else {
-          assert.equal(fs.readFileSync(destination, 'utf8'), 'customized by the user\n', `${item.destination} is customized and stays unchanged`);
-        }
+        assert.equal(fs.existsSync(destination), false, `${item.destination} is declared retired and is removed regardless of contents`);
       }
       for (const wrapper of ['sai-explore', 'sai-retire-docs', 'sai-status', 'sai-worktree']) {
         const installed = fs.readFileSync(path.join(upgraded, 'commands', `${wrapper}.md`), 'utf8');

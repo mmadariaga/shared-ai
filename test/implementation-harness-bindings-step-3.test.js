@@ -311,8 +311,8 @@ test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity
     'specs/opencode-agent-preservation/spec.md: the three generic agent files should be named as projected agents');
   assert.match(documentation, /permission/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the permission merge');
-  assert.doesNotMatch(documentation, /customiz(?:ed|ation).{0,120}(?:preserv|retain)/i,
-    'specs/opencode-agent-preservation/spec.md: opencode documentation must not claim customized worker definitions are preserved by name in the configuration');
+  assert.match(agentsDoc, /no agent key is ever inserted into `opencode\.json`\/`opencode\.jsonc`/i,
+    'opencode documentation must keep configuration agent keys outside installer ownership; file customization sections may be preserved');
   assert.match(documentation, /opencode\.json[\s\S]{0,140}exclu|exclu[\s\S]{0,140}opencode\.json/i,
     'specs/opencode-agent-preservation/spec.md: the opencode.json exclusion should survive');
   assert.match(documentation, /restart/i,

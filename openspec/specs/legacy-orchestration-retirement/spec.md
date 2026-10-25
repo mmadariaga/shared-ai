@@ -63,19 +63,16 @@ The source tree SHALL NOT contain `sai/adapters/claude/boot.md`, `sai/adapters/o
 
 ### Requirement: Retired files leave installs through retirement entries
 
-`sai/install-manifest.json` SHALL project none of the deleted files and SHALL carry one retirement entry per deleted installed destination — `commands/{explore,retire-docs,status,worktree}/command-bootstrap.md`, `adapters/claude/boot.md` (Claude Code only), `adapters/opencode/boot.md` (opencode only), `orchestration/command-runner.md`, `orchestration/worker-core.md`, `policies/stop-options.md`, `policies/bounded-recovery.md`, and `policies/unattended-runtime-recovery.md` — listing the `managedHashes` of the released versions for each harness that installed it. Files installed through the `sai/policies` directory source SHALL be covered the same way. The routed `worker-template.md` binding templates, which were rendered and never installed, SHALL need no retirement entry. The installer code that removes retired files SHALL stay unchanged, so an upgrade removes a retired file only when its content matches a managed hash and leaves a customized copy in place.
+The manifest SHALL project none of the deleted files and SHALL retain retirement entries with historical hashes for deleted installed command bootstraps, boot adapters, orchestration contracts, and recovery policies. Rendered, never-installed worker-template.md bindings SHALL need no retirement entry. Installation and project refresh SHALL delete every exact retired regular file or file symlink including edited copies without hash matching or migration. Directories and linked parent directories SHALL be skipped. Doctor SHALL remain read-only and guarded uninstall SHALL retain historical recognition and modified-file protection.
 
 #### Scenario: An upgrade removes managed retired copies
-
-- **WHEN** an upgrade install runs over an installation that holds an unmodified copy of a retired file on either harness
-- **THEN** the retirement entry matches its hash and the file is removed from the installed root
+- **WHEN** upgrade installation finds an unmodified retired file on either supported harness
+- **THEN** it deletes the exact retired file without requiring a matching historical hash
 
 #### Scenario: A customized retired copy stays
-
-- **WHEN** an upgrade install finds a retired file whose content matches no managed hash
-- **THEN** the file stays in the installed root unchanged
+- **WHEN** upgrade installation finds a customized declared retired regular file
+- **THEN** it deletes that exact file without migration; guarded uninstall remains the operation preserving unrecognized customized copies
 
 #### Scenario: A fresh install carries no retired file
-
 - **WHEN** a fresh install runs on Claude Code or opencode
 - **THEN** none of the retired files is installed

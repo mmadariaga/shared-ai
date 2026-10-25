@@ -12,3 +12,5 @@ Fetch @sai/commands/explore/body.md and follow it exactly, forwarding the Invoca
 InvocationEnvelope:
   command_name: explore
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

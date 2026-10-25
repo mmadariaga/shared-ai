@@ -15,15 +15,15 @@ The installer SHALL project the universal to-pr skill, description format, provi
 
 ### Requirement: Retire managed sai-pr without deleting user documents
 
-Installation SHALL retire recognized managed sai-pr wrappers, command cards, template, and pr.js tool through manifest migration. Retirement SHALL support commands-class destinations, preserve modified overrides, and SHALL NOT delete existing user pr.md documents. Current command routing, model customization, presets, documentation, and status navigation SHALL no longer advertise sai-pr; completed status navigation SHALL point to `/to-pr`.
+Installation SHALL remove exact manifest-declared retired sai-pr wrappers, cards, template, and pr.js tool, including edited copies, without transferring their tuning or instructions. Retirement SHALL support commands-class destinations and SHALL NOT delete unrelated user pr.md documents. Routing, model customization, presets, documentation, and status navigation SHALL no longer advertise sai-pr; completed status navigation SHALL point to /to-pr. Doctor SHALL remain read-only and uninstall SHALL retain its historical ownership guard.
 
 #### Scenario: Managed legacy installation
 - **WHEN** installation encounters a recognized managed sai-pr copy
 - **THEN** migration removes that retired copy while installing to-pr.
 
 #### Scenario: User documents and overrides exist
-- **WHEN** retirement encounters an existing user pr.md or a modified legacy override
-- **THEN** it preserves those files.
+- **WHEN** retirement encounters an unrelated user pr.md and a modified legacy override at an exact retired path
+- **THEN** installation preserves the user document but deletes the declared retired override without transferring its content
 
 #### Scenario: All review and audit requirements are satisfied
 - **WHEN** status navigation reaches the publication recommendation
@@ -31,15 +31,15 @@ Installation SHALL retire recognized managed sai-pr wrappers, command cards, tem
 
 ### Requirement: Audit rename migration preserves role-specific tunables before cleanup
 
-For both Claude Code and opencode, installation SHALL prepare renamed audit commands and workers before cleaning up retired names. If the renamed destination is absent and the legacy file exists, preparation SHALL seed the destination from that file with its audit name replaced. If the destination already exists, its own configuration SHALL take precedence. Current managed command content SHALL preserve the destination's model tunables; workers SHALL retain the existing tunable-seed lifecycle. Claude Code SHALL preserve model and effort; opencode SHALL preserve command model/variant notation and worker model plus optional variant.
+For Claude Code and opencode, audit renaming SHALL NOT clone legacy command or worker definitions or transfer their tunables or instructions. Installation SHALL delete exact declared retired paths regardless of content. Current-name destinations SHALL retain their own tuning and explicit customization suffix during managed refresh; absent global definitions SHALL receive shipped role defaults. Claude Code SHALL preserve current model and effort; opencode SHALL preserve command model#variant and agent model with optional variant. Preset-key compatibility SHALL remain separate from definition retirement.
 
 #### Scenario: Fresh installation has no legacy files
 - **WHEN** installation runs with no old or new audit files
 - **THEN** it projects the new command and worker names with their shipped role defaults
 
 #### Scenario: Upgrade carries custom role models
-- **WHEN** legacy audit commands and workers have custom model tunables and the corresponding renamed destinations are absent
-- **THEN** installation transfers each audit's tunables to that same audit's new name before removing any recognized retired copy
+- **WHEN** legacy audit definitions have custom tuning and their renamed global destinations are absent
+- **THEN** installation deletes retired definitions and seeds current-name destinations from shipped defaults without old-name settings transfer
 
 #### Scenario: Renamed destination already has configuration
 - **WHEN** both a legacy audit file and its renamed destination exist
@@ -47,12 +47,12 @@ For both Claude Code and opencode, installation SHALL prepare renamed audit comm
 
 ### Requirement: Audit retirement uses managed body identity across lifecycle tools
 
-Installation cleanup, doctor inventory, and uninstallation SHALL share retirement recognition. They SHALL recognize an exact managed hash or a declared managed body hash after stripping only the declared model, effort, or variant tunable lines. Installation and uninstallation SHALL remove recognized legacy audit commands and workers. A legacy file with customized instructions or non-tunable content SHALL remain on disk rather than being deleted or treated as completely migrated. Retirement declarations SHALL validate and project the body hashes and permitted tunable keys.
+Audit retirement declarations SHALL retain historical exact hashes, managed body hashes, and permitted tuning keys for read-only recognition and guarded uninstall. Doctor SHALL distinguish recognized copies from customized bodies, recommending reinstallation without settings or instruction transfer for either. Installation SHALL instead delete every exact declared retired regular file or file symlink without a content-identity gate or settings preparation. Guarded uninstall SHALL retain its recognition checks and preserve customized retired bodies.
 
 #### Scenario: Only model tunables differ from a managed copy
-- **WHEN** a retired audit file differs from a declared managed body only in its permitted tunable lines
-- **THEN** installation cleanup and uninstallation both recognize it as removable after installation's settings preparation
+- **WHEN** a retired audit file differs from declared managed content only in permitted tuning
+- **THEN** uninstall recognizes its historical identity, while installation deletes the exact retired file without transferring its tuning
 
 #### Scenario: Customized legacy body remains pending
-- **WHEN** a retired audit file contains user-owned instruction changes
-- **THEN** installation preserves it and reports its exact path as pending resolution, and uninstallation preserves it as an override
+- **WHEN** a retired audit file has customized instructions
+- **THEN** doctor recommends installer removal without migration; installation deletes the exact file while guarded uninstall retains its customized body

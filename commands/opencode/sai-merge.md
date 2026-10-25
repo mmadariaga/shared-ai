@@ -11,3 +11,5 @@ Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the I
 InvocationEnvelope:
   command_name: merge
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

@@ -13,3 +13,5 @@ Fetch @sai/commands/commit/coordinator.md and follow it exactly, forwarding the 
 InvocationEnvelope:
   command_name: commit
   arguments_value: $ARGUMENTS
+
+<!-- User customizations below this line -->

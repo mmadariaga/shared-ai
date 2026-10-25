@@ -28,39 +28,31 @@ Every projected opencode worker agent SHALL contain the literal prompt `Fetch @s
 
 ### Requirement: Installer consumers preserve the canonical contract fetch
 
-The bundled sources under `agents/opencode/`, the projected worker agent files they seed, and the installer guidance SHALL preserve each agent's canonical contract fetch in the file body alongside the frontmatter's model, mode, variant, and task permissions. Doctor SHALL validate each projected file's body and non-tunable frontmatter against its bundled source, so a contract fetch that diverges from the bundled source is reported as an incompatible file rather than silently tolerated. No consumer SHALL synthesize a fetch from binding text or silently omit it.
+The bundled sources under `agents/opencode/`, the projected worker agent files they seed, and the installer guidance SHALL preserve each agent's canonical contract fetch in the file body alongside the frontmatter's model, mode, variant, and task permissions. Doctor SHALL validate each projected file's body and non-tunable frontmatter through the customization marker against its bundled source while ignoring tuning and the suffix, so a managed contract fetch that diverges from the bundled source is reported as an incompatible file rather than silently tolerated. No consumer SHALL synthesize a fetch from binding text or silently omit it.
 
 #### Scenario: Fresh projection includes every contract fetch
-
 - **WHEN** the opencode projection is installed to a fresh destination
-- **THEN** every projected worker agent file SHALL contain its canonical contract fetch
-- **AND** the file SHALL retain its worker-specific model, mode, variant policy, and task permissions
+- **THEN** every projected worker agent file SHALL contain its canonical contract fetch; the file SHALL retain its worker-specific model, mode, variant policy, and task permissions
 
 #### Scenario: Doctor and installer observe the same projected files
-
 - **WHEN** installer guidance and doctor enumerate managed opencode workers
-- **THEN** both SHALL observe the same manifest-projected worker agent files and the same bundled sources
-- **AND** the canonical contract fetch SHALL be preserved as file-body content validated by doctor's body comparison, not as a doctor record field or a configuration projection
+- **THEN** both SHALL observe the same manifest-projected worker agent files and the same bundled sources; the canonical contract fetch SHALL be preserved as file-body content validated by doctor's body comparison, not as a doctor record field or a configuration projection
 
 ### Requirement: User-owned opencode agent files preserve user tunables
-Installing or re-installing the projected worker agent files SHALL follow the `tunable-seed` lifecycle: a missing file is created with the canonical definition (the shipped tunables are seeded); an existing file is updated by overwriting its body and non-tunable frontmatter with the source bytes while preserving the destination's tunable values (`model`, `variant`) placed per the structural anchor in `agent-tunable-ownership`; a body-or-non-tunable-frontmatter divergence triggers a console notice naming the destination path, and the installer continues. The installer SHALL NOT write a `.<basename>.owner.json` sidecar file. Guarded uninstall SHALL remove a projected agent file only when its body and non-tunable frontmatter match the source; a destination whose body or non-tunable frontmatter differs from source is a project-local override and SHALL be preserved. A destination whose tunable lines differ from the source but whose body and non-tunable frontmatter match SHALL be deleted by uninstall. This requirement SHALL NOT weaken existing configuration-merge and idempotence behavior.
+
+Projected workers SHALL follow tunable-seed: missing files receive compiled source and shipped tuning; incompatible managed content is replaced while preserving destination model, optional variant, and the exact suffix after the standalone customization marker. Tuning SHALL use the existing top-level structural anchor. Compatibility SHALL ignore tuning and the explicit suffix; compatible definitions SHALL be reused untouched without a notice. Managed divergence SHALL produce a path-specific notice without blocking installation. Legacy unmarked definitions SHALL retain only tuning; no ownership sidecar SHALL be written. Guarded uninstall SHALL ignore tuning but retain custom suffixes and other body or non-tunable-frontmatter differences. Configuration merge ownership and idempotence SHALL remain unchanged.
 
 #### Scenario: Existing custom agent file is overwritten with notice
-- **WHEN** a projected opencode agent file already exists with user-customized body or non-tunable frontmatter content
-- **THEN** installation SHALL overwrite the body and non-tunable frontmatter with the source bytes
-- **AND** SHALL preserve the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`
-- **AND** SHALL emit a console notice naming the destination path
-- **AND** SHALL NOT throw and SHALL NOT block installation
+- **WHEN** a projected worker has changed managed instructions or non-tunable frontmatter
+- **THEN** installation refreshes managed content, preserves native tuning and any exact delimited suffix, emits a path-specific notice, and continues without throwing
 
 #### Scenario: Tuned existing agent file preserves its tunables
-- **WHEN** a projected opencode agent file already exists with body and non-tunable frontmatter that match the source, but with tunable lines (`model`, `variant`) that differ from the source
-- **THEN** installation SHALL overwrite the body and non-tunable frontmatter with the source bytes while preserving the destination's tunable lines
-- **AND** SHALL NOT emit a console notice for that destination
+- **WHEN** a worker matches managed content but has different model or variant
+- **THEN** installation reuses the definition untouched, preserving tuning and suffix without an overwrite notice
 
 #### Scenario: Missing worker receives the canonical definition
 - **WHEN** a projected opencode agent file is absent
-- **THEN** installation SHALL create the file with the canonical frontmatter (mode, model, variant, permissions) and contract-fetch body
-- **AND** SHALL NOT create a `.<basename>.owner.json` file
+- **THEN** installation SHALL create the file with the canonical frontmatter (mode, model, variant, permissions) and contract-fetch body; SHALL NOT create a `.<basename>.owner.json` file
 
 #### Scenario: User-edited managed agent survives uninstall
 - **WHEN** uninstall evaluates a destination whose body or non-tunable frontmatter differs from the source
@@ -68,5 +60,8 @@ Installing or re-installing the projected worker agent files SHALL follow the `t
 
 #### Scenario: Tuned managed agent is removed by uninstall
 - **WHEN** uninstall evaluates a destination whose body and non-tunable frontmatter match the source but whose tunable lines differ
-- **THEN** uninstall SHALL remove the agent file
-- **AND** SHALL NOT consult any sidecar file
+- **THEN** uninstall SHALL remove the agent file; SHALL NOT consult any sidecar file
+
+#### Scenario: User suffix survives guarded uninstall
+- **WHEN** a current projected worker has extra user suffix instructions
+- **THEN** guarded uninstall retains its definition

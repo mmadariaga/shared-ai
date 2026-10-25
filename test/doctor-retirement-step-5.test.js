@@ -111,7 +111,7 @@ test('doctor reports an unrecognized retired copy without changing it', async ()
     const warning = retirementWarning(report, destination);
     assert.equal(warning.severity, 'warn');
     assert.equal(warning.recognized, false);
-    assert.match(warning.recommendation, /manually/i);
+    assert.match(warning.recommendation, /installer.*delete/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
@@ -191,7 +191,7 @@ test('doctor reports a recognized former ADR-template copy through retirement st
   }
 });
 
-test('doctor preserves an unrecognized former ADR-template copy and gives manual-cleanup guidance', async () => {
+test('doctor leaves an unrecognized former ADR-template copy unchanged and recommends installer cleanup', async () => {
   const { projectRoot, claudeBase } = fixture();
   try {
     const destination = adrRetiredCopy(claudeBase);
@@ -200,7 +200,7 @@ test('doctor preserves an unrecognized former ADR-template copy and gives manual
     const warning = retirementWarning(report, destination);
 
     assert.equal(warning.recognized, false);
-    assert.match(warning.recommendation, /manually/i);
+    assert.match(warning.recommendation, /installer.*delete/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
@@ -237,7 +237,7 @@ test('human doctor output identifies retired-copy cleanup and remains successful
 
     assert.equal(code, 0);
     assert.match(capture.text(), /retirement/i);
-    assert.match(capture.text(), /manually/i);
+    assert.match(capture.text(), /installer.*delete/i);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -323,7 +323,7 @@ test('doctor reports an unrecognized retired apply body copy without deleting it
     const warning = retirementWarning(report, destination);
     assert.equal(warning.severity, 'warn');
     assert.equal(warning.recognized, false);
-    assert.match(warning.recommendation, /manually/i);
+    assert.match(warning.recommendation, /installer.*delete/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before,
       'specs/apply-routed-card-set/spec.md: the user-modified retired copy must survive doctor untouched');
   } finally {

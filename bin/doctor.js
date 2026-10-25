@@ -169,11 +169,7 @@ function retiredFileRecords(section, entries) {
         path: shorten(entry.dest),
         rule: entry.ruleId,
         recognized,
-        recommendation: recognized
-          ? 'Run install/update or uninstall to remove this managed historical copy'
-          : entry.managedBodyHashes
-            ? 'Pending resolution: transfer customized audit instructions to the new name, then review removal of this preserved file'
-            : 'Review and remove this preserved file manually if it is no longer needed',
+        recommendation: 'Re-run the installer to delete this declared retired file; old settings and custom text are not migrated',
       };
     });
 }
@@ -317,6 +313,9 @@ function diffAgainstBundled(expectedEntries) {
   for (const e of expectedEntries.filter(x => x.src !== x.dest)) {
     const destHash = uninstall.sha256File(e.dest);
     if (destHash === null) { drift.push(`${shorten(e.dest)} (missing)`); continue; }
+    if (e.tunableKeys && fs.existsSync(e.src)
+        && flow.managedDefinitionBytes(fs.readFileSync(e.src), e.tunableKeys)
+          .equals(flow.managedDefinitionBytes(fs.readFileSync(e.dest), e.tunableKeys))) continue;
     const srcHash = uninstall.sha256File(e.src);
     if (srcHash !== null && srcHash !== destHash) drift.push(`${shorten(e.dest)} (differs)`);
   }
@@ -328,9 +327,33 @@ function managedBytesMatch(projection, destinationPath) {
     ? Buffer.from(projection.sourceText, 'utf8')
     : fs.readFileSync(projection.sourcePath);
   const destination = fs.readFileSync(destinationPath);
-  const { stripTunableLines } = require('./install-flow');
   const keys = projection.harness === 'opencode' ? ['model', 'variant'] : ['model', 'effort'];
-  return stripTunableLines(source, keys).equals(stripTunableLines(destination, keys));
+  return flow.managedDefinitionBytes(source, keys).equals(flow.managedDefinitionBytes(destination, keys));
+}
+
+function customizableDefinitionRecords(harness, projectRoot, repoRoot) {
+  const section = `[${harness.id}]`;
+  const records = [];
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = Object.fromEntries(['commands', 'sai', 'skills', 'agents']
+    .map(directory => [directory, path.join(harness.base, directory)]));
+  Object.assign(destinationRoot, { config: harness.base, root: harness.base });
+  const global = expandInstallManifest(manifest, { harness: harness.kind, repoRoot, destinationRoot })
+    .filter(projection => projection.strategy === 'customizable-copy');
+  const local = flow.projectOverrideProjections(harness.kind, projectRoot, repoRoot);
+  for (const [scope, projections] of [['global', global], ['project-local', local]]) {
+    for (const projection of projections) {
+      if (!fs.existsSync(projection.destinationPath)) continue;
+      const name = `${scope} ${path.basename(projection.destinationPath)}`;
+      const compatible = managedBytesMatch(projection, projection.destinationPath);
+      records.push({
+        section, name, severity: compatible ? 'ok' : 'error',
+        message: `${name}: managed content ${compatible ? 'is current' : 'differs from the installed package'}`,
+        ...(compatible ? {} : { recommendation: 'Re-run the installer from this project, or run setup for this project, to refresh local definitions' }),
+      });
+    }
+  }
+  return records;
 }
 
 function managedClaudeWorkerRecords(harness, repoRoot) {
@@ -550,6 +573,7 @@ async function main(options = {}) {
     const sectionRecords = inventoryHarness(h, { entries, projectRoot });
     sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
     sectionRecords.push(...managedAssetRecords(h, repoRoot));
+    sectionRecords.push(...customizableDefinitionRecords(h, projectRoot, repoRoot));
     sectionRecords.push(...versionSkewRecords(h, entries, latest));
     if (h.kind === 'opencode') {
       sectionRecords.push(...opencodeConfigDepthRecords(h.base));

@@ -97,6 +97,10 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       entry.assetType = 'claude-managed-agent';
       entry.tunableKeys = projection.harness === 'claude' ? flow.CLAUDE_TUNABLE_KEYS : flow.OPENCODE_TUNABLE_KEYS;
       entries.push(entry);
+    } else if (projection.strategy === 'customizable-copy') {
+      entry.assetType = 'customizable-command';
+      entry.tunableKeys = projection.harness === 'claude' ? flow.CLAUDE_TUNABLE_KEYS : flow.OPENCODE_TUNABLE_KEYS;
+      entries.push(entry);
     } else {
       entries.push(entry);
     }
@@ -159,7 +163,7 @@ function computeRetiredPlanEntry(entry) {
 
 function computePlanEntry(entry) {
   if (entry.assetType === 'retired-managed-file') return computeRetiredPlanEntry(entry);
-  if (entry.assetType === 'claude-managed-agent') {
+  if (['claude-managed-agent', 'customizable-command'].includes(entry.assetType)) {
     return computeClaudeAgentPlanEntry(entry);
   }
   const destHash = sha256File(entry.dest);
@@ -200,7 +204,7 @@ function deleteEntry(entry) {
     fs.unlinkSync(entry.dest);
     return 'deleted';
   }
-  if (entry.assetType === 'claude-managed-agent') {
+  if (['claude-managed-agent', 'customizable-command'].includes(entry.assetType)) {
     const destHash = sha256File(entry.dest);
     if (destHash === null) {
       return 'not-found';
@@ -212,7 +216,7 @@ function deleteEntry(entry) {
       return 'kept-override';
     }
     fs.unlinkSync(entry.dest);
-    flow.deleteSidecarUnderShapeGuard(entry.dest);
+    if (entry.assetType === 'claude-managed-agent') flow.deleteSidecarUnderShapeGuard(entry.dest);
     return 'deleted';
   }
   const destHash = sha256File(entry.dest);
