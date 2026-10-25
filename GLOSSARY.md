@@ -25,7 +25,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Backfilled Change**: "An OpenSpec change reconstructed post-implementation by `/sai-backfill`, with `backfilled: true` written to `.openspec.yaml` and contractually forbidden from producing `design.md`, `tasks.md`, or `implementation.md`."
 *Avoid*: post-hoc change, retroactive change, reconstructed change
 
-**Boot Request**: "The opaque adapter input containing `command_name` as card-selection metadata, the complete opaque `arguments_value` request, and an optional harness-owned continuation reference."
+**Boot Request**: "Retired with the **Harness Boot Adapter**: the opaque adapter input that once carried `command_name` and `arguments_value` to a boot adapter. Wrappers now forward an `InvocationEnvelope` straight to their command card."
 *Avoid*: adapter request, boot envelope, parsed request
 
 **Build Command**: "The un-numbered `/sai-build` command (cards at `sai/commands/build/`) that chains `/sai-3-implement`, one `/sai-4-review` pass, an assessment of its findings, and a second `/sai-3-implement` run for the findings it selects, in one session for a disk-resolved change name, with no approval between segments. Not the explore crystallization-close **Direct Build - Unattended** lane (`direct-build-unattended` / `sai-direct-build-worker`)."
@@ -58,7 +58,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Closure Reminder**: "The concise, stage-aware actionable closure line that a successful `sai-explore` turn appends while the current idea's **Closure State** is `active-uncrystallized` and no genuine unresolved question remains — naming the token that advances from the user's current stage of the **Pre-Crystallization Stage TODO** (`next-step` at stages 1–2, `next-step` and `crystallize` at stage 3) and never emitted at the `Crystallize` stage, whose entry is the crystallization itself."
 *Avoid*: fallback reminder, crystallize reminder, closing line, closure message
 
-**Command Bootstrap**: "The harness-neutral per-command card at `sai/commands/{name}/command-bootstrap.md` that holds the behaviour-skill loads and worker binding a command wrapper no longer carries, loaded by the wrapper after its **Harness Boot Adapter** and existing as an extension point even when near-empty."
+**Command Bootstrap**: "Retired: the per-command card at `sai/commands/{name}/command-bootstrap.md` that once held the behaviour-skill loads and worker binding, loaded after a **Harness Boot Adapter**. No command folder has one; each `coordinator.md` or `body.md` loads for itself what the bootstrap used to load."
 *Avoid*: launcher card, boot card, wrapper body, phase launcher
 
 **Closure State**: "The chat-scoped lifecycle classification of an explored idea as active-uncrystallized, crystallized, or discarded, used to determine whether a successful `sai-explore` response requires an actionable ending."
@@ -138,7 +138,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Handshake**: "The worker's trivial first nonterminal ready return before expensive work that gives the coordinator a resumable handle over the live worker."
 *Avoid*: progress event, acknowledgement, status update
 
-**Harness Boot Adapter**: "The single supported-harness entry file that selects a command card and owns harness-specific fetch and dispatch glue without redefining lifecycle semantics."
+**Harness Boot Adapter**: "Retired: the per-harness entry file (`sai/adapters/{harness}/boot.md`) that once selected a command card. Every wrapper now fetches the harness fetch skill and its card directly; `sai/adapters/{harness}/` keeps only explore render glue."
 *Avoid*: harness loader, phase adapter, command wrapper
 
 **Idea Progress List**: "The chat-scoped, in-session list in a `sai-explore` session that tracks the explored idea rather than the command's own steps, with research, slice-crystallization, and reviewed sai-1 / sai-2 items grown and marked only from in-session evidence; it renders on the harness's **Native Task Panel** where one exists and as plain in-conversation checkbox text elsewhere."
@@ -171,7 +171,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Next Pointer**: "The pointer-only transition output (`{follow, hint}`) naming the step file the caller must fetch next, under a fixed minimal template with path interpolation."
 *Avoid*: active step line, instruction block, rendered step
 
-**Orchestration Core**: "The canonical `sai/orchestration/` contracts for coordinator mechanics and worker lifecycle behavior shared by routed planning phases."
+**Orchestration Core**: "Retired: the shared `sai/orchestration/` coordinator and worker contracts (command runner, worker core, composition) that routed phases once ran on. Every command now runs on its own goal-driven card, and `sai/orchestration/` keeps only the per-harness standalone worker-binding templates."
 *Avoid*: shared worker prompt, universal phase prompt, coordinator implementation
 
 **Orientation Index**: "The `SAI_AGENTS.md` document installed at the harness root by the `sai-agents-index` projection, containing one entry per SAI documentation surface — canonical location, purpose, writer, and a pointer to the canonical format file — with conditional-presence wording, no restated normative rules, and no harness named inside the file."
@@ -183,10 +183,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Overview State**: "The persisted `overview.state` key in a change's `.openspec.yaml` carrying one of `unmaterialized` / `materializing` / `failed` / `current` / `stale` — the durable signal that lets `sai-status` and `sai-archive` distinguish a not-yet-attempted overview, an in-progress or interrupted generation, a failed first materialization, a current one, and one whose sources changed since materialization, without inspecting `change-overview.md` contents; transitioned by the design worker, who marks `materializing` before generator dispatch and `stale` before the first effective source write of every post-materialization transaction."
 *Avoid*: materialization flag, overview status, overview freshness, stale flag
 
-**Phase Adapter**: "The per-routed-phase field set consumed by the shared command runner — initial worker envelope, dispatch and continuation operations, permitted nonterminal extensions and handlers, replacement-reconstruction fields, `terminal_navigation`, and optional static `progress_plan`, `step_machine`, and `recovery_policy` — that supplies phase-specific behavior without reimplementing lifecycle mechanics. `progress_plan` controls visual task-list rendering; `step_machine` independently controls just-in-time worker instruction routing."
+**Phase Adapter**: "Retired with the **Orchestration Core**; no card declares one. Historically: the per-routed-phase field set consumed by the shared command runner — initial worker envelope, dispatch and continuation operations, permitted nonterminal extensions and handlers, replacement-reconstruction fields, `terminal_navigation`, and optional static `progress_plan`, `step_machine`, and `recovery_policy` — that supplies phase-specific behavior without reimplementing lifecycle mechanics. `progress_plan` controls visual task-list rendering; `step_machine` independently controls just-in-time worker instruction routing."
 *Avoid*: harness boot adapter, command card, standalone invocation shell, phase shell
 
-**Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
+**Phase Policy**: "Retired with the **Orchestration Core**: the design-only or implementation-only rules once layered by a phase worker contract over its shared lifecycle. Each worker card now states its own rules."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
 **Phase Review Pass**: "Retired term. No live worker-owned review surface uses this concept; use **Artifact Review** for the manual **Explore Review Engine** and the plan coordinators' incremental review rounds."
@@ -207,7 +207,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Received At**: "The ISO-8601 instant `received_at` — local wall-clock time with its numeric UTC offset, read once per invocation — emitted as the first key of every JSON response of `sai-state` and `worker-report-validator.js validate`, recording when the CLI received the invocation."
 *Avoid*: timestamp, emitted time, event time, milestone stamp
 
-**Progress Plan**: "The static, ordered step plan declared by a **Phase Adapter** for the active adapter segment (identical to the whole invocation when only one adapter runs), held in coordinator state — never carried in the dispatch envelope — rendered by the coordinator as a live task list, marked only from worker progress events, and rebound when a multi-adapter composition activates the next adapter."
+**Progress Plan**: "The static, ordered step plan declared by a **Phase Adapter** for the active adapter segment (identical to the whole invocation when only one adapter runs), held in coordinator state — never carried in the dispatch envelope — rendered by the coordinator as a live task list, marked only from worker progress events, and rebound when a multi-adapter composition activates the next adapter. No current command declares one since the **Phase Adapter** retired."
 *Avoid*: task list, todo list, step list, bare "plan"
 
 **Progress Step**: "A single named entry in a **Progress Plan**, carrying a stable id and a user-facing label; a worker reports its completion by id in a **Progress Event**."
@@ -312,11 +312,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Relationships
 
-- A **Boot Request** is forwarded byte-for-byte by a **Harness Boot Adapter**, which uses only its `command_name` to select a **Command Card**.
-- A **Command Bootstrap** is loaded by one /sai-* wrapper after its **Harness Boot Adapter**, belongs to one **Command Card** folder, and contains no harness-conditional logic.
+- A **Boot Request**, a **Command Bootstrap**, and a **Harness Boot Adapter** are retired: a /sai-* wrapper forwards its `InvocationEnvelope` straight to its **Command Card**.
 - A **Command Card** belongs to exactly one `/sai-*` command and is either routed, with coordinator and worker surfaces, or utility, with a body-only surface.
-- A **Harness Boot Adapter** is the supported-harness boot entry at the **adapter seam**; harness-specific dispatch mechanics live there, and paired non-worker runtime glue may also live under `sai/adapters/{harness}/`.
-- A **Phase Adapter** belongs to one routed phase and is consumed by the **Orchestration Core** shared runner; it is not a **Harness Boot Adapter**.
+- A **Phase Adapter**, a **Phase Policy**, and the **Orchestration Core** are retired: each goal-driven card states its own lifecycle, and harness-specific dispatch lives in the standalone worker bindings.
 - The **Build Command** orders `/sai-3-implement`, `/sai-4-review`, and a second `/sai-3-implement` run in one session; it is not a distinct worker identity. `/sai-deep-review` orders `/sai-4-review`, the activated audits, an Assessment pass, and a `/sai-3-implement` run the same way.
 - The **Plan Command** orders `/sai-1-spec` and `/sai-2-design` in one session, runs both **Segments** unattended through the shared plan cycle, records its **Assumptions** in its run directory and closing report only, and is what the explore `Plan - Unattended` route follows.
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
@@ -333,7 +331,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
 - A **GREEN Conflict** is raised by a **GREEN Worker** and is resolved only by a human via the coordinator, never by the worker editing the test or interface.
-- A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
 - A **Progress Plan** belongs to one routed command invocation and is declared by that phase's adapter, never by the worker.
 - A **Progress Step** belongs to one **Progress Plan** and is marked completed via exactly one **Progress Event**.
 - A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
