@@ -95,10 +95,11 @@ takes one — never substitute one for the other.
   `sai-state.js` candidate wins.
 
 If no candidate exists, say so — name the candidates you tried — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
-skips validation: resolve `worker-report-validator.js` on every Result Loop
-turn that runs a separate `validate` call and stop the same way when
-unresolvable. On a `step_machine` progress turn the progress emit loads the
-validator itself; when it is missing, the emit exits 2 naming the tried paths
-and the coordinator stops the same way. A store failure stops
-`step_machine` coordinators per `@sai/policies/stage-machine.md`, never as a
-prose fallback.
+skips validation: resolve `worker-report-validator.js` on every turn that runs
+a separate `validate` call and stop the same way when unresolvable; a progress
+emit loads the validator itself and, when it is missing, exits 2 naming the
+tried paths. A missing `sai-state.js` is a store failure: a card that declares
+its own store fallback (the goal-driven coordinators carry on from their static
+step order or `run-state.md`, because their store never gates the run) follows
+that fallback instead of stopping, and every other consumer follows
+`@sai/policies/stage-machine.md`.

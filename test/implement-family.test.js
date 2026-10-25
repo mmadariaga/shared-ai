@@ -98,7 +98,11 @@ test('the implement, review, and build coordinators load only the policies that 
 test('/sai-build chains /sai-3-implement, one /sai-4-review pass, and a fix segment', () => {
   const build = read(COORDINATORS[1]);
   assert.match(build, /Fetch @sai\/commands\/implement\/coordinator\.md/);
-  assert.match(build, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly as the second segment, with the same `arguments_value`/);
+  assert.match(build, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly as the second segment, with `\{name\}` as `arguments_value`/);
+  assert.match(build, /keep the name it resolves \(`\{name\}`\) for the rest of the run/);
+  assert.match(build, /hand it `review\.md` as its only Composition report/);
+  assert.doesNotMatch(build, /third segment, with the same `arguments_value`/);
+  assert.match(read('sai/commands/implement/coordinator.md'), /`\/sai-build` and `\/sai-deep-review` run this command as their fix segment/);
   assert.doesNotMatch(build, /reserved/);
   assert.match(build, /one review pass runs per run/);
   assert.match(build, /No review runs after segment 3/);
