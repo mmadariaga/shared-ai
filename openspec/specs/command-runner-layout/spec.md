@@ -33,12 +33,12 @@ Boot adapters and routed command cards SHALL reference `@sai/orchestration/comma
 - **THEN** its boot adapter and selected cards fetch shared lifecycle mechanics from the orchestration paths
 
 ### Requirement: Routed command cards
-Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sai/commands/{name}/` containing its `coordinator.md` and `worker.md` surfaces, plus its retained `invocation.md` source when the routed phase uses a separate invocation card. The routed card SHALL identify the shared root protocol and the policies or instructions it fetches, and a new routed invocation SHALL be addable by adding its card without copying the shared protocol. Routed cards SHALL NOT require a `body.md` surface.
+Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sai/commands/{name}/` containing its `coordinator.md` and `worker.md` surfaces, plus its retained `invocation.md` source when the routed phase uses a separate invocation card. The routed card SHALL identify the policies or instructions it fetches, and a new routed invocation SHALL be addable by adding its card without copying a shared protocol. A worker contract SHALL state its own ready return and terminal result shapes and SHALL NOT fetch `sai/orchestration/worker-core.md`. Routed cards SHALL NOT require a `body.md` surface.
 
 #### Scenario: Maintainer locates one invocation
 - **WHEN** a maintainer selects a routed command name
 - **THEN** its coordinator and worker sources SHALL be discoverable under the same `sai/commands/{name}/` folder
-- **AND** the folder SHALL reference `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` rather than duplicate their protocol prose
+- **AND** no worker contract in the folder SHALL fetch `sai/orchestration/worker-core.md`; each states its own lifecycle shapes
 
 #### Scenario: New command uses the extension seam
 - **WHEN** a new routed `/sai-*` command is introduced

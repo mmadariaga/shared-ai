@@ -161,7 +161,7 @@ test('implementation start verifies an advance assignment approval instead of as
   assert.match(start, /\*\*Set-level answer\.\*\*/);
   assert.match(start, /Every later slice of the same set reuses it/);
   assert.match(start, /stop before that slice's implementation and ask keep, replace, or\s+skip/);
-  for (const caller of ['sai/commands/explore/steps/pipeline-direct-build.md']) {
+  for (const caller of ['sai/commands/explore/direct-build-coordinator.md']) {
     assert.match(read(caller), /Fetch @sai\/policies\/backlog-implementation-start\.md/, `${caller} keeps invoking it`);
   }
 });

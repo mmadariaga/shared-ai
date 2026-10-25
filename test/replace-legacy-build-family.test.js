@@ -163,7 +163,7 @@ test('the deep review reviews, audits, assesses, and fixes through the implement
 });
 
 test('Direct Build inlines its terminal suite gate and cites no apply command', () => {
-  const direct = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const direct = read('sai/commands/explore/direct-build-coordinator.md');
   assert.doesNotMatch(direct, /\/sai-4-apply|apply\/steps/);
   assert.match(direct, /stop the route at the terminal suite gate: the command and the failure are reported, nothing after the gate is run or marked/);
   assert.match(direct, /a retry runs the suite gate afresh/);

@@ -29,13 +29,13 @@ test('direct-build implementer uses repository-artifact scope and protects publi
 });
 
 test('direct-build step-1 scope delegates published-spec protection to the shared policy', () => {
-  const pipeline = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
 
   assert.match(pipeline, /Fetch `@sai\/policies\/repository-artifact-scope\.md`: the implementer may write any repository artifact required by the block, regardless of format, under that policy's protected update protocols/);
 });
 
 test('explore instructions reflect the repository-artifact implementer boundary (E1)', () => {
-  const instructions = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const instructions = read('sai/commands/explore/direct-build-coordinator.md');
 
   assert.match(instructions, /repository artifact required by the block, regardless of format/);
 });
@@ -60,7 +60,7 @@ test('archive keeps the sole sync and move primitive with no schemas duplication
 });
 
 test('direct-build final commit stages the implementer union including schemas files (E5)', () => {
-  const pipeline = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
 
   assert.match(pipeline, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?stages only the supplied OWNED paths \(reconstructed artifacts, synced main specs, and the implementer.?s unioned changed paths/);
 });

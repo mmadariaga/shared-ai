@@ -26,7 +26,7 @@ The system SHALL render the full Direct Build terminal report using the shared i
 
 ### Requirement: Single trailing newline
 
-The system SHALL end the full Direct Build terminal report block with a single trailing newline after its final Execution details section. A separate existing stop-options decision SHALL remain outside that report block.
+The system SHALL end the full Direct Build terminal report block with a single trailing newline after its final Execution details section. A separate escalation decision with the options of `sai/policies/obstacle-escalation.md` SHALL remain outside that report block.
 
 #### Scenario: Block ends cleanly
 

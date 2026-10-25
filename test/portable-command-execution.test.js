@@ -59,7 +59,7 @@ test('each affected mutation surface loads the shared execution policy', () => {
     'sai/commands/archive/archive-commit-gate.instructions.md',
     'sai/commands/archive/retirement-declaration.md',
     'sai/commands/commit/coordinator.md',
-    'sai/commands/explore/steps/pipeline-direct-build.md',
+    'sai/commands/explore/direct-build-coordinator.md',
   ];
 
   for (const surface of mutationSurfaces) {
@@ -80,7 +80,7 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   const archiveGate = read('sai/commands/archive/archive-commit-gate.instructions.md');
   const retirement = read('sai/commands/archive/retirement-declaration.md');
   const commit = read('sai/commands/commit/coordinator.md');
-  const explore = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const explore = read('sai/commands/explore/direct-build-coordinator.md');
 
   assert.match(archiveWorker, /active command-execution tool using Bash or\s+PowerShell 7/);
   assert.match(archiveWorker, /0\. \*\*Retirement declaration\*\*[\s\S]*?1\. \*\*CLI archive\*\*[\s\S]*?2\. \*\*Staging\*\*[\s\S]*?3\. \*\*Commit\*\*/);

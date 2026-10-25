@@ -30,7 +30,7 @@ Both boot cards SHALL close the utility body example without an extra closing pa
 - **THEN** the explore body example ends with a single period and no stray paren
 
 ### Requirement: ADR-DDR consumer coverage
-The adr-ddr-criteria policy SHALL list design steps and explore steps/pipeline-direct-build.md as consumers and SHALL state that no fetching body restates the criteria inline.
+The adr-ddr-criteria policy SHALL list design steps and the Direct Build coordinator card `sai/commands/explore/direct-build-coordinator.md` as consumers and SHALL state that no fetching body restates the criteria inline.
 #### Scenario: Consumer list complete
 - **WHEN** a reader checks the consumer list in sai/policies/adr-ddr-criteria.md
 - **THEN** both consumers are listed and the single-source rule names no restating body

@@ -55,12 +55,14 @@ const IMPLEMENT_ROLES = Object.freeze([
   }),
 ]);
 
-// The implement, review, spec, design, audit, merge, commit, archive, and backfill
-// roles render from their own binding templates, which carry only the create and
-// continue calls: their coordinator owns the lifecycle. The spec, design, audit,
-// merge, commit, archive, and backfill phases keep their positions and names in
-// PHASE_ORDER; only their binding template differs from the other phases.
+// The direct-build, implement, review, spec, design, audit, merge, commit,
+// archive, and backfill roles render from their own binding templates, which
+// carry only the create and continue calls: their coordinator owns the
+// lifecycle. The spec, design, audit, merge, commit, archive, and backfill
+// phases keep their positions and names in PHASE_ORDER; only their binding
+// template differs from the other phases.
 const STANDALONE_PHASES = new Set([
+  ...DIRECT_BUILD_ROLES.map(role => role.phase),
   ...IMPLEMENT_ROLES.map(role => role.phase),
   'spec',
   'design',
