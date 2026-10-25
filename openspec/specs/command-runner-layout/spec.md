@@ -6,32 +6,6 @@ TBD
 
 ## Requirements
 
-### Requirement: Shared protocols use the canonical orchestration location
-The repository SHALL continue to place the harness-neutral lifecycle protocols at `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md`. Those files SHALL define the reusable closed-extension mechanics while merge-specific interaction remains in the merge cards and presentation seam.
-
-#### Scenario: Maintainer locates a shared protocol
-- **WHEN** a maintainer needs to change command-runner or worker lifecycle mechanics
-- **THEN** the authoritative source SHALL be discoverable at `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`
-- **AND** no second harness-specific canonical copy of either protocol SHALL exist
-
-#### Scenario: Phase behavior is selected by card flags
-- **WHEN** two command cards require different phase behavior
-- **THEN** the cards SHALL express that difference through their declared flags
-- **AND** `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` SHALL remain branch-free with respect to those phase differences
-
-#### Scenario: Harness projections remain neutral
-- **WHEN** Claude Code and opencode consume the shared extension mechanics
-- **THEN** both obtain equivalent neutral lifecycle behavior while harness-specific task-list mechanics remain at their adapter seams
-
-### Requirement: Consumers reference relocated protocols
-
-Boot adapters and routed command cards SHALL reference `@sai/orchestration/command-runner.md` and `@sai/orchestration/worker-core.md` wherever they load the shared contracts.
-
-#### Scenario: Routed command starts under either harness
-
-- **WHEN** Claude Code or opencode starts a routed command
-- **THEN** its boot adapter and selected cards fetch shared lifecycle mechanics from the orchestration paths
-
 ### Requirement: Routed command cards
 Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sai/commands/{name}/` containing its `coordinator.md` and `worker.md` surfaces, plus its retained `invocation.md` source when the routed phase uses a separate invocation card. The routed card SHALL identify the policies or instructions it fetches, and a new routed invocation SHALL be addable by adding its card without copying a shared protocol. A worker contract SHALL state its own ready return and terminal result shapes and SHALL NOT fetch `sai/orchestration/worker-core.md`. Routed cards SHALL NOT require a `body.md` surface.
 
@@ -46,10 +20,10 @@ Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sa
 - **AND** adding that card SHALL NOT require a new runner or worker-core branch for the command name
 
 ### Requirement: Utility command cards
-Each utility `/sai-*` command that is not routed through a coordinator and worker SHALL have a self-contained source folder at `sai/commands/{name}/` containing only its `body.md` surface. Utility cards SHALL identify the shared root protocol and the policies or instructions they fetch where applicable, and SHALL NOT acquire routed-only coordinator, worker, or invocation surfaces solely to fit the layout.
+Each utility `/sai-*` command that is not routed through a coordinator and worker SHALL have a self-contained source folder at `sai/commands/{name}/` containing its `body.md` surface. Utility cards SHALL identify the policies or instructions they fetch, including the `public-chat`, capability-profile, and obstacle-escalation loads that no boot adapter provides any more, and SHALL NOT acquire routed-only coordinator, worker, or invocation surfaces solely to fit the layout.
 
 #### Scenario: Utility command surface is discoverable
-- **WHEN** a maintainer selects a utility command such as explore, archive, backfill, commit, pr, status, or worktree
+- **WHEN** a maintainer selects a utility command: explore, retire-docs, status, or worktree
 - **THEN** its body source SHALL be discoverable as `sai/commands/{name}/body.md`
 - **AND** the utility card SHALL not be required to contain `coordinator.md`, `worker.md`, or `invocation.md`
 
@@ -58,28 +32,6 @@ Each utility `/sai-*` command that is not routed through a coordinator and worke
 - **THEN** routed cards SHALL map to `coordinator.md` plus `worker.md`, with retained `invocation.md` when that routed phase uses a separate invocation card
 - **AND** utility cards SHALL map to `body.md`
 - **AND** neither class SHALL be treated as requiring the other class's surfaces
-
-### Requirement: Harness boot adapters
-
-The source tree SHALL contain exactly one adapter boot file for each supported harness: `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`. Each harness-qualified adapter tree MAY contain additional harness-specific install-time runtime glue that is paired with that boot entry, including the non-worker idea-list render adapter. Adapter files SHALL contain harness-specific fetch, dispatch, or runtime-glue mechanics only, SHALL invoke or support the shared root protocol and command cards where applicable, and SHALL NOT redefine command or worker lifecycle semantics.
-
-#### Scenario: Claude Code projection resolves its adapter seam
-
-- **WHEN** the Claude Code projection is installed
-- **THEN** it SHALL receive `sai/adapters/claude/boot.md` and `sai/adapters/claude/idea-list-render.md`
-- **AND** it SHALL NOT use either opencode adapter source
-
-#### Scenario: opencode projection resolves its adapter seam
-
-- **WHEN** the opencode projection is installed
-- **THEN** it SHALL receive `sai/adapters/opencode/boot.md` and `sai/adapters/opencode/idea-list-render.md`
-- **AND** it SHALL NOT use either Claude Code adapter source
-
-#### Scenario: shared protocols remain neutral
-
-- **WHEN** the relocated adapter sources and shared protocols are audited
-- **THEN** harness-specific mechanics remain in `sai/adapters/{harness}/`
-- **AND** `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` retain harness-neutral lifecycle semantics
 
 ### Requirement: Harness names remain at the adapter seam
 
@@ -99,7 +51,7 @@ When newly introduced root protocol files and command-card sources under the new
 
 ### Requirement: Deterministic two-harness projection
 
-`sai/install-manifest.json` SHALL be re-projected to describe the new root protocol, command-card, and adapter sources for both Claude Code and opencode. The manifest expansion module, installer, doctor, and uninstall SHALL consume that inventory; they SHALL preserve managed ownership, content-drift detection, collision checks, and existing modified-file safeguards across active projections and hash-gated retired destinations.
+`sai/install-manifest.json` SHALL describe the command-card and adapter sources for both Claude Code and opencode. The manifest expansion module, installer, doctor, and uninstall SHALL consume that inventory; they SHALL preserve managed ownership, content-drift detection, collision checks, and existing modified-file safeguards across active projections and hash-gated retired destinations.
 
 #### Scenario: relocation is reflected by every inventory consumer
 
@@ -109,22 +61,22 @@ When newly introduced root protocol files and command-card sources under the new
 
 #### Scenario: Fresh installation projects the new layout
 
-- **WHEN** a supported harness is installed from the re-projected manifest
-- **THEN** its managed SAI destination SHALL contain the shared root protocol and command cards
-- **AND** it SHALL contain only that harness's adapter boot and idea-list render files
+- **WHEN** a supported harness is installed from the manifest
+- **THEN** its managed SAI destination SHALL contain the command cards
+- **AND** it SHALL contain only that harness's adapter files (`idea-list-render.md` and `panel-render.md`) and no boot adapter
 - **AND** it SHALL not recreate the retired `orchestration/workers/bindings/idea-list-render.md` destination
 
 #### Scenario: Both harnesses are re-projected in one change
 
 - **WHEN** the manifest is expanded for Claude Code and opencode
 - **THEN** both harness inventories SHALL be generated from the same manifest change
-- **AND** their neutral root protocol, command-card, and routed worker content SHALL remain equivalent
+- **AND** their neutral command-card and routed worker content SHALL remain equivalent
 - **AND** each inventory SHALL differ at the adapter seam only by its harness-specific sources
 
 #### Scenario: Doctor and uninstall share the active inventory
 
 - **WHEN** doctor or uninstall evaluates an installed projection
-- **THEN** it SHALL derive expected and removable paths from the same re-projected manifest expansion used by install
+- **THEN** it SHALL derive expected and removable paths from the same manifest expansion used by install
 - **AND** doctor SHALL report missing, unexpected, or drifted active projections and retired-path mismatches
 - **AND** uninstall SHALL retain locally modified managed files under the existing ownership safeguard
 
@@ -141,26 +93,11 @@ The layout migration SHALL leave `sai/policies/` as the shared policy projection
 - **THEN** it SHALL use the `@sai/...` path convention documented by ADR 0003
 - **AND** the referenced installed path SHALL match the corresponding manifest projection
 
-### Requirement: Clean-session preamble precedes protocol loading
+### Requirement: Harness adapter seam holds runtime glue only
 
-Both harness boot adapters SHALL open every invocation with the single clean-session preamble line — "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." — inserted immediately before the `@sai/orchestration/command-runner.md` fetch and therefore before any card selection. The preamble SHALL be byte-identical in `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md` and SHALL be loaded exactly once per invocation by the boot adapter. It is the standing mechanism that discards prior conversational context at invocation start; routed coordinator cards (the seven phase coordinators plus apply and build), routed invocation cards, and every utility body card carry no isolation block of their own. The preamble governs session hygiene only and SHALL NOT redefine command or worker lifecycle semantics.
+Each harness-qualified adapter tree `sai/adapters/{claude,opencode}/` SHALL contain only harness-specific install-time runtime glue: the non-worker `idea-list-render.md` and `panel-render.md` bindings. No adapter boot file SHALL exist. Adapter files SHALL contain harness-specific rendering or runtime-glue mechanics only and SHALL NOT redefine command or worker lifecycle semantics.
 
-#### Scenario: preamble precedes protocol load in both boots
+#### Scenario: Each harness receives only its own adapter glue
 
-- **WHEN** either `sai/adapters/claude/boot.md` or `sai/adapters/opencode/boot.md` is read
-- **THEN** the byte-identical clean-session preamble line appears immediately before the command-runner fetch
-
-#### Scenario: preamble loads once per invocation before cards
-
-- **WHEN** a routed or utility command starts under either supported harness
-- **THEN** the boot preamble takes effect before `@sai/orchestration/command-runner.md` is loaded and before any coordinator or body card is selected
-
-#### Scenario: routed cards carry no isolation block
-
-- **WHEN** any routed coordinator card or the apply invocation card is read after this change
-- **THEN** it contains no `# Isolation Mode` block and no duplicated clean-session preamble line
-
-#### Scenario: utility bodies carry no isolation block
-
-- **WHEN** any utility body card (`sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/body.md`) is read after this change
-- **THEN** it contains no `# Isolation Mode` block and no duplicated clean-session preamble line
+- **WHEN** the Claude Code or opencode projection is installed
+- **THEN** it receives that harness's `idea-list-render.md` and `panel-render.md` adapters, no `boot.md`, and no adapter source of the other harness

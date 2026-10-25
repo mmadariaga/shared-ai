@@ -1,29 +1,31 @@
 ## Purpose
 
 Define the standard fetch path patterns for sai command wrappers and instructions, and document the namespace distinction between `@sai/commands/` and `@commands/` paths.
+
 ## Requirements
+
 ### Requirement: wrapper-sai-commands-fetch-path
-All maintained `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch SAI command cards SHALL use their existing `@sai/commands/{name}/command-bootstrap.md` fetch paths. The deleted `budget.md` files are not wrapper-fetch exceptions and SHALL not be required to remain byte-identical.
+All maintained `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch SAI command cards SHALL fetch the command's card directly: `@sai/commands/{name}/coordinator.md` for a goal-driven command, `@sai/commands/audit/coordinator.md` for an audit command, or `@sai/commands/{name}/body.md` for a utility command. No wrapper SHALL fetch a `command-bootstrap.md`. The deleted `budget.md` files are not wrapper-fetch exceptions and SHALL not be required to remain byte-identical.
 
 #### Scenario: claude wrapper fetch path updated
 - **WHEN** any file matching `commands/claude/sai-*.md` is read
-- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/command-bootstrap.md`
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/coordinator.md` or `Fetch @sai/commands/{name}/body.md`
 
 #### Scenario: opencode wrapper fetch path updated
 - **WHEN** any file matching `commands/opencode/sai-*.md` is read
-- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/command-bootstrap.md`
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/coordinator.md` or `Fetch @sai/commands/{name}/body.md`
 
 #### Scenario: Maintained wrapper fetch paths remain valid
 
 - **WHEN** a maintained Claude Code or opencode `sai-*` wrapper is read
-- **THEN** its SAI command-card fetch path remains unchanged and no `budget.md` wrapper is required.
+- **THEN** its SAI command-card fetch path names an existing card and no `budget.md` wrapper is required.
 
 #### Scenario: old fetch path absent
 - **WHEN** a grep for `@commands/sai/` is run across all wrapper files
 - **THEN** zero matches SHALL be found
 
 #### Scenario: flat body path absent
-- **WHEN** a grep for `@sai/commands/<name>.md` (a sai-commands fetch not ending in `/command-bootstrap.md`) is run across all wrapper files
+- **WHEN** a grep for `@sai/commands/<name>.md` (a sai-commands fetch with no `{name}/` folder segment) is run across all wrapper files
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths

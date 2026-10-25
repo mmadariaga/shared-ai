@@ -144,16 +144,15 @@ test('the native selector follows the authoritative shared close after inventory
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
   assert.match(sharedCloseSpec, /single-change and sliced-feature items SHALL compose their blocks and reference that definition/i);
   assert.match(sharedCloseSpec, /No inline proposal refusal path exists outside the shared close/);
-  assert.match(source, /`--fast-track` auto-selects nothing: the native picker requires an explicit answer/i);
+  assert.match(source, /The native picker requires an explicit answer, and that answer is the one gate to delegated writes/i);
 });
 
-test('optional actions preserve skill ownership, negative answers, free text, and explicit fast-track questions', () => {
+test('optional actions preserve skill ownership, negative answers, and free text', () => {
   const selector = spec('sai/commands/explore/steps/route-selector.md');
   const actions = selector.slice(selector.indexOf('\n## Optional pre-route actions'),
     selector.indexOf('\n## Native route picker'));
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry/);
   assert.match(actions, /opencode's `question` tool with custom\/free-text input enabled/);
-  assert.match(actions, /All questions remain explicit under `--fast-track` in Claude Code and opencode/);
   assert.match(actions, /On No, skip only this action and leave out the publication question/);
   assert.match(actions, /On No, skip only this action and leave out the base question/);
   assert.match(actions, /invoke the installed `to-backlog` skill in the current conversation[\s\S]*prepare the full publication proposal without publishing/);
@@ -229,7 +228,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   );
 
   for (const [harness, wrapper] of [['Claude Code', claudeWrapper], ['opencode', opencodeWrapper]]) {
-    assert.match(wrapper, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/,
+    assert.match(wrapper, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/,
       `${harness} must load the shared Explore behavior`);
     assert.doesNotMatch(wrapper, /route-selector|route-choice|Plan - Unattended|Direct Build - Unattended/,
       `${harness} wrapper must not implement a separate route-choice path`);
@@ -357,7 +356,7 @@ test('Manual is an explicit route; invalid picker answers preserve the waiting i
   assert.match(source, /Manual creates no delegated entries, dispatches no worker, changes no supervision state/i);
   assert.match(source, /\*\*Manual is not terminal\*\*[\s\S]{0,400}no cap on re-presentations/i);
   assert.match(source, /every new \*\*Manual\*\* answer re-emits handoff plus recommendation once/i);
-  assert.match(source, /`--fast-track` auto-selects nothing: the native picker requires an explicit answer/i);
+  assert.match(source, /The native picker requires an explicit answer, and that answer is the one gate to delegated writes/i);
 });
 
 test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
@@ -490,8 +489,8 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   const claude = spec('commands/claude/sai-explore.md');
   const opencode = spec('commands/opencode/sai-explore.md');
 
-  assert.match(claude, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
-  assert.match(opencode, /Fetch @sai\/adapters\/opencode\/boot\.md and follow it\./);
+  assert.match(claude, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/);
+  assert.match(opencode, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/);
   assert.equal(
     claude.match(/command_name:\s*explore/)?.[0],
     opencode.match(/command_name:\s*explore/)?.[0]
@@ -510,7 +509,7 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   }
 });
 
-test('Step 1 parses an optional overview language before fast-track and leaves absent language unresolved', () => {
+test('Step 1 parses an optional overview language after the silent fast-track strip and leaves absent language unresolved', () => {
   const source = spec('sai/commands/explore/body.md');
 
   assert.match(source, /## Overview-language validation/);
@@ -524,7 +523,7 @@ test('Step 1 parses an optional overview language before fast-track and leaves a
   assert.match(source, /missing.*value|value.*missing/i);
   assert.match(source, /(?:validation error|invalid|reject(?:s|ed|ion)?)[\s\S]{0,240}(?:duplicate|missing)|(?:duplicate|missing)[\s\S]{0,240}(?:validation error|invalid|reject)/i);
   assert.match(source, /before.*resolution|resolution.*before/i);
-  assert.match(source, /--fast-track/);
+  assert.match(source, /Remove the `--fast-track` token from `arguments_value`[^\n]*silently: no banner, no signal, and no behavioral effect/);
   assert.match(
     source,
     /(?:absent|omitted|not provided)[\s\S]{0,220}(?:unresolved|no effective (?:overview )?language)|(?:unresolved|no effective (?:overview )?language)[\s\S]{0,220}(?:absent|omitted|not provided)/i
@@ -554,7 +553,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
   );
 });
 
-test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input and honors an explicit flag', () => {
+test('Step 1 gate 9 defaults to None for noncommittal input and honors an explicit flag', () => {
   const contract = [
     exploreContract(),
     spec('sai/commands/explore/body.md'),
@@ -564,10 +563,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
 
-  assert.match(
-    selector,
-    /(?:--fast-track[\s\S]{0,260}(?:absent|omitted|not present)|(?:absent|omitted|not present)[\s\S]{0,260}--fast-track)[\s\S]{0,700}None/i
-  );
+  assert.doesNotMatch(spec('sai/commands/explore/steps/route-selector.md'), /fast-track/i, 'the route selector resolves nothing from a fast-track flag');
   assert.match(selector, /(?:declin\w*|non[- ]committal|noncommittal)[\s\S]{0,500}(?:None|do[- ]not[- ]create)/i);
   assert.match(
     selector,
@@ -598,16 +594,17 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
   assert.match(source, /failed\/cancelled retry|failed or cancelled retry|failed or stopped run|retry/i);
 });
 
-test('Step 1 Claude explore wrapper documents both optional flags (opencode commands carry no argument-hint)', () => {
+test('Step 1 Claude explore wrapper documents the overview-language flag and no fast-track flag (opencode commands carry no argument-hint)', () => {
   for (const relativePath of [
     'commands/claude/sai-explore.md',
   ]) {
     const source = spec(relativePath);
     assert.match(
       source,
-      /argument-hint:.*--overview-lang <language>.*--fast-track/,
-      `${relativePath} should document both optional flags`
+      /argument-hint:.*--overview-lang <language>/,
+      `${relativePath} should document the overview-language flag`
     );
+    assert.doesNotMatch(source, /argument-hint:.*--fast-track/, `${relativePath} should not advertise the ignored fast-track token`);
   }
 });
 
@@ -979,7 +976,6 @@ test('E2: a single change keeps the yes/no branch question and a slice set gets 
   assert.deepEqual(values, ['shared', 'per-slice', 'none']);
   assert.match(question, /Sí, crea una única para la issue principal[\s\S]*Crear una rama por slice[\s\S]*No crear nada/);
   assert.match(question, /says that no branch is published/);
-  assert.match(selector, /All questions remain explicit under `--fast-track`/);
   assert.match(question, /On `none`, skip only this action, keep the current branch and every existing branch as they are/);
   assert.match(question, /On `shared`, create the branch once after publication through the installed `new-change-branch` skill[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
   assert.match(question, /On `per-slice`, create the first pending slice's branch the same way, named after that slice/);

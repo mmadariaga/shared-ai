@@ -137,27 +137,10 @@ function readRepo(relativePath) {
   return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 }
 
-test('the first-pointer rule is stated once, phase-neutral, in the three shared surfaces', () => {
-  const runner = readRepo('sai/orchestration/command-runner.md');
+test('the stage-machine policy states the first filed pointer rule and the active step of a replacement (E8)', () => {
   const stageMachine = readRepo('sai/policies/stage-machine.md');
-  const workerCore = readRepo('sai/orchestration/worker-core.md');
-
-  assert.match(runner, /\*\*First pointer with the task\.\*\*/);
-  assert.match(runner, /first line[\s\S]{0,120}task-disclosure continuation|task-disclosure continuation[\s\S]{0,200}first line/);
-  assert.match(runner, /reports both ids in one progress\s+event/);
-  assert.match(runner, /no per-phase exception/);
   assert.match(stageMachine, /\{stage, next: \{follow, hint\}\}` for its first filed step/);
   assert.match(stageMachine, /phase-neutral/);
-  assert.match(workerCore, /## Step-machine task disclosure/);
-  assert.match(workerCore, /carries both ids in plan order/);
-  assert.match(workerCore, /Do not follow the pointer and emit no progress\s+event/,
-    'a resolution failure returns before research with no progress event (E6)');
-});
-
-test('replacement before the first progress event reconstructs with the first filed step as active (E8)', () => {
-  const runner = readRepo('sai/orchestration/command-runner.md');
-  const stageMachine = readRepo('sai/policies/stage-machine.md');
-  assert.match(runner, /before the first progress event it is the first filed step from the\s+`reset` response, never the fileless first step and never a `none` pointer/);
   assert.match(stageMachine, /Before the first progress event, that active step is the first filed step/);
 });
 

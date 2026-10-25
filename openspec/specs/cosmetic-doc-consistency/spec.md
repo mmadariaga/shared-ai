@@ -23,12 +23,6 @@ The ADR 0173a record SHALL describe instructions.md as a cited reference and SHA
 - **WHEN** a reader opens the ADR Context, Decision, and Consequences sections
 - **THEN** the text describes steps as worker-canonical and instructions.md as a cited reference with no sync mechanism
 
-### Requirement: Boot paren punctuation
-Both boot cards SHALL close the utility body example without an extra closing paren.
-#### Scenario: Punctuation fixed
-- **WHEN** a reader opens either sai/adapters/claude/boot.md or sai/adapters/opencode/boot.md line 8
-- **THEN** the explore body example ends with a single period and no stray paren
-
 ### Requirement: ADR-DDR consumer coverage
 The adr-ddr-criteria policy SHALL list design steps and the Direct Build coordinator card `sai/commands/explore/direct-build-coordinator.md` as consumers and SHALL state that no fetching body restates the criteria inline.
 #### Scenario: Consumer list complete

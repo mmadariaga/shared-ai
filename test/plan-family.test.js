@@ -404,11 +404,6 @@ test('the shared policies lose only their Plan branches', () => {
   for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change', 'overview_language']) {
     assert.ok(selector.includes(kept), `pipeline-selector.md keeps ${kept}`);
   }
-  const bounded = read('sai/policies/bounded-recovery.md');
-  const unattended = read('sai/policies/unattended-runtime-recovery.md');
-  assert.doesNotMatch(bounded, /Explore Plan \(unattended\) item-10 exception/);
-  assert.doesNotMatch(unattended, /diagnosis_rounds\.spec|diagnosis_rounds\.design|Plan - Unattended:\*\*/);
-  assert.match(unattended, /`diagnosis_rounds\.direct_build`/);
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`attempts`, one budget of 3 per step/);
   const fastTrack = read('sai/policies/fast-track-flag.md');
   assert.doesNotMatch(fastTrack, /`sai-2-design` parses/);

@@ -7,7 +7,7 @@ TBD - created by archiving change group-post-crystallization-question-rounds. Up
 
 ### Requirement: Post-crystallization close uses three conditional question rounds
 
-After the complete Ready to Propose block set is visible and a pending slice exists, `sai-explore` SHALL normally ask its post-crystallization questions in three conditional rounds, each presented under `sai/policies/question-rounds.md`. Round 1 SHALL ask, in this order, the backlog question, the branch question, and the conditional assignment question. Round 2 SHALL ask, in this order, the publication approval and the branch base. Round 3 SHALL ask the route question and, conditionally, the Direct Build continuation question and the change overview question; the change overview question SHALL join round 3 only when no explicit `--overview-lang`, direct user statement, value already resolved for the set, `explore.overviewLanguage` setting, or active `--fast-track` resolves the overview language. A round with no applicable question SHALL be skipped. The three rounds SHALL describe the normal flow, not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures MAY add interactions outside them. Every question SHALL remain explicit under `--fast-track` on Claude Code and opencode.
+After the complete Ready to Propose block set is visible and a pending slice exists, `sai-explore` SHALL normally ask its post-crystallization questions in three conditional rounds, each presented under `sai/policies/question-rounds.md`. Round 1 SHALL ask, in this order, the backlog question, the branch question, and the conditional assignment question. Round 2 SHALL ask, in this order, the publication approval and the branch base. Round 3 SHALL ask the route question and, conditionally, the Direct Build continuation question and the change overview question; the change overview question SHALL join round 3 only when no explicit `--overview-lang`, direct user statement, value already resolved for the set, or `explore.overviewLanguage` setting resolves the overview language. A round with no applicable question SHALL be skipped. The three rounds SHALL describe the normal flow, not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures MAY add interactions outside them. Every question SHALL stay explicit when `--fast-track` is passed, on Claude Code and opencode, because `/sai-explore` strips the token silently.
 
 #### Scenario: Single change with backlog and branch accepted
 
@@ -21,7 +21,7 @@ After the complete Ready to Propose block set is visible and a pending slice exi
 
 #### Scenario: Round 3 carries the overview question when nothing resolves it
 
-- **WHEN** round 3 is presented and no flag, statement, resolved set value, setting, or fast-track resolves the overview language
+- **WHEN** round 3 is presented and no flag, statement, resolved set value, or setting resolves the overview language
 - **THEN** round 3 asks the change overview question beside the route question as a conditional question
 
 ### Requirement: Round answers authorize only their own actions

@@ -124,8 +124,6 @@ test('excluded non-card surfaces do not fetch the policy directly', () => {
     ...commandNonCards,
     ...nonCanonicalPolicies,
     ...projectSkills,
-    path.join(repoRoot, 'sai', 'orchestration', 'command-runner.md'),
-    path.join(repoRoot, 'sai', 'orchestration', 'worker-core.md'),
   ];
 
   for (const file of excluded) {

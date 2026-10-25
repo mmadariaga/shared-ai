@@ -47,18 +47,6 @@ test('todo policy defines a conditional progress-event render act', () => {
   assert.doesNotMatch(policy, /on each worker progress event, apply the deterministic derivation/);
 });
 
-test('shared runner renders only after a progress event changes the marked set', () => {
-  const runner = read('sai/orchestration/command-runner.md');
-
-  assert.match(runner, /record(?:s|ing) whether the\s+event[\s\S]{0,120}previously unmarked declared id/i);
-  assert.match(runner, /visual `progress_plan` exists[\s\S]{0,180}changed its marked set/);
-  assert.match(runner, /routing-only event performs\s+no render and stamps\s+nothing/);
-  assert.doesNotMatch(runner, /changed no marked state performs no render or wall-clock/);
-  assert.match(runner, /changed_files[\s\S]{0,180}progress-event render act/);
-  assert.match(runner, /After validation and registration, issue the independent panel updates and same-worker continuation in one assistant turn/);
-  assert.match(runner, /continuation remains exactly `continue_after_progress`/);
-});
-
 test('every matrix binding is standalone and binds no panel mechanics', () => {
   const manifest = loadInstallManifest(repoRoot);
 

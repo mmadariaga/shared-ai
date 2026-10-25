@@ -3,7 +3,9 @@
 ## Purpose
 
 Distribute the `/sai-worktree` command across both harness wrappers, its shared body, and the installer.
+
 ## Requirements
+
 ### Requirement: Both harness wrappers ship together
 
 The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sai-worktree.md` together, so neither harness is left without the command. The claude wrapper SHALL include `Fetch @skills/fetch/SKILL.md` as the first line of its command body, before any `Fetch @sai/...` directive; the opencode wrapper SHALL include the distinct opencode fetch path and the `$ARGUMENTS` placement used by opencode wrappers.
@@ -18,7 +20,7 @@ The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sa
 
 ### Requirement: Shared slimmed body and instruction
 
-The shared command body SHALL live at `sai/commands/worktree/body.md` — opening directly with a `<TASK>` block (no Isolation Mode block; clean-session enforcement belongs to the harness boot adapters' preamble) that loads safe-operations as its sole behaviour and the phase instruction plus `sai/policies/remember.md` as instructions — alongside the instruction body at `sai/commands/worktree/instructions.md`. The body carries no budget fetch because the worktree flow dispatches no subagents.
+The shared command body SHALL live at `sai/commands/worktree/body.md`, which both worktree wrappers fetch directly. It SHALL open directly with a `<TASK>` block (no Isolation Mode block; clean-session enforcement belongs to the wrapper's clean-start line) that loads `sai/policies/verified-precondition-handback.md` and `sai/policies/public-chat.md`, runs the wrapper's capability-profile check through `sai/policies/tool-access.md` as its first step, fetches `sai/policies/obstacle-escalation.md` when a run stops on an error or an unexpected condition, loads safe-operations as its sole behaviour, and loads the phase instruction plus `sai/policies/remember.md` as instructions, alongside the instruction body at `sai/commands/worktree/instructions.md`. The body carries no budget fetch because the worktree flow dispatches no subagents.
 
 #### Scenario: Body starts with the TASK block
 
@@ -29,6 +31,7 @@ The shared command body SHALL live at `sai/commands/worktree/body.md` — openin
 
 - **WHEN** the shared body's `<TASK>` block is read
 - **THEN** it loads `@skills/safe-operations/SKILL.md` as its only behaviour and the worktree instruction plus `@sai/policies/remember.md` as instructions, with no `@skills/budget/SKILL.md` fetch
+- **AND** its other loads are the verified-precondition, public-chat, tool-access, and obstacle-escalation policies
 
 ### Requirement: Existing glob projections install the new files
 
@@ -49,4 +52,3 @@ The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (
 #### Scenario: The exception is documented
 - **WHEN** `AGENTS.md` is read
 - **THEN** it names `/sai-worktree` alongside `sai-commit` as a command that works without the OpenSpec prerequisites, records its safe-operations wrapper count including the new wrapper, states that the command runs through `sai/tools/worktree.js` with its five sub-commands and the `--json` and `--cwd` flags, and documents the best-effort non-fatal indexing step as a pre-announcement returned by `create` followed by an `index <worktree-path>` call reported by exactly one one-line result whether it succeeds, the binary is absent, or it fails
-

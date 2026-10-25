@@ -280,11 +280,12 @@ files, stage table, initial state) is a data module in `sai-state/machines/`.
    empty list when it reported none). Do not hand-compose event JSON. Pass any
    initialization option declared by the owning phase contract on the first
    emit after reset. An invalid `validation` block is a malformed payload,
-   handled per `sai/orchestration/command-runner.md` § Validation; the machine
+   treated as a malformed payload; the machine
    is untouched. The machine advances on declared new ids and
-   ignores the rest. Send the returned `next.follow` in the two-line continuation of
-   `sai/orchestration/command-runner.md` § Step-gated pointer delivery;
-   `next.follow: none` is terminal and maps to its `Active step: none` line.
+   ignores the rest. Send the returned `next.follow` in a two-line continuation: the
+   protocol continuation line, then `Active step: <id> — follow <path>`;
+   `next.follow: none` is terminal and maps to the line `Active step: none —
+   complete remaining work and return your terminal result.`
 3. **Questions, feedback, and recovery** (`needs_input`,
    `continue_after_recovery`)
    do not invoke emit and do not consult the machine:

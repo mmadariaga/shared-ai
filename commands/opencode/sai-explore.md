@@ -4,10 +4,10 @@ model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Receipt: check the load receipt at the start of every explore turn and finish the load first when it is missing; the rule lives in @sai/commands/explore/body.md § Load receipt.
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/adapters/opencode/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
 Fetch @sai/adapters/opencode/idea-list-render.md and use it.
-Fetch @sai/commands/explore/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/explore/body.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: explore

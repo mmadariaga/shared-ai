@@ -78,8 +78,7 @@ test('approach comparison: conversation-only decisions reuse handoff fields with
 
 test('approach comparison: both harness entry paths load the same discovery instructions (I5)', () => {
   for (const harness of ['claude', 'opencode']) {
-    assert.ok(source(`commands/${harness}/sai-explore.md`).includes(`Fetch @sai/adapters/${harness}/boot.md`));
-    assert.ok(source(`sai/adapters/${harness}/boot.md`).includes('@sai/commands/explore/body.md'));
+    assert.ok(source(`commands/${harness}/sai-explore.md`).includes('Fetch @sai/commands/explore/body.md and follow it exactly'));
   }
   assert.match(source('sai/commands/explore/body.md'), /Fetch @sai\/commands\/explore\/instructions\.md/);
   assert.match(source('sai/commands/explore/instructions.md'), /Fetch @sai\/commands\/explore\/steps\/common\.md/);

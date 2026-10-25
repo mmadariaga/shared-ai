@@ -53,39 +53,6 @@ When any of the file-and-key naming, current-read, or destination-writer checks 
 - **THEN** the hand-back authoring or relaying surface SHALL ask the user a question under `@sai/policies/question-context.md`
 - **AND** it SHALL not issue a hand-back based on the current evidence
 
-### Requirement: Separate canonical policy from written STOP contracts
-
-The verified-precondition rule SHALL live in its own policy file. Every existing routed command card under `sai/commands/` SHALL reference that policy unconditionally, including `coordinator.md`, `worker.md`, and any retained `invocation.md`. A routed phase without an invocation card SHALL remain covered by its existing coordinator and worker cards.
-
-The verified-precondition rule SHALL live in its own policy file. Every routed command card (`coordinator.md`, `worker.md`, and `invocation.md`) and every utility command card (`body.md`) under `sai/commands/` SHALL reference that policy unconditionally. Non-card policy files, templates, and project-local skill files are excluded from the reference location; command-local `instructions.md` content loaded by a referencing card remains governed by the policy. The rule SHALL govern only improvised, off-contract hand-backs; it SHALL NOT be copied into `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`, treated as a lifecycle terminal, or used to rewrite any existing fixed STOP literal, contract-authored hand-back, approval gate, or file-existence check.
-
-#### Scenario: Existing file-existence STOP remains unchanged
-
-- **WHEN** a command reaches an existing written STOP that checks for a required artifact file
-- **THEN** the command SHALL retain that STOP's exact wording and behavior
-- **AND** the verified-precondition policy SHALL not convert the STOP into a question or add a hand-back requirement to its happy path
-
-#### Scenario: Canonical lifecycle files remain separate
-
-- **WHEN** the verified-precondition policy's lifecycle exclusions are audited
-- **THEN** it identifies `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` as the canonical neutral contracts and does not name their retired root paths
-
-#### Scenario: Contract-authored hand-back remains outside the improvised rule
-
-- **WHEN** a command's written contract explicitly defines a hand-back destination and its behavior
-- **THEN** that contract-authored hand-back SHALL remain unchanged
-- **AND** the new policy SHALL apply only when an agent invents an additional precondition hand-back not defined by the contract
-
-#### Scenario: Normal command path has no unmet precondition
-
-- **WHEN** all declared prerequisites are satisfied and the command can continue normally
-- **THEN** the command SHALL proceed without an additional question, approval gate, or evidence check introduced by this capability
-
-#### Scenario: Implement policy coverage follows the active cards
-
-- **WHEN** the routed command-card inventory is audited
-- **THEN** the implementation phase is validated through `coordinator.md` and `worker.md` without requiring a deleted invocation card.
-
 ### Requirement: Glossary records the resolved hand-back term
 
 When the canonical verified-precondition policy is present in the repository, the project-root `GLOSSARY.md` SHALL document **Verified Precondition Hand-back** using the canonical glossary format, including a concise definition and rejected aliases. The glossary entry SHALL describe the evidence-bound hand-back concept without adding lifecycle, recovery, or approval semantics.
@@ -95,3 +62,34 @@ When the canonical verified-precondition policy is present in the repository, th
 - **WHEN** the canonical verified-precondition policy is present in the repository
 - **THEN** `GLOSSARY.md` contains the **Verified Precondition Hand-back** term in the language section with its `*Avoid*` aliases
 - **AND** no unrelated glossary terms are changed by this capability
+
+### Requirement: Verified-precondition policy stays separate from written STOP contracts
+
+The verified-precondition rule SHALL live in its own policy file, `sai/policies/verified-precondition-handback.md`, and SHALL NOT be folded into another shared policy. The utility body cards `sai/commands/{explore,retire-docs,status,worktree}/body.md` SHALL reference it unconditionally after their direct-entry migration, as the `/sai-commit`, `/sai-archive`, and `/sai-backfill` coordinator and worker cards and `sai/commands/explore/direct-build-worker.md` do. Non-card policy files, templates, and project-local skill files are excluded from the reference location; command-local `instructions.md` content loaded by a referencing card remains governed by the policy. The rule SHALL govern only improvised, off-contract hand-backs; it SHALL NOT be treated as a lifecycle terminal or used to rewrite any existing fixed STOP literal, contract-authored hand-back, approval gate, file-existence check, or lifecycle status or payload.
+
+#### Scenario: Existing file-existence STOP remains unchanged
+
+- **WHEN** a command reaches an existing written STOP that checks for a required artifact file
+- **THEN** the command SHALL retain that STOP's exact wording and behavior
+- **AND** the verified-precondition policy SHALL not convert the STOP into a question or add a hand-back requirement to its happy path
+
+#### Scenario: The policy names no retired orchestration file
+
+- **WHEN** the verified-precondition policy's exclusions are audited
+- **THEN** it excludes lifecycle statuses and payloads by name and cites neither `sai/orchestration/command-runner.md` nor `sai/orchestration/worker-core.md`
+
+#### Scenario: Utility cards keep the policy load
+
+- **WHEN** `sai/commands/{explore,retire-docs,status,worktree}/body.md` is read
+- **THEN** it fetches `sai/policies/verified-precondition-handback.md`
+
+#### Scenario: Contract-authored hand-back remains outside the improvised rule
+
+- **WHEN** a command's written contract explicitly defines a hand-back destination and its behavior
+- **THEN** that contract-authored hand-back SHALL remain unchanged
+- **AND** the policy SHALL apply only when an agent invents an additional precondition hand-back not defined by the contract
+
+#### Scenario: Normal command path has no unmet precondition
+
+- **WHEN** all declared prerequisites are satisfied and the command can continue normally
+- **THEN** the command SHALL proceed without an additional question, approval gate, or evidence check introduced by this capability

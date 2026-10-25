@@ -94,18 +94,14 @@ test('Claude design coordinator uses sonnet with high effort', () => {
   assert.match(wrapper, /^effort:\s*high\s*$/m);
 });
 
-test('Step 3 manifest projects the shared lifecycle and one active harness binding', () => {
+test('Step 3 manifest projects the design worker and one active harness binding', () => {
   const expected = {
     claude: [
-      'sai/orchestration/command-runner.md',
-      'sai/orchestration/worker-core.md',
       'sai/commands/design/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/design-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-2-design-worker.md',
     ],
     opencode: [
-      'sai/orchestration/command-runner.md',
-      'sai/orchestration/worker-core.md',
       'sai/commands/design/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/design-worker.md',
     ],

@@ -101,32 +101,6 @@ test('Step 3 keeps the managed Claude phase agents alongside the neutral binding
   }
 });
 
-test('Step 2 routed coordinator failed needs_input continuation allows one replacement with complete reconstruction state', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-  const fields = [
-    'original_envelope',
-    'replacement_reconstruction_fields',
-    'opaque input history',
-    'preserve the union',
-  ];
-
-  assert.match(coordinator, /failed|failure/i,
-    'the coordinator should handle failed continuations');
-  assert.match(coordinator, /at most one replacement|one fresh worker|one replacement/i,
-    'the coordinator should allow one replacement');
-  for (const field of fields) {
-    assert.match(coordinator, new RegExp(field),
-      `the coordinator should reconstruct ${field}`);
-  }
-  for (const harness of ['claude', 'opencode']) {
-    const template = artifact(`sai/orchestration/workers/bindings/${harness}/worker-template.md`);
-    assert.match(template, /one bounded replacement|replacement/i,
-      `${harness} routed template should carry the replacement path`);
-    assert.match(template, /reconstruction[ _]fields|originating binding context/i,
-      `${harness} routed template should carry the reconstruction fields`);
-  }
-});
-
 test('Step 3 documentation does not instruct ownership or copying of retired proxy skills', () => {
   for (const relativePath of ['README.md', 'AGENTS.md']) {
     const fullPath = path.join(repoRoot, relativePath);

@@ -55,25 +55,6 @@ const IMPLEMENT_ROLES = Object.freeze([
   }),
 ]);
 
-// The direct-build, implement, review, spec, design, audit, merge, commit,
-// archive, and backfill roles render from their own binding templates, which
-// carry only the create and continue calls: their coordinator owns the
-// lifecycle. The spec, design, audit, merge, commit, archive, and backfill
-// phases keep their positions and names in PHASE_ORDER; only their binding
-// template differs from the other phases.
-const STANDALONE_PHASES = new Set([
-  ...DIRECT_BUILD_ROLES.map(role => role.phase),
-  ...IMPLEMENT_ROLES.map(role => role.phase),
-  'spec',
-  'design',
-  'security',
-  'performance',
-  'accessibility',
-  'merge',
-  'commit',
-  'archive',
-  'backfill',
-]);
 // Every role that pins its own contract and is validated by position after the
 // canonical phases.
 const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES]);
@@ -244,24 +225,12 @@ function renderWorkerTemplate(template, parameters) {
 
 function materializeWorkerMatrix(matrix, templates) {
   if (!matrix || !Array.isArray(matrix.entries) || !templates) throw new Error('Worker Matrix and templates are required');
-  const requiredTemplates = ['claudeBinding', 'opencodeBinding', 'claudeAgent', 'opencodeAgent'];
+  const requiredTemplates = ['claudeStandaloneBinding', 'opencodeStandaloneBinding', 'claudeAgent', 'opencodeAgent'];
   for (const name of requiredTemplates) {
     if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
   }
   return matrix.entries.flatMap(entry => {
     const common = { ...entry, canonicalFetch: `Fetch @${entry.workerContract} and follow it exactly.` };
-    const standalone = STANDALONE_PHASES.has(entry.phase);
-    const bindingTemplate = harness => {
-      if (!standalone) return `${harness}Binding`;
-      const name = `${harness}StandaloneBinding`;
-      if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
-      return name;
-    };
-    const panelRenderBinding = harness => [
-      'When the coordinator adapter declares a `progress_plan`,',
-      `Fetch @sai/adapters/${harness}/panel-render.md for coordinator-owned task-list rendering;`,
-      'render actions come from @sai/policies/todo-structure.md, and the worker never emits panel tool calls.',
-    ].join('\n') + '\n\n';
     return [
       {
         kind: 'binding',
@@ -269,12 +238,8 @@ function materializeWorkerMatrix(matrix, templates) {
         phase: entry.phase,
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
-        templateName: bindingTemplate('claude'),
-        text: renderWorkerTemplate(templates[bindingTemplate('claude')], {
-          ...common,
-          harness: 'Claude Code',
-          panelRenderBinding: panelRenderBinding('claude'),
-        }),
+        templateName: 'claudeStandaloneBinding',
+        text: renderWorkerTemplate(templates.claudeStandaloneBinding, { ...common, harness: 'Claude Code' }),
       },
       {
         kind: 'binding',
@@ -282,12 +247,8 @@ function materializeWorkerMatrix(matrix, templates) {
         phase: entry.phase,
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
-        templateName: bindingTemplate('opencode'),
-        text: renderWorkerTemplate(templates[bindingTemplate('opencode')], {
-          ...common,
-          harness: 'opencode',
-          panelRenderBinding: panelRenderBinding('opencode'),
-        }),
+        templateName: 'opencodeStandaloneBinding',
+        text: renderWorkerTemplate(templates.opencodeStandaloneBinding, { ...common, harness: 'opencode' }),
       },
       {
         kind: 'agent',

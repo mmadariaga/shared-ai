@@ -5,91 +5,26 @@ TBD - created by archiving change stop-options. Update Purpose after archive.
 
 ## Requirements
 
-### Requirement: Unplanned stops close with stop options
-
-An unplanned stop SHALL be a run, segment, or Step that halts on an error or an unexpected condition and leaves the next move to the user. Every SAI command SHALL close an unplanned stop with its required stop report followed by two or three concrete, costed options, subject to the existing pinned-text, planned-stop, contract-defined-choice, and single-viable-path rules.
-
-Each option SHALL name one concrete action, its cost, its effect, the work the agent will execute, and the work or decisions remaining for the user. The recommendation SHALL prefer the safe, viable continuation requiring the least further human intervention, including agent-executed correction when existing scope, approvals, verification, and budgets permit it.
-
-A retry of a known cause SHALL be viable only when the cause is corrected or the option includes an authorized concrete correction. Predictable further user decisions SHALL count as human intervention. The recommended option SHALL appear first unless the owning contract pins the choice order, and the recommendation SHALL carry a one-line reason.
-
-#### Scenario: Run halts on an error with several viable paths
-- **WHEN** a run halts on an error or an unexpected condition and the evidence supports more than one viable path without a contract-pinned choice order
-- **THEN** the closing message gives the stop report followed by two or three concrete, costed options with the recommended one first
-
-#### Scenario: Agent can safely correct the known cause
-- **WHEN** an existing authorized correction can resolve the cause and continue within applicable verification and recovery limits
-- **THEN** the stop recommendation prefers that continuation and identifies remaining user approvals or work
-
-#### Scenario: Retry would repeat an unresolved cause
-- **WHEN** another attempt would repeat a known cause without an authorized concrete correction
-- **THEN** the stopping surface does not recommend that repetition as unattended continuation
-
 ### Requirement: Planned stops get no stop options
-
-A planned stop SHALL NOT receive stop options. Planned stops are a MANDATORY STOP after a completed phase, approval and feedback gates, and stops the user chose (a declined confirmation or a cancellation).
+A planned stop SHALL NOT receive escalation options. Planned stops are a stop the card's contract defines — a literal stop text, an approval or authorization gate, and a stop the user chose (a declined confirmation or a cancellation) — as stated by the Planned stops rule of `sai/policies/obstacle-escalation.md`.
 
 #### Scenario: Phase completes at its mandatory stop
 - **WHEN** a command ends at a MANDATORY STOP after a completed phase, at an approval or feedback gate, or at a stop the user chose
 - **THEN** the command keeps its own closing contract and appends no stop options
 
 ### Requirement: Contract-pinned stop text is the whole output
-
-When a contract pins the exact stop text (for example the prerequisite literals or "No active changes found. Run `/sai-1-spec` to create one."), that text SHALL be the whole output and no stop options SHALL be appended.
+When a contract pins the exact stop text (for example the prerequisite literals or "No active changes found. Run `/sai-1-spec` to create one."), that text SHALL be the whole output and no escalation options SHALL be appended, because `sai/policies/obstacle-escalation.md` treats a literal stop text as a planned stop that keeps its own text.
 
 #### Scenario: Stop text is pinned by the contract
 - **WHEN** an unplanned stop has an exact stop text pinned by its contract
 - **THEN** that text is printed byte-identical as the whole output with no options appended
 
-### Requirement: Contract-defined choice serves as the options
-
-When a contract already defines the choice for a stop (for example a stop whose owning contract lists the choices it offers), that choice SHALL be the options for that stop and no second question SHALL be added. Pinned labels, values, and order SHALL remain unchanged.
-
-The recommendation and agent/user work explanation SHALL precede the unchanged choice rather than reorder or rewrite it. Required approvals and recovery limits SHALL remain in force. The recommendation policy SHALL grant no new retry budget or mutation authority.
-
-#### Scenario: Stop's contract already defines the choice
-- **WHEN** an unplanned stop falls on a stop whose contract already defines the user's choice
-- **THEN** the contract-defined choice is presented as the options and no second question is added
-
-#### Scenario: Apply Step exhausts its recovery budget
-- **WHEN** the command catalog is read
-- **THEN** no `/sai-4-apply` command exists, so no apply exhausted-Step stop presents a choice
-
-#### Scenario: Recommendation preserves an authorized retry choice
-- **WHEN** the existing choice offers manual correction or one explicitly authorized fresh attempt
-- **THEN** the surface preserves that choice and its order while explaining the safe recommendation, proposed agent correction, required retry authorization, and any remaining user work
-
-#### Scenario: Recommendation preserves Apply retry authorization
-- **WHEN** the command catalog is read
-- **THEN** no `/sai-4-apply` command exists, so no Apply retry authorization is offered
-
 ### Requirement: A single viable path is presented as the next step
-
-When the evidence supports only one viable path, that path SHALL be presented as the next step, with no picker and no filler alternatives.
+When the evidence supports only one viable path, that path SHALL be presented as the next step, with no picker and no filler alternatives, as `sai/policies/obstacle-escalation.md` § Escalate to the user states.
 
 #### Scenario: Evidence supports one path
 - **WHEN** an unplanned stop has only one viable path supported by the evidence
 - **THEN** the closing message presents that path as the next step without a picker and without invented alternatives
-
-### Requirement: Stop report precedes the options
-
-The stop report SHALL be the report the contract requires. When the contract requires a report without pinned text (for example "name the candidates you tried and stop"), that report SHALL come first and the options second. When the contract defines no report, the default stop report SHALL state what stopped and why, what is done, what is pending, and the exact state left behind (files written, staged, or committed, and whether the change stays retryable).
-
-#### Scenario: Contract requires a report without pinned text
-- **WHEN** an unplanned stop has a contract that requires a report but pins no text
-- **THEN** the required report is given first, followed by the options
-
-#### Scenario: Contract defines no report
-- **WHEN** an unplanned stop has a contract that defines no report
-- **THEN** the default stop report states what stopped and why, what is done, what is pending, and the exact state left behind
-
-### Requirement: Unattended stop notice presents the decision as stop options
-
-In unattended lanes, the "what the user must decide" part of the stop notice in `unattended-runtime-recovery.md` SHALL be presented as the stop options of the policy. The rule against a routine "how should I proceed?" question SHALL remain in force, because the options are concrete actions and not a generic question.
-
-#### Scenario: Unattended lane stops
-- **WHEN** an unattended lane closes its stop notice with the decision the user must make
-- **THEN** that decision is presented as concrete, costed stop options and not as a routine "how should I proceed?" question
 
 ### Requirement: Direct Build final report keeps four sections
 
@@ -101,37 +36,22 @@ Full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for 
 - **THEN** the shared stopped report identifies the required decision in Next step and the escalation options of `sai/policies/obstacle-escalation.md` follow Execution details as a separate decision prompt outside the report
 
 ### Requirement: Options rest on evidence already held
-
-Stop options SHALL rest on the evidence the stopping surface already holds (payload, diagnosis, hand-back, or what it may read under its contract). Offering options SHALL NOT widen its read or write scope.
+Escalation options SHALL rest on the evidence the card already holds, per `sai/policies/obstacle-escalation.md`. Offering options SHALL NOT widen its read or write scope.
 
 #### Scenario: Surface composes options for a stop
 - **WHEN** a stopping surface composes stop options
 - **THEN** the options draw only on evidence it already holds or may read under its contract and its read and write scope is unchanged
 
 ### Requirement: Options are proposals that grant no authority
-
-Choosing a stop option SHALL authorize only the named action, inside the gates that action already carries: safe-operations confirmations, commit gates, and recovery budgets stay in force. No option SHALL grant a retry budget; an authorized `continue` answer to an implement escalation, which resets that obstacle's counter, remains the only grant. An option that involves a destructive operation SHALL name it so its confirmation fires. Contract-pinned stop texts, report layouts, and existing choice prompts SHALL stay byte-identical.
+Choosing an escalation option SHALL authorize only the named action, inside the gates that action already carries: safe-operations confirmations, commit gates, and the card's own authority line stay in force, per the Authority rule of `sai/policies/obstacle-escalation.md`. No option SHALL grant new retry, read, or write authority; choosing a way to continue resets only that obstacle's counter. An option that involves a destructive operation SHALL name it so its confirmation fires. Contract-pinned stop texts, report layouts, and existing choice prompts SHALL stay byte-identical.
 
 #### Scenario: User selects an option that involves a destructive operation
 - **WHEN** the user selects a stop option whose action involves a destructive operation
 - **THEN** only that named action is authorized and the safe-operations confirmation for it still fires
 
 ### Requirement: Options are presented through the native picker
-
-Stop options SHALL be presented with the native picker per `@sai/policies/question-context.md`, with context before the picker and a short picker. A free-text reply (the picker's "Other" entry) SHALL be treated as the user's own instruction and not as an invalid option.
+Escalation options SHALL be presented with the native picker per `@sai/policies/question-context.md`, with context before the picker and a short picker, as `sai/policies/obstacle-escalation.md` states. A free-text reply SHALL be treated as the user's own instruction and not as an invalid option.
 
 #### Scenario: User answers with free text
 - **WHEN** the user replies to the stop-options picker with free text
 - **THEN** the reply is treated as the user's own instruction and not rejected as an invalid option
-
-### Requirement: Stop-options rule is single-sourced and loaded only on a stop
-
-The rule SHALL live in one policy, `sai/policies/stop-options.md`, reached through a conditional pointer in `sai/orchestration/command-runner.md` placed right after the `public-chat.md` line: "When a run stops on an error or an unexpected condition, Fetch @sai/policies/stop-options.md and close the stop with its options." The policy SHALL load only on a stop, SHALL name no harness so Claude Code and opencode behave identically, and SHALL be installed by the existing `sai-policies` projection without a change to `sai/install-manifest.json`.
-
-#### Scenario: Run finishes cleanly
-- **WHEN** a run finishes without stopping on an error or an unexpected condition
-- **THEN** the stop-options policy is not fetched and costs no context
-
-#### Scenario: Run stops on an error
-- **WHEN** a run stops on an error or an unexpected condition
-- **THEN** the command runner's conditional pointer causes `@sai/policies/stop-options.md` to be fetched and the stop is closed with its options
