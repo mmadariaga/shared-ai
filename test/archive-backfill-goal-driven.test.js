@@ -17,7 +17,8 @@ const COMMANDS = ['archive', 'backfill'];
 test('the archive and backfill wrappers fetch the skill and the coordinator card directly', () => {
   for (const name of COMMANDS) {
     for (const harness of ['claude', 'opencode']) {
-      const wrapper = read(`commands/${harness}/sai-${name}.md`);
+      const wrapper = read(`commands/${harness}/sai-${name}.md`)
+        .split('<!-- User customizations below this line -->')[0].trimEnd() + '\n';
       assert.match(wrapper, new RegExp(`Fetch @sai/commands/${name}/coordinator\\.md and follow it exactly`));
       assert.doesNotMatch(wrapper, /@sai\/adapters\/|command-bootstrap\.md/);
       assert.ok(wrapper.includes('This invocation starts clean'));

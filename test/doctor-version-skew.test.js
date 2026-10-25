@@ -172,7 +172,8 @@ describe('doctor version skew', () => {
       fs.unlinkSync(path.join(claudeBase, '.version'));
       const targetFile = path.join(claudeBase, 'commands', 'sai-1-spec.md');
       assert.ok(fs.existsSync(targetFile), 'sai-1-spec.md should exist after install');
-      fs.appendFileSync(targetFile, '\n<!-- modified by test -->\n');
+      fs.writeFileSync(targetFile, fs.readFileSync(targetFile, 'utf8')
+        .replace('<!-- User customizations below this line -->', '<!-- modified by test -->\n\n<!-- User customizations below this line -->'));
 
       const opencodeBase = nonexistentPath('sai-vs-oc-');
       const copilot = {
@@ -186,7 +187,7 @@ describe('doctor version skew', () => {
         projectRoot, claudeBase, opencodeBase, copilot,
       });
 
-      assert.equal(code, 0);
+      assert.equal(code, 1, 'stale managed command content is an error');
 
       const claude = parsed['[Claude Code]'];
       assert.ok(claude, '[Claude Code] section should exist');

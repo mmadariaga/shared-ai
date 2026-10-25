@@ -288,8 +288,29 @@ command or agent overrides the global file with the same name:
 | opencode | `.opencode/commands/` | `.opencode/agents/` |
 | Claude Code | `.claude/commands/` | `.claude/agents/` |
 
-Keep the original `Fetch @` imports when editing overrides so the command still
-loads its workflow. Model customization preserves your other edits.
+Put custom instructions after the standalone comment in a managed command or agent:
+
+```md
+<!-- User customizations below this line -->
+```
+
+Installation preserves `model` and `effort` on Claude Code, or `model` and
+`variant` on opencode (commands use `model: provider/model#variant`), plus every
+byte after that comment. Everything else is overwritten with the current
+definition. Older files without the comment retain only their model/reasoning
+settings; other edits are overwritten, without a backup.
+
+Running the installer also refreshes existing SAI command and agent overrides in
+the current project. Run `setup <project-path>` to refresh another project; no
+local overrides are created unless you customize models. Unrelated filenames
+and symbolic links are left alone. Other projects are not scanned.
+
+Retired files are different from current overrides: installation and setup delete
+the exact paths declared obsolete in the manifest, even if edited. Renamed agents
+are deleted without migrating their tunables or instructions to the new name.
+Current-name definitions retain their own settings. Retirement never removes
+directories recursively or follows linked directories; unlinking a retired file
+symlink leaves its target untouched.
 
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
 **Project behavior settings**. See [project settings](docs/project-settings.md).

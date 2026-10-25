@@ -23,32 +23,25 @@ The five unreferenced inline phase-command bodies `sai/commands/sai-1-spec.md`, 
 
 ### Requirement: Retirement records cover every historical content variant
 
-`sai/install-manifest.json` SHALL register exactly one `retirements` record per deleted body, each with a stable unique `id`, a `destination` with class `sai` and the former `commands/<filename>` path, the harness allowlist `claude` and `opencode`, and a non-empty `managedHashes` array of lowercase SHA-256 digests. Each `managedHashes` array SHALL contain the SHA-256 digest of every distinct content variant that the file has ever contained, enumerated from the file's git history — one digest per historical blob reachable via `git log --follow` — including the digest of the content at the moment of deletion, so that install, doctor, and uninstall recognize any installed copy whose bytes match a historical managed variant. The deletion-time digest SHALL be computed during implementation from the file content at deletion; a digest fixed at proposal time is volatile and SHALL NOT be reused. Over-collection is intentional and harmless: a digest of a variant that no installed copy matches is inert, and a file that never varied historically contributes exactly one digest. The records SHALL follow the existing retirement record shape and SHALL be validated by the shared manifest expansion module.
+The manifest SHALL retain one retirement per deleted body with its unique id, exact former commands/<filename> sai-class path, both harnesses, and historical managedHashes covering its historical managed variants. These digests SHALL remain available to doctor and guarded uninstall. Installation and project refresh SHALL delete exact declared retired files regardless of digest and SHALL NOT transfer their settings. Shared validation SHALL reject empty, absolute, traversal, wildcard, and other non-exact retirement paths. The five retired destinations SHALL remain absent from active projections.
 
 #### Scenario: Install or update finds an exact historical managed copy
-
 - **WHEN** install or update finds a deleted-body destination whose content matches a recorded historical managed hash
 - **THEN** it SHALL remove that destination and SHALL NOT recreate it
 
 #### Scenario: Uninstall finds an exact historical managed copy
-
 - **WHEN** uninstall runs and finds a deleted-body destination whose content matches a recorded historical managed hash
 - **THEN** it SHALL remove that destination under the same ownership safeguard
 
 #### Scenario: Retired copy is modified or unrecognized
-
-- **WHEN** install, update, doctor, or uninstall finds a deleted-body destination whose content matches no recorded historical managed hash
-- **THEN** install, update, and uninstall SHALL preserve the file
-- **AND** doctor SHALL report the unexpected retired file and identify manual cleanup as remediation
+- **WHEN** install, update, doctor, or uninstall finds a deleted-body path matching no historical digest
+- **THEN** installation and update delete the exact retired file; doctor remains read-only and recommends reinstallation without migration; guarded uninstall preserves unrecognized content
 
 #### Scenario: Retirement inventory expands for both harnesses
-
 - **WHEN** the shared manifest module expands `sai/install-manifest.json` for Claude Code or opencode
-- **THEN** it SHALL return the five new deleted-body destinations with their registered managed SHA-256 hashes for that harness
-- **AND** install, doctor, and uninstall SHALL consume that returned inventory without a separate hard-coded mapping
+- **THEN** it SHALL return the five new deleted-body destinations with their registered managed SHA-256 hashes for that harness; install, doctor, and uninstall SHALL consume that returned inventory without a separate hard-coded mapping
 
 #### Scenario: Hash coverage is verified from git history
-
 - **WHEN** the implementer enumerates every distinct content variant of a deleted body from its git history via `git log --follow`, hashing each historical blob
 - **THEN** every enumerated digest SHALL appear in that body's retirement record `managedHashes` array, including the digest of the content at deletion
 

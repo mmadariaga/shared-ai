@@ -45,18 +45,21 @@ for (const harness of ['claude', 'opencode']) {
     assert.doesNotMatch(review, /sai-6-security|sai-7-performance|sai-8-accessibility/);
   });
   for (const destinationExists of [false, true]) {
-    test(`${harness}: upgrade preserves role settings (destination exists: ${destinationExists})`, t => {
+    test(`${harness}: upgrade keeps only current-name role settings (destination exists: ${destinationExists})`, t => {
       const base = fixture(t);
       install(base);
       const preset = {};
+      const factory = new Map();
       let index = 0;
       for (const [oldName, newName] of Object.entries(AUDIT_RENAMES)) {
         index++;
         for (const [folder, suffix] of [['commands', ''], ['agents', '-worker']]) {
           const destination = path.join(base, folder, `${newName}${suffix}.md`);
+          factory.set(destination, fs.readFileSync(destination, 'utf8'));
           // A pre-renumbering definition also used the legacy opencode helper
           // grants. Keep this a historical fixture, not a hypothetical hybrid.
-          const source = (folder === 'commands' ? legacyCommand(harness, newName) : fs.readFileSync(destination, 'utf8')).replaceAll(newName, oldName)
+          const source = (folder === 'commands' ? legacyCommand(harness, newName)
+            : fs.readFileSync(destination, 'utf8').replace('\n<!-- User customizations below this line -->\n', '')).replaceAll(newName, oldName)
             .replaceAll('resource: "budget-explorer"', 'resource: "explore"')
             .replaceAll('resource: "budget-subagent"', 'resource: "budget"');
           const tunable = harness === 'claude' ? 'effort: high' : folder === 'agents' ? 'variant: custom' : '';
@@ -82,9 +85,8 @@ for (const harness of ['claude', 'opencode']) {
         for (const [folder, suffix] of [['commands', ''], ['agents', '-worker']]) {
           assert.ok(!fs.existsSync(path.join(base, folder, `${oldName}${suffix}.md`)));
           const installed = fs.readFileSync(path.join(base, folder, `${newName}${suffix}.md`), 'utf8');
-          assert.match(installed, new RegExp(`model: ${destinationExists ? 'destination-owned' : `role-${index}`}`));
-          if (!destinationExists && harness === 'opencode') assert.match(installed, folder === 'agents' ? /variant: custom/ : /#custom/);
-          if (!destinationExists && harness === 'claude') assert.match(installed, /effort: high/);
+          if (destinationExists) assert.match(installed, /model: destination-owned/);
+          else assert.equal(installed, factory.get(path.join(base, folder, `${newName}${suffix}.md`)), 'a replacement gets shipped defaults, not obsolete tunables');
         }
         assert.equal(migrated[`command:${newName}`].model, destinationExists ? 'preset-destination' : `preset-${index}`);
         assert.equal(migrated[`worker:${newName}-worker`].model, `worker-${index}`);
@@ -92,7 +94,7 @@ for (const harness of ['claude', 'opencode']) {
       }
     });
   }
-  test(`${harness}: customized legacy bodies remain pending in install, diagnostics inventory and uninstall`, t => {
+  test(`${harness}: installer deletes customized retired definitions while standalone uninstall remains guarded`, t => {
     const base = fixture(t);
     install(base);
     for (const [oldName, newName] of Object.entries(AUDIT_RENAMES)) {
@@ -102,25 +104,24 @@ for (const harness of ['claude', 'opencode']) {
         fs.writeFileSync(legacy, source);
       }
     }
+    const before = enumerate(base).filter(row => row.assetType === 'retired-managed-file' && row.managedBodyHashes && fs.existsSync(row.dest));
+    assert.equal(before.length, 6);
+    for (const entry of before) {
+      assert.equal(recognizedRetirement(fs.readFileSync(entry.dest), entry), false);
+      assert.equal(uninstall.computePlan([entry])[0].action, 'keep-override');
+    }
     const notices = [];
     const warn = console.warn;
     console.warn = message => notices.push(message);
     try { install(base); } finally { console.warn = warn; }
-    assert.equal(notices.filter(line => /Pending resolution: customized retired file/.test(line)).length, 6);
+    assert.equal(notices.filter(line => /Pending resolution: customized retired file/.test(line)).length, 0);
     const pending = enumerate(base).filter(row => row.assetType === 'retired-managed-file' && row.managedBodyHashes && fs.existsSync(row.dest));
-    assert.equal(pending.length, 6);
+    assert.equal(pending.length, 0);
     const diagnostics = require('../bin/doctor').retiredFileRecords(harness, pending);
-    assert.equal(diagnostics.length, 6);
-    assert.ok(diagnostics.every(record => !record.recognized && record.recommendation.startsWith('Pending resolution:')));
-    for (const entry of pending) {
-      assert.equal(recognizedRetirement(fs.readFileSync(entry.dest), entry), false);
-      assert.equal(uninstall.computePlan([entry])[0].action, 'keep-override');
-      console.warn = message => notices.push(message);
-      try { assert.equal(uninstall.deleteEntry(entry), 'kept-override'); } finally { console.warn = warn; }
-      assert.ok(fs.existsSync(entry.dest));
-    }
+    assert.equal(diagnostics.length, 0);
+    assert.ok(before.every(entry => !fs.existsSync(entry.dest)));
   });
-  test(`${harness}: migration persists settings before cleanup and uninstall recognizes tunable-only legacy files`, t => {
+  test(`${harness}: preparation does not transfer retired tunables and uninstall still recognizes historical files`, t => {
     const base = fixture(t);
     install(base);
     const destination = path.join(base, 'commands/sai-5-security.md');
@@ -129,13 +130,14 @@ for (const harness of ['claude', 'opencode']) {
     fs.writeFileSync(legacy, previous);
     fs.unlinkSync(destination);
     require('../bin/audit-name-migration').prepare(base);
-    assert.match(fs.readFileSync(destination, 'utf8'), /model: custom-before-cleanup/);
+    assert.equal(fs.existsSync(destination), false, 'preparation does not clone a retired definition');
     const entry = enumerate(base).find(row => row.dest === legacy && row.assetType === 'retired-managed-file');
     assert.ok(entry);
     assert.equal(uninstall.computePlan([entry])[0].action, 'delete');
     assert.equal(require('../bin/doctor').retiredFileRecords(harness, [entry])[0].recognized, true);
     assert.equal(uninstall.deleteEntry(entry), 'deleted');
-    assert.match(fs.readFileSync(destination, 'utf8'), /model: custom-before-cleanup/);
+    install(base);
+    assert.doesNotMatch(fs.readFileSync(destination, 'utf8'), /model: custom-before-cleanup/);
   });
 }
 

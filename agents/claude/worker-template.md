@@ -10,3 +10,5 @@ Fetch @skills/fetch/SKILL.md
 Required capability profile: {{capabilityProfile}}.
 Fetch @sai/policies/tool-access.md; apply its profile check only after task disclosure.
 {{canonicalFetch}}
+
+<!-- User customizations below this line -->

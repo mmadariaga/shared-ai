@@ -8,19 +8,19 @@ Ensure the installer's file-copy behavior is a silent, uniform, declarative sync
 
 ### Requirement: install script overwrites command wrappers on reinstall
 
-The install script SHALL use `copy` (not `copyWithWarn` and not `copySkipIfExists`) when copying command wrapper files from `commands/claude/` and `commands/opencode/` and prompt files from `commands/copilot/` to their respective user-level destinations, so that reinstalls update stale wrappers and prompts without emitting any per-file log line.
+Claude Code and opencode wrapper projections SHALL use customizable-copy instead of plain whole-file copy. Reinstallation SHALL refresh managed instructions and non-tunable frontmatter, preserving destination tuning and the exact suffix after the standalone marker. Legacy unmarked definitions SHALL retain only tuning and receive the current marker. Opencode commands SHALL use model#variant notation. Ordinary command refresh SHALL emit no per-file Overwriting, Creating, or Skipping copy logs. This change SHALL apply only to supported Claude Code and opencode projections and SHALL NOT reintroduce retired Copilot installation.
 
 #### Scenario: Claude Code command wrapper reinstall
-- **WHEN** `installClaude()` runs and a wrapper file already exists in `~/.claude/commands/`
-- **THEN** the file is overwritten with the repo version and no per-file `Overwriting`, `Creating`, or `Skipping` line is emitted
+- **WHEN** installClaude() encounters an existing managed wrapper
+- **THEN** managed content is refreshed while destination model, effort, and suffix survive without ordinary per-file copy logs
 
 #### Scenario: OpenCode command wrapper reinstall
-- **WHEN** `installOpencode()` runs and a wrapper file already exists in `~/.config/opencode/commands/`
-- **THEN** the file is overwritten with the repo version and no per-file `Overwriting`, `Creating`, or `Skipping` line is emitted
+- **WHEN** installOpencode() encounters an existing managed wrapper
+- **THEN** managed content is refreshed while destination model#variant and suffix survive without ordinary per-file copy logs
 
 #### Scenario: Copilot prompt reinstall
-- **WHEN** `installCopilot()` runs and a prompt file already exists in the Copilot prompts destination
-- **THEN** the file is overwritten with the repo version and no per-file `Overwriting`, `Creating`, or `Skipping` line is emitted
+- **WHEN** the supported wrapper projection inventory is expanded
+- **THEN** Claude Code and opencode participate in customizable-copy and this change adds no Copilot projection
 
 ### Requirement: install script emits no per-file log line for any file copy
 

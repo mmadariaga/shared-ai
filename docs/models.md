@@ -78,6 +78,25 @@ Save custom mixes under a personal preset name. The `[sai-default]-` prefix is
 reserved: distributed presets are refreshed on installation, but personal
 presets and project model selections stay unchanged until you apply a preset.
 
+Command and agent instructions remain managed even after you select a different
+model. Installation preserves the selected `model` and `effort` (Claude Code),
+or `model` and `variant` (opencode), and the exact text after
+`<!-- User customizations below this line -->`. The rest of each definition is
+replaced. Legacy files without the marker retain only their tunables, with no
+backup of other edits. OpenCode commands keep the variant in `model#variant`;
+agents keep a separate `variant` field.
+
+The installer refreshes existing local overrides in its current project as well
+as the global files. `setup <project-path>` refreshes that project's existing
+overrides for both harnesses. Neither operation creates extra local copies or
+scans other projects. `doctor` flags stale managed content, ignoring tunables
+and the customization section.
+
+Retired or renamed definitions are deleted, not upgraded or migrated: their old
+models and custom text do not transfer to the new name. This applies to the
+global installation and to existing local files in the project being refreshed.
+Only exact retired paths from the install manifest are removed.
+
 Only SAI commands and agents are model-customization targets. The universal
 backlog and PR workflows run with the active session's model rather than a
 separate model selection in this menu.

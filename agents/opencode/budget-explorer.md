@@ -10,3 +10,5 @@ permissions:
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Required capability profile: {{capabilityProfile}}.
 Fetch @sai/policies/explore-agent.md
+
+<!-- User customizations below this line -->

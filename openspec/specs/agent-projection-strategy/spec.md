@@ -19,7 +19,7 @@ The manifest MUST declare exactly one tunable-seed strategy for every current ma
 
 ### Requirement: strategy validation set
 
-The `STRATEGIES` validation set in `bin/install-manifest.js` MUST accept the literal string `tunable-seed` and MUST reject the literal string `owned-copy`. A rule whose `strategy` is not in the set is a manifest validation error.
+The STRATEGIES validation set MUST accept tunable-seed and customizable-copy and MUST reject owned-copy. Unknown strategies SHALL remain validation errors. Both supported harnesses SHALL project command wrappers with customizable-copy and managed agents with tunable-seed.
 
 #### Scenario: tunable-seed passes validation
 - **WHEN** a projection rule is validated with `strategy: 'tunable-seed'`
@@ -29,9 +29,13 @@ The `STRATEGIES` validation set in `bin/install-manifest.js` MUST accept the lit
 - **WHEN** a projection rule is validated with `strategy: 'owned-copy'`
 - **THEN** `validateManifest` throws an error that names the projection id and the invalid strategy
 
+#### Scenario: Customizable command strategy validates
+- **WHEN** a command projection declares customizable-copy
+- **THEN** manifest validation accepts that strategy
+
 ### Requirement: install projection dispatch
 
-The `installProjection` dispatch in `bin/install-flow.js` MUST route a `tunable-seed` projection to a dedicated installer function. The dispatcher MUST NOT alias `tunable-seed` onto the retired `owned-copy` handling. A projection whose `strategy` is `owned-copy` MUST cause the dispatcher to throw, because the strategy is retired, not aliased.
+installProjection MUST route tunable-seed to dedicated agent installation with non-regular destination protection and tuning and suffix preservation. It MUST route customizable-copy to command refresh preserving tuning and the exact suffix while updating managed content. It MUST NOT alias tunable-seed onto owned-copy; owned-copy SHALL still throw as retired.
 
 #### Scenario: tunable-seed routes to the dedicated installer
 - **WHEN** `installProjection` is called with a projection whose `strategy` is `tunable-seed`
@@ -40,3 +44,7 @@ The `installProjection` dispatch in `bin/install-flow.js` MUST route a `tunable-
 #### Scenario: owned-copy throws at dispatch
 - **WHEN** `installProjection` is called with a projection whose `strategy` is `owned-copy`
 - **THEN** the dispatcher throws an error that names the retired strategy
+
+#### Scenario: Customizable-copy preserves user regions
+- **WHEN** installProjection receives an existing customizable-copy command destination
+- **THEN** it refreshes managed content and retains native tuning and the exact delimited suffix

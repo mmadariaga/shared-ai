@@ -29,12 +29,12 @@ Doctor MUST remain loadable when opencode managed-agent inventory derivation fai
 
 ### Requirement: Doctor distinguishes managed and customized retired audit files
 
-Doctor SHALL use the shared retirement identity for legacy audit commands and workers on both Claude Code and opencode. Its retired-file record SHALL distinguish recognized managed copies, including permitted tunable-only differences, from customized bodies. A customized audit body SHALL receive a pending-resolution recommendation to transfer its instructions to the new name and review removal of the preserved file.
+Doctor SHALL retain historical retirement recognition for legacy audit commands and workers on both harnesses. Records SHALL distinguish recognized copies, including permitted tuning-only differences, from customized bodies. Either identity SHALL receive a recommendation to rerun installation to delete the exact retired file, with no old settings or text migration. Doctor SHALL remain read-only and SHALL NOT recommend transferring old instructions.
 
 #### Scenario: Customized retired audit is still installed
-- **WHEN** doctor finds an old audit command or worker with a body that does not match the declared managed identity
-- **THEN** it reports the file as unrecognized and pending resolution rather than declaring the audit migration complete
+- **WHEN** doctor finds an old audit definition whose body is unrecognized
+- **THEN** it reports the file as unrecognized and recommends installer deletion without settings or text migration
 
 #### Scenario: Retired file differs only in tunables
-- **WHEN** doctor finds a retired audit file matching the managed body after its declared tunable lines are removed
-- **THEN** it reports a recognized managed historical copy with install/update or uninstall remediation
+- **WHEN** doctor finds a retired audit matching its historical managed body after declared tunables are removed
+- **THEN** it reports a recognized historical copy and recommends rerunning installation for exact-path deletion without migration
