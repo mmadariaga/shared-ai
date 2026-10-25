@@ -437,7 +437,7 @@ test('the policy is the single source of the invocation and the coverage rule', 
     assert.ok(policy.includes(field), `the policy must name ${field}`);
   }
   for (const card of [
-    'sai/commands/explore/steps/pipeline-direct-build.md',
+    'sai/commands/explore/direct-build-coordinator.md',
     'sai/commands/archive/coordinator.md',
   ]) {
     const body = fs.readFileSync(path.join(REPO_ROOT, card), 'utf8');
@@ -448,7 +448,7 @@ test('the policy is the single source of the invocation and the coverage rule', 
 
 test('Direct Build takes the initial snapshot before the implementer dispatch and holds it as run state', () => {
   const pipeline = fs.readFileSync(
-    path.join(REPO_ROOT, 'sai', 'commands', 'explore', 'steps', 'pipeline-direct-build.md'),
+    path.join(REPO_ROOT, 'sai', 'commands', 'explore', 'direct-build-coordinator.md'),
     'utf8',
   );
   assert.match(pipeline, /`slice_snapshot` \(the initial snapshot reference/);

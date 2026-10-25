@@ -87,7 +87,7 @@ test('Direct Build keeps dispatching the archive and backfill workers through st
       assert.match(binding.text, new RegExp(`Fetch @sai/commands/${phase}/worker\\.md`));
     }
   }
-  const pipeline = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(pipeline, /Fetch @sai\/orchestration\/workers\/bindings\/archive-worker\.md and use it\./);
   assert.match(pipeline, /--direct-build-prepare/);
   assert.match(read('sai/commands/archive/worker.md'), /--direct-build-execute/);

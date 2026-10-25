@@ -8,10 +8,6 @@ const path = require('path');
 const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
-const routedPhases = [
-  'direct-build',
-];
-
 function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
@@ -30,6 +26,7 @@ function readExploreContract() {
     'sai/commands/explore/steps/pipeline-selector.md',
     'sai/commands/explore/steps/pipeline-plan-unattended.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
+    'sai/commands/explore/direct-build-coordinator.md',
     'sai/commands/explore/steps/idea-list.md',
   ];
   return exploreSources.map(relativePath => read(relativePath)).join('\n');
@@ -62,28 +59,16 @@ test('shared runner renders only after a progress event changes the marked set',
   assert.match(runner, /continuation remains exactly `continue_after_progress`/);
 });
 
-test('routed matrix bindings reference the matching harness panel mechanics', () => {
+test('every matrix binding is standalone and binds no panel mechanics', () => {
   const manifest = loadInstallManifest(repoRoot);
 
   for (const harness of ['claude', 'opencode']) {
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
       .filter(item => item.kind === 'binding');
 
-    for (const phase of routedPhases) {
-      const binding = bindings.find(item => item.phase === phase);
-      assert.ok(binding, `${harness}/${phase} binding should exist`);
-      assert.match(binding.text, /When the coordinator adapter declares a `progress_plan`/);
-      assert.match(
-        binding.text,
-        new RegExp(`Fetch @sai/adapters/${harness}/panel-render\\.md`),
-        `${harness}/${phase} should fetch its panel-render binding`,
-      );
-      assert.match(binding.text, /todo-structure\.md/);
-      assert.match(binding.text, /worker never emits panel tool calls/);
-    }
-
-    const standaloneBindings = bindings.filter(item => ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'red', 'green', 'review'].includes(item.phase));
-    assert.equal(standaloneBindings.length, 11, `${harness} should retain spec, design, the three audits, commit, archive, backfill, RED, GREEN, and review bindings`);
+    const standaloneBindings = bindings.filter(item => ['direct-build', 'spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'red', 'green', 'review'].includes(item.phase));
+    assert.equal(standaloneBindings.length, 12, `${harness} should retain direct-build, spec, design, the three audits, commit, archive, backfill, RED, GREEN, and review bindings`);
+    assert.equal(bindings.length, 13, `${harness} binds the 12 listed workers and the merge worker, all standalone`);
     for (const binding of standaloneBindings) {
       assert.doesNotMatch(binding.text, /panel-render\.md/,
         `${harness}/${binding.destinationName} must not bind the progress panel for a standalone coordinator`);

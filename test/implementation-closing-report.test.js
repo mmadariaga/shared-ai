@@ -41,7 +41,7 @@ test('common order preserves complete human review before navigation and diagnos
 });
 
 test('the full Direct Build route consults the authority and no apply-only part remains in it', () => {
-  assert.match(read('sai/commands/explore/steps/pipeline-direct-build.md'), /Fetch @sai\/policies\/implementation-closing-report\.md/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch @sai\/policies\/implementation-closing-report\.md/);
   const text = policy();
   assert.doesNotMatch(text, /apply-step\.js/);
   assert.doesNotMatch(text, /learnings-promotion/);
@@ -57,7 +57,7 @@ test('authorization visibility and declined-commit consequences remain at their 
 });
 
 test('full Direct Build retains diagnostics and excludes the POC', () => {
-  const direct = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const direct = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(direct, /full `direct-build-unattended` route's completed or stopped terminal close only/);
   assert.match(direct, /`--no-specs` POC keeps its own closing behavior/);
   assert.match(direct, /archive destination.*local commit reference.*Nothing was pushed/);
@@ -65,7 +65,7 @@ test('full Direct Build retains diagnostics and excludes the POC', () => {
   assert.match(direct, /pre-existing failures classified at `base_sha`/);
   assert.match(direct, /every test file the implementer touched in a gate round/);
   assert.match(direct, /Name the violated rule/);
-  assert.match(direct, /stop options.*follow after `Execution details` as a separate question/);
+  assert.match(direct, /options of `@sai\/policies\/obstacle-escalation\.md` follow after `Execution details` as a separate question/);
   assert.doesNotMatch(direct, /exactly these four labeled sections/);
 });
 

@@ -67,12 +67,13 @@ test('policy names no harness', () => {
   assert.doesNotMatch(text, /Claude Code|opencode/i);
 });
 
-test('unattended recovery and Direct Build pipeline reference the policy', () => {
+test('unattended recovery references the policy and the Direct Build card follows the obstacle policy', () => {
   const recovery = artifact('sai/policies/unattended-runtime-recovery.md');
   assert.match(recovery, /what the user must decide,\s+presented as the stop options of `@sai\/policies\/stop-options\.md`/);
   assert.match(recovery, /Do not ask a routine "how should I\s+proceed\?" question/);
-  const pipeline = artifact('sai/commands/explore/steps/pipeline-direct-build.md');
-  assert.match(pipeline, /stop options of `@sai\/policies\/stop-options\.md` follow after `Execution details` as a separate question/);
+  const card = artifact('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(card, /options of `@sai\/policies\/obstacle-escalation\.md` follow after `Execution details` as a separate question/);
+  assert.doesNotMatch(card, /stop-options/);
 });
 
 test('AGENTS.md lists the policy', () => {

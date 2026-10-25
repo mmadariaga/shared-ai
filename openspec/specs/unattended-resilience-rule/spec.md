@@ -7,7 +7,7 @@ TBD - created by archiving change generalize-unattended-recovery. Update Purpose
 
 ### Requirement: One resilience rule decides every non-clean outcome of an unattended lane
 
-The unattended lanes (Explore Plan - Unattended and Explore Direct Build - Unattended) SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane by a pointer.
+The unattended lane Explore Plan - Unattended SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane that uses it by a pointer. Explore Direct Build - Unattended SHALL NOT apply the rule: it follows `sai/commands/explore/direct-build-coordinator.md`, which answers every non-clean outcome through `sai/policies/obstacle-escalation.md`.
 
 #### Scenario: An unforeseen failure is corrected
 
@@ -62,27 +62,6 @@ Immediately before sending any execute order (a closed order whose effects are h
 - **WHEN** an execute order fails and a foreign-index record is pending
 - **THEN** the coordinator restores the pending foreign entries before the no-effect check, and ends recovery with a report when that restore stops
 
-### Requirement: The stop notice is defined once
-
-When the resilience rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it.
-
-Earlier accepted steps SHALL be preserved and the stopped step SHALL stay pending. A stopped Plan slice SHALL still require a fresh route picker answer. A pending Direct Build execution in the same conversation SHALL use the pending-execution decision in `route-selector.md` and the retained state in `pipeline-direct-build.md`. Resumption SHALL preserve existing attempts and execute-order checks and SHALL grant no extra attempt.
-
-#### Scenario: A stop reports the blocking limit
-
-- **WHEN** an unattended lane stops because an invariant blocks the correction
-- **THEN** the notice names what failed, what is done and pending, the blocking invariant, and the decision the user must make
-
-#### Scenario: Direct Build resumes within the existing budget
-
-- **WHEN** pending Direct Build work resumes in the same conversation
-- **THEN** it uses retained recovery counters and existing execute-order checks rather than a new route selection or renewed attempt budget
-
-#### Scenario: Plan retains its selection gate
-
-- **WHEN** a stopped Plan slice is retried
-- **THEN** the existing fresh route picker answer remains required
-
 ### Requirement: The per-worker recovery allowlist is retired
 
 The policy SHALL contain no per-worker continuation allowlist and no generic prohibition on re-dispatching a worker. Corrections SHALL reach a worker only through a continuation form its contract already accepts: `continue_after_recovery` for the spec and design workers, the same-worker verification note for `sai-direct-build-worker`, and the worker's ordinary fresh-result request or route-defined correction feedback elsewhere. Repair content SHALL be input to the worker, never a new result shape or execution order.
@@ -94,7 +73,7 @@ The policy SHALL contain no per-worker continuation allowlist and no generic pro
 
 ### Requirement: Scope boundary and harness parity
 
-The rule SHALL apply only to the unattended lanes. Attended commands, other routes, and the Direct Build `--no-specs` POC profile SHALL keep their current behavior, because a POC failure is the experiment's observation. Claude Code and opencode SHALL apply the same rule semantics.
+The rule SHALL apply only to the unattended lanes that point to it. Attended commands, other routes, and the Direct Build - Unattended route, including its `--no-specs` POC profile, SHALL not apply it; a POC failure stays the experiment's observation. Claude Code and opencode SHALL apply the same rule semantics.
 
 #### Scenario: The POC profile is active
 
@@ -153,26 +132,16 @@ A correction's own report SHALL be evidence, not the result. After every attempt
 - **WHEN** the foreign-change check after an attempt reports a path outside the slice paths
 - **THEN** the route stops, reports the exact paths, and reverts nothing
 
-### Requirement: Direct Build corrections consume the existing budget and add no loop rounds
+### Requirement: The resilience stop notice is defined once
 
-Direct Build - Unattended SHALL keep one budget per scope, shared between the two recovery paths, where an attempt is one correction sent through either path, and SHALL allow three attempts per failed step. Attempts SHALL be counted on the counter the route already keeps in conversation state and SHALL be charged immediately before the attempt is sent; a delivery failure, repeated error, or malformed result SHALL NOT refund or reset the charge. The route SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), and a step's attempts SHALL never draw on another step's key. An attempt SHALL add no round to a loop that already has a cap, including the three review-fix rounds. The run SHALL stop when a step's counter reaches three with that step still failing, or when the budget agent returns the diagnosis the previous attempt already returned. Plan - Unattended SHALL keep no such budget: it follows `/sai-plan`, whose coordinator owns its obstacles.
+When the resilience rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes that use the rule SHALL reference it without restating it. Earlier accepted steps SHALL be preserved and the stopped step SHALL stay pending. A stopped Plan slice SHALL still require a fresh route picker answer. Resumption SHALL preserve existing attempts and execute-order checks and SHALL grant no extra attempt.
 
-#### Scenario: The budget is exhausted
+#### Scenario: A stop reports the blocking limit
 
-- **WHEN** a Direct Build step still fails after its three attempts have been charged
-- **THEN** the run stops without another automatic correction
+- **WHEN** an unattended lane stops because an invariant blocks the correction
+- **THEN** the notice names what failed, what is done and pending, the blocking invariant, and the decision the user must make
 
-#### Scenario: A correction occurs inside a capped loop
+#### Scenario: Plan retains its selection gate
 
-- **WHEN** an automatic correction happens during the three-round review-fix loop
-- **THEN** no fourth round is added
-
-#### Scenario: The budget agent repeats the diagnosis
-
-- **WHEN** the budget agent returns the diagnosis that the previous attempt already returned
-- **THEN** the run stops with the stop notice
-
-#### Scenario: Each failed Direct Build step has its own attempts
-
-- **WHEN** a Direct Build step fails after an earlier step used attempts in the same slice
-- **THEN** the failed step is charged on its own key with three attempts, and the counters persist across a same-slice resume and reset only with a new slice
+- **WHEN** a stopped Plan slice is retried
+- **THEN** the existing fresh route picker answer remains required

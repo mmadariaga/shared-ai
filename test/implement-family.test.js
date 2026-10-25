@@ -296,7 +296,7 @@ test('/sai-build starts no later segment after a blocked or stopped segment', ()
 test('the coordinator reviews each step adversarially with bounded fix rounds and pending findings', () => {
   const source = read(COORDINATORS[0]);
   const review = source.slice(source.indexOf('**Review.**'), source.indexOf('**Commit.**'));
-  assert.match(review, /pipeline-direct-build\.md` Step 2/);
+  assert.match(review, /direct-build-coordinator\.md` Step 2/);
   assert.match(review, /spec fidelity, test gaming, and excess scope/);
   assert.match(review, /Empirical/);
   assert.match(review, /Fetch @sai\/policies\/artifact-review-contract\.md/);
@@ -322,7 +322,7 @@ test('both coordinator review loops follow the incremental review policy and sta
   assert.match(implement, /Fetch @sai\/policies\/incremental-review\.md/);
   assert.match(implement, /reviews\/step-\{n\}-round-\{k\}\.tree/);
   assert.match(implement, /one final pass over the round-3 delta and its consumers/);
-  const directBuild = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(directBuild, /Fetch @sai\/policies\/incremental-review\.md/);
   assert.match(directBuild, /one final pass over the round-3 delta and its consumers/);
   assert.match(directBuild, /`review_snapshot`/);
@@ -349,8 +349,10 @@ test('the implement and review bindings render from the standalone template and 
         : `implement/${item.phase}-worker`;
       assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
     }
-    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'direct-build');
-    assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
+    const directBuild = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'direct-build');
+    assert.doesNotMatch(directBuild.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} direct-build`);
+    assert.match(directBuild.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+    assert.match(directBuild.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md/);
   }
 });
 

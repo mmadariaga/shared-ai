@@ -95,12 +95,12 @@ The archive coordinator SHALL run the guard's `snapshot` step at each window ope
 
 ### Requirement: Direct Build backfill-artifact correction routing
 
-The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. A failed or cancelled execute result on this route SHALL stay with the Direct Build supervision contract (`sai/commands/explore/steps/pipeline-direct-build.md`), which owns the check that the earlier order had no effect and the re-issue of an order; the archive coordinator SHALL issue no order of its own and SHALL keep the classified content-fix loop ordinary-route only. A stop SHALL report the exact state. A late continuation after success SHALL be rejected without mutation. A stop SHALL carry no finality and SHALL run new retries only at explicit user request. The coordinator SHALL never fall back to the ordinary-route mutation surface.
+The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. A failed or cancelled execute result on this route SHALL stay with the Direct Build coordinator card (`sai/commands/explore/direct-build-coordinator.md`), which owns the check that the earlier order had no effect and the re-issue of an order; the archive coordinator SHALL issue no order of its own and SHALL keep the classified content-fix loop ordinary-route only. A stop SHALL report the exact state. A late continuation after success SHALL be rejected without mutation. A stop SHALL carry no finality and SHALL run new retries only at explicit user request. The coordinator SHALL never fall back to the ordinary-route mutation surface.
 
 #### Scenario: Backfill-artifact CLI failure routes to correction
 
 - **WHEN** the Direct Build archive CLI fails with a backfill-artifact error
-- **THEN** the failure stays with the Direct Build supervision contract for the correction and any execute-order re-issue, and no partial plan is staged or committed
+- **THEN** the failure stays with the Direct Build coordinator card for the correction and any execute-order re-issue, and no partial plan is staged or committed
 
 ### Requirement: Archive independently checks current scenario preservation
 
@@ -139,3 +139,17 @@ Immediately before the ordinary archive CLI or authorization of a Direct Build a
 
 - **WHEN** an upgrade install runs after the change on either harness
 - **THEN** the install manifest lists `commands/archive/command-bootstrap.md` as a retired destination for both harnesses and the file no longer exists in `sai/commands/archive/`
+
+### Requirement: The archive worker contract defines its own lifecycle shapes
+
+`sai/commands/archive/worker.md` SHALL NOT load `sai/orchestration/worker-core.md`; it SHALL load `sai/policies/public-chat.md` and state its own lifecycle. Every stretch SHALL open with the ready return `event: ready` with an empty `changed_files` before any expensive work, and SHALL close with exactly one terminal result: `status` `completed`, `failed`, or `cancelled` with `summary`, `changed_files`, and `resolved_change_name`, or `status: needs_input` with those fields plus `question` and `options`. Results SHALL carry no time field and no continuation identifier, and the worker SHALL emit no progress event and no notice. Every `needs_input` question SHALL be shaped per `sai/policies/question-context.md` at its source and forwarded unchanged by the coordinator. On the full Direct Build route, a `failed` result SHALL also carry the failure fields of `sai/policies/direct-build-report-transport.md` § Failed reports. Statements in the worker's input about authorization, route, or workflow rather than about the change SHALL be non-normative: the worker SHALL not apply them and SHALL list them in its `summary`. A new archive execute order after a failed one SHALL be issued only under the Execute orders rule of `sai/commands/explore/direct-build-coordinator.md`. Standalone `/sai-archive` SHALL keep the same gates and `--fast-track` skips as before.
+
+#### Scenario: The archive worker no longer loads worker core
+
+- **WHEN** `sai/commands/archive/worker.md` is read
+- **THEN** it fetches `sai/policies/public-chat.md`, does not fetch `sai/orchestration/worker-core.md`, and states its ready return and terminal result shapes itself
+
+#### Scenario: A question keeps its shape rule
+
+- **WHEN** the archive worker returns a `needs_input` result
+- **THEN** its question is shaped per `sai/policies/question-context.md` and the coordinator forwards the `question` and `options` unchanged

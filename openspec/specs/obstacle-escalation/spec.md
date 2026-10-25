@@ -7,7 +7,7 @@ TBD - created by archiving change goal-driven-commit. Update Purpose after archi
 
 ### Requirement: One shared obstacle and escalation policy
 
-`sai/policies/obstacle-escalation.md` SHALL be the single source for the two meanings that goal-driven command cards share: stopping on an obstacle with recovery options, and escalating to the user. A card that loads it SHALL name only its own obstacles, their identifiers, the approaches that suit it, where it writes the hand-over of a new worker, where it keeps its counters, and its own force-majeure cases, and SHALL NOT restate the policy's rules. The `/sai-commit`, `/sai-archive`, `/sai-backfill`, `/sai-merge`, `/sai-3-implement`, and `/sai-4-review` coordinators, the audit coordinator, and the plan segment cycle SHALL load it.
+`sai/policies/obstacle-escalation.md` SHALL be the single source for the two meanings that goal-driven command cards share: stopping on an obstacle with recovery options, and escalating to the user. A card that loads it SHALL name only its own obstacles, their identifiers, the approaches that suit it, where it writes the hand-over of a new worker, where it keeps its counters, and its own force-majeure cases, and SHALL NOT restate the policy's rules. The `/sai-commit`, `/sai-archive`, `/sai-backfill`, `/sai-merge`, `/sai-3-implement`, and `/sai-4-review` coordinators, the audit coordinator, the plan segment cycle, and the Direct Build coordinator card (`sai/commands/explore/direct-build-coordinator.md`) SHALL load it. The `/sai-explore` stop points outside those cards (the stored-block export failures of `sai/commands/explore/steps/pipeline-plan-unattended.md` and `sai/commands/explore/steps/pipeline-direct-build.md`, and the pending-execution branch of `sai/commands/explore/steps/route-selector.md`) SHALL reference it instead of `stop-options.md`, `bounded-recovery.md`, or `unattended-runtime-recovery.md`, and SHALL keep the same recovery choices.
 
 #### Scenario: A goal-driven card defers to the policy
 
@@ -18,6 +18,16 @@ TBD - created by archiving change goal-driven-commit. Update Purpose after archi
 
 - **WHEN** the `/sai-archive` and `/sai-backfill` coordinator cards are read
 - **THEN** each fetches `sai/policies/obstacle-escalation.md` and names only its own obstacles (`worker` for archive; `worker` and `draft` for backfill) and its planned stops, keeping the attempt count in the conversation
+
+#### Scenario: The Direct Build card names its step obstacles
+
+- **WHEN** `sai/commands/explore/direct-build-coordinator.md` is read
+- **THEN** it fetches `sai/policies/obstacle-escalation.md`, names one budget of 3 attempts per step from `step-1` to `step-8` including `step-2b`, lists its own force-majeure cases, and writes the hand-over of a new worker itself
+
+#### Scenario: Explore stop points keep their recovery choices
+
+- **WHEN** a Plan or Direct Build stored-block export returns `BLOCK_NOT_FOUND` or `BLOCK_EXPORT_FAILED`, or the route selector reaches a pending Direct Build execution that needs a decision
+- **THEN** explore escalates per `sai/policies/obstacle-escalation.md` with the same choices as before (retrying the export or re-emitting the block with `--amend`) and references no `stop-options.md`
 
 ### Requirement: Obstacles spend a budget of three attempts
 

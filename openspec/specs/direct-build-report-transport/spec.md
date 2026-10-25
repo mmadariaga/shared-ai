@@ -72,3 +72,17 @@ For each post-ready full-route response, the coordinator SHALL pass only its ref
 #### Scenario: Validator call has no response
 - **WHEN** the validator call is interrupted without a result
 - **THEN** the coordinator records no acceptance or rejection and retains the evidence for bounded recovery
+
+### Requirement: Full-route failed reports carry the failure fields
+
+`sai/policies/direct-build-report-transport.md` SHALL define, in a `Failed reports` section, that a full-route `failed` report carrying `resolved_change_name` also carries `failure_class` (one of `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, or `unclassified-worker-fault`) and a boolean `unrecoverable`. Each worker SHALL compose the ordinary closed report of its own contract with these fields. `failure_class` SHALL be worker-authored evidence, not an eligibility gate: the coordinator SHALL decide the response under `sai/policies/obstacle-escalation.md`. A worker SHALL set `unrecoverable: true` only when its own evidence shows that continuing is unsafe, and neither field SHALL be written into a repository artifact. Report delivery and validity recovery SHALL be handled as an obstacle under the same policy.
+
+#### Scenario: A failed full-route report carries the failure fields
+
+- **WHEN** a Direct Build, backfill, or archive worker on the full route returns `failed` after its change name resolved
+- **THEN** its saved report carries `failure_class` and `unrecoverable` beside `status`, `summary`, `changed_files`, and `resolved_change_name`
+
+#### Scenario: The failure class does not gate the response
+
+- **WHEN** the coordinator receives a failed report with `unrecoverable: false`
+- **THEN** it decides the response under `sai/policies/obstacle-escalation.md` and treats the fields as evidence only

@@ -77,7 +77,7 @@ One gate round SHALL be one continuation of the same implementer worker carrying
 
 ### Requirement: Unresolved new failures or an unrunnable suite stop the route
 
-When new failures remain after the third completed gate round, or when the suite command fails before running any test, the route SHALL stop at its own terminal suite gate, defined in `sai/commands/explore/steps/pipeline-direct-build.md` without citing another command: the command and the failure SHALL be reported and nothing after the gate SHALL be run or marked; Steps 3 through 8 SHALL NOT run, so no backfill, archive, or commit occurs; guard window 1 SHALL be verified; the changes SHALL stay unstaged in the working tree; the shared stopped Direct Build terminal report SHALL state in What you need to know that the run is incomplete and name the verification limitation, and SHALL list the red tests or the command and error in Verification within Execution details; and explore SHALL then emit `{intent: fail}` to `explore-slice@1`. The slice SHALL be marked failed and remain retryable, a retry SHALL run the suite gate afresh, and no later slice SHALL start. The stop SHALL NOT go through **Bounded Recovery** and SHALL NOT enter the slice completion transition.
+When new failures remain after the third completed gate round, or when the suite command fails before running any test, the route SHALL stop at its own terminal suite gate, defined in Step 2b of `sai/commands/explore/direct-build-coordinator.md` without citing another command: the command and the failure SHALL be reported and nothing after the gate SHALL be run or marked; Steps 3 through 8 SHALL NOT run, so no backfill, archive, or commit occurs; guard window 1 SHALL be verified; the changes SHALL stay unstaged in the working tree; the shared stopped Direct Build terminal report SHALL state in What you need to know that the run is incomplete and name the verification limitation, and SHALL list the red tests or the command and error in Verification within Execution details; and explore SHALL then emit `{intent: fail}` to `explore-slice@1`. The gate rounds SHALL be the step's attempts, so the stop SHALL escalate under `sai/policies/obstacle-escalation.md`, with its options following the report as a separate decision prompt. The slice SHALL be marked failed and remain retryable, a retry SHALL run the suite gate afresh, and no later slice SHALL start. The stop SHALL NOT enter the slice completion transition.
 
 #### Scenario: New failures remain after three gate rounds
 
@@ -91,8 +91,8 @@ When new failures remain after the third completed gate round, or when the suite
 
 #### Scenario: The gate does not depend on the apply command
 
-- **WHEN** `sai/commands/explore/steps/pipeline-direct-build.md` is read after `/sai-4-apply` is retired
-- **THEN** its stop branch states the terminal suite gate behavior itself and does not cite `/sai-4-apply`
+- **WHEN** `sai/commands/explore/direct-build-coordinator.md` is read after `/sai-4-apply` is retired
+- **THEN** its Step 2b stop branch states the terminal suite gate behavior itself and does not cite `/sai-4-apply`
 
 ### Requirement: The no-specs POC profile runs no suite gate
 

@@ -109,7 +109,7 @@ The tool SHALL emit exactly one of the verdicts `clean`, `mismatch`, or `n/a`. `
 
 #### Scenario: Route cards reference the policy
 
-- **WHEN** `sai/commands/explore/steps/pipeline-direct-build.md` and `sai/commands/archive/coordinator.md` are read
+- **WHEN** `sai/commands/explore/direct-build-coordinator.md` and `sai/commands/archive/coordinator.md` are read
 - **THEN** each references `@sai/policies/slice-path-scope.md` § Commit coverage and neither names `slice-path-scope.js`
 
 ### Requirement: Snapshot watches listed target paths

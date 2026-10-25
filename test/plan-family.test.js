@@ -381,7 +381,7 @@ test('the Plan route of explore is a thin step that follows /sai-plan', () => {
   assert.match(plan, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
   assert.match(plan, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(plan, /BLOCK_NOT_FOUND/);
-  assert.match(plan, /@sai\/policies\/stop-options\.md/);
+  assert.match(plan, /@sai\/policies\/obstacle-escalation\.md/);
   assert.match(plan, /writes the run directory through the budget executor/);
   assert.match(plan, /Explore gains no direct write tool/);
   for (const retired of ['Result Loop', 'bounded-recovery', 'artifact-feedback', 'MachineFeedbackAdapter', 'Review Engine']) {
@@ -409,7 +409,7 @@ test('the shared policies lose only their Plan branches', () => {
   assert.doesNotMatch(bounded, /Explore Plan \(unattended\) item-10 exception/);
   assert.doesNotMatch(unattended, /diagnosis_rounds\.spec|diagnosis_rounds\.design|Plan - Unattended:\*\*/);
   assert.match(unattended, /`diagnosis_rounds\.direct_build`/);
-  assert.match(read('sai/commands/explore/steps/pipeline-direct-build.md'), /diagnosis_rounds\.direct_build/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`attempts`, one budget of 3 per step/);
   const fastTrack = read('sai/policies/fast-track-flag.md');
   assert.doesNotMatch(fastTrack, /`sai-2-design` parses/);
   assert.match(fastTrack, /`\/sai-1-spec`, `\/sai-2-design`, `\/sai-plan`, `\/sai-deep-review`/);

@@ -70,7 +70,7 @@ test('every explore review surface points to the contract section without restat
   for (const file of [
     'sai/commands/plan/cycle.md',
     'sai/commands/explore/steps/review-loop.md',
-    'sai/commands/explore/steps/pipeline-direct-build.md',
+    'sai/commands/explore/direct-build-coordinator.md',
   ]) {
     const source = read(file);
 

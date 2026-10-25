@@ -25,6 +25,7 @@ function readExploreContract() {
     'sai/commands/explore/steps/pipeline-selector.md',
     'sai/commands/explore/steps/pipeline-plan-unattended.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
+    'sai/commands/explore/direct-build-coordinator.md',
     'sai/commands/explore/steps/idea-list.md',
   ];
   return exploreSources.map(relativePath => read(relativePath)).join('\n');
