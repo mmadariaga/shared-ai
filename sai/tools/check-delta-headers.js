@@ -32,7 +32,6 @@
  * Usage:
  *   node sai/tools/check-delta-headers.js <change-name> [--json]
  *     [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]
- *     [--scenario-exceptions <temporary-json-file>]
  *
  * Exit codes: 0 = headers and scenario preservation pass; 1 = violations
  * found (report on stdout); 2 = usage, I/O, or incomplete comparison.
@@ -82,27 +81,6 @@ function collectScenarioRequirements(content) {
     }
   }
   return requirements;
-}
-
-function readExceptions(file) {
-  if (!file) return [];
-  const exceptions = JSON.parse(fs.readFileSync(file, 'utf8'));
-  if (!Array.isArray(exceptions)) throw new Error('scenario exceptions must be a JSON array');
-  const seen = new Set();
-  for (const item of exceptions) {
-    const fields = ['capability', 'requirement', 'original_name', 'operation'];
-    if (item && item.operation === 'rename') fields.push('new_name');
-    if (!item || Object.keys(item).length !== fields.length ||
-        fields.some((key) => typeof item[key] !== 'string' || !item[key].trim()) ||
-        !['remove', 'rename'].includes(item.operation) ||
-        (item.operation === 'rename' && item.new_name === item.original_name)) {
-      throw new Error('invalid scenario exception; expected capability, requirement, original_name, operation (remove|rename), and new_name only for rename');
-    }
-    const key = JSON.stringify([item.capability, item.requirement, item.original_name]);
-    if (seen.has(key)) throw new Error('duplicate scenario exception');
-    seen.add(key);
-  }
-  return exceptions;
 }
 
 function readSpec(file) {
@@ -170,7 +148,6 @@ function usage() {
     '                  (default: <root>/openspec/changes/<name>/specs; use an',
     '                  OS-temp staging copy for pre-write draft checks).',
      '  --specs-dir <dir>  Main specs root (default: <root>/openspec/specs).',
-    '  --scenario-exceptions <file>  Temporary JSON array of approved removals/renames.',
   ].join('\n');
 }
 
@@ -183,13 +160,12 @@ function parseArgs(argv) {
     else if (arg === '--root') opts.root = argv[++i];
     else if (arg === '--delta-dir') opts.deltaDir = argv[++i];
     else if (arg === '--specs-dir') opts.specsDir = argv[++i];
-    else if (arg === '--scenario-exceptions') opts.exceptionsFile = argv[++i];
     else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
     } else if (opts.name === null) opts.name = arg;
     else return { error: `unexpected positional argument: ${arg}` };
   }
-  for (const flag of ['--root', '--delta-dir', '--specs-dir', '--scenario-exceptions']) {
+  for (const flag of ['--root', '--delta-dir', '--specs-dir']) {
     const index = argv.indexOf(flag);
     if (index !== -1 && (!argv[index + 1] || argv[index + 1].startsWith('--'))) {
       return { error: `value required for ${flag}` };
@@ -221,11 +197,6 @@ function main(argv) {
   const specsDir = opts.specsDir
     ? path.resolve(opts.specsDir)
     : path.join(root, 'openspec', 'specs');
-
-  let exceptions;
-  try { exceptions = readExceptions(opts.exceptionsFile); }
-  catch (err) { process.stderr.write(`cannot load scenario exceptions: ${err.message}\n`); return 2; }
-  const usedExceptions = new Set();
 
   let entries;
   try {
@@ -329,27 +300,13 @@ function main(argv) {
         }
         for (const originalName of original.scenarios) {
           if (draft.scenarios.has(originalName)) continue;
-          const exception = exceptions.find((item) => item.capability === entry.name &&
-            item.requirement === req.name && item.original_name === originalName);
-          if (exception && (exception.operation === 'remove' || draft.scenarios.has(exception.new_name))) {
-            usedExceptions.add(exception);
-            continue;
-          }
           violations.push({ capability: entry.name, file: path.relative(root, deltaFile),
             line: req.line, section: req.section, name: req.name,
             mainSpec: path.relative(root, mainFile), problem: 'MODIFIED_SCENARIO_MISSING',
             scenario: originalName,
-            detail: `existing scenario '${originalName}' is missing without an applicable approved exception` });
+            detail: `existing scenario '${originalName}' must be preserved in MODIFIED; intentional removal or renaming needs an explicitly named distinct replacement requirement` });
         }
       }
-    }
-  }
-
-  for (const exception of exceptions) {
-    if (!usedExceptions.has(exception)) {
-      violations.push({ capability: exception.capability, name: exception.requirement,
-        section: 'MODIFIED', scenario: exception.original_name,
-        problem: 'SCENARIO_EXCEPTION_UNUSED', detail: 'exception does not match an actual removal or rename in this requirement' });
     }
   }
 
@@ -370,7 +327,7 @@ function main(argv) {
     for (const v of violations) {
       const mainRef = v.mainSpec == null ? 'no main spec' : `main: ${v.mainSpec}`;
       process.stdout.write(
-        `[${v.capability}] ${v.file || 'exception metadata'}${v.line ? `:${v.line}` : ''} ${v.section} '### Requirement: ${v.name}' [${v.problem}] — ${v.detail} (${mainRef}).\n`,
+        `[${v.capability}] ${v.file}${v.line ? `:${v.line}` : ''} ${v.section} '### Requirement: ${v.name}' [${v.problem}] — ${v.detail} (${mainRef}).\n`,
       );
     }
     process.stdout.write(

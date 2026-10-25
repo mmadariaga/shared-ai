@@ -59,9 +59,11 @@ takes one — never substitute one for the other.
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
   --cwd <project-root>`.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
-  [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]
-  [--scenario-exceptions <temporary-json-file>]`; it takes no
-  `--cwd`.
+  [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no `--cwd`.
+- `validate-backfill-drafts.js`: `node <tool-path> validate --harness
+  <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
+  <project-root> --fingerprint <hash>`, with the complete reference set on stdin,
+  per `@sai/policies/backfill-draft-validation.md`.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them). Full Direct Build uses `--report-dir <authorized-dir> --report-file

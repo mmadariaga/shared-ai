@@ -5,59 +5,40 @@ specifications are read-only inputs. A MODIFIED requirement keeps every existing
 scenario name in that same requirement; order and scenario text may change and
 new scenarios may be added.
 
-## Temporary exceptions
+## Intentional removal or renaming
 
-Represent intentional differences as a JSON array, one object per scenario:
-
-```json
-[
-  {"capability":"example","requirement":"Existing requirement","original_name":"Old scenario","operation":"remove"},
-  {"capability":"example","requirement":"Other requirement","original_name":"Old name","operation":"rename","new_name":"New name"}
-]
-```
-
-Names are exact. A rename requires its new name in that same requirement.
-Duplicate, malformed, or unused exceptions fail validation. There is no blanket
-bypass. Metadata is temporary, never a scenario or repository artifact.
-
-The backfill worker writes `scenario-exceptions.json` with `transfer.js put`
-inside its transfer directory (an empty array when none are proposed). It returns
-`scenario_exception_reference: {path, sha256}` beside `draft_references`, not
-inside that destination-bearing list. Each corrected result returns the complete
-latest metadata reference as well as the latest drafts.
-
-The receiver verifies the metadata reference with `transfer.js verify` and checks
-each proposed exception against explicit approved scope (the approved block,
-accepted interview answers, or approved change artifacts). A worker declaration,
-the implementation diff, fast-track, and a checker pass are not approval. With
-no evidence, restore the scenario or ask the user to approve that exact removal
-or rename; do not materialize or archive the affected draft meanwhile.
+Preservation in MODIFIED is mandatory, with no exception mechanism. OpenSpec
+1.13.0 rejects scenario loss there even when the requested change is approved.
+Use REMOVED for the old requirement and ADDED for its replacement under an
+explicitly chosen distinct, non-colliding requirement name. Reusing the old name
+does not work. Never silently invent a replacement name: obtain it from approved
+scope or ask for it. Approval alone cannot make an unsupported delta valid.
 
 ## Check at each boundary
 
 Resolve `check-delta-headers.js` per `@sai/policies/tool-resolution.md`. Run:
 
 ```sh
-node <tool-path> <change-name> --json --delta-dir <draft-specs-dir> --scenario-exceptions <metadata-file>
+node <tool-path> <change-name> --json --delta-dir <draft-specs-dir>
 ```
 
-For on-disk deltas omit `--delta-dir`. Without exceptions omit
-`--scenario-exceptions` (preserve every name). Main specs resolve from the project
+For on-disk deltas omit `--delta-dir`. Main specs resolve from the project
 root, never the temporary draft directory. The tool compares by capability AND
 requirement, not globally. Exit 0 means headers and scenario preservation pass;
 exit 1 returns concrete differences for correction; exit 2 means the comparison
 could not complete, not that preservation succeeded. Keep existing schema checks.
 
-- **Author boundary:** after putting the complete draft set and metadata, the
+- **Author boundary:** after putting the complete draft set, the
   backfill worker runs the check on `<transfer-dir>/specs` before returning any
-  completed draft result. Candidate exceptions here are proposals only.
+  completed draft result. This is preliminary, not write authorization.
 - **Receiver boundary:** before materialization, the coordinator independently
-  verifies all references, approves each exception, and runs the check on the
-  temporary drafts. A failed check returns its report to the same worker for
+  verifies all references and runs the check on the
+  temporary drafts. It also applies `@sai/policies/backfill-draft-validation.md`.
+  A failed check returns its report to the same worker for
   correction; no draft writes occur before it passes. Repeat on corrected content.
 - **Archive boundary:** immediately before issuing any archive execution order
   or running the archive CLI, the coordinator independently runs the check on
-  current on-disk deltas, with only scope-verified exceptions. Repeat after any
+  current on-disk deltas. Repeat after any
   content correction, before retrying the CLI. A failed comparison prevents sync,
   archive, and commit of those drafts; correct the affected content first.
 
@@ -67,12 +48,8 @@ before authorizing the backfill worker to rewrite the named drafts. It then
 repeats the archive boundary before any sync retry. This preserves the existing
 same-worker correction ownership and budget, with no new commit authorization.
 
-Direct Build retains verified exception bytes and approval evidence outside the
-repository until archive completes. It retains its transfer directory through
-archive (including corrections), rather than closing it after backfill execution;
-close it at the existing terminal cleanup. Re-verify references before every use;
-changed bytes require fresh approval and a fresh check. Ordinary archive sessions
-derive any needed temporary exceptions from explicit approved change scope and
-verify them independently, without depending on a previous backfill's temporary
-directory. Ordinary backfill keeps its existing invocation-close cleanup; an
-absent earlier session is not approval.
+Direct Build retains its transfer directory through archive (including
+corrections); close it at the existing terminal cleanup. Re-verify references
+before every use; changed bytes require fresh validation. Ordinary backfill keeps
+its existing invocation-close cleanup. Independent archive checks and the archive
+CLI remain required; temporary validation does not replace either.

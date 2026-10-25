@@ -302,11 +302,12 @@ Classify every requirement's delta header per requirement, never per file or per
 
 For MODIFIED drafting and all corrected drafts, use
 `@sai/policies/scenario-preservation.md` (loaded by the worker's Draft transfer
-section). Preserve scenario identities within each requirement unless the
-approved scope explicitly removes or renames them. Put proposed exceptions in
-the separate temporary metadata, then check the complete temporary draft set
-before delivery. The coordinator independently verifies approval and repeats
-the check before materialization or archive.
+section). Preserve every scenario identity within each MODIFIED requirement.
+Intentional removal or renaming needs a supported replacement with a distinct,
+explicitly chosen requirement name; never invent one. Check the complete temporary
+draft set before delivery. The coordinator repeats the preservation check and
+validates the complete draft set with the OpenSpec CLI before materialization;
+independent archive checks remain required.
 
 On the ordinary route, after all draft references have been returned for
 write, stop. Do not create any planning artifact, run another SAI command, or

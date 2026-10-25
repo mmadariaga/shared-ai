@@ -16,10 +16,20 @@ Reconstructs the basic documentation for a change that was made directly in code
 Both Claude Code and opencode check MODIFIED requirements against current
 published specifications before draft delivery and again before materialization
 or archive. Existing scenario names must remain in the same requirement.
-Reordering, editing scenario text, and adding scenarios are allowed. An
-intentional removal or rename needs an exact, scope-approved exception; worker
-metadata alone is not approval. An unreadable or ambiguous comparison does not
-count as a pass. Exception metadata stays temporary and is never archived.
+Reordering, editing scenario text, and adding scenarios are allowed. Removal or
+renaming inside MODIFIED is rejected without exceptions. Intentional replacement
+uses REMOVED and ADDED with an explicitly chosen distinct, non-colliding
+requirement name; the command never invents a name. An unreadable or ambiguous
+comparison does not count as a pass.
+
+Standalone backfill and Direct Build also validate the complete draft set with
+the OpenSpec CLI in a private temporary project before authorizing repository
+writes. This project copies current specifications, configuration, and schemas;
+it does not register a store or change project files. Drafts and specifications
+are checked again for changes before writing; changed inputs require validation
+again. A rejected or incomplete check, including an unavailable CLI, leaves the
+drafts unmaterialized and keeps diagnostics for correction. Independent archive
+checks and the archive CLI still run.
 
 The user identifies the manual change to regularize or chooses a change source using the available selector. The command studies that difference to separate what can be demonstrated from the code from what would only be an assumption.
 
