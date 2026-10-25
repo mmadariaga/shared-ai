@@ -517,8 +517,6 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   }
 
   const templates = {
-    claudeBinding: '{{phase}}/{{workerName}}',
-    opencodeBinding: '{{phase}}/{{workerName}}',
     claudeStandaloneBinding: '{{phase}}/{{workerName}}',
     opencodeStandaloneBinding: '{{phase}}/{{workerName}}',
     claudeAgent: '{{phase}}/{{workerName}}',
@@ -527,10 +525,10 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   const matrixForTemplates = defineMatrixOrNull(fullMatrixEntries());
   assert.ok(matrixForTemplates, 'the canonical entry set should validate before template checks');
   assert.throws(
-    () => materializeWorkerMatrix(matrixForTemplates, { ...templates, opencodeBinding: undefined }),
+    () => materializeWorkerMatrix(matrixForTemplates, { ...templates, opencodeStandaloneBinding: undefined }),
     error => {
       const message = String(error && error.message || error);
-      return message.includes('opencodeBinding');
+      return message.includes('opencodeStandaloneBinding');
     },
     'a missing harness template should be rejected naming the template'
   );

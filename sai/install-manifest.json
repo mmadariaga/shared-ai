@@ -72,8 +72,6 @@
   },
   "worker-matrix": {
     "templates": {
-      "claudeBinding": "sai/orchestration/workers/bindings/claude/worker-template.md",
-      "opencodeBinding": "sai/orchestration/workers/bindings/opencode/worker-template.md",
       "claudeStandaloneBinding": "sai/orchestration/workers/bindings/claude/standalone-worker-template.md",
       "opencodeStandaloneBinding": "sai/orchestration/workers/bindings/opencode/standalone-worker-template.md",
       "claudeAgent": "agents/claude/worker-template.md",
@@ -393,36 +391,6 @@
       "drift": "content"
     },
     {
-      "id": "claude-boot-adapter",
-      "source": "sai/adapters/claude/boot.md",
-      "destination": {
-        "class": "sai",
-        "path": "adapters/claude/boot.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
-      "id": "opencode-boot-adapter",
-      "source": "sai/adapters/opencode/boot.md",
-      "destination": {
-        "class": "sai",
-        "path": "adapters/opencode/boot.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
       "id": "sai-policies",
       "source": "sai/policies",
       "destination": {
@@ -489,38 +457,6 @@
       ],
       "strategy": "copy",
       "recursive": true,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
-      "id": "sai-command-runner",
-      "source": "sai/orchestration/command-runner.md",
-      "destination": {
-        "class": "sai",
-        "path": "orchestration/command-runner.md"
-      },
-      "harnesses": [
-        "claude",
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
-      "id": "sai-worker-core",
-      "source": "sai/orchestration/worker-core.md",
-      "destination": {
-        "class": "sai",
-        "path": "orchestration/worker-core.md"
-      },
-      "harnesses": [
-        "claude",
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
       "ownership": "managed",
       "drift": "content"
     },
@@ -3791,6 +3727,17 @@
     { "id": "retired-merge-goal-driven-commands-merge-instructions-md", "destination": { "class": "sai", "path": "commands/merge/instructions.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["1a0a0fdc88ebfe7732f10d38237db69241bcaf29ccc92f784ce12687d0611cab", "22157c829061e136881f369b19d340ef07123b05e0f4e666e682d6764125c1f2", "33dc9cc6a53bf5660a35a4b860913ddc351784097f265fabdc963401a4820e00", "37ac332061fe76a3d14a4f4a28529306519b9acb28d353673e289480eaccb8f7", "3bd007118288d3a97f0cf8d9d7679e3bd8ffa3b13a892c600107dfa0fdbe9aa3", "46b4c1c70eb59d3248249c9a5532b41f18bea2bbfd4c2400bc7da2af965485bc", "48320fda71e05d0840d8a2da31e54db8a88812644358d80b33e3ec7b5a84a566", "4fdcb4adf7e4c34e5267a88bd438c6cea42da97015af5f6da88cd509b51bfa5c", "580a3238254f1d825db4271d5ab1bd0e5f7de076d2af6f661bdfd2d8bbcd001b", "71f9e278aa7c4107e219e103f9cb756a061a271d7ffe5620971f9e9c929b3ce0", "8f292ef89bbdb75bb7d0269b199961ebbdd89f4b5e7473c59272ab7a66d0f4ef", "9c2548a07f3012bc200680ef396261bad65f2fc043c09856674e6e74015fdf19", "a031c9e651a292bcb5ce25091d3cebd5bdfa08b86eb772b82737db4363c4725f", "a521bd2a7a1852859f27e6f52d1bb6165174b68a747f7b2a2553808ec46de8ab", "a682ccb44c4c02b5ada03c5200e517d3211b32d82d9a459d8261005f4c350f5a", "aea2c363134bd1d6bca8ffe039090bf5fda090f8b82af3400166d2a5a55ea461", "bb1a9414e67f1c0dbed777ff234dee7b9b131bf9d4ca62a311d6d0fb355f8aaa", "bffeb3fb9637f8d4569e569f90aa721430bd0b2d8dfdeadc352a78b388284434", "c8a6289fc4e478a260f02e154ffcd0fcb12d353a0e856a6e45dfabeba36ae577", "ccaab716c88ac871efab8479d95c10ddb26a418d883d0e0c6cacb35aaf51a803", "cecb28bbf95033fa4b644623ea408c517e115f389ce1de4ccd93728c8bbf7d3e", "ee4c5927f72f0324206b7e4f14c8214dbba7ed27f942166cba4835297ed7a551", "faadf29ad7b194154f17861b509143c24f88bdb51c0c47f18722c07e19648e66"] },
     { "id": "retired-commit-goal-driven-commands-commit-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/commit/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["71a2e94bc5aba96c65ec1d7d65055ccc0c5f0b0ef4bea41bbfb6bf5d1f29040e", "929e6af4250360304f57e8650c9d24226ddd2b55b6fd5c1fc8b032125d7f5760", "beef704f7beef45385c00cdd30c8052b948bffae18148e37118301855ceedabc"] },
     { "id": "retired-archive-backfill-goal-driven-commands-archive-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/archive/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["ded999839b94ace6ee651d660eba795413fd945daf780c037f9cd53a2a3de12d", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] },
-    { "id": "retired-archive-backfill-goal-driven-commands-backfill-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/backfill/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["e32b91b2ebe3a498a1e039a9cd2e777ec68ee576e50363ceb0a8f44f4384bc1e", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] }
+    { "id": "retired-archive-backfill-goal-driven-commands-backfill-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/backfill/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["e32b91b2ebe3a498a1e039a9cd2e777ec68ee576e50363ceb0a8f44f4384bc1e", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] },
+    { "id": "retired-retire-legacy-orchestration-commands-explore-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/explore/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["00aa0088ffc9520b3f05a947988cea136f1e63b688d7d62aeefb7d8d5bfbacb0", "2def7c0a4fa182a8b84562c9a0c70ef3a0a6f43fe6b337791228e818088f3586", "3451c3e1cba0f63fdcb345147b10cc6fece275ef52477d52fd74233f8b215b6a", "362ef421c69452d80003c5f413361975ca001e603082724dc0910a07dd6cee08", "39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09", "462d4f9161a9ac316e4924b2a599c9c6a0587d52c35ea84043a7945200b4bcae", "4c71ea6e79fd5cd6e7693a08246ae6ad291e5b7e3aad9c17eaae100d6fd1406b", "ad60fde291e06622d5872089d135076f76ba92cf280f255d66e8548b3df8b03f", "c56a3902ee5cc2550f082f3ee240ce26ed5d1ea9a544569d04215253630fcd28"] },
+    { "id": "retired-retire-legacy-orchestration-commands-retire-docs-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/retire-docs/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] },
+    { "id": "retired-retire-legacy-orchestration-commands-status-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/status/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] },
+    { "id": "retired-retire-legacy-orchestration-commands-worktree-command-bootstrap-md", "destination": { "class": "sai", "path": "commands/worktree/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09", "b2ef8cf8d3e93ae60a21862a1e680f935fa9e33b2d5f27925b5ba1a48fd11901"] },
+    { "id": "retired-retire-legacy-orchestration-adapters-claude-boot-md", "destination": { "class": "sai", "path": "adapters/claude/boot.md" }, "harnesses": ["claude"], "managedHashes": ["0c5a54fc0dbaaf2a8763b747b10db28b99f8a74534a2ae56f8e4a4f086558398", "1f7c407a7ca2073901bb68f789299deded36343029af0907db9e80e78a64a675", "2a05b3091b59d850f5b76c0f68da2af0adc8dfc1cf987fd997c386ce8f2ed3ae", "2e80e92b108c5604e26d1d0cf310cc15e2a5ad6aa1b6e39d26d13e346fd9af18", "30f7f47a3eb78ab252787576a72bced9085c4ee7d4dbe99b356cb022f354ee06", "380c1bb9f9cb1504a2c8376949da030ab000fb6dc18a819640737c031a32cab1", "49ee68f2c709acf0ba86dfdbb3d4c4bfdf8f7532ead0865c3b2798f0e71a193b", "5cfc8044f2db73b1ee80fc8cbb0f2daa7ce0c6338f71aaaf31d6bfa590fc3e5d", "7176e4b51dcf4c382d939ca7b291013b60866017fe07f358fb38ae2210b49336", "7c48c4e51fd4bca57d93654f14a350324d1eb74d189f426282d9ad6d983a96e9", "7e461195c1d79b686ca708ccf14c34336c28d97d4f99362c5ce78bbb71544f88", "813945d95816755494499c4fce6173591fabdb8c3346fd7e90269ee30ca3dac4", "943f2306203f374e137562e9e12073f6f8c81366bcf4723c7f53e4c7995ec185", "9c2275c661021eb412011da01ba9f2f362cf51ea08c1fe1c8dd44a8be1a11b87", "ac0710e5b621ad3a6b537ee84341b9723373a64243bca360fc5a7bf53d6f5fb5", "c3d87466a0fde92532ddbdb64016144248ad6854ae58d81e8faf2f58991bc7dd", "ce3b3f0f737ba4ccffe904c37991bf24ffe1e6d79a896a92baf08b3e7438d9ce", "df8fcaa702934800413c45e01293bc1ed58e3512e7ecb3bbc1ee5ac398d29924", "e4a0d0a2309408887d313c19b358d94128e61582b995fa87bd50a344c70cb40d", "f4c9dec5c21ef69ea05ac2b41a4263db8344fcd06b68d2180ea9f375448ba0bf", "fd70c6724d10d1052bf8819119f06de0e0bf476a51cfdec70be1f8a0fc933661", "fdc7a20c16a53eaa98ea2482bab4704b3273db57a373c2944e6f72b63630f2e9"] },
+    { "id": "retired-retire-legacy-orchestration-adapters-opencode-boot-md", "destination": { "class": "sai", "path": "adapters/opencode/boot.md" }, "harnesses": ["opencode"], "managedHashes": ["08f3793b8e7721c67cbffaa0fa8e2cc43ff9c440a4976d65bccc27bd5632d8f9", "0bda6fc262c4f0fe52f176917ba0e2ac272c76ff5056f2c3ca5ad57a2fff160f", "236441e54a63bf405bf9c26265dc532242b7668ea77b53459f967ed904eee81e", "26c5fa8d5f724b5d120f98ec28a2a5f11d8a73702cea6f9a51f1b380347f3d89", "39f7a4ecf1f3e2f60097115044afc1415a6f8a720accdb44c972d76e865cd0d0", "4c5db3568d197618b2004fd2f82e0f05f92848b9ea137f3d451147dab742d834", "4f926d5f5bed2a0c06d8985ec7ae555048be03f222fd090f0bbdb8a984e83cd7", "50d035627987712017083c1ffc5cfcf0f9f24350af53574190b8ada469f27202", "517813f0a5f47beb479847d7f7b78a8223e96cfa9464a8572f4c4c6462f1781b", "66e7445dd2d93cd6b0f2f026df9bcf0726aa6128c2a60809baf01c8c9b51739a", "6ee5f14e1cc7ac1e3dcfe671e5f55db616a583eec545ce35084057b08d506919", "819c1110f547e7667ebf93a1071a77c58eeab4a86358959b83ebffee3b8d0790", "875f6e07b0fa5294a85ecf290035481f969ab320c6d88e04d72cb8523cbe80d9", "8936d19ed6f981d7acee18c9a130b7a3258596429e1decf54bd15e2767571bce", "98e1d33b8b60525cb7db66b10ab9f856c983601281358c9cf6cccc066b47eb5e", "b6f07767173fc5ab886c27422fdcbd00e31cab793aad8c5bb19178bdefdc2ec9", "c57c7bd5539bf7f5556d6e74ea654582c68fe20389b15b3ea6e93d3fe4118c4e", "c8abd9bc847138e9eb1826348df9574c7017668c16f2a81f903e5b57908e620f", "cf141c30879f06a03ed1097a71506788651ac9fb521d05817bd079219c0df0fe", "da46ee0ad79682c102b14bd373f3a70ec4d5e026867ccaa7fb41268cbaf03f8c", "f0f7752dde4cf832f55babf841ae1a6653bd15ab19a7dd1c85fdc7169afa629d", "f255acbdad9aecc69f41099c937033a906b1b19ae94e5edf6ba4b814476fcb97"] },
+    { "id": "retired-retire-legacy-orchestration-orchestration-command-runner-md", "destination": { "class": "sai", "path": "orchestration/command-runner.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["05d91faddccc43712a2ca8b926c12e082efbb4f8602b35b53d7f5a9bf361b2dc", "08800a4ba077be99b42afb5e31dec248d10ae940caf5e204828e195d7645dd8b", "101e235ef03fa77c6dc793dc560101cef6af0d7f1770f03dcd9b01a6b19ad68d", "1207f620f2999cdb6ca153ab7563cca0a0a5c35685f3e430ff39b1c7c1b0b6e7", "2921af522eae219b4e30a0376dbaf189967f3d9027055cd613d3c35457ef9bc6", "2ac28afc4932b010ca5a04ddb34e1626beccfc6f9a5c7e7043fae68e0ba68f72", "304d294988106cfbd29df74eef75a54114ecd3cd16c02a16bf0a271daf6d281a", "33ea4fdd27c8d548588f1555d5c5d7a70ba7d13e17abaa5c7a369b01c8558961", "3b8ec0adb5a1fa2230af7cd33de78d8b60fbd7f6073796d509f61080a9c3da80", "3df28d851f8f18ad6dc5581fc90000f1432533db468cea520e28210c5501111b", "424e0cade4396d26d381eab09ec602549e75e372b12ad7dc99db5f9ca294616f", "58aeb2905a4b68ea1ebe2febee516144268da79eb60ebda0d97bec6e5ecdde18", "5ed7912e0609027d972faf7559abc15feb937287f872dfcaa764b48a6169b175", "6920d0a2153501467cf6d71f6abb0a0ad316feac8010ec14d0756e35d96852e1", "6b8641fb1964726f45a9fdf0791baa8810be1b5c95169174f9da5611849758ff", "73924faf395efdd2630356da7b3b8aea2ae33805cd35cd397d9dd0fcd9172796", "7833652b40c07b90c10c307026d4c53aaca8ea78636e51cbb4b7140516925613", "78c957791b29c7382043abfb93d851f244769ee88760809ed8c172bf170d7831", "8492f0aa66291a33d9a60811e5c8f15eeb08585a77d44c586481c32934175be0", "88d33be8aeca26f7e7e192cb6666e72ca9841167e1d0380c6ad0ae376d168ddc", "97bce6793a21297b81b52aa727cdf48f7784d37fa24175dad68944a344a65f18", "9d8119a43462f480ae989e2c78c2d9a4a4d84bca6f00d177705a9b779987fcb3", "9d874d32fb445745d948411fb03bd5717d771bb59b1527a0ce52e18d93847327", "a2ec0670cb1778b7a67be6f7082bc1f268ec2b9ffc8e682267e65920e5fbceff", "ac7b5a37498dca0f3a33e67843e6fc0becfb5b1663c882cc64b192ae283fc814", "b86bd92ecef0345a07ee297cc97497ba331abaa1683bfaa78d1c89643029808d", "c0818699613b011a21c5f83b8f950dc5618b2c5ab2e87e8a80c750ef997f8f6d", "cbc8f0a8ff42ed98fb2216ee0e63762ead9a42fdec598d762756a0426772336b", "d73709e40f10097cc21d1322b208ad8e263ef197cad47e59e14968364e1ac2ed", "d7414eeef90a82acd2eb308ec2de590670df03ca977973d6a7dd44610f78c084", "d89d8de3be8902ae4c3e3345ad88ff44b2ead4e85373cee21b1bb5aa8019a483", "da6dd4c395e751cf8aa71367e26efde6129f804432bfe2b32b6fbc134c63fa2b", "f2d384fd4deb17bc501e7d1e1b806bdc0bb12e777740b2b3bfbd76589663e8d3", "f31814130c56386166266102420bd581bef30feddeeda4b290855aa0e800aa14", "f687b872d90b555a78de969bcb0523679fc8f948ba6ba27d9fd6624a8c0aefd8", "f75f16cdf2d51ada30b7df09780662f1db1c4ff527f7e87846c8f67749aad4d0", "f918be46e7cad721af2e236a2d54a7feef2248ce6f5519b9bc6866e13fed4fed"] },
+    { "id": "retired-retire-legacy-orchestration-orchestration-worker-core-md", "destination": { "class": "sai", "path": "orchestration/worker-core.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["040294dff9c89262b8bf18a26691897cea39a962f5c708ccc3d13f06d4bf7d8d", "0b6badecc4c7d6ed17575706921a55105b85863fdea625f96bbb327b0b5e50bd", "15d9b95520f72d5f07a594bba4f48be71709191b3416047adcf78519c11b0e8c", "1e48c509066f7074a0624b4ac863cffb80afe2b88e0a451d91d875cd1324016f", "1e941d939eb2f6abf37d7e92af025544bf90a094f1cf022f416e154172f38ab1", "3c2c38aa7cae9480535ac87aadfec095c470ab9c91139d42a4f71fd9f5f1a879", "40087c8108928c2b486fd6bf736c5c7d2f01c738ec55c90304a5dc0666d75d4e", "4b480217b2f1e4c6ffa454b7aedca4bce654d0ebf1e9857b514e43f807e5ea0f", "4bbdc229b18d8c358d9f4f451ad99acfe98956e2147782c7692e271a6f6c7506", "5ac04bfbf479f7c5806d95e13b8e6bfe09c6239e896c4612c07ddc3ae18df340", "5ea138bb24bc105c98da3352c77c64085b80bace92420df322048ad6377cee49", "60b2e84b2b858b70c923170a9193e24c5792c1088048ede6651185cc9737db49", "6dfd6571d4c55a2707659d674400c36dd8e52ec4fc86957d890f22e50f8f92f7", "708da1706b1dd1b1f7424d27e87f3ee8cf65bfed7122b655f363fd032cc8ef8d", "7ee992d5e82f278777e2f3ec9fe65a111d45830ce8e80c1fa5d5adc3ff6438f1", "880bbfd7ec35cd856515ada4859a605ed06c2781f157fb3ca972f1b453b5bb79", "9c0b82b00c0e5b6d636dcdfacb75578a546a09b9a42d2b0f5363c7315d036430", "a1023fbd4a68290d2f5f6765d9e2693c99d10768fb75be2fdf8d66ce3f3f403a", "a61f701e8474e465614c2c1f7a896c7136ed804db2e47c1af3a2565a4e14409f", "abbb07a095f7db444ac4e5f0161bdd3e58b0cc71dd9058295cb7b4e730ed3cfc", "ad9d7da582776b1c98e052b4a8447182c16ddbf91bc73f282f2b71b5e0902a60", "b56bccbedeccb2e40dd60105ec42658bebb5a9ec7aa8d5a2a7368247dba7a563", "bdafcb276a65ff3dc9551dd33e54e1e91a043d87e2030a443f0da776546aee59", "c8dd82c9f53113e558e9e408a634361bc6321bd977892b4b68b8b18685815ea8", "cc164252fc052bfc53706c7951a999b6e72560e895bcb4b09083e09cd50f0607", "ce7c38a76db784a81083c1901812ac85b53f03518230cca464501e27c2afac34", "db0655eb47e4ac0fdf080a83a95278e008497c7fb1966a24f43a58fa3c654716", "ea89ebec07ff74c7ffb3aa423a768d12b69f7db854c8129940e4d790297d1554", "eb1d4fe14dc47ecdfdf180374f1aa8936f9e11dac3400c0bb6b42eb4e9dbf008", "ee7bd1f3463267a36909bd47f3d6b860c8aae5bf949814309da5face1d0aba7c", "efc4dbc24e31ef32e62eeff225deb424d10a1dbafe9997f70f73be79d9807a6d", "fac6e9d654458cb091e9eb4fa5f41af8e1565118f27bdae0b9375950e561a445", "fb476e3c2ce69222d0740c48832cb61adc09a45f4d64cb0457deab62fe2e791c", "ff1dd51773de7a6a651b26ac0743ae99d0ff296a69cbd0530ab34e9ede6b0b97", "ffc8ce6a6b751781d405b86fbfe1e88cd5d90cff84b3d2acc6b53936c160d84e"] },
+    { "id": "retired-retire-legacy-orchestration-policies-stop-options-md", "destination": { "class": "sai", "path": "policies/stop-options.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["595770cbbf79df0899cff030070dd2cff2a140b8a280c74d024badf40826cd90", "5f6c6bebf862c01ebfe71d42e2ff78b3c3802a27d2c28e92ccb37cf8a969ebf5", "ac7dd1c4d77d1b36405523a310976fdf218093eaa14c450e5f46cc65cdff3455", "eed2e82814deb0dd8fb4124e587d1135b31df80b0ec2939c6e236544602ce253", "f705317125c87da52a09ae288537ec54edbe1eeb4bdaa6f4105b5a8649a53523", "fc68f8efdd1ef58012a1660c84e30b46c1ccbfef26f0a011cfe41e46261afb9f"] },
+    { "id": "retired-retire-legacy-orchestration-policies-bounded-recovery-md", "destination": { "class": "sai", "path": "policies/bounded-recovery.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["08800a4ba077be99b42afb5e31dec248d10ae940caf5e204828e195d7645dd8b", "101e235ef03fa77c6dc793dc560101cef6af0d7f1770f03dcd9b01a6b19ad68d", "114d238368723372db50f4adbe6b78f5d2a43f1c1b84f972e186e47929ea1c31", "1207f620f2999cdb6ca153ab7563cca0a0a5c35685f3e430ff39b1c7c1b0b6e7", "18079128ae79dd27e6ec5f21eb7f7ea28440b625ccb75627deb825e0796a130c", "2d01ba45d9c1fe4ef18e55ca0bfe59ef20c4dffcf8e23f59d7e294f9531f764d", "33ea4fdd27c8d548588f1555d5c5d7a70ba7d13e17abaa5c7a369b01c8558961", "464395db62357b14f198d5cc2d12ef0f5a8ffb4c49f56853b246b0e6e467a793", "58aeb2905a4b68ea1ebe2febee516144268da79eb60ebda0d97bec6e5ecdde18", "5ed7912e0609027d972faf7559abc15feb937287f872dfcaa764b48a6169b175", "6920d0a2153501467cf6d71f6abb0a0ad316feac8010ec14d0756e35d96852e1", "6b8641fb1964726f45a9fdf0791baa8810be1b5c95169174f9da5611849758ff", "840c12467511e8d375cfb46d13daf2e9fc8f59959b56ffd157a359f4ea2cdfaf", "911618d5862d41e0be2973807cb5a9ba583d45b3b4937a11f78265f3138f0db5", "934425676098424b48846c607f08b30e72d984939fbcff9765032036fa257d6e", "97bce6793a21297b81b52aa727cdf48f7784d37fa24175dad68944a344a65f18", "9d874d32fb445745d948411fb03bd5717d771bb59b1527a0ce52e18d93847327", "a2ec0670cb1778b7a67be6f7082bc1f268ec2b9ffc8e682267e65920e5fbceff", "bf79fe69c94b6942ee7b2b1ed596843eac81dd0ec49c481994b3b907eb0f1283", "c0818699613b011a21c5f83b8f950dc5618b2c5ab2e87e8a80c750ef997f8f6d", "d89d8de3be8902ae4c3e3345ad88ff44b2ead4e85373cee21b1bb5aa8019a483", "da8f0dc11721df40ce564c25b75621bd7de5c90dd30fe2c326a59f27f6717cfe", "f31814130c56386166266102420bd581bef30feddeeda4b290855aa0e800aa14", "f97846e0d7480bf75b90167e01c22512c050eefcc346ab88db9affe53a918612"] },
+    { "id": "retired-retire-legacy-orchestration-policies-unattended-runtime-recovery-md", "destination": { "class": "sai", "path": "policies/unattended-runtime-recovery.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["036d6dd8862fec4a8dda688e6f4553a0e2af0982e3034530c2c2a13a06f3fe5b", "0f26923bb25063845d795b7b54556827e7922b1b849c2fd397fec1832069303d", "1a30b37c818cc76ea271e3d885780eaddddbaeb27985410fbdfba65939272f06", "28ad8dc3c89d314712e26d16e3ff9a9f09aae91f2fb51a5291bf9f60cfc1f6ab", "412a4f79a99523cfb97e4fd4884f37d992944474c89e76af99208cdfc53551dd", "4a785c7f6936ce3a66269668251e75913717a75e0c800df7d9bdf9663bd90410", "5a0e5b5eb23a3562c535a485a793f9b7a68dd5cd8544cf10ba9f322f52b7530c", "706335b2b8e169a5eccd94c825d4b2237b504095d01c06b93d7a8f4cc2cc0e2b", "b6d68eb58f7199b2ad007db521df47bf4d14bbf1b21d847498c6b5db0f4ba304", "cc24425b8a14443b9af48219ffb1eaad53d77240dc8b851af78d9fab5cfeb366", "dc6e80afa8fca79fda66f965f5695a8685394a7c832d9c664406a42b59bca87e"] }
   ]
 }

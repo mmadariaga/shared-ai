@@ -248,35 +248,6 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 - **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the failed step has an attempt left
 - **THEN** the route answers it as an obstacle with a different correction and issues a new order to the step's owner
 
-### Requirement: Explore worker bindings load at their dispatch points
-
-The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/direct-build-coordinator.md`, not in `sai/commands/explore/command-bootstrap.md`. The Plan - Unattended route SHALL likewise load the `spec-worker` and `design-worker` bindings at its phase-aware dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the worker returns `event: ready` before its task and closed lifecycle results afterwards.
-
-#### Scenario: The implementer binding is fetched before the step-1 dispatch
-
-- **WHEN** the Direct Build route reaches its step-1 implement dispatch
-- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/direct-build-worker.md` and uses it before dispatching `sai-direct-build-worker`.
-
-#### Scenario: The backfill binding is fetched before the step-3 dispatch
-
-- **WHEN** the Direct Build route reaches its backfill dispatch
-- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/backfill-worker.md` and uses it before dispatching `sai-backfill-worker`.
-
-#### Scenario: The archive binding is fetched before the step-7 dispatch
-
-- **WHEN** the Direct Build route reaches its archive dispatch
-- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching `sai-archive-worker`.
-
-#### Scenario: The Plan bindings are fetched before the first Plan dispatch
-
-- **WHEN** the Plan - Unattended route reaches its phase-aware dispatch
-- **THEN** `pipeline-plan-unattended.md` fetches `@sai/orchestration/workers/bindings/spec-worker.md` and `@sai/orchestration/workers/bindings/design-worker.md` and uses them before dispatching either worker.
-
-#### Scenario: The bootstrap preloads no worker binding
-
-- **WHEN** `sai/commands/explore/command-bootstrap.md` is read
-- **THEN** it fetches no worker binding.
-
 ### Requirement: Build spec review checks MODIFIED-delta completeness
 
 The Direct Build - Unattended route's step-4 spec review SHALL apply the shared scenario-preservation receiver boundary to temporary backfill drafts and their separate exception reference. It SHALL verify references, independently approve every exception against the approved block, and run the deterministic checker against current published specifications, comparing scenario names within each capability and MODIFIED requirement. Unapproved missing scenarios SHALL be High completeness findings routed to the same backfill worker within the existing findings budget. A failed or incomplete comparison SHALL NOT be accepted through review-round cap exhaustion. Verified temporary metadata and approval evidence SHALL remain available through archive, and the coordinator SHALL repeat the independent archive boundary on current deltas immediately before archive execution. Worker-authored exceptions alone SHALL grant no approval.
@@ -547,3 +518,27 @@ The explore route `Direct Build - Unattended` SHALL export the first pending sli
 
 - **WHEN** the `--no-specs` POC profile ends with a failed implementer result
 - **THEN** no recovery attempt is spent and the POC lane forms its verdict from the observed result
+
+### Requirement: Explore worker bindings load only at their dispatch points
+
+The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/direct-build-coordinator.md`. The Plan - Unattended route SHALL load its worker bindings at their dispatch points in the plan coordinators it follows. No explore wrapper and no `sai/commands/explore/body.md` load SHALL preload a worker binding, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the worker returns `event: ready` before its task and closed lifecycle results afterwards.
+
+#### Scenario: The implementer binding is fetched before the step-1 dispatch
+
+- **WHEN** the Direct Build route reaches its step-1 implement dispatch
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/direct-build-worker.md` and uses it before dispatching `sai-direct-build-worker`
+
+#### Scenario: The backfill binding is fetched before the step-3 dispatch
+
+- **WHEN** the Direct Build route reaches its backfill dispatch
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/backfill-worker.md` and uses it before dispatching `sai-backfill-worker`
+
+#### Scenario: The archive binding is fetched before the step-7 dispatch
+
+- **WHEN** the Direct Build route reaches its archive dispatch
+- **THEN** `direct-build-coordinator.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching `sai-archive-worker`
+
+#### Scenario: The wrappers and body preload no worker binding
+
+- **WHEN** either explore wrapper or `sai/commands/explore/body.md` is read
+- **THEN** it fetches no worker binding

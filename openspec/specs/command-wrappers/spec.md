@@ -13,7 +13,7 @@ Each sai-* command that maps to an opsx skill SHALL load the skill content via `
 #### Scenario: sai-1-spec executes with full enrichment but stops before design
 
 - **WHEN** user invokes `sai-1-spec` with a `Ready to Propose` block (creation) or an existing change name plus feedback (refinement)
-- **THEN** command loads the fetch skill and the boot adapter, fetches `@sai/commands/spec/command-bootstrap.md` which routes to the coordinator, and generates only proposal.md and specs/ without proceeding to design.md or tasks.md
+- **THEN** the command loads the fetch skill, fetches `@sai/commands/spec/coordinator.md` directly, and generates only proposal.md and specs/ without proceeding to design.md or tasks.md
 
 #### Scenario: sai-2-design executes with enrichment and approval stamp
 
@@ -56,7 +56,7 @@ Each supported harness SHALL provide exactly one wrapper per sai-* command. Mode
 
 ### Requirement: One canonical utility wrapper exists per harness
 
-The repository SHALL provide exactly one canonical `/sai-retire-docs` wrapper for Claude Code and exactly one for opencode. Each wrapper SHALL delegate to its harness boot adapter and forward the invocation arguments without reinterpretation.
+The repository SHALL provide exactly one canonical `/sai-retire-docs` wrapper for Claude Code and exactly one for opencode. Each wrapper SHALL fetch `sai/commands/retire-docs/body.md` directly, with no boot adapter and no command bootstrap, and forward the invocation arguments without reinterpretation.
 
 #### Scenario: Both wrappers select the utility body
 

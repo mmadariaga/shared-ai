@@ -17,8 +17,7 @@ the subagent did any work:
 Anything a started subagent returns follows the calling surface's own handling,
 never this policy: a `failed` or `cancelled` envelope, a verdict or partial
 report, a relayed precondition halt, or malformed but delivered output.
-Worker-result failures belong to `@sai/policies/bounded-recovery.md` and the
-command runner's replacement fallback.
+Worker-result failures belong to `@sai/policies/obstacle-escalation.md`.
 
 ## Retry budget
 

@@ -585,125 +585,12 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
 
   const status = artifact('commands/claude/sai-status.md');
   assert.equal(status.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-status'));
-  assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
+  assert.match(status, /Fetch @sai\/commands\/status\/body\.md and follow it exactly/);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
   assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,
     'sai-status must not gain a free git grant');
   const worktree = artifact('commands/claude/sai-worktree.md');
   assert.equal(worktree.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-worktree'));
-});
-
-// ─── Step 2: command-progress-plan-protocol (coordinator-contract.md) ───────
-
-test('Step 2: dispatch passes exactly arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(coordinator, /exactly[\s\S]{0,120}arguments_value/,
-    'the contract should state the dispatch passes exactly arguments_value');
-  assert.doesNotMatch(coordinator, /wrapper_echo_value/,
-    'the runner must not construct or forward wrapper_echo_value');
-  assert.match(
-    coordinator,
-    /(?:envelope|reconstruction)[\s\S]{0,240}(?:never|not)[\s\S]{0,160}plan|plan[\s\S]{0,240}(?:never|not)[\s\S]{0,160}(?:envelope|reconstruction)/i,
-    'the contract should state the plan is not carried in the envelope or any reconstruction field'
-  );
-  assert.match(coordinator, /progress_plan/,
-    'the phase-adapter field set should admit progress_plan');
-});
-
-test('Step 2: progress_plan is an optional static ordered adapter field, fully known at dispatch and immutable', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(coordinator, /optional[\s\S]{0,120}progress_plan|progress_plan[\s\S]{0,120}optional/i,
-    'progress_plan should be optional in the phase-adapter field set');
-  assert.match(coordinator, /static[\s\S]{0,200}(?:ordered|order)|(?:ordered|order)[\s\S]{0,200}progress_plan|progress_plan[\s\S]{0,200}(?:static|ordered)/i,
-    'progress_plan should be static and ordered');
-  assert.match(coordinator, /(?:fully known|known) at dispatch[\s\S]{0,160}progress_plan|progress_plan[\s\S]{0,240}(?:immutable|never changes|fixed at dispatch)/i,
-    'progress_plan should be fully known at dispatch and immutable for the invocation or active adapter segment');
-  assert.match(coordinator, /immutable[\s\S]{0,80}(?:invocation|active adapter segment)/i,
-    'progress_plan immutability accepts invocation or active-adapter-segment scope');
-});
-
-test('Step 2: a progress event reporting an undeclared step id is ignored; the plan is never extended or amended', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(coordinator, /undeclared/,
-    'the contract should address undeclared step ids');
-  assert.match(coordinator, /(?:ignored|ignore)[\s\S]{0,240}undeclared|undeclared[\s\S]{0,240}(?:ignored|ignore)/i,
-    'a progress event listing an undeclared step id should be ignored');
-  assert.match(coordinator, /never[\s\S]{0,100}(?:extended|amended)|(?:extended|amended)[\s\S]{0,100}never/i,
-    'the plan should never be extended or amended');
-});
-
-test('Step 2: progress-event paths join the changed-file union in first-seen order and are never reset', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(coordinator, /continue_after_progress/,
-    'the lifecycle should continue the same worker with continue_after_progress');
-  assert.match(coordinator, /(?:first[- ]seen|first seen)[\s\S]{0,120}order|order[\s\S]{0,120}(?:first[- ]seen|first seen)/i,
-    'union joins should preserve first-seen order');
-  assert.match(coordinator, /(?:union|changed[- ]?files)[\s\S]{0,240}(?:never|not)[\s\S]{0,60}reset|reset[\s\S]{0,240}(?:never|not)[\s\S]{0,120}(?:union|changed[- ]?files)/i,
-    'a progress event should never reset the union');
-});
-
-test('Step 2: the union non-reset enumeration includes progress events', () => {
-  const coordinator = artifact('sai/orchestration/command-runner.md');
-
-  assert.match(coordinator, /event:\s*progress|event\s*=\s*progress|progress event/i,
-    'the lifecycle should handle progress events');
-  assert.match(coordinator, /non[- ]reset[\s\S]{0,200}enumerat|enumerat[\s\S]{0,200}non[- ]reset/i,
-    'the union enumeration should be non-reset');
-  assert.match(coordinator, /enumerat[\s\S]{0,200}progress|progress[\s\S]{0,200}enumerat/i,
-    'the non-reset enumeration should include progress events');
-});
-
-// ─── Step 3: command-progress-plan-protocol (worker-lifecycle.md) ───────────
-
-test('Step 3: worker-lifecycle defines the progress-event block with exactly event: progress, step_ids, changed_files, nonterminal status, and protocol-only continue_after_progress', () => {
-  const lifecycle = artifact('sai/orchestration/worker-core.md');
-
-  assert.match(lifecycle, /event:\s*"?progress"?/,
-    'the lifecycle should define the progress event with exactly event: progress');
-  assert.match(lifecycle, /step_ids:\s*string\[\]/,
-    'the progress-event block should carry step_ids: string[]');
-  assert.match(lifecycle, /changed_files:\s*string\[\]/,
-    'the progress-event block should carry changed_files: string[]');
-  assert.match(lifecycle, /non[- ]?terminal|not a lifecycle status|not a status/i,
-    'the lifecycle should state the progress event is nonterminal and not a lifecycle status');
-  assert.match(lifecycle, /changed_files[\s\S]{0,60}like[\s\S]{0,40}notice|like[\s\S]{0,40}notice[\s\S]{0,60}changed_files/i,
-    'the lifecycle should state the progress event carries changed_files like the notice');
-  assert.match(lifecycle, /protocol[- ]?only acknowledgement[\s\S]{0,80}continue_after_progress|continue_after_progress[\s\S]{0,120}protocol[- ]?only/i,
-    'continue_after_progress should be a protocol-only acknowledgement');
-});
-
-test('Step 3: continue_after_progress is excluded from opaque input history, user-answer handling, and pending feedback', () => {
-  const lifecycle = artifact('sai/orchestration/worker-core.md');
-
-  assert.match(lifecycle, /continue_after_progress/,
-    'the lifecycle should define continue_after_progress');
-  assert.match(lifecycle, /opaque[\s\S]{0,200}(?:input )?histor|(?:input )?histor[\s\S]{0,200}opaque/i,
-    'the lifecycle should mention opaque input history');
-  assert.match(lifecycle, /user[- ]answer/i,
-    'the lifecycle should mention user-answer handling');
-  assert.match(lifecycle, /pending[\s\S]{0,100}feedback/i,
-    'the lifecycle should mention pending feedback');
-  assert.match(lifecycle, /(?:excluded|absent)[\s\S]{0,320}(?:opaque|user[- ]answer|pending feedback)|(?:opaque|user[- ]answer|pending feedback)[\s\S]{0,320}(?:excluded|absent)/i,
-    'the lifecycle should exclude continue_after_progress from those interaction-history surfaces');
-});
-
-test('the lifecycle obliges planned workers to emit progress and keeps payload validation for plan-absent workers', () => {
-  const lifecycle = artifact('sai/orchestration/worker-core.md');
-
-  assert.match(lifecycle, /design[\s\S]{0,200}spec[- ]proposal[\s\S]{0,200}security[\s\S]{0,200}performance[\s\S]{0,200}accessibility/i,
-    'the emitter set should name the five routed workers in order');
-  assert.match(lifecycle, /SHALL[\s\S]{0,160}(?:return|emit)[\s\S]{0,240}(?:one progress event|new plan steps?)/i,
-    'emission should be a SHALL obligation for planned workers with newly completed steps');
-  assert.match(lifecycle, /emit[\s\S]{0,240}after[\s\S]{0,160}resolution|after[\s\S]{0,160}resolution[\s\S]{0,240}emit/i,
-    'emission should be gated after prerequisite checks and scope resolution');
-  assert.match(lifecycle, /no progress plan[\s\S]{0,240}(?:may emit no|optional|unchanged|payload validation)/i,
-    'only plan-absent workers or planned workers with no new step may emit none');
-  assert.match(lifecycle, /unchanged|payload validation/i,
-    'the plan-absent carve-out should preserve payload validation');
 });
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
@@ -1277,9 +1164,8 @@ test('Step 5: schema keeps the pre-change design graph and does not advertise En
   }
 });
 
-test('composition.md is retired: the file is gone and no card or the runner loads it (ADR 0200)', () => {
+test('composition.md is retired: the file is gone and no card loads it (ADR 0200)', () => {
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/orchestration/composition.md')), false);
-  const runner = artifact('sai/orchestration/command-runner.md');
-  assert.doesNotMatch(runner, /composition\.md/, 'the runner must not name the retired composition file');
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/orchestration/command-runner.md')), false, 'the runner is retired with the composition file');
   assert.doesNotMatch(artifact('sai/commands/deep-review/coordinator.md'), /composition\.md/);
 });

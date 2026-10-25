@@ -98,7 +98,8 @@ test('the accessibility URL is asked once, before the audit batch, and the audit
 
 test('E16: the retired surfaces are gone while the shared surfaces another loader uses stay', () => {
   for (const retired of [
-    'sai/orchestration/composition.md',
+    'sai/orchestration/composition.md', 'sai/orchestration/command-runner.md', 'sai/orchestration/worker-core.md',
+    'sai/policies/stop-options.md', 'sai/policies/bounded-recovery.md', 'sai/policies/unattended-runtime-recovery.md',
     'sai/commands/deep-review/command-bootstrap.md',
     'sai/commands/deep-review/findings-selection.md',
     ...AUDITS.flatMap(audit => [`sai/commands/${audit}/coordinator.md`, `sai/commands/${audit}/command-bootstrap.md`, `sai-state/machines/${audit}-standalone.js`]),
@@ -106,9 +107,8 @@ test('E16: the retired surfaces are gone while the shared surfaces another loade
     assert.equal(exists(retired), false, `${retired} must be retired`);
   }
   for (const kept of [
-    'sai/orchestration/command-runner.md', 'sai/orchestration/worker-core.md', 'sai/policies/no-commit-guard.md',
-    'sai/policies/bounded-dispatch-retry.md', 'sai/policies/stop-options.md', 'sai/policies/bounded-recovery.md',
-    'sai/policies/unattended-runtime-recovery.md', 'sai/commands/audit/coordinator.md',
+    'sai/policies/no-commit-guard.md', 'sai/policies/bounded-dispatch-retry.md', 'sai/policies/obstacle-escalation.md',
+    'sai/commands/audit/coordinator.md',
     ...AUDITS.flatMap(audit => [`sai/commands/${audit}/options.md`, `sai/commands/${audit}/worker.md`, `sai-state/machines/${audit}-steps.js`]),
   ]) {
     assert.equal(exists(kept), true, `${kept} must stay`);

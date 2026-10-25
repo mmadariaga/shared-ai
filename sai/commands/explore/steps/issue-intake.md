@@ -18,7 +18,6 @@ An **issue** is any issue, bug, or ticket whose content is in the conversation, 
 - **Several unrelated issues** in one message: the question lists them all, one `work` option per issue plus `context`, falling back to numbered plain text beyond the harness picker capacity. The user picks at most one to work on; the rest stay as context.
 - **Intent already stated.** A message that states the intent to work on the issue while bringing it (for example, "let's tackle this issue") answers the question with `work`; ask nothing.
 - **Ready to Propose form.** The issue has the Ready to Propose form when its `Maturity` section reads `Ready to propose`. Read that from the conversion tool's `ready_to_propose_form` (see **Conversion**), never from your own judgment. For such an issue the question also shows the `Change name` proposed from the issue's `Goal` (kebab-case; start from the tool's `proposed_change_name` and reword it only for clarity). The user corrects it through the free-text answer.
-- `--fast-track` skips nothing here: the question is always asked of the user.
 
 **On `work`**, in the same turn and with no separate activation turn:
 
@@ -42,8 +41,6 @@ The outcome is exactly one of:
 - `drift` — `validate` found a mismatch, or the user states that the issue has drifted (a message that says so answers the question with `drift`; ask nothing). No shortcut is offered: the mismatches become starting content for `Explore change`, and the issue follows the planned Explore steps.
 - `declared-clean` — the user chose to skip validation. The shortcut stays available, because the user owns that decision.
 
-`--fast-track` skips nothing here: the question is always asked of the user.
-
 ## Conversion
 
 The tool `ready-to-propose.js convert` owns the form check and the issue-to-block mapping; the model never writes the block from the issue. Resolve `<tool-path>` per `@sai/policies/tool-resolution.md` and run `node <tool-path> convert [--change-name <name>] [--declared-clean]` with the issue text exactly as it entered the conversation on stdin (Markdown or HTML), delivered as `@sai/policies/stage-machine.md` § Event delivery describes. It prints one JSON object. Run it without options when the issue arrives, for `ready_to_propose_form` and `proposed_change_name`. Run it again after the drift check with the confirmed `--change-name`, adding `--declared-clean` for the `declared-clean` outcome, which makes the tool add the `Request Additional Notes` line recording that drift was declared rather than validated.
@@ -58,7 +55,7 @@ Ask it after `clean` or `declared-clean` when the conversion succeeded. Present 
 - `shortcut` — go directly to the implementation routes: the issue is converted into the `Ready to Propose` block and the exploration enters `Crystallize`.
 - `planned-steps` — follow the planned Explore steps, with the issue's lists preloaded as in **On `work`**.
 
-`--fast-track` skips nothing here: the question is always asked of the user. On `planned-steps`, continue as on `work`; after `declared-clean`, the block Explore composes at `Crystallize` carries the same `Request Additional Notes` line, copied from a `convert --declared-clean` run.
+On `planned-steps`, continue as on `work`; after `declared-clean`, the block Explore composes at `Crystallize` carries the same `Request Additional Notes` line, copied from a `convert --declared-clean` run.
 
 ## On `shortcut`
 

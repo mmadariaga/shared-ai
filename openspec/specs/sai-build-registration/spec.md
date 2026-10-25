@@ -5,26 +5,12 @@ Register `/sai-build` consistently across both supported harnesses and shared in
 
 ## Requirements
 
-### Requirement: Boot adapters route build
-Both boot adapters SHALL include `build` among routed names, select `@sai/commands/build/coordinator.md`, forward envelope fields unchanged, and retain all existing routed and utility names.
-
-#### Scenario: Build boot selection
-- **WHEN** boot receives `command_name: build`
-- **THEN** it selects the build coordinator and not a utility body
-
 ### Requirement: Mirrored thin wrappers exist
-Claude Code and opencode SHALL each ship a thin `sai-build.md` wrapper loading the fetch skill, its boot adapter, and the build launcher. Each envelope SHALL use `command_name: build` and forward `$ARGUMENTS`; opencode SHALL include its change-picker echo line.
+Claude Code and opencode SHALL each ship a thin `sai-build.md` wrapper loading the harness fetch skill, carrying the clean-start line and the capability-profile line, and fetching `sai/commands/build/coordinator.md` directly, with no boot adapter and no command bootstrap. Each envelope SHALL use `command_name: build` and forward `$ARGUMENTS`.
 
 #### Scenario: Wrappers are mirrored
 - **WHEN** both wrapper files are read
-- **THEN** they use the shared three-directive shape and contain no phase logic
-
-### Requirement: Build launcher and coordinator are shared
-`sai/commands/build/command-bootstrap.md` SHALL load the implementation-worker binding and build coordinator, contain no harness token, and not load RED/GREEN bindings. The build folder SHALL not require `worker.md`; apply selects its own workers.
-
-#### Scenario: Launcher is non-empty
-- **WHEN** the build launcher is read
-- **THEN** both required fetches are present and no build worker is required
+- **THEN** they use the shared direct-entry shape and contain no phase logic
 
 ### Requirement: Registry and documentation list build
 The installed command files (the registry the universal `sai-commands` skill resolves against), README, and AGENTS command inventories SHALL list `/sai-build` as a user command that runs implementation planning and apply back-to-back, never as an internal `opsx:*` skill.

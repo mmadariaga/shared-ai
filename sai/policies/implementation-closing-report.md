@@ -51,8 +51,8 @@ route-owned.
    appropriate to the outcome. The route uses its pinned completion message only
    on completion; stopped reports use the existing stop/recovery guidance
    instead. For an unplanned stop, name the required decision here;
-   the options of `@sai/policies/stop-options.md` follow Execution details as a
-   separate decision prompt, outside the report.
+   the escalation options of `@sai/policies/obstacle-escalation.md` follow
+   Execution details as a separate decision prompt, outside the report.
 6. **Execution details**, last report section. Put the technical record of
    work, verification results, affected files, created commits, declined/no-op
    commit decisions, collected tool-generated commit reports, and correction
@@ -73,4 +73,5 @@ existing effect; this format grants nothing.
 Before printing, confirm that a reader who stops before Execution details can
 identify the outcome, every relevant limitation, every pending human check and
 reason, and the next required action. Execution details is the last report
-section; only an existing separate stop-options decision may follow it.
+section; only an existing separate escalation decision of
+`@sai/policies/obstacle-escalation.md` may follow it.

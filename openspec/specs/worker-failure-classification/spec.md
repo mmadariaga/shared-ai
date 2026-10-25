@@ -2,31 +2,8 @@
 
 ## Purpose
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
+
 ## Requirements
-### Requirement: Standalone planning workers apply the shared failure-class rule
-
-The standalone spec-proposal and design-planning workers SHALL classify every post-resolution `failed` result using the shared closed worker-failure rule in `sai/policies/bounded-recovery.md`. `blocking-contradiction` SHALL identify conflicting authoritative inputs or an unsafe worker boundary; `validation-failed` a failed phase validation; `generation-error` an artifact-generation failure; `dispatch-failed` a failed nested dispatch; `envelope-contract-violation` an untrusted nested result shape; and `unclassified-worker-fault` an ordinary failure that cannot be placed more specifically. The worker SHALL include concrete non-raw evidence in `summary`, set `unrecoverable: true` only when its own evidence establishes that continuation is unsafe, and SHALL leave routing diagnosis and Cause Locus to the coordinator.
-
-#### Scenario: Spec worker classifies a validation failure
-- **WHEN** spec artifact verification fails after resolution
-- **THEN** the spec worker SHALL return `failure_class: validation-failed` with `unrecoverable` and concrete non-raw evidence
-- **AND** it SHALL not encode a routing diagnosis in the worker payload
-
-#### Scenario: Design worker classifies a main-path contradiction
-- **WHEN** design work cannot proceed because authoritative planning inputs contradict one another
-- **THEN** the design worker SHALL return `failure_class: blocking-contradiction` with evidence naming the relevant boundary
-- **AND** the coordinator SHALL still determine whether the cause is in-scope or out-of-scope
-
-#### Scenario: Worker cannot safely continue
-- **WHEN** worker-side evidence establishes that no same-worker continuation can safely repair the failure
-- **THEN** the worker SHALL set `unrecoverable: true`
-- **AND** the coordinator SHALL not override that veto
-
-#### Scenario: Failure class does not decide recovery
-- **WHEN** a worker returns any valid closed failure class
-- **THEN** the coordinator SHALL inspect the applicable non-clean evidence before selecting recovery
-- **AND** SHALL not infer Cause Locus from `failure_class` or summary prose alone
-
 
 ### Requirement: Planning failure evidence remains lifecycle-only
 

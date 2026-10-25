@@ -138,7 +138,7 @@ If the user declines to answer or responds non-committally, the agent SHALL fall
 
 ### Requirement: Sliced crystallization fires the gate once for the whole set
 
-When crystallization is sliced into multiple `Ready to Propose` blocks, the gate SHALL fire once for the whole slice set, and the chosen language SHALL apply to the free-text prose of every emitted block. Per-slice scaffolding SHALL remain in English. The chosen language SHALL additionally apply to the E/I statements of every emitted block in the set, including English fast-track emission with no language question.
+When crystallization is sliced into multiple `Ready to Propose` blocks, the gate SHALL fire once for the whole slice set, and the chosen language SHALL apply to the free-text prose of every emitted block. Per-slice scaffolding SHALL remain in English. The chosen language SHALL additionally apply to the E/I statements of every emitted block in the set.
 
 #### Scenario: one gate governs every slice block
 
@@ -160,15 +160,6 @@ The native route picker context, question, and option descriptions SHALL follow 
 - **WHEN** a non-English crystallization reaches native route-picker presentation
 - **THEN** picker context and descriptions are localized and required command literals and fixed route labels remain unchanged
 
-### Requirement: Fast-track English emission translates agreed E and I lists
-
-English fast-track crystallization SHALL apply the same E/I translation with no language question and SHALL not select or suppress the native route choice. The native picker SHALL still require a later explicit answer before route activation.
-
-#### Scenario: fast-track English block translates E and I without asking
-
-- **WHEN** entry into the `Crystallize` stage runs under fast-track in English with E/I agreed in another language
-- **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and leaves route choice pending until a later valid picker answer
-
 ### Requirement: Request Additional Notes label stays English scaffolding
 
 Under the crystallization language gate, the `**Request Additional Notes**` bold field label SHALL remain in English as scaffolding, like the other bold field labels, regardless of the chosen language.
@@ -187,33 +178,9 @@ Under the crystallization language gate, the `**Out of scope Implementation Deta
 - **WHEN** a non-English crystallization language is chosen and a block is emitted
 - **THEN** the `**Out of scope Implementation Details**` label is rendered in English while its `I` statements render in the chosen language with identifiers and order preserved
 
-### Requirement: Project setting answers the crystallization language gate
-
-Once at the crystallization language gate, before the fast-track skip and the English skip, the agent SHALL run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `project-settings.js` through the tool-resolution policy. The agent SHALL resolve the language in this order: the source language of a block derived from an external source when it applies, then the user's explicit statement of a language for this run, then the returned `value`, then the fast-track value `English`, then the gate's normal question. A returned `value` SHALL answer the gate in every conversation language, English included. When the setting answers, the agent SHALL print `Project setting explore.readyToProposeLanguage: <value>` once before the block and SHALL ask no question. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue at the next level. The gate SHALL only read the setting.
-
-#### Scenario: Setting answers a non-English crystallization
-- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in another language without stating a language
-- **THEN** the agent prints `Project setting explore.readyToProposeLanguage: Español` once and emits the block in Español without asking
-
-#### Scenario: Setting applies in an English conversation
-- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in English
-- **THEN** the agent emits the block in Español and asks no question
-
-#### Scenario: Setting wins over fast-track
-- **WHEN** `--fast-track` is active and `explore.readyToProposeLanguage` is `Español`
-- **THEN** the block is emitted in Español instead of English
-
-#### Scenario: Explicit statement wins over the setting
-- **WHEN** the user states a language for this run and `explore.readyToProposeLanguage` names a different language
-- **THEN** the agent uses the stated language and prints no setting notice
-
-#### Scenario: Unavailable setting falls through
-- **WHEN** the settings tool exits non-zero or returns `value: null`
-- **THEN** the agent prints the warnings or one failure line and continues with the fast-track skip, the English skip, or the normal question
-
 ### Requirement: A block derived from an external source keeps the source's language
 
-The first level of the crystallization language gate SHALL be the source language: a block derived from an external source, such as an issue taken through the issue shortcut, SHALL keep the source's language, SHALL ask no language question, and SHALL translate nothing, so the issue's `E`/`I` statements and prose reach the block as written. `explore.readyToProposeLanguage` SHALL NOT apply to such a block: when it returns a `value`, the agent SHALL print exactly one line stating that the setting does not apply and the block keeps the issue's language, instead of the `Project setting` line. The project-setting, fast-track, and English levels and the gate's question SHALL NOT run for such a block.
+The first level of the crystallization language gate SHALL be the source language: a block derived from an external source, such as an issue taken through the issue shortcut, SHALL keep the source's language, SHALL ask no language question, and SHALL translate nothing, so the issue's `E`/`I` statements and prose reach the block as written. `explore.readyToProposeLanguage` SHALL NOT apply to such a block: when it returns a `value`, the agent SHALL print exactly one line stating that the setting does not apply and the block keeps the issue's language, instead of the `Project setting` line. The project-setting and English levels and the gate's question SHALL NOT run for such a block.
 
 #### Scenario: Shortcut block keeps the issue language
 
@@ -224,3 +191,23 @@ The first level of the crystallization language gate SHALL be the source languag
 
 - **WHEN** `explore.readyToProposeLanguage` is set and the block derives from an issue through the shortcut
 - **THEN** the agent prints one line stating that the setting does not apply and the block keeps the issue's language
+
+### Requirement: Project setting answers the crystallization language gate before the English skip
+
+Once at the crystallization language gate, before the English skip, the agent SHALL run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `project-settings.js` through the tool-resolution policy. The agent SHALL resolve the language in this order: the source language of a block derived from an external source when it applies, then the user's explicit statement of a language for this run, then the returned `value`, then the gate's normal question. No fast-track level SHALL exist. A returned `value` SHALL answer the gate in every conversation language, English included. When the setting answers, the agent SHALL print `Project setting explore.readyToProposeLanguage: <value>` once before the block and SHALL ask no question. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue at the next level. The gate SHALL only read the setting.
+
+#### Scenario: Setting answers a non-English crystallization
+- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in another language without stating a language
+- **THEN** the agent prints `Project setting explore.readyToProposeLanguage: Español` once and emits the block in Español without asking
+
+#### Scenario: Setting applies in an English conversation
+- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in English
+- **THEN** the agent emits the block in Español and asks no question
+
+#### Scenario: Explicit statement wins over the setting
+- **WHEN** the user states a language for this run and `explore.readyToProposeLanguage` names a different language
+- **THEN** the agent uses the stated language and prints no setting notice
+
+#### Scenario: Unavailable setting falls through
+- **WHEN** the settings tool exits non-zero or returns `value: null`
+- **THEN** the agent prints the warnings or one failure line and continues with the English skip or the normal question

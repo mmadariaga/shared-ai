@@ -231,7 +231,6 @@ test('tasks.md is the progress tracker: design writes a checkbox per step and st
 });
 
 test('no surviving prose cites the deleted apply cards', () => {
-  assert.doesNotMatch(read('sai/orchestration/worker-core.md'), /commands\/apply\//);
   const guard = read('sai/policies/no-commit-guard.md');
   assert.doesNotMatch(guard, /commands\/apply\/|bounded exception|apply commit gate|apply's RED/);
   assert.match(guard, /Pre-existing staged content loses its staged state on remediation; the\s+content stays intact\. The HEAD guard performs the mixed reset, and its next\s+window requires a fresh snapshot\./);

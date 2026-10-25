@@ -164,8 +164,6 @@ const OPENCODE_AGENT_TEMPLATE = [
 ].join('\n');
 
 const TEMPLATES = {
-  claudeBinding: CLAUDE_BINDING_TEMPLATE,
-  opencodeBinding: OPENCODE_BINDING_TEMPLATE,
   claudeStandaloneBinding: CLAUDE_BINDING_TEMPLATE,
   opencodeStandaloneBinding: OPENCODE_BINDING_TEMPLATE,
   claudeAgent: CLAUDE_AGENT_TEMPLATE,
@@ -442,12 +440,10 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
         item.kind === 'binding' && item.harness === harness && item.phase === phase);
       assert.equal(binding.destinationName, `${phase}-worker.md`,
         `${harness}/${phase} binding destination should be bindingStem-derived`);
-      // The spec, design, audit, and merge commands run outside the shared orchestration, so
-      // their bindings render from the standalone template like the implement and review roles.
-      const standalonePhase = ['spec', 'design', 'security', 'performance', 'accessibility', 'merge', 'commit', 'archive', 'backfill'].includes(phase);
-      assert.equal(binding.templateName,
-        standalonePhase ? `${harness}StandaloneBinding` : (harness === 'claude' ? 'claudeBinding' : 'opencodeBinding'),
-        `${harness}/${phase} binding should use its harness binding template`);
+      // Every command runs outside the shared orchestration, so every binding
+      // renders from the standalone template.
+      assert.equal(binding.templateName, `${harness}StandaloneBinding`,
+        `${harness}/${phase} binding should use its harness standalone binding template`);
       assert.equal(binding.harness, harness, `${harness}/${phase} binding should preserve its harness`);
       const agent = first.find(item =>
         item.kind === 'agent' && item.harness === harness && item.phase === phase);
@@ -565,9 +561,9 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
   assert.throws(() => materializeWorkerMatrix(matrix, { ...TEMPLATES, claudeAgent: undefined }),
     error => String(error && error.message || error).includes('Missing Worker Matrix template: claudeAgent'),
     'a missing claudeAgent template should be rejected');
-  assert.throws(() => materializeWorkerMatrix(matrix, { ...TEMPLATES, opencodeBinding: 5 }),
-    error => String(error && error.message || error).includes('Missing Worker Matrix template: opencodeBinding'),
-    'a non-string opencodeBinding template should be rejected');
+  assert.throws(() => materializeWorkerMatrix(matrix, { ...TEMPLATES, opencodeStandaloneBinding: 5 }),
+    error => String(error && error.message || error).includes('Missing Worker Matrix template: opencodeStandaloneBinding'),
+    'a non-string opencodeStandaloneBinding template should be rejected');
 });
 
 test('defineWorkerMatrix rejects unknown role worker identities naming the role', () => {

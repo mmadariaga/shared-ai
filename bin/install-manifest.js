@@ -19,17 +19,10 @@ const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
 const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents', 'commands']);
 const MATRIX_TEMPLATE_NAMES = Object.freeze([
-  'claudeBinding',
-  'opencodeBinding',
-  'claudeAgent',
-  'opencodeAgent',
-]);
-// Binding templates for roles that live outside the shared orchestration (the
-// implement and review commands). Loaded only when the manifest declares them; the renderer
-// fails closed when such a role exists without its template.
-const OPTIONAL_MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeStandaloneBinding',
   'opencodeStandaloneBinding',
+  'claudeAgent',
+  'opencodeAgent',
 ]);
 const MATRIX_KINDS = new Set(['binding', 'agent']);
 const MATRIX_SCRATCH_RELATIVE = path.join('.tmp', 'collapse-sai-worker-matrix', 'matrix-sources');
@@ -230,11 +223,6 @@ function validateMatrixBlock(matrix) {
       throw new Error(`worker-matrix block must declare template source for ${name}`);
     }
   }
-  for (const name of OPTIONAL_MATRIX_TEMPLATE_NAMES) {
-    if (matrix.templates[name] !== undefined && (typeof matrix.templates[name] !== 'string' || matrix.templates[name].length === 0)) {
-      throw new Error(`worker-matrix block template source for ${name} must be a nonempty string`);
-    }
-  }
   for (const kind of ['bindings', 'agents']) {
     const section = matrix[kind];
     if (!section || typeof section !== 'object' || Array.isArray(section)) {
@@ -383,8 +371,7 @@ function matrixProjectionId(harness, kind, item) {
 
 function loadMatrixTemplates(matrix, harness, repoRoot) {
   const templates = {};
-  const declared = OPTIONAL_MATRIX_TEMPLATE_NAMES.filter(name => matrix.templates[name] !== undefined);
-  for (const name of [...MATRIX_TEMPLATE_NAMES, ...declared]) {
+  for (const name of MATRIX_TEMPLATE_NAMES) {
     const templatePath = path.resolve(repoRoot, matrix.templates[name]);
     if (!fs.existsSync(templatePath)) {
       throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);

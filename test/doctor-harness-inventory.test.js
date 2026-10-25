@@ -217,7 +217,7 @@ describe('doctor harness inventory', () => {
     }
   });
 
-  test('Step 2: doctor inventories one harness adapter and the utility body cards with no flat sources', async () => {
+  test('Step 2: doctor inventories the utility body cards with no boot adapter and no flat sources', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-boot-claude-');
     const opencodeBase = makeTempDir('sai-harness-boot-opencode-');
@@ -230,13 +230,15 @@ describe('doctor harness inventory', () => {
         [claudeBase, 'claude', 'opencode'],
         [opencodeBase, 'opencode', 'claude'],
       ]) {
-        assert.ok(fs.existsSync(path.join(base, 'sai', 'adapters', harness, 'boot.md')),
-          `${harness} should install its own boot adapter`);
-        assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', foreign, 'boot.md')), false,
-          `${harness} must not install the foreign boot adapter`);
+        for (const adapter of [harness, foreign]) {
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', adapter, 'boot.md')), false,
+            `${harness} must not install the ${adapter} boot adapter`);
+        }
         for (const utility of utilities) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} should install the ${utility} utility body card`);
+          assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'command-bootstrap.md')), false,
+            `${harness} must not install a ${utility} command bootstrap`);
         }
   for (const name of ['archive', 'backfill']) {
           for (const card of ['coordinator.md', 'worker.md']) {
@@ -302,13 +304,11 @@ function step3DestinationRootFor(base, harness) {
 }
 
 function step3NeutralSource(source) {
-  return source === 'sai/orchestration/command-runner.md' ||
-    source === 'sai/orchestration/worker-core.md' ||
-    source.startsWith('sai/commands/') ||
+  return source.startsWith('sai/commands/') ||
     source.startsWith('sai/policies/');
 }
 
-test('Step 3 Claude and opencode neutral inventories are equivalent and differ only at the boot adapter seam', () => {
+test('Step 3 Claude and opencode neutral inventories are equivalent and differ only at the runtime glue and preset seam', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
@@ -360,19 +360,17 @@ test('Step 3 Claude and opencode neutral inventories are equivalent and differ o
     const claudeOnly = [...saiSources('claude')].filter(source => !saiSources('opencode').has(source)).sort();
     const opencodeOnly = [...saiSources('opencode')].filter(source => !saiSources('claude').has(source)).sort();
       assert.deepEqual(claudeOnly, [
-        'sai/adapters/claude/boot.md',
         'sai/adapters/claude/idea-list-render.md',
         'sai/adapters/claude/panel-render.md',
         'sai/presets/claude/[sai-default]-OPUS.json',
-     ], 'claude-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
+     ], 'claude-specific SAI sources should be its panel and idea-list runtime glue plus its preset');
       assert.deepEqual(opencodeOnly, [
-        'sai/adapters/opencode/boot.md',
         'sai/adapters/opencode/idea-list-render.md',
         'sai/adapters/opencode/panel-render.md',
         'sai/presets/opencode/[sai-default]-Go.json',
         'sai/presets/opencode/[sai-default]-oAI-LUNA.json',
         'sai/presets/opencode/[sai-default]-oAI-SOL.json',
-     ], 'opencode-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
+     ], 'opencode-specific SAI sources should be its panel and idea-list runtime glue plus its presets');
   } finally {
     for (const harness of ['claude', 'opencode']) {
       fs.rmSync(expansions[harness].base, { recursive: true, force: true });
