@@ -72,28 +72,27 @@ A corrected worker result SHALL re-`put` every changed draft and return the comp
 
 ### Requirement: Ordinary route materializes validated drafts
 
-On the ordinary `/sai-backfill` route, after validation and the delta-header preflight pass, the coordinator SHALL re-run `transfer.js verify` for every reference immediately before the first write and SHALL then write each final file with `transfer.js materialize`, using the reference and its destination with the project root as `--cwd`, adding every written path to the changed-files union.
+Ordinary backfill SHALL require schema and preservation preflight plus successful receiver-side complete-set OpenSpec CLI validation before materialization. Immediately before the first repository write the coordinator SHALL check the accepted fingerprint against the same complete reference set and current specifications, configuration, and schemas, then reverify all references. A mismatch SHALL require repeated validation without writes. Only a fully validated, fresh set SHALL be materialized through transfer.js to its allowed destinations with every realized path added to changed_files.
 
 #### Scenario: Validated drafts reach the change directory byte-for-byte
-
-- **WHEN** every draft validates and every reference re-verifies
-- **THEN** the coordinator materializes each transfer file to its `openspec/changes/{name}/` destination byte-for-byte
+- **WHEN** all checks pass and accepted inputs remain unchanged immediately before writing
+- **THEN** the coordinator materializes the verified files to their change destinations byte-for-byte
 
 ### Requirement: Direct Build execute order carries references
 
-On the Direct Build route, the `--direct-build-execute` order SHALL carry the confirmed change name and validated references `{path, sha256, destination}` without draft content. The worker SHALL validate the marker, name, destination allow-list, duplicate-free destination set, identity with its latest prepared references, and pending execution state. It SHALL verify every reference and repeat scenario-preservation checking against current main specs using prepared, coordinator-approved temporary exception metadata before materializing any draft. Only after all checks pass SHALL it materialize the verified drafts byte-for-byte. A failed reference verification or preservation check SHALL write nothing and return the concrete failure. Temporary metadata SHALL NOT become a materialization destination.
+The Direct Build execute order SHALL contain the confirmed change name, exact latest validated draft references, and the accepted receiver-validation fingerprint, never draft content. The worker SHALL validate marker, name, allow-list, duplicate-free destination set, reference identity, and pending execution state. It SHALL verify every reference, repeat scenario preservation against current main specs without exceptions, and check the accepted fingerprint over the complete draft set and current specifications, configuration, and schemas before its first write. Missing or stale evidence or failed checks SHALL write nothing and return diagnostics for repeated receiver validation. Only all-passing checks SHALL permit byte-for-byte materialization.
 
 #### Scenario: Execute materializes verified references
-- **WHEN** the worker receives a valid execute order of references
-- **THEN** it verifies every reference, repeats scenario-preservation checking, and only after success materializes each destination and reports every realized destination in `changed_files`
+- **WHEN** the worker receives a valid pending order with the accepted fingerprint and exact references
+- **THEN** it verifies references, preservation, and complete-set fingerprint freshness before materializing only the named destinations and reporting realized paths
 
 #### Scenario: An unverifiable reference writes nothing
-- **WHEN** any reference in the execute order fails `verify`
-- **THEN** the worker writes no destination and returns `failed` with the verbatim report
+- **WHEN** a reference fails verification
+- **THEN** the worker writes no destination and returns failed with the helper report
 
 #### Scenario: Changed main specs invalidate stale preservation evidence
-- **WHEN** current main specs cause preservation checking to fail before the execute continuation materializes drafts
-- **THEN** the worker writes no draft destination and reports the failed comparison
+- **WHEN** main specifications change after receiver validation
+- **THEN** the worker rejects stale validation evidence and writes no draft until repeated receiver validation succeeds
 
 ### Requirement: Transfer helper grants on command profiles
 
@@ -104,43 +103,26 @@ On the Direct Build route, the `--direct-build-execute` order SHALL carry the co
 - **WHEN** the archive, backfill, and merge command profiles are read from the install manifest
 - **THEN** the archive and backfill shell grant lists contain `node {sai}/tools/transfer.js *` and the merge profile has no such grant
 
-### Requirement: Temporary scenario metadata is separate and verified
-
-The backfill worker SHALL write `scenario-exceptions.json` through `transfer.js put` inside its transfer directory, using an empty array when no exceptions are proposed. It SHALL return its `{path, sha256}` as `scenario_exception_reference` separately from destination-bearing `draft_references`. Every corrected result SHALL return the complete latest metadata reference and drafts. Receivers SHALL verify metadata before every use and independently approve each exception against explicit accepted scope. Changed bytes SHALL require fresh approval and checking. Metadata SHALL never be a scenario or repository artifact and SHALL NOT enter materialization, staging, archive artifacts, or commits.
-
-#### Scenario: No proposed exceptions still produces metadata
-- **WHEN** the worker proposes no scenario removal or rename
-- **THEN** it returns a separate reference to an empty JSON array written through the transfer helper
-
-#### Scenario: Metadata has no destination
-- **WHEN** a receiver processes the worker's temporary exception reference
-- **THEN** it verifies that reference separately without adding it to the allowed draft destination list
-
-#### Scenario: Corrected metadata supersedes prior bytes
-- **WHEN** a corrected result changes temporary exceptions
-- **THEN** the receiver uses the complete latest references and repeats metadata verification, approval, and preservation checking
-
 ### Requirement: Direct Build corrections are verified before rewriting drafts
 
-After a Direct Build archive failure, the same backfill worker SHALL recompose only the named draft sections from existing grounding and failure evidence. It SHALL put corrected drafts and metadata into transfer files, run the author preservation check, and return the complete latest references without rewriting repository files. Only after independent receiver validation and explicit authorization of those exact corrected references SHALL it verify again, repeat preservation checking, and materialize the named corrected drafts. This SHALL complete the pending correction rather than replay the consumed initial execution order and SHALL grant no commit authorization. Repeating a defect without progress SHALL end corrections with the verbatim failure.
+After an archive failure, the same backfill worker SHALL recompose only named draft sections from existing grounding and diagnostic evidence, put corrected drafts into transfer files, run author preservation checking, and return the complete latest references without repository writes. The receiver SHALL independently verify and validate the complete corrected set with the OpenSpec CLI and check freshness before authorizing exact corrected references with the accepted fingerprint. The worker SHALL reverify references and repeat preservation and full-set freshness checking before rewriting only the named corrected drafts. Correction SHALL complete the pending correction without replaying an initial order or granting commit authority. A repeated defect without progress SHALL end corrections with its verbatim failure.
 
 #### Scenario: Correction first returns temporary references
-- **WHEN** the worker receives archive-failure feedback naming draft sections to correct
-- **THEN** it returns checked temporary references without rewriting repository drafts
+- **WHEN** archive-failure feedback names sections to correct
+- **THEN** the worker returns author-checked temporary draft references without rewriting repository files
 
 #### Scenario: Receiver approves exact corrected bytes
-- **WHEN** the coordinator independently validates corrected references and authorizes those exact references
-- **THEN** the worker verifies and checks them again before rewriting only the named drafts and reporting the rewritten paths
+- **WHEN** the receiver validates the complete corrected set and authorizes exact references with their fresh accepted fingerprint
+- **THEN** the worker repeats reference, preservation, and freshness checks before rewriting only the named drafts and reporting each path
 
 #### Scenario: Correction does not replay execution or authorize commit
 - **WHEN** an authorized correction finishes
-- **THEN** it closes the pending correction without replaying the original execute order or gaining commit authorization
+- **THEN** it closes only the pending correction without replaying execution or authorizing a commit
 
 ### Requirement: The backfill worker contract states its reference-only payload
 
-`sai/commands/backfill/worker.md` SHALL state that the backfill worker returns `draft_references` to worker-prepared transfer files and never draft content, with a separate `scenario_exception_reference: {path, sha256}` for temporary exception metadata. The archive reroute's header-fix continuation SHALL remain the only backfill payload that returns artifact content for the coordinator to write.
+The worker contract SHALL return draft_references to transfer files and never draft content on ordinary or Direct Build paths. It SHALL retire scenario_exception_reference and temporary exception metadata. The archive header-fix continuation SHALL remain the sole content-returning exception.
 
 #### Scenario: The worker contract names its content exception
-
-- **WHEN** `sai/commands/backfill/worker.md` is read
-- **THEN** its Draft transfer section returns references only, and its Delta header fix continuation is the one place that returns corrected spec content
+- **WHEN** the backfill worker contract is read
+- **THEN** Draft transfer returns draft references only, no scenario-exception reference, and Delta header fix remains the sole corrected-content payload

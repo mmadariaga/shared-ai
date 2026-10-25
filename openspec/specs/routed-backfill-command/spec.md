@@ -55,17 +55,15 @@ Every user-facing decision of the instruction SHALL be returned by the worker as
 
 ### Requirement: Worker-drafts and coordinator-validates-and-writes split
 
-Schema validation against `openspec/schemas/sai-workflow/schema.yaml` and every final write into `openspec/changes/{name}/` SHALL belong exclusively to the coordinator. On the worker's completed run carrying its draft references, the coordinator SHALL verify every reference with `transfer.js verify`, read each transfer file, and validate before writing anything: the `.openspec.yaml` key set matches the no-intent three-key form or the usable-intent four-key form (plus `prior_intent`) with date-only `created`; the proposal opens with the exact applicable POST-HOC RECORD blockquote and carries `## Why`, `## What Changes`, `## Capabilities`, `### New Capabilities`, `### Modified Capabilities`, and `## Impact` in order, ending with the Out-of-scope line; every capability spec follows the sai-workflow delta format with concrete `### Requirement:` headings using SHALL/MUST language and at least one `#### Scenario:` block containing exactly one `- **WHEN**` line and one `- **THEN**` line; and the draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs — never `design.md`, `tasks.md`, or `implementation.md`. On any verification or validation failure the coordinator SHALL write nothing and resume the same worker with the failure report; only fully valid drafts are written, byte-for-byte from the verified transfer files through `transfer.js materialize`.
+The ordinary backfill worker SHALL compose only temporary drafts. The coordinator SHALL verify all references and validate the complete set before any final write: canonical metadata with date-only created and optional validated backlog_origin, the applicable POST-HOC RECORD opening and required ordered proposal headings, and concrete sai-workflow delta requirements with SHALL/MUST and WHEN/THEN scenarios. Only metadata, proposal, and capability specs SHALL be allowed; design.md, tasks.md, and implementation.md SHALL remain prohibited. The coordinator SHALL perform mandatory header and preservation preflight followed by shared receiver-side OpenSpec CLI validation of the complete latest set in a private temporary project. Before writing it SHALL recheck the accepted fingerprint against drafts, references, current main specs, configuration, and schemas and verify every reference again. Any failed or incomplete check SHALL write nothing and return diagnostics to the same worker; corrected drafts SHALL repeat all checks. Only fully valid and fresh drafts SHALL be materialized byte-for-byte by the coordinator.
 
 #### Scenario: Invalid drafts write nothing
-
-- **WHEN** a returned draft violates the schema contract (a missing heading, a scenario without WHEN/THEN, or a prohibited planning artifact in the set)
-- **THEN** the coordinator writes no file, resumes the same worker with the failure report, and re-validates the corrected drafts
+- **WHEN** schema, reference, preservation, CLI validation, or freshness checking fails or is incomplete
+- **THEN** the coordinator writes no repository file and returns diagnostics for correction and complete repeated validation
 
 #### Scenario: Validated drafts are written coordinator-side
-
-- **WHEN** the draft set fully validates
-- **THEN** the coordinator itself materializes `.openspec.yaml`, `proposal.md`, and each capability spec under `openspec/changes/{name}/` byte-for-byte from the verified transfer files and adds every written path to the changed-files union
+- **WHEN** the complete draft set validates and accepted-input freshness and references pass immediately before writing
+- **THEN** the coordinator materializes only metadata, proposal, and capability specs byte-for-byte and records each written path
 
 ### Requirement: Openspec prerequisite REQUIRED carried by the coordinator card
 
@@ -118,27 +116,27 @@ The backfill coordinator SHALL run the guard's `snapshot` step at each window op
 
 ### Requirement: Backfill checks scenario preservation at author and receiver boundaries
 
-Claude Code and opencode SHALL use the same shared scenario-preservation policy and checker for ordinary backfill and Direct Build. After writing the complete temporary draft set and separate exception metadata through `transfer.js put`, the worker SHALL check the temporary specs against current published specifications before returning any completed draft result, including corrected drafts. The coordinator SHALL independently verify references, approve each exception against explicit accepted scope, and repeat the checker before materialization. A failed check SHALL return its report for correction without writing repository drafts. A worker declaration, implementation diff, fast-track flag, or checker pass SHALL NOT constitute exception approval. Published specifications SHALL remain read-only inputs to these checks.
+Claude Code and opencode SHALL apply shared mandatory scenario preservation to standalone backfill and Direct Build. The worker SHALL check its complete temporary draft specs against current main specs before returning completed references, including corrections. The receiver SHALL independently verify references and repeat checking before mandatory complete-set OpenSpec CLI validation. No approval, block, diff, worker declaration, or fast-track flag SHALL authorize scenario removal or renaming inside MODIFIED. A deliberate replacement SHALL use an explicitly selected distinct, non-colliding requirement name; the worker SHALL never invent one. Published specs SHALL remain read-only inputs, and failed or incomplete checks SHALL authorize no repository writes.
 
 #### Scenario: Author detects accidental scenario loss
-- **WHEN** the worker's temporary MODIFIED draft omits an existing scenario without an applicable exception
-- **THEN** the worker corrects the draft before returning completed draft references
+- **WHEN** a temporary MODIFIED draft omits an original scenario
+- **THEN** the author corrects it before returning completed references
 
 #### Scenario: Receiver independently checks the complete set
-- **WHEN** the coordinator receives a completed draft result or corrected result
-- **THEN** it verifies the references and exception approvals and runs the checker on the temporary draft set before any materialization
+- **WHEN** the coordinator receives a completed or corrected set
+- **THEN** it independently verifies references, checks preservation, and performs complete-set CLI validation before writes
 
 #### Scenario: A worker cannot authorize its own exception
-- **WHEN** a worker proposes a removal or rename without explicit approval in the accepted block, interview answers, or approved change artifacts
-- **THEN** the receiver restores the scenario through correction or asks for approval of that exact difference and does not materialize the affected draft meanwhile
+- **WHEN** a worker proposes scenario removal or renaming through an exception
+- **THEN** the receiver rejects the unsupported exception and requires preservation or an explicitly selected distinct replacement name
 
 #### Scenario: Fast-track preserves independent approval
-- **WHEN** fast-track is active and the worker proposes a scenario exception
-- **THEN** the coordinator still checks that individual exception against explicit approved scope
+- **WHEN** fast-track is active and an exception is proposed
+- **THEN** mandatory preservation still rejects the missing scenario without any approval bypass
 
 #### Scenario: Correction repeats the checks
-- **WHEN** draft content or temporary exception bytes change after feedback
-- **THEN** the author check and independent receiver verification and approval repeat on the corrected result
+- **WHEN** draft content changes after feedback
+- **THEN** author and receiver checks and complete-set CLI validation repeat on the latest references
 
 ### Requirement: Direct card set and wrapper fetch
 
