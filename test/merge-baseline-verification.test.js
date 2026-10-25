@@ -152,6 +152,19 @@ test('a test that passes on the rerun is flaky and does not block', t => {
   assert.deepEqual(result.payload.data.comparison.new, []);
 });
 
+test('two runs that fail on different tests confirm nothing new: both tests are flaky and nothing blocks', t => {
+  const fixture = scripted(t, [passing]);
+  const baseline = capture(fixture);
+  fixture.setPlan([failing('first only'), failing('second only')]);
+  const result = compare(fixture, baseline);
+  assert.equal(result.status, 0, JSON.stringify(result.payload));
+  assert.equal(result.payload.data.verification_result, 'passed');
+  assert.equal(result.payload.data.comparison.status, 'flaky');
+  assert.deepEqual(result.payload.data.comparison.new, []);
+  assert.deepEqual(result.payload.data.comparison.flaky, ['first only', 'second only']);
+  assert.equal(fixture.runs(), 2, 'one comparison run and exactly one rerun');
+});
+
 test('a failure already in the baseline is pre-existing: reported, never rerun, never blocking', t => {
   const fixture = scripted(t, [failing('old failure')]);
   const baseline = capture(fixture);
