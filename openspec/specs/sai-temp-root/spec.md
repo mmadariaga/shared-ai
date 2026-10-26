@@ -132,3 +132,17 @@ On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. O
 
 - **WHEN** an Azure publication call sends a JSON body
 - **THEN** the payload file is written in a private `azure-publication-` child of the SAI temp root
+
+### Requirement: Removal compares native real paths on Windows
+
+`temp-root.js remove` SHALL resolve the SAI temp root, the target directory, and the nearest existing ancestor of a missing target with the same resolver before it decides whether the target is strictly inside the root. On Windows that resolver SHALL be the native real-path resolution, so the 8.3 short form and the long form of one directory compare equal. On every other platform the resolver SHALL stay the one used before this change. A target that resolves outside the SAI temp root SHALL still be rejected with nothing deleted.
+
+#### Scenario: Long form of a short-form directory is removed
+
+- **WHEN** on Windows `mkdtemp` returned a directory in 8.3 short form and `remove` receives the long form of that directory
+- **THEN** the directory is removed and the result reports that a directory was removed
+
+#### Scenario: Path outside the root is still rejected on Windows
+
+- **WHEN** on Windows `remove` receives a directory that resolves outside the SAI temp root
+- **THEN** it rejects the path with `REJECTED_PATH` and deletes nothing
