@@ -1312,11 +1312,21 @@ function projectOverrideProjections(harness, projectPath, repoRoot = REPOSITORY_
 // shadow it. Refresh only existing, manifest-owned files in the named project.
 function refreshProjectOverrides(harness, projectPath, { notices } = {}) {
   const base = path.resolve(projectPath, harness === 'claude' ? '.claude' : '.opencode');
-  if (!fs.existsSync(base)) return;
+  let baseStat;
+  try { baseStat = fs.lstatSync(base); } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return;
+  }
+  // Retirement cleanup trusts its root, so a linked project root is skipped
+  // before any retired or current definition is touched.
+  if (!baseStat.isDirectory()) {
+    emitInstallerNotice(notices, `Skipped project-local definitions: ${base} is a symbolic link or other non-regular path.`);
+    return;
+  }
   cleanupRetiredProjections(harness, { base }, { notices });
   for (const projection of projectOverrideProjections(harness, projectPath)) {
     let safe = true;
-    for (const candidate of [base, path.dirname(projection.destinationPath), projection.destinationPath]) {
+    for (const candidate of [path.dirname(projection.destinationPath), projection.destinationPath]) {
       let stat;
       try { stat = fs.lstatSync(candidate); } catch (error) {
         if (error.code !== 'ENOENT') throw error;
@@ -1355,13 +1365,16 @@ function cleanupRetiredProjections(harness, roots, { notices } = {}) {
   const results = [];
   const base = path.resolve(roots.base);
   for (const retirement of retirements) {
+    const destination = path.resolve(retirement.destinationPath);
+    // The harness root may itself be a link (for example into a dotfiles
+    // checkout); only links below it can lead outside the installation.
     const parents = [];
-    for (let directory = path.dirname(retirement.destinationPath); ; directory = path.dirname(directory)) {
+    for (let directory = path.dirname(destination); directory !== base; directory = path.dirname(directory)) {
+      if (path.dirname(directory) === directory) throw new Error(`Retired path ${destination} is outside ${base}`);
       parents.unshift(directory);
-      if (directory === base) break;
     }
     let action;
-    for (const [index, candidate] of [...parents, retirement.destinationPath].entries()) {
+    for (const [index, candidate] of [...parents, destination].entries()) {
       let stat;
       try { stat = fs.lstatSync(candidate); } catch (error) {
         if (error.code !== 'ENOENT') throw error;
@@ -1376,7 +1389,7 @@ function cleanupRetiredProjections(harness, roots, { notices } = {}) {
       }
     }
     if (!action) {
-      fs.unlinkSync(retirement.destinationPath);
+      fs.unlinkSync(destination);
       action = 'deleted';
     }
     results.push({ ...retirement, action });
