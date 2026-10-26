@@ -309,8 +309,10 @@ Retired files are different from current overrides: installation and setup delet
 the exact paths declared obsolete in the manifest, even if edited. Renamed agents
 are deleted without migrating their tunables or instructions to the new name.
 Current-name definitions retain their own settings. Retirement never removes
-directories recursively or follows linked directories; unlinking a retired file
-symlink leaves its target untouched.
+directories recursively or follows linked directories below the harness root;
+unlinking a retired file symlink leaves its target untouched. A linked global
+harness root is still cleaned, but a linked project `.claude` or `.opencode`
+root is skipped entirely.
 
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
 **Project behavior settings**. See [project settings](docs/project-settings.md).
