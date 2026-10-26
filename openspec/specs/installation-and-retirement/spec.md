@@ -47,7 +47,7 @@ For Claude Code and opencode, audit renaming SHALL NOT clone legacy command or w
 
 ### Requirement: Audit retirement uses managed body identity across lifecycle tools
 
-Audit retirement declarations SHALL retain historical exact hashes, managed body hashes, and permitted tuning keys for read-only recognition and guarded uninstall. Doctor SHALL distinguish recognized copies from customized bodies, recommending reinstallation without settings or instruction transfer for either. Installation SHALL instead delete every exact declared retired regular file or file symlink without a content-identity gate or settings preparation. Guarded uninstall SHALL retain its recognition checks and preserve customized retired bodies.
+Audit retirement declarations SHALL retain historical exact hashes, managed body hashes, and permitted tuning keys for read-only recognition and guarded uninstall, covering the output of every revision that installed the renamed audit commands and workers, not only the last one. Doctor SHALL distinguish recognized copies from customized bodies, recommending reinstallation without settings or instruction transfer for either. Installation SHALL instead delete every exact declared retired regular file or file symlink without a content-identity gate or settings preparation. Guarded uninstall SHALL retain its recognition checks and preserve customized retired bodies.
 
 #### Scenario: Only model tunables differ from a managed copy
 - **WHEN** a retired audit file differs from declared managed content only in permitted tuning
