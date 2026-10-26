@@ -217,6 +217,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0188 — Subagents open with a ready handshake and live per role](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) — Refs 0025, Refs 0076, Refs 0077
 - [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
 - [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
+- [0202 — One live explorer per coordinator, and agents keep their own prompt cache warm](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) — **Amends** 0188, Refs 0194, Refs 0199
 
 ### `/sai-backfill`
 
@@ -531,6 +532,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
 - [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
 - [0188 — Subagents open with a ready handshake and live per role](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) — Refs 0025, Refs 0076, Refs 0077
+- [0202 — One live explorer per coordinator, and agents keep their own prompt cache warm](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) — **Amends** 0188, Refs 0194, Refs 0199
 
 ### Testability routing & RED → GREEN
 
@@ -661,6 +663,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0199](./0199-spec-and-design-leave-the-shared-orchestration.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0200](./0200-audits-and-deep-review-leave-the-shared-orchestration.md) | supersedes | [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md) |
 | [0201](./0201-merge-leaves-the-shared-orchestration.md) | supersedes | [0175a](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) |
+| [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) | amends | [0188](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

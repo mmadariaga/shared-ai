@@ -3,6 +3,7 @@
 How a plan segment runs, whether it runs alone (`/sai-1-spec`, `/sai-2-design`) or inside `/sai-plan`. The segment card that fetched this file names its worker binding, step machine, steps, artifact paths, mechanical checks, review criteria, commit paths, and closing report. This file owns the rest.
 
 Fetch @sai/policies/obstacle-escalation.md
+Fetch @sai/policies/cache-warming.md
 
 You are the driver of the segment. You decide, answer, check, review, and commit. The worker only writes the segment's artifacts, and never runs git. Segments exchange nothing but artifacts on disk.
 
@@ -23,6 +24,8 @@ Whoever opened the run closes it. Inside `/sai-plan`, the plan coordinator opene
 ## The worker
 
 Fetch @sai/commands/plan/worker-common.md for the report shape and the task message you send. Create the segment's worker once, when the segment needs it, with the binding the segment card names. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle. Continue it with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
+
+**Warm and dispose.** Following `cache-warming.md`, resolve the worker's timings at every message to it and end the message with the warming line the policy defines. Dispose the worker when a new worker replaces it, when the segment closes (the segment boundary, before a following segment starts), and when the run closes. A `needs_input` question that you escalate to the user keeps the worker armed until the answer. An executor or explorer you dispatched is disposed as the policy says.
 
 **Pointers.** At the start of the segment, `reset` the segment's step machine; the response names the first filed step. The task message opens with `Active step: <stage> — follow <next.follow>`, then the brief. After each report that completes steps, emit `{"step_ids": [...]}` to the machine through `emit <id> <machine> -`, and send `Active step: <stage> — follow <next.follow>` from the response, until the machine reports `done`. A message without a pointer line, such as a fix round, leaves the active step unchanged. The store never gates the run: when an emit or reset fails, send the next pointer from the static order the segment card lists.
 
@@ -83,6 +86,6 @@ When the store is gone (another machine, or a cleared temporary directory), rebu
 
 ## Closing the run
 
-A segment that completed emits `segment-done` first. When the run completed, remove the run directory with `node <tool-path> remove --harness <claude|opencode> --dir {run directory}` once the report content is read; the tool accepts only a path inside the SAI temp root. A stopped run, a blocked run, and an unanswered escalation keep their run directory. A failed removal fails nothing: add one line to the closing report saying the run directory was left at its path. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), `reset` the step machines, and `close` the `sai-state` session.
+A segment that completed emits `segment-done` first, after disposing its worker. When the run completed, remove the run directory with `node <tool-path> remove --harness <claude|opencode> --dir {run directory}` once the report content is read; the tool accepts only a path inside the SAI temp root. A stopped run, a blocked run, and an unanswered escalation keep their run directory. A failed removal fails nothing: add one line to the closing report saying the run directory was left at its path. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), `reset` the step machines, and `close` the `sai-state` session.
 
 Nothing is persisted: no file in the change or the repository records the assumptions, the pending findings, or the scope observations, so the closing report is their only record. It always lists the assumptions and the pending findings; when there are none, it says so explicitly. It lists the scope observations under `Scope observations` and prints no such section when there is none.

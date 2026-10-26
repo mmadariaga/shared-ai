@@ -91,7 +91,7 @@ Each Claude Code sample SHALL be measured from the transcript. Lines sharing `me
 
 ### Requirement: Interference and incomplete waits on Claude Code
 
-A user message, another task notification, queued input, an automatic compaction, or a second continuation on the target between the start of a wait and its probe SHALL invalidate that sample; hook-added context on the probe turn SHALL be recorded as an observation and SHALL NOT invalidate it. A wait whose notification status is not `completed`, including `killed`, SHALL leave its sample incomplete, never a MISS, keep the earlier valid samples, and mark the report incomplete; for a stopped wait the report SHALL name `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1` as a launch option the user may choose, and the benchmark SHALL NOT set it or change any other setting or environment variable. `finish --out DIR` SHALL stop a run, keep its valid samples, and mark the report incomplete.
+A user message, another task notification, queued input, an automatic compaction, or a second continuation on the target between the start of a wait and its probe SHALL invalidate that sample; hook-added context on the probe turn SHALL be recorded as an observation and SHALL NOT invalidate it. A wait whose notification status is not `completed`, including `killed`, SHALL leave its sample incomplete, never a MISS, keep the earlier valid samples, and mark the report incomplete; for a stopped wait the report SHALL name `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1` as a launch option the user may choose, and the benchmark SHALL NOT set it or change any other setting or environment variable, except the user-permitted warming override in `.sai/settings.local.jsonc` that it restores byte for byte when the run ends. `finish --out DIR` SHALL stop a run, keep its valid samples, and mark the report incomplete.
 
 #### Scenario: Interfering request invalidates the sample
 
@@ -102,6 +102,11 @@ A user message, another task notification, queued input, an automatic compaction
 
 - **WHEN** a background wait's notification reports status `killed`
 - **THEN** the sample is incomplete rather than a MISS, earlier valid samples are kept, and the report names `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1`
+
+#### Scenario: Warming override is the only setting change
+
+- **WHEN** the user permits the warming override and the benchmark measures
+- **THEN** `.sai/settings.local.jsonc` is the only setting the benchmark changes, and it restores that file when the run ends
 
 ### Requirement: Missing Claude Code capability is reported by name
 

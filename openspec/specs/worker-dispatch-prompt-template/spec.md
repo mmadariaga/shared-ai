@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD: Define the encoded literal contract-aware dispatch template for routed worker bindings.
+
 ## Requirements
+
 ### Requirement: Routed worker bindings use an encoded literal contract-aware dispatch template
 
 Each of the seven Claude Code and seven opencode worker bindings SHALL use a literal, worker-specific ready-only initial dispatch prompt template encoded as one double-quoted string on the dispatch line. After substituting the binding canonical worker contract filename, the prompt string SHALL contain literal backslash-n escape sequences and SHALL decode to the worker contract section followed by the ready-only sentence asking for event ready now with task disclosure in the same-worker continuation. The template SHALL contain no InvocationEnvelope slot, no arguments_value, and no task content at open, and SHALL NOT define, serialize, concatenate, or reinterpret a wrapper-echo field.
@@ -42,13 +44,18 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 
 ### Requirement: Binding continuations remain answer-only and harness-native
 
-Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage`, opencode bindings SHALL continue the captured task through `task(task_id: ...)`, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it.
+Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage`, opencode bindings SHALL continue the captured task through `task(task_id: ...)`, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it, followed by the warming line of `sai/policies/cache-warming.md` when the worker's resolved timings are not `off`.
 
 #### Scenario: Feedback continues the same worker
 
 - **WHEN** a routed worker returns `needs_input`
 - **THEN** the binding SHALL reuse its captured continuation reference and forward only the selected value
 - **AND** the continuation SHALL not package the contract template, binding metadata, or artifacts as new worker input
+
+#### Scenario: Continuation carries the warming line
+
+- **WHEN** the coordinator continues a worker whose resolved `subagent` timings are not `off`
+- **THEN** the continuation forwards the answer followed only by the warming line
 
 ### Requirement: Initial dispatch prompt embeds literal ready example
 Each routed worker binding initial dispatch prompt SHALL embed the literal two-line ready example naming event ready and empty changed_files after the ready-only sentence, encoded with escaped newline sequences in the single double-quoted dispatch string so decoding yields the multi-line example.
@@ -63,4 +70,3 @@ Each modified dispatch prompt SHALL remain a single double-quoted line using esc
 #### Scenario: Encoded prompt validates exactly
 - **WHEN** installer validation compares a rendered dispatch prompt
 - **THEN** exact equality SHALL require the ready-only sentence plus the literal example block
-

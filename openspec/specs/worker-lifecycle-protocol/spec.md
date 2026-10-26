@@ -7,12 +7,16 @@ Define the common lifecycle protocol shared across all worker types (design, imp
 ## Requirements
 
 ### Requirement: Canonical shared lifecycle ownership
-The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications.
+The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications. Cache warming (the warming line on a task message or continuation, arming, and dispose) SHALL be defined once in `sai/policies/cache-warming.md`, which the binding templates fetch, and not restated in phase contracts.
 
 #### Scenario: Common lifecycle mechanics are changed
 - **WHEN** a maintainer changes statuses, payload validation, binding-owned continuation metadata, changed-file aggregation, continuation, or fallback mechanics
 - **THEN** the change SHALL be made in the canonical shared lifecycle contract
 - **AND** routed phase contracts SHALL consume that contract without duplicating its normative mechanics
+
+#### Scenario: Warming mechanics are changed
+- **WHEN** a maintainer changes how a worker arms, wakes, or is disposed
+- **THEN** the change is made in `sai/policies/cache-warming.md`, which the binding templates fetch
 
 ### Requirement: implementation-worker-terminal-statuses
 
@@ -127,7 +131,7 @@ Review, security, performance, and accessibility workers SHALL use the same prog
 
 ### Requirement: Resumable worker sessions
 
-The coordinator SHALL support continuing an existing implementation planning or design planning worker session using harness dispatch metadata captured by the binding while keeping durable OpenSpec artifacts as the authoritative workflow state. A worker's `completed` status closes its current dispatch phase but does not end its resumability for recovery purposes; worker resumability is tracked from the worker's dispatch state (pending dispatch, active, or completed) and ends only when the run closes or the segment boundary is crossed. The coordinator maintains an in-run worker roster that includes every worker from initial dispatch through the end of the run or segment boundary, even after they return `completed`.
+The coordinator SHALL support continuing an existing implementation planning or design planning worker session using harness dispatch metadata captured by the binding while keeping durable OpenSpec artifacts as the authoritative workflow state. A worker's `completed` status closes its current dispatch phase but does not end its resumability for recovery purposes; worker resumability is tracked from the worker's dispatch state (pending dispatch, active, or completed) and ends only when the run closes, the segment boundary is crossed, or a new worker replaces it. The coordinator maintains an in-run worker roster that includes every worker from initial dispatch through the end of the run or segment boundary, even after they return `completed`. At these same points the coordinator disposes the worker as `sai/policies/cache-warming.md` defines, and a worker paused on a pending `needs_input` question is not disposed.
 
 #### Scenario: Resume available worker
 - **WHEN** the binding has captured a worker session identifier for the current invocation
@@ -142,6 +146,10 @@ The coordinator SHALL support continuing an existing implementation planning or 
 - **WHEN** a run or segment boundary is crossed
 - **THEN** the coordinator SHALL remove completed workers from the resumability roster for the next segment
 - **AND** subsequent segments have an independent roster
+
+#### Scenario: Replaced worker is disposed
+- **WHEN** the coordinator replaces a worker with a new worker
+- **THEN** it disposes the replaced worker, which is no longer resumed
 
 ### Requirement: Failed-resume fallback
 When continuing an implementation planning worker fails, the established fallback SHALL remain unchanged: the coordinator dispatches a fresh implementation worker with the original invocation envelope and durable-artifact reconstruction instruction. When continuing a design planning worker fails, the coordinator SHALL dispatch a fresh design worker with the original invocation envelope, design-scoped opaque input history, any exact `pending_feedback`, and an instruction to reconstruct state independently from current durable artifacts — the retired `fast_track_banner_emitted` presentation flag SHALL NOT be part of design reconstruction metadata. Each opaque-history entry SHALL contain only the exact `question` and ordered `options` from one prior worker-authored `needs_input` payload plus the exact user-supplied `answer_value`; coordinator-authored prompts, labels, summaries, feedback-gate presentation, and inferred state SHALL be excluded. `pending_feedback` SHALL contain only the exact free-form artifact feedback awaiting a worker result that confirms application or discard and artifact verification. The coordinator SHALL forward these values without interpreting them or reading and packaging artifact context itself. If the coordinator lacks complete design reconstruction metadata needed for safe reconstruction, it SHALL return a failed result that asks the user to restart rather than risk repeating or losing an accepted decision, feedback turn, or user-visible notice.

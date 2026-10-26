@@ -110,19 +110,19 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     'sai/commands/spec/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/remember.md', '@skills/safe-operations/SKILL.md', '@skills/budget/SKILL.md',
       '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/policies/ready-to-propose-format.md',
-      '@sai/policies/block-hygiene-judgment.md', '@sai/orchestration/workers/bindings/spec-worker.md',
+      '@sai/policies/block-hygiene-judgment.md', '@sai/orchestration/workers/bindings/spec-worker.md', '@sai/policies/cache-warming.md',
     ],
     'sai/commands/design/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/remember.md', '@skills/safe-operations/SKILL.md', '@skills/budget/SKILL.md',
-      '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/orchestration/workers/bindings/design-worker.md',
+      '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/orchestration/workers/bindings/design-worker.md', '@sai/policies/cache-warming.md',
     ],
     'sai/commands/plan/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md',
-      '@sai/commands/spec/coordinator.md', '@sai/commands/design/coordinator.md',
+      '@sai/commands/spec/coordinator.md', '@sai/commands/design/coordinator.md', '@sai/policies/cache-warming.md',
     ],
     'sai/commands/plan/cycle.md': [
       '@sai/commands/plan/worker-common.md', '@sai/policies/incremental-review.md', '@sai/policies/artifact-review-contract.md',
-      '@sai/policies/obstacle-escalation.md',
+      '@sai/policies/obstacle-escalation.md', '@sai/policies/cache-warming.md',
     ],
   };
   for (const [file, targets] of Object.entries(allowed)) {

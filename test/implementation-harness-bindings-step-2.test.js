@@ -111,3 +111,16 @@ test('Step 3 documentation does not instruct ownership or copying of retired pro
       `${relativePath} should not document retired proxy ownership or copying`);
   }
 });
+
+test('every worker binding fetches the cache-warming policy and names its harness dispose action, once', () => {
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/cache-warming.md')), 'the policy the bindings fetch exists');
+  for (const harness of ['claude', 'opencode']) {
+    for (const [, filename] of WORKERS) {
+      const binding = matrixBinding(harness, BINDING_PHASE[filename]);
+      assert.equal(binding.match(/^Fetch @sai\/policies\/cache-warming\.md$/gm)?.length, 1, `${harness} ${filename} fetches the policy once`);
+      assert.match(binding, /disposes the worker at run close, at a segment\s+boundary, and when it replaces the worker/, `${harness} ${filename} names the dispose points`);
+      if (harness === 'claude') assert.match(binding, /TaskStop\(task_id: "<captured agent ID>"\)/, `${filename} stops the worker by agent ID`);
+      else assert.match(binding, /removes the outstanding shell[\s\S]*interrupts that session[\s\S]*`dispose` message/, `${filename} removes the shell, interrupts the session, and falls back to the message`);
+    }
+  }
+});

@@ -57,9 +57,34 @@ only that measurement with a clear explanation.
 
 The skill shows the exact session/model, plan and limits, warns about cost and
 silence, and asks for consent before launching. Each probe consumes billable
-model usage and appends history. Existing warming settings are never changed;
-warming, compaction, model changes or additional interactions invalidate
-affected samples. Account-wide activity can also cause cache eviction.
+model usage and appends history. Warming, compaction, model changes or
+additional interactions invalidate affected samples. Account-wide activity can
+also cause cache eviction.
+
+### Warming override
+
+SAI agents that keep their prompt cache warm (the `warming` setting in
+[project settings](../project-settings.md#cache-warming)) would corrupt the
+samples. Before it measures, the benchmark asks your permission to write a
+warming override: a `warming` entry in `.sai/settings.local.jsonc` that turns
+warming off for both roles. If you decline, it stops without measuring and
+writes nothing.
+
+With permission, it saves the file's exact bytes (or the fact that the file was
+absent) in a restoration record under the SAI temp root, writes the override,
+stops its own session's wait, disposes the agents it keeps armed, and confirms
+that the resolver returns `off` for both roles. When the benchmark ends, whether
+it succeeds, fails, or is cancelled, it puts the exact bytes back, or deletes the
+file when it created it. The effects while it measures:
+
+- every SAI session in the project stops warming from its next arm, and a wait
+  that another session already armed can still wake once;
+- your comments in `.sai/settings.local.jsonc` are absent until the file is
+  restored;
+- an interrupted run leaves warming off until the next benchmark run restores
+  the file, which it does before asking permission again;
+- when the file changed after the override was written, the benchmark leaves it
+  in place and warns that restoring it is up to you.
 
 Defaults preserve the imported experiment: base 4 minutes, step 5 minutes,
 cap 90 minutes, refinement granularity 30 seconds, rewarm 3 seconds, repeats 3,

@@ -5,6 +5,7 @@ Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @sai/policies/tool-resolution.md
 Fetch @sai/policies/finding-state.md
+Fetch @sai/policies/cache-warming.md
 
 You chain the segments of one deep-review run in a single session. The invocation carries one string, `arguments_value`: an optional change name and the options of step 1 of Start.
 
@@ -24,7 +25,7 @@ Commits are local only and nothing is pushed. Only the `/sai-3-implement` fix se
 
 No review or audit runs after the fix segment: the next `/sai-deep-review` run reviews the fixed tree.
 
-A segment starts only when the previous one completed. When segment 1 or segment 5 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
+Each segment disposes its own workers when it ends, as `cache-warming.md` says, so the review worker is disposed before the triage and the implement workers when the fix segment closes. An audit worker is disposed as soon as its cycle ends (verified, failed, or budget exhausted); a worker paused on a question for the user stays armed until the answer. A segment starts only when the previous one completed. When segment 1 or segment 5 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
 
 ## Start
 

@@ -6,6 +6,7 @@ Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @sai/policies/tool-resolution.md
 Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/finding-state.md
+Fetch @sai/policies/cache-warming.md
 Fetch @sai/commands/review/options.md. It declares the options this command accepts and the form of the parent branch.
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: an optional change name and the options of step 2 of Start.
@@ -28,6 +29,8 @@ Review a change's diff against its parent branch in a fresh worker and leave the
 Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.
 
 Create `sai-4-review-worker` once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
+
+**Warm and dispose.** Following `cache-warming.md`, resolve the worker's timings at every message to it and end the message with the warming line the policy defines. Dispose the worker when a new worker replaces it and, in every outcome, when the run closes or this segment ends inside `/sai-build` or `/sai-deep-review`, before the next segment starts. An executor or explorer you dispatched is disposed as the policy says.
 
 The task message opens with `Active step: establish-diff-scope — follow <pointer>`, then names the change, the `--parent-branch` value when one was given, and the path `openspec/changes/{name}/review.md`.
 
@@ -81,4 +84,4 @@ The approaches are:
 
 When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no `review.md` and no commit.
 
-Before ending in any outcome, `close` the `sai-state` session.
+Before ending in any outcome, dispose the worker and `close` the `sai-state` session.

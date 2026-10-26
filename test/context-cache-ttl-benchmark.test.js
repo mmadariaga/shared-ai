@@ -236,3 +236,125 @@ test('both harnesses install all auxiliary resources, context-preserving wrapper
     if (harness === 'claude') assert.match(text, /cache_ttl\.js/);
   }
 });
+
+// The warming override cycle (E16-E20): the benchmark turns warming off in `.sai/settings.local.jsonc` and puts the file back.
+const warmingOverride = require('../skills/universal/sai-context-cache-ttl-benchmark/warming_override');
+const toolsDir = path.resolve(__dirname, '../sai/tools');
+const settingsTools = require('../sai/tools/project-settings');
+
+function warmingFixture(t, { base = '{ "warming": { "defaults": { "agent": { "interval": 4, "max": 30 }, "subagent": { "interval": 4, "max": 20 } } } }\n', local } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'warming-override-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const project = path.join(dir, 'project'), saiRoot = path.join(dir, 'sai');
+  fs.mkdirSync(path.join(project, '.sai'), { recursive: true });
+  fs.mkdirSync(saiRoot);
+  if (base !== null) fs.writeFileSync(path.join(project, '.sai', 'settings.jsonc'), base);
+  const localFile = path.join(project, '.sai', 'settings.local.jsonc');
+  if (local !== undefined) fs.writeFileSync(localFile, local);
+  return { project, saiRoot, localFile, args: { tools: settingsTools, project, saiRoot } };
+}
+
+const resolveRole = (project, role) => settingsTools.warming({ provider: 'anthropic', model: 'haiku', role }, { cwd: project, locate: false }).warming;
+
+test('E16 the skill asks for permission before writing the override and stops when the user declines', () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/sai-context-cache-ttl-benchmark/SKILL.md'), 'utf8');
+  assert.match(skill, /warming override/i);
+  assert.match(skill, /Ask the user for permission[\s\S]{0,800}only after the user\s+grants permission/);
+  assert.match(skill, /user declines, stop without measuring/);
+  assert.ok(skill.indexOf('warming_override.js') < skill.indexOf('## Start'), 'the override is settled before the plan consent');
+});
+
+test('E17 apply records the prior bytes, writes warming off for both roles, and keeps the other local keys', t => {
+  const original = '{\n  // personal\n  "explore": { "chatPublicLanguage": "Español" },\n}\n';
+  const f = warmingFixture(t, { local: original });
+  assert.deepEqual(resolveRole(f.project, 'agent'), { interval: 4, max: 30 });
+  const applied = warmingOverride.apply(f.args);
+  assert.equal(applied.ok, true); assert.equal(applied.created, false);
+  const written = fs.readFileSync(f.localFile, 'utf8');
+  assert.deepEqual(settingsTools.parseJsonc(written), { explore: { chatPublicLanguage: 'Español' }, warming: warmingOverride.WARMING_OFF });
+  assert.equal(resolveRole(f.project, 'agent'), 'off');
+  assert.equal(resolveRole(f.project, 'subagent'), 'off');
+  assert.deepEqual(warmingOverride.verify(f.args), { ok: true, status: 'verified', roles: { agent: 'off', subagent: 'off' } });
+  assert.equal(warmingOverride.status(f.args).status, 'record-found');
+  assert.equal(warmingOverride.apply(f.args).status, 'record-found', 'a waiting record is never overwritten');
+  assert.equal(fs.readFileSync(f.localFile, 'utf8'), written);
+});
+
+test('E17 apply creates the file when it is absent, and refuses a local file it cannot read', t => {
+  const f = warmingFixture(t);
+  const applied = warmingOverride.apply(f.args);
+  assert.equal(applied.ok, true); assert.equal(applied.created, true);
+  assert.equal(resolveRole(f.project, 'agent'), 'off');
+  const broken = warmingFixture(t, { local: '{ "explore": ' });
+  const refused = warmingOverride.apply(broken.args);
+  assert.equal(refused.status, 'unreadable');
+  assert.equal(fs.readFileSync(broken.localFile, 'utf8'), '{ "explore": ');
+  assert.equal(warmingOverride.status(broken.args).status, 'no-record');
+});
+
+test('E18 restore returns the original bytes, comments included, and removes the record', t => {
+  const original = '{\r\n  // personal\r\n  "warming": { "defaults": { "agent": { "interval": 5, "max": 10 } }, },\r\n}';
+  const f = warmingFixture(t, { local: original });
+  warmingOverride.apply(f.args);
+  assert.equal(warmingOverride.restore(f.args).status, 'restored');
+  assert.equal(fs.readFileSync(f.localFile, 'utf8'), original);
+  assert.deepEqual(resolveRole(f.project, 'agent'), { interval: 5, max: 10 }, 'the restored local entry wins over the base again');
+  assert.equal(resolveRole(f.project, 'subagent'), 'off');
+  assert.equal(warmingOverride.status(f.args).status, 'no-record');
+  assert.equal(warmingOverride.restore(f.args).status, 'no-record');
+});
+
+test('E18 restore deletes a file that the benchmark created', t => {
+  const f = warmingFixture(t);
+  warmingOverride.apply(f.args);
+  const restored = warmingOverride.restore(f.args);
+  assert.equal(restored.status, 'restored'); assert.equal(restored.removed, true);
+  assert.equal(fs.existsSync(f.localFile), false);
+  assert.deepEqual(resolveRole(f.project, 'agent'), { interval: 4, max: 30 });
+});
+
+test('E19 a record left by an interrupted run is found and restored before the next permission question', t => {
+  const original = '{ "explore": { "overviewLanguage": "none" } }\n';
+  const f = warmingFixture(t, { local: original });
+  warmingOverride.apply(f.args);
+  // The run is interrupted here: nothing restores the file. A later run starts with `status`.
+  assert.equal(warmingOverride.status(f.args).status, 'record-found');
+  assert.equal(warmingOverride.restore(f.args).status, 'restored');
+  assert.equal(fs.readFileSync(f.localFile, 'utf8'), original);
+  assert.equal(warmingOverride.apply(f.args).status, 'applied', 'permission can be asked again and the override written anew');
+});
+
+test('I13 a local file that changed after the override stays in place with a warning', t => {
+  const original = '{ "explore": { "overviewLanguage": "none" } }\n';
+  const f = warmingFixture(t, { local: original });
+  warmingOverride.apply(f.args);
+  const edited = `${fs.readFileSync(f.localFile, 'utf8')}// edited by the user\n`;
+  fs.writeFileSync(f.localFile, edited);
+  const result = warmingOverride.restore(f.args);
+  assert.equal(result.status, 'changed');
+  assert.match(result.warning, /up to you/);
+  assert.equal(fs.readFileSync(f.localFile, 'utf8'), edited);
+  assert.equal(warmingOverride.status(f.args).status, 'no-record');
+  const stale = JSON.parse(fs.readFileSync(result.stale_record, 'utf8'));
+  assert.equal(Buffer.from(stale.original_base64, 'base64').toString('utf8'), original);
+});
+
+test('the override tool runs from the CLI with an explicit tools folder and SAI root', t => {
+  const f = warmingFixture(t, { local: '{}\n' });
+  const run = action => JSON.parse(execFileSync(process.execPath, [path.resolve(__dirname, '../skills/universal/sai-context-cache-ttl-benchmark/warming_override.js'), action, '--project', f.project, '--sai-root', f.saiRoot, '--tools-dir', toolsDir], { encoding: 'utf8' }));
+  assert.equal(run('apply').status, 'applied');
+  assert.equal(run('verify').ok, true);
+  assert.equal(run('restore').status, 'restored');
+  assert.equal(fs.readFileSync(f.localFile, 'utf8'), '{}\n');
+});
+
+test('both harnesses install the override tool and grant the benchmark command its shell pattern', () => {
+  const repoRoot = path.resolve(__dirname, '..'), manifest = require('../sai/install-manifest.json');
+  assert.ok(manifest.capabilities.profiles['context-cache-benchmark-command'].shell.includes('node {skills}/sai-context-cache-ttl-benchmark/warming_override.js *'));
+  for (const harness of ['claude', 'opencode']) {
+    const base = path.join(os.tmpdir(), 'cache-benchmark-warming-projection', harness);
+    const destinationRoot = Object.fromEntries(['agents', 'commands', 'config', 'sai', 'skills', 'root'].map(k => [k, path.join(base, k)]));
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    assert.ok(projections.some(p => p.destinationPath === path.join(base, 'skills/sai-context-cache-ttl-benchmark/warming_override.js')), harness);
+  }
+});
