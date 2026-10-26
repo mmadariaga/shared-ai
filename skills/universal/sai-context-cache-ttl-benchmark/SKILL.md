@@ -57,6 +57,45 @@ session transcripts. Both tools share one decision path in `engine.js`.
    a model request. Preserve user-supplied algorithm parameters. If access or
    data is missing, report that limitation; leave configuration unchanged.
 
+## Warming override
+
+SAI agents that keep their prompt cache warm (`@sai/policies/cache-warming.md`)
+would corrupt the samples, so while it measures the benchmark turns that warming
+off for the whole project. It does so with a **warming override**: a `warming`
+entry in `.sai/settings.local.jsonc` that disables both roles, which the reader
+applies key by key over the committed `.sai/settings.jsonc`. The helper
+`warming_override.js` beside this file does every step with no extra dependency:
+`node <path>/warming_override.js <action>` (the installed path, project-local
+first), run from the project root. Each action prints one JSON object, and the
+helper finds the harness and the SAI temp root itself.
+
+1. Run `status`. When it prints `record-found`, an earlier run did not finish and
+   left the local file changed: run `restore`, report its result (print the
+   `warning` of a `changed` result), and go on. Permission is asked again below.
+2. Fetch @sai/policies/cache-warming.md. Ask the user for permission through the
+   native picker to write the warming override, and say what it does: it
+   replaces the `warming` entry of `.sai/settings.local.jsonc` (the file is
+   created when absent), every SAI session in the project stops warming from its
+   next arm, a wait that another session already armed can still wake once, your
+   comments in that file are absent while the benchmark measures, and an
+   interrupted run leaves warming off until the next benchmark run restores the
+   file. The benchmark writes `.sai/settings.local.jsonc` only after the user
+   grants permission. When the user declines, stop without measuring; nothing was
+   written.
+3. Run `apply`. A result with `ok: false` (`unreadable`, `record-found`, or
+   `write-failed`) is reported as it is, and the run stops without measuring.
+4. Before any measurement: stop the wait that this session armed itself and
+   dispose every agent this session keeps armed, as the policy's `Stop your own
+   wait` and `Dispose` sections say, then run `verify`. It must print `"ok":
+   true` with `off` for both roles. When any of these checks fails, run
+   `restore` and stop without measuring.
+5. Whatever ends the run (a declined plan consent below, a successful or failed
+   measurement, or the user's cancellation), run `restore` as the last tool call
+   before the final report. It puts the exact bytes of the file back, or deletes
+   the file when the benchmark created it. When the file no longer holds the
+   override the benchmark wrote, `restore` leaves it in place and prints a
+   warning that restoring it is up to the user; repeat that warning in the report.
+
 ## Start
 
 Before launching, show the verified tool, mode, session, provider/model,
@@ -68,9 +107,10 @@ conversation**. Main mode occupies this chat; subagent mode leaves the parent
 usable on opencode but account traffic can affect eviction. On Claude Code say
 also that each probe is a full model turn over the whole conversation, and that
 the session is reserved for the whole run in both modes: typing in it
-invalidates the sample in flight. Existing cache-warming activity invalidates
-the experiment; report it rather than change settings. Obtain explicit consent
-to this plan and consumption.
+invalidates the sample in flight. The warming override above turns SAI
+warming off; other cache-warming activity, such as a running `/sai-cache-warmer`,
+still invalidates the experiment: report it rather than change settings. Obtain
+explicit consent to this plan and consumption.
 
 ### opencode
 
@@ -127,7 +167,8 @@ environment variable, or switch the model.
 
 ## Close
 
-After the runner exits (opencode) or prints `done` (Claude Code), read its
+Restore the warming override first (step 5 of that section). After the runner
+exits (opencode) or prints `done` (Claude Code), read its
 `report.json` and paste `summary.md` including the per-probe table, the
 observed cache bucket and the validity limitations. Keep tool, mode, model and
 variant with every comparison. Report incomplete and unavailable runs as

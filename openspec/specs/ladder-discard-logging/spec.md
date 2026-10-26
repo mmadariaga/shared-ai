@@ -8,7 +8,7 @@ Makes the explorer's research-ladder decisions observable: every skipped ladder 
 
 ### Requirement: Explorer emits ladder_discards field for audit trail
 
-The explorer SHALL emit per-segment ladder_discards even when the caller's output contract omits it. This field SHALL remain the sole research-availability signal to the principal, without a principal probe. Each entry SHALL include level, reason, and unavailable, excluded, inapplicable, or instruction-error classification. An unavailable entry SHALL additionally identify tool, granted true, applicable true, and concrete remediation. Permission rejection SHALL be an access or instruction incompatibility rather than environmental absence. Consumers SHALL retain all entries internally and present only eligible environmental absences under the shared notice rule.
+The explorer SHALL emit per-segment ladder_discards even when the caller's output contract omits it. The cache-warming background wait that `sai/policies/cache-warming.md` defines SHALL NOT produce a refusal entry. This field SHALL remain the sole research-availability signal to the principal, without a principal probe. Each entry SHALL include level, reason, and unavailable, excluded, inapplicable, or instruction-error classification. An unavailable entry SHALL additionally identify tool, granted true, applicable true, and concrete remediation. Permission rejection SHALL be an access or instruction incompatibility rather than environmental absence. Consumers SHALL retain all entries internally and present only eligible environmental absences under the shared notice rule.
 
 #### Scenario: Codegraph MCP tool not available
 - **WHEN** granted applicable CodeGraph MCP is absent from the explorer session
@@ -35,7 +35,7 @@ The explorer SHALL emit per-segment ladder_discards even when the caller's outpu
 - **THEN** the ladder governs and the prescribed-tool instruction-error diagnostic remains internal without a principal probe
 
 #### Scenario: Shell operation other than git grep or codegraph is requested
-- **WHEN** a caller requests another shell purpose
+- **WHEN** a caller requests another shell purpose than the cache-warming background wait that a warming line defines
 - **THEN** the explorer refuses execution and emits an internal instruction-error diagnostic without a principal probe
 
 #### Scenario: Discard logging emitted per execution segment

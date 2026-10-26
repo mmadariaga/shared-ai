@@ -455,3 +455,93 @@ test('I7: the explore load reads explore.chatPublicLanguage after spawn and its 
   const policy = fs.readFileSync(path.join(root, 'sai/policies/public-chat.md'), 'utf8');
   assert.equal(policy.includes('chatPublicLanguage'), false);
 });
+
+// The `warming` setting and its resolver (E1, E2, E15, I3, I4).
+const warmingSetting = {
+  defaults: { agent: { interval: 4, max: 30 }, subagent: false },
+  rules: [
+    { provider: 'anthropic', model: 'haiku', role: 'subagent', interval: 4, max: 20 },
+    { provider: 'anthropic', role: 'subagent', interval: 3, max: 15 },
+    { provider: 'opencode-go', role: 'subagent', enabled: false },
+  ],
+};
+const warmingProject = (value = warmingSetting, local) => project({
+  '.sai/settings.jsonc': JSON.stringify({ warming: value }),
+  ...(local === undefined ? {} : { '.sai/settings.local.jsonc': JSON.stringify({ warming: local }) }),
+});
+const resolved = (cwd, provider, model, role) => settings.warming({ provider, model, role }, { cwd });
+
+test('I3: warming is one catalogue id and no setting means off for both roles (E1)', () => {
+  assert.ok(settings.CATALOGUE.warming);
+  const cwd = project();
+  for (const role of ['agent', 'subagent']) {
+    assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', role), { warming: 'off', origin: 'none', warnings: [] });
+  }
+  assert.equal(resolved(warmingProject({ defaults: { agent: false, subagent: false } }), 'anthropic', 'haiku', 'agent').warming, 'off');
+});
+
+test('E2/I4: the model rule beats the provider rule, which beats the role default, separately per role', () => {
+  const cwd = warmingProject();
+  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'subagent'), { warming: { interval: 4, max: 20 }, origin: 'model', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'opus', 'subagent'), { warming: { interval: 3, max: 15 }, origin: 'provider', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', undefined, 'subagent').warming, { interval: 3, max: 15 });
+  assert.deepEqual(resolved(cwd, 'unlisted', 'any', 'agent'), { warming: { interval: 4, max: 30 }, origin: 'defaults', warnings: [] });
+  assert.equal(resolved(cwd, 'unlisted', 'any', 'subagent').warming, 'off');
+  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'agent').origin, 'defaults');
+});
+
+test('E1/E2: a rule with enabled: false turns warming off even where the defaults enable it', () => {
+  const cwd = warmingProject({ defaults: { subagent: { interval: 4, max: 30 } }, rules: [{ provider: 'opencode-go', model: 'm', role: 'subagent', enabled: false }] });
+  assert.deepEqual(resolved(cwd, 'opencode-go', 'm', 'subagent'), { warming: 'off', origin: 'model', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'opencode-go', 'other', 'subagent').warming, { interval: 4, max: 30 });
+});
+
+test('E15: the resolver reads the files again at every call, and the local file overrides the whole entry', () => {
+  const cwd = warmingProject();
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
+  fs.writeFileSync(path.join(cwd, '.sai/settings.local.jsonc'), '{ "warming": { "defaults": { "agent": false, "subagent": false }, "rules": [] } }');
+  assert.equal(resolved(cwd, 'x', 'y', 'agent').warming, 'off');
+  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, 'off');
+  fs.rmSync(path.join(cwd, '.sai/settings.local.jsonc'));
+  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, { interval: 4, max: 20 });
+});
+
+test('I3: an invalid warming value drops the key with a warning, so nothing warms', () => {
+  const invalid = [
+    'text', { defaults: { agent: { interval: 0, max: 5 } } }, { defaults: { agent: { interval: 5, max: 2 } } }, { defaults: { manager: false } },
+    { rules: {} }, { rules: [{ provider: 'p', role: 'agent' }] }, { rules: [{ provider: 'p', role: 'boss', interval: 1, max: 2 }] },
+    { rules: [{ provider: '', role: 'agent', interval: 1, max: 2 }] }, { rules: [{ provider: 'p', role: 'agent', enabled: false, interval: 1, max: 2 }] },
+    { rules: [{ provider: 'p', role: 'agent', interval: 1, max: 2, extra: 1 }] }, { surprise: true },
+  ];
+  for (const value of invalid) {
+    const result = resolved(warmingProject(value), 'p', 'm', 'agent');
+    assert.equal(result.warming, 'off', JSON.stringify(value));
+    assert.match(result.warnings.join('\n'), /Setting warming in \.sai\/settings\.jsonc/, JSON.stringify(value));
+  }
+});
+
+test('I4: the warming subcommand prints the effective values as JSON and rejects bad arguments', () => {
+  const cwd = warmingProject();
+  const run = (...args) => spawnSync(process.execPath, [path.join(root, 'sai/tools/project-settings.js'), 'warming', ...args, '--json', '--cwd', cwd], { encoding: 'utf8' });
+  const ok = run('--provider', 'anthropic', '--model', 'haiku', '--role', 'subagent');
+  assert.equal(ok.status, 0);
+  assert.deepEqual(JSON.parse(ok.stdout), { warming: { interval: 4, max: 20 }, origin: 'model', warnings: [] });
+  assert.equal(JSON.parse(run('--provider', 'x', '--role', 'subagent').stdout).warming, 'off');
+  for (const args of [['--role', 'agent'], ['--provider', 'p', '--role', 'boss'], ['--provider', 'p', '--role', 'agent', '--wat', '1']]) {
+    const bad = run(...args);
+    assert.equal(bad.status, 2);
+    assert.equal(JSON.parse(bad.stdout).status, 'error');
+  }
+});
+
+test('I3: the settings writer validates and saves a warming entry through the catalogue', () => {
+  const writer = require('../bin/project-settings-writer');
+  const cwd = project({ '.sai/settings.jsonc': '{\n  // keep me\n  "explore": { "chatPublicLanguage": "English" }\n}\n' });
+  assert.equal(writer.saveSettings(cwd, { warming: { defaults: { agent: { interval: 4, max: 30 } } } }).ok, true);
+  const text = fs.readFileSync(path.join(cwd, '.sai/settings.jsonc'), 'utf8');
+  assert.match(text, /\/\/ keep me/);
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
+  const refused = writer.saveSettings(cwd, { warming: { defaults: { agent: { interval: -1, max: 30 } } } });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /warming/);
+});

@@ -5,6 +5,7 @@ Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @skills/budget-executor/SKILL.md
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/cache-warming.md
 Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/command-execution.md and follow it exactly.
 Fetch @sai/policies/no-commit-guard.md and follow it exactly.
@@ -25,6 +26,8 @@ You are the explore session following this card: the driver of the run and the o
 Turn the crystallized block of the first pending slice into implemented, reviewed code, backfilled specs, an archived change, and one local commit, in one session and with no human in the loop. The run is done when the archive worker's execute order returned a clean `completed` result and the commit is confirmed, or when a stop was reported. A human is needed only for force majeure. Selecting the route consented to delegated writes AND pre-authorized exactly one local commit for this slice; it is consent to selection and dispatch only. Never push.
 
 The workers are `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`. Each runs one role for the whole slice. You read every result before acting on it; a result in another shape, or a report that does not validate, is an obstacle. The route identity is `direct-build-unattended`.
+
+Following `cache-warming.md`, resolve each worker's timings at every message to it and end the message with the warming line the policy defines. Dispose the implementer when Step 2b ends and the backfill worker when Step 6 completes, a worker whenever a new worker replaces it, and the archive worker and every worker still armed at Close. An escalation question that waits for the user keeps its worker armed until the answer. An executor is disposed as soon as its result is read.
 
 The `--no-specs` POC profile is dispatched by the POC lane, never by this card's route: it runs only Step 1 and Step 2 below, never the suite gate, and spends no attempt, because a POC failure is the experiment's observation (`pipeline-direct-build.md`).
 

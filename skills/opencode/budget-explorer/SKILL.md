@@ -39,6 +39,12 @@ This subagent runs on a commodity model. Its tier is controlled by the `model` f
 **When to use:**
 - Use `budget-explorer` for read-only lookups, searches, and documentation reads that fit the caller-declared output contract. Reserve synthesis and judgment for the main agent.
 
+## Warming and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. Add the policy's warming line to each task message and continuation when the policy says so, and dispose every explorer at run close.
+
 ## Tool-call ceiling
 
 At most 40 tool calls per execution segment: the spawn and every continuation each get their own 40. A caller may declare a smaller cap for one dispatch. When a task needs more, open another segment or spawn another bounded explorer instead of raising the ceiling.

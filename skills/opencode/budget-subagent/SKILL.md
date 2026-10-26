@@ -26,6 +26,12 @@ Give one task per spawn: what to do, the files or area it covers, and, when you 
 
 The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant is the containing rule for this case: a background child is dispatched only from a dispatcher that outlives it and awaits its result, and synchronous dispatch satisfies this.
 
+## Warming and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+Add the policy's warming line to the task message when the policy says so, and dispose the helper as soon as you have its result, unless the card you follow says you reuse it.
+
 ## Cost model
 
 This subagent runs on a commodity model; the `model` frontmatter named in the binding is the only lever on the cost of delegation.
