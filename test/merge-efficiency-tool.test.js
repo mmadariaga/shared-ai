@@ -239,6 +239,15 @@ test('operation detection follows git-path in linked worktrees instead of assumi
   assert.equal(receipt.data.merge_in_progress, false);
 });
 
+test('a leftover REBASE_HEAD alone reports no rebase in progress', t => {
+  const { cwd } = fixture(t);
+  const leftover = path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'REBASE_HEAD']).stdout.trim());
+  fs.writeFileSync(leftover, `${git(cwd, ['rev-parse', 'HEAD']).stdout.trim()}
+`);
+  assert.equal(merge.preflight(cwd).data.rebase_in_progress, false);
+  assert.equal(merge.status(cwd).data.rebase_in_progress, false);
+});
+
 test('conflict snapshot protects Git-combined content, not either stage whole file', t => {
   const { cwd } = fixture(t, true);
   const { snapshot } = launch(cwd);

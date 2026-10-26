@@ -116,7 +116,7 @@ function valid(cwd, receipt) {
 function inProgress(cwd) {
   const op = operations(cwd);
   return { merge_in_progress: op.MERGE_HEAD !== null,
-    rebase_in_progress: op.REBASE_HEAD !== null || op['rebase-merge'] !== null || op['rebase-apply'] !== null };
+    rebase_in_progress: op['rebase-merge'] !== null || op['rebase-apply'] !== null };
 }
 
 // Closing facts: what is staged, what is still unmerged, and where HEAD stands.
