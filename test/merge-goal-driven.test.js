@@ -158,7 +158,7 @@ test('E11: review findings still open after the third round are pending and do n
   assert.match(review, /Findings still open after round 3 are pending: write them to `findings\.md`[\s\S]+and go on/);
   assert.match(review, /`review-delta\.js snapshot`/);
   assert.match(coordinator(), /the findings still pending after round 3/);
-  assert.match(coordinator(), /6\. \*\*Stage\.\*\* `git add` the resolved paths and require `git diff --cached --check` to be clean/);
+  assert.match(coordinator(), /6\. \*\*Stage\.\*\* `git add` the resolved paths\. Run no `git diff --cached --check`/);
 });
 
 test('E12, E13, E17, E18: collision repair, local pre-authorized commits, squash method, and the restore command', () => {

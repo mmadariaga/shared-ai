@@ -395,7 +395,7 @@ The suite SHALL run once on the final tree, after the resolution is staged for a
 
 ### Requirement: Conflict stop cycle
 
-Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write, have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git diff --cached --check` clean, and a rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
+Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write, have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
 
 #### Scenario: Clean launch needs no worker
 
@@ -411,6 +411,11 @@ Each conflict stop SHALL be closed only when its conflicts are resolved by commi
 
 - **WHEN** `git rebase --continue` stops at another conflicted commit
 - **THEN** the coordinator starts a new stop with the same worker and its own obstacle budgets
+
+#### Scenario: Inherited whitespace does not block staging
+
+- **WHEN** a rebase stop's resolved file keeps trailing whitespace that the replayed commit already carried
+- **THEN** the coordinator stages the resolved paths with `git add` and continues the rebase without a whitespace check
 
 ### Requirement: Escalation when commit intent cannot decide
 

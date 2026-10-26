@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const merge = require('../sai/tools/merge');
 
 const TOOL = path.join(__dirname, '..', 'sai/tools/merge.js');
@@ -239,11 +239,153 @@ test('the write serves coordinator-named correction ranges after staging', t => 
   assert.throws(() => merge.bundle(fixture.cwd, JSON.parse(fs.readFileSync(record, 'utf8'))), /not a correction snapshot/);
 });
 
+const resolutionSource = (path_, regions) => JSON.stringify({ status: 'completed', changed_files: [path_],
+  summary: `Applied.\n## Complete resolution payload\n\`\`\`json\n${JSON.stringify({ selected_contextual_decisions: [],
+    files: [{ path: path_, category: 'code', source: 'authored', regions, decisions: [] }] })}\n\`\`\`\n` });
+
+test('a region is composed from named conflict sides and literal pieces, and the resolution check composes it again', t => {
+  const dash = value => lines(`${value} — ${value}`);
+  const fixture = conflicted(t, { 'f.txt': [dash('base'), dash('source'), dash('target')] });
+  const id = fixture.snapshot.data.files[0].regions[0].conflict_id;
+  const segments = [{ side: 'ours' }, { text: '# between\n' }, { side: 'theirs' }, { side: 'base' }];
+  const written = cli(fixture.cwd, ['write', ...reference(fixture)], JSON.stringify({ conflict_id: id, segments }));
+  assert.equal(written.status, 0, JSON.stringify(written.payload));
+  assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'),
+    lines('x').replace('value=x\n', 'value=target — target\n# between\nvalue=source — source\nvalue=base — base\n'));
+  assert.equal(merge.checkResolution(fixture.cwd, fixture.snapshot, resolutionSource('f.txt', [{ conflict_id: id, segments }]), []).outcome, 'success');
+  // The rewrite replaces the earlier entry: sides alone give the whole region back.
+  assert.equal(cli(fixture.cwd, ['write', ...reference(fixture)], JSON.stringify({ conflict_id: id, segments: [{ side: 'theirs' }] })).status, 0);
+  assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'), dash('source'));
+});
+
+test('composition follows the file\'s BOM and line endings and rejects a side the region lacks, writing nothing', t => {
+  const crlf = value => Buffer.concat([BOM, Buffer.from(`título=${value}\r\nsecond\r\n`)]);
+  const bom = conflicted(t, { 'bom.txt': [crlf('base'), crlf('source'), crlf('target')] });
+  const bomId = bom.snapshot.data.files[0].regions[0].conflict_id;
+  const done = cli(bom.cwd, ['write', ...reference(bom)], JSON.stringify({ conflict_id: bomId, segments: [{ side: 'ours' }, { text: 'añadido\n' }, { side: 'theirs' }] }));
+  assert.equal(done.status, 0, JSON.stringify(done.payload));
+  assert.deepEqual(fs.readFileSync(path.join(bom.cwd, 'bom.txt')),
+    Buffer.concat([BOM, Buffer.from('título=target\r\nañadido\r\ntítulo=source\r\nsecond\r\n')]));
+
+  const added = conflicted(t, { 'new.txt': [null, 'source\n', 'target\n'], 'keep.txt': ['x\n', 'x\n', 'x\n'] });
+  const addedId = added.snapshot.data.files.find(file => file.path === 'new.txt').regions[0].conflict_id;
+  const target = path.join(added.cwd, 'new.txt');
+  const before = fs.readFileSync(target);
+  const attempt = segments => cli(added.cwd, ['write', ...reference(added)], JSON.stringify({ conflict_id: addedId, segments }));
+  for (const [segments, pattern] of [
+    [[{ side: 'ours' }, { side: 'base' }], /side absent from region: base: /],
+    [[{ side: 'middle' }], /unknown side in segment 0/],
+    [[{ side: 'ours', text: 'x' }], /invalid segment 0/],
+    [[{ text: 7 }], /invalid segment 0/],
+    [[], /segments required/],
+    [[{ text: '=======\n' }], /conflict markers in text/],
+  ]) {
+    const result = attempt(segments);
+    assert.equal(result.status, 1, JSON.stringify(segments));
+    assert.deepEqual(result.payload.written, []);
+    assert.match(result.payload.errors.join('\n'), pattern);
+    assert.deepEqual(fs.readFileSync(target), before);
+  }
+  const both = cli(added.cwd, ['write', ...reference(added)], JSON.stringify({ conflict_id: addedId, text: 'x\n', segments: [{ side: 'ours' }] }));
+  assert.match(both.payload.errors.join('\n'), /exactly one of text or segments/);
+  assert.ok(!fs.existsSync(`${added.record}.writes.json`));
+  assert.equal(attempt([{ side: 'ours' }, { side: 'theirs' }]).status, 0);
+  assert.equal(fs.readFileSync(target, 'utf8'), 'target\nsource\n');
+});
+
+test('a base piece takes the mapped base and a correction snapshot has no sides to compose', t => {
+  const fixture = conflicted(t, { 'f.txt': [lines('base'), lines('source'), lines('target')] });
+  const id = fixture.snapshot.data.files[0].regions[0].conflict_id;
+  assert.equal(cli(fixture.cwd, ['write', ...reference(fixture)], JSON.stringify({ conflict_id: id, segments: [{ side: 'base' }] })).status, 0);
+  assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'), lines('base'));
+  git(fixture.cwd, ['add', 'f.txt']);
+  const current = fs.readFileSync(path.join(fixture.cwd, 'f.txt'));
+  const start = current.indexOf('value=base\n');
+  const record = path.join(fixture.parent, 'correction.json');
+  const view = cli(fixture.cwd, ['correction', '--record', record], JSON.stringify([{ path: 'f.txt', category: 'code',
+    before_hash: hash(current), regions: [{ start, end: start + 'value=base\n'.length, conflict_id: id }] }])).payload;
+  const side = cli(fixture.cwd, ['write', '--record', record, '--record-hash', view.record_hash], JSON.stringify({ conflict_id: id, segments: [{ side: 'ours' }] }));
+  assert.equal(side.status, 1);
+  assert.match(side.payload.errors[0], /side absent from region: ours/);
+  const literal = cli(fixture.cwd, ['write', '--record', record, '--record-hash', view.record_hash], JSON.stringify({ conflict_id: id, segments: [{ text: 'value=' }, { text: 'fixed\n' }] }));
+  assert.equal(literal.status, 0, JSON.stringify(literal.payload));
+  assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'), lines('fixed'));
+});
+
+test('write --input reads a UTF-8 payload file, with or without a BOM, and never together with standard input', t => {
+  const fixture = conflicted(t, { 'f.txt': [lines('base'), lines('source'), lines('target')] });
+  const id = fixture.snapshot.data.files[0].regions[0].conflict_id;
+  const payload = JSON.stringify({ conflict_id: id, text: 'value=em — dash “quoted” ñ\n' });
+  const plain = path.join(fixture.parent, 'payload.json');
+  const marked = path.join(fixture.parent, 'payload-bom.json');
+  fs.writeFileSync(plain, payload);
+  fs.writeFileSync(marked, Buffer.concat([BOM, Buffer.from(payload)]));
+  for (const file of [plain, marked]) {
+    const written = cli(fixture.cwd, ['write', ...reference(fixture), '--input', file]);
+    assert.equal(written.status, 0, JSON.stringify(written.payload));
+    assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'), lines('em — dash “quoted” ñ'));
+  }
+  // A payload redirected from a file on standard input is a second payload.
+  const stdinFile = fs.openSync(plain, 'r');
+  const run = spawnSync(process.execPath, [TOOL, 'write', ...reference(fixture), '--input', plain, '--json', '--cwd', fixture.cwd], { stdio: [stdinFile, 'pipe', 'pipe'] });
+  fs.closeSync(stdinFile);
+  assert.equal(run.status, 2);
+  assert.match(JSON.parse(run.stdout.toString('utf8')).error, /--input or standard input, not both/);
+
+  const invalid = path.join(fixture.parent, 'invalid.json');
+  fs.writeFileSync(invalid, Buffer.concat([Buffer.from('{"conflict_id":"'), Buffer.from([0xFF]), Buffer.from('"}')]));
+  assert.equal(cli(fixture.cwd, ['write', ...reference(fixture), '--input', invalid]).status, 2);
+  assert.equal(cli(fixture.cwd, ['bundle', ...reference(fixture), '--input', plain]).status, 2);
+});
+
+test('write --input returns while standard input is an open pipe that is never written or closed', async t => {
+  const fixture = conflicted(t, { 'f.txt': [lines('base'), lines('source'), lines('target')] });
+  const id = fixture.snapshot.data.files[0].regions[0].conflict_id;
+  const file = path.join(fixture.parent, 'payload.json');
+  fs.writeFileSync(file, JSON.stringify({ conflict_id: id, text: 'value=open\n' }));
+  const child = spawn(process.execPath, [TOOL, 'write', ...reference(fixture), '--input', file, '--json', '--cwd', fixture.cwd], { stdio: ['pipe', 'pipe', 'pipe'] });
+  let out = '';
+  child.stdout.on('data', chunk => { out += chunk; });
+  const finished = new Promise(resolve => child.on('close', code => resolve(code)));
+  const timer = new Promise(resolve => setTimeout(() => resolve('blocked'), 15000));
+  const result = await Promise.race([finished, timer]);
+  child.stdin.destroy();
+  if (result === 'blocked') child.kill();
+  assert.equal(result, 0, 'write --input must not wait for standard input');
+  assert.equal(JSON.parse(out).outcome, 'success');
+  assert.equal(fs.readFileSync(path.join(fixture.cwd, 'f.txt'), 'utf8'), lines('open'));
+});
+
+test('the resolution check names the first differing byte and both code points', t => {
+  const fixture = conflicted(t, { 'f.txt': [lines('base'), lines('source'), lines('target')] });
+  const id = fixture.snapshot.data.files[0].regions[0].conflict_id;
+  const text = 'value=a — b\n';
+  assert.equal(cli(fixture.cwd, ['write', ...reference(fixture)], JSON.stringify({ conflict_id: id, text })).status, 0);
+  const target = path.join(fixture.cwd, 'f.txt');
+  const source = resolutionSource('f.txt', [{ conflict_id: id, text }]);
+  assert.equal(merge.checkResolution(fixture.cwd, fixture.snapshot, source, []).outcome, 'success');
+
+  const stored = fs.readFileSync(target);
+  const offset = stored.indexOf('—');
+  fs.writeFileSync(target, Buffer.concat([stored.subarray(0, offset), Buffer.from('?'), stored.subarray(offset + 3)]));
+  const mangled = merge.checkResolution(fixture.cwd, fixture.snapshot, source, []);
+  assert.equal(mangled.outcome, 'failure');
+  assert.ok(mangled.errors.includes(`content outside regions or resolution differs: f.txt; first difference at byte ${offset}: expected U+2014, found U+003F`), mangled.errors.join('\n'));
+
+  // A file that stops early names the end of file.
+  fs.writeFileSync(target, stored.subarray(0, offset));
+  assert.match(merge.checkResolution(fixture.cwd, fixture.snapshot, source, []).errors.join('\n'),
+    new RegExp(`first difference at byte ${offset}: expected U\\+2014, found end of file`));
+});
+
 test('the worker steps name the bundle and the tool-owned write', () => {
   const read = name => fs.readFileSync(path.join(__dirname, '..', 'sai/commands/merge/steps', `${name}.md`), 'utf8');
   const common = read('common');
   const apply = read('apply');
   assert.match(common, /merge-tool> bundle --record/);
   assert.match(apply, /merge-tool> write --record/);
+  assert.match(apply, /--input <payload-file>/);
+  assert.match(apply, /\{"side": "ours"\}/);
+  assert.match(apply, /never pipe the payload through a shell/);
   assert.doesNotMatch(common + apply + read('strategy'), /git cat-file blob/);
 });
