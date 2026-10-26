@@ -8,7 +8,7 @@ Defines the `/sai-merge` routed command: pre-merge environment guards, the metho
 
 ### Requirement: Every merge stops before its commit
 
-The coordinator SHALL launch the `merge` method with `git merge --no-ff --no-commit <source_ref>` where `source_ref` is `refs/heads/<name>` for a listed candidate or an unprefixed free-text entry and `refs/remotes/origin/<name>` for an `origin/<name>` entry. Clean and conflicted merges SHALL stop before committing so the existing collision, review, verification, and staging checks applicable to the route precede automatic local finalization under command-local authorization. A fast-forward SHALL never occur.
+The coordinator SHALL launch the `merge` method with `git merge --no-ff --no-commit <source_ref>` where `source_ref` is the full `ref` of a picked preflight candidate, `refs/heads/<name>` for an unprefixed free-text or argument entry, and `refs/remotes/origin/<name>` for an `origin/<name>` entry. Clean and conflicted merges SHALL stop before committing so the existing collision, review, verification, and staging checks applicable to the route precede automatic local finalization under command-local authorization. A fast-forward SHALL never occur.
 
 #### Scenario: Clean merge waits for authorization
 
@@ -133,7 +133,7 @@ The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suit
 #### Scenario: Preflight facts are collected together
 
 - **WHEN** the coordinator enters the preflight stage
-- **THEN** one engine call returns dirty paths, merge and rebase guards, the current branch, and authoritative unmerged local candidates sorted by full committer timestamp descending and exact branch name ascending
+- **THEN** one engine call returns dirty paths, merge and rebase guards, the current branch, and the authoritative candidates not merged into `HEAD` (local branches, the current branch's upstream, and each remote's default branch, each with name and full `ref`) sorted by full committer timestamp descending and exact branch name ascending
 
 #### Scenario: Captured launch provenance remains historical
 
@@ -200,12 +200,17 @@ The mechanical comparison SHALL compare equivalent preflight facts against the s
 
 ### Requirement: Provenance capture validates the exact source ref
 
-The merge tool's `provenance` action SHALL check the source ref's format, its existence, and its commit before capturing the merge provenance, in one call. A ref that fails any check SHALL produce no provenance receipt.
+The merge tool's `provenance` action SHALL check the source ref's format, its existence, and its commit before capturing the merge provenance, in one call. The accepted format SHALL be a full branch ref, `refs/heads/<name>` or `refs/remotes/<remote>/<name>` under any remote. A ref that fails any check SHALL produce no provenance receipt.
 
 #### Scenario: Missing ref produces no receipt
 
 - **WHEN** `provenance` receives a well-formed ref that does not exist
 - **THEN** the call fails and the coordinator closes the run with the branch-failure text without launching
+
+#### Scenario: Remote default branch is accepted
+
+- **WHEN** `provenance` receives an existing `refs/remotes/origin/main` for a merge
+- **THEN** the call captures the provenance without a format error
 
 ### Requirement: Role-split efficiency comparison
 
@@ -319,7 +324,7 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 ### Requirement: Merge runs unattended from its arguments
 
-`/sai-merge` SHALL run as one goal-driven, always-unattended coordinator, `sai/commands/merge/coordinator.md`, whose invocation is `/sai-merge [<branch>] [--rebase|--squash]`. The default method SHALL be a merge, `--rebase` SHALL replay the current branch onto the named branch, and `--squash` SHALL first turn the current branch's own commits since the merge base into one local commit and then rebase it; `--squash` SHALL win when both options are given. `--fast-track` SHALL be accepted and ignored with no banner. A second branch or any other option SHALL end the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]` before anything is written. The run SHALL ask no method, working-language, dirty-tree, or strategy question, and its closing report SHALL use the language of the chat.
+`/sai-merge` SHALL run as one goal-driven coordinator, `sai/commands/merge/coordinator.md`, whose invocation is `/sai-merge [<branch>] [--rebase|--squash]`, and SHALL ask no question once the launch work starts, apart from escalations. Without a method option the method SHALL be asked at the start, with a merge when no native picker is available; `--rebase` SHALL replay the current branch onto the named branch, and `--squash` SHALL first turn the current branch's own commits since the merge base into one local commit and then rebase it; `--squash` SHALL win when both options are given. `--fast-track` SHALL be accepted and ignored with no banner. A second branch or any other option SHALL end the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]` before anything is written. The run SHALL ask no working-language or strategy question, its only start questions SHALL be the branch, method, and autostash questions, and its closing report SHALL use the language of the chat.
 
 #### Scenario: Both method options select the squash
 
@@ -329,7 +334,7 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 #### Scenario: Fast-track is ignored
 
 - **WHEN** `/sai-merge feature --fast-track` is invoked
-- **THEN** the run merges `feature` exactly as without the token and prints no fast-track banner
+- **THEN** the run behaves exactly as without the token and prints no fast-track banner
 
 #### Scenario: Unknown option ends the run before any write
 
@@ -338,7 +343,7 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 ### Requirement: Merge start guards
 
-Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resume an in-progress merge or rebase only when the invocation names the same branch and the run store holds a `running` or `escalated` `merge-run@1` run under `merge-{branch}`; any other in-progress operation SHALL be left untouched and the run SHALL end with the reason and, when a recorded run owns it, that run's branch. Without a branch argument, the coordinator SHALL ask which branch to integrate through the native picker with the newest preflight candidates up to the picker capacity and the picker's free text, or in plain text when there are none, mapping an `origin/<rest>` answer to `refs/remotes/origin/<rest>` and any other name to `refs/heads/<name>` and fetching nothing. Staged content before the launch SHALL end the run naming those paths. Unstaged changes SHALL NOT stop a merge, and for a rebase or squash the coordinator SHALL check git's refusal on tracked unstaged changes before the first mutation. A provenance failure, such as a branch that does not exist, SHALL end the run with the cause and nothing launched, and a branch whose head is already an ancestor of `HEAD` SHALL close the run with no changes.
+Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resume an in-progress merge or rebase only when the invocation names the same branch and the run store holds a `running` or `escalated` `merge-run@1` run under `merge-{branch}`; any other in-progress operation SHALL be left untouched and the run SHALL end with the reason and, when a recorded run owns it, that run's branch. Without a branch argument, the coordinator SHALL ask which branch to integrate through the native picker with the newest preflight candidates up to the picker capacity, each picked candidate naming its full `ref`, and the picker's free text, or in plain text when there are none, mapping an `origin/<rest>` answer to `refs/remotes/origin/<rest>` and any other name to `refs/heads/<name>` and fetching nothing. Staged content before the launch SHALL end the run naming those paths. Unstaged changes SHALL NOT stop a merge, and for a rebase or squash the refusal on tracked unstaged changes SHALL apply only when the autostash question was declined or no native picker exists, before the first mutation. A provenance failure, such as a branch that does not exist, SHALL end the run with the cause and nothing launched, and a branch whose head is already an ancestor of `HEAD` SHALL close the run with no changes.
 
 #### Scenario: Foreign operation is never touched
 
@@ -437,7 +442,7 @@ An obstacle SHALL be anything that prevents closing a stop or the run, including
 
 ### Requirement: Command-local authority of a merge run
 
-Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch (including the squash), `git checkout --ours` or `--theirs` for a whole-side choice, staging, the ADR/DDR repair edits and `git mv`, the merge commit, the squash commit, each `git rebase --continue`, the correction commit of the final tree, and the repair commit. The run SHALL never push, amend, force, bypass a hook, or abort an operation unless the user chose it, SHALL leave unrelated working-tree changes as they are, and SHALL stop if unrelated staged content would enter a commit. Each commit message SHALL be sent with `git commit -F <file>`, the file in the run directory. A finished rebase with nothing staged SHALL create no extra commit.
+Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch (including the squash and, when the user accepted it, `git rebase --autostash`), `git checkout --ours` or `--theirs` for a whole-side choice, staging, the ADR/DDR repair edits and `git mv`, the merge commit, the squash commit, each `git rebase --continue`, the correction commit of the final tree, and the repair commit. The run SHALL never push, amend, force, bypass a hook, drop or pop a stash, change `git config`, or abort an operation unless the user chose it, SHALL leave unrelated working-tree changes as they are, and SHALL stop if unrelated staged content would enter a commit. Each commit message SHALL be sent with `git commit -F <file>`, the file in the run directory. A finished rebase with nothing staged SHALL create no extra commit.
 
 #### Scenario: Nothing is pushed
 
@@ -446,7 +451,7 @@ Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch
 
 ### Requirement: Merge closing report
 
-The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
+The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
 
 #### Scenario: Restore command for a changed branch
 
@@ -457,6 +462,11 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 - **WHEN** a rebase rewrote commits the current branch's upstream already holds
 - **THEN** the closing report says that the next push needs a force push
+
+#### Scenario: Kept stash is named with its restore command
+
+- **WHEN** the stash reference after the rebase differs from the one recorded before the launch
+- **THEN** the closing report names the stash entry that stays and `git stash pop`
 
 ### Requirement: Merge coordinator loads only its own contracts
 
@@ -498,3 +508,51 @@ Claude Code and opencode SHALL run `/sai-merge` from the same coordinator, worke
 
 - **WHEN** the worker matrix materializes the merge worker binding for Claude Code and opencode
 - **THEN** both render from their harness's standalone worker template and fetch the same `sai/commands/merge/worker.md`
+
+### Requirement: Start questions precede the baseline
+
+When the invocation leaves the branch or the method open, the coordinator SHALL ask what is open in one native picker call before it fixes the test command and takes the baseline: the branch when no branch argument is given, and the method (merge, rebase, or squash) when neither `--rebase` nor `--squash` is given. When the native picker is unavailable, the method SHALL be a merge and the run SHALL go on. Cancelling either question SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
+
+#### Scenario: Method is asked with the branch before the baseline
+
+- **WHEN** `/sai-merge` is invoked with no arguments on a harness with a native picker
+- **THEN** the branch and method questions are asked in one picker call before the test command is fixed and before the baseline suite run
+
+#### Scenario: No picker falls back to a merge
+
+- **WHEN** the arguments carry no method option and the native picker is unavailable
+- **THEN** the method is a merge and the run continues without asking
+
+#### Scenario: Cancelled question launches nothing
+
+- **WHEN** the user cancels the method or branch question
+- **THEN** the run ends before the baseline with nothing launched and nothing written
+
+#### Scenario: Resumed run asks no method
+
+- **WHEN** the invocation resumes an interrupted run of the same branch
+- **THEN** the method comes from the store and no question is asked
+
+### Requirement: Autostash question for a rebase or squash
+
+For a rebase or squash only, after the baseline and before the first mutation, when the preflight reports a tracked file with unstaged modifications and `git config rebase.autoStash` is not true, the coordinator SHALL ask through the native picker whether to launch with `--autostash`. Untracked files SHALL NOT trigger the question, and a merge SHALL keep its existing behavior. On yes, the coordinator SHALL record the stash reference before the launch in the run directory and SHALL pass `--autostash` on the `git rebase` command line; the squash commit SHALL never take unstaged changes. On no, or when no native picker exists, the run SHALL end with the cause before the first mutation. The coordinator SHALL never change `git config`. When git cannot reapply the stashed changes at the end of the rebase, the stash entry SHALL stay in place.
+
+#### Scenario: Tracked unstaged changes on a rebase ask for autostash
+
+- **WHEN** the method is rebase and a tracked file carries unstaged modifications
+- **THEN** the coordinator asks whether to launch with `--autostash` after the baseline and before any mutation
+
+#### Scenario: Untracked files never ask
+
+- **WHEN** the method is rebase and the only working-tree changes are untracked files
+- **THEN** no autostash question is asked
+
+#### Scenario: Declined autostash ends the run unchanged
+
+- **WHEN** the user declines the autostash question, or no native picker exists
+- **THEN** the run ends with the cause before the first mutation and `git config` is unchanged
+
+#### Scenario: Unreapplied stash stays in place
+
+- **WHEN** autostash was used and git cannot reapply the changes at the end of the rebase
+- **THEN** the stash entry stays and the run does not drop or pop it

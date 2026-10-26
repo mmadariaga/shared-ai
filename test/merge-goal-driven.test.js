@@ -76,6 +76,21 @@ test('arguments: the branch is optional, --squash wins, and --fast-track is acce
   assert.match(card, /You write in the language of the chat/);
 });
 
+test('start: the method question joins the branch question before the baseline, and autostash is asked after it', () => {
+  const start = section(coordinator(), '## Start', '## A conflict stop');
+  assert.match(start, /Without `--rebase` or `--squash`, ask the method in the same call: merge, rebase, or squash/);
+  assert.match(start, /When the native picker is unavailable the method is a merge and the run goes on/);
+  assert.match(start, /Cancelling either question ends the run with nothing launched and nothing written/);
+  assert.match(start, /the method comes from the store and nothing is asked/);
+  assert.ok(start.indexOf('ask the method') < start.indexOf('Fix the test command once'));
+  assert.ok(start.indexOf('Take the baseline') < start.indexOf('9. Autostash'));
+  assert.ok(start.indexOf('9. Autostash') < start.indexOf('10. Launch.'));
+  assert.match(start, /Untracked files never trigger the question, and a merge keeps its behavior/);
+  assert.match(start, /On no, or with no picker, end the run with the cause, before the first mutation\. Never change `git config`/);
+  assert.match(start, /rebase command line carries `--autostash`/);
+  assert.match(coordinator(), /name the stash entry that stays[\s\S]+`git stash pop`/);
+});
+
 test('E1: a launch with no conflict creates no worker and goes straight to verification and the collision check', () => {
   const card = coordinator();
   assert.match(card, /A clean launch has no stop and no worker: it goes straight to Final\./);
@@ -87,7 +102,7 @@ test('E2, E3: the baseline is taken once at HEAD before the launch, and verifica
   const card = coordinator();
   const start = section(card, '## Start', '## A conflict stop');
   assert.ok(start.indexOf('Fix the test command once') < start.indexOf('Take the baseline'));
-  assert.ok(start.indexOf('Take the baseline') < start.indexOf('9. Launch.'));
+  assert.ok(start.indexOf('Take the baseline') < start.indexOf('10. Launch.'));
   assert.match(card, /`merge\.js verify --baseline --record <run>\/baseline\.json`/);
   assert.match(card, /`merge\.js verify --baseline-record <run>\/baseline\.json --baseline-hash <hash>/);
   assert.match(card, /A \*\*new failure\*\* is a test that passes in the baseline and fails after the resolution on two consecutive runs: it is the only failure that blocks/);
@@ -164,7 +179,7 @@ test('E11: review findings still open after the third round are pending and do n
 test('E12, E13, E17, E18: collision repair, local pre-authorized commits, squash method, and the restore command', () => {
   const card = coordinator();
   assert.match(card, /the merge commit, the squash commit, each `git rebase --continue`, the correction commit of the final tree, and the repair commit/);
-  assert.match(card, /Never push, amend, force, bypass a hook, or abort an operation unless the user chose it/);
+  assert.match(card, /Never push, amend, force, bypass a hook, drop or pop a stash, or abort an operation unless the user chose it/);
   assert.match(card, /`upstream\.force_push_needed` of the provenance\), say that the next push needs a force push/);
   assert.match(card, /name the `HEAD` recorded before the launch and the command that restores the branch to it \(`git reset --hard <sha>`\)/);
   assert.match(card, /A squash, when `merge_base` differs from `target_sha`, runs `git reset --soft <merge_base>` and one `git commit`/);
