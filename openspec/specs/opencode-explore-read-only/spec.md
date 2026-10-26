@@ -19,7 +19,7 @@ The managed budget-explorer source SHALL project its research profile into order
 
 ### Requirement: The managed opencode `explore` agent SHALL retain shell access and its fetch wrapper.
 
-The managed budget-explorer source SHALL grant the V2 shell action only for contracted git grep and codegraph explore patterns rather than default unrestricted bash access. Its body SHALL preserve fetch bootstrap first, followed by profile disclosure and the canonical explore-agent policy Fetch. Profile access SHALL NOT authorize unrelated shell purposes.
+The managed budget-explorer source SHALL grant the V2 shell action only for contracted git grep and codegraph explore patterns, plus the `node {skills}/sai-cache-warmer/wait.js *` pattern of the cache-warming background wait, rather than default unrestricted bash access. Its body SHALL preserve fetch bootstrap first, followed by profile disclosure and the canonical explore-agent policy Fetch. Profile access SHALL NOT authorize unrelated shell purposes.
 
 #### Scenario: Research and wrapper behavior remain available
 - **WHEN** the managed budget-explorer definition is projected
@@ -28,3 +28,7 @@ The managed budget-explorer source SHALL grant the V2 shell action only for cont
 #### Scenario: Restricted research shell remains usable
 - **WHEN** shell permissions are evaluated for git grep and an unrelated mutation command
 - **THEN** git grep is allowed while the unrelated mutation command is denied
+
+#### Scenario: Warming wait pattern is granted
+- **WHEN** shell permissions are evaluated for the installed `sai-cache-warmer/wait.js` command
+- **THEN** the research profile allows it

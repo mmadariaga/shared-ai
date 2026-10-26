@@ -26,6 +26,12 @@ Dispatch in the background only from a main agent, routed SAI coordinator, or ro
 
 Give the executor the exact command(s) to run, in order, and the output you need back. A goal without a command also works: the executor then picks the narrowest command that meets it. Either way it runs and reports; diagnosis and fixes stay with you.
 
+## Warming and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+Add the policy's warming line to the task message when the policy says so, and dispose the helper as soon as you have its result, unless the card you follow says you reuse it.
+
 ## Execution contract
 
 The agent fetches `@sai/policies/executor-agent.md`, which owns exact-command execution, narrow low-output command choice, parallel independent commands, no self-correction, structured failure reporting, and the raw-output boundary. There is no tool-call cap.

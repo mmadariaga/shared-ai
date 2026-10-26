@@ -113,18 +113,43 @@ async function waitOnce(state, { now = Date.now, wait = sleep } = {}) {
   return { status: now() >= state.closing_ms ? 'finished' : 'continue', waited_ms };
 }
 
+// Agent self-warming (sai/policies/cache-warming.md): `interval` and `max` are minutes, with no target time and
+// no closing margin. The first call opens the window (`max` from now); each re-arm passes the returned `state`
+// back unchanged, so the window closes `max` minutes after the agent's last real task or continuation.
+function warmState({ interval, max }, now = Date.now()) {
+  const interval_ms = intervalMilliseconds(interval);
+  const max_ms = intervalMilliseconds(max);
+  if (interval_ms === null || max_ms === null) throw new Error('Warming needs a positive interval and max in minutes.');
+  if (max_ms < interval_ms) throw new Error('Warming max must be at least the interval.');
+  return { interval_ms, closing_ms: now + max_ms };
+}
+
+// A re-arm may carry a freshly resolved `interval`; the window closes where it was set.
+async function warmOnce(input, io = {}) {
+  if (!input.state) return waitWith(warmState(input, (io.now ?? Date.now)()), io);
+  if (input.interval === undefined) return waitWith(input.state, io);
+  const interval_ms = intervalMilliseconds(input.interval);
+  if (interval_ms === null) throw new Error('Warming needs a positive interval in minutes.');
+  return waitWith({ ...input.state, interval_ms }, io);
+}
+
+async function waitWith(state, io) {
+  return { ...(await waitOnce(state, io)), state };
+}
+
 if (require.main === module) {
   (async () => {
     let text = '';
     for await (const chunk of process.stdin) text += chunk;
     const input = JSON.parse(text);
     const command = process.argv[2];
-    if (!['prepare', 'wait'].includes(command)) throw new Error('Use prepare or wait with JSON on stdin.');
-    console.log(JSON.stringify(command === 'prepare' ? prepare(input) : await waitOnce(input)));
+    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON on stdin.');
+    const run = { prepare: () => prepare(input), wait: () => waitOnce(input), warm: () => warmOnce(input) }[command];
+    console.log(JSON.stringify(await run()));
   })().catch(error => {
     console.error(JSON.stringify({ status: 'failed', message: error.message }));
     process.exitCode = 1;
   });
 }
 
-module.exports = { intervalMilliseconds, splitArguments, prepare, waitOnce };
+module.exports = { intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };

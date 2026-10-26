@@ -155,3 +155,32 @@ test('instruction contract keeps continuation and recovery with the main agent u
   assert.doesNotMatch(skill, /report the limitation and stop|launch no further wait|state\.interval_ms \+ 60000/);
   assert.doesNotMatch(skill, /retry (?:count|limit)|no-progress threshold|\d+ (?:attempts|retries)/i);
 });
+
+test('warm opens a window of max minutes, and the returned state re-arms it unchanged', async () => {
+  const { warmState, warmOnce } = require('../skills/universal/sai-cache-warmer/wait');
+  assert.deepEqual(warmState({ interval: 4, max: 30 }, 1000), { interval_ms: 240000, closing_ms: 1000 + 1800000 });
+  for (const bad of [{}, { interval: 0, max: 5 }, { interval: 5, max: 4 }, { interval: 'x', max: 5 }]) assert.throws(() => warmState(bad, 0), /Warming/);
+  let time = 0;
+  const waits = [];
+  const io = { now: () => time, wait: async ms => { waits.push(ms); time += ms; } };
+  const first = await warmOnce({ interval: 4, max: 10 }, io);
+  assert.deepEqual(first, { status: 'continue', waited_ms: 240000, state: { interval_ms: 240000, closing_ms: 600000 } });
+  const second = await warmOnce({ state: first.state }, io);
+  assert.equal(second.status, 'continue');
+  const last = await warmOnce({ state: first.state }, io);
+  assert.deepEqual([last.status, last.waited_ms], ['finished', 120000]);
+  assert.deepEqual(waits, [240000, 240000, 120000]);
+  assert.deepEqual((await warmOnce({ state: first.state }, io)).waited_ms, 0, 'a closed window waits no more');
+  time = 0;
+  const refreshed = await warmOnce({ state: first.state, interval: 1 }, io);
+  assert.deepEqual(refreshed, { status: 'continue', waited_ms: 60000, state: { interval_ms: 60000, closing_ms: 600000 } });
+  await assert.rejects(warmOnce({ state: first.state, interval: 0 }, io), /positive interval/);
+});
+
+test('the warm subcommand runs from the CLI and the user-invoked prepare and wait are unchanged', () => {
+  const script = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
+  const done = JSON.parse(execFileSync(process.execPath, [script, 'warm'], { input: JSON.stringify({ state: { interval_ms: 60000, closing_ms: 0 } }), encoding: 'utf8' }));
+  assert.deepEqual(done, { status: 'finished', waited_ms: 0, state: { interval_ms: 60000, closing_ms: 0 } });
+  assert.equal(spawnSync(process.execPath, [script, 'warm'], { input: JSON.stringify({ interval: 5, max: 1 }) }).status, 1);
+  assert.equal(spawnSync(process.execPath, [script, 'nonsense'], { input: '{}' }).status, 1);
+});

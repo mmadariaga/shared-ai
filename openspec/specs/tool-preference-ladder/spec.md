@@ -64,7 +64,7 @@ The tool-preference ladder SHALL govern only research-tool choice and SHALL NOT 
 
 ### Requirement: Ladder precedence over caller tool prescriptions
 
-A caller's tool name, procedure, or method SHALL NOT override the profile grants or research ladder. The task SHALL continue under the ladder; skipped prescribed tools SHALL retain a caller prescribed diagnostic. Shell SHALL remain restricted to granted git grep and codegraph explore operations. Requests for other shell purposes SHALL be refused and logged without execution. Caller-prescription and refusal entries SHALL be classified as instruction errors rather than environmental absences.
+A caller's tool name, procedure, or method SHALL NOT override the profile grants or research ladder. The task SHALL continue under the ladder; skipped prescribed tools SHALL retain a caller prescribed diagnostic. Shell SHALL remain restricted to granted git grep and codegraph explore operations, plus the background wait that `sai/policies/cache-warming.md` defines, run only after a warming line of the task message. Requests for other shell purposes SHALL be refused and logged without execution. Caller-prescription and refusal entries SHALL be classified as instruction errors rather than environmental absences.
 
 #### Scenario: Caller prescribes a tool before the ladder would reach it
 - **WHEN** the caller prescribes Glob but a granted CodeGraph structural lookup succeeds first
@@ -75,5 +75,9 @@ A caller's tool name, procedure, or method SHALL NOT override the profile grants
 - **THEN** the task continues under granted ladder choices with the prescription recorded internally
 
 #### Scenario: Shell operation other than git grep or codegraph is refused
-- **WHEN** the explorer is asked to run another shell operation
+- **WHEN** the explorer is asked to run another shell operation that is not the cache-warming background wait
 - **THEN** it refuses execution and records shell operation refused with instruction-error classification
+
+#### Scenario: Warming wait is permitted
+- **WHEN** the explorer's task message ends with a warming line and the explorer ends its response
+- **THEN** it may launch the `wait.js warm` background wait without a refusal entry

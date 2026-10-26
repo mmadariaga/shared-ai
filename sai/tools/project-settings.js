@@ -20,11 +20,75 @@ const isKeyword = (value, keyword) => value.trim().toLowerCase() === keyword;
 // Language values are free strings; the two literals reach the gates in canonical form.
 const languageName = value => (isKeyword(value, 'english') ? 'English' : isKeyword(value, 'none') ? 'None' : value.trim());
 
+// The `warming` setting: how long an agent keeps its prompt cache warm between continuations.
+// `defaults` holds one entry per role; `rules` hold entries keyed by provider, an optional model, and a role.
+// An entry is `{ interval, max }` in minutes (defaults also accept `false`) or, in a rule, `enabled: false`.
+const WARMING_ROLES = ['agent', 'subagent'];
+const WARMING_KEYS = ['defaults', 'rules'];
+const RULE_KEYS = ['provider', 'model', 'role', 'interval', 'max', 'enabled'];
+const positiveNumber = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+function warmingTimings(entry, label) {
+  if (!positiveNumber(entry.interval) || !positiveNumber(entry.max)) return `${label} needs a positive number of minutes for interval and max`;
+  return entry.max < entry.interval ? `${label} needs max to be at least interval` : null;
+}
+
+function warmingDefaultsProblem(defaults) {
+  if (!isObject(defaults)) return 'defaults must be an object';
+  for (const [role, entry] of Object.entries(defaults)) {
+    if (!WARMING_ROLES.includes(role)) return `defaults.${role} is not a role (${WARMING_ROLES.join(', ')})`;
+    if (entry !== false && !isObject(entry)) return `defaults.${role} must be false or an object with interval and max`;
+    if (entry !== false) { const problem = warmingTimings(entry, `defaults.${role}`); if (problem) return problem; }
+  }
+  return null;
+}
+
+function warmingRuleProblem(rule, index) {
+  const label = `rules[${index}]`;
+  if (!isObject(rule)) return `${label} must be an object`;
+  const unknown = Object.keys(rule).find(key => !RULE_KEYS.includes(key));
+  if (unknown) return `${label} has the unknown key ${unknown}`;
+  if (nonEmptyString(rule.provider)) return `${label}.provider must be a nonempty string`;
+  if (rule.model !== undefined && nonEmptyString(rule.model)) return `${label}.model must be a nonempty string`;
+  if (!WARMING_ROLES.includes(rule.role)) return `${label}.role must be one of ${WARMING_ROLES.join(', ')}`;
+  if (rule.enabled !== undefined) {
+    return rule.enabled === false && rule.interval === undefined && rule.max === undefined ? null : `${label} turns warming off only as enabled: false with no interval or max`;
+  }
+  return warmingTimings(rule, label);
+}
+
+function validateWarming(value) {
+  if (!isObject(value)) return 'must be an object with defaults and rules';
+  const unknown = Object.keys(value).find(key => !WARMING_KEYS.includes(key));
+  if (unknown) return `has the unknown key ${unknown}`;
+  if (value.defaults !== undefined) { const problem = warmingDefaultsProblem(value.defaults); if (problem) return problem; }
+  if (value.rules === undefined) return null;
+  if (!Array.isArray(value.rules)) return 'rules must be a list';
+  for (const [index, rule] of value.rules.entries()) { const problem = warmingRuleProblem(rule, index); if (problem) return problem; }
+  return null;
+}
+
+// The effective warming of one agent: the model rule, then the provider rule, then the role default; `off` when none applies.
+// Rules match their provider and role exactly; a rule without `model` is the provider rule. The first matching rule wins.
+function resolveWarmingValue(value, { provider, model, role }) {
+  const entries = [];
+  const rules = (value?.rules ?? []).filter(rule => rule.provider === provider && rule.role === role);
+  const modelRule = model === undefined ? undefined : rules.find(rule => rule.model === model);
+  if (modelRule) entries.push(['model', modelRule]);
+  const providerRule = rules.find(rule => rule.model === undefined);
+  if (providerRule) entries.push(['provider', providerRule]);
+  const roleDefault = value?.defaults?.[role];
+  if (roleDefault !== undefined) entries.push(['defaults', roleDefault]);
+  const [origin, entry] = entries[0] ?? ['none', false];
+  return entry === false || entry.enabled === false ? { warming: 'off', origin } : { warming: { interval: entry.interval, max: entry.max }, origin };
+}
+
 // The setting id catalogue: the single source of known ids, their validation, and
 // their presentation. An entry may add `normalize`, which maps a valid value to the one
 // the gates compare. `label` and `section` place a key on the settings screen; `absent` is
 // the text the screen shows for a key with no value, where `ask` does not fit.
 const CATALOGUE = {
+  warming: { validate: validateWarming },
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
     validate: field === 'provider'
       ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
@@ -196,6 +260,16 @@ function get(id, options) {
   return { value, source: value === null ? 'absent' : source, warnings, ...(notices.length ? { notices } : {}) };
 }
 
+/**
+ * The effective warming of one agent, resolved from the merged settings: { warming, origin, warnings, notices? }.
+ * `warming` is `{ interval, max }` in minutes or `off`; `origin` is `model`, `provider`, `defaults`, or `none`.
+ * Nothing warms until the user enables it, so an absent or unusable setting resolves to `off`.
+ */
+function warming(query, options) {
+  const { values, warnings, notices = [] } = readSettings(options);
+  return { ...resolveWarmingValue(values.warming, query), warnings, ...(notices.length ? { notices } : {}) };
+}
+
 function readGroup(group, fields, options) {
   const { values, source, warnings, root, notices = [] } = readSettings(options);
   const config = {};
@@ -248,9 +322,29 @@ function report(result, { warnings = [], notices: lines = [] } = {}) {
   return { ...result, ...(warnings.length ? { warnings } : {}), ...(lines.length ? { notices: lines } : {}) };
 }
 
+function parseWarmingArguments(args) {
+  const options = {};
+  const query = {};
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === '--json') continue;
+    if (args[i] === '--cwd' && args[i + 1]) options.cwd = args[i += 1];
+    else if (args[i] === '--provider' && args[i + 1]) query.provider = args[i += 1];
+    else if (args[i] === '--model' && args[i + 1]) query.model = args[i += 1];
+    else if (args[i] === '--role' && args[i + 1]) query.role = args[i += 1];
+    else throw new Error(`Unknown argument: ${args[i]}`);
+  }
+  if (!query.provider || !WARMING_ROLES.includes(query.role)) throw new Error(`Usage: node project-settings.js warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> [--json] [--cwd <root>]`);
+  return { query, options };
+}
+
 function main(argv) {
   try {
     const [command, id, ...rest] = argv;
+    if (command === 'warming') {
+      const { query, options } = parseWarmingArguments(argv.slice(1));
+      process.stdout.write(`${JSON.stringify(warming(query, options))}\n`);
+      return 0;
+    }
     const options = {};
     for (let i = 0; i < rest.length; i += 1) {
       if (rest[i] === '--json') continue;
@@ -259,7 +353,7 @@ function main(argv) {
       else if (rest[i] === '--pr-providers' && rest[i + 1]) options.prProviderIds = rest[i += 1].split(',');
       else throw new Error(`Unknown argument: ${rest[i]}`);
     }
-    if (command !== 'get' || !CATALOGUE[id]) throw new Error(`Usage: node project-settings.js get <${Object.keys(CATALOGUE).join('|')}> [--json] [--cwd <root>] [--providers <id,id>] [--pr-providers <id,id>]`);
+    if (command !== 'get' || !CATALOGUE[id]) throw new Error(`Usage: node project-settings.js get <${Object.keys(CATALOGUE).join('|')}> [--json] [--cwd <root>] [--providers <id,id>] [--pr-providers <id,id>]; or warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> [--json] [--cwd <root>]`);
     process.stdout.write(`${JSON.stringify(get(id, options))}\n`);
     return 0;
   } catch (error) {
@@ -269,4 +363,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, isKeyword, parseJsonc, projectRoot, readSettings, get, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, isKeyword, parseJsonc, projectRoot, readSettings, get, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };

@@ -26,3 +26,17 @@ instruction) to the captured handle:
 ```
 SendMessage(to: "<captured agent ID>", message: "<message>")
 ```
+
+## Warm and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+The worker may keep its prompt cache warm between messages. Resolve its
+timings and add the warming line to every task message and continuation, as the
+policy says. The coordinator disposes the worker at run close, at a segment
+boundary, and when it replaces the worker, and not while a `needs_input`
+question is pending:
+
+```
+TaskStop(task_id: "<captured agent ID>")
+```

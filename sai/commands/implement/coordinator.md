@@ -9,6 +9,7 @@ Fetch @sai/policies/tool-resolution.md
 Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/finding-state.md
 Fetch @sai/policies/incremental-review.md
+Fetch @sai/policies/cache-warming.md
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: the change name.
 
@@ -82,6 +83,8 @@ Fetch @sai/orchestration/workers/bindings/green-worker.md and use it.
 
 Create each worker when its first step needs it, and keep it for the whole run. The creation dispatch carries only the ready prompt; the worker returns `event: ready` and the first brief goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue a worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
 
+**Warm and dispose.** Following `cache-warming.md`, resolve each worker's timings at every message to it and end the message with the warming line the policy defines. Dispose a worker when a new worker replaces it, and dispose both workers and the live explorer at Close, before the `close` event. An executor is disposed as soon as its result is read.
+
 Every brief opens with the pointer line for the worker's step file. Before each step, reset the role's machine, `red-steps@1` or `green-steps@1`, and send `Active step: <stage> — follow <next.follow>` from the response. When the store fails, send the next pointer from the static order yourself and continue: RED follows `sai/commands/implement/steps/red-step.md`, GREEN follows `sai/commands/implement/steps/green-step.md`.
 
 A worker writes its report to the file named in the brief, `reports/step-{n}-{role}-{k}.yaml` in the run directory, and returns only that path. Emit `record` (`report`) for the path, then read the file. RED writes tests and stubs, GREEN writes production code, and neither runs git.
@@ -136,6 +139,6 @@ The run closes when every task is checked, every open fixable finding is fixed o
 3. Read the run directory files the report needs: the deviations with their reasons, the overrides, the findings still pending after the third fix round, and the `Pre-existing` findings of the round files. Nothing is persisted: no file in the change or the repository records them, so the closing report is the only record.
 4. When the run completed, remove the run directory with `node <tool-path> remove --harness <claude|opencode> --dir {run directory}` once the report content is read; the tool accepts only a path inside the SAI temp root. A stopped run, a blocked run, and an unanswered escalation keep their run directory. A failed removal (`ok: false`, or an error) fails nothing: add one line to the closing report saying the run directory was left at its path.
 5. Print the closing report: the steps committed (subject each), the deviations each with its reason, the suite result against the baseline, the pending findings, the `Pre-existing` findings (reported once, never fixed here), the audit findings fixed, and whatever remains open, open Questions included. When the run did not complete, add the blocker with the options offered and the answer. Always list the deviations and the pending findings; when there are none, say so explicitly. List the `Pre-existing` findings only when there are some. Add one line on the ratings block: stored and committed, stored and uncommitted, or not stored with the reason; no line when the step did not apply. When you wrote `SAI_LEARNINGS.md`, add its path, the entries added and superseded per section, and that the file is uncommitted; otherwise add no learnings line.
-6. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), then `reset` both step machines and `close` the `sai-state` session.
+6. Dispose the RED and GREEN workers and the live explorer, as `cache-warming.md` says. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), then `reset` both step machines and `close` the `sai-state` session.
 
 A run that completed ends with exactly `Implement done.`. A run that stopped or escalated ends with its report and no closing line. Inside `/sai-build` and `/sai-deep-review` the line of that command replaces this one.

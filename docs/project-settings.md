@@ -28,6 +28,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
+| `warming` | An object with `defaults` and `rules`; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
 
 All three `explore.*` ids accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage` and `explore.chatPublicLanguage`, `none` is invalid.
 
@@ -36,6 +37,43 @@ All three `explore.*` ids accept any non-empty string as the language name; the 
 `explore.chatPublicLanguage` is the language that `/sai-explore` uses with you. It is the same as writing "let's talk in <language>" right after the command loads, before any idea or change is discussed. It always wins over the language you write in, so the chat stays in that language until you ask for another one; without the setting, `/sai-explore` follows the language you write in. Only explanatory chat text changes: reasoning stays English, fixed literals such as STOP notices, halt messages, and picker labels stay as written, and the `Ready to Propose` block, the change overview, and every artifact keep the languages that their own settings and gates choose.
 
 The work-item type has no setting; it is chosen at each creation. Provider ids come from the provider registries, never from this page.
+
+## Cache warming
+
+The `warming` setting lets SAI agents keep their prompt cache warm between continuations. An agent arms one background wait after each response and re-arms on each wake until its `max` window passes since its last real task or continuation, or until the agent that dispatched it disposes it. Without the setting, nothing warms. Each wake costs two short requests and some usage allowance, which the `max` window bounds; a pause longer than `max` still resumes cold.
+
+`interval` and `max` are numbers of minutes, and `max` is at least `interval`. The value is one object under the single id `warming`:
+
+```jsonc
+{
+  "warming": {
+    // One entry per role: `agent` is a main session that runs a command, `subagent` is a worker or helper.
+    "defaults": {
+      "agent": { "interval": 4, "max": 30 },
+      "subagent": false
+    },
+    // Rules are keyed by provider, an optional model, and a role. Model ids are values, never keys.
+    "rules": [
+      { "provider": "anthropic", "model": "haiku", "role": "subagent", "interval": 4, "max": 20 },
+      { "provider": "opencode-go", "role": "subagent", "enabled": false }
+    ]
+  }
+}
+```
+
+- A `defaults` entry is `{ "interval", "max" }` or `false`. A rule carries `provider`, an optional `model`, `role`, and either `interval` and `max` or `"enabled": false`.
+- Resolution runs separately for each role: the first rule that matches the provider, the model, and the role; then the first rule that matches the provider and the role and has no `model`; then `defaults` for the role. When none applies, or the winning entry is `false`, the agent does not warm.
+- The provider and model of a worker or helper come from the `model` frontmatter of its installed agent file. On Claude Code the provider is `anthropic` and the model is the frontmatter value as written (for example `haiku`). On opencode the value is `<provider>/<model>`, so `opencode-go/deepseek-v4.1-flash` is the provider `opencode-go` and the model `deepseek-v4.1-flash`.
+- Timings are resolved again for every arm, so a change in either settings file, a local override included, applies from the next arm without restarting any agent. The local file replaces the whole `warming` value, as it replaces any key.
+- An invalid `warming` value is dropped with a warning, and nothing warms.
+
+Print the effective values for one agent:
+
+```sh
+node sai/tools/project-settings.js warming --provider anthropic --model haiku --role subagent --json --cwd <project-root>
+```
+
+It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or `off`, and `origin` is `model`, `provider`, `defaults`, or `none`. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`; edit the file by hand. The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).
 
 ## Values and precedence
 

@@ -30,6 +30,12 @@ Use this agent for bounded read-only lookup, research, and documentation reads. 
 
 Every spawn prompt states the **goal** and the **output contract**: exact response fields, a hard word-or-line length cap, and the raw-content rule (`no raw file contents`, or bounded verbatim excerpts when an audit needs them). State what to find, not how: a spawn prompt MUST NOT prescribe a research tool, a procedure, a numbered sequence of steps, or a method, because the tool-preference ladder in `@sai/policies/explore-agent.md` governs tool choice whatever the prompt says.
 
+## Warming and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. Add the policy's warming line to each task message and continuation when the policy says so, and dispose every explorer at run close.
+
 ## Tool-call ceiling
 
 At most 40 tool calls per execution segment: the spawn and every continuation each get their own 40. A caller may declare a smaller cap for one dispatch. When a task needs more, open another segment or spawn another bounded explorer instead of raising the ceiling.

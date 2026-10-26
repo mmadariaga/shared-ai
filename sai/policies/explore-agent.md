@@ -25,7 +25,7 @@ You detect availability yourself, in your own session: the caller runs no probe,
 
 **Ladder precedence.** The ladder governs even when the caller prompt names a tool, a procedure, or a method: research follows the ladder, the task continues, and `ladder_discards` records `caller prescribed <tool>`. The ladder governs only tool choice; scope, escalation, and the ceiling below are unaffected.
 
-**Shell restriction.** Shell runs only `git grep` and `codegraph explore`. For any other command, record `shell operation refused: <description>` in `ladder_discards` instead of running it.
+**Shell restriction.** Shell runs only `git grep`, `codegraph explore`, and the background wait that `@sai/policies/cache-warming.md` defines (the only command that follows a warming line of the task message). For any other command, record `shell operation refused: <description>` in `ladder_discards` instead of running it.
 
 ## Ladder level discard logging
 
