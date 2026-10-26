@@ -458,26 +458,66 @@ function bundle(cwd, snapshot, context = 3) {
     sides: { ours: git(cwd, ['rev-parse', '--verify', 'HEAD']).trim(), theirs: other, merge_base: base }, files } };
 }
 
+const SIDES = ['ours', 'theirs', 'base'];
+
+// The text of one region entry, `{conflict_id, text}` or `{conflict_id, segments}`:
+// authored text, or pieces composed from the snapshot's conflict sides (the same
+// decoded versions `bundle` returns) and literal text. The write and the resolution
+// check share this, so they agree on every byte. Returns `{ text }` or `{ error }`.
+function regionText(cwd, snapshot) {
+  let bundled;
+  const baseOf = id => {
+    try { bundled ??= bundle(cwd, snapshot); } catch { return null; }
+    return bundled.data.files.flatMap(entry => entry.regions).find(region => region.conflict_id === id)?.base ?? null;
+  };
+  return (file, item) => {
+    const id = item.conflict_id;
+    if (item.segments === undefined) return typeof item.text === 'string' ? { text: item.text } : { error: `text required: ${id}` };
+    if (item.text !== undefined) return { error: `exactly one of text or segments: ${id}` };
+    if (!Array.isArray(item.segments) || !item.segments.length) return { error: `segments required: ${id}` };
+    const region = file.regions.find(entry => entry.conflict_id === id);
+    const bytes = Buffer.from(file.before, 'base64');
+    const parts = []; let sides;
+    for (const [i, segment] of item.segments.entries()) {
+      const keys = segment && typeof segment === 'object' ? Object.keys(segment) : [];
+      if (keys.length !== 1 || !['side', 'text'].includes(keys[0]) || keys[0] === 'text' && typeof segment.text !== 'string') return { error: `invalid segment ${i}: ${id}` };
+      if (keys[0] === 'text') { parts.push(segment.text); continue; }
+      if (!SIDES.includes(segment.side)) return { error: `unknown side in segment ${i}: ${id}` };
+      let text = null;
+      // A correction snapshot names byte ranges, not conflict sides.
+      if (!snapshot.data.correction) {
+        sides ??= regionSides(bytes, region);
+        text = segment.side === 'base' && sides.base === null ? baseOf(id) : decodeUtf8(sides[segment.side]);
+      }
+      if (text === null) return { error: `side absent from region: ${segment.side}: ${id}` };
+      parts.push(text);
+    }
+    return { text: parts.join('') };
+  };
+}
+
 // Tool-owned resolution write. All-or-nothing: a rejection writes nothing. The
 // ledger beside the snapshot record holds every text placed so far, so each
 // call rebuilds the file from the protected pre-write content.
 function write(cwd, snapshot, recordFile, input) {
   const writes = Array.isArray(input) ? input : [input];
-  if (!writes.length) throw new Error('at least one {conflict_id, text} required');
+  if (!writes.length) throw new Error('at least one {conflict_id, text|segments} required');
   const errors = [];
   if (snapshotStale(cwd, snapshot)) errors.push('conflict snapshot HEAD/index/operation is stale');
   const ledgerFile = `${recordFile}.writes.json`;
   const ledger = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile, 'utf8')) : {};
   const texts = { ...ledger };
   const touched = new Map();
+  const compose = regionText(cwd, snapshot);
   for (const item of writes) {
     const id = item?.conflict_id;
     const file = typeof id === 'string' && snapshot.data.files.find(entry => entry.regions.some(region => region.conflict_id === id));
+    const entry = file && compose(file, item);
     if (!file) errors.push(`unknown region: ${id}`);
-    else if (typeof item.text !== 'string') errors.push(`text required: ${id}`);
-    else if (MARKER.test(item.text)) errors.push(`conflict markers in text: ${id}`);
+    else if (entry.error) errors.push(entry.error);
+    else if (MARKER.test(entry.text)) errors.push(`conflict markers in text: ${id}`);
     else if (textProfile(Buffer.from(file.before, 'base64')).encoding === 'undetermined') errors.push(`encoding undetermined; whole-side choice only: ${file.path}`);
-    else { texts[id] = item.text; touched.set(file.path, [...(touched.get(file.path) || []), id]); }
+    else { texts[id] = entry.text; touched.set(file.path, [...(touched.get(file.path) || []), id]); }
   }
   const outputs = [];
   for (const [name, ids] of touched) {
@@ -492,6 +532,22 @@ function write(cwd, snapshot, recordFile, input) {
   return { version: 1, action: 'write', outcome: 'success', errors: [], written: outputs.map(({ file, ids, bytes }) => ({ path: file.path,
     conflict_ids: ids, ...textProfile(Buffer.from(file.before, 'base64')), hash: hash(bytes),
     pending: file.regions.map(region => region.conflict_id).filter(id => !Object.hasOwn(texts, id)) })) };
+}
+
+// Where two byte strings first differ, as the offset and the code point each holds there.
+function firstDifference(expected, actual) {
+  const shared = Math.min(expected.length, actual.length);
+  let at = 0;
+  while (at < shared && expected[at] === actual[at]) at++;
+  const point = bytes => {
+    if (at >= bytes.length) return 'end of file';
+    let start = at;
+    while (start > 0 && at - start < 3 && (bytes[start] & 0xC0) === 0x80) start--;
+    const code = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes.subarray(start, start + 4)).codePointAt(0);
+    const genuine = code !== 0xFFFD || bytes[start] === 0xEF && bytes[start + 1] === 0xBF && bytes[start + 2] === 0xBD;
+    return genuine ? `U+${code.toString(16).toUpperCase().padStart(4, '0')}` : `invalid byte 0x${bytes[at].toString(16).toUpperCase().padStart(2, '0')}`;
+  };
+  return `; first difference at byte ${at}: expected ${point(expected)}, found ${point(actual)}`;
 }
 
 function resolutionFromSource(source) {
@@ -552,6 +608,7 @@ function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored') {
   }
   if (actualDecisions.size !== expectedDecisions.size) errors.push('incomplete semantic decisions');
   const seen = new Set();
+  const compose = regionText(cwd, snapshot);
   for (const item of payload.files) {
     const original = files.find(file => file.path === item?.path);
     if (!original || seen.has(item.path)) { errors.push(`unexpected/duplicate file: ${item?.path}`); continue; }
@@ -571,14 +628,20 @@ function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored') {
       const parts = []; let cursor = 0;
       for (let i = 0; i < original.regions.length; i++) {
         const region = original.regions[i]; const replacement = item.regions[i];
-        if (replacement?.conflict_id !== region.conflict_id || typeof replacement.text !== 'string' || MARKER.test(replacement.text)
-            || /^(diff --git |@@ |--- |\+\+\+ )/m.test(replacement.text)) { errors.push(`invalid region: ${region.conflict_id}`); continue; }
-        parts.push(before.subarray(cursor, region.start), storedBytes(before, replacement.text, region.start)); cursor = region.end;
+        // A region reports its replacement as `text` or as the `segments` the write composed it from.
+        const entry = replacement?.conflict_id === region.conflict_id ? compose(original, replacement) : null;
+        if (!entry || entry.error || MARKER.test(entry.text)
+            || /^(diff --git |@@ |--- |\+\+\+ )/m.test(entry.text)) { errors.push(`invalid region: ${region.conflict_id}`); continue; }
+        parts.push(before.subarray(cursor, region.start), storedBytes(before, entry.text, region.start)); cursor = region.end;
       }
       parts.push(before.subarray(cursor));
       const actual = fileState(cwd, item.path);
-      if (actual.type !== 'file' || hash(Buffer.concat(parts)) !== actual.hash
-          || actual.mode !== snapshot.state[`path:${item.path}`].mode) errors.push(`content outside regions or resolution differs: ${item.path}`);
+      const expected = Buffer.concat(parts);
+      if (actual.type !== 'file' || hash(expected) !== actual.hash
+          || actual.mode !== snapshot.state[`path:${item.path}`].mode) {
+        const detail = actual.type === 'file' && hash(expected) !== actual.hash ? firstDifference(expected, fs.readFileSync(localPath(cwd, item.path))) : '';
+        errors.push(`content outside regions or resolution differs: ${item.path}${detail}`);
+      }
       if (!outer.changed_files.includes(item.path)) errors.push(`authored path not reported: ${item.path}`);
     } else {
       if (item.regions.length) errors.push(`git-sourced regions must be empty: ${item.path}`);
@@ -867,7 +930,7 @@ function collect(action, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
@@ -880,7 +943,7 @@ function main(argv) {
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
         + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
         + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages)\n'
-        + 'write: --record <snapshot-file> --record-hash <sha256>; {"conflict_id", "text"} or an array of them on stdin (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
+        + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
         + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
         + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
       return 0;
@@ -893,11 +956,22 @@ function main(argv) {
     else action = arg;
   }
   // Shells differ in how they pipe text: accept UTF-8 with or without BOM, and UTF-16 with BOM.
-  const stdin = () => {
+  let stdin = () => {
     const input = fs.readFileSync(0);
     const utf16 = input[0] === 0xFF && input[1] === 0xFE ? 'utf-16le' : input[0] === 0xFE && input[1] === 0xFF ? 'utf-16be' : null;
     return JSON.parse(new TextDecoder(utf16 || 'utf-8').decode(input));
   };
+  if (opts.input !== undefined) {
+    if (action !== 'write') throw new Error('--input applies to write only');
+    // Never read standard input here: a harness shell can hand over a pipe that stays open and silent.
+    // Only a redirected, non-empty file is a payload that was supplied; a pipe, socket, device, or terminal is ignored.
+    let supplied = false;
+    try { const stat = fs.fstatSync(0); supplied = stat.isFile() && stat.size > 0; } catch { /* no standard input */ }
+    if (supplied) throw new Error('write takes its payload from --input or standard input, not both');
+    // The payload file is UTF-8, with or without a BOM; an invalid byte is an error, never a replacement character.
+    const payload = fs.readFileSync(opts.input);
+    stdin = () => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payload));
+  }
   const cwd = fs.realpathSync.native(opts.cwd);
   const result = collect(action, cwd, opts, stdin);
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
