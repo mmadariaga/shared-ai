@@ -200,3 +200,23 @@ test('guarded uninstall recognizes installed copies of the renamed opencode gene
     assert.equal(uninstall.computePlanEntry(entry).action, 'keep-override', `${name} with an edited body`);
   }
 });
+
+test('guarded uninstall recognizes renamed audit definitions installed by earlier releases, ignoring only tunables', t => {
+  const uninstall = require('../bin/uninstall-flow');
+  const fixtures = path.join(__dirname, 'fixtures', 'retired-audit-definitions');
+  for (const harness of ['claude', 'opencode']) {
+    const base = fixture(t);
+    const entries = (harness === 'claude' ? uninstall.enumerateClaude : uninstall.enumerateOpencode)(base);
+    for (const relative of ['commands/sai-6-security.md', 'agents/sai-6-security-worker.md']) {
+      const entry = entries.find(item => item.assetType === 'retired-managed-file' && item.dest === path.join(base, relative));
+      const installed = fs.readFileSync(path.join(fixtures, harness, relative), 'utf8');
+      fs.mkdirSync(path.dirname(entry.dest), { recursive: true });
+      fs.writeFileSync(entry.dest, installed);
+      assert.equal(uninstall.computePlanEntry(entry).action, 'delete', `${harness} ${relative} as installed`);
+      fs.writeFileSync(entry.dest, installed.replace(/^model:.*$/m, 'model: my/custom-model'));
+      assert.equal(uninstall.computePlanEntry(entry).action, 'delete', `${harness} ${relative} with a custom model`);
+      fs.writeFileSync(entry.dest, `${installed}\nMy own instructions.\n`);
+      assert.equal(uninstall.computePlanEntry(entry).action, 'keep-override', `${harness} ${relative} with an edited body`);
+    }
+  }
+});
