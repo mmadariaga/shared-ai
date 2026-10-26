@@ -137,8 +137,21 @@ test('both harnesses install the skill, runner and required capabilities', () =>
     }
   }
   assert.equal(manifest.capabilities.assignments.commands['sai-cache-warmer'], 'cache-warmer-command');
+});
+
+test('instruction contract keeps continuation and recovery with the main agent until closure or cancellation', () => {
+  const repoRoot = path.resolve(__dirname, '..');
   const skill = fs.readFileSync(path.join(repoRoot, 'skills/universal/sai-cache-warmer/SKILL.md'), 'utf8');
-  for (const text of ['disable-model-invocation: true', 'AskUserQuestion', 'question', 'run_in_background: true', 'background: true', 'No periodic status checks']) {
+  for (const text of ['disable-model-invocation: true', 'AskUserQuestion', 'question', 'Claude Code', 'OpenCode', 'run_in_background: true', 'background: true', 'No periodic status checks']) {
     assert.ok(skill.includes(text), text);
   }
+  assert.match(skill, /Complete only when the fixed closing time is reached or the user cancels/);
+  assert.match(skill, /main agent owns continuation and recovery/);
+  assert.match(skill, /Use your judgment to recover from obstacles and adapt your approach/);
+  assert.match(skill, /Preserve the original `state`, including its\s+fixed closing time, during recovery/);
+  assert.match(skill, /Keep `wait\.js` as the preparation and wait mechanism/);
+  assert.match(skill, /foreground execution\s+limit is not a prerequisite for launching a background wait/);
+  assert.match(skill, /continue toward the same closing time\s+when control becomes available again/);
+  assert.doesNotMatch(skill, /report the limitation and stop|launch no further wait|state\.interval_ms \+ 60000/);
+  assert.doesNotMatch(skill, /retry (?:count|limit)|no-progress threshold|\d+ (?:attempts|retries)/i);
 });
