@@ -203,12 +203,21 @@ function makeTempDir(harness, prefix = DEFAULT_PREFIX, options = {}) {
   }
 }
 
+/**
+ * The resolver that makes every spelling of one directory compare equal. On
+ * Windows the native resolution expands 8.3 short names (`RUNNER~1`), which the
+ * JS implementation keeps; elsewhere the JS resolver stays in use.
+ */
+function realpathFor(io, platform) {
+  return platform === 'win32' && io.realpathSync.native ? io.realpathSync.native : io.realpathSync;
+}
+
 /** The real path a missing `target` would have: its nearest existing ancestor, resolved, plus the missing rest. */
-function realpathOfMissing(target, io) {
+function realpathOfMissing(target, realpath) {
   const missing = [];
   for (let current = target; ; current = path.dirname(current)) {
     try {
-      return path.join(io.realpathSync(current), ...missing.reverse());
+      return path.join(realpath(current), ...missing.reverse());
     } catch (error) {
       if (error.code !== 'ENOENT' || path.dirname(current) === current) throw error;
       missing.push(path.basename(current));
@@ -221,7 +230,8 @@ function realpathOfMissing(target, io) {
  * rejected and nothing is deleted. Returns whether a directory was removed.
  */
 function removeInside(harness, target, options = {}) {
-  const { io = fs } = options;
+  const { io = fs, platform = process.platform } = options;
+  const realpath = realpathFor(io, platform);
   if (typeof target !== 'string' || !path.isAbsolute(target)) {
     throw new TempRootError('Removal requires an absolute path inside the SAI temp root', 'REJECTED_PATH');
   }
@@ -231,13 +241,13 @@ function removeInside(harness, target, options = {}) {
   if (!root) {
     throw new TempRootError(`Path ${resolved} is not inside the SAI temp root`, 'REJECTED_PATH');
   }
-  const realRoot = io.realpathSync(root);
+  const realRoot = realpath(root);
   const inside = candidate => {
     const relative = path.relative(realRoot, candidate);
     return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   };
   if (!stat) {
-    if (!inside(realpathOfMissing(resolved, io))) {
+    if (!inside(realpathOfMissing(resolved, realpath))) {
       throw new TempRootError(`Path ${resolved} is not inside the SAI temp root ${realRoot}`, 'REJECTED_PATH');
     }
     return false;
@@ -245,7 +255,7 @@ function removeInside(harness, target, options = {}) {
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     throw new TempRootError(`Path ${resolved} must be a directory that is not a symbolic link`, 'REJECTED_PATH');
   }
-  if (!inside(io.realpathSync(resolved))) {
+  if (!inside(realpath(resolved))) {
     throw new TempRootError(`Path ${resolved} is not inside the SAI temp root ${realRoot}`, 'REJECTED_PATH');
   }
   io.rmSync(resolved, { recursive: true, force: true });

@@ -26,7 +26,7 @@ The `sai-state` registry SHALL register a `merge-run@1` machine built on the sha
 
 ### Requirement: Merge run session and run directory
 
-The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{branch}` and SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, worker reports, reviews, hand-over files, and the obstacle, finding, and assumption files. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove` only when the run completed; a stopped, escalated, or unanswered run SHALL keep it and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue.
+The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{branch}` and SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, worker reports, reviews, hand-over files, the obstacle, finding, and assumption files, and every diagnostic scratch file the run writes. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove` only when the run completed, and the removal SHALL target only this run's own directory, the `dir` of its `start` event; no other directory of the SAI temp root SHALL be removed, and the directory of an earlier stopped run SHALL stay. A stopped, escalated, or unanswered run SHALL keep its directory and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue.
 
 #### Scenario: Completed run removes its directory
 
@@ -37,6 +37,11 @@ The merge coordinator SHALL keep one `sai-state` session per run under the key `
 
 - **WHEN** a run closes `escalated`
 - **THEN** its run directory is kept and the closing report names its path
+
+#### Scenario: Earlier stopped run directory stays
+
+- **WHEN** a run closes `completed` while the directory of an earlier stopped run of the same branch still exists
+- **THEN** only the completed run's own directory is removed and the earlier directory stays
 
 ### Requirement: Interrupted merge run resumes from the store and the git state
 
@@ -51,3 +56,12 @@ After a context compaction, or when the start finds a run of the named branch in
 
 - **WHEN** the store and the git state disagree about the current stop
 - **THEN** the coordinator continues from the git state
+
+### Requirement: Merge coordinator states the merge-run event shape
+
+The merge coordinator card SHALL state, where it introduces the `merge-run@1` machine, that every event is one JSON object whose `kind` field names the event. Its run-state section SHALL list the fields each event takes: `start` takes `dir`; `launch` takes `method`, `branch`, `head`, and `baseline`; `stop` takes `stop`; `attempt`, `escalate`, and `answer` take `obstacle`, and `answer` also takes `choice`; `record` takes `ref` and `path`; and `close` takes `outcome`.
+
+#### Scenario: Status event carries its kind
+
+- **WHEN** the coordinator emits the opening `status` event to `merge-run@1`
+- **THEN** it pipes one JSON object whose `kind` field is `status`

@@ -161,6 +161,23 @@ test('removeInside deletes only directories strictly inside the SAI temp root', 
   }
 });
 
+test('removeInside accepts the 8.3 short and long forms of one directory on Windows', { skip: process.platform !== 'win32' }, () => {
+  const box = sandbox();
+  try {
+    const options = { platform: 'win32', tmpdir: () => box.base, uid: UID };
+    const created = makeTempDir('claude', 'run-', options);
+    const longForm = fs.realpathSync.native(created);
+    const outside = path.join(box.base, 'outside');
+    fs.mkdirSync(outside);
+    assert.throws(() => removeInside('claude', outside, options), error => error.code === 'REJECTED_PATH');
+    assert.equal(removeInside('claude', longForm, options), true);
+    assert.equal(fs.existsSync(created), false);
+    assert.ok(fs.existsSync(outside));
+  } finally {
+    box.cleanup();
+  }
+});
+
 function cli(args, env) {
   const result = spawnSync(process.execPath, [TOOL, ...args], { encoding: 'utf8', env: { ...process.env, ...env } });
   return { status: result.status, json: JSON.parse(result.stdout) };
