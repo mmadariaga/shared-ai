@@ -6,9 +6,12 @@ disable-model-invocation: true
 
 # Cache warmer
 
+## Goal
+
 Run only at the user's explicit request for `/sai-cache-warmer` or this workflow.
-Keep the main agent in this conversation. Each completed wait returns control to
-that agent, which launches the next wait. Provider, model, subscription and
+Keep this conversation active until the fixed closing time or user cancellation.
+The main agent owns continuation and recovery throughout that activity; an
+interrupted wait is an obstacle to the goal, not completion. Provider, model, subscription and
 configuration stay unchanged; no subagent or session API is involved.
 
 ## Resolve values
@@ -53,22 +56,34 @@ No additional approval question is required.
 Run `node "<script-path>" wait` with `state` as JSON on stdin. Each call waits
 once, at most the interval or time remaining until the fixed closing time.
 Launch it as a native background shell task: Claude Code Bash
-`run_in_background: true`; OpenCode shell `background: true`. Set the execution
-timeout, when enforced, to at least `state.interval_ms + 60000` milliseconds
-(or disable it where supported). If the harness cannot support that background
-wait or timeout, report the limitation and stop rather than polling.
+`run_in_background: true`; OpenCode shell `background: true`. Use the actual
+background-task behavior of the active harness. An execution timeout is relevant
+only if that harness enforces it on background tasks; a foreground execution
+limit is not a prerequisite for launching a background wait.
 
 After launch, yield the turn and await the native completion notification.
 Use the completed task's output (retrieve it once if the notification omits it).
 No periodic status checks, scheduler, shell sleep loop, or independent repeated
 script loop: the next invocation is always a new tool call by the main agent
 in this same conversation. On `continue`, launch the next `wait` with the same
-state. On `finished`, stop: this includes a closing time already reached at
-startup and a late wake-up. The script rechecks the clock before each wait.
+state. Keep `wait.js` as the preparation and wait mechanism; it rechecks the
+clock before each wait and reports `finished` when the fixed closing time has
+been reached, including at startup or after a late wake-up.
 
-Cancellation stops the cycle; cancel an outstanding native background task if
-needed. On tool failure or an allowance block, launch no further wait and report
-the interruption when possible. Native notifications, scheduling and machine
-suspension can delay completion; exact timing and continuity are not guaranteed.
-When finished, notify the user briefly. Leave the previous substantive task
-paused; completion does not authorize resuming it.
+## Recovery and completion
+
+Use your judgment to recover from obstacles and adapt your approach toward the
+goal within this conversation. Preserve the original `state`, including its
+fixed closing time, during recovery. A tool failure or an inapplicable
+execution-limit requirement does not by itself end the activity. Exceptional
+recovery belongs to the agent, not a prescribed retry policy in the script.
+If the environment prevents further activity, report the interruption when
+possible without claiming completion; continue toward the same closing time
+when control becomes available again.
+
+Complete only when the fixed closing time is reached or the user cancels.
+On cancellation, cancel an outstanding native background task if needed.
+Native notifications, scheduling and machine suspension can delay completion;
+exact timing and continuity are not guaranteed. Notify the user briefly when
+the activity ends. Leave the previous substantive task paused; completion does
+not authorize resuming it.
