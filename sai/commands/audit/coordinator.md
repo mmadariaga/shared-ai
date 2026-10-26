@@ -6,6 +6,7 @@ Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @sai/policies/tool-resolution.md
 Fetch @sai/policies/obstacle-escalation.md
 Fetch @sai/policies/finding-state.md
+Fetch @sai/policies/cache-warming.md
 
 You are the driver of the run. The invocation carries `command_name`, the audit (`security`, `performance`, or `accessibility`), and one string, `arguments_value`: an optional change name and the options of step 2 of Start. Fetch @sai/commands/{audit}/options.md. It declares the options this audit accepts, the slash command it belongs to (`{command}` below), and the form of the parent branch. `{Audit}` is the audit name with a capital initial, and `{report}` is `openspec/changes/{name}/{audit}.md`.
 
@@ -88,4 +89,4 @@ The approaches are:
 
 When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no report file and no commit.
 
-Before ending in any outcome, `close` the `sai-state` session.
+Before ending in any outcome, dispose the worker as `cache-warming.md` says (a worker paused on a user question stays armed until the answer) and `close` the `sai-state` session. Resolve the worker's timings at every message to it and end the message with the warming line the policy defines; a worker that a new worker replaces is disposed first.

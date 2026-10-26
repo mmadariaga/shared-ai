@@ -7,7 +7,7 @@ Define same-conversation background waits, fixed-time completion, interruption h
 
 ### Requirement: One main-conversation wait per invocation
 
-Each helper wait invocation SHALL perform one logical JavaScript-timer wait, limited to the smaller of the interval and the time remaining until the fixed closing instant. The main agent SHALL launch each invocation in the same conversation as a native background shell task using Claude Code's `run_in_background` or opencode's `background`, according to the active harness's actual background-task behavior. An execution timeout SHALL be relevant only when the harness enforces it on background tasks; a foreground execution limit SHALL NOT be a prerequisite for launching a background wait. Native completion notifications SHALL return control to that main agent; the activity SHALL use no subagent, session API, polling, scheduler, or independent repeated script loop. The activity SHALL retain `wait.js` as its preparation and wait mechanism.
+Each helper wait invocation of the user-invoked activity SHALL perform one logical JavaScript-timer wait, limited to the smaller of the interval and the time remaining until the fixed closing instant. The main agent SHALL launch each invocation in the same conversation as a native background shell task using Claude Code's `run_in_background` or opencode's `background`, according to the active harness's actual background-task behavior. An execution timeout SHALL be relevant only when the harness enforces it on background tasks; a foreground execution limit SHALL NOT be a prerequisite for launching a background wait. Native completion notifications SHALL return control to that main agent; the activity SHALL use no subagent, session API, polling, scheduler, or independent repeated script loop. The activity SHALL retain `wait.js` as its preparation and wait mechanism, through its `prepare` and `wait` subcommands. The separate `warm` subcommand of `wait.js` serves agent self-warming under `sai/policies/cache-warming.md`, may be launched by any SAI agent including a subagent, and SHALL NOT change the user-invoked activity.
 
 #### Scenario: Interval completes before closing
 - **WHEN** one wait completes before closing time
@@ -24,6 +24,10 @@ Each helper wait invocation SHALL perform one logical JavaScript-timer wait, lim
 #### Scenario: Foreground limit does not apply to background waits
 - **WHEN** the active harness does not enforce its foreground execution limit on background tasks
 - **THEN** the main agent launches the native background wait without treating that limit as a prerequisite.
+
+#### Scenario: Warm subcommand leaves the activity unchanged
+- **WHEN** a subagent launches `wait.js warm` for self-warming
+- **THEN** the user-invoked activity's `prepare` and `wait` behavior is unchanged
 
 ### Requirement: Interruption and capability limits
 

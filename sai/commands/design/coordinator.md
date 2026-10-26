@@ -5,6 +5,7 @@ Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @skills/budget/SKILL.md
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/cache-warming.md
 Fetch @sai/commands/plan/cycle.md and follow it for everything this card does not state.
 
 You are the driver of the segment. The invocation carries one string, `arguments_value`: the change name, optionally followed by feedback, and the option `--overview-lang <language>`.
@@ -26,7 +27,7 @@ Running this command approves the specs: it asks nothing about them, and the wor
 
 ## The segment
 
-Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
+Fetch @sai/orchestration/workers/bindings/design-worker.md and use it. Dispose the worker when the segment closes (after the overview, when one was asked for) and on replacement, as the cycle's Warm and dispose says.
 
 The worker is `sai-2-design-worker`. Its steps, in the order the static fallback uses, are `design-intake` (inline), then `research`, `design`, `tasks`, `interfaces`, each at `sai/commands/design/steps/{step}.md`. The task message opens with the first pointer, then names the change, the mode (`first draft` or `rerun` with `feedback_file`), the report path, and the run directory.
 

@@ -3,7 +3,7 @@
   "capabilities": {
     "profiles": {
       "boot": { "read": true, "skills": ["*"] },
-      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "skills": ["fetch"], "shell": ["git grep *", "codegraph explore *"] },
+      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "skills": ["fetch"], "shell": ["git grep *", "codegraph explore *", "node {skills}/sai-cache-warmer/wait.js *"] },
       "executor": { "extends": "boot", "skills": ["fetch"], "shell": ["*"] },
       "task": { "extends": "boot", "search": true, "write": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["*"] },
       "worker-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "message": true },
@@ -12,7 +12,7 @@
       "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
       "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
-      "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
+      "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "node {skills}/sai-cache-warmer/wait.js *"] },
       "audit-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations"] },
       "security-command": { "extends": "audit-command", "delegate": ["sai-5-security-worker"] },
       "performance-command": { "extends": "audit-command", "delegate": ["sai-6-performance-worker"] },
@@ -38,7 +38,7 @@
       "from-next-backlog-item-command": { "extends": "from-backlog-command", "skills": ["from-next-backlog-item", "from-backlog"], "shell": ["node {sai}/tools/from-next-backlog-item.js select", "node {sai}/tools/from-backlog.js *"] },
       "to-pr-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-pr", "safe-operations"], "shell": ["node {sai}/tools/to-pr.js *"] },
       "new-change-branch-command": { "extends": "boot", "search": true, "question": true, "skills": ["new-change-branch", "safe-operations"], "shell": ["node {sai}/tools/new-change-branch.js *"] },
-      "context-cache-benchmark-command": { "extends": "boot", "question": true, "message": true, "skills": ["sai-context-cache-ttl-benchmark"], "delegate": ["general"], "shell": ["node {skills}/sai-context-cache-ttl-benchmark/cache_ttl.js *"] },
+      "context-cache-benchmark-command": { "extends": "boot", "question": true, "message": true, "skills": ["sai-context-cache-ttl-benchmark"], "delegate": ["general"], "shell": ["node {skills}/sai-context-cache-ttl-benchmark/cache_ttl.js *", "node {skills}/sai-context-cache-ttl-benchmark/warming_override.js *"] },
       "cache-warmer-command": { "extends": "boot", "question": true, "skills": ["sai-cache-warmer"], "shell": ["node {skills}/sai-cache-warmer/wait.js *"] }
     },
     "assignments": {

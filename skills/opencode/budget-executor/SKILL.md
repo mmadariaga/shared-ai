@@ -29,6 +29,12 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 The model for `budget-executor` subagents is controlled by the `model` frontmatter of the budget-executor agent file (`~/.config/opencode/agents/budget-executor.md`), seeded by the installer under the `tunable-seed` lifecycle. This file contains no hardcoded model identifier.
 
+## Warming and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+Add the policy's warming line to the task message when the policy says so, and dispose the helper as soon as you have its result, unless the card you follow says you reuse it.
+
 ## Cost model
 
 This subagent runs on a commodity model; the `model` frontmatter named under Model resolution is the only lever on the cost of delegation.

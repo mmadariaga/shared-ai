@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/public-chat.md and follow it exactly.
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/cache-warming.md
 Fetch @sai/commands/plan/cycle.md
 
 You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a `Ready to Propose` block or the reference to one (`--block-file <path> --block-hash <sha256>`), or the name of a change, with the optional `--overview-lang <language>`.
@@ -26,7 +27,7 @@ Turn a crystallized block into the full plan of a change with no human in the lo
 1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch @sai/commands/spec/coordinator.md and follow it exactly as the first segment, with the block or its reference as `arguments_value`. Your Start opened the run, so it skips the opening in its own Start. It validates the block, runs the worker, the checks, and the review, and commits its own paths.
 2. `/sai-2-design`: Fetch @sai/commands/design/coordinator.md and follow it exactly as the second segment, with `{name}` and the `--overview-lang` option as `arguments_value`. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, runs the checks and the review, generates the overview when asked, and commits its own paths.
 
-No wrapper is entered again and no approval is asked between segments. The artifacts on disk are the only interface between them.
+No wrapper is entered again and no approval is asked between segments. The artifacts on disk are the only interface between them. Each segment disposes its own worker when it closes, as the cycle's Warm and dispose says, so no worker of a finished segment stays armed when the next one starts.
 
 A segment starts only when the previous one completed, including a spec segment that counted as done. Review findings still pending after the third round do not stop the run: the design segment starts over specs with known holes, and the closing report lists them. When the spec segment fails, is stopped, or ends blocked (an escalation the user did not resolve), print its report and end the run without a closing line, and do not start the design segment. A change left with specs and no design continues with `/sai-2-design {name}` or another `/sai-plan {name}`.
 

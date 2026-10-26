@@ -21,3 +21,16 @@ instruction) to the captured handle:
 ```
 task(task_id: "<captured task ID>", prompt: "<message>")
 ```
+
+## Warm and dispose
+
+Fetch @sai/policies/cache-warming.md
+
+The worker may keep its prompt cache warm between messages. Resolve its
+timings and add the warming line to every task message and continuation, as the
+policy says. The coordinator disposes the worker at run close, at a segment
+boundary, and when it replaces the worker, and not while a `needs_input`
+question is pending. It removes the outstanding shell of the worker's session
+and then interrupts that session, both through the session API with the
+captured task ID, and falls back to the `dispose` message when the API is not
+reachable.

@@ -95,10 +95,13 @@ readable `projects` transcript folder, Bash with `run_in_background`, the
 SQLite, OpenSpec, or historical experiment files are required. Missing
 permissions, unsupported API schemas, missing usage or an unreadable log
 produce a limitation rather than fabricated cache reads. The runner reads the
-log but does not edit it or warming settings. Log rotation/truncation or
+log but does not edit it. Log rotation/truncation or
 warming/keep-alive lines for the target invalidate affected samples.
 Hidden warming that does not appear in that log remains an observational
-limitation; verify effective warming settings manually before consent.
+limitation. SAI's own agent warming is turned off for the project by the
+warming override of `SKILL.md` (`warming_override.js`), which the user permits
+first and which is restored byte for byte afterwards; the runner itself edits no
+warming setting.
 
 From the installed skill directory (project-local takes precedence):
 

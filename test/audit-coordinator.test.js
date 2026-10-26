@@ -32,6 +32,7 @@ test('the audit coordinator loads only the cross-cutting policies that never sto
     'sai/policies/tool-resolution.md',
     'sai/policies/obstacle-escalation.md',
     'sai/policies/finding-state.md',
+    'sai/policies/cache-warming.md',
     'sai/orchestration/workers/bindings/{audit}-worker.md',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition', 'prereqs']) {

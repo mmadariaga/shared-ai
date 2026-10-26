@@ -20,6 +20,7 @@ test('the deep-review coordinator loads only the cross-cutting policies and none
     'skills/safe-operations/SKILL.md',
     'sai/policies/tool-resolution.md',
     'sai/policies/finding-state.md',
+    'sai/policies/cache-warming.md',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition', 'findings-selection']) {
     assert.doesNotMatch(coordinator, new RegExp(forbidden), `the deep-review coordinator must not mention ${forbidden}`);
