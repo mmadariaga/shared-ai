@@ -130,6 +130,26 @@ function status(cwd) {
     ...inProgress(cwd) }));
 }
 
+// Unmerged local branches, plus the current branch's upstream and each remote's default
+// branch when `HEAD` does not hold them yet. Local refs only: nothing is fetched, and a
+// missing upstream or remote adds nothing.
+function candidateBranches(cwd) {
+  const refs = ['refs/heads/'];
+  const upstream = git(cwd, ['rev-parse', '--symbolic-full-name', '@{upstream}'], true)?.trim();
+  if (upstream?.startsWith('refs/remotes/')) refs.push(upstream);
+  for (const head of (git(cwd, ['for-each-ref', '--format=%(refname)', 'refs/remotes/*/HEAD'], true) ?? '').split('\n').filter(Boolean)) {
+    const target = git(cwd, ['symbolic-ref', '-q', head], true)?.trim();
+    if (target) refs.push(target);
+  }
+  const found = new Map();
+  for (const line of git(cwd, ['for-each-ref', '--no-merged=HEAD', '--format=%(refname)%00%(refname:short)%00%(committerdate:iso-strict)', ...refs])
+    .trimEnd().split('\n').filter(Boolean)) {
+    const [ref, name, timestamp] = line.split('\0');
+    if (!/^refs\/remotes\/[^/]+\/HEAD$/.test(ref)) found.set(ref, { name, ref, timestamp });
+  }
+  return [...found.values()].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp) || compare(a.name, b.name));
+}
+
 function preflight(cwd) {
   return fact(cwd, 'preflight', ['head', 'index', 'refs', 'operations', 'tree'], () => {
     const entries = split0(git(cwd, ['status', '--porcelain=v1', '-z']));
@@ -139,11 +159,7 @@ function preflight(cwd) {
       dirty.push({ status: entry.slice(0, 2), path: entry.slice(3),
         ...(entry.slice(0, 2).match(/[RC]/) ? { original_path: entries[++i] } : {}) });
     }
-    const candidates = git(cwd, ['branch', '--no-merged', 'HEAD', '--format=%(refname:short)%00%(committerdate:iso-strict)'])
-      .trimEnd().split('\n').filter(Boolean).map(line => {
-        const [name, timestamp] = line.split('\0');
-        return { name, timestamp };
-      }).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp) || compare(a.name, b.name));
+    const candidates = candidateBranches(cwd);
     return { current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), dirty, candidates, ...inProgress(cwd) };
   });
 }
@@ -173,7 +189,7 @@ function upstreamFacts(cwd, method, targetSha, base) {
 }
 
 function provenance(cwd, sourceRef, method, squash) {
-  if (!/^refs\/(heads|remotes\/origin)\/.+/.test(sourceRef) || sourceRef.includes('\0')) throw new Error('full branch source_ref required');
+  if (!/^refs\/(heads|remotes\/[^/]+)\/.+/.test(sourceRef) || sourceRef.includes('\0')) throw new Error('full branch source_ref required');
   if (!['merge', 'rebase'].includes(method) || !['yes', 'no', 'not-applicable'].includes(squash)
       || method === 'merge' && squash !== 'not-applicable' || method === 'rebase' && squash === 'not-applicable') throw new Error('invalid method/squash');
   // One call validates the exact ref before capturing: format, existence, commit.

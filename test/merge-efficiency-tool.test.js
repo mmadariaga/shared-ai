@@ -76,6 +76,25 @@ function cli(cwd, args, input = '') {
   return { ...run, payload: JSON.parse(run.stdout) };
 }
 
+test('preflight offers the upstream and the remote default branch when HEAD does not hold them, and raises no error without a remote', t => {
+  const { cwd } = fixture(t);
+  assert.deepEqual(merge.preflight(cwd).data.candidates.map(item => item.name), ['feature']);
+  git(cwd, ['update-ref', 'refs/remotes/origin/main', 'feature']);
+  git(cwd, ['update-ref', 'refs/remotes/origin/release', 'feature']);
+  git(cwd, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main']);
+  git(cwd, ['config', 'remote.origin.url', cwd]);
+  git(cwd, ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
+  git(cwd, ['config', 'branch.main.remote', 'origin']);
+  git(cwd, ['config', 'branch.main.merge', 'refs/heads/release']);
+  const found = merge.preflight(cwd).data.candidates;
+  assert.deepEqual(found.map(item => item.name).sort(), ['feature', 'origin/main', 'origin/release']);
+  assert.ok(found.every(item => item.ref.startsWith('refs/')), 'each candidate carries its full ref');
+  assert.equal(found.find(item => item.name === 'origin/main').ref, 'refs/remotes/origin/main');
+  assert.doesNotThrow(() => merge.provenance(cwd, 'refs/remotes/origin/main', 'merge', 'not-applicable'));
+  git(cwd, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+  assert.deepEqual(merge.preflight(cwd).data.candidates.map(item => item.name).sort(), ['feature', 'origin/release'], 'a ref HEAD already holds is not offered');
+});
+
 test('preflight produces complete candidates and guards without moving HEAD', t => {
   const { cwd } = fixture(t);
   const head = git(cwd, ['rev-parse', 'HEAD']).stdout;
