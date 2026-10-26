@@ -61,7 +61,7 @@ Installation SHALL inspect current-name Generic Agent destinations before readin
 
 ### Requirement: Manual overrides and lifecycle protection
 
-Installation SHALL refresh existing current-name managed local definitions and delete declared retired paths in the current project for selected harnesses; setup SHALL refresh both harnesses in its named project. Other projects and unrelated filenames SHALL remain unchanged. Legacy global configuration agent-map entries SHALL remain outside installer ownership; guidance SHALL explain that agent.explore can still override the built-in explore and external references, permissions, and custom presets need current names. Doctor SHALL ignore tuning and user suffixes when checking managed content. Uninstall SHALL preserve custom instruction suffixes and other body changes. Historical decisions SHALL remain unchanged.
+Installation SHALL refresh existing current-name managed local definitions and delete declared retired paths in the current project for selected harnesses; setup SHALL refresh both harnesses in its named project. Other projects and unrelated filenames SHALL remain unchanged. Legacy global configuration agent-map entries SHALL remain outside installer ownership; guidance SHALL explain that agent.explore can still override the built-in explore and external references, permissions, and custom presets need current names. Doctor SHALL ignore tuning and user suffixes when checking managed content. Uninstall SHALL preserve custom instruction suffixes and other body changes. The retired opencode explore, executor, and budget declarations SHALL list the exact and tunable-stripped hashes of the files every shipped revision actually installed, so guarded uninstall removes untouched or only-retuned copies and retains edited ones. Historical decisions SHALL remain unchanged.
 
 #### Scenario: Local definitions remain untouched
 - **WHEN** installation finds the current project's declared retired agent and current-name managed overrides
@@ -74,3 +74,7 @@ Installation SHALL refresh existing current-name managed local definitions and d
 #### Scenario: Uninstall protects divergent new-name files
 - **WHEN** uninstall considers a renamed generic agent whose managed content was modified
 - **THEN** it retains the modified file while eligible managed new-name files remain in the normal deletion inventory
+
+#### Scenario: Uninstall removes retuned retired generic agents
+- **WHEN** uninstall finds a retired opencode explore, executor, or budget agent as an earlier release installed it, with or without changed model or variant
+- **THEN** it deletes that file, while a copy with edited instructions is retained

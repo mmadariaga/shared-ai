@@ -182,3 +182,21 @@ test('no retired path collides with an active projection on either harness', () 
     }
   }
 });
+
+test('guarded uninstall recognizes installed copies of the renamed opencode generic agents, ignoring only tunables', t => {
+  const uninstall = require('../bin/uninstall-flow');
+  const base = fixture(t);
+  const fixtures = path.join(__dirname, 'fixtures', 'retired-opencode-agents');
+  const entries = uninstall.enumerateOpencode(base);
+  for (const name of ['explore', 'executor', 'budget']) {
+    const entry = entries.find(item => item.ruleId === `retired-opencode-generic-${name}`);
+    const installed = fs.readFileSync(path.join(fixtures, `${name}.md`), 'utf8');
+    fs.mkdirSync(path.dirname(entry.dest), { recursive: true });
+    fs.writeFileSync(entry.dest, installed);
+    assert.equal(uninstall.computePlanEntry(entry).action, 'delete', `${name} as installed`);
+    fs.writeFileSync(entry.dest, installed.replace(/^model:.*$/m, 'model: my/custom-model').replace(/^variant:.*\n/m, ''));
+    assert.equal(uninstall.computePlanEntry(entry).action, 'delete', `${name} with custom tunables`);
+    fs.writeFileSync(entry.dest, `${installed}\nMy own instructions.\n`);
+    assert.equal(uninstall.computePlanEntry(entry).action, 'keep-override', `${name} with an edited body`);
+  }
+});
