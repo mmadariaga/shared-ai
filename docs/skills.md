@@ -42,7 +42,9 @@ in [model configuration](models.md#keeping-your-configuration). Both harnesses
 delete all exact file paths declared retired in `sai/install-manifest.json`,
 regardless of their contents. Unrelated filenames stay intact. A retired file
 symlink is unlinked without touching its target; directories and paths through
-linked directories are skipped, never recursively removed.
+linked directories below the harness root are skipped, never recursively
+removed. A linked global harness root is still cleaned; a linked project root
+is skipped entirely, with one notice.
 
 Update external dispatch references, permissions, and saved custom preset targets
 to use current names. Review legacy configuration entries manually: an

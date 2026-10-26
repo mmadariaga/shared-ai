@@ -120,6 +120,50 @@ test('retirement removes a file symlink itself, never follows directory links or
   assert.ok(results.some(item => item.destinationPath === directory && item.action === 'skipped'));
 });
 
+test('a linked global harness root still retires, and a relative root resolves without hanging', t => {
+  const root = fixture(t);
+  const real = path.join(root, 'dotfiles-claude');
+  const linked = path.join(root, 'claude');
+  const oldAgent = path.join(real, 'agents', 'sai-review-fix-worker.md');
+  fs.mkdirSync(path.dirname(oldAgent), { recursive: true });
+  fs.writeFileSync(oldAgent, 'Old body.');
+  try {
+    fs.symlinkSync(real, linked, 'junction');
+  } catch (error) {
+    if (!['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) throw error;
+    t.skip(`Symbolic links unavailable: ${error.code}`);
+    return;
+  }
+  const results = flow.cleanupRetiredProjections('claude', roots(linked), { notices: [] });
+  assert.equal(fs.existsSync(oldAgent), false);
+  assert.ok(results.some(item => item.action === 'deleted'));
+  fs.writeFileSync(oldAgent, 'Old body.');
+  flow.cleanupRetiredProjections('claude', { base: path.relative(process.cwd(), real) }, { notices: [] });
+  assert.equal(fs.existsSync(oldAgent), false);
+});
+
+test('a linked project harness root is skipped before retirement or refresh', t => {
+  const root = fixture(t);
+  const project = path.join(root, 'project');
+  const shared = path.join(root, 'shared-opencode');
+  const oldAgent = path.join(shared, 'agents', 'sai-review-fix-worker.md');
+  fs.mkdirSync(path.dirname(oldAgent), { recursive: true });
+  fs.mkdirSync(project);
+  fs.writeFileSync(oldAgent, 'Shared with other projects.');
+  try {
+    fs.symlinkSync(shared, path.join(project, '.opencode'), 'junction');
+  } catch (error) {
+    if (!['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) throw error;
+    t.skip(`Symbolic links unavailable: ${error.code}`);
+    return;
+  }
+  const notices = [];
+  flow.refreshProjectOverrides('opencode', project, { notices });
+  assert.equal(fs.readFileSync(oldAgent, 'utf8'), 'Shared with other projects.');
+  assert.equal(notices.length, 1);
+  assert.match(notices[0], /Skipped project-local definitions/);
+});
+
 test('retirement declarations must name exact relative files inside a harness root', () => {
   for (const invalid of ['../outside.md', '/outside.md', 'C:\\outside.md', 'agents/*.md', '', 'folder/../outside.md']) {
     const copy = structuredClone(manifest);
