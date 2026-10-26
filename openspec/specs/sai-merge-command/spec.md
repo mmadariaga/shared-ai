@@ -556,3 +556,17 @@ For a rebase or squash only, after the baseline and before the first mutation, w
 
 - **WHEN** autostash was used and git cannot reapply the changes at the end of the rebase
 - **THEN** the stash entry stays and the run does not drop or pop it
+
+### Requirement: Rebase in progress is detected from the operation directories
+
+`merge.js preflight` and `merge.js status` SHALL report `rebase_in_progress: true` only when git's `rebase-merge` or `rebase-apply` operation directory exists. A leftover `REBASE_HEAD` without either directory SHALL NOT report a rebase in progress.
+
+#### Scenario: Leftover REBASE_HEAD after a finished rebase
+
+- **WHEN** `REBASE_HEAD` exists and neither `rebase-merge` nor `rebase-apply` exists
+- **THEN** `preflight` and `status` both report `rebase_in_progress: false`
+
+#### Scenario: Rebase stopped at a conflict
+
+- **WHEN** a rebase is stopped and its `rebase-merge` or `rebase-apply` directory exists
+- **THEN** `status` reports `rebase_in_progress: true`
