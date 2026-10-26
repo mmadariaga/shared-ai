@@ -7,17 +7,27 @@ Defines the eligible, recency-ordered merge branch candidates and the full-first
 
 ### Requirement: Eligible source branch selection
 
-The merge tool's preflight SHALL enumerate local branches with `git branch --no-merged HEAD`, newest first, and when the invocation names no branch the coordinator SHALL build the branch question from that receipt without another branch listing: the newest candidates up to the native picker's capacity, each with its exact branch name as the option value, plus the picker's free text for any other branch, excluding branches whose commits are already reachable from the current branch. The coordinator SHALL fetch nothing.
+The merge tool's preflight SHALL list as candidates, newest first, the local branches, the current branch's upstream, and each remote's default branch (the target of `refs/remotes/<remote>/HEAD`) whose commits are not already reachable from `HEAD`, each with its short `name` and full `ref`, and SHALL never list the symbolic `refs/remotes/<remote>/HEAD` itself. A missing upstream or remote SHALL add nothing and SHALL raise no error. When the invocation names no branch, the coordinator SHALL build the branch question from that receipt without another branch listing: the newest candidates up to the native picker's capacity, a picked candidate naming its full `ref`, plus the picker's free text for any other branch. The coordinator and the tool SHALL fetch nothing; candidates come from local refs only.
 
 #### Scenario: Already-contained branches are omitted
 
-- **WHEN** branch options are constructed from local branches
-- **THEN** only branches with commits not already reachable from `HEAD` are included, with each exact branch name forwarded unchanged as its option value.
+- **WHEN** branch options are constructed from the preflight candidates
+- **THEN** only branches with commits not already reachable from `HEAD` are included, and a remote branch that `HEAD` already holds is not offered
 
 #### Scenario: No eligible source branches exist
 
 - **WHEN** the filtered branch list is empty
 - **THEN** the coordinator asks for the branch in plain text, so a branch name can still be entered.
+
+#### Scenario: Upstream and remote default branch are offered
+
+- **WHEN** the current branch has an upstream and `refs/remotes/origin/HEAD` points to `refs/remotes/origin/main`, and `HEAD` holds neither
+- **THEN** the candidates include `origin/main` with ref `refs/remotes/origin/main` and the upstream with its full ref
+
+#### Scenario: No remote lists only local branches
+
+- **WHEN** the repository has no remote and the current branch has no upstream
+- **THEN** the candidates hold only local branches and preflight raises no error
 
 ### Requirement: Full-first conflict scope presentation
 

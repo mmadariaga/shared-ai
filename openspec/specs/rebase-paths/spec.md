@@ -7,12 +7,17 @@ TBD - created by archiving change merge-method-selector. Update Purpose after ar
 
 ### Requirement: Plain and squashed rebase execution
 
-The system SHALL execute plain rebase as git rebase of the current branch onto the selected branch, and squashed rebase as prior unification followed by git rebase of that single commit, with pushed-branch rewrite risk remaining the user's responsibility and no push-safety handling. Each conflicted stop SHALL reuse the merge resolution and verification flow followed by invocation-authorized automatic local continuation rather than a finalization question.
+The system SHALL execute plain rebase as git rebase of the current branch onto the selected branch, and squashed rebase as prior unification followed by git rebase of that single commit, with pushed-branch rewrite risk remaining the user's responsibility and no push-safety handling. When the user accepted the autostash question, the `git rebase` command line SHALL carry `--autostash`; the squash commit SHALL never take unstaged changes. Each conflicted stop SHALL reuse the merge resolution and verification flow followed by invocation-authorized automatic local continuation rather than a finalization question.
 
 #### Scenario: Execute squashed rebase
 
 - **WHEN** the rebase path with squash Yes is authorized after provenance capture
 - **THEN** the coordinator unifies the commits, runs git rebase onto the selected branch, and reuses the merge resolution, verification, and automatic local-finalization flow
+
+#### Scenario: Accepted autostash reaches the rebase command line
+
+- **WHEN** the user accepted the autostash question for a rebase
+- **THEN** the coordinator launches `git rebase --autostash <source_ref>` and changes no `git config`
 
 ### Requirement: Rebase conflict reuse
 
