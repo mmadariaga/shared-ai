@@ -1445,7 +1445,7 @@ test('canonical manifest projects no boot adapter or command runner and the util
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['explore', 'retire-docs', 'status', 'worktree'];
+  const utilities = ['explore', 'retire-docs', 'retrospective', 'status', 'worktree'];
   const implementCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];

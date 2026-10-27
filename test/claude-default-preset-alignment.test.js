@@ -41,8 +41,8 @@ function projections(harness) {
   return { base, entries: asLinux(() => expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })) };
 }
 
-test('all 34 Claude shipped roles match the audit-renumbered OPUS preset exactly', () => {
-  assert.equal(hash(presetText), '7e1acefaf3752eb4b3b64fcd4f23a395b735fcc94161b202f7cd1135488e9959');
+test('all 35 Claude shipped roles match the audit-renumbered OPUS preset exactly', () => {
+  assert.equal(hash(presetText), 'b18b22f73b0d21989d309fda2fc5ba0b51a780b8471bf5015f4bc00a5c62133f');
   const counts = {};
   const { base, entries } = projections('claude');
   for (const [role, expected] of Object.entries(preset)) {
@@ -60,7 +60,7 @@ test('all 34 Claude shipped roles match the audit-renumbered OPUS preset exactly
     assert.ok(generated, `${role} must be projected`);
     assert.deepEqual(settings(generated.sourceText ?? fs.readFileSync(generated.sourcePath, 'utf8')), expected, role);
   }
-  assert.deepEqual(counts, { agent: 3, command: 15, worker: 13, utility: 3 });
+  assert.deepEqual(counts, { agent: 3, command: 15, worker: 13, utility: 4 });
   for (const name of ['to-pr', 'to-backlog', 'from-backlog', 'from-next-backlog-item']) {
     assert.ok(!Object.hasOwn(preset, `command:${name}`));
   }
@@ -74,6 +74,6 @@ test('generated opencode agents, command wrappers, and configuration match the c
     entry.sourceText ?? fs.readFileSync(entry.sourcePath, 'utf8'),
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  assert.equal(output.length, 40);
-  assert.equal(hash(JSON.stringify(output)), '04dfa49f12876676914f720918b3dbbd318c168c8cff7a2253d6579bbca203d5');
+  assert.equal(output.length, 41);
+  assert.equal(hash(JSON.stringify(output)), '68b7793df51214b89ffffac6a52f6b41f15ccb65727e3622eac18d89422a3f66');
 });

@@ -313,7 +313,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-boot-claude-');
     const opencodeBase = makeTempDir('sai-dr-boot-opencode-');
-    const utilities = ['explore', 'retire-docs', 'status', 'worktree'];
+    const utilities = ['explore', 'retire-docs', 'retrospective', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);

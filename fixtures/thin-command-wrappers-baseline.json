@@ -17,6 +17,7 @@
     "sai-merge.md",
     "sai-plan.md",
     "sai-retire-docs.md",
+    "sai-retrospective.md",
     "sai-status.md",
     "sai-worktree.md"
   ],
@@ -82,6 +83,10 @@
       "sai-retire-docs.md": [
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/commands/retire-docs/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
+      "sai-retrospective.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/commands/retrospective/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-deep-review.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -157,6 +162,10 @@
       "sai-retire-docs.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/commands/retire-docs/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
+      "sai-retrospective.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/commands/retrospective/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-deep-review.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
