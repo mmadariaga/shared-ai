@@ -5,7 +5,7 @@ TTY-only post-setup customization menu and isolated harness adapters that apply 
 
 ### Requirement: Post-setup customization menu
 
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly six actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project behavior settings` MUST open the project behavior settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again.
+The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly seven actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, `Cache warming`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project behavior settings` MUST open the project behavior settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again. Selecting `Cache warming` MUST open the cache warming section with no harness selection, passing the guided warming pairs built from the installed files of both harnesses, and when that section returns, whether saved, unchanged, failed, or discarded, the flow MUST present the post-setup menu again.
 
 #### Scenario: User exits from the post-setup menu
 
@@ -41,6 +41,11 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 
 - **WHEN** the user interrupts a prompt inside the project behavior settings screen
 - **THEN** the flow MUST present the post-setup menu again and leave `.sai/settings.jsonc` unchanged
+
+#### Scenario: User opens cache warming from the post-setup menu
+
+- **WHEN** the user selects `Cache warming`, which the menu lists immediately before `Exit`
+- **THEN** the flow MUST open the cache warming section with the guided pairs of the installed files and present the post-setup menu again when it returns
 
 ### Requirement: TTY-only interaction
 
