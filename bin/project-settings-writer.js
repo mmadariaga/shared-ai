@@ -104,8 +104,9 @@ function editText(settingsFile, stored, normalized) {
  * otherwise to `.sai/settings.jsonc`, which is created when missing. The local file is never created.
  * A value of undefined removes the key. Returns { ok: true, files } or { ok: false, error }; every edit is
  * prepared before the first write, so a refused edit leaves both files untouched. An empty change set writes nothing.
+ * `baseOnly` sends every key to `.sai/settings.jsonc` and leaves the local file out, even when it holds the key.
  */
-function saveSettings(projectPath, changes, { providerIds, prProviderIds } = {}) {
+function saveSettings(projectPath, changes, { providerIds, prProviderIds, baseOnly = false } = {}) {
   const entries = Object.entries(changes);
   if (entries.length === 0) return { ok: true, changed: false };
   const normalized = [];
@@ -116,10 +117,10 @@ function saveSettings(projectPath, changes, { providerIds, prProviderIds } = {})
   }
   const targets = [[SETTINGS_FILE, readStored(projectPath, SETTINGS_FILE)], [LOCAL_SETTINGS_FILE, readStored(projectPath, LOCAL_SETTINGS_FILE)]];
   for (const [settingsFile, stored] of targets) {
-    if (stored.status === 'unreadable') return { ok: false, error: `${settingsFile} cannot be edited: ${stored.error}` };
+    if (stored.status === 'unreadable' && !(baseOnly && settingsFile === LOCAL_SETTINGS_FILE)) return { ok: false, error: `${settingsFile} cannot be edited: ${stored.error}` };
   }
   const [[, base], [, local]] = targets;
-  const inLocal = ([id]) => local.status === 'ok' && storedValue(local.root, id) !== undefined;
+  const inLocal = ([id]) => !baseOnly && local.status === 'ok' && storedValue(local.root, id) !== undefined;
   const edits = [
     [SETTINGS_FILE, base, normalized.filter(entry => !inLocal(entry))],
     [LOCAL_SETTINGS_FILE, local, normalized.filter(inLocal)],

@@ -187,8 +187,12 @@ The reader SHALL read an optional `.sai/settings.local.jsonc` from the same `.sa
 
 ### Requirement: Catalogue presentation fields
 
-Every catalogue key that the project behavior settings screen shows SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; and `pr.provider` as `Provider` in section `Pull requests`. A catalogue entry MAY declare an `absent` text that the screen shows for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`. Keys the screen does not show SHALL declare no label or section.
+Every catalogue key that the project behavior settings screen shows SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; and `pr.provider` as `Provider` in section `Pull requests`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`. The `warming` entry, which the screen does not show, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the screen does not show SHALL declare no label or section.
 
 #### Scenario: Screen keys carry labels and sections
 - **WHEN** the catalogue is read
 - **THEN** each of the five screen keys has the label and section above, and `explore.chatPublicLanguage` has the absent text `follow my language`
+
+#### Scenario: Warming carries presentation fields for its section
+- **WHEN** the catalogue is read
+- **THEN** `warming` has the label `Cache warming`, the section `Cache warming`, and the absent text `off`
