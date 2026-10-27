@@ -127,6 +127,10 @@
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
+  "utility:sai-retrospective": {
+    "model": "opencode-go/muse-spark-1.3-contributor",
+    "variant": "xhigh"
+  },
   "utility:sai-status": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"

@@ -33,6 +33,7 @@
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
+      "retrospective-command": { "extends": "boot", "search": true, "question": true, "shell": ["node {sai}/tools/retrospective.js *"] },
       "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"] },
       "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] },
       "from-next-backlog-item-command": { "extends": "from-backlog-command", "skills": ["from-next-backlog-item", "from-backlog"], "shell": ["node {sai}/tools/from-next-backlog-item.js select", "node {sai}/tools/from-backlog.js *"] },
@@ -66,7 +67,7 @@
         "sai-explore": "explore-command", "sai-retire-docs": "utility-write",
         "sai-context-cache-ttl-benchmark": "context-cache-benchmark-command",
         "sai-cache-warmer": "cache-warmer-command",
-        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "from-next-backlog-item": "from-next-backlog-item-command", "to-pr": "to-pr-command", "new-change-branch": "new-change-branch-command"
+        "sai-status": "status-command", "sai-retrospective": "retrospective-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "from-next-backlog-item": "from-next-backlog-item-command", "to-pr": "to-pr-command", "new-change-branch": "new-change-branch-command"
       }
     }
   },

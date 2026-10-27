@@ -127,6 +127,10 @@
     "model": "opus",
     "effort": "medium"
   },
+  "utility:sai-retrospective": {
+    "model": "opus",
+    "effort": "medium"
+  },
   "utility:sai-status": {
     "model": "haiku",
     "effort": "medium"

@@ -23,20 +23,21 @@ const commands = [
   ['sai-merge.md', 'merge'],
   ['sai-plan.md', 'plan'],
   ['sai-retire-docs.md', 'retire-docs'],
+  ['sai-retrospective.md', 'retrospective'],
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
 // Every command runs outside the shared orchestration: the wrappers fetch the
 // harness skill and the command's card directly, with no boot adapter and no
-// command bootstrap. Most commands load a `coordinator.md`; the four utility
-// commands (explore, retire-docs, status, worktree) load their `body.md`. The
+// command bootstrap. Most commands load a `coordinator.md`; the five utility
+// commands (explore, retire-docs, retrospective, status, worktree) load their `body.md`. The
 // three audits share one coordinator, `sai/commands/audit/coordinator.md`.
 const AUDIT_WRAPPERS = new Set(['sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md']);
 const DIRECT_COORDINATOR = new Set([
   'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
   'sai-deep-review.md', 'sai-merge.md', 'sai-commit.md', 'sai-archive.md', 'sai-backfill.md', ...AUDIT_WRAPPERS,
 ]);
-const BODY_WRAPPERS = new Set(['sai-explore.md', 'sai-retire-docs.md', 'sai-status.md', 'sai-worktree.md']);
+const BODY_WRAPPERS = new Set(['sai-explore.md', 'sai-retire-docs.md', 'sai-retrospective.md', 'sai-status.md', 'sai-worktree.md']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
   const foldersByFile = new Map(commands);
@@ -316,7 +317,7 @@ test('the utility wrappers fetch the harness skill and their body card directly,
 });
 
 test('the utility body cards check the capability profile and load public chat and the obstacle policy themselves', () => {
-  for (const folder of ['explore', 'retire-docs', 'status', 'worktree']) {
+  for (const folder of ['explore', 'retire-docs', 'retrospective', 'status', 'worktree']) {
     const card = read(`sai/commands/${folder}/body.md`);
     assert.match(card, /Fetch @sai\/policies\/public-chat\.md and follow it exactly\./, `${folder} loads public chat`);
     assert.match(card, /First step: Fetch @sai\/policies\/tool-access\.md and check the wrapper's required capability profile\./, `${folder} checks its capability profile`);
@@ -369,12 +370,12 @@ test('final wrappers: all known labelled argument lines are absent after the env
   }
 });
 
-test('final wrappers: source wrapper directories contain 19 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 20 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 19, `${harness} should retain exactly 19 sai wrappers`);
-    assert.equal(files.length, 23, `${harness} wrapper directory should contain 23 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 20, `${harness} should retain exactly 20 sai wrappers`);
+    assert.equal(files.length, 24, `${harness} wrapper directory should contain 24 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);
