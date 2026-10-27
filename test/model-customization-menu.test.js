@@ -69,7 +69,7 @@ const CLAUDE_AGENTS = [
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
-const UTILITY_COMMANDS = ['sai-retire-docs', 'sai-status', 'sai-worktree'];
+const UTILITY_COMMANDS = ['sai-retire-docs', 'sai-retrospective', 'sai-status', 'sai-worktree'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -148,6 +148,7 @@ const OPENCODE_COMMANDS = [
   'sai-merge',
   'sai-plan',
   'sai-retire-docs',
+  'sai-retrospective',
   'sai-status',
   'sai-worktree',
 ];

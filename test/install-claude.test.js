@@ -50,6 +50,7 @@ const CLAUDE_GENERIC_AGENTS = {
 const UTILITY_COMMANDS = {
   'sai-explore': 'explore',
   'sai-retire-docs': 'retire-docs',
+  'sai-retrospective': 'retrospective',
   'sai-status': 'status',
   'sai-worktree': 'worktree',
 };
@@ -61,6 +62,7 @@ const UTILITY_CARD_CONTENTS = {
   explore: ['body.md', 'direct-build-coordinator.md', 'direct-build-worker.md', 'instructions.md', 'list-writing.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md'],
+  retrospective: ['body.md'],
   status: ['body.md'],
   worktree: ['body.md', 'instructions.md'],
 };

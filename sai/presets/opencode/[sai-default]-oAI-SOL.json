@@ -127,6 +127,10 @@
     "model": "openai/gpt-6.1-sol",
     "variant": "medium"
   },
+  "utility:sai-retrospective": {
+    "model": "openai/gpt-6.1-sol",
+    "variant": "medium"
+  },
   "utility:sai-status": {
     "model": "openai/gpt-6-luna",
     "variant": "max"

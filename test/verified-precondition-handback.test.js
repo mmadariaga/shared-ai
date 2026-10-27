@@ -55,7 +55,7 @@ const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
 );
-const utilityCards = ['explore', 'retire-docs', 'status', 'worktree']
+const utilityCards = ['explore', 'retire-docs', 'retrospective', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
 const commandCards = [...routedMinimalCards, ...utilityCards];
 const GOAL_DRIVEN_CARDS = new Set([
@@ -91,7 +91,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 10);
+  assert.equal(commandCards.length, 11);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);

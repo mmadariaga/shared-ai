@@ -62,6 +62,7 @@ that the later implementer should be able to follow without redesigning them.
       WORKER        sai-commit-worker            Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 
       UTILITY       sai-retire-docs              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+      UTILITY       sai-retrospective            Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       UTILITY       sai-status                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
       UTILITY       sai-worktree                 Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 ```
