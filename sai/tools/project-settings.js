@@ -68,13 +68,21 @@ function validateWarming(value) {
   return null;
 }
 
-// The effective warming of one agent: the model rule, then the provider rule, then the role default; `off` when none applies.
+// The model family of an Anthropic runtime id: `claude-opus-5-5` belongs to `opus`. It is derived by pattern, so a new
+// model version needs no change here; an id of another shape, or another provider, has no family.
+const ANTHROPIC_FAMILY = /^claude-([a-z]+)(?:-|$)/;
+const modelFamily = (provider, model) => (provider === 'anthropic' && typeof model === 'string' ? ANTHROPIC_FAMILY.exec(model)?.[1] : undefined);
+
+// The effective warming of one agent: the model rule, then the model-family rule, then the provider rule, then the role default; `off` when none applies.
 // Rules match their provider and role exactly; a rule without `model` is the provider rule. The first matching rule wins.
 function resolveWarmingValue(value, { provider, model, role }) {
   const entries = [];
   const rules = (value?.rules ?? []).filter(rule => rule.provider === provider && rule.role === role);
   const modelRule = model === undefined ? undefined : rules.find(rule => rule.model === model);
   if (modelRule) entries.push(['model', modelRule]);
+  const family = modelFamily(provider, model);
+  const familyRule = family === undefined ? undefined : rules.find(rule => rule.model === family);
+  if (familyRule) entries.push(['family', familyRule]);
   const providerRule = rules.find(rule => rule.model === undefined);
   if (providerRule) entries.push(['provider', providerRule]);
   const roleDefault = value?.defaults?.[role];
@@ -88,7 +96,7 @@ function resolveWarmingValue(value, { provider, model, role }) {
 // the gates compare. `label` and `section` place a key on the settings screen; `absent` is
 // the text the screen shows for a key with no value, where `ask` does not fit.
 const CATALOGUE = {
-  warming: { validate: validateWarming },
+  warming: { validate: validateWarming, label: 'Cache warming', section: 'Cache warming', absent: 'off' },
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
     validate: field === 'provider'
       ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
@@ -262,7 +270,7 @@ function get(id, options) {
 
 /**
  * The effective warming of one agent, resolved from the merged settings: { warming, origin, warnings, notices? }.
- * `warming` is `{ interval, max }` in minutes or `off`; `origin` is `model`, `provider`, `defaults`, or `none`.
+ * `warming` is `{ interval, max }` in minutes or `off`; `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
  * Nothing warms until the user enables it, so an absent or unusable setting resolves to `off`.
  */
 function warming(query, options) {

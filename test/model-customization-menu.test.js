@@ -4706,3 +4706,45 @@ test('setup rejects a reported customization failure and a missing customization
     fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });
+
+test('guided warming pairs list each installed (provider, model) once per role, without effort or variant suffix', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'warming-pairs-'));
+  try {
+    const dirs = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, path.join(root, name)]));
+    for (const dir of Object.values(dirs)) fs.mkdirSync(dir);
+    const file = (dir, name, model, extra = []) => fs.writeFileSync(path.join(dir, `${name}.md`), ['---', `name: ${name}`, `model: ${model}`, ...extra, '---', '', 'body', ''].join('\n'));
+    file(dirs.claudeCommands, 'sai-explore', 'opus', ['effort: xhigh']);
+    file(dirs.claudeCommands, 'sai-build', 'opus', ['effort: high']);
+    file(dirs.claudeCommands, 'sai-status', 'haiku');
+    fs.writeFileSync(path.join(dirs.claudeCommands, 'sai-1-spec.md'), '---\nname: sai-1-spec\n---\n\nbody\n');
+    file(dirs.claudeAgents, 'sai-direct-build-worker', 'sonnet', ['effort: low']);
+    file(dirs.claudeAgents, 'budget-explorer', 'haiku', ['effort: low']);
+    file(dirs.opencodeCommands, 'sai-explore', 'opencode-go/deepseek-v4.1-flash#high');
+    file(dirs.opencodeAgents, 'sai-merge-worker', 'opencode-go/glm-5.1', ['variant: high']);
+    file(dirs.opencodeAgents, 'sai-commit-worker', 'plain-model');
+    const pairs = modelCustomization.guidedWarmingPairs({
+      projectPath: path.join(root, 'project'),
+      packageRoot: REPO_ROOT,
+      roots: [['claude', dirs.claudeAgents, dirs.claudeCommands], ['opencode', dirs.opencodeAgents, dirs.opencodeCommands]],
+    });
+    assert.deepEqual(pairs, {
+      agent: [
+        { provider: 'anthropic', model: 'haiku' },
+        { provider: 'anthropic', model: 'opus' },
+        { provider: 'opencode-go', model: 'deepseek-v4.1-flash' },
+      ],
+      subagent: [
+        { provider: 'anthropic', model: 'haiku' },
+        { provider: 'anthropic', model: 'sonnet' },
+        { provider: 'opencode-go', model: 'glm-5.1' },
+      ],
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the post-setup menu lists Cache warming before Exit', () => {
+  const options = modelCustomization.MENU_OPTIONS;
+  assert.equal(options.indexOf('Cache warming'), options.indexOf('Exit') - 1);
+});

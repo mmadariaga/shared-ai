@@ -63,7 +63,7 @@ The writer SHALL refuse a file for which `jsonc-parser` `parse` reports errors, 
 
 ### Requirement: Per-key target file
 
-`saveSettings` SHALL save each key to `.sai/settings.local.jsonc` when that file already holds the key, and to `.sai/settings.jsonc` otherwise, with the same in-place edit and atomic write for both files. It SHALL NOT create the local file; the base file SHALL be created when missing, as on a first save. It SHALL refuse the whole save, writing neither file, when either file cannot be parsed, and SHALL prepare every edit before the first write. A value of `undefined` for a catalogue id SHALL remove the key in place. A successful save SHALL return the list of files it wrote.
+`saveSettings` SHALL save each key to `.sai/settings.local.jsonc` when that file already holds the key, and to `.sai/settings.jsonc` otherwise, with the same in-place edit and atomic write for both files. With the option `baseOnly`, it SHALL save every key to `.sai/settings.jsonc` even when the local file holds the key, SHALL leave the local file unchanged, and SHALL NOT refuse the save because the local file cannot be parsed. It SHALL NOT create the local file; the base file SHALL be created when missing, as on a first save. Without `baseOnly`, it SHALL refuse the whole save, writing neither file, when either file cannot be parsed; with `baseOnly`, it SHALL refuse the save when the base file cannot be parsed. It SHALL prepare every edit before the first write. A value of `undefined` for a catalogue id SHALL remove the key in place. A successful save SHALL return the list of files it wrote.
 
 #### Scenario: Keys split between the two files
 - **WHEN** the local file holds `backlog.provider` and a save changes `backlog.provider` and `explore.overviewLanguage`
@@ -82,5 +82,9 @@ The writer SHALL refuse a file for which `jsonc-parser` `parse` reports errors, 
 - **THEN** the key is removed and every other byte of the file stays unchanged
 
 #### Scenario: Unparseable local file refuses the whole save
-- **WHEN** `.sai/settings.local.jsonc` cannot be parsed and a save changes any key
+- **WHEN** `.sai/settings.local.jsonc` cannot be parsed and a save without `baseOnly` changes any key
 - **THEN** the save fails naming the local file and neither file changes
+
+#### Scenario: Base-only save ignores a local key
+- **WHEN** `.sai/settings.local.jsonc` holds `warming` and a save with `baseOnly` changes `warming`
+- **THEN** `warming` is written to `.sai/settings.jsonc` and `.sai/settings.local.jsonc` stays unchanged

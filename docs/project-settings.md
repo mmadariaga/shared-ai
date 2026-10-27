@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx github:mmadariaga/shared-ai setup`, or by hand. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen and the **Cache warming** section of `npx github:mmadariaga/shared-ai setup`, or by hand. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -62,7 +62,8 @@ The `warming` setting lets SAI agents keep their prompt cache warm between conti
 ```
 
 - A `defaults` entry is `{ "interval", "max" }` or `false`. A rule carries `provider`, an optional `model`, `role`, and either `interval` and `max` or `"enabled": false`.
-- Resolution runs separately for each role: the first rule that matches the provider, the model, and the role; then the first rule that matches the provider and the role and has no `model`; then `defaults` for the role. When none applies, or the winning entry is `false`, the agent does not warm.
+- Resolution runs separately for each role: the first rule that matches the provider, the model, and the role; then, for the provider `anthropic`, the first rule whose model is the model family of the runtime id; then the first rule that matches the provider and the role and has no `model`; then `defaults` for the role. When none applies, or the winning entry is `false`, the agent does not warm.
+- The model family is the version-less alias of a Claude model: the runtime id `claude-opus-5-5` belongs to the family `opus`, so a rule for `opus` applies to it when no rule names the full id. The tool derives the family from ids of the form `claude-<family>-...`; an id of another shape, or a provider other than `anthropic`, has no family and skips this step. A command on Claude Code declares an alias such as `opus`, while the running session reports the full id, which is why the family step exists.
 - The provider and model of a worker or helper come from the `model` frontmatter of its installed agent file. On Claude Code the provider is `anthropic` and the model is the frontmatter value as written (for example `haiku`). On opencode the value is `<provider>/<model>`, so `opencode-go/deepseek-v4.1-flash` is the provider `opencode-go` and the model `deepseek-v4.1-flash`.
 - Timings are resolved again for every arm, so a change in either settings file, a local override included, applies from the next arm without restarting any agent. The local file replaces the whole `warming` value, as it replaces any key.
 - An invalid `warming` value is dropped with a warning, and nothing warms.
@@ -73,7 +74,21 @@ Print the effective values for one agent:
 node sai/tools/project-settings.js warming --provider anthropic --model haiku --role subagent --json --cwd <project-root>
 ```
 
-It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or `off`, and `origin` is `model`, `provider`, `defaults`, or `none`. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`; edit the file by hand. The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).
+It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or `off`, and `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
+
+### Cache warming section
+
+Run `npx github:mmadariaga/shared-ai setup` and choose **Cache warming** in the post-setup menu. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`; this section does, and you can still edit the file by hand. It shows one default per role, then guided rules per role:
+
+- **Role defaults**: `Default for agent` and `Default for subagent`. Each is `off` or `every <interval> min, up to <max> min`. A new project shows both as `off`, so nothing warms until you enable one.
+- **Guided rules**: one row for each (provider, model) pair that an installed SAI file declares in its `model` frontmatter, with any effort or variant suffix (`#xhigh`) removed. The `agent` role lists the pairs of installed commands and utilities. The `subagent` role lists the pairs of installed workers and helpers. A file without a `model` key adds no row; provider rules and the defaults cover it. The section reads the files of both harnesses and writes nothing to them.
+- **Existing rules** that match no installed pair, for example a hand-written rule or one for a full model id, are listed with the note `(no installed file uses it)`. You can edit or remove them, and a save never drops them.
+
+Choose a row to **Enable** it, set it to **Off** (`false` for a default, `"enabled": false` for a rule), or, for a rule, **Remove rule**. **Enable** asks for the interval and the maximum in minutes. An empty answer keeps the pre-filled value, which is the current one or `4` and `30` when none exists. Values must be positive and `max` at least `interval`; the section asks again otherwise, so it never writes an invalid value.
+
+Leaving with **Done** saves when at least one edit changed the value. The section writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the section prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the section warns that the local value replaces the one it writes, and it still writes only the base file.
+
+The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).
 
 ## Values and precedence
 

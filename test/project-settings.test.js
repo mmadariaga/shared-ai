@@ -490,6 +490,29 @@ test('E2/I4: the model rule beats the provider rule, which beats the role defaul
   assert.equal(resolved(cwd, 'anthropic', 'haiku', 'agent').origin, 'defaults');
 });
 
+test('E3/I4: the family rule applies between the exact model rule and the provider rule, for both roles and anthropic only', () => {
+  const rule = (model, role, interval) => ({ provider: 'anthropic', ...(model === undefined ? {} : { model }), role, interval, max: 30 });
+  const cwd = warmingProject({
+    defaults: { agent: { interval: 9, max: 30 } },
+    rules: [rule('opus', 'agent', 2), rule('claude-opus-5-5', 'agent', 1), rule(undefined, 'agent', 3), rule('opus', 'subagent', 4), rule(undefined, 'subagent', 5), { provider: 'opencode-go', model: 'opus', role: 'agent', interval: 6, max: 30 }],
+  });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-5', 'agent'), { warming: { interval: 1, max: 30 }, origin: 'model', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-6', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'family', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-6', 'subagent'), { warming: { interval: 4, max: 30 }, origin: 'family', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'opus', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'model', warnings: [] });
+  assert.equal(resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'agent').origin, 'provider');
+  assert.equal(resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'subagent').origin, 'provider');
+  assert.equal(resolved(cwd, 'opencode-go', 'claude-opus-5-5', 'agent').origin, 'defaults');
+  assert.equal(resolved(cwd, 'unlisted', 'claude-opus-5-5', 'agent').origin, 'defaults');
+});
+
+test('E3/I4: an id that names no family skips the family step', () => {
+  const cwd = warmingProject({ rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 2, max: 30 }, { provider: 'anthropic', role: 'agent', interval: 3, max: 30 }] });
+  for (const model of ['gpt-5', 'claude', 'claude-3-5-sonnet-20241022', 'opus-5', 'Claude-opus-5', undefined]) {
+    assert.equal(resolved(cwd, 'anthropic', model, 'agent').origin, 'provider', String(model));
+  }
+});
+
 test('E1/E2: a rule with enabled: false turns warming off even where the defaults enable it', () => {
   const cwd = warmingProject({ defaults: { subagent: { interval: 4, max: 30 } }, rules: [{ provider: 'opencode-go', model: 'm', role: 'subagent', enabled: false }] });
   assert.deepEqual(resolved(cwd, 'opencode-go', 'm', 'subagent'), { warming: 'off', origin: 'model', warnings: [] });
