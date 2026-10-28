@@ -29,7 +29,7 @@ test('every platform creates unique private directories under the SAI temp root,
   ensureLinuxRoots();
   for (const harness of ['claude', 'opencode']) {
     if (linux && harness === 'opencode' && !fs.existsSync('/tmp/opencode')) continue;
-    const root = fs.realpathSync(resolveTempRoot(harness));
+    const root = fs.realpathSync.native(resolveTempRoot(harness));
     const results = Array.from({ length: 4 }, () => prepareTemp(harness, options).directory);
     assert.equal(new Set(results).size, results.length);
     for (const directory of results) {
@@ -52,12 +52,12 @@ test('every platform creates unique private directories under the SAI temp root,
 
 test('without a harness the installed root decides it, and the Linux-only refusal is gone', () => {
   ensureLinuxRoots();
-  assert.equal(path.dirname(prepareTemp(undefined, options).directory), fs.realpathSync(resolveTempRoot('claude')));
+  assert.equal(path.dirname(prepareTemp(undefined, options).directory), fs.realpathSync.native(resolveTempRoot('claude')));
   for (const [platform, harness] of [['win32', 'opencode'], ...(process.platform === 'win32' ? [] : [['darwin', 'claude']])]) {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), 'prepare-temp-platform-'));
     try {
       const { directory } = prepareTemp(harness, { ...options, platform, tmpdir: () => base });
-      assert.equal(path.dirname(directory), fs.realpathSync(path.join(base, harness, 'sai')));
+      assert.equal(path.dirname(directory), fs.realpathSync.native(path.join(base, harness, 'sai')));
     } finally {
       fs.rmSync(base, { recursive: true, force: true });
     }
