@@ -152,7 +152,7 @@ Every capability profile assigned to an agent through `capabilities.assignments.
 
 #### Scenario: Other grants of the widened profiles stay unchanged
 - **WHEN** the `research` and `executor` profiles are resolved
-- **THEN** `research` keeps its shell limited to `git grep *` and `codegraph explore *`, and neither profile gains `delegate`, `write`, or `message`
+- **THEN** `research` keeps its shell limited to `git grep *`, `codegraph explore *`, and `node {skills}/sai-cache-warmer/wait.js *`, and neither profile gains `delegate`, `write`, or `message`
 
 #### Scenario: Command profiles keep explicit skills lists
 - **WHEN** command profiles such as `implement-command`, `to-backlog-command`, and `to-pr-command` are resolved
@@ -161,3 +161,15 @@ Every capability profile assigned to an agent through `capabilities.assignments.
 #### Scenario: A narrowed agent profile fails the guard test
 - **WHEN** a profile assigned to an agent declares its own `skills` key or resolves to a skills list other than `["*"]`
 - **THEN** the capability profile test fails naming the agent and its profile
+
+### Requirement: Explore command wait-script grant
+
+The `explore-command` capability profile in `sai/install-manifest.json` SHALL grant the shell invocation `node {skills}/sai-cache-warmer/wait.js *`, in the same form `cache-warmer-command` uses, so `/sai-explore` can arm and wake its own cache-warming waits on Claude Code and opencode. `resolveProfile` in `bin/capabilities.js` SHALL keep replacing an inherited list-valued grant, so the effective permissions of every other profile stay unchanged.
+
+#### Scenario: Explore allows the wait script
+- **WHEN** capability requirements are generated for `sai-explore` under either harness
+- **THEN** the explore command's shell grants include the `wait.js` invocation
+
+#### Scenario: Other profiles keep their grants
+- **WHEN** profiles that replace an inherited shell list are resolved
+- **THEN** their effective grants are unchanged by the explore grant
