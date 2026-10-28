@@ -3,11 +3,11 @@
   "capabilities": {
     "profiles": {
       "boot": { "read": true, "skills": ["*"] },
-      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "skills": ["fetch"], "shell": ["git grep *", "codegraph explore *"] },
-      "executor": { "extends": "boot", "skills": ["fetch"], "shell": ["*"] },
+      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["git grep *", "codegraph explore *"] },
+      "executor": { "extends": "boot", "shell": ["*"] },
       "task": { "extends": "boot", "search": true, "write": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["*"] },
       "worker-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "message": true },
-      "worker-execution": { "extends": "worker-write", "skills": ["fetch"] },
+      "worker-execution": { "extends": "worker-write" },
       "worker-read": { "extends": "boot", "search": true, "shell": ["*"], "message": true },
       "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },

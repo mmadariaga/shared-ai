@@ -44,6 +44,13 @@ test('all workers, generic agents and commands have canonical assignments', () =
   }
 });
 
+test('agent profiles never narrow the skills grant', () => {
+  for (const [agent, profileName] of Object.entries(registry.assignments.agents)) {
+    assert.ok(!Object.hasOwn(registry.profiles[profileName], 'skills'), `${agent} profile ${profileName} declares its own skills key`);
+    assert.deepEqual(resolveProfile(registry, profileName).skills, ['*'], `${agent} profile ${profileName} resolves to a restricted skills list`);
+  }
+});
+
 test('write includes creation and modification, while archive mutates only through shell', () => {
   for (const profile of ['worker-write', 'worker-backfill']) {
     const claude = translate(registry, profile, 'claude');

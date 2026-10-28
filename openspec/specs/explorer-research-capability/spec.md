@@ -8,7 +8,7 @@ Grants the `budget-explorer` agent the tool permissions its research ladder requ
 
 ### Requirement: Explorer tool permissions enable ladder level access
 
-Both harnesses SHALL derive explorer access from the canonical research profile. Claude grants SHALL include the applicable shell and CodeGraph MCP tools enabling levels 1a, 1b, and 2. Opencode SHALL grant equivalent read, search, web, restricted research shell, fetch-skill, CodeGraph, and execute bridge capabilities through ordered deny-default V2 permissions. Required auxiliary access SHALL be included, while excluded writes, delegation, unrelated skills, and unknown actions remain denied by opencode profile rules. The explorer SHALL apply its profile before availability detection.
+Both harnesses SHALL derive explorer access from the canonical research profile. Claude grants SHALL include the applicable shell and CodeGraph MCP tools enabling levels 1a, 1b, and 2. Opencode SHALL grant equivalent read, search, web, restricted research shell, every-skill, CodeGraph, and execute bridge capabilities through ordered deny-default V2 permissions, with the skill allow on `*` following the general denial and no per-name skill denial. Required auxiliary access SHALL be included, while excluded writes, delegation, general shell, and unknown actions remain denied by opencode profile rules. The explorer SHALL apply its profile before availability detection.
 
 #### Scenario: MCP tool present, structural query via level 1a
 - **WHEN** granted CodeGraph MCP is available for a structural query
@@ -45,3 +45,7 @@ Both harnesses SHALL derive explorer access from the canonical research profile.
 #### Scenario: New action does not inherit broad access
 - **WHEN** an unknown action is evaluated despite inherited allow rules
 - **THEN** research profile deny-default rules deny that action
+
+#### Scenario: Opencode explorer allows every skill
+- **WHEN** the opencode `budget-explorer` permissions are generated
+- **THEN** the only skill rule allows `*` after the general denial, and shell, edit, subagent, and question keep their general denials
