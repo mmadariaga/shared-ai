@@ -76,19 +76,54 @@ test('arguments: the branch is optional, --squash wins, and --fast-track is acce
   assert.match(card, /You write in the language of the chat/);
 });
 
-test('start: the method question joins the branch question before the baseline, and autostash is asked after it', () => {
+test('start: the method question joins the branch question, and autostash is asked right after it, before the baseline', () => {
   const start = section(coordinator(), '## Start', '## A conflict stop');
   assert.match(start, /Without `--rebase` or `--squash`, ask the method in the same call: merge, rebase, or squash/);
   assert.match(start, /When the native picker is unavailable the method is a merge and the run goes on/);
   assert.match(start, /Cancelling either question ends the run with nothing launched and nothing written/);
   assert.match(start, /the method comes from the store and nothing is asked/);
   assert.ok(start.indexOf('ask the method') < start.indexOf('Fix the test command once'));
-  assert.ok(start.indexOf('Take the baseline') < start.indexOf('9. Autostash'));
-  assert.ok(start.indexOf('9. Autostash') < start.indexOf('10. Launch.'));
+  assert.ok(start.indexOf('ask the method') < start.indexOf('5. Autostash'));
+  assert.ok(start.indexOf('5. Autostash') < start.indexOf('6. Open the run state'));
+  assert.ok(start.indexOf('5. Autostash') < start.indexOf('Run `merge.js provenance`'));
+  assert.ok(start.indexOf('5. Autostash') < start.indexOf('Take the baseline'));
+  assert.match(start, /On no, or with no picker, end the run with the cause, before the first mutation: no suite has run and nothing is launched/);
   assert.match(start, /Untracked files never trigger the question, and a merge keeps its behavior/);
-  assert.match(start, /On no, or with no picker, end the run with the cause, before the first mutation\. Never change `git config`/);
+  assert.match(start, /Never change `git config`/);
   assert.match(start, /rebase command line carries `--autostash`/);
   assert.match(coordinator(), /name the stash entry that stays[\s\S]+`git stash pop`/);
+});
+
+test('E7: the run directory exists before provenance.json is saved, and a resumed run asks nothing', () => {
+  const start = section(coordinator(), '## Start', '## A conflict stop');
+  assert.ok(start.indexOf('temp-root.js mkdtemp') < start.indexOf('Run `merge.js provenance`'));
+  assert.ok(start.indexOf('emit `start` with its `dir`') < start.indexOf('Run `merge.js provenance`'));
+  assert.match(start, /as `stash-base\.txt` in the run directory/);
+  assert.ok(start.indexOf('Run `merge.js provenance`') < start.indexOf('Take the baseline'));
+  assert.match(start, /follow Resuming and skip the rest of Start: the method comes from the store and nothing is asked/);
+});
+
+test('E9: the docs, both wrappers, and AGENTS.md describe the command as asking only at start and on escalation', () => {
+  const texts = {
+    docs: read('docs/commands/sai-merge.md'),
+    claude: read('commands/claude/sai-merge.md'),
+    opencode: read('commands/opencode/sai-merge.md'),
+    onDemand: read('docs/on-demand-commands.md').split('\n').filter(line => line.includes('`/sai-merge`')).join('\n'),
+    agents: section(read('AGENTS.md'), '### Merge coordinator and worker', '### Merge efficiency'),
+    card: section(coordinator(), '## Goal', '**Terms.**'),
+  };
+  for (const [name, text] of Object.entries(texts)) {
+    assert.doesNotMatch(text, /no human in the loop/, `${name} must not claim no human interaction`);
+    assert.match(text, /autostash/i, `${name} names the autostash question`);
+  }
+  for (const name of ['docs', 'onDemand', 'agents', 'card']) {
+    assert.match(texts[name], /only at the start/, `${name} says the command asks only at the start`);
+    assert.match(texts[name], /on escalation/, `${name} says the command asks on escalation`);
+  }
+  for (const wrapper of ['claude', 'opencode']) {
+    assert.match(texts[wrapper], /asks only at start \(branch, method, autostash\) and on escalation/);
+  }
+  assert.doesNotMatch(texts.agents, /the method, language, dirty-tree, and strategy questions/);
 });
 
 test('E1: a launch with no conflict creates no worker and goes straight to verification and the collision check', () => {

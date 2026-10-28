@@ -324,7 +324,7 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 ### Requirement: Merge runs unattended from its arguments
 
-`/sai-merge` SHALL run as one goal-driven coordinator, `sai/commands/merge/coordinator.md`, whose invocation is `/sai-merge [<branch>] [--rebase|--squash]`, and SHALL ask no question once the launch work starts, apart from escalations. Without a method option the method SHALL be asked at the start, with a merge when no native picker is available; `--rebase` SHALL replay the current branch onto the named branch, and `--squash` SHALL first turn the current branch's own commits since the merge base into one local commit and then rebase it; `--squash` SHALL win when both options are given. `--fast-track` SHALL be accepted and ignored with no banner. A second branch or any other option SHALL end the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]` before anything is written. The run SHALL ask no working-language or strategy question, its only start questions SHALL be the branch, method, and autostash questions, and its closing report SHALL use the language of the chat.
+`/sai-merge` SHALL run as one goal-driven coordinator, `sai/commands/merge/coordinator.md`, whose invocation is `/sai-merge [<branch>] [--rebase|--squash]`. It SHALL ask only at the start (the branch when no branch argument is given, the method when no method option is given, and autostash when a rebase or squash needs it) and on escalation, and SHALL run unattended otherwise. Without a method option the method SHALL be asked at the start, with a merge when no native picker is available; `--rebase` SHALL replay the current branch onto the named branch, and `--squash` SHALL first turn the current branch's own commits since the merge base into one local commit and then rebase it; `--squash` SHALL win when both options are given. `--fast-track` SHALL be accepted and ignored with no banner. A second branch or any other option SHALL end the run with `Cannot start /sai-merge: {the cause}. Usage: /sai-merge [<branch>] [--rebase|--squash]` before anything is written. The run SHALL ask no working-language or strategy question, its only start questions SHALL be the branch, method, and autostash questions, and its closing report SHALL use the language of the chat. The coordinator's Goal, `docs/commands/sai-merge.md`, the `/sai-merge` row of `docs/on-demand-commands.md`, the Claude Code and opencode `sai-merge.md` wrapper descriptions, and the merge section of `AGENTS.md` SHALL state this same rule and SHALL NOT describe the command as running with no human in the loop.
 
 #### Scenario: Both method options select the squash
 
@@ -340,6 +340,11 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 - **WHEN** the arguments carry an option other than `--rebase`, `--squash`, or `--fast-track`
 - **THEN** the run prints the usage line with the cause and writes nothing
+
+#### Scenario: Every description states when the command asks
+
+- **WHEN** the coordinator's Goal, the command documentation, the on-demand command table, either harness's wrapper description, or the merge section of `AGENTS.md` is read
+- **THEN** it says the command asks only at the start (branch, method, autostash) and on escalation, and none of them claims no human in the loop
 
 ### Requirement: Merge start guards
 
@@ -535,12 +540,12 @@ When the invocation leaves the branch or the method open, the coordinator SHALL 
 
 ### Requirement: Autostash question for a rebase or squash
 
-For a rebase or squash only, after the baseline and before the first mutation, when the preflight reports a tracked file with unstaged modifications and `git config rebase.autoStash` is not true, the coordinator SHALL ask through the native picker whether to launch with `--autostash`. Untracked files SHALL NOT trigger the question, and a merge SHALL keep its existing behavior. On yes, the coordinator SHALL record the stash reference before the launch in the run directory and SHALL pass `--autostash` on the `git rebase` command line; the squash commit SHALL never take unstaged changes. On no, or when no native picker exists, the run SHALL end with the cause before the first mutation. The coordinator SHALL never change `git config`. When git cannot reapply the stashed changes at the end of the rebase, the stash entry SHALL stay in place.
+For a rebase or squash only, as soon as the method is known and before the run state is opened, the provenance is captured, the test command is fixed, and the baseline is taken, when the preflight reports a tracked file with unstaged modifications and `git config rebase.autoStash` is not true, the coordinator SHALL ask through the native picker whether to launch with `--autostash`. Untracked files SHALL NOT trigger the question, and a merge SHALL keep its existing behavior. On yes, the coordinator SHALL record the stash reference before the launch in the run directory and SHALL pass `--autostash` on the `git rebase` command line; the squash commit SHALL never take unstaged changes. On no, or when no native picker exists, the run SHALL end with the cause before the first mutation, having run no suite and launched nothing. The coordinator SHALL never change `git config`. When git cannot reapply the stashed changes at the end of the rebase, the stash entry SHALL stay in place. A resumed run SHALL NOT ask the question.
 
 #### Scenario: Tracked unstaged changes on a rebase ask for autostash
 
 - **WHEN** the method is rebase and a tracked file carries unstaged modifications
-- **THEN** the coordinator asks whether to launch with `--autostash` after the baseline and before any mutation
+- **THEN** the coordinator asks whether to launch with `--autostash` once the method is known, before the provenance, the baseline, and any mutation
 
 #### Scenario: Untracked files never ask
 
@@ -550,7 +555,7 @@ For a rebase or squash only, after the baseline and before the first mutation, w
 #### Scenario: Declined autostash ends the run unchanged
 
 - **WHEN** the user declines the autostash question, or no native picker exists
-- **THEN** the run ends with the cause before the first mutation and `git config` is unchanged
+- **THEN** the run ends with the cause before the first mutation, no suite has run, nothing is launched, and `git config` is unchanged
 
 #### Scenario: Unreapplied stash stays in place
 
@@ -570,3 +575,17 @@ For a rebase or squash only, after the baseline and before the first mutation, w
 
 - **WHEN** a rebase is stopped and its `rebase-merge` or `rebase-apply` directory exists
 - **THEN** `status` reports `rebase_in_progress: true`
+
+### Requirement: Run directory precedes the provenance receipt
+
+On a fresh `/sai-merge` run, the coordinator SHALL open the run state and create the run directory with `temp-root.js mkdtemp` before it runs `merge.js provenance`, so that `provenance.json` is saved into a run directory that already exists. When the user accepted autostash, the coordinator SHALL record the stash reference as `stash-base.txt` in that run directory before the launch. The provenance SHALL be captured before the test command is fixed and before the baseline is taken. A run that resumes an interrupted integration SHALL skip the Start steps and SHALL ask nothing.
+
+#### Scenario: Fresh run saves provenance into an existing run directory
+
+- **WHEN** a fresh `/sai-merge` run reaches the provenance capture
+- **THEN** its run directory has already been created and `provenance.json` is saved inside it
+
+#### Scenario: Resumed run skips the start
+
+- **WHEN** the invocation resumes an interrupted run of the same branch
+- **THEN** the coordinator follows Resuming, skips the rest of Start, and asks no question
