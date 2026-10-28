@@ -2,7 +2,7 @@
 
 An agent keeps its prompt cache warm between continuations by arming one background wait after each response and re-arming on each wake, until a configured maximum or until its dispatcher disposes it. A worker resumed after a longer pause than the cache lifetime rewrites its whole prefix instead of reading it; a wake costs two short requests, so the window is bounded. This policy is the single source for arming, waking, the window, resolving timings, and disposing. Bindings, budget skills, and coordinator cards fetch it and never restate it. The user-invoked `/sai-cache-warmer` is a different activity and keeps its own behavior.
 
-Terms. **Arm**: start one background wait whose completion wakes the agent. **Wake**: the turn that a completed wait triggers. **Dispose**: stop an agent's warming from outside. **Agent role**: a main session that runs a command (a coordinator). **Subagent role**: a worker or helper that another agent dispatches. **Live explorer**: an explorer kept armed and reused by its coordinator until run close.
+Terms. **Arm**: start one background wait whose completion wakes the agent. **Wake**: the turn that a completed wait triggers. **Dispose**: stop an agent's warming from outside. **Agent role**: a main session that runs a command (a coordinator). **Subagent role**: a worker or helper that another agent dispatches. **Live explorer**: an explorer kept armed and reused by its coordinator until run close. **Chain**: the waits one agent arms in succession from its first arm; each agent owns one chain, and only the newest wait of a chain stays live. **Final response**: a response after which the agent expects no continuation: a coordinator's closing report, or a worker's terminal result (`completed`, `failed`, `cancelled`). A question (`needs_input`) and an intermediate step report are not final.
 
 ## Timings
 
@@ -22,23 +22,25 @@ At every dispatch and every continuation of a subagent, resolve its timings with
 
 The ready-only dispatch of the two-phase handshake carries no task content and therefore no such line. A dispatcher that cannot dispose (a worker that dispatches its own helpers) sends no line, so its helpers never arm.
 
+**Wake acknowledgement.** A subagent message that is exactly `ok` (surrounding whitespace ignored) is the reply of a wake, never a result. Do not process it as a report, a ready, or a step result, spend no attempt on it, send no continuation, and keep waiting for the real result of the task.
+
 ## Arm, wake, and window
 
 Everything here applies to an agent that holds timings: a subagent whose latest real message carries the line above, or a main session whose resolver result is not `off`.
 
-**Arm.** Before you end the turn with your response, launch one wait in the background and do not await it: Claude Code `Bash` with `run_in_background: true` and the description `cache-warm`; opencode shell with `background: true`. The command is `node "<wait-path>" warm` with `{"interval": {interval}, "max": {max}}` on stdin through a quoted heredoc. `<wait-path>` is the installed `skills/sai-cache-warmer/wait.js`: on Claude Code `.claude/skills/sai-cache-warmer/wait.js`, then `~/.claude/skills/sai-cache-warmer/wait.js`; on opencode `.opencode/skills/sai-cache-warmer/wait.js`, then `~/.config/opencode/skills/sai-cache-warmer/wait.js`. Then end the turn with your response exactly as your task requires: the response reaches your dispatcher while the wait stays armed. Arm after every response, a question and a closing report included.
+**Arm.** Before you end the turn with your response, launch one wait in the background and do not await it: Claude Code `Bash` with `run_in_background: true` and the description `cache-warm`; opencode shell with `background: true`. The command is `node "<wait-path>" warm` with `{"interval": {interval}, "max": {max}}` on stdin through a quoted heredoc. `<wait-path>` is the installed `skills/sai-cache-warmer/wait.js`: on Claude Code `.claude/skills/sai-cache-warmer/wait.js`, then `~/.claude/skills/sai-cache-warmer/wait.js`; on opencode `.opencode/skills/sai-cache-warmer/wait.js`, then `~/.config/opencode/skills/sai-cache-warmer/wait.js`. Then end the turn with your response exactly as your task requires: the response reaches your dispatcher while the wait stays armed. Arm after every response except your final response: a question and an intermediate step report keep the wait armed, and after a closing report or a terminal result arm nothing, so a finished session never wakes again. Before your first arm, run `node "<wait-path>" chain` in the foreground: it prints `{"chain": "<id>"}`. That id is your chain for the rest of your session (a wait returns its `state` only at its wake, so you cannot learn the id from an armed wait). Pass it with the arm that follows every real message, as `{"interval": {interval}, "max": {max}, "chain": "<chain>"}`; the arm bumps the chain's generation, which supersedes every earlier wait of your chain. The re-arm on a wake passes the returned `state` back unchanged, and that state carries the chain.
 
-**Window.** The first `warm` call opens a window of `max` minutes. Warming stops when `max` minutes have passed since your last real task or continuation, and each real continuation restarts that window.
+**Window.** The first `warm` call opens a window of `max` minutes. Warming stops when `max` minutes have passed since your last real task or continuation, and each real continuation restarts that window. A wait that a later arm of its chain superseded, or that was armed before the benchmark applied or restored its warming override (`@skills/sai-context-cache-ttl-benchmark/SKILL.md`), ends at its next wake; waits armed afterwards follow the override's timings. Supersession by a later arm touches only that agent's own chain; the override's cutoff ends every chain armed before it, of every agent and, because the mark lives in the harness's SAI temp root, of sessions in other projects on the same harness too, which then resume cold at their next real message.
 
 **Wake.** A completed wait wakes you with `{"status", "waited_ms", "state"}`.
 
 - `continue`: re-arm at once with `{"state": <state, unchanged>}` and reply with the single word `ok`. The main session first resolves its `agent` timings again (that call belongs to the re-arm): when the result is `off`, it re-arms nothing, and otherwise it adds `"interval": <resolved interval>` beside the state.
-- `finished`: reply `ok` and arm nothing.
+- `finished`: reply `ok` and arm nothing. A superseded wait returns `finished` too, whatever its window: it costs this one wake turn and ends the earlier chain generation.
 - A subagent whose latest real message carried no `Warming:` line arms nothing on a wake, whatever the state says.
 
 A wake performs no work. Run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing.
 
-**A real message while a wait is armed.** Handle it as normal work, and arm again after you respond with the timings of that message. A late wake of the earlier wait is an ordinary wake: its window closes first.
+**A real message while a wait is armed.** Handle it as normal work, and arm again after you respond with the timings of that message and your `chain` id. The earlier wait is superseded: its late wake returns `finished`, and you reply `ok` and arm nothing.
 
 **Failure.** When arming fails (no shell, a permission refusal, a missing script), stop warming without retrying. The outcome and the report of your task do not change.
 

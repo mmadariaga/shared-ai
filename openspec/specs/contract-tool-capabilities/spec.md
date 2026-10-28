@@ -137,3 +137,15 @@ The to-backlog and explore command profiles SHALL declare `node {skills}/to-back
 
 - **WHEN** a command has a concrete preparation invocation declaration
 - **THEN** that declaration does not replace explicit publication confirmation or establish that the active harness permits the operation at runtime.
+
+### Requirement: Explore command wait-script grant
+
+The `explore-command` capability profile in `sai/install-manifest.json` SHALL grant the shell invocation `node {skills}/sai-cache-warmer/wait.js *`, in the same form `cache-warmer-command` uses, so `/sai-explore` can arm and wake its own cache-warming waits on Claude Code and opencode. `resolveProfile` in `bin/capabilities.js` SHALL keep replacing an inherited list-valued grant, so the effective permissions of every other profile stay unchanged.
+
+#### Scenario: Explore allows the wait script
+- **WHEN** capability requirements are generated for `sai-explore` under either harness
+- **THEN** the explore command's shell grants include the `wait.js` invocation
+
+#### Scenario: Other profiles keep their grants
+- **WHEN** profiles that replace an inherited shell list are resolved
+- **THEN** their effective grants are unchanged by the explore grant
