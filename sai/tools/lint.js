@@ -778,7 +778,7 @@ function checkStepContract(content) {
 
 /**
  * Check worker emission ownership.
- * Validates per sai/policies/stage-machine-write-ownership.md:
+ * Validates the emission-ownership rule (only coordinator cards emit to a stage machine):
  *   - Worker cards must not reference the stage machine emission surface
  *   - Only coordinator cards may emit to a stage machine
  *
