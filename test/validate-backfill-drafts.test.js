@@ -128,9 +128,26 @@ test('missing CLI retains diagnostics and leaves repository drafts absent', t =>
   const report = JSON.parse(result.stdout);
   t.after(() => { if (report.project_dir) removeInside('opencode', report.project_dir); });
   assert.equal(report.ok, false);
+  assert.equal(report.reason, 'openspec-cli-unavailable');
+  assert.equal(report.project_dir, undefined);
   // A missing binary is a spawn error on POSIX; on Windows the shell reports it on stderr with a nonzero exit.
   assert.ok(report.diagnostic.error || (report.diagnostic.exit_code !== 0 && report.diagnostic.stderr));
   assert.equal(fs.existsSync(path.join(f.cwd, 'openspec/changes')), false);
+});
+test('missing CLI reason wins over invalid drafts', t => {
+  const f = fixture(t);
+  f.input.draft_references.pop();
+  const result = spawnSync(process.execPath, [tool, 'validate', '--harness', 'opencode', '--cwd', f.cwd], { input: JSON.stringify(f.input), encoding: 'utf8', env: { ...process.env, PATH: f.dir } });
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.ok, false);
+  assert.equal(report.reason, 'openspec-cli-unavailable');
+});
+test('a rejected or incomplete draft set carries no CLI-unavailable reason', real, t => {
+  const f = fixture(t, `## MODIFIED Requirements
+${requirement('Existing', ['One'])}`);
+  const result = f.run();
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, undefined);
 });
 test('zero-exit incomplete CLI output cannot authorize writing', { skip: process.platform === 'win32' }, t => {
   const f = fixture(t);
@@ -142,6 +159,17 @@ test('zero-exit incomplete CLI output cannot authorize writing', { skip: process
   assert.equal(report.ok, false);
   assert.equal(report.diagnostic.exit_code, 0);
   assert.equal(fs.existsSync(path.join(f.cwd, 'openspec/changes')), false);
+});
+test('both receivers escalate a missing CLI as force majeure and remove validation projects at accepted closure', () => {
+  const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/backfill-draft-validation.md'), 'utf8');
+  assert.match(policy, /openspec-cli-unavailable/);
+  assert.match(policy, /force majeure/);
+  for (const file of ['sai/commands/backfill/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {
+    const text = fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
+    assert.match(text, /openspec-cli-unavailable/, file);
+    assert.match(text, /temp-root.js remove/, file);
+  }
+  assert.match(fs.readFileSync(path.resolve(__dirname, '../sai/commands/backfill/coordinator.md'), 'utf8'), /rejection by the OpenSpec CLI validation/);
 });
 test('both receivers require CLI validation and accepted-input freshness', () => {
   for (const file of ['sai/commands/backfill/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {

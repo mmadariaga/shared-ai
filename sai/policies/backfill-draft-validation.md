@@ -26,9 +26,15 @@ not initialize or register a store, mutate the source project, or weaken the CLI
 Only exit 0 with `ok: true` accepts the set. Retain the returned `fingerprint`,
 `project_dir`, diagnostic, and exact reference set as validation evidence. A CLI
 rejection, unavailable CLI, incomplete output, failed copy, or changed input
-authorizes no writes. Retain the diagnostic, return it to the same worker for
-correction under the owning obstacle budget, and repeat all checks on the complete
-corrected set. Review-round exhaustion cannot accept failed validation.
+authorizes no writes. Retain the diagnostic. For a rejection, incomplete output, failed copy, or changed input, return it to the same worker for correction under the owning obstacle budget and repeat all checks on the complete corrected set. Review-round exhaustion cannot accept failed validation.
+
+When the tool cannot launch the CLI it returns `ok: false` with the distinct
+`reason: openspec-cli-unavailable`, checked before the drafts so it wins even when
+the drafts are also invalid. That reason is force majeure (an unavailable external
+service, per `@sai/policies/obstacle-escalation.md`): the receiver escalates at
+once, requests no new draft from the worker, and spends no `draft` attempt, because
+correcting drafts cannot restore the executable. It writes nothing and keeps the
+evidence. Standalone backfill and Direct Build behave the same.
 
 Immediately before the first repository write, run
 `node <tool-path> check --cwd <project-root> --fingerprint <accepted fingerprint>`
@@ -42,7 +48,9 @@ not an additional draft reference or repository artifact. Execution orders still
 contain only the already validated draft references, plus this evidence.
 
 Keep temporary projects and diagnostics while correction or recovery needs them.
-At accepted closure, remove only those projects through `temp-root.js remove`
-with the active harness, following existing evidence-retention rules. This check
+At accepted closure, remove only those projects (each returned `project_dir`)
+through `temp-root.js remove --harness <claude|opencode> --dir <project_dir>`,
+following existing evidence-retention rules; a failed or escalated closure keeps
+them as evidence. This check
 does not replace spec/design CLI validation, independent pre-archive checks, or
 `openspec archive` and its validation controls.
