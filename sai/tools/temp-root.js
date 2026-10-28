@@ -160,10 +160,12 @@ function checkPrivateChild(target, stat, uid) {
 
 /**
  * Create one private child of the SAI temp root and return its real path. On
- * POSIX the child is verified before it is used (directory, no symbolic link,
- * current user, no group or other bits), fixed to 0700 through a no-follow
- * descriptor so a replaced symbolic link is never chmodded, and the root and
- * child must be unchanged when verification ends.
+ * win32 the returned path is the native long form (8.3 short names expanded),
+ * so it compares equal to the spelling external tools report. On POSIX the
+ * child is verified before it is used (directory, no symbolic link, current
+ * user, no group or other bits), fixed to 0700 through a no-follow descriptor
+ * so a replaced symbolic link is never chmodded, and the root and child must
+ * be unchanged when verification ends.
  */
 function makeTempDir(harness, prefix = DEFAULT_PREFIX, options = {}) {
   const { platform = process.platform, io = fs, uid = defaultUid() } = options;
@@ -171,7 +173,7 @@ function makeTempDir(harness, prefix = DEFAULT_PREFIX, options = {}) {
     throw new TempRootError('Prefix must start with a letter or digit and use only letters, digits, ".", "_" and "-" (at most 64 characters)', 'USAGE');
   }
   const root = resolveTempRoot(harness, options);
-  if (platform === 'win32') return io.realpathSync(io.mkdtempSync(path.join(root, prefix)));
+  if (platform === 'win32') return realpathFor(io, platform)(io.mkdtempSync(path.join(root, prefix)));
 
   const realRoot = io.realpathSync(root);
   if (platform === 'linux') checkRootPath(root, io);

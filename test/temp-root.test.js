@@ -119,7 +119,7 @@ test('makeTempDir creates a private child of the SAI temp root', () => {
     const first = makeTempDir('claude', 'implement-demo-', options);
     const second = makeTempDir('claude', 'implement-demo-', options);
     assert.notEqual(first, second);
-    const root = fs.realpathSync(resolveTempRoot('claude', options));
+    const root = fs.realpathSync.native(resolveTempRoot('claude', options));
     assert.equal(path.dirname(first), root);
     assert.match(path.basename(first), /^implement-demo-[A-Za-z0-9]{6}$/);
     if (POSIX) assert.equal(fs.statSync(first).mode & 0o777, 0o700);
@@ -176,6 +176,28 @@ test('removeInside accepts the 8.3 short and long forms of one directory on Wind
   } finally {
     box.cleanup();
   }
+});
+
+test('makeTempDir returns the native long form of the created directory on win32', () => {
+  const base = path.join(path.sep, 'tmp-fake', 'MIKEL~1.MAD');
+  const directory = { isDirectory: () => true, isSymbolicLink: () => false };
+  const longOf = target => target.replace('MIKEL~1.MAD', 'mikel.madariaga');
+  const realpathSync = target => target;
+  realpathSync.native = longOf;
+  const io = {
+    lstatSync: () => directory,
+    mkdirSync() { throw new Error('must not create'); },
+    mkdtempSync: prefix => `${prefix}ABCDEF`,
+    realpathSync,
+  };
+  const options = { platform: 'win32', tmpdir: () => base, uid: UID, io };
+  const created = makeTempDir('claude', 'run-', options);
+  assert.equal(created, longOf(path.join(base, 'claude', 'sai', 'run-ABCDEF')));
+  assert.ok(!created.includes('MIKEL~1.MAD'));
+
+  // Without a native resolver the JS resolver stays in use.
+  const plain = { ...io, realpathSync: target => target };
+  assert.equal(makeTempDir('claude', 'run-', { ...options, io: plain }), path.join(base, 'claude', 'sai', 'run-ABCDEF'));
 });
 
 function cli(args, env) {

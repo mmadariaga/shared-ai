@@ -102,7 +102,7 @@ The harness root and `sai/` SHALL each be a directory that is not a symbolic lin
 
 ### Requirement: Verified private child creation
 
-On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. On Linux the SAI temp root's real path SHALL equal its resolved path. The new child SHALL be a direct child of the SAI temp root, and SHALL be a directory, not a symbolic link, owned by the current user with no group or other permission bits. Its mode SHALL be set to 0700 through a no-follow directory descriptor whose identity matches the created child, and it SHALL be verified again through that descriptor and by path. When verification ends, the SAI temp root SHALL still pass its safety checks with an unchanged device and inode, the child SHALL keep its device and inode, and the child's real path SHALL lie directly inside the root's real path. A failed check SHALL raise a blocker, and the child SHALL NOT be returned as usable. On Windows the resolver SHALL create the child and return its real path without these POSIX checks. Every caller of `makeTempDir` SHALL receive this verification.
+On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. On Linux the SAI temp root's real path SHALL equal its resolved path. The new child SHALL be a direct child of the SAI temp root, and SHALL be a directory, not a symbolic link, owned by the current user with no group or other permission bits. Its mode SHALL be set to 0700 through a no-follow directory descriptor whose identity matches the created child, and it SHALL be verified again through that descriptor and by path. When verification ends, the SAI temp root SHALL still pass its safety checks with an unchanged device and inode, the child SHALL keep its device and inode, and the child's real path SHALL lie directly inside the root's real path. A failed check SHALL raise a blocker, and the child SHALL NOT be returned as usable. On Windows the resolver SHALL create the child and return its real path without these POSIX checks, resolved with the native real-path resolution so that 8.3 short names are expanded and the returned path is the native long form; when the provided file-system interface has no native resolver, it SHALL fall back to the ordinary real-path resolution. On Windows `resolveTempRoot` SHALL keep returning the SAI temp root in the spelling of `TEMP`, so the root and a created child MAY differ in spelling. Every caller of `makeTempDir` SHALL receive this verification.
 
 #### Scenario: Verified child is returned
 
@@ -118,6 +118,21 @@ On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. O
 
 - **WHEN** the SAI temp root's device, inode, or safety checks differ after the child is created
 - **THEN** `makeTempDir` raises a blocker and returns no directory
+
+#### Scenario: Windows child is returned in native long form
+
+- **WHEN** `makeTempDir` runs on Windows and the SAI temp root is spelled with 8.3 short names
+- **THEN** it returns the native long form of the created child
+
+#### Scenario: Long-form root keeps its spelling on Windows
+
+- **WHEN** `makeTempDir` runs on Windows and the SAI temp root is already spelled in long form
+- **THEN** it returns the created child in that same long-form spelling
+
+#### Scenario: Windows without a native resolver
+
+- **WHEN** `makeTempDir` runs on Windows with a file-system interface whose real-path resolver has no native variant
+- **THEN** it resolves the created child with the ordinary real-path resolver
 
 ### Requirement: Every SAI temp writer uses the shared resolver
 

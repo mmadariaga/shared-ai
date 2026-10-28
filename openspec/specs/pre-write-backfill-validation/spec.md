@@ -76,3 +76,17 @@ The validator SHALL check that the OpenSpec CLI can be launched before collectin
 #### Scenario: Receivers escalate without spending a draft attempt
 - **WHEN** standalone backfill or Direct Build receives the `openspec-cli-unavailable` reason
 - **THEN** the receiver escalates at once as force majeure, requests no correction from the worker, and spends no draft-correction attempt
+
+### Requirement: Validation accepts a short-form temp root on Windows
+
+On Windows, `validate-backfill-drafts.js validate` SHALL accept a valid draft set when the SAI temp root is spelled with 8.3 short names, because the temporary project it creates through `temp-root.js` `makeTempDir` carries the native long form that the OpenSpec CLI reports as `root.path`. The comparison between the OpenSpec `root.path` and the temporary project path SHALL stay an exact equality, so a run whose `root.path` names a different directory SHALL still be rejected.
+
+#### Scenario: Short-form temp root on Windows
+
+- **WHEN** on Windows the SAI temp root is spelled with 8.3 short names and OpenSpec reports the draft set as `valid: true` in the temporary project
+- **THEN** `validate` accepts the draft set
+
+#### Scenario: Root path names a different directory
+
+- **WHEN** the OpenSpec `root.path` names a different directory than the temporary project
+- **THEN** `validate` rejects the run and authorizes no repository writes

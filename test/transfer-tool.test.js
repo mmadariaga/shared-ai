@@ -31,7 +31,7 @@ function cli(args, { input, env, cwd } = {}) {
 // which the harness owns. Stand in for it the way the CI workflow does for
 // /tmp/opencode, and leave it in place.
 function saiRoot(box) {
-  if (process.platform !== 'linux') return path.join(fs.realpathSync(box.tmp), 'claude', 'sai');
+  if (process.platform !== 'linux') return path.join(fs.realpathSync.native(box.tmp), 'claude', 'sai');
   const harness = `/tmp/claude-${process.getuid()}`;
   if (!fs.existsSync(harness)) fs.mkdirSync(harness, { mode: 0o700 });
   return path.join(harness, 'sai');
@@ -50,7 +50,7 @@ test('open creates one unique private directory under the harness temp root', ()
     const first = open(box);
     const second = open(box);
     assert.notEqual(first, second);
-    assert.equal(path.dirname(fs.realpathSync(first)), saiRoot(box));
+    assert.equal(path.dirname(fs.realpathSync.native(first)), saiRoot(box));
     assert.match(path.basename(first), /^sai-transfer-[A-Za-z0-9]{6}$/);
     if (POSIX) assert.equal(fs.statSync(first).mode & 0o777, 0o700);
   } finally {
