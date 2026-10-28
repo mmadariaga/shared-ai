@@ -44,3 +44,27 @@ Whatever ends the run (a declined plan consent, a successful or failed measureme
 #### Scenario: Interrupted earlier run
 - **WHEN** the benchmark starts and `status` returns `record-found`
 - **THEN** it runs `restore`, reports the result, and asks for permission again before writing a new override
+
+### Requirement: Override writes a warming cutoff mark
+
+`warming_override.js` SHALL write the cutoff mark `warming-cutoff.json`, holding `cutoff_ms`, under the SAI temp root after a successful `apply`, after a `restore` that restores the file, and after a `restore` that leaves a changed file in place. The mark SHALL only move forward: a write SHALL keep the later of the held and the current instant. The benchmark documentation SHALL state that the mark ends, at their next wake, every chain armed before it, of every agent and of sessions in other projects on the same harness.
+
+#### Scenario: Apply writes the mark
+- **WHEN** `apply` writes the warming override
+- **THEN** the cutoff mark records the current instant
+
+#### Scenario: Mark never moves back
+- **WHEN** the held cutoff mark is later than the current instant
+- **THEN** a new apply or restore keeps the held instant
+
+### Requirement: Override-created settings folder removal
+
+`apply` SHALL record whether the `.sai/` folder existed before it wrote the override. `restore` SHALL remove `.sai/` only when the override created it and it is empty after the restoration, and SHALL leave it in every other case.
+
+#### Scenario: Folder created by the override
+- **WHEN** `restore` runs after an `apply` that created `.sai/`, and the folder is empty after restoration
+- **THEN** `restore` removes `.sai/`
+
+#### Scenario: Folder that existed or holds other files
+- **WHEN** `.sai/` existed before `apply`, or holds other files after restoration
+- **THEN** `restore` leaves the folder in place

@@ -358,3 +358,42 @@ test('both harnesses install the override tool and grant the benchmark command i
     assert.ok(projections.some(p => p.destinationPath === path.join(base, 'skills/sai-context-cache-ttl-benchmark/warming_override.js')), harness);
   }
 });
+
+test('E3 apply and restore each write a cutoff mark that only moves forward', t => {
+  const f = warmingFixture(t, { local: '{}\n' });
+  const markFile = path.join(f.saiRoot, warmingOverride.CUTOFF_FILE);
+  const read = () => JSON.parse(fs.readFileSync(markFile, 'utf8')).cutoff_ms;
+  assert.equal(fs.existsSync(markFile), false);
+  const beforeApply = Date.now();
+  warmingOverride.apply(f.args);
+  const applied = read();
+  assert.ok(applied >= beforeApply);
+  fs.writeFileSync(markFile, JSON.stringify({ cutoff_ms: applied + 5000 }));
+  warmingOverride.restore(f.args);
+  assert.equal(read(), applied + 5000, 'a mark never moves back');
+  fs.rmSync(markFile);
+  warmingOverride.apply(f.args);
+  const second = read();
+  warmingOverride.restore(f.args);
+  assert.ok(read() >= second);
+});
+
+test('I2 restore removes .sai/ only when the override created it and it is empty', t => {
+  const created = warmingFixture(t, { base: null });
+  fs.rmSync(path.join(created.project, '.sai'), { recursive: true });
+  assert.equal(warmingOverride.apply(created.args).created, true);
+  assert.equal(warmingOverride.restore(created.args).status, 'restored');
+  assert.equal(fs.existsSync(path.join(created.project, '.sai')), false);
+
+  const kept = warmingFixture(t, { base: null });
+  assert.equal(warmingOverride.apply(kept.args).ok, true);
+  assert.equal(warmingOverride.restore(kept.args).status, 'restored');
+  assert.equal(fs.existsSync(path.join(kept.project, '.sai')), true, 'a .sai/ that existed before stays');
+
+  const shared = warmingFixture(t, { base: null });
+  fs.rmSync(path.join(shared.project, '.sai'), { recursive: true });
+  warmingOverride.apply(shared.args);
+  fs.writeFileSync(path.join(shared.project, '.sai', 'settings.jsonc'), '{}\n');
+  assert.equal(warmingOverride.restore(shared.args).status, 'restored');
+  assert.equal(fs.existsSync(path.join(shared.project, '.sai', 'settings.jsonc')), true, 'a .sai/ that gained a file stays');
+});

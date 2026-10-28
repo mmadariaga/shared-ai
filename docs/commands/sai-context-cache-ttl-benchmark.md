@@ -75,10 +75,15 @@ absent) in a restoration record under the SAI temp root, writes the override,
 stops its own session's wait, disposes the agents it keeps armed, and confirms
 that the resolver returns `off` for both roles. When the benchmark ends, whether
 it succeeds, fails, or is cancelled, it puts the exact bytes back, or deletes the
-file when it created it. The effects while it measures:
+file when it created it (and the `.sai/` folder too, when it created that and it
+is empty). The effects while it measures:
 
 - every SAI session in the project stops warming from its next arm, and a wait
-  that another session already armed can still wake once;
+  that another session already armed ends at its next wake, because applying
+  and restoring the override write a cutoff mark under the SAI temp root. The
+  mark ends every chain armed before it, whatever its agent, and it also reaches
+  sessions of other projects on the same harness, which then resume cold at
+  their next real message;
 - your comments in `.sai/settings.local.jsonc` are absent until the file is
   restored;
 - an interrupted run leaves warming off until the next benchmark run restores

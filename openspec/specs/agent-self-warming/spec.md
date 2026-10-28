@@ -31,11 +31,15 @@ At every dispatch and every continuation of a subagent, the dispatcher SHALL res
 
 ### Requirement: Arm after each response
 
-An agent that holds timings (a subagent whose latest real message carries the warming line, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm` with `{"interval", "max"}` on stdin, through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. It SHALL arm after every response, a question and a closing report included. When arming fails, the agent SHALL stop warming without retrying and its task outcome and report SHALL NOT change.
+An agent that holds timings (a subagent whose latest real message carries the warming line, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm` with `{"interval", "max"}` on stdin, through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. It SHALL arm after every response except its final response: a question (`needs_input`) and an intermediate step report SHALL keep arming, and after a final response (a coordinator's closing report, or a worker's terminal result `completed`, `failed`, or `cancelled`) it SHALL arm nothing, so a finished session never wakes again. When arming fails, the agent SHALL stop warming without retrying and its task outcome and report SHALL NOT change. The same rule SHALL apply on Claude Code and opencode.
 
 #### Scenario: Worker arms after its report
-- **WHEN** a worker holding timings returns its terminal report
+- **WHEN** a worker holding timings returns an intermediate step report or a `needs_input` question
 - **THEN** it launches one background `warm` wait and ends the turn with the report unchanged
+
+#### Scenario: No arm after a final response
+- **WHEN** a worker holding timings returns a terminal result, or a coordinator holding timings prints its closing report
+- **THEN** it launches no wait and ends the turn with the response unchanged
 
 #### Scenario: Arming fails
 - **WHEN** the background wait cannot be launched because of a missing script or a permission refusal
@@ -55,7 +59,7 @@ On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm 
 
 ### Requirement: Bounded warming window
 
-The `warm` subcommand of `wait.js` SHALL take `interval` and `max` in minutes with no target time and no closing margin, SHALL reject a non-positive value or a `max` below `interval`, and SHALL open a window that closes `max` minutes after the first call. A re-arm SHALL pass the returned `state` back unchanged and MAY carry a freshly resolved `interval` without moving the closing instant. Each real task or continuation SHALL start a new window, and a real message that arrives while a wait is armed SHALL be handled as normal work, after which the agent arms again with that message's timings.
+The `warm` subcommand of `wait.js` SHALL take `interval` and `max` in minutes with no target time and no closing margin, SHALL reject a non-positive value or a `max` below `interval`, and SHALL open a window that closes `max` minutes after the first call. A re-arm SHALL pass the returned `state` back unchanged and MAY carry a freshly resolved `interval` without moving the closing instant. Each real task or continuation SHALL start a new window, and a real message that arrives while a wait is armed SHALL be handled as normal work, after which the agent arms again with that message's timings and its chain id; the earlier wait is superseded and its late wake returns `finished`.
 
 #### Scenario: Window closes after max
 - **WHEN** `max` minutes have passed since the agent's last real task or continuation
@@ -72,3 +76,43 @@ The explorer's shell restriction SHALL allow, besides `git grep` and `codegraph 
 #### Scenario: Explorer arms its wait
 - **WHEN** an explorer whose task message carries a warming line ends its response
 - **THEN** its shell restriction permits the `wait.js warm` background command
+
+### Requirement: Single live wait chain per agent
+
+Each agent SHALL own one chain of waits. `wait.js chain` SHALL print a fresh chain id as `{"chain": "<id>"}` without reading standard input, and an agent SHALL run it once in the foreground before its first arm and pass that id with the arm that follows every real message. The `warm` state SHALL carry the chain id, a generation, and the arm instant. A first `warm` call SHALL bump the chain's generation in a private chain record under the harness's SAI temp root, resolved through `sai/tools/temp-root.js`; a first call without a `chain` id SHALL start a new chain. A wait whose generation is no longer the chain's current one SHALL return `finished` when it completes, whether it was superseded before or during its sleep, and a re-arm after a wake SHALL pass the state, and so its chain, back unchanged. One agent's arm SHALL NOT supersede another agent's chain. `wait.js` SHALL reject a chain id that is not 16 lowercase hexadecimal characters, SHALL remove a chain record when that chain's current wait finishes, and SHALL prune chain records older than 24 hours on a first arm. The mechanism SHALL be identical on Claude Code and opencode.
+
+#### Scenario: A real message supersedes the earlier wait
+- **WHEN** an agent arms again with its chain id after a real message while an earlier wait of its chain is armed
+- **THEN** the earlier wait returns `finished` at its wake and only the newest generation stays live
+
+#### Scenario: Chains of different agents are independent
+- **WHEN** two agents warming in parallel each arm with their own chain id
+- **THEN** neither arm supersedes the other agent's wait
+
+#### Scenario: Chain id request
+- **WHEN** an agent runs `wait.js chain`
+- **THEN** it prints a fresh chain id without reading standard input
+
+#### Scenario: Path-like chain id
+- **WHEN** a `warm` call carries a chain id that is not 16 lowercase hexadecimal characters
+- **THEN** `wait.js` rejects it and writes no chain record
+
+### Requirement: Warming cutoff ends earlier chains
+
+On every wake, `wait.js` SHALL read the cutoff mark `warming-cutoff.json` under the harness's SAI temp root, and a wait armed before the recorded cutoff instant SHALL return `finished`, whatever its agent. Waits armed after the cutoff SHALL follow the timings then in force. Because the mark lives in the harness's SAI temp root, it SHALL also end the chains of sessions in other projects on the same harness, which resume cold at their next real message.
+
+#### Scenario: Wait armed before the cutoff
+- **WHEN** a wait completes and the cutoff mark is newer than its arm instant
+- **THEN** it returns `finished` and the agent arms nothing
+
+#### Scenario: Wait armed after the cutoff
+- **WHEN** a wait was armed after the cutoff mark was written
+- **THEN** it follows its own window and timings
+
+### Requirement: Wake acknowledgement is not a result
+
+A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surrounding whitespace, as the reply of a wake: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
+
+#### Scenario: Worker replies ok on a wake
+- **WHEN** a coordinator waiting for a worker's result receives the message `ok`
+- **THEN** it records no result and no attempt and keeps waiting for the real result
