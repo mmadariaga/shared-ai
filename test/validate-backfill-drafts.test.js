@@ -100,9 +100,9 @@ test('existing symbolic specification is rejected, not treated as absent', { ski
   const f = fixture(t);
   fs.renameSync(path.join(f.cwd, 'openspec/specs/cap/spec.md'), path.join(f.cwd, 'saved-spec.md'));
   fs.symlinkSync(path.join(f.cwd, 'saved-spec.md'), path.join(f.cwd, 'openspec/specs/cap/spec.md'));
-  const result = f.run();
-  assert.equal(result.ok, false);
-  assert.match(result.error, /Symbolic input/);
+  // collect directly: validate probes the CLI first, so its error would depend on the CLI being installed.
+  assert.throws(() => collect(f.input, f.cwd), /Symbolic input/);
+  assert.equal(f.run().ok, false);
   assert.equal(fs.existsSync(path.join(f.cwd, 'openspec/changes')), false);
 });
 test('freshness binds drafts, references, specifications, configuration, and schemas', real, t => {
