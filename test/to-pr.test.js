@@ -443,7 +443,7 @@ test('temporary preparation returns a private receipt path under the SAI temp ro
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   assert.equal(result.status, 'ready');
   assert.ok(path.isAbsolute(result.receipt));
-  assert.equal(path.dirname(directory), fs.realpathSync(resolveTempRoot('claude')));
+  assert.equal(path.dirname(directory), fs.realpathSync.native(resolveTempRoot('claude')));
   assert.match(path.basename(directory), /^to-pr-/);
   if (process.platform !== 'win32') assert.equal(fs.statSync(directory).mode & 0o777, 0o700);
 });
