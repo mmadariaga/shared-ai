@@ -16,12 +16,12 @@ The Direct Build route SHALL take one initial snapshot per slice under `sai/poli
 
 ### Requirement: An archive execute order is sent only when it covers the slice
 
-The Direct Build coordinator SHALL send the archive `--direct-build-execute` order only when `verify`, given the slice paths and the order's owned paths as the covering list, returns an empty `uncovered`. The slice paths SHALL be the implementer's unioned changed paths, the backfill-written draft paths, and the prepared plan's archive destination and synced main specs. While `uncovered` holds a path, the coordinator SHALL add those paths to the order's owned paths and verify again.
+The Direct Build coordinator SHALL send the archive `--direct-build-execute` order only when `verify`, given the slice paths and the order's owned paths as the covering list, returns an empty `uncovered`. The slice paths SHALL be the implementer's unioned changed paths, the backfill-written draft paths, and the prepared plan's archive destination and synced main specs. The order SHALL carry the prepared plan's owned staging paths unchanged, which include the paths of the implementer path set sent at Step 7. While `uncovered` holds a path, the coordinator SHALL keep the order unchanged, SHALL NOT send it, and SHALL return to Step 7 with a corrected-result request that names the uncovered path and spends one `step-7` attempt, because the order is a bound copy of the prepared plan and adding a path to it directly would break the archive worker's plan-consistency rule.
 
 #### Scenario: Incomplete commit order
 
-- **WHEN** the order's owned paths omit a path the implementer changed
-- **THEN** the coordinator does not send the order, adds the uncovered path to the owned paths, and verifies again
+- **WHEN** the order's owned paths omit a path the implementer changed after a clean prepare-time coverage check
+- **THEN** the coordinator does not send the order, keeps the order unchanged, and returns to Step 7 with a corrected-result request that names the uncovered path
 
 #### Scenario: Complete commit order
 
@@ -73,3 +73,31 @@ Before continuing an uncertain execute operation, the coordinator SHALL apply ex
 
 - **WHEN** the existing checks cannot establish the execute operation's effects
 - **THEN** execution remains stopped without a new order or renewed authorization
+
+### Requirement: Direct Build delivers the implementer path set in the archive prepare envelope
+
+The Direct Build coordinator SHALL carry the implementer path set in the Step 7 `--direct-build-prepare` envelope to the archive worker. The implementer path set SHALL be the first-seen union of the implementer's returned `changed_files`, deletions included. The envelope SHALL place a dedicated `--implementer-paths` marker line after the change name, followed by one repository-relative path per line. When the implementer path set is missing from run state at Step 7 or at Step 8, the coordinator SHALL stop the route before that dispatch or continuation and SHALL escalate under `sai/policies/obstacle-escalation.md`; it MUST NOT rebuild the set from the git index.
+
+#### Scenario: Prepare envelope carries the implementer path set
+
+- **WHEN** the Direct Build coordinator dispatches the archive worker at Step 7
+- **THEN** the envelope holds `--direct-build-prepare`, the change name, the `--implementer-paths` marker line, and then each path of the implementer path set on its own line, including paths the implementer deleted
+
+#### Scenario: Implementer path set lost from run state
+
+- **WHEN** the implementer path set is missing from coordinator run state at Step 7 or Step 8, for example after a compaction
+- **THEN** the coordinator stops the route before the dispatch or continuation and escalates under `obstacle-escalation.md` without reading the git index to rebuild the set
+
+### Requirement: Direct Build checks commit coverage on the prepared plan before any execute order
+
+After it reads the archive worker's prepared plan and before it sends any execute order, the Direct Build coordinator SHALL run the `verify` check of `sai/policies/slice-path-scope.md` § Commit coverage with `slice_snapshot`, the Step 8 slice paths, and the prepared plan's owned staging paths as the covering list. When `uncovered` is non-empty, the coordinator SHALL NOT send an execute order; it SHALL continue the same archive worker with a corrected-result request that names the uncovered paths and carries no execute order, SHALL spend one `step-7` attempt per request, and SHALL repeat the check on the corrected plan. An exhausted `step-7` budget SHALL escalate under `sai/policies/obstacle-escalation.md`.
+
+#### Scenario: Prepared plan misses a slice path
+
+- **WHEN** the prepare-time coverage check returns a non-empty `uncovered`
+- **THEN** the coordinator sends no execute order, continues the same archive worker with a corrected-result request naming the uncovered paths, and spends one `step-7` attempt
+
+#### Scenario: Prepared plan covers the slice
+
+- **WHEN** the prepare-time coverage check returns an empty `uncovered`
+- **THEN** the coordinator continues to Step 8

@@ -110,6 +110,66 @@ test('direct-build archive execution keeps the empty-index no-commit result when
   assert.match(commit, /Never amend, push, or ask for a second commit/);
 });
 
+const COORDINATOR = 'sai/commands/explore/direct-build-coordinator.md';
+
+function coordinatorSteps() {
+  const card = read(COORDINATOR);
+  const step7 = card.indexOf('7. **Archive preparation**');
+  const step7b = card.indexOf('7b. **Prepare-time coverage check**');
+  const step8 = card.indexOf('8. **Archive execution and pre-authorized commit**');
+  assert.ok(step7 >= 0 && step7 < step7b && step7b < step8, 'Step 7, 7b, and Step 8 must appear in order');
+  return {
+    prepare: card.slice(step7, step7b),
+    coverage: card.slice(step7b, step8),
+    execute: card.slice(step8, card.indexOf('**Execute orders.**', step8)),
+  };
+}
+
+test('the Step 7 prepare envelope carries the implementer path set under a marker after the change name', () => {
+  const { prepare } = coordinatorSteps();
+
+  assertInOrder(prepare, ['--direct-build-prepare', '<change-name>', '--implementer-paths', '<path>']);
+  assert.match(prepare, /first-seen changed-path union of Step 1, deletions included/);
+  assert.match(prepare, /one repository-relative path per line/);
+  assert.match(prepare, /missing from run state[\s\S]*?stops the route before the dispatch[\s\S]*?never rebuild it from the git index/);
+});
+
+test('the prepare-time coverage check runs before any execute order and returns gaps to the archive worker', () => {
+  const { coverage, execute } = coordinatorSteps();
+
+  assert.match(coverage, /before any execute order/);
+  assert.match(coverage, /`verify` check of `@sai\/policies\/slice-path-scope\.md` § Commit coverage with `slice_snapshot`[\s\S]*?prepared plan's owned staging paths as the covering list/);
+  assert.match(coverage, /non-empty `uncovered` sends no execute order/);
+  assert.match(coverage, /corrected-result request that names the uncovered paths and carries no execute order/);
+  assert.match(coverage, /one `step-7` attempt/);
+  assert.match(coverage, /escalates under `@sai\/policies\/obstacle-escalation\.md`/);
+
+  assert.match(execute, /keep the order unchanged and return to Step 7 with a corrected-result request/);
+  assert.match(execute, /plan-consistency rule/);
+  assert.match(execute, /stops the route before this continuation/);
+});
+
+test('slice path scope sends a prepared-plan gap back to the plan owner instead of extending the order', () => {
+  const policy = read('sai/policies/slice-path-scope.md');
+  const coverage = policy.slice(policy.indexOf('## Commit coverage'), policy.indexOf('## Foreign changes'));
+
+  assert.match(coverage, /add\s+those paths to its owned paths and verify again/);
+  assert.match(coverage, /An order bound to a prepared plan is not extended/);
+  assert.match(coverage, /send the gap back to the plan's owner for\s+a corrected plan and send no order/);
+  assert.match(coverage, /applies to an order that no prepared plan binds/);
+});
+
+test('the archive worker lists the envelope implementer paths as owned staging paths in prepare mode', () => {
+  const archive = read('sai/commands/archive/worker.md');
+
+  assert.match(archive, /`--implementer-paths` marker line followed by one\s+repository-relative path per line/);
+  assert.match(archive, /An envelope without the marker \(the ordinary `\/sai-archive` route\) has no\s+implementer path set and behaves as before/);
+  assert.match(archive, /the owned staging paths are only the worker's own `openspec\/`\s+paths and every path of the implementer path set/);
+  assert.match(archive, /whose staged diff entry is a deletion as a deletion/);
+  assert.match(archive, /Every other staged entry\s+stays foreign under `foreign-index-preservation\.md`/);
+  assert.match(archive, /the implementer-owned set is exactly the implementer path set received at\s+prepare/);
+});
+
 const RETIREMENT_SOURCE = 'sai/commands/archive/retirement-declaration.md';
 
 // The retirement declaration is single-sourced: every rule lives in
