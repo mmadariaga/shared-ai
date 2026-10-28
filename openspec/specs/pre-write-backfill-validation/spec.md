@@ -21,7 +21,7 @@ Standalone backfill and Direct Build receivers in Claude Code and opencode SHALL
 - **THEN** validation fails with diagnostics and leaves repository files unchanged
 
 ### Requirement: Failed or incomplete validation grants no write authority
-The validator SHALL accept only a successful CLI exit with complete JSON evidence naming the expected change as valid in the expected temporary project and unchanged collected inputs. CLI rejection, an unavailable CLI, timeout, incomplete output, copy failure, or changed inputs SHALL return failure with retained diagnostics and authorize no repository writes. Receivers SHALL return diagnostics for correction under their existing obstacle budgets and repeat all checks on the complete corrected set; review-cap exhaustion SHALL NOT bypass validation. Successful evidence SHALL include fingerprint, project_dir, and CLI diagnostics. Validation evidence SHALL remain outside repository artifacts and remain available while correction or recovery needs it; accepted cleanup SHALL use temp-root.js removal with the active harness.
+The validator SHALL accept only a successful CLI exit with complete JSON evidence naming the expected change as valid in the expected temporary project and unchanged collected inputs. CLI rejection, an unavailable CLI, timeout, incomplete output, copy failure, or changed inputs SHALL return failure with retained diagnostics and authorize no repository writes. For a CLI rejection, timeout, incomplete output, copy failure, or changed inputs, receivers SHALL return diagnostics for correction under their existing obstacle budgets and repeat all checks on the complete corrected set; an unavailable CLI SHALL follow the force-majeure rule instead. Review-cap exhaustion SHALL NOT bypass validation. Successful evidence SHALL include fingerprint, project_dir, and CLI diagnostics. Validation evidence SHALL remain outside repository artifacts and remain available while correction or recovery needs it. At an accepted closure, receivers SHALL remove each returned project_dir with temp-root.js removal for the active harness; a failed or escalated closure SHALL keep the projects as evidence.
 
 #### Scenario: CLI rejects scenario loss
 - **WHEN** a MODIFIED requirement removes or renames an existing scenario
@@ -34,6 +34,14 @@ The validator SHALL accept only a successful CLI exit with complete JSON evidenc
 #### Scenario: Missing CLI or incomplete result
 - **WHEN** the CLI cannot run or exits zero without complete expected validation evidence
 - **THEN** validation fails and retains the diagnostic without materializing drafts
+
+#### Scenario: Accepted closure removes validation projects
+- **WHEN** standalone backfill or Direct Build reaches an accepted closure after writing validated drafts
+- **THEN** each temporary validation project is removed with temp-root.js removal alongside the transfer directory cleanup
+
+#### Scenario: Failed or escalated closure keeps validation projects
+- **WHEN** standalone backfill or Direct Build closes after a failure or an escalation
+- **THEN** the temporary validation projects remain as evidence
 
 ### Requirement: Accepted validation is bound to current inputs
 A successful fingerprint SHALL bind the project identity, change name, exact complete reference set, draft bytes, all current specifications, configuration, and schemas. Receivers SHALL run the shared freshness check with that fingerprint and the same complete reference set immediately before the first write or each Direct Build execute or correction authorization. Direct Build orders SHALL carry the accepted fingerprint as evidence rather than a draft reference, and the worker SHALL repeat checking before its first write. A missing fingerprint, changed input, mismatched reference set, or incomplete freshness check SHALL write nothing and require repeated receiver validation. Temporary validation SHALL NOT replace independent archive checks, spec/design CLI validation, or archive CLI controls.
@@ -49,3 +57,22 @@ A successful fingerprint SHALL bind the project identity, change name, exact com
 #### Scenario: Worker lacks accepted evidence
 - **WHEN** a Direct Build execute or correction order lacks fresh accepted fingerprint evidence
 - **THEN** the worker writes nothing and returns the diagnostic for repeated receiver validation
+
+### Requirement: An unavailable OpenSpec CLI is force majeure
+The validator SHALL check that the OpenSpec CLI can be launched before collecting drafts. When the CLI cannot be launched, it SHALL return failure with the distinct reason `openspec-cli-unavailable` and its diagnostic, create no temporary project, and authorize no repository writes; this reason SHALL take precedence even when the drafts are also invalid. A CLI rejection SHALL NOT carry that reason. Standalone backfill and Direct Build receivers in Claude Code and opencode SHALL treat `openspec-cli-unavailable` as force majeure: they SHALL escalate at once, request no new draft from the worker, spend no draft-correction attempt, write nothing, and keep the evidence.
+
+#### Scenario: Missing CLI returns the distinct reason
+- **WHEN** the validator cannot launch the OpenSpec CLI
+- **THEN** it returns failure with reason `openspec-cli-unavailable`, retains the diagnostic, creates no temporary project, and leaves repository drafts absent
+
+#### Scenario: Missing CLI wins over invalid drafts
+- **WHEN** the OpenSpec CLI cannot be launched and the submitted draft set is also invalid
+- **THEN** the validator returns the reason `openspec-cli-unavailable`
+
+#### Scenario: A rejected draft set carries no CLI-unavailable reason
+- **WHEN** the CLI runs and rejects the draft set
+- **THEN** the failure carries no `openspec-cli-unavailable` reason and returns to the same worker for correction
+
+#### Scenario: Receivers escalate without spending a draft attempt
+- **WHEN** standalone backfill or Direct Build receives the `openspec-cli-unavailable` reason
+- **THEN** the receiver escalates at once as force majeure, requests no correction from the worker, and spends no draft-correction attempt
