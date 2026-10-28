@@ -128,7 +128,8 @@ test('missing CLI retains diagnostics and leaves repository drafts absent', t =>
   const report = JSON.parse(result.stdout);
   t.after(() => { if (report.project_dir) removeInside('opencode', report.project_dir); });
   assert.equal(report.ok, false);
-  assert.ok(report.diagnostic.error);
+  // A missing binary is a spawn error on POSIX; on Windows the shell reports it on stderr with a nonzero exit.
+  assert.ok(report.diagnostic.error || (report.diagnostic.exit_code !== 0 && report.diagnostic.stderr));
   assert.equal(fs.existsSync(path.join(f.cwd, 'openspec/changes')), false);
 });
 test('zero-exit incomplete CLI output cannot authorize writing', { skip: process.platform === 'win32' }, t => {
