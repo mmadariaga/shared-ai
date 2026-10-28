@@ -1,6 +1,17 @@
 'use strict';
 
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
+
+// Chain supersession (sai/policies/cache-warming.md): every agent owns one chain of waits. The generation of the
+// chain's most recent arm lives in a private file under the SAI temp root; a wait of an earlier generation, or one
+// armed before the cutoff mark that the benchmark's warming override writes, returns `finished` when it completes.
+const CHAIN_PREFIX = 'warm-chain-';
+const CUTOFF_FILE = 'warming-cutoff.json';
+const CHAIN_STALE_MS = 24 * 3600000;
+const CHAIN_ID = /^[0-9a-f]{16}$/;
 
 function intervalMilliseconds(value) {
   const match = /^(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?|h|hr|hours?)?$/i.exec(String(value ?? '').trim());
@@ -114,8 +125,10 @@ async function waitOnce(state, { now = Date.now, wait = sleep } = {}) {
 }
 
 // Agent self-warming (sai/policies/cache-warming.md): `interval` and `max` are minutes, with no target time and
-// no closing margin. The first call opens the window (`max` from now); each re-arm passes the returned `state`
-// back unchanged, so the window closes `max` minutes after the agent's last real task or continuation.
+// no closing margin. The first call of a real message opens the window (`max` from now); each re-arm after a wake
+// passes the returned `state` back unchanged, so the window closes `max` minutes after the agent's last real task or
+// continuation. A real message passes the `chain` id of the agent's last returned state, which supersedes the
+// waits that the chain armed before.
 function warmState({ interval, max }, now = Date.now()) {
   const interval_ms = intervalMilliseconds(interval);
   const max_ms = intervalMilliseconds(max);
@@ -124,9 +137,80 @@ function warmState({ interval, max }, now = Date.now()) {
   return { interval_ms, closing_ms: now + max_ms };
 }
 
+/** A fresh chain id. An agent asks for one before its first arm, because a wait returns its state only at its wake. */
+const newChainId = () => crypto.randomBytes(8).toString('hex');
+
+/** The SAI temp root of the harness that installed this script. */
+function defaultSaiRoot() {
+  const tempRoot = require(path.resolve(__dirname, '..', '..', 'sai', 'tools', 'temp-root.js'));
+  return tempRoot.resolveTempRoot(tempRoot.harnessFromInstalledPath(__filename));
+}
+
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return null; throw error; }
+}
+
+function writeAtomic(file, text) {
+  const temp = `${file}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temp, text, { mode: 0o600 });
+    fs.renameSync(temp, file);
+  } catch (error) {
+    fs.rmSync(temp, { force: true });
+    throw error;
+  }
+}
+
+const chainFile = (saiRoot, chain) => {
+  if (typeof chain !== 'string' || !CHAIN_ID.test(chain)) throw new Error('Warming chain must be the id that an earlier warm call returned.');
+  return path.join(saiRoot, `${CHAIN_PREFIX}${chain}.json`);
+};
+
+/** Make the chain's newest generation the current one. */
+function bumpGeneration(saiRoot, chain, now) {
+  const file = chainFile(saiRoot, chain);
+  const held = readJson(file)?.generation;
+  const generation = (Number.isSafeInteger(held) ? held : 0) + 1;
+  writeAtomic(file, `${JSON.stringify({ generation, updated_ms: now })}\n`);
+  return generation;
+}
+
+/** Remove chain records that no live window can still need. Best effort. */
+function pruneChains(saiRoot, now) {
+  try {
+    for (const name of fs.readdirSync(saiRoot)) {
+      if (!name.startsWith(CHAIN_PREFIX)) continue;
+      const file = path.join(saiRoot, name);
+      if (fs.statSync(file).mtimeMs < now - CHAIN_STALE_MS) fs.rmSync(file, { force: true });
+    }
+  } catch { /* a record that cannot be pruned is pruned by a later arm */ }
+}
+
+/** A wait is superseded by a later arm of its chain, or by a cutoff mark newer than its arm. */
+function superseded(state, saiRoot) {
+  if (!state.chain) return false;
+  if (readJson(chainFile(saiRoot, state.chain))?.generation !== state.generation) return true;
+  const cutoff = readJson(path.join(saiRoot, CUTOFF_FILE))?.cutoff_ms;
+  return Number.isFinite(cutoff) && state.armed_ms < cutoff;
+}
+
+function releaseChain(saiRoot, state) {
+  const file = chainFile(saiRoot, state.chain);
+  if (readJson(file)?.generation === state.generation) fs.rmSync(file, { force: true });
+}
+
 // A re-arm may carry a freshly resolved `interval`; the window closes where it was set.
 async function warmOnce(input, io = {}) {
-  if (!input.state) return waitWith(warmState(input, (io.now ?? Date.now)()), io);
+  const now = io.now ?? Date.now;
+  if (!input.state) {
+    const base = warmState(input, now());
+    const saiRoot = io.saiRoot ?? defaultSaiRoot();
+    const chain = input.chain === undefined ? newChainId() : input.chain;
+    const generation = bumpGeneration(saiRoot, chain, now());
+    pruneChains(saiRoot, now());
+    return waitWith({ ...base, chain, generation, armed_ms: now() }, { ...io, saiRoot });
+  }
   if (input.interval === undefined) return waitWith(input.state, io);
   const interval_ms = intervalMilliseconds(input.interval);
   if (interval_ms === null) throw new Error('Warming needs a positive interval in minutes.');
@@ -134,16 +218,24 @@ async function warmOnce(input, io = {}) {
 }
 
 async function waitWith(state, io) {
-  return { ...(await waitOnce(state, io)), state };
+  const saiRoot = state.chain ? (io.saiRoot ?? defaultSaiRoot()) : null;
+  if (saiRoot && superseded(state, saiRoot)) return { status: 'finished', waited_ms: 0, state };
+  const result = await waitOnce(state, io);
+  if (saiRoot) {
+    if (superseded(state, saiRoot)) return { status: 'finished', waited_ms: result.waited_ms, state };
+    if (result.status === 'finished') releaseChain(saiRoot, state);
+  }
+  return { ...result, state };
 }
 
 if (require.main === module) {
   (async () => {
+    const command = process.argv[2];
+    if (command === 'chain') return console.log(JSON.stringify({ chain: newChainId() }));
     let text = '';
     for await (const chunk of process.stdin) text += chunk;
     const input = JSON.parse(text);
-    const command = process.argv[2];
-    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON on stdin.');
+    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON on stdin, or chain.');
     const run = { prepare: () => prepare(input), wait: () => waitOnce(input), warm: () => warmOnce(input) }[command];
     console.log(JSON.stringify(await run()));
   })().catch(error => {
@@ -152,4 +244,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };
+module.exports = { CUTOFF_FILE, newChainId, intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };

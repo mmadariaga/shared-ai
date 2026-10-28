@@ -6,7 +6,8 @@
  * so it writes a `warming` entry that turns warming off for both roles into `.sai/settings.local.jsonc`, and puts the
  * file back afterwards. The installed reader cannot edit JSONC without `jsonc-parser`, so the restoration is byte
  * for byte: a restoration record under the SAI temp root holds the exact bytes of the file (or the fact that it was
- * absent) and the hash of the override that this tool wrote.
+ * absent) and the hash of the override that this tool wrote. Applying and restoring also write a cutoff mark under
+ * the SAI temp root; the cache warmer's `wait.js` ends, at their next wake, the chains of waits armed before it.
  *
  * CLI (JSON on stdout; exit 0 on `ok: true`, 1 otherwise):
  *   node warming_override.js status|apply|restore|verify [--project <dir>] [--harness claude|opencode]
@@ -17,6 +18,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const LOCAL_FILE = path.join('.sai', 'settings.local.jsonc');
+const CUTOFF_FILE = 'warming-cutoff.json'; // the name `wait.js` reads
 const WARMING_OFF = Object.freeze({ defaults: { agent: false, subagent: false }, rules: [] });
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
@@ -33,6 +35,15 @@ function writeAtomic(file, bytes, mode) {
     fs.rmSync(temp, { force: true });
     throw error;
   }
+}
+
+/** Mark now as the moment before which every armed wait chain ends. The mark only moves forward. */
+function markCutoff(saiRoot, now = Date.now()) {
+  const file = path.join(saiRoot, CUTOFF_FILE);
+  let held;
+  try { held = JSON.parse(fs.readFileSync(file, 'utf8')).cutoff_ms; } catch { held = undefined; }
+  const cutoff = Number.isFinite(held) ? Math.max(held, now) : now;
+  writeAtomic(file, `${JSON.stringify({ cutoff_ms: cutoff })}\n`, 0o600);
 }
 
 function readLocal(file) {
@@ -74,10 +85,11 @@ function apply({ tools, saiRoot, project }) {
   const recordPath = recordFile(saiRoot, root);
   if (readRecord(recordPath)) return { ok: false, status: 'record-found', message: 'A restoration record from an earlier run is waiting; restore it first.' };
   const current = readLocal(file);
+  const dirExisted = fs.existsSync(path.dirname(file));
   const override = overrideText(tools, current.present ? current.bytes : null);
   if (override.error) return { ok: false, status: 'unreadable', message: `${override.error}; the benchmark does not overwrite a local file it cannot read.` };
   const bytes = Buffer.from(override.text, 'utf8');
-  const record = { version: 1, file, state: current.present ? 'present' : 'absent', ...(current.present ? { original_base64: current.bytes.toString('base64') } : {}), override_sha256: sha256(bytes) };
+  const record = { version: 1, file, state: current.present ? 'present' : 'absent', ...(current.present ? { original_base64: current.bytes.toString('base64') } : {}), override_sha256: sha256(bytes), sai_dir_created: !dirExisted };
   writeAtomic(recordPath, `${JSON.stringify(record)}\n`, 0o600);
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -86,7 +98,13 @@ function apply({ tools, saiRoot, project }) {
     fs.rmSync(recordPath, { force: true });
     return { ok: false, status: 'write-failed', message: `Cannot write ${LOCAL_FILE}: ${error.message}` };
   }
+  markCutoff(saiRoot);
   return { ok: true, status: 'applied', file, created: !current.present, override_sha256: record.override_sha256 };
+}
+
+/** Remove the `.sai/` folder that the override created, and only while it is empty. */
+function removeEmptyDirectory(directory) {
+  try { fs.rmdirSync(directory); } catch { /* not empty, already gone, or not removable: it stays */ }
 }
 
 /** Put the recorded state back. A file that no longer holds the written override stays where it is. */
@@ -100,6 +118,7 @@ function restore({ tools, saiRoot, project }) {
   if (current.present && sha256(current.bytes) !== record.override_sha256) {
     const stale = `${recordPath}.stale`;
     fs.renameSync(recordPath, stale);
+    markCutoff(saiRoot);
     return {
       ok: true, status: 'changed', file, stale_record: stale,
       warning: `${file} changed after the benchmark wrote its warming override, so it was left as it is. Restoring it is up to you: the original is kept in ${stale}.`,
@@ -108,6 +127,8 @@ function restore({ tools, saiRoot, project }) {
   if (record.state === 'present') writeAtomic(file, Buffer.from(record.original_base64, 'base64'));
   else if (current.present) fs.rmSync(file);
   fs.rmSync(recordPath, { force: true });
+  if (record.sai_dir_created) removeEmptyDirectory(path.dirname(file));
+  markCutoff(saiRoot);
   return { ok: true, status: 'restored', file, removed: record.state === 'absent' };
 }
 
@@ -149,4 +170,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { LOCAL_FILE, WARMING_OFF, recordFile, status, apply, restore, verify, main };
+module.exports = { CUTOFF_FILE, LOCAL_FILE, WARMING_OFF, recordFile, status, apply, restore, verify, main };
