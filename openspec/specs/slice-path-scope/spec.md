@@ -144,3 +144,22 @@ With `--targets`, the `snapshot` sub-command SHALL read target paths from standa
 
 - **WHEN** an execute order fails after it created, modified, or removed one of its target paths
 - **THEN** `verify` with `order_snapshot` returns `mismatch` and `foreign` names the changed path
+
+### Requirement: Commit coverage returns a prepared-plan gap to the plan owner
+
+`sai/policies/slice-path-scope.md` § Commit coverage SHALL state that an order bound to a prepared plan is not extended. For such an order, the coordinator SHALL run the coverage check on the prepared plan before any order, with the plan's owned paths as the covering list. While `uncovered` holds a path, the coordinator SHALL send the gap back to the plan's owner for a corrected plan and SHALL send no order. An `uncovered` path found at the order check SHALL also leave the order unchanged and return the gap to the plan's owner. The rule that adds uncovered paths to the order's owned paths and verifies again SHALL apply only to an order that no prepared plan binds.
+
+#### Scenario: Gap in a prepared plan
+
+- **WHEN** the coverage check on a prepared plan returns an `uncovered` path
+- **THEN** the coordinator sends no order and returns the gap to the plan's owner for a corrected plan
+
+#### Scenario: Gap found at the order check of a bound order
+
+- **WHEN** the coverage check on an order bound to a prepared plan returns an `uncovered` path
+- **THEN** the order stays unchanged and the gap returns to the plan's owner
+
+#### Scenario: Order that no prepared plan binds
+
+- **WHEN** the coverage check on an order that no prepared plan binds returns an `uncovered` path
+- **THEN** the coordinator adds those paths to the order's owned paths and verifies again

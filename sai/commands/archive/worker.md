@@ -26,9 +26,13 @@ collision check, and every retirement refusal behave identically.
 
 The Direct Build (unattended) composition prefixes the initial envelope with a
 `--direct-build-prepare` line followed by the resolved change name. Strip the
-marker and keep `direct_build_mode: prepare` as worker state. A
-`--direct-build-execute` marker is valid only on the same-worker continuation
-described below, never on an initial dispatch.
+marker and keep `direct_build_mode: prepare` as worker state. The Direct Build
+envelope may then carry a `--implementer-paths` marker line followed by one
+repository-relative path per line: the implementer path set. Keep it as worker
+state. An envelope without the marker (the ordinary `/sai-archive` route) has no
+implementer path set and behaves as before. A `--direct-build-execute` marker is
+valid only on the same-worker continuation described below, never on an initial
+dispatch.
 
 ## Lifecycle
 
@@ -95,6 +99,11 @@ ordinary route; in prepare mode it is also the prepared plan: the archive
 destination, the owned staging paths, the one pre-authorized local commit, and,
 when capabilities are retired, the retirement declaration.
 
+In prepare mode, the owned staging paths are only the worker's own `openspec/`
+paths and every path of the implementer path set. Record each path of that set
+whose staged diff entry is a deletion as a deletion. Every other staged entry
+stays foreign under `foreign-index-preservation.md`.
+
 Outside the execute continuation, the worker only reads: no directory move, no
 file write (including `.openspec.yaml`), no git command beyond reads. The CLI
 archive, the declaration, and every git operation belong to the coordinator on
@@ -111,8 +120,9 @@ owned staging paths, and the one pre-authorized local commit. An order carrying
 the retirement declaration is therefore not an altered order.
 
 Validate the order before acting: complete, duplicate-free, consistent with the
-prepared plan, inside the allowed `openspec/` and implementer-owned path sets,
-and still pending. An implementer-owned path may be absent when the prepared
+prepared plan, inside the allowed `openspec/` and implementer-owned path sets
+(the implementer-owned set is exactly the implementer path set received at
+prepare), and still pending. An implementer-owned path may be absent when the prepared
 diff records its deletion. Reject a missing non-deletion path, a reordered,
 foreign, already-executed, or otherwise altered order with a closed `failed`
 result, executing nothing.
