@@ -19,7 +19,12 @@ const OTHER_SESSION = '66666666-7777-4888-8999-000000000000';
 const WORKER_AGENT = 'a0123456789abcdef';
 const AUX_AGENT = 'a1111111111111111';
 const LATE_AGENT = 'a2222222222222222';
-const PROJECT = '/work/demo.project';
+// Fixture paths are absolute on the tool's own drive, so Windows resolves them to themselves.
+const ROOT = path.parse(os.tmpdir()).root;
+const rooted = (...parts) => path.join(ROOT, ...parts);
+const PROJECT = rooted('work', 'demo.project');
+const OTHER_PROJECT = rooted('work', 'other');
+const MISSING_PROJECT = rooted('no', 'such');
 
 function line(row) {
   return JSON.stringify({ sessionId: SESSION, ...row });
@@ -194,8 +199,8 @@ test('index: reports the default project, inaccessible paths, and continues with
     const defaulted = run(config, ['index', 'sai-explore', '--cwd', PROJECT]).payload;
     assert.match(defaulted.defaults_applied[0], /current project/);
     assert.equal(defaulted.executions.length, 1);
-    const mixed = run(config, ['index', 'sai-explore', '--paths', `/no/such,"${PROJECT}"`]).payload;
-    assert.deepEqual(mixed.projects.map(p => [p.project, p.status]), [['/no/such', 'inaccessible'], [PROJECT, 'analyzed']]);
+    const mixed = run(config, ['index', 'sai-explore', '--paths', `${MISSING_PROJECT},"${PROJECT}"`]).payload;
+    assert.deepEqual(mixed.projects.map(p => [p.project, p.status]), [[MISSING_PROJECT, 'inaccessible'], [PROJECT, 'analyzed']]);
     assert.equal(mixed.executions.length, 1);
     const none = run(config, ['index', 'sai-merge', '--paths', PROJECT]).payload;
     assert.deepEqual(none.executions, []);
@@ -297,13 +302,13 @@ function openCodeRows() {
 
 function openCodeSessions() {
   return [
-    [OC.root, null, 'build', '/work/demo.project', '12:59:00.000'],
-    [OC.orphan, OC.root, 'budget-explorer', '/work/demo.project', '12:59:30.000'],
-    [OC.worker, OC.root, 'sai-direct-build-worker', '/work/demo.project', '13:00:30.000'],
-    [OC.aux, OC.root, 'budget-explorer', '/work/demo.project', '13:00:35.000'],
-    [OC.grand, OC.worker, 'budget-explorer', '/work/demo.project', '13:00:40.000'],
-    [OC.late, OC.root, 'sai-direct-build-worker', '/work/demo.project', '14:30:30.000'],
-    [OC.other, null, 'build', '/work/other', '16:00:00.000'],
+    [OC.root, null, 'build', PROJECT, '12:59:00.000'],
+    [OC.orphan, OC.root, 'budget-explorer', PROJECT, '12:59:30.000'],
+    [OC.worker, OC.root, 'sai-direct-build-worker', PROJECT, '13:00:30.000'],
+    [OC.aux, OC.root, 'budget-explorer', PROJECT, '13:00:35.000'],
+    [OC.grand, OC.worker, 'budget-explorer', PROJECT, '13:00:40.000'],
+    [OC.late, OC.root, 'sai-direct-build-worker', PROJECT, '14:30:30.000'],
+    [OC.other, null, 'build', OTHER_PROJECT, '16:00:00.000'],
   ];
 }
 
@@ -397,7 +402,7 @@ opencodeTest('opencode: a session target reads that harness only; a child sessio
     assert.match(child.notes[0], /child session of ses_root0001/);
     const lateChild = run(config, ['index', OC.late, '--paths', PROJECT]).payload;
     assert.deepEqual(lateChild.executions.map(e => e.invocation.record), [`msg_${OC.root}_08`]);
-    const wrongProject = run(config, ['index', OC.root, '--paths', '/work/other']).payload;
+    const wrongProject = run(config, ['index', OC.root, '--paths', OTHER_PROJECT]).payload;
     assert.deepEqual(wrongProject.executions, []);
     assert.match(wrongProject.notes[0], /No opencode session ses_root0001 was found/);
     const missing = run(config, ['index', 'ses_nothere', '--paths', PROJECT]).payload;
@@ -477,6 +482,6 @@ opencodeTest('opencode excerpt: pages records by ID for a session and for a chil
     assert.equal(code(['--from', 'missing']), 'NOT_FOUND');
     assert.equal(code(['--agent', OC.other]), 'NOT_FOUND', 'a session of another tree is not an agent of this one');
     assert.equal(code(['--agent', 'a0123456789abcdef']), 'USAGE');
-    assert.equal(run(config, ['excerpt', '--project', '/work/other', '--session', OC.root]).payload.error.code, 'NOT_FOUND');
+    assert.equal(run(config, ['excerpt', '--project', OTHER_PROJECT, '--session', OC.root]).payload.error.code, 'NOT_FOUND');
   } finally { fs.rmSync(config, { recursive: true, force: true }); }
 });
