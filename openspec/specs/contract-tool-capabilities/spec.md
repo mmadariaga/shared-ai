@@ -132,3 +132,27 @@ The to-backlog and explore command profiles SHALL declare `node {skills}/to-back
 
 - **WHEN** a command has a concrete preparation invocation declaration
 - **THEN** that declaration does not replace explicit publication confirmation or establish that the active harness permits the operation at runtime.
+
+### Requirement: Agent profiles grant every installed skill
+
+Every capability profile assigned to an agent through `capabilities.assignments.agents` in `sai/install-manifest.json` SHALL resolve to the skills grant `["*"]` and SHALL NOT declare its own `skills` key. Command profiles, whose names end in `-command`, SHALL keep their explicit skills lists. Granting every skill SHALL NOT change any tool, shell, delegate, write, or message grant of an agent profile. A test SHALL fail when an agent profile declares its own `skills` key or resolves to a skills list other than `["*"]`.
+
+#### Scenario: Research and executor agents allow every skill on opencode
+- **WHEN** the opencode agent files of `budget-explorer` (profile `research`) and `budget-executor` (profile `executor`) are generated
+- **THEN** their permissions allow the `skill` action on `*` inherited from `boot`, with no per-name skill denial, as for `sai-3-red-worker` and `sai-3-green-worker` (profile `worker-execution`)
+
+#### Scenario: Claude Code agent tools stay unchanged
+- **WHEN** the Claude Code agent files of `budget-explorer`, `budget-executor`, `sai-3-red-worker`, and `sai-3-green-worker` are generated
+- **THEN** each keeps the same `tools` and `allowedTools`, because the `Skill` tool was already granted
+
+#### Scenario: Other grants of the widened profiles stay unchanged
+- **WHEN** the `research` and `executor` profiles are resolved
+- **THEN** `research` keeps its shell limited to `git grep *` and `codegraph explore *`, and neither profile gains `delegate`, `write`, or `message`
+
+#### Scenario: Command profiles keep explicit skills lists
+- **WHEN** command profiles such as `implement-command`, `to-backlog-command`, and `to-pr-command` are resolved
+- **THEN** each keeps its own explicit skills list
+
+#### Scenario: A narrowed agent profile fails the guard test
+- **WHEN** a profile assigned to an agent declares its own `skills` key or resolves to a skills list other than `["*"]`
+- **THEN** the capability profile test fails naming the agent and its profile

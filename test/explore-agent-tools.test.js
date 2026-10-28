@@ -34,9 +34,13 @@ test('OpenCode explore grants only the missing read-only research capabilities',
   assert.doesNotMatch(source, /^tools:/m, 'do not replace the inherited read/search tool set');
 });
 
-test('OpenCode explore keeps general shell, other skills, writes and delegation denied', () => {
+test('OpenCode explore allows every skill and keeps general shell, writes and delegation denied', () => {
   const rules = permissionRules(source);
-  for (const action of ['shell', 'skill', 'edit', 'subagent', 'question']) {
+  const skillRules = rules.filter(rule => rule.action === 'skill');
+  assert.deepEqual(skillRules, [{ action: 'skill', resource: '*', effect: 'allow' }], 'every skill is allowed and none is denied by name');
+  assert.ok(rules.findIndex(rule => rule.action === 'skill') > rules.findIndex(rule => rule.action === '*' && rule.resource === '*' && rule.effect === 'deny'),
+    'the skill grant follows the general denial');
+  for (const action of ['shell', 'edit', 'subagent', 'question']) {
     const denyIndex = rules.findIndex(rule =>
       (rule.action === action || rule.action === '*') && rule.resource === '*' && rule.effect === 'deny');
     assert.ok(denyIndex >= 0, `${action} must have a general denial`);
