@@ -2,7 +2,7 @@
 
 ## Command function
 
-Integrates a branch into the current branch with no human in the loop: it resolves every conflict by commit intent, repairs ADR/DDR number collisions, checks the result against the test suite as it stood before the launch, and finalizes locally. Nothing is pushed.
+Integrates a branch into the current branch: it resolves every conflict by commit intent, repairs ADR/DDR number collisions, checks the result against the test suite as it stood before the launch, and finalizes locally. The command asks only at the start (the branch when it is missing, the method when no flag gives it, and autostash when a rebase or squash meets tracked unstaged changes) and on escalation, when commit intent cannot decide a conflict or an obstacle outlives its budget; otherwise it runs unattended. Nothing is pushed.
 
 ## Flags and behavior modifiers
 
@@ -12,7 +12,7 @@ Integrates a branch into the current branch with no human in the loop: it resolv
 - no flag: the command asks the method (merge, rebase, or squash) together with the branch question, before any work. Without a picker it runs a `Merge`. Cancelling a question ends the run with nothing launched. The merge stops before its commit, so every merge, clean or conflicted, is finalized by the coordinator.
 - `--rebase`: replays the commits of the current branch one by one on top of the selected branch. Conflicts may appear at each commit.
 - `--squash`: first turns the commits of the current branch since the merge base into one local commit, then rebases it, so conflicts appear at most once. When both `--rebase` and `--squash` are given, `--squash` wins.
-- `--fast-track`: accepted and ignored. The command already asks no approval.
+- `--fast-track`: accepted and ignored. The command asks for no approval beyond the start questions above.
 
 ## In detail
 
@@ -28,7 +28,7 @@ A new failure gets up to three attempts to correct it, then escalates. On a reba
 
 **Decision records.** When the source branch adds ADRs or DDRs whose numbers collide with records already in the tree, the worker plans the renumbering and the coordinator applies the planned replacements and the `git mv`. Ambiguous references, orphan references, and delete/modify conflicts are reported and never modified.
 
-**Authorization.** Invoking `/sai-merge` authorizes these local operations only: the merge commit, the squash commit, each `git rebase --continue`, the correction commit, and the repair commit. It adds no push, no force, no hook bypass, and no destructive operation. A rebase or squash that meets tracked unstaged changes asks once, after the baseline, whether to launch with `git rebase --autostash` (never a config change); declining, or having no picker, ends the run before anything changes. If git cannot reapply the stash at the end, the entry stays and the closing report names it and the command that restores it; the command never drops a stash. Unrelated unstaged changes stay as they are when git allows the launch; staged content unrelated to the merge stops the run before it starts, because it would enter the commit.
+**Authorization.** Invoking `/sai-merge` authorizes these local operations only: the merge commit, the squash commit, each `git rebase --continue`, the correction commit, and the repair commit. It adds no push, no force, no hook bypass, and no destructive operation. A rebase or squash that meets tracked unstaged changes asks once, as soon as the method is known and before the baseline suite runs, whether to launch with `git rebase --autostash` (never a config change); declining, or having no picker, ends the run before any suite runs or anything changes. If git cannot reapply the stash at the end, the entry stays and the closing report names it and the command that restores it; the command never drops a stash. Unrelated unstaged changes stay as they are when git allows the launch; staged content unrelated to the merge stops the run before it starts, because it would enter the commit.
 
 **Interruption.** The run keeps its state in a run store and a run directory under the SAI temp root. An interrupted run resumes only when you invoke the command with the same branch; the git state (`MERGE_HEAD`, the rebase directory) wins over the store. A merge or rebase that you started yourself is never touched: the command stops and says why.
 
