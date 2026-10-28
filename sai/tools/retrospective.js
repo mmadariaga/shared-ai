@@ -447,7 +447,9 @@ function resolveOpencodeCommand(name, commands) {
 function skillBasePath(text) {
   const base = text.match(OPENCODE_SKILL_BASE)?.[1];
   if (!base) return null;
-  try { return base.startsWith('file://') ? fileURLToPath(base) : base; } catch { return base; }
+  if (!base.startsWith('file://')) return base;
+  // A URL recorded on another platform (a drive-less path read on Windows) is not convertible here; keep its path part.
+  try { return fileURLToPath(base); } catch { try { return decodeURIComponent(new URL(base).pathname); } catch { return base; } }
 }
 
 // The instruction text a record put in front of the agent, when it did.
