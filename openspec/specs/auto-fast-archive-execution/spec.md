@@ -161,3 +161,40 @@ The archive worker SHALL follow `sai/policies/foreign-index-preservation.md` for
 
 - **WHEN** a foreign entry no longer matches its record at the restore after the commit step
 - **THEN** the worker restores nothing, reports the exact differing paths in the summary, and leaves the record for recovery
+
+### Requirement: The archive worker keeps the Direct Build implementer path set from the prepare envelope
+
+When a Direct Build `--direct-build-prepare` envelope carries a `--implementer-paths` marker line after the change name, the archive worker SHALL read the following lines as the implementer path set, one repository-relative path per line, and SHALL keep that set as worker state. An envelope without the marker, as on the ordinary `/sai-archive` route, SHALL have no implementer path set and SHALL behave as before.
+
+#### Scenario: Envelope with the marker
+
+- **WHEN** the archive worker receives a `--direct-build-prepare` envelope with a `--implementer-paths` marker line followed by paths
+- **THEN** it keeps those paths as the implementer path set in worker state
+
+#### Scenario: Ordinary archive envelope without the marker
+
+- **WHEN** the archive worker receives an envelope that carries no `--implementer-paths` marker
+- **THEN** it has no implementer path set and its preparation and execution behave as before
+
+### Requirement: Direct Build preparation lists the implementer path set as owned staging paths
+
+In prepare mode, the archive worker's owned staging paths SHALL be only its own `openspec/` paths and every path of the implementer path set. The worker SHALL record each path of that set whose staged diff entry is a deletion as a deletion. Every other staged entry SHALL stay foreign under `sai/policies/foreign-index-preservation.md`.
+
+#### Scenario: Implementer deleted a path
+
+- **WHEN** the implementer path set holds a path whose staged diff entry is a deletion
+- **THEN** the prepared plan lists that path as an owned staging path recorded as a deletion
+
+#### Scenario: Staged entry outside the implementer path set
+
+- **WHEN** the index holds a staged entry that is neither an `openspec/` path of the worker nor a path of the implementer path set
+- **THEN** the prepared plan does not list it as owned and the entry stays foreign
+
+### Requirement: Execute validation uses the implementer path set received at prepare
+
+When the archive worker validates a Direct Build execute order, the implementer-owned path set SHALL be exactly the implementer path set received at prepare. An order path outside the allowed `openspec/` paths and that set SHALL fail validation with a closed `failed` result, executing nothing.
+
+#### Scenario: Order path outside the received set
+
+- **WHEN** an execute order names an owned path that is neither an allowed `openspec/` path nor a path of the implementer path set received at prepare
+- **THEN** the worker rejects the order with a closed `failed` result and executes nothing

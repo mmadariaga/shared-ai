@@ -50,6 +50,13 @@ order's owned paths as the covering list, returns an empty `uncovered`. Send
 the order then. While `uncovered` holds a path, the order is incomplete: add
 those paths to its owned paths and verify again.
 
+An order bound to a prepared plan is not extended. Run the same check on the
+prepared plan before any order, with the plan's owned paths as the covering
+list. While `uncovered` holds a path, send the gap back to the plan's owner for
+a corrected plan and send no order. The same rule applies to an `uncovered` path
+found at the order check: the order stays unchanged and the gap returns to the
+owner. The text above applies to an order that no prepared plan binds.
+
 On an `n/a` verdict, print one conversation line naming `reason` and send the
 order.
 
