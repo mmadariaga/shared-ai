@@ -8,7 +8,7 @@ Define the routed coordinator/worker architecture for `/sai-backfill`: a minimal
 
 ### Requirement: Minimal lifecycle adapter
 
-The backfill coordinator SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections, and SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. It SHALL create exactly one `sai-backfill-worker` through the backfill-worker binding with the ready prompt alone, and after `event: ready` send the same worker the `--transfer-dir <dir>` line followed by `arguments_value` byte-for-byte; it SHALL continue that worker with each exact answer value or validation report. The run SHALL declare no progress plan, no progress event, no acknowledgement literal, and no recovery ledger. A worker without ready or a readable result SHALL be a `worker` obstacle, and a draft set that fails reference verification, schema validation, or the delta-header preflight SHALL be a `draft` obstacle, both handled under `sai/policies/obstacle-escalation.md` with the attempt count kept in the conversation; the interview questions, the worker's stop texts, a transfer-directory blocker, a preflight tooling failure, a reported unavailable or denied transfer helper, and the completion handoff SHALL remain planned stops or planned asks. A replacement worker SHALL start from the ready handshake and receive a hand-over written by the coordinator that carries the original `arguments_value` with the `--transfer-dir` line, the interview answers already given, the confirmed change name, the Direct Build mode, the latest validated references and closed execution order pending write, the one-shot execution state, and the symptom, never draft content.
+The backfill coordinator SHALL be a goal-driven card with Goal, Start, run, Obstacles, and Close sections, and SHALL NOT load `sai/orchestration/command-runner.md`, `sai/orchestration/worker-core.md`, `bounded-recovery.md`, `stop-options.md`, or `unattended-runtime-recovery.md`. It SHALL create exactly one `sai-backfill-worker` through the backfill-worker binding with the ready prompt alone, and after `event: ready` send the same worker the `--transfer-dir <dir>` line followed by `arguments_value` byte-for-byte; it SHALL continue that worker with each exact answer value or validation report. The run SHALL declare no progress plan, no progress event, no acknowledgement literal, and no recovery ledger. A worker without ready or a readable result SHALL be a `worker` obstacle, and a draft set that fails reference verification, schema validation, the delta-header preflight, or the OpenSpec CLI validation by rejection SHALL be a `draft` obstacle, both handled under `sai/policies/obstacle-escalation.md` with the attempt count kept in the conversation. A validation result with reason `openspec-cli-unavailable` SHALL NOT be a `draft` obstacle: it SHALL be force majeure that escalates at once with an option to install or restore the CLI and re-run validation, requests no correction from the worker, and spends no `draft` attempt, even when the drafts are also invalid. The interview questions, the worker's stop texts, a transfer-directory blocker, a preflight tooling failure, a reported unavailable or denied transfer helper, and the completion handoff SHALL remain planned stops or planned asks. A replacement worker SHALL start from the ready handshake and receive a hand-over written by the coordinator that carries the original `arguments_value` with the `--transfer-dir` line, the interview answers already given, the confirmed change name, the Direct Build mode, the latest validated references and closed execution order pending write, the one-shot execution state, and the symptom, never draft content.
 
 #### Scenario: A backfill run carries no progress or recovery machinery
 
@@ -19,6 +19,16 @@ The backfill coordinator SHALL be a goal-driven card with Goal, Start, run, Obst
 
 - **WHEN** a `/sai-backfill` invocation forwards its request to the worker
 - **THEN** the worker receives exactly the original single-string `arguments_value`, preceded only by the `--transfer-dir` line, and no parsed, cleaned, or persisted variant of it
+
+#### Scenario: A CLI rejection is a draft obstacle
+
+- **WHEN** the OpenSpec CLI validation rejects the draft set
+- **THEN** the coordinator counts a `draft` attempt and returns the diagnostic to the same worker for correction
+
+#### Scenario: An unavailable CLI escalates at once
+
+- **WHEN** the validation result carries reason `openspec-cli-unavailable`
+- **THEN** the coordinator escalates at once as force majeure, requests no correction from the worker, and counts no `draft` attempt
 
 ### Requirement: Worker owns the read-only technical flow and never mutates
 

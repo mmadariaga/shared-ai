@@ -51,9 +51,21 @@ function collect(input, cwd) {
   return { files: entries, fingerprint };
 }
 
+// npm's Windows shim needs a shell; every argument passed here is a fixed literal or a validated name.
+function openspec(args, options) {
+  return spawnSync('openspec', args, { encoding: 'utf8', shell: process.platform === 'win32', env: { ...process.env, OPENSPEC_TELEMETRY: '0' }, ...options });
+}
+
 function validate(input, { cwd = process.cwd(), harness = harnessFromInstalledPath(__filename) } = {}) {
   let project;
   try {
+    // A CLI that cannot launch is checked before the drafts, so the reason wins over any draft problem
+    // and no correction attempt is spent on it.
+    const probe = openspec(['--version'], { timeout: 30000 });
+    if (probe.error || probe.status !== 0) {
+      const diagnostic = { command: ['openspec', '--version'], exit_code: probe.status, stdout: probe.stdout || '', stderr: probe.stderr || '', error: probe.error?.message || null };
+      return { ok: false, reason: 'openspec-cli-unavailable', diagnostic, error: 'The OpenSpec CLI could not be launched; draft correction cannot help' };
+    }
     const snapshot = collect(input, cwd);
     project = makeTempDir(harness, 'backfill-validation-');
     for (const [relative, bytes] of snapshot.files) {
@@ -62,9 +74,7 @@ function validate(input, { cwd = process.cwd(), harness = harnessFromInstalledPa
       fs.writeFileSync(target, bytes);
     }
     const args = ['validate', input.change_name, '--type', 'change', '--json', '--no-interactive'];
-    // npm's Windows shim needs a shell; the validated name has no shell metacharacters.
-    const result = spawnSync('openspec', args, { cwd: project, encoding: 'utf8', shell: process.platform === 'win32',
-      timeout: 120000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, OPENSPEC_TELEMETRY: '0' } });
+    const result = openspec(args, { cwd: project, timeout: 120000, maxBuffer: 16 * 1024 * 1024 });
     const diagnostic = { command: ['openspec', ...args], exit_code: result.status, stdout: result.stdout || '', stderr: result.stderr || '', error: result.error?.message || null };
     let report;
     try { report = JSON.parse(result.stdout); } catch { /* Incomplete output cannot authorize writes. */ }
