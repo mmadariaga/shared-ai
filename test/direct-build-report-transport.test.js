@@ -7,6 +7,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const transfer = require('../sai/tools/transfer');
 const { validateFile, validateText } = require('../sai/tools/worker-report-validator');
+const { linkFile } = require('./helpers/links');
 
 const report = { status: 'completed', summary: 'Quotes " \' $() `cmd` \\ and café\r\nsecond line',
   changed_files: ['src/example.js'], resolved_change_name: 'example' };
@@ -71,7 +72,7 @@ test('input and failure reports use the same private transport as completion', t
   }
 });
 
-test('missing, altered, foreign and symlink reports fail delivery, not report validation', t => {
+test('missing, altered, foreign and symlink reports fail delivery, not report validation', async t => {
   const { dir, reference } = fixture(t);
   const other = fixture(t);
   for (const ref of [
@@ -82,11 +83,11 @@ test('missing, altered, foreign and symlink reports fail delivery, not report va
     assert.equal(verdict.outcome, 'delivery-failed');
     assert.equal(verdict.payload, undefined);
   }
-  if (process.platform !== 'win32') {
+  await t.test('a linked report file', st => {
     const link = path.join(dir, 'link.json');
-    fs.symlinkSync(reference.path, link);
+    if (!linkFile(st, reference.path, link)) return;
     assert.equal(validateFile(dir, { ...reference, path: link }, 'terminal').outcome, 'delivery-failed');
-  }
+  });
   fs.writeFileSync(reference.path, 'changed');
   assert.equal(cli(dir, reference).status, 1);
 });

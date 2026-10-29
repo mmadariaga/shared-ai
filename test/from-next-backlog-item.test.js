@@ -1,6 +1,6 @@
 'use strict';
 
-const { test } = require('node:test');
+const { test: baseTest } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,12 +9,16 @@ const { select } = require('../sai/tools/from-next-backlog-item');
 const { resolve } = require('../sai/tools/from-backlog');
 const registry = require('../skills/universal/from-backlog/providers/registry.json');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
+const { isolatedProject } = require('./helpers/isolated-project');
 const root = path.resolve(__dirname, '..');
+// Each test runs in its own isolated project; every io passed to select carries it as cwd.
+let cwd;
+function test(name, fn) { return baseTest(name, t => { cwd = isolatedProject(t); return fn(t); }); }
 const github = { provider: 'github', owner: 'owner', owner_kind: 'organization', project: 1 };
 const gitlab = { provider: 'gitlab', project: 'https://gitlab.com/group/repo', pile: 'issues' };
 const azure = { provider: 'azuredevops', organization: 'https://dev.azure.com/org', project: 'Project', team: 'Team', backlog: 'requirements' };
 function gh(options = {}) {
-  return { run(command, args, input) {
+  return { cwd, run(command, args, input) {
     assert.equal(command, 'gh'); assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
     const { query } = JSON.parse(input); assert.doesNotMatch(query, /mutation/);
     if (options.fail) throw new Error('denied');
@@ -26,9 +30,10 @@ function gh(options = {}) {
     } } } } });
   } };
 }
+const noIo = () => ({ cwd, run() { assert.fail('This selection performs no I/O'); } });
 const issue = (id, rank, type = 'issue') => ({ id, iid: id, project_id: 1, relative_position: rank, issue_type: type, web_url: `https://gitlab.com/group/repo/-/issues/${id}` });
 function gl(items = [issue(20, 100), issue(8, 2)], options = {}) {
-  return { run(command, args) {
+  return { cwd, run(command, args) {
     assert.equal(command, 'glab'); assert.ok(!args.includes('POST'));
     if (options.fail) throw new Error('not authenticated');
     if (args[0] === 'repo') return JSON.stringify({ id: 1, path_with_namespace: 'group/repo', archived: false, visibility: 'private', issues_enabled: true, web_url: gitlab.project });
@@ -40,7 +45,7 @@ function gl(items = [issue(20, 100), issue(8, 2)], options = {}) {
   } };
 }
 function az(options = {}) {
-  return { run(command, args) {
+  return { cwd, run(command, args) {
     assert.equal(command, 'az');
     if (options.fail) throw new Error('access denied');
     if (args[0] === 'boards') {
@@ -60,7 +65,7 @@ function az(options = {}) {
   } };
 }
 test('E1 missing provider and provider context remain pending without guessing', () => {
-  const noRemotes = { run(command, args) { assert.equal(command, 'git'); assert.deepEqual(args, ['remote', '-v']); return ''; } };
+  const noRemotes = { cwd, run(command, args) { assert.equal(command, 'git'); assert.deepEqual(args, ['remote', '-v']); return ''; } };
   assert.equal(select({}, noRemotes).options.length, 3);
   for (const provider of ['github', 'gitlab', 'azuredevops']) {
     assert.equal(select({ provider }, noRemotes).status, 'pending');
@@ -86,8 +91,8 @@ test('E2 unavailable ranks, top ties, partial responses, and unsupported views s
   assert.equal(select(azure, az({ missingRank: true })).status, 'pending');
   assert.equal(select(azure, az({ tie: true })).reason, 'order-ambiguous');
   assert.equal(select(azure, az({ partial: true })).status, 'pending');
-  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, view: 'filtered' }).reason, 'order-unavailable');
-  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, sort: 'created_at' }).reason, 'unsupported-context');
+  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, view: 'filtered' }, noIo()).reason, 'order-unavailable');
+  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, sort: 'created_at' }, noIo()).reason, 'unsupported-context');
 });
 test('E2 GitLab filters and complete pagination determine membership before manual selection', () => {
   const members = Array.from({ length: 101 }, (_, i) => issue(i + 1, 200 - i));
@@ -107,7 +112,7 @@ test('Git remotes resolve provider and GitLab project before any question', () =
     const target = `https://${host}/group/repo`;
     const reader = gl();
     const calls = [];
-    const result = select({}, { run(command, args) {
+    const result = select({}, { cwd, run(command, args) {
       calls.push(command);
       if (command === 'git') { assert.deepEqual(args, ['remote', '-v']); return `origin\t${remote} (fetch)\norigin\t${remote} (push)\n`; }
       const data = JSON.parse(reader.run(command, args));
@@ -139,7 +144,7 @@ test('equivalent Git remotes and explicit provider constraints do not require a 
     [{ provider: 'gitlab' }, 'origin\tgit@gitlab.com:group/repo.git (fetch)\nother\tgit@github.com:owner/repo.git (fetch)\n'],
   ]) {
     const reader = gl();
-    const result = select(request, { run(command, args) {
+    const result = select(request, { cwd, run(command, args) {
       if (command === 'git') return remotes;
       return reader.run(command, args);
     } });
@@ -165,7 +170,7 @@ test('GitLab defaults to open issues and returns only equally highest available 
   }
 });
 test('unresolved remotes retain known provider; conflicting explicit identities remain pending', () => {
-  const io = { run(command) { assert.equal(command, 'git'); return 'origin\tgit@gitlab.com:group/a.git (fetch)\nother\tgit@gitlab.com:group/b.git (fetch)\n'; } };
+  const io = { cwd, run(command) { assert.equal(command, 'git'); return 'origin\tgit@gitlab.com:group/a.git (fetch)\nother\tgit@gitlab.com:group/b.git (fetch)\n'; } };
   const result = select({}, io);
   assert.equal(result.status, 'pending');
   assert.equal(result.selection.provider, 'gitlab');
@@ -189,7 +194,7 @@ test('E6 access failures are pending, not empty; E7 cancellation performs no rea
   for (const [request, io] of [[github, gh({ fail: true })], [gitlab, gl([], { fail: true })], [azure, az({ fail: true })]]) {
     assert.equal(select(request, io).status, 'pending');
   }
-  for (const provider of ['github', 'gitlab', 'azuredevops']) assert.deepEqual(select({ provider, cancel: true }, { run() { assert.fail('Cancelled selection has no I/O'); } }), { status: 'cancelled' });
+  for (const provider of ['github', 'gitlab', 'azuredevops']) assert.deepEqual(select({ provider, cancel: true }, { cwd, run() { assert.fail('Cancelled selection has no I/O'); } }), { status: 'cancelled' });
 });
 test('both installations include selector, provider instructions, tools, and bounded import access', () => {
   const manifest = loadInstallManifest(root);
@@ -230,11 +235,11 @@ test('selection instructions hand off exactly once without duplicating source re
 test('CLI cancellation and unresolved identification use JSON stdin without provider reads', () => {
   const tool = path.join(root, 'sai/tools/from-next-backlog-item.js');
   for (const [input, status, outcome] of [[{ cancel: true }, 0, 'cancelled'], [{}, 1, 'pending']]) {
-    const result = spawnSync(process.execPath, [tool, 'select'], { input: JSON.stringify(input), encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [tool, 'select'], { cwd, input: JSON.stringify(input), encoding: 'utf8' });
     assert.equal(result.status, status, result.stderr);
     assert.equal(JSON.parse(result.stdout).status, outcome);
   }
-  const bad = spawnSync(process.execPath, [tool, 'select', 'unexpected'], { input: '{}', encoding: 'utf8' });
+  const bad = spawnSync(process.execPath, [tool, 'select', 'unexpected'], { cwd, input: '{}', encoding: 'utf8' });
   assert.equal(bad.status, 2);
   assert.equal(JSON.parse(bad.stdout).reason, 'usage');
 });
