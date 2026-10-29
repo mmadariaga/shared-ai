@@ -30,7 +30,7 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 Fetch @sai/policies/cache-warming.md
 
-Add the policy's warming line to the task message when the policy says so, and dispose the helper as soon as you have its result, unless the card you follow says you reuse it.
+The task message carries no warming line, and the result declares `warming: false`. When the card you follow reuses the subagent after an idle stretch, send it the policy's `warm-up` order first. Dispose the helper only when its latest message declared `warming: true`; otherwise dispose nothing.
 
 ## Cost model
 

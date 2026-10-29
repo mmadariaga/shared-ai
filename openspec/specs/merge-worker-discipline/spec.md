@@ -49,12 +49,12 @@ Each message to the merge worker SHALL open with `Active step: <id> — follow <
 
 ### Requirement: Merge worker reports are run-directory files
 
-The merge worker SHALL write each report to the path in its brief, inside the run directory outside the repository, and SHALL return only that path as its final message, with no raw output, file contents, or logs. A report SHALL carry no time field. When something stops the worker, it SHALL return the path of a report whose `status` is `blocked` naming the blocker and the affected path, and SHALL ask the user nothing.
+The merge worker SHALL write each report to the path in its brief, inside the run directory outside the repository, and SHALL return that path as its final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and with no raw output, file contents, or logs. A report SHALL carry no time field and no `warming` field. When something stops the worker, it SHALL return the path of a report whose `status` is `blocked` naming the blocker and the affected path, and SHALL ask the user nothing.
 
 #### Scenario: Final message is only the path
 
 - **WHEN** the worker finishes a step
-- **THEN** its final message is the report path and the coordinator reads the report from the file
+- **THEN** its final message is the report path, plus its warming line when one reached it, and the coordinator reads the report from the file
 
 ### Requirement: Merge worker decides by commit intent
 

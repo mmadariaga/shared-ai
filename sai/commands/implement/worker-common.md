@@ -32,7 +32,7 @@ An override in the brief takes precedence over the plan. The plan is a plan: whe
 
 ## Report
 
-Write the report below to the report path in the brief, creating its directory when needed, and return only that path as your final message: no raw output, file contents, or logs. The coordinator reads the file, so the report survives a long conversation and a replacement.
+Write the report below to the report path in the brief, creating its directory when needed, return that path as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached you: no raw output, file contents, or logs. The coordinator reads the file, so the report survives a long conversation and a replacement.
 
 ```yaml
 status: done | blocked

@@ -301,3 +301,41 @@ test('the policy defines the wake acknowledgement, the final response, and the c
   assert.match(policy, /"chain": "<chain>"/);
   assert.match(policy, /Claude Code `Bash`[\s\S]*opencode shell/);
 });
+
+test('the policy defines the warming declaration, the warm-up order, and dispose only after warming: true', () => {
+  const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
+  assert.match(policy, /## Warming declaration/);
+  assert.match(policy, /`warming: true` or `warming: false`/);
+  assert.match(policy, /beside that path in the message and never inside the report file/);
+  assert.match(policy, /counts as `warming: false`/);
+  assert.match(policy, /Dispose only a handle whose latest real message declared `warming: true`/);
+  assert.match(policy, /no stop call, no shell removal, and no `dispose` message/);
+  assert.match(policy, /\*\*Warm-up\.\*\*[\s\S]*Never send it to a `budget-executor` or to a worker/);
+  assert.match(policy, /not an obstacle, spends no attempt, and is not retried/);
+  assert.doesNotMatch(policy, /silent no-op/);
+  assert.match(policy, /never in the `sai-state` store/);
+});
+
+test('helper contracts declare warming and the budget skills dispose only after warming: true', () => {
+  const read = relative => fs.readFileSync(path.resolve(__dirname, '..', relative), 'utf8');
+  assert.match(read('sai/policies/explore-agent.md'), /`ladder_discards`, `out_of_root_requests`, and `warming`/);
+  assert.match(read('sai/policies/explore-agent.md'), /`warm-up` followed by a warming line/);
+  assert.match(read('sai/policies/executor-agent.md'), /`warming: false`/);
+  assert.match(read('sai/policies/budget-agent.md'), /`warming: false`/);
+  for (const harness of ['claude', 'opencode']) {
+    for (const helper of ['budget-explorer', 'budget-subagent']) {
+      const skill = read(`skills/${harness}/${helper}/SKILL.md`);
+      assert.match(skill, /`warm-up` order/, `${harness} ${helper} describes warm-up`);
+      assert.match(skill, /declared `warming: true`/, `${harness} ${helper} disposes only after warming: true`);
+    }
+    assert.match(read(`skills/${harness}/budget-executor/SKILL.md`), /never arms[\s\S]*nothing to dispose/);
+  }
+});
+
+test('worker bindings dispose only after a warming: true declaration, on both harnesses', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const binding = fs.readFileSync(path.resolve(__dirname, `../sai/orchestration/workers/bindings/${harness}/standalone-worker-template.md`), 'utf8');
+    assert.match(binding, /declares `warming: true\|false`/, harness);
+    assert.match(binding, /only when the worker's latest message declared\s+`warming: true`; with any other value it disposes nothing/, harness);
+  }
+});

@@ -29,7 +29,7 @@ A message without a pointer line leaves the active step unchanged: it is a fix r
 
 ## Reports
 
-Write the report to the path in the message, creating its directory when needed, and return only that path as your final message: no raw output, file contents, or logs. The coordinator reads the file, so the report survives a long conversation and a replacement. A report carries no time field.
+Write the report to the path in the message, creating its directory when needed, return that path as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached you: no raw output, file contents, or logs. The coordinator reads the file, so the report survives a long conversation and a replacement. A report carries no time field.
 
 When something stops you and the report cannot say it, return the path of a report whose `status` is `blocked`, with the blocker and the affected path in `summary`. Ask nothing else: a question whose answer you can derive from the brief, the provenance, or the repository is yours to settle by commit intent.
 
