@@ -89,4 +89,4 @@ The approaches are:
 
 When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no report file and no commit.
 
-Before ending in any outcome, dispose the worker as `cache-warming.md` says (a worker paused on a user question stays armed until the answer) and `close` the `sai-state` session. Resolve the worker's timings at every message to it and end the message with the warming line the policy defines; a worker that a new worker replaces is disposed first.
+Before ending in any outcome, dispose the worker under `cache-warming.md`'s Dispose rule (a worker paused on a user question stays armed until the answer) and `close` the `sai-state` session. Resolve the worker's timings at every message to it and end the message with the warming line the policy defines; a worker that a new worker replaces is disposed first.

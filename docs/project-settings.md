@@ -40,7 +40,7 @@ The work-item type has no setting; it is chosen at each creation. Provider ids c
 
 ## Cache warming
 
-The `warming` setting lets SAI agents keep their prompt cache warm between continuations. An agent arms one background wait after each response except its final one (a closing report or a terminal result) and re-arms on each wake until its `max` window passes since its last real task or continuation, or until the agent that dispatched it disposes it. Each agent keeps a single live chain of waits: a newer wait supersedes the earlier one, which ends at its next wake. The same applies on Claude Code and opencode. Without the setting, nothing warms. Each wake costs two short requests and some usage allowance, which the `max` window bounds; a pause longer than `max` still resumes cold.
+The `warming` setting lets SAI agents keep their prompt cache warm between continuations. An agent arms one background wait after each response except its final one (a closing report or a terminal result) and re-arms on each wake until its `max` window passes since its last real task or continuation, or until the agent that dispatched it disposes it. Each subagent message declares `warming: true` or `warming: false`, and the dispatcher disposes only a subagent that declared `true`. Each agent keeps a single live chain of waits: a newer wait supersedes the earlier one, which ends at its next wake. The same applies on Claude Code and opencode. Without the setting, nothing warms. Each wake costs two short requests and some usage allowance, which the `max` window bounds; a pause longer than `max` still resumes cold.
 
 `interval` and `max` are numbers of minutes, and `max` is at least `interval`. The value is one object under the single id `warming`:
 

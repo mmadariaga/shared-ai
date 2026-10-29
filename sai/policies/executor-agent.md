@@ -21,4 +21,6 @@ One entry per requested command, in the task's order. The run is done when every
 
 For test and build runs, add the pass/fail tallies and, for each failure, the test or target name, the error message, and `file:line`.
 
+End the report with the line `warming: false`: the executor never arms (`@sai/policies/cache-warming.md` § Warming declaration).
+
 Keep the report low-output. Return verbatim the output the task asked for and the relevant error or compiler messages. Summarize everything else: full file contents and unfiltered log streams stay out of the report.

@@ -19,6 +19,8 @@ Omit `failures` when nothing failed, and `output` when there is no result or it 
 
 `actions_taken` and `failures` together report what was tried: every approach, and how each one ended.
 
+Every result, whichever shape, ends with the line `warming: false` (a result is final; `@sai/policies/cache-warming.md` § Warming declaration). A message that is `warm-up` followed by a warming line is that policy's warm-up order: follow the policy, do no task work, and reply with the declaration line alone.
+
 Keep bounded output: the key result, with raw file contents, unfiltered search results, and log streams left out.
 
 ## Stopping

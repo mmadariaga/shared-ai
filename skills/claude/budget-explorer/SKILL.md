@@ -34,7 +34,7 @@ Every spawn prompt states the **goal** and the **output contract**: exact respon
 
 Fetch @sai/policies/cache-warming.md
 
-A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. Add the policy's warming line to each task message and continuation when the policy says so, and dispose every explorer at run close.
+A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. Its task messages and continuations carry no warming line, and its result declares `warming: false`. When you will reuse an explorer after an idle stretch, send it the policy's `warm-up` order first. Dispose an explorer at run close only when its latest message declared `warming: true`; otherwise dispose nothing.
 
 ## Tool-call ceiling
 

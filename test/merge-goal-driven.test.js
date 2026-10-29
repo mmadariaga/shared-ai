@@ -234,7 +234,7 @@ test('the worker contract: one standalone worker, steps by pointer, writes only 
   assert.match(worker, /Run only read-only git commands \(`status`, `rev-parse`, `branch`, `diff`, `show`, `log`, `ls-files`, `merge-base`, `cat-file`\)/);
   assert.match(worker, /never rename a file/);
   assert.match(worker, /Dispatch no subagent/);
-  assert.match(worker, /return only that path as your final message/);
+  assert.match(worker, /return that path as your final message, with the `warming: true\|false` line/);
   assert.doesNotMatch(worker, /sai-state|merge-run@1|emit /, 'a worker card names no machine and no store command');
   for (const step of STEPS) {
     assert.ok(exists(`sai/commands/merge/steps/${step}.md`), step);

@@ -222,7 +222,7 @@ test('the worker cards own their write surfaces and never ask the user or run gi
   const common = read('sai/commands/plan/worker-common.md');
   assert.match(common, /event: ready/);
   assert.match(common, /status: done \| needs_input \| blocked/);
-  assert.match(common, /return only that path as your final message/);
+  assert.match(common, /return that path as your final message, with the `warming: true\|false` line/);
   assert.match(common, /Run no git command that changes the repository, and create no commit/);
   assert.match(common, /ask nothing of the user, because nobody is there to answer/);
 

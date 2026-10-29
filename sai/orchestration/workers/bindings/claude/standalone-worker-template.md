@@ -33,9 +33,11 @@ Fetch @sai/policies/cache-warming.md
 
 The worker may keep its prompt cache warm between messages. Resolve its
 timings and add the warming line to every task message and continuation, as the
-policy says. The coordinator disposes the worker at run close, at a segment
+policy says. Every real message from the worker declares `warming: true|false`, beside the report path when it returns only a path (`cache-warming.md` § Warming declaration); the coordinator keeps the latest value for the handle.
+The coordinator disposes the worker at run close, at a segment
 boundary, and when it replaces the worker, and not while a `needs_input`
-question is pending:
+question is pending, and only when the worker's latest message declared
+`warming: true`; with any other value it disposes nothing. The dispose call is:
 
 ```
 TaskStop(task_id: "<captured agent ID>")
