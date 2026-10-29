@@ -23,11 +23,11 @@ For the full Direct Build - Unattended route in Claude Code and opencode, the co
 
 ### Requirement: Workers preserve complete reports without inline copying
 
-Each full-route worker SHALL compose its ordinary closed report, including role-specific fields, and save the complete JSON or YAML through `transfer.js put` in the authorized report directory under a unique role-and-stretch filename. It SHALL return only the helper's `{path, sha256}` reference. Each completion, input request, failure, or cancellation SHALL use a new report file and retain previous reports. Backfill draft references SHALL stay inside the report and name their separate draft directory. A report-creation failure SHALL return transport-error evidence, not a substitute accepted lifecycle report.
+Each full-route worker SHALL compose its ordinary closed report, including role-specific fields, and save the complete JSON or YAML through `transfer.js put` in the authorized report directory under a unique role-and-stretch filename. It SHALL return only the helper's `{path, sha256}` reference plus the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it, never inside the saved file. Each completion, input request, failure, or cancellation SHALL use a new report file and retain previous reports. Backfill draft references SHALL stay inside the report and name their separate draft directory. A report-creation failure SHALL return transport-error evidence, not a substitute accepted lifecycle report.
 
 #### Scenario: A complete report travels by reference
 - **WHEN** a full-route worker completes a bounded stretch or requests input
-- **THEN** it saves its unchanged complete report in a new private file and returns only its path and hash, without inserting report contents into a coordinator-authored shell command
+- **THEN** it saves its unchanged complete report in a new private file and returns only its path and hash with the warming line beside them, without inserting report contents into a coordinator-authored shell command
 
 #### Scenario: Backfill reports contain separate draft references
 - **WHEN** a backfill prepare report carries draft and scenario-exception references

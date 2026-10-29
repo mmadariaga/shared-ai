@@ -21,12 +21,12 @@ The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the
 
 ### Requirement: Segment workers are standalone and report through a file
 
-Each segment SHALL create its worker once, with the ready handshake: the creation dispatch carries only the ready prompt, the worker returns `event: ready`, and the task arrives in the next message to the same worker. The worker SHALL be continued with `SendMessage` on Claude Code and with `task` and the captured `task_id` on opencode. The spec worker SHALL be `sai-1-spec-proposal-worker` and the design worker SHALL be `sai-2-design-worker`, with bindings rendered from the standalone binding template. The worker SHALL write its report to `reports/{segment}-{k}.yaml` in the run directory and return only that path. The worker SHALL run no git command that changes the repository.
+Each segment SHALL create its worker once, with the ready handshake: the creation dispatch carries only the ready prompt, the worker returns `event: ready`, and the task arrives in the next message to the same worker. The worker SHALL be continued with `SendMessage` on Claude Code and with `task` and the captured `task_id` on opencode. The spec worker SHALL be `sai-1-spec-proposal-worker` and the design worker SHALL be `sai-2-design-worker`, with bindings rendered from the standalone binding template. The worker SHALL write its report to `reports/{segment}-{k}.yaml` in the run directory and return that path, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and the coordinator SHALL keep that `warming` value per `cache-warming.md`. The worker SHALL run no git command that changes the repository.
 
 #### Scenario: the worker returns only its report path
 
 - **WHEN** a segment worker completes a step
-- **THEN** it writes the report file the message names and returns only that path, and the coordinator records the path and reads the file
+- **THEN** it writes the report file the message names and returns that path with no report content, plus its warming line when one reached it, and the coordinator records the path and reads the file
 
 ### Requirement: The coordinator answers worker questions as assumptions
 

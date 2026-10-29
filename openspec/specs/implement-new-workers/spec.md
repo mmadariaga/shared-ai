@@ -25,12 +25,12 @@ Each worker role SHALL have its own linear step machine, `red-steps@1` and `gree
 
 ### Requirement: Worker report shape
 
-Each worker SHALL write a report with `status` (`done` or `blocked`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes` to the report path the brief names, `reports/step-{n}-{role}-{k}.yaml` in the run directory the brief names, which lies outside the repository under the SAI temp root, creating its directory when needed, and SHALL return only that path, with no raw output, file contents, or logs. The report file SHALL be the worker's only write in the run directory and SHALL NOT be listed in `changed_files`. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The coordinator SHALL emit `record` for the report path and then read the file.
+Each worker SHALL write a report with `status` (`done` or `blocked`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes` to the report path the brief names, `reports/step-{n}-{role}-{k}.yaml` in the run directory the brief names, which lies outside the repository under the SAI temp root, creating its directory when needed, and SHALL return that path as its final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and with no raw output, file contents, or logs. The report file SHALL be the worker's only write in the run directory and SHALL NOT be listed in `changed_files`. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The coordinator SHALL emit `record` for the report path, keep the worker's `warming` value per `cache-warming.md`, and then read the file.
 
 #### Scenario: Blocked report
 
 - **WHEN** a worker cannot complete its step within its allowed files
-- **THEN** it writes a report with `status: blocked` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix, and returns only the report path.
+- **THEN** it writes a report with `status: blocked` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix, and returns the report path with no report content.
 
 ### Requirement: RED and GREEN write surfaces
 

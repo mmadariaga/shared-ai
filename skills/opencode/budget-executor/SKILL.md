@@ -33,7 +33,7 @@ The model for `budget-executor` subagents is controlled by the `model` frontmatt
 
 Fetch @sai/policies/cache-warming.md
 
-Add the policy's warming line to the task message when the policy says so, and dispose the helper as soon as you have its result, unless the card you follow says you reuse it.
+The executor never arms: its report declares `warming: false`, so it is never sent a warming line or a `warm-up`, and there is nothing to dispose.
 
 ## Cost model
 

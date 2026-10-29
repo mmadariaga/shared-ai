@@ -7,11 +7,11 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Single cache-warming policy
 
-`sai/policies/cache-warming.md` SHALL be the single source for arming, waking, the `max` window, resolving timings, and disposing. Worker binding templates, budget helper skills on both harnesses, and the coordinator cards that dispatch workers SHALL fetch it rather than restate it. The user-invoked `/sai-cache-warmer` SHALL keep its own `prepare` and `wait` behavior.
+`sai/policies/cache-warming.md` SHALL be the single source for arming, waking, the `max` window, resolving timings, the `warming: true|false` declaration, the `warm-up` order, and disposing, including the rule that a dispatcher disposes only after a `warming: true` declaration. Worker binding templates, budget helper skills on both harnesses, helper output contracts, and the coordinator cards that dispatch workers SHALL fetch or point to it rather than restate it. The user-invoked `/sai-cache-warmer` SHALL keep its own `prepare` and `wait` behavior.
 
 #### Scenario: Binding template fetches the policy
 - **WHEN** a Claude Code or opencode standalone worker binding template is rendered
-- **THEN** it carries a `Warm and dispose` section that fetches `@sai/policies/cache-warming.md`
+- **THEN** it carries a `Warm and dispose` section that fetches `@sai/policies/cache-warming.md` and points to its `Warming declaration` section
 
 #### Scenario: User-invoked warmer is unchanged
 - **WHEN** a user runs `/sai-cache-warmer`
@@ -19,7 +19,7 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Dispatcher sends resolved timings
 
-At every dispatch and every continuation of a subagent, the dispatcher SHALL resolve the subagent's timings with the `subagent` role from the provider and model of its installed agent `model` frontmatter, and, when the result is not `off`, SHALL end the task message with the line `Warming: Fetch @sai/policies/cache-warming.md and follow it as a subagent with interval {interval} and max {max}.` It SHALL send no such line when the result is `off`, in the ready-only dispatch of the two-phase handshake, or when the dispatcher cannot dispose (a worker that dispatches its own helpers). A non-zero resolver exit or unreadable output SHALL count as `off`.
+At every dispatch and every continuation of a worker, the dispatcher SHALL resolve the worker's timings with the `subagent` role from the provider and model of its installed agent `model` frontmatter, and, when the result is not `off`, SHALL end the task message with the line `Warming: Fetch @sai/policies/cache-warming.md and follow it as a subagent with interval {interval} and max {max}.` It SHALL send no such line when the result is `off`, in the ready-only dispatch of the two-phase handshake, when the dispatcher cannot dispose (a worker that dispatches its own helpers), or in a helper's task message or continuation: the only order that makes a helper arm SHALL be `warm-up`, which carries that line. A non-zero resolver exit or unreadable output SHALL count as `off`.
 
 #### Scenario: Warming resolved for a worker continuation
 - **WHEN** a coordinator continues a worker whose resolved `subagent` timings are interval 4 and max 20
@@ -29,13 +29,17 @@ At every dispatch and every continuation of a subagent, the dispatcher SHALL res
 - **WHEN** a dispatcher sends the ready-only first phase of a two-phase dispatch
 - **THEN** the message carries no warming line
 
+#### Scenario: Helper task carries no warming line
+- **WHEN** a coordinator with active warming sends a task to a budget explorer, executor, or task subagent
+- **THEN** the task message carries no warming line
+
 ### Requirement: Arm after each response
 
-An agent that holds timings (a subagent whose latest real message carries the warming line, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm` with `{"interval", "max"}` on stdin, through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. It SHALL arm after every response except its final response: a question (`needs_input`) and an intermediate step report SHALL keep arming, and after a final response (a coordinator's closing report, or a worker's terminal result `completed`, `failed`, or `cancelled`) it SHALL arm nothing, so a finished session never wakes again. When arming fails, the agent SHALL stop warming without retrying and its task outcome and report SHALL NOT change. The same rule SHALL apply on Claude Code and opencode.
+An agent that holds timings (a subagent whose latest real message carries the warming line, either a worker message or a `warm-up`, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm` with `{"interval", "max"}` on stdin, through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. It SHALL arm after every response except its final response: a question (`needs_input`) and an intermediate step report SHALL keep arming, and after a final response (a coordinator's closing report, or a worker's terminal result `completed`, `failed`, or `cancelled`) it SHALL arm nothing, so a finished session never wakes again. A subagent SHALL report the outcome in the warming field of its message. When arming fails, the agent SHALL stop warming without retrying, a subagent SHALL declare `warming: false` in that same message, and its task outcome and report SHALL NOT otherwise change. The same rule SHALL apply on Claude Code and opencode.
 
 #### Scenario: Worker arms after its report
 - **WHEN** a worker holding timings returns an intermediate step report or a `needs_input` question
-- **THEN** it launches one background `warm` wait and ends the turn with the report unchanged
+- **THEN** it launches one background `warm` wait and ends the turn with the report unchanged except for its `warming: true` declaration
 
 #### Scenario: No arm after a final response
 - **WHEN** a worker holding timings returns a terminal result, or a coordinator holding timings prints its closing report
@@ -43,7 +47,7 @@ An agent that holds timings (a subagent whose latest real message carries the wa
 
 #### Scenario: Arming fails
 - **WHEN** the background wait cannot be launched because of a missing script or a permission refusal
-- **THEN** the agent stops warming without retrying and its report is unchanged
+- **THEN** the agent stops warming without retrying, declares `warming: false` in that message, and its report is otherwise unchanged
 
 ### Requirement: Wake performs no work
 
@@ -111,8 +115,8 @@ On every wake, `wait.js` SHALL read the cutoff mark `warming-cutoff.json` under 
 
 ### Requirement: Wake acknowledgement is not a result
 
-A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surrounding whitespace, as the reply of a wake: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
+A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surrounding whitespace, as the reply of a wake: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. The `ok` SHALL NOT be a real message: it carries no warming field and leaves the latest declared value unchanged. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
 
 #### Scenario: Worker replies ok on a wake
 - **WHEN** a coordinator waiting for a worker's result receives the message `ok`
-- **THEN** it records no result and no attempt and keeps waiting for the real result
+- **THEN** it records no result and no attempt, keeps the worker's latest warming declaration, and keeps waiting for the real result

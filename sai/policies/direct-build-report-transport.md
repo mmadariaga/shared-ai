@@ -18,7 +18,8 @@ YAML unchanged with `transfer.js put --dir <report-dir> --path
 <unique-role-and-stretch-name>.json` (report on standard input), resolving the helper per `@sai/policies/tool-resolution.md`. Each
 response, including `needs_input` and failures, uses a new file; previous
 reports remain available. Return only `{path, sha256}`, exactly as printed by
-`put`. This reference replaces the inline report, not its lifecycle shape.
+`put`, plus the `warming: true|false` line of `@sai/policies/cache-warming.md`
+§ Warming declaration beside it, never inside the saved file. This reference replaces the inline report, not its lifecycle shape.
 Draft references remain inside backfill's report and keep their own directory.
 
 If report creation fails, return the transport error as evidence, not a
