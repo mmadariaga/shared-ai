@@ -149,3 +149,19 @@ The `explore-command` capability profile in `sai/install-manifest.json` SHALL gr
 #### Scenario: Other profiles keep their grants
 - **WHEN** profiles that replace an inherited shell list are resolved
 - **THEN** their effective grants are unchanged by the explore grant
+
+### Requirement: Explore command may stop its own background task
+
+The `explore-command` capability profile in `sai/install-manifest.json` SHALL set `stopTask: true`, and `bin/capabilities.js` SHALL accept `stopTask` as a boolean profile flag. On Claude Code the flag SHALL project the native `TaskStop` tool into the command's tools and allowed tools; on opencode, which ends a task by removing its shell through the session API with no permission action, the flag SHALL add no rule. Profiles that do not set the flag, including `coordinator`, SHALL NOT receive `TaskStop`.
+
+#### Scenario: Claude Code explore receives TaskStop
+- **WHEN** capability requirements are generated for `explore-command` on Claude Code
+- **THEN** its native tools and allowed tools include `TaskStop`
+
+#### Scenario: opencode explore gains no rule
+- **WHEN** capability requirements are generated for `explore-command` on opencode
+- **THEN** no `TaskStop` native action is added
+
+#### Scenario: Coordinator profile is unchanged
+- **WHEN** the `coordinator` profile is translated for Claude Code
+- **THEN** its native tools do not include `TaskStop`

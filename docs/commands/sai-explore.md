@@ -130,6 +130,33 @@ still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
 it never pushes. For slices, the selector repeats per slice.
 
+When a `Plan - Unattended` slice closes, or a sliced `Manual` hand-off is printed,
+and at least one other slice is still pending, you go to another chat and come back
+here with `next-slice`. By then this chat's prompt cache has usually expired, so the
+next slice would resume cold. `/sai-explore` keeps its own cache warm until you
+return with `next-slice` or a fixed deadline passes:
+
+- With a [`warming` setting](../project-settings.md#cache-warming) for the `agent`
+  role, it applies that interval and uses `max` as the duration, and asks nothing.
+  A setting that is off (`false` or `"enabled": false`) means no warming and no question.
+- Otherwise it prints a cache-lifetime notice (Claude Code: 1 hour with a Claude
+  subscription, 5 minutes with pay-per-token; opencode: it depends on the provider,
+  and [`/sai-context-cache-ttl-benchmark`](sai-context-cache-ttl-benchmark.md)
+  measures it) and asks one picker with two questions. The interval offers
+  `30 min (Recommended)`, `4 min`, and `No`; the duration offers `4h (Recommended)`,
+  `2h`, and `1h`; both accept free text. `No`, or a dismissed picker, means no
+  warming; an unanswered duration is `4h`. An invalid free text is asked once more
+  and then ignored with a one-line note. Each wake costs two short requests, and an
+  interval longer than the cache lifetime saves nothing.
+- Your first answer applies to every later hand-off in the same invocation. It lives
+  in the conversation only: nothing is written to a settings file or the repository.
+- The wait is armed once, at the end of the hand-off. The duration is counted from
+  that moment and your other messages do not extend it. `next-slice`, or a new
+  `/sai-explore` in the same chat, stops it; at the deadline it ends by itself.
+- The last slice, a change without slices, and a stopped, blocked, or failed Plan
+  neither ask nor warm. Direct Build runs in this chat and is not affected. If the
+  wait cannot be armed, one line says so and the hand-off continues unchanged.
+
 Before writing retroactive specs, Direct Build applies the same
 [complete-draft OpenSpec validation as standalone backfill](sai-backfill.md#in-detail),
 in a private temporary project against current specifications. Changed inputs
