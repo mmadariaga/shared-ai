@@ -68,6 +68,8 @@ The `warming` setting lets SAI agents keep their prompt cache warm between conti
 - Timings are resolved again for every arm, so a change in either settings file, a local override included, applies from the next arm without restarting any agent. The local file replaces the whole `warming` value, as it replaces any key.
 - An invalid `warming` value is dropped with a warning, and nothing warms.
 
+`/sai-explore` reads `warming` for the `agent` role at its hand-off closes: when a `Plan - Unattended` slice closes, or a sliced `Manual` hand-off is printed, with another slice still pending, it keeps its own cache warm until you return with `next-slice`. An entry for the `agent` role supplies the interval, and `max` is the fixed duration counted from the hand-off, with no question; an off entry means no warming and no question. With no entry, `/sai-explore` asks for an interval and a duration instead, keeps the answer for the invocation only, and writes nothing to this file. See the [`/sai-explore` page](commands/sai-explore.md).
+
 Print the effective values for one agent:
 
 ```sh
