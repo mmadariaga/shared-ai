@@ -27,7 +27,7 @@ Turn the crystallized block of the first pending slice into implemented, reviewe
 
 The workers are `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`. Each runs one role for the whole slice. You read every result before acting on it; a result in another shape, or a report that does not validate, is an obstacle. The route identity is `direct-build-unattended`.
 
-Following `cache-warming.md`, resolve each worker's timings at every message to it and end the message with the warming line the policy defines. Dispose the implementer when Step 2b ends and the backfill worker when Step 6 completes, a worker whenever a new worker replaces it, and the archive worker and every worker still armed at Close. An escalation question that waits for the user keeps its worker armed until the answer. An executor is disposed as soon as its result is read.
+Following `cache-warming.md`, resolve each worker's timings at every message to it and end the message with the warming line the policy defines. Under the policy's Dispose rule, dispose the implementer when Step 2b ends and the backfill worker when Step 6 completes, a worker whenever a new worker replaces it, and the archive worker and every worker still armed at Close. An escalation question that waits for the user keeps its worker armed until the answer. An executor never arms and is not disposed.
 
 The `--no-specs` POC profile is dispatched by the POC lane, never by this card's route: it runs only Step 1 and Step 2 below, never the suite gate, and spends no attempt, because a POC failure is the experiment's observation (`pipeline-direct-build.md`).
 

@@ -41,4 +41,4 @@ Read more of a file, a governing rule, or a related change when a region's inten
 
 ## Reports
 
-Write the report to the path in the brief and return only that path as your final message. Never put file contents, raw output, or logs in the final message.
+Write the report to the path in the brief return that path as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached you. Never put file contents, raw output, or logs in the final message.

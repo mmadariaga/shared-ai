@@ -282,7 +282,7 @@ test('the coordinator carries the resilience contract: attempt budget, escalatio
 
 test('workers return the path of a report file and the store event keeps free text out', () => {
   const common = read('sai/commands/implement/worker-common.md');
-  assert.match(common, /return only that path/);
+  assert.match(common, /return that path as your final message/);
   assert.match(common, /hand-over summary/);
   assert.doesNotMatch(common, /\.tmp\//);
   assert.match(common, /run directory the brief names, outside the repository/);
