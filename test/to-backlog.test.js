@@ -13,6 +13,7 @@ const github = require('../sai/tools/to-backlog-github');
 const registry = { providers: require('../skills/universal/to-backlog/providers/registry.json').providers.filter(entry => entry.id === 'github') };
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
+const { isolatedProject } = require('./helpers/isolated-project');
 const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
 
 const root = path.resolve(__dirname, '..');
@@ -136,7 +137,7 @@ test('provider-owned resolution receives raw inputs and read-only IO without a h
   assert.throws(() => resolve({ explicit: { provider: 'github', repository: 'a/b' } }, { providers: [{ ...registry.providers[0], instructions: '../escape.md' }] }), /Invalid provider instruction reference/);
 });
 
-test('delegated clarification and unsupported results pass through without publication', () => {
+test('delegated clarification and unsupported results pass through without publication', t => {
   const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-github.js' };
   const extended = { providers: [entry] };
   const directory = temp();
@@ -148,8 +149,8 @@ test('delegated clarification and unsupported results pass through without publi
   ]) {
     const expected = { ...outcome, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
     assert.deepEqual(resolve({ explicit: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => outcome, publish() { assert.fail('Must not publish'); } }) }), expected);
-    const script = `const adapter=require('./sai/tools/to-backlog-github'); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; process.exitCode=require('./sai/tools/to-backlog').main(['resolve',process.argv[1]]);`;
-    const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: root, input: JSON.stringify({ explicit: { provider: 'example' } }), encoding: 'utf8' });
+    const script = `const adapter=require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog-github'))}); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; process.exitCode=require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog'))}).main(['resolve',process.argv[1]]);`;
+    const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: isolatedProject(t), input: JSON.stringify({ explicit: { provider: 'example' } }), encoding: 'utf8' });
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), expected);
   }

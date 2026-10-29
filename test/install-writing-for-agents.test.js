@@ -15,6 +15,8 @@ const {
   offerWritingForAgentsInstall,
 } = require('../bin/install-flow.js');
 
+const { linkDirectory } = require('./helpers/links');
+
 const REPO = path.resolve(__dirname, '..');
 const CLAUDE = 'Claude Code';
 const OPENCODE = 'Opencode';
@@ -88,7 +90,7 @@ test('E1: a symlinked skill directory counts as present, a dangling link as abse
     const skills = path.join(roots.claudeBase, 'skills');
     fs.mkdirSync(skills, { recursive: true });
     const link = path.join(skills, 'writing-for-agents');
-    fs.symlinkSync(target, link, 'dir');
+    linkDirectory(target, link);
     assert.deepEqual(probeWritingForAgents([CLAUDE], probeOptions(roots)), []);
 
     fs.rmSync(target, { recursive: true, force: true });
