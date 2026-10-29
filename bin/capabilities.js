@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { harnessRoot, SAI_DIR } = require('../sai/tools/temp-root');
-const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message'];
+const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message', 'stopTask'];
 const LISTS = ['shell', 'skills', 'delegate'];
 const AGENTS = {
   explorer: { claude: 'budget-explorer', opencode: 'budget-explorer' },
@@ -102,6 +102,9 @@ function translate(registry, name, harness) {
     for (const target of profile.delegate) grant('subagent', targetName(target, harness));
   }
   if (profile.message) tools.push('SendMessage');
+  // Stopping the session's own background task: Claude Code names the `TaskStop` tool. opencode ends a task by removing
+  // its shell through the session API, which has no permission action, so the grant adds no opencode rule.
+  if (profile.stopTask) tools.push('TaskStop');
   // V2 has no built-in todo action; its panel adapter owns absence handling.
   if (profile.panel) tools.push('TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList');
   if (profile.read || profile.shell?.length) {

@@ -76,6 +76,16 @@ A dispose after a `true` declaration can find nothing left to stop because the `
 
 **Other helpers.** An executor never arms and needs no dispose. A task subagent is disposed after you have its result only when its latest declaration is `true`, which only a `warm-up` you sent can make so.
 
+## Hand-off wait
+
+A command that sends the user to another chat and waits for them to return (the `/sai-explore` hand-off close, `sai/commands/explore/steps/handoff-warming.md`) arms a hand-off wait: the same wait as above, with a fixed deadline and no re-arm on real messages. The deadline is the `max` minutes after the arm that opened the wait; the arm sits at the end of the hand-off close, so the deadline is counted from that close.
+
+- **Timings.** They come from the `warming` setting for the `agent` role when it applies, and otherwise from the user's answers to the command's question. An answer is the user's opt-in, so the wait arms although the setting has no entry.
+- **Arm once.** Arm only at the end of the hand-off close, with the chain as above. Do not arm again after a real message and do not restart the window: a real message neither re-arms the wait nor moves the deadline, whatever the Window and Arm rules say about a real message. Only a wake re-arms.
+- **Wake.** Re-arm with the returned `state` unchanged and reply `ok`. Each re-arm launches a new background task, so replace the task id the command holds for the wait with the new task's id (the chain stays the same); the stop must end the live task, not the one that already ended. When the interval came from the user's answers, add no `interval` and resolve no setting: a wake that resolved the `agent` timings would find `off` and end the wait at its first wake. When the timings came from the setting, the wake rule above applies as written.
+- **End.** At the deadline the wait returns `finished`: reply `ok` and arm nothing, and no wake follows. The command stops the wait earlier through "Stop your own wait" when the user returns with the event it waits for, or when a new invocation of the command starts.
+- **State.** The background task id, the chain, and the answers live in the conversation only, never in the `sai-state` store or a repository file.
+
 ## Stop your own wait
 
-To stop the wait that your own session armed (the benchmark's measurement needs this), end the background task it launched: Claude Code `TaskStop` with that task's ID, opencode the shell removal of that shell. Then dispose every agent whose latest declaration is `true`, as above.
+To stop the wait that your own session armed (the benchmark's measurement and the hand-off wait need this), end the background task it launched: Claude Code `TaskStop` with that task's ID, opencode the shell removal of that shell. Then dispose every agent whose latest declaration is `true`, as above. A stop that finds the task already ended is harmless and spends no attempt.

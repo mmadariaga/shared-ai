@@ -339,3 +339,38 @@ test('worker bindings dispose only after a warming: true declaration, on both ha
     assert.match(binding, /only when the worker's latest message declared\s+`warming: true`; with any other value it disposes nothing/, harness);
   }
 });
+
+test('explore hand-off warming: the step file, its two loaders, and the stops are single-sourced', () => {
+  const root = path.resolve(__dirname, '..');
+  const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+  const step = read('sai/commands/explore/steps/handoff-warming.md');
+  assert.match(step, /--role agent/);
+  assert.match(step, /`30 min \(Recommended\)`, `4 min`, `No`/);
+  assert.match(step, /`4h \(Recommended\)`, `2h`, `1h`/);
+  assert.match(step, /1 hour with a Claude subscription and 5 minutes with pay-per-token/);
+  assert.match(step, /\/sai-context-cache-ttl-benchmark/);
+  assert.match(step, /§ Stop your own wait/);
+  assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*only a wake re-arms/i);
+  assert.match(read('sai/policies/cache-warming.md'), /add no `interval` and resolve no setting/);
+  assert.match(read('sai/policies/cache-warming.md'), /Each re-arm launches a new background task, so replace the task id[\s\S]{0,120}chain stays the same/);
+  assert.match(step, /Every wake re-arm launches a new background task: replace the task id in `handoff_wait`/);
+  assert.match(step, /updates the task id in `handoff_wait`/);
+  assert.match(step, /task id currently held in `handoff_wait`/);
+  for (const loader of ['sai/commands/explore/steps/pipeline-plan-unattended.md', 'sai/commands/explore/steps/route-selector.md']) {
+    assert.match(read(loader), /Fetch @sai\/commands\/explore\/steps\/handoff-warming\.md/, loader);
+  }
+  assert.match(read('sai/commands/explore/steps/slice.md'), /stop the hand-off wait first/);
+  assert.match(read('sai/commands/explore/body.md'), /hand-off wait of an earlier invocation/);
+});
+
+test('the explore command may stop its own background task: TaskStop on Claude Code, no new opencode rule', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const { translate } = require('../bin/capabilities');
+  assert.equal(manifest.capabilities.profiles['explore-command'].stopTask, true);
+  const claude = translate(manifest.capabilities, 'explore-command', 'claude');
+  assert.ok(claude.nativeTools.includes('TaskStop'));
+  assert.ok(claude.allowedTools.split(', ').includes('TaskStop'));
+  const opencode = translate(manifest.capabilities, 'explore-command', 'opencode');
+  assert.ok(!opencode.nativeActions.includes('TaskStop'));
+  assert.ok(!translate(manifest.capabilities, 'coordinator', 'claude').nativeTools.includes('TaskStop'));
+});
