@@ -9,6 +9,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const tool = require('../sai/tools/to-pr');
 const { resolveTempRoot } = require('../sai/tools/temp-root');
 const registry = require('../skills/universal/to-pr/providers/registry.json');
+const { linkDirectory, linkFile } = require('./helpers/links');
 
 function fixture(provider, existing = false) {
   const host = provider === 'github' ? 'github.com' : 'gitlab.example.com';
@@ -463,37 +464,45 @@ test('missing required OpenCode temporary root gives a concrete blocker without 
   assert.deepEqual(reads, ['/tmp/opencode']);
 });
 
-for (const provider of ['github', 'gitlab']) test(`${provider} rejects repository, symlink and unsafe receipts before publication or recovery`, t => {
+for (const provider of ['github', 'gitlab']) test(`${provider} rejects repository, symlink and unsafe receipts before publication or recovery`, async t => {
   const { request, io, state } = fixture(provider);
   const ready = tool.query(request, io);
   const directory = temporaryDirectory(t, 'to-pr-receipt-boundary-');
   const valid = path.join(directory, 'valid.json');
   fs.writeFileSync(valid, '{}', { mode: 0o600 });
-  const linkedFile = path.join(directory, 'linked-file.json');
-  fs.symlinkSync(valid, linkedFile);
-  const alias = path.join(directory, 'alias');
   const privateDirectory = path.join(directory, 'private');
   fs.mkdirSync(privateDirectory, { mode: 0o700 });
-  fs.symlinkSync(privateDirectory, alias, 'dir');
-  const paths = [
-    [path.resolve('to-pr-rejected-receipt.json'), /outside the repository/],
-    [linkedFile, /regular, unlinked private file/],
-    [path.join(alias, 'receipt.json'), /symbolic links/],
-  ];
-  if (process.platform !== 'win32') {
-    const unsafeDirectory = path.join(directory, 'unsafe');
-    fs.mkdirSync(unsafeDirectory);
-    fs.chmodSync(unsafeDirectory, 0o755);
-    const unsafeFile = path.join(directory, 'unsafe-file.json');
-    fs.writeFileSync(unsafeFile, '{}');
-    fs.chmodSync(unsafeFile, 0o644);
-    paths.push([path.join(unsafeDirectory, 'receipt.json'), /private and owned/], [unsafeFile, /private and owned/]);
-  }
-  for (const [file, error] of paths) {
+  const rejects = (name, error, prepare) => t.test(name, st => {
+    const file = prepare(st);
+    if (!file) return;
     assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), error);
     const calls = state.calls.length;
     assert.throws(() => tool.recover({ receipt: file }, io), error);
     assert.equal(state.calls.length, calls, 'Recovery must validate the file before trusting content or contacting the provider');
+  });
+  await rejects('a receipt outside the repository', /outside the repository/, () => path.resolve('to-pr-rejected-receipt.json'));
+  await rejects('a linked receipt file', /regular, unlinked private file/, st => {
+    const linkedFile = path.join(directory, 'linked-file.json');
+    return linkFile(st, valid, linkedFile) && linkedFile;
+  });
+  await rejects('a receipt under a linked directory', /symbolic links/, () => {
+    const alias = path.join(directory, 'alias');
+    linkDirectory(privateDirectory, alias);
+    return path.join(alias, 'receipt.json');
+  });
+  if (process.platform !== 'win32') {
+    await rejects('a receipt in an unsafe directory', /private and owned/, () => {
+      const unsafeDirectory = path.join(directory, 'unsafe');
+      fs.mkdirSync(unsafeDirectory);
+      fs.chmodSync(unsafeDirectory, 0o755);
+      return path.join(unsafeDirectory, 'receipt.json');
+    });
+    await rejects('an unsafe receipt file', /private and owned/, () => {
+      const unsafeFile = path.join(directory, 'unsafe-file.json');
+      fs.writeFileSync(unsafeFile, '{}');
+      fs.chmodSync(unsafeFile, 0o644);
+      return unsafeFile;
+    });
   }
   assert.equal(state.mutations.length, 0);
   assert.equal(fs.existsSync(path.resolve('to-pr-rejected-receipt.json')), false);
