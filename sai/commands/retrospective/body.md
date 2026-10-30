@@ -40,17 +40,20 @@
 
   ### Step 1 — Read the arguments
 
-  The syntax is `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--limit <N>]`.
+  The syntax is `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>]`.
 
   - `<target>` is a Claude Code session ID, an opencode `ses_` session ID, or a
     `sai-` / `/sai-` command name.
   - `--paths` lists project paths, separated by commas. Commas inside quotes do
     not separate. It defaults to the current project.
+  - `--with-worktrees` measures each project together with the worktrees that
+    `git worktree list` reports for it. A sibling directory that is its own
+    repository, and a worktree already removed, stay out.
   - `--limit` caps command executions, in total across all supplied projects.
     It defaults to 5 and applies to command targets only.
 
   When `<target>` is absent, ask the user for a session ID or a command name,
-  and wait for the answer. Pass `--paths` and `--limit` to the collector
+  and wait for the answer. Pass `--paths`, `--with-worktrees`, and `--limit` to the collector
   exactly as the user wrote them, with correct shell quoting.
 
   ### Step 2 — Collect the index
@@ -58,7 +61,14 @@
   Resolve the collector per `@sai/policies/tool-resolution.md` § `sai/tools/*.js`
   copies, substituting `retrospective.js`. Run:
 
-  `node <tool-path> index <target> [--paths "<p1>,<p2>"] [--limit <N>]`
+  `node <tool-path> index <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>]`
+
+  Each execution reports its coordinator and each agent with `usage` (input,
+  output, cache read and write, and `cost` where the harness gives it),
+  `tool_calls`, `pipeline_segment` (`spec`, `design`, or `implement`, `null` for any
+  other agent), and `parent_agent_id` (the agent that dispatched it, `null` for the
+  main session). Usage the transcript does not hold reads `unavailable`, never
+  zero: report it as missing.
 
   The JSON result holds the harness and project status, the executions of both
   harnesses merged (newest first, `--limit` applied to the merged list), the unlinked agents, a `notes` list, and an `unread` list of

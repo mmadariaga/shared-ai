@@ -27,7 +27,7 @@ The command SHALL treat every historical transcript record as evidence and SHALL
 
 ### Requirement: Invocation arguments
 
-The command SHALL accept `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--limit <N>]`. `--paths` SHALL split on commas except inside single or double quotes, SHALL resolve each path once, and SHALL default to the current project with a one-line statement of that default. `--limit` SHALL be a positive integer that defaults to 5, caps command executions in total across all supplied projects and both harnesses, and applies to command targets only. When `<target>` is absent, the command SHALL ask the user for a session ID or a command name.
+The command SHALL accept `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>]`. `--paths` SHALL split on commas except inside single or double quotes, SHALL resolve each path once, and SHALL default to the current project with a one-line statement of that default. `--with-worktrees` SHALL measure each project together with the worktrees that `git worktree list` reports for it and SHALL be passed to the collector as written. `--limit` SHALL be a positive integer that defaults to 5, caps command executions in total across all supplied projects and both harnesses, and applies to command targets only. When `<target>` is absent, the command SHALL ask the user for a session ID or a command name.
 
 #### Scenario: Quoted comma inside a path
 - **WHEN** `--paths` is `"/a,b",/c`
@@ -48,6 +48,10 @@ The command SHALL accept `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--l
 #### Scenario: Limit across both harnesses
 - **WHEN** a command target matches executions in Claude Code and in opencode whose total exceeds `--limit`
 - **THEN** the index merges both harnesses into one newest-first list and keeps only the newest `--limit` executions of that merged list
+
+#### Scenario: Worktrees requested
+- **WHEN** the invocation carries `--with-worktrees`
+- **THEN** the command passes it to the collector, which measures each project together with the worktrees `git worktree list` reports for it
 
 ### Requirement: Target classification by form
 
@@ -228,3 +232,51 @@ Every project entry in the index SHALL name its harness. A supplied project with
 #### Scenario: Project readable in one harness only
 - **WHEN** a supplied project has Claude Code transcripts and no opencode session
 - **THEN** the index lists it as `analyzed` for `claude` and `inaccessible` for `opencode`
+
+### Requirement: Per-agent token usage and tool calls
+
+For every execution, on Claude Code and opencode, the collector SHALL report the coordinator and each agent with `usage` (input, output, cache read, cache write, and `cost` only where the harness records one), `tool_calls` (the number of tool-use blocks the agent issued), and `pipeline_segment` (`spec`, `design`, or `implement`, derived from the agent type or, for the coordinator, from the command; `null` for any other agent). Claude Code usage SHALL be read per model request, collapsing transcript lines that share a request, and SHALL separate 5-minute and 1-hour cache writes; opencode usage SHALL be read from the assistant messages' `tokens` and `cost` through the existing read-only database path. Usage the data does not hold (an old transcript, a missing subagent file, an interrupted run) SHALL read `unavailable`, never `0`, and the execution SHALL stay in the index. The existing transcript segment field `segment` SHALL keep its meaning.
+
+#### Scenario: Agent without usage data
+- **WHEN** an agent of an execution has no usage in its transcript or database records
+- **THEN** its `usage` reads `unavailable`, not zero, and the execution stays in the index
+
+#### Scenario: Worker usage on both harnesses
+- **WHEN** an execution's design worker issued model requests and tool calls on Claude Code or on opencode
+- **THEN** the index reports that worker with `pipeline_segment: design`, its summed `usage`, and its `tool_calls`
+
+#### Scenario: Agent outside the three segments
+- **WHEN** a `/sai-build` execution created a review worker
+- **THEN** the review worker keeps its own agent type and its `pipeline_segment` is `null`
+
+### Requirement: Dispatched agents linked to their dispatcher
+
+The collector SHALL report each agent that another agent dispatched as its own entry carrying `parent_agent_id`, taken from `parentAgentId` in `subagents/agent-<id>.meta.json` on Claude Code and from `session_v2.parent_id` on opencode, and `null` when the main session dispatched it. A dispatched agent's figures SHALL NOT be added to the figures of the agent that dispatched it.
+
+#### Scenario: Explorer dispatched by a worker
+- **WHEN** a design worker dispatches a `budget-explorer`
+- **THEN** the explorer is a separate entry whose `parent_agent_id` names the design worker, and its usage is not counted in the worker's usage
+
+### Requirement: Cost report with planning and implementation pairing
+
+The collector SHALL provide a `cost` mode that reads every planning and implementation execution of the supplied projects (`/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-build`, and any other execution whose workers did a spec, design, or implement segment) and totals tokens and tool calls by pipeline segment, role, and agent type. It SHALL pair planning runs with implementation runs by change name, taken from the invocation's arguments when present and otherwise from the single `openspec/changes/<name>/` path the run's workers wrote to. A change with only planning runs or only implementation runs, and a run whose change name cannot be determined, SHALL be reported as `unpaired`; several runs of the same change SHALL stay separate runs. `--format markdown` SHALL print the baseline report, and `--alias "<path>=<alias>"` SHALL make that report show the project only under its alias with numbered changes. The mode SHALL stay read-only over transcripts and the opencode database.
+
+#### Scenario: Planning run without implementation
+- **WHEN** a change has a `/sai-plan` run and no implementation run
+- **THEN** the cost report lists that change as `unpaired` on the planning-only side
+
+#### Scenario: Run without a change name
+- **WHEN** a run's arguments name no change and its workers wrote to no single change directory
+- **THEN** the run is reported as `unpaired` with the reason that its change name is unknown
+
+#### Scenario: Aliased project in the markdown report
+- **WHEN** `cost --format markdown --alias "<path>=Project B"` reads that project
+- **THEN** the report shows it only as `Project B` with numbered changes and no change names or paths of that project
+
+### Requirement: Worktree grouping
+
+With `--with-worktrees`, the `index` and `cost` modes SHALL measure each supplied project together with the worktrees that `git worktree list` reports for it, on Claude Code and opencode. A sibling directory that holds its own repository, and a worktree already removed from disk, SHALL stay out of the project. When git cannot list the worktrees, only the project directory SHALL be measured and a note SHALL say so.
+
+#### Scenario: Sibling repository with a shared prefix
+- **WHEN** a sibling directory `<project>.MobileApps` holds its own repository and is not a worktree of the project
+- **THEN** its sessions are not grouped into the project

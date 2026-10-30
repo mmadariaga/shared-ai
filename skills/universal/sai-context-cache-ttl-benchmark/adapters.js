@@ -21,6 +21,30 @@ function opencodeUsage(row) {
   return { id: row.id, model: row.model, cache_read: t.cache.read, input: t.input, created_ms: row.time.created };
 }
 
+// Token readers for cost measurement. Unlike the two cache readers, they never
+// throw: a request whose usage is absent reads as `unavailable`, never as zero.
+const UNAVAILABLE = 'unavailable';
+const count = value => Number.isFinite(value) ? value : null;
+
+// One transcript line of an assistant response (a request spans several lines
+// that share message.id; the caller keeps the line with the most output).
+function claudeTokens(row) {
+  const t = row?.message?.usage;
+  const input = count(t?.input_tokens), output = count(t?.output_tokens), cacheRead = count(t?.cache_read_input_tokens);
+  if (row?.type !== 'assistant' || input === null || output === null || cacheRead === null) return UNAVAILABLE;
+  const write5m = count(t.cache_creation?.ephemeral_5m_input_tokens), write1h = count(t.cache_creation?.ephemeral_1h_input_tokens);
+  const split = write5m !== null && write1h !== null;
+  return { input, output, cache_read: cacheRead, cache_write_5m: split ? write5m : null, cache_write_1h: split ? write1h : null, cache_write_unsplit: split ? null : count(t.cache_creation_input_tokens) };
+}
+
+// The parsed `data` of one opencode assistant message.
+function opencodeTokens(data) {
+  const t = data?.tokens;
+  const input = count(t?.input), output = count(t?.output), cacheRead = count(t?.cache?.read);
+  if (input === null || output === null || cacheRead === null) return UNAVAILABLE;
+  return { input, output, reasoning: count(t.reasoning), cache_read: cacheRead, cache_write: count(t.cache?.write), cost: count(data.cost) };
+}
+
 const CLAUDE_PROVIDER = 'anthropic';
 // The description given to the background wait command; its completion
 // notification carries it, which is how a wait is told apart from any other
@@ -367,4 +391,4 @@ class OpenCodeAdapter {
   }
 }
 
-module.exports = { OpenCodeAdapter, opencodeUsage, claudeUsage, claudeLimitations, ClaudeTranscripts, ClaudeReplayAdapter, parseTranscript, transcriptRequests, classifyEvents, cacheBucket, claudeProjectsRoot, CLAUDE_PROVIDER, WAIT_LABEL };
+module.exports = { OpenCodeAdapter, opencodeUsage, claudeUsage, claudeTokens, opencodeTokens, UNAVAILABLE, claudeLimitations, ClaudeTranscripts, ClaudeReplayAdapter, parseTranscript, transcriptRequests, classifyEvents, cacheBucket, claudeProjectsRoot, CLAUDE_PROVIDER, WAIT_LABEL };
