@@ -19,7 +19,16 @@
  *       or a `sai-` / `/sai-` command name. `--paths` is a quote-aware,
  *       comma-separated project list (default: the current project); `--limit`
  *       caps command executions in total across projects and harnesses
- *       (default 5).
+ *       (default 5). `--with-worktrees` measures each project together with the
+ *       worktrees that `git worktree list` reports for it.
+ *   cost [--paths "<p1>,<p2>"] [--with-worktrees] [--alias "<path>=<alias>,..."]
+ *        [--format json|markdown] [--cwd <dir>]
+ *       Reads every planning and implementation execution (/sai-1-spec,
+ *       /sai-2-design, /sai-plan, /sai-3-implement, /sai-build) of the projects
+ *       and reports token usage and tool calls per agent and per pipeline
+ *       segment, plus the pairing of planning runs with implementation runs by
+ *       change name. `markdown` prints the versioned baseline report; an
+ *       aliased project shows only its alias and numbered changes there.
  *   excerpt --project <path> --session <uuid|ses_id> [--agent <agentId|ses_id>]
  *           [--from <recordId>] [--count <N>] [--max-chars <N>]
  *       Prints N records (default 10) from the record ID, each text field cut
@@ -38,6 +47,7 @@
  */
 
 const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
@@ -64,6 +74,20 @@ const OPENCODE_MAX_DEPTH = 16;
 const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
 const OPENCODE_SYNTHETIC_READ = /^Called the Read tool with the following input:[\s\S]*?<path>([^<]+)<\/path>\s*<type>file<\/type>/;
 const OPENCODE_SKILL_BASE = /Base directory for this skill: (\S+)/;
+const UNAVAILABLE = 'unavailable';
+// The spec, design, and implement parts of a run, told apart by worker type. Every
+// other agent keeps its own type and is reported outside the three segments.
+const PIPELINE_SEGMENTS = { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design', 'sai-3-red-worker': 'implement', 'sai-3-green-worker': 'implement', 'sai-direct-build-worker': 'implement' };
+const COMMAND_SEGMENTS = { 'sai-1-spec': 'spec', 'sai-2-design': 'design', 'sai-3-implement': 'implement' };
+const PLANNING_COMMANDS = ['sai-1-spec', 'sai-2-design', 'sai-plan'];
+const IMPLEMENTATION_COMMANDS = ['sai-3-implement', 'sai-build'];
+const PIPELINE_COMMANDS = new Set([...PLANNING_COMMANDS, ...IMPLEMENTATION_COMMANDS]);
+const SEGMENT_ORDER = ['spec', 'design', 'implement', 'other'];
+const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
+const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
+const BASELINE_FORMAT = 1;
 
 class ToolError extends Error {
   constructor(code, message) {
@@ -81,8 +105,8 @@ function loadClaudeTranscriptReader() {
   ];
   const found = candidates.find(file => fs.existsSync(file));
   if (!found) throw new ToolError('READER_UNAVAILABLE', `The Claude transcript reader was not found (tried ${candidates.join(', ')})`);
-  const { claudeProjectsRoot, parseTranscript } = require(found);
-  return { claudeProjectsRoot, parseTranscript };
+  const { claudeProjectsRoot, parseTranscript, claudeTokens, opencodeTokens } = require(found);
+  return { claudeProjectsRoot, parseTranscript, claudeTokens, opencodeTokens };
 }
 
 // The SAI workers and commands declared beside the tool.
@@ -100,13 +124,14 @@ function loadRegistry() {
   throw new ToolError('WORKER_REGISTRY_UNAVAILABLE', 'No SAI worker registry was found beside the tool (capability-requirements.json or install-manifest.json)');
 }
 
-function parseOptions(argv, flags) {
+function parseOptions(argv, flags, switches = []) {
   const positional = [], options = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (!arg.startsWith('--')) { positional.push(arg); continue; }
     const eq = arg.indexOf('=');
     const flag = (eq === -1 ? arg : arg.slice(0, eq)).slice(2);
+    if (switches.includes(flag) && eq === -1) { options[flag] = true; continue; }
     if (!flags.includes(flag)) throw new ToolError('USAGE', `Unknown option --${flag}`);
     const value = eq === -1 ? argv[++i] : arg.slice(eq + 1);
     if (value === undefined) throw new ToolError('USAGE', `Option --${flag} needs a value`);
@@ -218,9 +243,78 @@ function loadedInstruction(row) {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Cost measurement: usage, tool calls, pipeline segment, and change name
+// ---------------------------------------------------------------------------
+
+const USAGE_FIELDS = ['input', 'output', 'reasoning', 'cache_read', 'cache_write', 'cache_write_5m', 'cache_write_1h', 'cache_write_unsplit', 'cost'];
+const pipelineSegmentOf = type => PIPELINE_SEGMENTS[type] ?? null;
+
+// One entry per model request, each a token record or `unavailable`. A request
+// that lacks usage never counts as zero: with no usable request the whole usage
+// is `unavailable`, and a partial agent says how many requests it lacks.
+function summarizeUsage(requests) {
+  const usable = requests.filter(request => request !== UNAVAILABLE);
+  if (usable.length === 0) return UNAVAILABLE;
+  const usage = { requests: requests.length };
+  if (usable.length < requests.length) usage.requests_without_usage = requests.length - usable.length;
+  for (const field of USAGE_FIELDS) {
+    const values = usable.map(request => request[field]).filter(value => value !== null && value !== undefined);
+    if (values.length) usage[field] = values.reduce((sum, value) => sum + value, 0);
+  }
+  return usage;
+}
+
+// A request spans several transcript lines sharing message.id; the line with the
+// most output carries its final usage.
+function claudeMetrics(rows, reader) {
+  if (!rows) return { usage: UNAVAILABLE, tool_calls: null };
+  const requests = new Map(), toolIds = new Set();
+  for (const row of rows) {
+    if (row.type !== 'assistant' || !row.message || row.message.model === '<synthetic>' || row.isApiErrorMessage) continue;
+    for (const block of blocks(row)) if (block?.type === 'tool_use' && block.id) toolIds.add(block.id);
+    const key = row.message.id ?? `row:${row.uuid}`, tokens = reader.claudeTokens(row), kept = requests.get(key);
+    if (kept === undefined || (tokens !== UNAVAILABLE && (kept === UNAVAILABLE || tokens.output >= kept.output))) requests.set(key, tokens);
+  }
+  return { usage: summarizeUsage([...requests.values()]), tool_calls: toolIds.size };
+}
+
+function opencodeMetrics(records, reader) {
+  if (!records) return { usage: UNAVAILABLE, tool_calls: null };
+  const assistants = records.filter(record => record.type === 'assistant');
+  return { usage: summarizeUsage(assistants.map(record => reader.opencodeTokens(record.data))), tool_calls: assistants.reduce((sum, record) => sum + opencodeToolItems(record).length, 0) };
+}
+
+// The change a run belongs to: the name its invocation gives (or its Ready to
+// Propose block), otherwise the single `openspec/changes/<name>/` its workers wrote to.
+function changeNameFromArgs(args) {
+  const block = args.match(CHANGE_NAME_IN_BLOCK)?.[1];
+  if (block) return block;
+  const tokens = args.replace(/["'|]/g, ' ').split(/\s+/).filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].startsWith('--')) { if (VALUE_OPTIONS.has(tokens[i].slice(2))) i++; continue; }
+    return CHANGE_NAME.test(tokens[i]) ? tokens[i] : null;
+  }
+  return null;
+}
+
+function writtenChanges(toolName, input, into) {
+  if (!WRITE_TOOLS.has(toolName) || !input || typeof input !== 'object') return;
+  const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
+  for (const match of text.matchAll(/openspec\/changes\/([^/\s"'`]+)\//g)) if (match[1] !== 'archive' && CHANGE_NAME.test(match[1])) into.add(match[1]);
+}
+
+// Only a pipeline command's arguments name a change; any other command (explore takes a topic) is read from what its workers wrote.
+function changeNameOf(command, args, written) {
+  return (PIPELINE_COMMANDS.has(command) ? changeNameFromArgs(args) : null) ?? (written.size === 1 ? [...written][0] : null);
+}
+
 function scanRows(rows, agent) {
-  const toolUses = new Map();
-  for (const row of rows) for (const block of blocks(row)) if (block?.type === 'tool_use') toolUses.set(block.id, { name: block.name, row: row.uuid, timestamp: row.timestamp });
+  const toolUses = new Map(), changes = new Set();
+  for (const row of rows) for (const block of blocks(row)) if (block?.type === 'tool_use') {
+    toolUses.set(block.id, { name: block.name, row: row.uuid, timestamp: row.timestamp });
+    writtenChanges(block.name, block.input, changes);
+  }
   const loaded = [], errors = [];
   let otherReads = 0;
   for (const row of rows) {
@@ -234,7 +328,7 @@ function scanRows(rows, agent) {
       }
     }
   }
-  return { toolUses, loaded, errors, otherReads };
+  return { toolUses, loaded, errors, otherReads, changes };
 }
 
 function readAgents(sessionDir) {
@@ -244,13 +338,17 @@ function readAgents(sessionDir) {
     const id = name.slice('agent-'.length, -'.meta.json'.length);
     let meta = {};
     try { meta = JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')); } catch { /* an unreadable meta file leaves the agent unlinked */ }
-    return { agent_id: id, agent_type: meta.agentType ?? null, description: meta.description ?? null, tool_use_id: meta.toolUseId ?? null, spawn_depth: meta.spawnDepth ?? null, finished: meta.finished ?? null, file: path.join(directory, `agent-${id}.jsonl`) };
+    return { agent_id: id, agent_type: meta.agentType ?? null, description: meta.description ?? null, tool_use_id: meta.toolUseId ?? null, parent_agent_id: meta.parentAgentId ?? null, spawn_depth: meta.spawnDepth ?? null, finished: meta.finished ?? null, file: path.join(directory, `agent-${id}.jsonl`) };
   });
 }
 
+// `parent_agent_id` names the agent that dispatched this one (null: the main
+// session did). `usage` and `tool_calls` are present once the agent is linked to
+// an execution.
 function agentSummary(agent, rows, idOf = row => row.uuid) {
-  const { agent_id, agent_type, description, tool_use_id, spawn_depth, finished } = agent;
-  return { agent_id, agent_type, description, tool_use_id, spawn_depth, finished, records: rows ? rows.length : null, first_record: rows?.length ? idOf(rows[0]) : null, last_record: rows?.length ? idOf(rows.at(-1)) : null };
+  const { agent_id, agent_type, description, tool_use_id, parent_agent_id, spawn_depth, finished } = agent;
+  const measured = agent.metrics ? { usage: agent.metrics.usage, tool_calls: agent.metrics.tool_calls } : {};
+  return { agent_id, agent_type, description, tool_use_id, parent_agent_id: parent_agent_id ?? null, spawn_depth, finished, pipeline_segment: pipelineSegmentOf(agent_type), ...measured, records: rows ? rows.length : null, first_record: rows?.length ? idOf(rows[0]) : null, last_record: rows?.length ? idOf(rows.at(-1)) : null };
 }
 
 function byTimeThenRecord(a, b) {
@@ -270,7 +368,12 @@ function assignSegments(rows, starts) {
   return segmentOf;
 }
 
-function buildSession({ reader, workers, project, sessionDir, text, session }) {
+// A subagent whose transcript is missing or unreadable measures as `unavailable`.
+function readAgentRows(agent, reader) {
+  try { return fs.existsSync(agent.file) ? readRecords(fs.readFileSync(agent.file, 'utf8'), reader) : null; } catch { return null; }
+}
+
+function buildSession({ reader, workers, project, group, sessionDir, text, session }) {
   const rows = readRecords(text, reader);
   // Only a SAI command invocation starts an execution; any other slash command
   // typed during one stays inside it as an ordinary record.
@@ -282,18 +385,23 @@ function buildSession({ reader, workers, project, sessionDir, text, session }) {
   rows.forEach((row, index) => { if (segmentOf[index] >= 0) for (const block of blocks(row)) if (block?.type === 'tool_use') uses.set(block.id, segmentOf[index]); });
 
   const agents = readAgents(sessionDir).map(agent => ({ ...agent, segment: null, rows: null }));
-  const pending = new Set(agents);
+  const pending = new Set(agents), byId = new Map(agents.map(agent => [agent.agent_id, agent]));
   for (let progressed = true; progressed;) {
     progressed = false;
     for (const agent of pending) {
-      if (!uses.has(agent.tool_use_id)) continue;
-      agent.segment = uses.get(agent.tool_use_id);
+      // The dispatching tool call places an agent; so does its dispatcher's own placement.
+      const parent = agent.parent_agent_id ? byId.get(agent.parent_agent_id) : null;
+      const segment = uses.has(agent.tool_use_id) ? uses.get(agent.tool_use_id) : parent && parent.segment !== null ? parent.segment : undefined;
+      if (segment === undefined) continue;
+      agent.segment = segment;
       pending.delete(agent);
       progressed = true;
-      if (workers.has(agent.agent_type) && fs.existsSync(agent.file)) {
+      const principal = workers.has(agent.agent_type);
+      if (principal && fs.existsSync(agent.file)) {
         agent.rows = readRecords(fs.readFileSync(agent.file, 'utf8'), reader);
         for (const row of agent.rows) for (const block of blocks(row)) if (block?.type === 'tool_use') uses.set(block.id, agent.segment);
       }
+      agent.metrics = claudeMetrics(agent.rows ?? (principal ? null : readAgentRows(agent, reader)), reader);
     }
   }
 
@@ -310,12 +418,15 @@ function buildSession({ reader, workers, project, sessionDir, text, session }) {
     executions.push({
       harness: 'claude',
       project,
+      project_group: group,
       session,
       invocation: { record: rows[start].uuid, timestamp: rows[start].timestamp, command: invocation.command, args: invocation.args },
+      change_name: changeNameOf(invocation.command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes]))),
       start_time: rows[start].timestamp,
       end_time: starts[k + 1] === undefined ? null : rows[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && (own.some(agent => agent.finished === false) || !finished),
       records: { count: segmentRows.length, first: segmentRows[0].uuid, last: segmentRows.at(-1).uuid },
+      coordinator: { pipeline_segment: COMMAND_SEGMENTS[invocation.command] ?? null, ...claudeMetrics(segmentRows, reader) },
       principal_workers: principal.map(agent => agentSummary(agent, agent.rows)),
       auxiliary_agents: auxiliary.map(agent => agentSummary(agent, null)),
       loaded_instructions: scans.flatMap(scan => scan.loaded).sort(byTimeThenRecord),
@@ -326,9 +437,9 @@ function buildSession({ reader, workers, project, sessionDir, text, session }) {
   return { executions, unlinked: [...pending].map(agent => agentSummary(agent, null)), before_first_invocation: segmentOf.filter(segment => segment < 0).length };
 }
 
-function indexProject({ reader, workers, projectsRoot, projectPath, target }) {
+function indexProject({ reader, workers, projectsRoot, projectPath, group, target }) {
   const folder = projectFolder(projectsRoot, projectPath);
-  const result = { harness: 'claude', project: projectPath, status: 'analyzed', reason: null, sessions_read: 0, executions: [], unlinked_agents: [], unread: [] };
+  const result = { harness: 'claude', project: projectPath, project_group: group, status: 'analyzed', reason: null, sessions_read: 0, executions: [], unlinked_agents: [], unread: [] };
   let entries;
   try { entries = fs.readdirSync(folder).filter(name => name.endsWith('.jsonl')); } catch (error) {
     return { ...result, status: 'inaccessible', reason: `No readable Claude Code transcript folder for this project (${error.code ?? 'error'})` };
@@ -339,7 +450,7 @@ function indexProject({ reader, workers, projectsRoot, projectPath, target }) {
     try {
       const text = fs.readFileSync(path.join(folder, name), 'utf8');
       if (!text.includes('<command-name>')) continue;
-      const built = buildSession({ reader, workers, project: projectPath, sessionDir: path.join(folder, session), text, session });
+      const built = buildSession({ reader, workers, project: projectPath, group, sessionDir: path.join(folder, session), text, session });
       result.sessions_read++;
       result.executions.push(...built.executions);
       if (built.executions.length && built.before_first_invocation) result.unread.push({ kind: 'records-before-first-invocation', project: projectPath, session, count: built.before_first_invocation, reason: 'these records precede the first SAI invocation of the session' });
@@ -414,6 +525,11 @@ function opencodeRecords(db, sessionId) {
   return db.prepare(`SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type IN (${types}) ORDER BY seq`).all(sessionId).map(opencodeRecord);
 }
 
+// The assistant messages alone, which hold the usage of a session read for its figures only.
+function opencodeAssistants(db, sessionId) {
+  return db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId).map(opencodeRecord);
+}
+
 function opencodeText(record) {
   const { data } = record;
   if (record.type === 'assistant') return (Array.isArray(data.content) ? data.content : []).filter(item => item?.type === 'text').map(item => item.text).join('\n');
@@ -475,9 +591,10 @@ function opencodeLoads(record) {
 }
 
 function scanOpencodeRecords(records, agent) {
-  const loaded = [], errors = [];
+  const loaded = [], errors = [], changes = new Set();
   let otherReads = 0;
   for (const record of records) {
+    for (const item of opencodeToolItems(record)) writtenChanges(item.name, item.state?.input, changes);
     for (const load of opencodeLoads(record)) {
       if (load.source === 'Skill' || INSTRUCTION_PATH.test(load.path)) loaded.push({ path: load.path, source: load.source, record: record.id, timestamp: record.timestamp, agent, text_available: load.text !== null });
       else otherReads++;
@@ -486,7 +603,7 @@ function scanOpencodeRecords(records, agent) {
       if (item.state?.status === 'error') errors.push({ record: record.id, timestamp: record.timestamp, agent, tool_use_id: item.id, tool: item.name ?? null, message: clip(opencodeToolText(item), 160) });
     }
   }
-  return { loaded, errors, otherReads };
+  return { loaded, errors, otherReads, changes };
 }
 
 // The session and its root, following `parent_id` upward.
@@ -509,7 +626,7 @@ function opencodeChildren(db, rootId) {
     SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
 }
 
-function buildOpencodeSession({ db, registry, root }) {
+function buildOpencodeSession({ db, registry, reader, root, member }) {
   const records = opencodeRecords(db, root.id);
   const starts = [];
   records.forEach((record, index) => { if (opencodeInvocation(record)) starts.push(index); });
@@ -524,12 +641,15 @@ function buildOpencodeSession({ db, registry, root }) {
     if (segment === undefined) segment = starts.findLastIndex(start => records[start].time <= child.time_created);
     segmentOfSession.set(child.id, segment);
     const principal = segment >= 0 && registry.workers.has(child.agent);
-    return { agent_id: child.id, agent_type: child.agent, description: child.title, tool_use_id: null, spawn_depth: child.depth, finished: null, segment, rows: principal ? opencodeRecords(db, child.id) : null };
+    const rows = principal ? opencodeRecords(db, child.id) : null;
+    const metrics = segment >= 0 ? opencodeMetrics(rows ?? opencodeAssistants(db, child.id), reader) : null;
+    return { agent_id: child.id, agent_type: child.agent, description: child.title, tool_use_id: null, parent_agent_id: child.parent_id === root.id ? null : child.parent_id, spawn_depth: child.depth, finished: null, segment, rows, metrics };
   });
 
   const recordId = record => record.id;
   const executions = starts.map((start, k) => {
     const invocation = opencodeInvocation(records[start]);
+    const command = resolveOpencodeCommand(invocation.name, registry.commands);
     const segmentRecords = records.filter((_, i) => segmentOf[i] === k);
     const own = children.filter(child => child.segment === k);
     const principal = own.filter(child => child.rows);
@@ -539,13 +659,16 @@ function buildOpencodeSession({ db, registry, root }) {
     const finished = lastTurn?.type === 'assistant' && lastTurn.data.time?.completed != null && opencodeToolItems(lastTurn).every(opencodeSettled);
     return {
       harness: 'opencode',
-      project: root.directory,
+      project: member.path,
+      project_group: member.group,
       session: root.id,
-      invocation: { record: records[start].id, timestamp: records[start].timestamp, command: resolveOpencodeCommand(invocation.name, registry.commands), args: invocation.args },
+      invocation: { record: records[start].id, timestamp: records[start].timestamp, command, args: invocation.args },
+      change_name: changeNameOf(command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes]))),
       start_time: records[start].timestamp,
       end_time: starts[k + 1] === undefined ? null : records[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && !finished,
       records: { count: segmentRecords.length, first: segmentRecords[0].id, last: segmentRecords.at(-1).id },
+      coordinator: { pipeline_segment: COMMAND_SEGMENTS[command] ?? null, ...opencodeMetrics(segmentRecords, reader) },
       principal_workers: principal.map(child => agentSummary(child, child.rows, recordId)),
       auxiliary_agents: auxiliary.map(child => agentSummary(child, null, recordId)),
       loaded_instructions: scans.flatMap(scan => scan.loaded).sort(byTimeThenRecord),
@@ -564,7 +687,7 @@ function buildOpencodeSession({ db, registry, root }) {
 
 // Reads the opencode executions of the supplied projects. Each project entry
 // reports whether opencode recorded a session for it.
-function indexOpencode({ db, registry, projectPaths, target }) {
+function indexOpencode({ db, registry, reader, members, target }) {
   const result = { projects: [], executions: [], unlinked_agents: [], unread: [], notes: [] };
   let sessionId = null, child = null;
   if (target.kind === 'opencode-session') {
@@ -575,27 +698,32 @@ function indexOpencode({ db, registry, projectPaths, target }) {
       result.notes.push(`${target.session} is a child session of ${root.id}: its parent execution is analyzed instead.`);
     }
   }
-  const marks = projectPaths.map(() => '?').join(',');
-  const sessions = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${marks})${sessionId ? ' AND id = ?' : ''} ORDER BY time_created, id`).all(...projectPaths, ...(sessionId ? [sessionId] : []));
+  // opencode records a directory with the separators of the platform that created it.
+  const owner = new Map();
+  for (const member of members) for (const form of directoryForms(member.path)) if (!owner.has(form)) owner.set(form, member);
+  const forms = [...owner.keys()];
+  const marks = forms.map(() => '?').join(',');
+  const sessions = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${marks})${sessionId ? ' AND id = ?' : ''} ORDER BY time_created, id`).all(...forms, ...(sessionId ? [sessionId] : []));
   const hasInvocation = db.prepare("SELECT 1 FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' LIMIT 1");
-  const read = new Map(projectPaths.map(project => [project, 0]));
+  const read = new Map(members.map(member => [member.path, 0]));
   for (const root of sessions) {
     if (!hasInvocation.get(root.id)) continue;
+    const member = owner.get(root.directory);
     try {
-      const built = buildOpencodeSession({ db, registry, root });
-      read.set(root.directory, read.get(root.directory) + 1);
+      const built = buildOpencodeSession({ db, registry, reader, root, member });
+      read.set(member.path, read.get(member.path) + 1);
       result.executions.push(...built.executions);
       result.unlinked_agents.push(...built.unlinked.map(agent => ({ session: root.id, ...agent })));
-      if (built.executions.length && built.before_first_invocation) result.unread.push({ kind: 'records-before-first-invocation', project: root.directory, session: root.id, count: built.before_first_invocation, reason: 'these records precede the first SAI invocation of the session' });
-      if (built.unparsed) result.unread.push({ kind: 'unparseable-records', project: root.directory, session: root.id, count: built.unparsed, reason: 'the record data is not valid JSON' });
+      if (built.executions.length && built.before_first_invocation) result.unread.push({ kind: 'records-before-first-invocation', project: member.path, session: root.id, count: built.before_first_invocation, reason: 'these records precede the first SAI invocation of the session' });
+      if (built.unparsed) result.unread.push({ kind: 'unparseable-records', project: member.path, session: root.id, count: built.unparsed, reason: 'the record data is not valid JSON' });
     } catch (error) {
-      result.unread.push({ kind: 'session', project: root.directory, session: root.id, reason: error.message });
+      result.unread.push({ kind: 'session', project: member.path, session: root.id, reason: error.message });
     }
   }
-  const recorded = new Set(sessions.map(session => session.directory));
-  result.projects = projectPaths.map(project => recorded.has(project)
-    ? { harness: 'opencode', project, status: 'analyzed', reason: null, sessions_read: read.get(project) }
-    : { harness: 'opencode', project, status: 'inaccessible', reason: 'No opencode session is recorded for this project', sessions_read: 0 });
+  const recorded = new Set(sessions.map(session => owner.get(session.directory).path));
+  result.projects = members.map(({ path: project, group }) => recorded.has(project)
+    ? { harness: 'opencode', project, project_group: group, status: 'analyzed', reason: null, sessions_read: read.get(project) }
+    : { harness: 'opencode', project, project_group: group, status: 'inaccessible', reason: 'No opencode session is recorded for this project', sessions_read: 0 });
   if (target.kind === 'opencode-session' && sessions.length === 0) result.notes.push(`No opencode session ${target.session} was found under the supplied projects.`);
   if (child) result.executions = result.executions.filter(execution => [...execution.principal_workers, ...execution.auxiliary_agents].some(agent => agent.agent_id === child));
   return result;
@@ -623,19 +751,51 @@ function excerptOpencode(options, env, loadSqlite) {
     if (options.agent !== undefined && !OPENCODE_SESSION.test(options.agent)) throw new ToolError('USAGE', '--agent must be an opencode session ID when --session is one');
     const root = opencodeRoot(db, options.session);
     const own = options.agent === undefined ? root : opencodeRoot(db, options.agent);
-    if (!root || !own || own.id !== root.id || root.directory !== resolveProject(options.project, process.cwd())) throw new ToolError('NOT_FOUND', 'No opencode session matches that project, session, and agent');
+    if (!root || !own || own.id !== root.id || !sameDirectory(root.directory, resolveProject(options.project, process.cwd()))) throw new ToolError('NOT_FOUND', 'No opencode session matches that project, session, and agent');
     const records = opencodeRecords(db, options.agent ?? options.session);
     return { session: options.session, agent: options.agent ?? null, ...pageRecords(records, record => record.id, options, renderOpencodeRecord) };
   } finally { db.close(); }
 }
 
+// opencode records a directory with the separators of the platform that created it.
+function directoryForms(directory) {
+  const forward = directory.replace(/\\/g, '/');
+  return [...new Set([directory, forward, forward.replace(/\//g, '\\')])];
+}
+
+const sameDirectory = (a, b) => a.replace(/\\/g, '/') === b.replace(/\\/g, '/');
+
+// The worktrees `git worktree list` reports for a project, as paths; null when
+// git cannot list them.
+function gitWorktrees(projectPath) {
+  let output;
+  try { output = execFileSync('git', ['-C', projectPath, 'worktree', 'list', '--porcelain'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20000 }); } catch { return null; }
+  return output.split(/\r?\n\r?\n/).filter(block => !/^bare$/m.test(block)).map(block => block.match(/^worktree (.+)$/m)?.[1]).filter(Boolean).map(entry => path.resolve(entry.trim()));
+}
+
+// Each project path becomes the members measured together under it: itself, plus
+// with `withWorktrees` the worktrees git reports for it. A sibling directory that
+// merely shares a name prefix is never a member.
+function expandProjects(projectPaths, withWorktrees, notes) {
+  const members = [], seen = new Set();
+  const add = (memberPath, group) => { if (!seen.has(memberPath)) { seen.add(memberPath); members.push({ path: memberPath, group }); } };
+  for (const projectPath of projectPaths) {
+    add(projectPath, projectPath);
+    if (!withWorktrees) continue;
+    const worktrees = gitWorktrees(projectPath);
+    if (worktrees === null) { notes.push(`git could not list the worktrees of ${projectPath}: only that directory is measured.`); continue; }
+    for (const worktree of worktrees) add(worktree, projectPath);
+  }
+  return members;
+}
+
 // Claude Code side of an index run. Returns its executions, or null when a
 // subagent target is in no transcript (its note is already on the output).
-function indexClaude({ target, projectPaths, workers, env, output }) {
-  const reader = loadClaudeTranscriptReader(), projectsRoot = reader.claudeProjectsRoot(env);
+function indexClaude({ target, members, reader, workers, env, output }) {
+  const projectsRoot = reader.claudeProjectsRoot(env);
   let session = target.kind === 'claude-session' ? target.session : null;
   if (target.kind === 'claude-subagent') {
-    session = findSubagentSession(projectsRoot, projectPaths, target.agent);
+    session = findSubagentSession(projectsRoot, members.map(member => member.path), target.agent);
     if (!session) {
       output.harnesses.push({ harness: 'claude', status: 'analyzed', reason: null });
       output.notes.push(`No subagent ${target.agent} was found under the supplied projects.`);
@@ -645,8 +805,8 @@ function indexClaude({ target, projectPaths, workers, env, output }) {
   }
   const probe = session ? { kind: 'claude-session', session } : target;
   const executions = [];
-  for (const projectPath of projectPaths) {
-    const project = indexProject({ reader, workers, projectsRoot, projectPath, target: probe });
+  for (const { path: projectPath, group } of members) {
+    const project = indexProject({ reader, workers, projectsRoot, projectPath, group, target: probe });
     const { executions: found, unlinked_agents: unlinked, unread, ...summary } = project;
     output.projects.push(summary);
     output.unread.push(...unread);
@@ -660,7 +820,7 @@ function indexClaude({ target, projectPaths, workers, env, output }) {
 
 // opencode side of an index run: a reader that cannot run reports the harness
 // as not analyzed and contributes no data.
-function indexOpencodeHarness({ target, projectPaths, registry, env, loadSqlite, output }) {
+function indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output }) {
   let db;
   try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
     if (!(error instanceof OpencodeUnavailable)) throw error;
@@ -668,7 +828,7 @@ function indexOpencodeHarness({ target, projectPaths, registry, env, loadSqlite,
     return [];
   }
   try {
-    const result = indexOpencode({ db, registry, projectPaths, target });
+    const result = indexOpencode({ db, registry, reader, members, target });
     output.projects.push(...result.projects);
     output.unread.push(...result.unread);
     output.unlinked_agents.push(...result.unlinked_agents);
@@ -683,15 +843,9 @@ function indexOpencodeHarness({ target, projectPaths, registry, env, loadSqlite,
   } finally { db.close(); }
 }
 
-function index(argv, env, loadSqlite) {
-  const { positional, options } = parseOptions(argv, ['paths', 'limit', 'cwd']);
-  if (positional.length === 0) throw new ToolError('MISSING_TARGET', 'Give a session ID or a SAI command name');
-  if (positional.length > 1) throw new ToolError('USAGE', 'Give one target');
-  const target = classifyTarget(positional[0]);
-  if (!target) throw new ToolError('UNRECOGNIZED_TARGET', `"${positional[0]}" is not a Claude Code session ID, an opencode ses_ session ID, or a sai- command name`);
-  const limit = positiveInteger(options.limit, 'limit', DEFAULT_LIMIT);
-  const cwd = path.resolve(options.cwd ?? process.cwd());
-  const defaults = [];
+// The projects of a run: the `--paths` list (default: the current project), each
+// with its worktrees when `--with-worktrees` is given.
+function resolveMembers(options, cwd, defaults, notes) {
   let projectPaths;
   if (options.paths === undefined) {
     projectPaths = [cwd];
@@ -700,19 +854,43 @@ function index(argv, env, loadSqlite) {
     projectPaths = [...new Set(splitPaths(options.paths).map(project => resolveProject(project, cwd)))];
     if (projectPaths.length === 0) throw new ToolError('USAGE', '--paths holds no path');
   }
-  const output = { read_at: new Date().toISOString(), target: { input: positional[0], ...target }, limit: target.kind === 'command' ? limit : null, defaults_applied: defaults, harnesses: [], projects: [], executions: [], unlinked_agents: [], unread: [], notes: [] };
-  const registry = loadRegistry();
-  let executions = [];
+  return expandProjects(projectPaths, options['with-worktrees'] === true, notes);
+}
+
+// Collects the executions a target selects across both harnesses, newest first.
+function collectExecutions({ target, members, env, loadSqlite, output, registry }) {
+  const reader = loadClaudeTranscriptReader();
+  const executions = [];
   // A session or agent ID belongs to one harness; a command name is read from both.
   if (target.kind !== 'opencode-session') {
-    const claude = indexClaude({ target, projectPaths, workers: registry.workers, env, output });
-    if (claude === null) return output;
+    const claude = indexClaude({ target, members, reader, workers: registry.workers, env, output });
+    if (claude === null) return null;
     executions.push(...claude);
   }
-  if (target.kind === 'command' || target.kind === 'opencode-session') executions.push(...indexOpencodeHarness({ target, projectPaths, registry, env, loadSqlite, output }));
-  if (target.kind === 'command') executions = executions.filter(execution => execution.invocation.command === target.command);
-  if (target.kind === 'claude-subagent') executions = executions.filter(execution => [...execution.principal_workers, ...execution.auxiliary_agents].some(agent => agent.agent_id === target.agent));
-  executions.sort((a, b) => Date.parse(b.start_time) - Date.parse(a.start_time) || (a.invocation.record < b.invocation.record ? -1 : 1));
+  if (target.kind === 'command' || target.kind === 'pipeline' || target.kind === 'opencode-session') executions.push(...indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output }));
+  const selected = executions.filter(execution => {
+    if (target.kind === 'command') return execution.invocation.command === target.command;
+    // A run is a pipeline command, or any execution (explore's routes) whose workers did a pipeline segment.
+    if (target.kind === 'pipeline') return PIPELINE_COMMANDS.has(execution.invocation.command) || execution.principal_workers.some(agent => agent.pipeline_segment);
+    if (target.kind === 'claude-subagent') return [...execution.principal_workers, ...execution.auxiliary_agents].some(agent => agent.agent_id === target.agent);
+    return true;
+  });
+  return selected.sort((a, b) => Date.parse(b.start_time) - Date.parse(a.start_time) || (a.invocation.record < b.invocation.record ? -1 : 1));
+}
+
+function index(argv, env, loadSqlite) {
+  const { positional, options } = parseOptions(argv, ['paths', 'limit', 'cwd'], ['with-worktrees']);
+  if (positional.length === 0) throw new ToolError('MISSING_TARGET', 'Give a session ID or a SAI command name');
+  if (positional.length > 1) throw new ToolError('USAGE', 'Give one target');
+  const target = classifyTarget(positional[0]);
+  if (!target) throw new ToolError('UNRECOGNIZED_TARGET', `"${positional[0]}" is not a Claude Code session ID, an opencode ses_ session ID, or a sai- command name`);
+  const limit = positiveInteger(options.limit, 'limit', DEFAULT_LIMIT);
+  const cwd = path.resolve(options.cwd ?? process.cwd());
+  const defaults = [], notes = [];
+  const members = resolveMembers(options, cwd, defaults, notes);
+  const output = { read_at: new Date().toISOString(), target: { input: positional[0], ...target }, limit: target.kind === 'command' ? limit : null, defaults_applied: defaults, harnesses: [], projects: [], executions: [], unlinked_agents: [], unread: [], notes };
+  let executions = collectExecutions({ target, members, env, loadSqlite, output, registry: loadRegistry() });
+  if (executions === null) return output;
   if (target.kind === 'command' && executions.length > limit) {
     output.unread.push({ kind: 'executions-beyond-limit', count: executions.length - limit, reason: `--limit ${limit}` });
     executions = executions.slice(0, limit);
@@ -762,16 +940,256 @@ function excerpt(argv, env, loadSqlite) {
   return { session: options.session, agent: agent ?? null, ...pageRecords(rows, row => row.uuid, options, renderRecord) };
 }
 
+// ---------------------------------------------------------------------------
+// cost: usage and tool calls per agent and per pipeline segment
+// ---------------------------------------------------------------------------
+
+const ROLE_ORDER = ['coordinator', 'worker', 'dispatched'];
+const TOKEN_FIELDS = ['input', 'output', 'cache_read', 'cache_write', 'cache_write_5m', 'cache_write_1h', 'cache_write_unsplit'];
+const sumOf = (total, fields) => fields.reduce((sum, field) => sum + (total[field] ?? 0), 0);
+// Every token kind the agent processed: fresh input and output, cache reads, and cache writes.
+const totalTokens = total => sumOf(total, TOKEN_FIELDS);
+const cacheWrites = total => sumOf(total, ['cache_write', 'cache_write_5m', 'cache_write_1h', 'cache_write_unsplit']);
+
+// The segment an agent is reported under: a pipeline worker keeps its own; any other
+// SAI worker stays outside the three segments; a helper follows the agent that
+// dispatched it, or the run's command when the main session dispatched it.
+function attributeAgents(execution) {
+  const principalIds = new Set(execution.principal_workers.map(agent => agent.agent_id));
+  const listed = [...execution.principal_workers, ...execution.auxiliary_agents];
+  const byId = new Map(listed.map(agent => [agent.agent_id, agent]));
+  const segmentOf = (agent, depth = 0) => {
+    if (agent.pipeline_segment) return agent.pipeline_segment;
+    if (principalIds.has(agent.agent_id) || depth > OPENCODE_MAX_DEPTH) return null;
+    if (!agent.parent_agent_id) return execution.coordinator.pipeline_segment;
+    const parent = byId.get(agent.parent_agent_id);
+    return parent ? segmentOf(parent, depth + 1) : null;
+  };
+  const coordinator = { role: 'coordinator', agent_type: null, agent_id: null, parent_agent_id: null, parent_agent_type: null, segment: execution.coordinator.pipeline_segment, usage: execution.coordinator.usage, tool_calls: execution.coordinator.tool_calls };
+  return [coordinator, ...listed.map(agent => ({
+    role: principalIds.has(agent.agent_id) ? 'worker' : 'dispatched',
+    agent_type: agent.agent_type,
+    agent_id: agent.agent_id,
+    parent_agent_id: agent.parent_agent_id,
+    parent_agent_type: agent.parent_agent_id ? byId.get(agent.parent_agent_id)?.agent_type ?? null : null,
+    segment: segmentOf(agent),
+    usage: agent.usage ?? UNAVAILABLE,
+    tool_calls: agent.tool_calls ?? null,
+  }))];
+}
+
+function addAgent(total, agent) {
+  total.agents = (total.agents ?? 0) + 1;
+  if (agent.usage === UNAVAILABLE) total.unavailable_agents = (total.unavailable_agents ?? 0) + 1;
+  else for (const field of ['requests', ...USAGE_FIELDS]) if (agent.usage[field] !== undefined) total[field] = (total[field] ?? 0) + agent.usage[field];
+  if (agent.tool_calls !== null) total.tool_calls = (total.tool_calls ?? 0) + agent.tool_calls;
+  return total;
+}
+
+// A run is planning when its command or one of its workers plans, implementation when its command or one of its workers implements; one run can be both.
+function runKinds(command, agents) {
+  const worked = segment => agents.some(agent => agent.role === 'worker' && agent.segment === segment);
+  return [PLANNING_COMMANDS.includes(command) || worked('spec') || worked('design') ? 'planning' : null, IMPLEMENTATION_COMMANDS.includes(command) || worked('implement') ? 'implementation' : null].filter(Boolean);
+}
+
+// Planning runs pair with implementation runs by change name, inside one project
+// group. A run of unknown change name pairs with nothing, and several runs of one
+// change stay separate runs under it.
+function pairRuns(runs) {
+  const changes = new Map(), unnamed = [];
+  for (const run of runs) {
+    if (!run.change) { unnamed.push({ run: run.run, kinds: run.kinds, status: 'unpaired', reason: 'change name unknown' }); continue; }
+    const key = `${run.project_group}\u0000${run.change}`;
+    if (!changes.has(key)) changes.set(key, { project_group: run.project_group, change: run.change, planning_runs: [], implementation_runs: [] });
+    for (const kind of run.kinds) changes.get(key)[`${kind}_runs`].push(run.run);
+  }
+  const paired = [...changes.values()].map(change => ({ ...change, status: change.planning_runs.length && change.implementation_runs.length ? 'paired' : 'unpaired', side: change.planning_runs.length && change.implementation_runs.length ? null : change.planning_runs.length ? 'planning-only' : 'implementation-only' }));
+  return { changes: paired, unnamed_runs: unnamed };
+}
+
+function costRuns(executions) {
+  return [...executions].sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time) || (a.invocation.record < b.invocation.record ? -1 : 1)).map((execution, i) => {
+    const agents = attributeAgents(execution);
+    const totals = agents.reduce((total, agent) => addAgent(total, agent), {});
+    return { run: i + 1, harness: execution.harness, project_group: execution.project_group, command: execution.invocation.command, kinds: runKinds(execution.invocation.command, agents), start_time: execution.start_time, in_progress: execution.in_progress, change: execution.change_name, totals: { tokens: totalTokens(totals), tool_calls: totals.tool_calls ?? 0, unavailable_agents: totals.unavailable_agents ?? 0 }, agents };
+  });
+}
+
+// One row per project group, harness, segment, role, and agent type.
+function costRows(runs) {
+  const rows = new Map();
+  for (const run of runs) for (const agent of run.agents) {
+    const segment = agent.segment ?? 'other', type = agent.role === 'coordinator' ? run.command : agent.agent_type ?? 'unknown';
+    const key = [run.project_group, run.harness, segment, agent.role, type].join('\u0000');
+    if (!rows.has(key)) rows.set(key, { project_group: run.project_group, harness: run.harness, segment, role: agent.role, agent_type: type, runs: new Set() });
+    const row = rows.get(key);
+    row.runs.add(run.run);
+    addAgent(row, agent);
+  }
+  const order = (list, value) => list.indexOf(value);
+  return [...rows.values()].map(({ runs: members, ...row }) => ({ ...row, runs: members.size }))
+    .sort((a, b) => a.project_group.localeCompare(b.project_group) || a.harness.localeCompare(b.harness) || order(SEGMENT_ORDER, a.segment) - order(SEGMENT_ORDER, b.segment) || order(ROLE_ORDER, a.role) - order(ROLE_ORDER, b.role) || a.agent_type.localeCompare(b.agent_type));
+}
+
+// `--alias "<path>=<alias>,..."` names the projects whose report must not carry
+// their names or paths.
+function parseAliases(value, cwd) {
+  const aliases = new Map();
+  for (const entry of value === undefined ? [] : splitPaths(value)) {
+    const split = entry.lastIndexOf('=');
+    const alias = entry.slice(split + 1).trim();
+    if (split <= 0 || !/^[A-Za-z0-9][A-Za-z0-9 _.-]*$/.test(alias)) throw new ToolError('USAGE', '--alias takes "<path>=<alias>" entries whose alias is plain text');
+    aliases.set(resolveProject(entry.slice(0, split).trim(), cwd), alias);
+  }
+  return aliases;
+}
+
+function cost(argv, env, loadSqlite) {
+  const { positional, options } = parseOptions(argv, ['paths', 'cwd', 'alias', 'format'], ['with-worktrees']);
+  if (positional.length) throw new ToolError('USAGE', 'cost takes no target');
+  const format = options.format ?? 'json';
+  if (format !== 'json' && format !== 'markdown') throw new ToolError('USAGE', '--format must be json or markdown');
+  const cwd = path.resolve(options.cwd ?? process.cwd());
+  const aliases = parseAliases(options.alias, cwd);
+  const defaults = [], notes = [];
+  const members = resolveMembers(options, cwd, defaults, notes);
+  const output = { read_at: new Date().toISOString(), baseline_format: BASELINE_FORMAT, defaults_applied: defaults, harnesses: [], projects: [], unlinked_agents: [], unread: [], notes };
+  const executions = collectExecutions({ target: { kind: 'pipeline' }, members, env, loadSqlite, output, registry: loadRegistry() }) ?? [];
+  const runs = costRuns(executions);
+  const report = { ...output, runs, ...pairRuns(runs), rows: costRows(runs) };
+  if (executions.length === 0) report.notes.push('No planning or implementation executions were found.');
+  return format === 'markdown' ? renderBaseline(report, aliases) : report;
+}
+
+// ---------------------------------------------------------------------------
+// Baseline report (markdown)
+// ---------------------------------------------------------------------------
+
+const groupLabel = (group, aliases) => aliases.get(group) ?? path.basename(group);
+
+function thousands(value) {
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+const figure = value => value === undefined || value === null ? '-' : thousands(value);
+const money = value => value === undefined ? '-' : `$${value.toFixed(4)}`;
+const table = (header, rows) => [`| ${header.join(' | ')} |`, `| ${header.map(() => '---').join(' | ')} |`, ...rows.map(row => `| ${row.join(' | ')} |`)].join('\n');
+
+function agentsCell(total) {
+  return total.unavailable_agents ? `${figure(total.agents)} (${figure(total.unavailable_agents)} unavailable)` : figure(total.agents);
+}
+
+function usageColumns(harness, total) {
+  return harness === 'claude'
+    ? [figure(total.input), figure(total.output), figure(total.cache_read), figure(total.cache_write_5m), figure(total.cache_write_1h), figure(total.tool_calls)]
+    : [figure(total.input), figure(total.output), figure(total.cache_read), figure(total.cache_write), figure(total.tool_calls), money(total.cost)];
+}
+
+const usageHeader = harness => harness === 'claude'
+  ? ['Input', 'Output', 'Cache read', 'Cache write 5m', 'Cache write 1h', 'Tool calls']
+  : ['Input', 'Output', 'Cache read', 'Cache write', 'Tool calls', 'Cost'];
+
+function segmentTable(harness, rows) {
+  const body = [];
+  for (const segment of SEGMENT_ORDER) {
+    const own = rows.filter(row => row.segment === segment);
+    if (!own.length) continue;
+    for (const row of own) body.push([segment, row.role, row.agent_type, figure(row.runs), agentsCell(row), ...usageColumns(harness, row)]);
+  }
+  return table(['Segment', 'Role', 'Agent', 'Runs', 'Agents', ...usageHeader(harness)], body);
+}
+
+// Mean per run of the runs that have the segment, over every agent reported in it.
+function meanTable(harness, rows, runsByRun) {
+  const body = [];
+  for (const segment of SEGMENT_ORDER) {
+    const own = rows.filter(row => row.segment === segment);
+    if (!own.length) continue;
+    const total = own.reduce((sum, row) => {
+      for (const field of ['agents', 'unavailable_agents', 'requests', ...USAGE_FIELDS, 'tool_calls']) if (row[field] !== undefined) sum[field] = (sum[field] ?? 0) + row[field];
+      return sum;
+    }, {});
+    const runs = runsByRun.get(segment) ?? 1;
+    const mean = Object.fromEntries(Object.entries(total).map(([field, value]) => [field, value / runs]));
+    body.push([segment, figure(runs), figure(totalTokens(total) / runs), ...usageColumns(harness, mean)]);
+  }
+  return table(['Segment', 'Runs', 'Total tokens', ...usageHeader(harness)], body);
+}
+
+function renderBaseline(report, aliases) {
+  const labels = new Map();
+  const groups = [...new Set([...report.projects.map(project => project.project_group), ...report.runs.map(run => run.project_group)])];
+  groups.forEach(group => labels.set(group, groupLabel(group, aliases)));
+  const lines = [];
+  const date = report.read_at.slice(0, 10);
+  lines.push(`# Planning and implementation cost baseline (${date})`, '');
+  lines.push(`Baseline format ${report.baseline_format}. Measured with \`sai/tools/retrospective.js cost --with-worktrees --format markdown\` over the projects listed below; the figures are the harnesses' own token counts for every SAI planning and implementation run still present in their transcripts. Rerun the same command after a contract change and compare the tables.`, '');
+  lines.push('## Reading the figures', '');
+  lines.push('- A run is an execution of `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, or `/sai-build`, or of any other command (such as an `/sai-explore` route) whose workers did a spec, design, or implement segment. It covers the invocation up to the next SAI invocation of the same session; the coordinator of an `/sai-explore` run is the whole exploration session.');
+  lines.push('- The coordinator is the main session of the run. A worker is a SAI worker the run created; its segment follows its type (`spec`, `design`, or `implement` for the RED, GREEN, and Direct Build workers). Any other SAI worker, such as the review worker of `/sai-build`, is reported under `other` with its own type.');
+  lines.push('- A dispatched agent is a helper another agent launched (for example the explorers of the design worker). It is reported by type, apart from the agent that dispatched it, under that agent\'s segment; a helper the main session launched follows the run\'s command.');
+  lines.push('- Usage is summed per model request. Claude Code separates 5-minute and 1-hour cache writes and records no cost; opencode records one cache-write figure and a cost when the provider reports one. An agent whose usage is missing counts as `unavailable` and adds nothing to the sums.');
+  lines.push('- Total tokens are input, output, cache read, and cache write added together. Tool calls are the tool-use blocks an agent issued.');
+  lines.push('- Review rounds and coordination stay inside the coordinator\'s figures.', '');
+  lines.push('## Coverage', '');
+  lines.push(table(['Project', 'Harness', 'Directories with sessions', 'Sessions read', 'Status'], [...groups].flatMap(group => {
+    const own = report.projects.filter(project => project.project_group === group);
+    return [...new Set(own.map(project => project.harness))].map(harness => {
+      const mine = own.filter(project => project.harness === harness);
+      return [labels.get(group), harness, figure(mine.filter(project => project.sessions_read > 0).length), figure(mine.reduce((sum, project) => sum + project.sessions_read, 0)), mine.some(project => project.status === 'analyzed') ? 'analyzed' : 'not analyzed'];
+    });
+  })), '');
+  for (const harness of report.harnesses.filter(entry => entry.status !== 'analyzed')) lines.push(`- ${harness.harness}: not analyzed (${harness.reason}).`);
+  const unavailableRuns = report.runs.filter(run => run.totals.unavailable_agents > 0).length;
+  lines.push(`- ${figure(report.runs.length)} runs were read; ${figure(report.runs.filter(run => run.in_progress).length)} were still in progress at read time; ${figure(unavailableRuns)} include an agent without usage data.`, '');
+
+  for (const group of groups) {
+    const groupRuns = report.runs.filter(run => run.project_group === group);
+    if (!groupRuns.length) continue;
+    const label = labels.get(group), anonymous = aliases.has(group);
+    lines.push(`## ${label}`, '');
+    for (const harness of ['claude', 'opencode']) {
+      const runs = groupRuns.filter(run => run.harness === harness);
+      if (!runs.length) continue;
+      const rows = report.rows.filter(row => row.project_group === group && row.harness === harness);
+      lines.push(`### ${label}: ${harness === 'claude' ? 'Claude Code' : 'opencode'}`, '');
+      const commands = [...new Set(runs.map(run => run.command))].sort();
+      lines.push(table(['Command', 'Runs', 'In progress'], commands.map(command => [`\`${command}\``, figure(runs.filter(run => run.command === command).length), figure(runs.filter(run => run.command === command && run.in_progress).length)])), '');
+      lines.push('Cost by segment, role, and agent type:', '', segmentTable(harness, rows), '');
+      const segmentRuns = new Map(SEGMENT_ORDER.map(segment => [segment, runs.filter(run => run.agents.some(agent => (agent.segment ?? 'other') === segment)).length]));
+      lines.push('Mean per run, over the runs that have the segment:', '', meanTable(harness, rows, segmentRuns), '');
+    }
+    const named = report.changes.filter(change => change.project_group === group);
+    const sideTotals = (runNumbers) => runNumbers.map(number => report.runs[number - 1]).reduce((sum, run) => ({ tokens: sum.tokens + run.totals.tokens, tool_calls: sum.tool_calls + run.totals.tool_calls, unavailable: sum.unavailable + run.totals.unavailable_agents }), { tokens: 0, tool_calls: 0, unavailable: 0 });
+    const side = runNumbers => { const total = sideTotals(runNumbers); return [figure(runNumbers.length), runNumbers.length ? `${figure(total.tokens)}${total.unavailable ? '*' : ''}` : '-', runNumbers.length ? figure(total.tool_calls) : '-']; };
+    const unnamed = report.unnamed_runs.filter(entry => report.runs[entry.run - 1].project_group === group);
+    lines.push(`### ${label}: pairing of planning and implementation`, '');
+    lines.push(`${figure(named.filter(change => change.status === 'paired').length)} changes have both planning and implementation runs, ${figure(named.filter(change => change.side === 'planning-only').length)} only planning runs, ${figure(named.filter(change => change.side === 'implementation-only').length)} only implementation runs, and ${figure(unnamed.length)} runs have no determinable change name and count as unpaired.`, '');
+    // A change with planning runs is listed on its own; the implementation-only changes share one row.
+    const listed = named.filter(change => change.planning_runs.length).map((change, i) => ({ change, number: i + 1 }));
+    const implementationOnly = named.filter(change => !change.planning_runs.length);
+    if (listed.length || implementationOnly.length) {
+      const rows = listed.map(({ change, number }) => [anonymous ? `change ${number}` : `\`${change.change}\``, change.status === 'paired' ? 'paired' : `unpaired (${change.side})`, ...side(change.planning_runs), ...side(change.implementation_runs)]);
+      if (implementationOnly.length) rows.push([`${figure(implementationOnly.length)} changes`, 'unpaired (implementation-only)', '0', '-', '-', ...side(implementationOnly.flatMap(change => change.implementation_runs))]);
+      lines.push(table(['Change', 'Status', 'Planning runs', 'Planning tokens', 'Planning tool calls', 'Implementation runs', 'Implementation tokens', 'Implementation tool calls'], rows), '');
+      if (named.some(change => [...change.planning_runs, ...change.implementation_runs].some(number => report.runs[number - 1].totals.unavailable_agents))) lines.push('\\* includes an agent without usage data.', '');
+    }
+  }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
 function main(argv, env = process.env, loadSqlite = defaultLoadSqlite) {
   const [command, ...rest] = argv;
   if (command === 'index') return index(rest, env, loadSqlite);
+  if (command === 'cost') return cost(rest, env, loadSqlite);
   if (command === 'excerpt') return excerpt(rest, env, loadSqlite);
-  throw new ToolError('USAGE', 'Usage: retrospective.js index <target> [--paths "<p1>,<p2>"] [--limit <N>] | excerpt --project <path> --session <id> [--agent <id>] [--from <record>] [--count <N>] [--max-chars <N>]');
+  throw new ToolError('USAGE', 'Usage: retrospective.js index <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>] | cost [--paths "<p1>,<p2>"] [--with-worktrees] [--alias "<path>=<alias>"] [--format json|markdown] | excerpt --project <path> --session <id> [--agent <id>] [--from <record>] [--count <N>] [--max-chars <N>]');
 }
 
 if (require.main === module) {
   try {
-    process.stdout.write(`${JSON.stringify(main(process.argv.slice(2)))}\n`);
+    const result = main(process.argv.slice(2));
+    process.stdout.write(typeof result === 'string' ? result : `${JSON.stringify(result)}\n`);
   } catch (error) {
     if (!(error instanceof ToolError)) throw error;
     process.stdout.write(`${JSON.stringify({ error: { code: error.code, message: error.message } })}\n`);
@@ -779,4 +1197,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, index, excerpt, splitPaths, classifyTarget, projectFolder, ToolError };
+module.exports = { main, index, cost, excerpt, splitPaths, changeNameFromArgs, expandProjects, classifyTarget, projectFolder, ToolError };
