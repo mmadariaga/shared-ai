@@ -72,3 +72,17 @@ The OpenCode executor skill SHALL consume the canonical executor behavior policy
 - **THEN** it finds exactly one `Fetch @sai/policies/executor-agent.md` directive
 - **AND** it finds no `## Universal Behavior` section and no copy of the failure-report or raw-output rules
 - **AND** it finds the OpenCode-specific binding, caller spawn-prompt, dispatch, model-resolution, cost, and no-cap guidance
+
+### Requirement: Dispatcher recovers a report without a final result
+
+The opencode `budget-executor` skill SHALL carry, under `## Spawn prompt`, exactly one dispatcher line stating that an executor report without a final result for a requested command (`pending`, `running`, or no entry) is an obstacle under `sai/policies/obstacle-escalation.md`, resolved by reading the result from the evidence the report names, such as its output log, or by dispatching again, and that the dispatcher SHALL NOT wait for a later message from that executor. The line SHALL be word-for-word identical to the one in the Claude Code `budget-executor` skill, and the skill SHALL NOT tell the executor to resend an already-delivered result.
+
+#### Scenario: Report with a pending entry
+
+- **WHEN** a dispatcher receives an executor report whose entry for a requested command reads `pending`
+- **THEN** it treats the report as an obstacle and reads the result from the output log the report names or dispatches again, instead of waiting for another message from that executor
+
+#### Scenario: Same line on both harnesses
+
+- **WHEN** the `## Spawn prompt` sections of `skills/claude/budget-executor/SKILL.md` and `skills/opencode/budget-executor/SKILL.md` are compared
+- **THEN** each carries exactly one line naming `sai/policies/obstacle-escalation.md`, and the two lines are identical
