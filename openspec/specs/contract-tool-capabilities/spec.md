@@ -116,7 +116,7 @@ The opt-in runtime test SHALL exercise the actual opencode permission evaluator 
 
 ### Requirement: Concrete skill-owned preparation invocation declarations
 
-The to-backlog and explore command profiles SHALL declare `node {skills}/to-backlog/scripts/prepare-temp.js {harness}` in addition to their existing grants. Capability translation SHALL expand `{skills}` to project-local and user-global skill roots and `{harness}` to `claude` or `opencode`, retaining installed `{sai}` expansion. Claude Code SHALL receive concrete Bash pre-approvals for `.claude/skills` and `~/.claude/skills`; opencode SHALL receive explicit shell allow rules for `.opencode/skills` and `~/.config/opencode/skills`. These additions SHALL NOT add arbitrary Node execution, general-purpose mkdir or chmod grants, or preparation access to the research profile. Declarations SHALL remain separate from operation authorization and live effective-access evidence.
+The to-backlog and explore command profiles SHALL declare `node {skills}/to-backlog/scripts/prepare-temp.js {harness}` in addition to their existing grants. Capability translation SHALL expand `{skills}` to project-local and user-global skill roots and `{harness}` to `claude` or `opencode`, retaining installed `{sai}` expansion. Claude Code SHALL receive concrete Bash pre-approvals for `.claude/skills` and `~/.claude/skills`; opencode SHALL receive explicit shell allow rules for `.opencode/skills` and `~/.config/opencode/skills`. When an install root is supplied, each harness SHALL also receive the absolute install-root form of the same invocation with the script path double-quoted, as for every generated global shell rule. These additions SHALL NOT add arbitrary Node execution, general-purpose mkdir or chmod grants, or preparation access to the research profile. Declarations SHALL remain separate from operation authorization and live effective-access evidence.
 
 #### Scenario: Claude Code preparation declarations
 
@@ -137,6 +137,11 @@ The to-backlog and explore command profiles SHALL declare `node {skills}/to-back
 
 - **WHEN** a command has a concrete preparation invocation declaration
 - **THEN** that declaration does not replace explicit publication confirmation or establish that the active harness permits the operation at runtime.
+
+#### Scenario: Absolute preparation declaration
+
+- **WHEN** the to-backlog command profile is translated for opencode with install root `/home/u/.config/opencode`
+- **THEN** its shell rules include `node "/home/u/.config/opencode/skills/to-backlog/scripts/prepare-temp.js" opencode`
 
 ### Requirement: Explore command wait-script grant
 
@@ -165,3 +170,39 @@ The `explore-command` capability profile in `sai/install-manifest.json` SHALL se
 #### Scenario: Coordinator profile is unchanged
 - **WHEN** the `coordinator` profile is translated for Claude Code
 - **THEN** its native tools do not include `TaskStop`
+
+### Requirement: Generated global shell rules carry the absolute install-root form
+
+The capability translation in `bin/capabilities.js` SHALL emit every `{sai}` or `{skills}` shell pattern in three forms when an install root is supplied: the project-local form, the `~` form, and an absolute form rooted at the install root with the command path double-quoted (`node "<install root>/sai/...`). A path token that ends in a wildcard SHALL keep only its opening quote, so the wildcard still spans the rest of the command. The install root SHALL be written with forward slashes, the drive letter as Node reports it, and no trailing separator. Claude Code SHALL receive the absolute form in `allowed-tools` as both `Bash(...)` and `PowerShell(...)`, and opencode SHALL receive it as shell permission rules. Without an install root only the project-local and `~` forms SHALL be generated. The install root SHALL default to the root being installed into (`~/.claude` for Claude Code, the base `resolveOpencodeBase` resolves for opencode, including an XDG override), and a project-local refresh SHALL name the global install root rather than the project root. Instruction projections SHALL stay byte copies of their source with no root placeholder, and the user customization suffix and user-owned tunables SHALL be preserved.
+
+#### Scenario: Claude Code rules carry both forms
+- **WHEN** a command or worker with a `{sai}` shell grant is projected for Claude Code with install root `/home/u/.claude`
+- **THEN** its `allowed-tools` holds `Bash(...)` and `PowerShell(...)` entries for the `~/.claude/sai/...` form and for the `node "/home/u/.claude/sai/...` form
+
+#### Scenario: opencode rules carry the resolved config base
+- **WHEN** a profile with a `{sai}` shell grant is projected for opencode with the resolved config base as install root
+- **THEN** its shell permission rules hold the `~/.config/opencode/sai/...` form and the absolute form rooted at that base
+
+#### Scenario: Wildcard path keeps only the opening quote
+- **WHEN** a shell pattern's path token ends in `*`
+- **THEN** the absolute form opens the double quote before the path and adds no closing quote
+
+#### Scenario: No install root generates no absolute form
+- **WHEN** a profile is translated without an install root
+- **THEN** only the project-local and `~` forms are generated
+
+#### Scenario: Project-local refresh names the global root
+- **WHEN** the installer refreshes manifest-owned overrides in a project
+- **THEN** the refreshed permission rules name the global install root, not the project's `.claude` or `.opencode` directory
+
+### Requirement: Permission-carrying projections compare against their generated text
+
+`doctor` and uninstall SHALL compare a projection that carries generated text against that text, never against the raw source file, including the tunable-insensitive comparison of managed agent files. A projection whose rules hold this install's absolute root SHALL be reported in sync by `doctor` and removed by uninstall as unmodified managed content; one whose rules hold a different home path SHALL be reported by `doctor` as drift. Uninstall SHALL materialize each distinct generated text to its own scratch file, so enumerations with different install roots never overwrite each other's expected source.
+
+#### Scenario: Installed projection is in sync and removable
+- **WHEN** `doctor` and uninstall inspect commands and workers installed with this install's root
+- **THEN** `doctor` reports no drift for them and uninstall removes them as unmodified managed files
+
+#### Scenario: Foreign home is drift
+- **WHEN** an installed permission-carrying projection holds the absolute root of a different home
+- **THEN** `doctor` reports it as differing, and a reinstall regenerates it

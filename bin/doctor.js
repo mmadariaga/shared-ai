@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const childProcess = require('child_process');
 const https = require('https');
 
@@ -313,10 +314,13 @@ function diffAgainstBundled(expectedEntries) {
   for (const e of expectedEntries.filter(x => x.src !== x.dest)) {
     const destHash = uninstall.sha256File(e.dest);
     if (destHash === null) { drift.push(`${shorten(e.dest)} (missing)`); continue; }
-    if (e.tunableKeys && fs.existsSync(e.src)
-        && flow.managedDefinitionBytes(fs.readFileSync(e.src), e.tunableKeys)
+    if (e.tunableKeys && (e.sourceText !== undefined || fs.existsSync(e.src))
+        && flow.managedDefinitionBytes(e.sourceText !== undefined ? Buffer.from(e.sourceText, 'utf8') : fs.readFileSync(e.src), e.tunableKeys)
           .equals(flow.managedDefinitionBytes(fs.readFileSync(e.dest), e.tunableKeys))) continue;
-    const srcHash = uninstall.sha256File(e.src);
+    // A generated projection (one that carries permission rules) is compared against its expanded text, never the raw source.
+    const srcHash = e.sourceText !== undefined
+      ? crypto.createHash('sha256').update(Buffer.from(e.sourceText, 'utf8')).digest('hex')
+      : uninstall.sha256File(e.src);
     if (srcHash !== null && srcHash !== destHash) drift.push(`${shorten(e.dest)} (differs)`);
   }
   return drift;
@@ -340,7 +344,7 @@ function customizableDefinitionRecords(harness, projectRoot, repoRoot) {
   Object.assign(destinationRoot, { config: harness.base, root: harness.base });
   const global = expandInstallManifest(manifest, { harness: harness.kind, repoRoot, destinationRoot })
     .filter(projection => projection.strategy === 'customizable-copy');
-  const local = flow.projectOverrideProjections(harness.kind, projectRoot, repoRoot);
+  const local = flow.projectOverrideProjections(harness.kind, projectRoot, repoRoot, harness.base);
   for (const [scope, projections] of [['global', global], ['project-local', local]]) {
     for (const projection of projections) {
       if (!fs.existsSync(projection.destinationPath)) continue;

@@ -153,7 +153,8 @@ function validateEntry(entry, index) {
   }
 }
 
-function defineWorkerMatrix(entries, capabilities = require('../sai/install-manifest.json').capabilities) {
+// `installRoots` optionally maps a harness name to the absolute root its permission rules also name.
+function defineWorkerMatrix(entries, capabilities = require('../sai/install-manifest.json').capabilities, installRoots = {}) {
   if (!Array.isArray(entries) || entries.length !== EXPECTED_ENTRY_COUNT) {
     throw new Error(`Worker Matrix requires exactly ${EXPECTED_ENTRY_COUNT} entries`);
   }
@@ -191,8 +192,8 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
     phases: PHASE_ORDER,
     entries: Object.freeze(entries.map(entry => {
       const profileName = assignment(capabilities, 'agents', entry.workerName);
-      const claude = translate(capabilities, profileName, 'claude');
-      const opencode = translate(capabilities, profileName, 'opencode');
+      const claude = translate(capabilities, profileName, 'claude', installRoots.claude);
+      const opencode = translate(capabilities, profileName, 'opencode', installRoots.opencode);
       return Object.freeze({ ...clone(entry),
         capabilityProfile: profileName,
         claudeAgent: { ...clone(entry.claudeAgent), tools: claude.tools },
