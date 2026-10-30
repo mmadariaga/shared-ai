@@ -4,7 +4,7 @@
 
 ## Locate the tool
 
-Take the first candidate that exists, copied verbatim; never build the path by joining a root string to a suffix. The first existing copy defines the version. (The order mirrors `@sai/policies/tool-resolution.md`.)
+Take the first candidate that exists, listed exactly as written below; never build the path by joining a root string to a suffix. Run a global candidate as the absolute path its existence check returned, with backslashes turned into forward slashes and double-quoted: `node "<absolute path>"` (`@sai/policies/tool-resolution.md` states the rule); run a project-local candidate as written. The first existing copy defines the version. (The order mirrors `@sai/policies/tool-resolution.md`.)
 
 On **Claude Code**:
 

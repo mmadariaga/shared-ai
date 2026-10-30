@@ -9,7 +9,21 @@ Use the copy that lives beside the referencing policy file: a copy under a
 different root is a different version. Do **not** build its path by joining a
 root string to a suffix — composed absolute paths are known to drop a segment
 (see the "Path composition" rule in the fetch skill). Take the **first
-candidate below that exists**, copied **verbatim**, exactly as written.
+candidate below that exists**, checking each with a tool that returns the path
+it found (`Glob` on Claude Code and opencode, or a shell existence check).
+
+Run a path a tool returned, never a path you composed:
+
+- A project-local candidate (`.claude/...`, `.opencode/...`) is run exactly as
+  written, relative to the working directory.
+- A global candidate (`~/...`) is run as the absolute path the existence check
+  returned for it, with backslashes turned into forward slashes and the whole
+  path double-quoted: `node "<absolute path>"`. PowerShell does not expand `~`
+  in the arguments of a native executable, so the `~` text itself never reaches
+  the shell. Forward slashes and the quotes keep the command text identical
+  across Bash and PowerShell, and a home path with spaces stays one argument.
+  On Windows the path reads `C:/Users/<user>/.claude/sai/tools/<name>`, on Linux
+  `/home/<user>/...`, on macOS `/Users/<user>/...`.
 
 ## `sai/tools/*.js` copies
 
@@ -26,7 +40,7 @@ On **opencode**, in this order:
 
 1. `.opencode/sai/tools/<name>` — the project-local root, relative to the working directory.
 2. `~/.config/opencode/sai/tools/<name>` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/<name>` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed.
+3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/<name>` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed. Run it as the absolute path, double-quoted, like any global candidate.
 
 ## `bin/sai-state.js` copy
 
@@ -45,8 +59,9 @@ On **opencode**, in this order:
 
 Apply's coordinator-only `checkpoint-plan` subcommand takes `--change <change-name> --baseline <ref> --cwd <project-root>`, optional retained `--settled <ref>`, and no stdin. Its returned reference is supplied as `--plan-checkpoint <ref>` to close after an authorized coordinator plan write. Cumulative verification and close otherwise compare the plan with the original baseline or settled receipt; this flag is not a worker-write exemption.
 
-Whichever candidate wins, the invocation is byte-identical within one harness,
-so a single whitelist entry per root covers that harness's form. Keep each
+Whichever candidate wins, the invocation keeps one form within one harness, so
+the installed permission rules cover it: a rule per root exists for the
+project-local form, the `~` form, and the absolute form of this install. Keep each
 tool's own accepted flag set; do not change invocation semantics beyond path
 resolution. `<name>` below is the filename placeholder from the candidate
 lists; `<change-name>` is the separate CLI positional argument where a tool

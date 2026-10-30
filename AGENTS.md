@@ -119,7 +119,15 @@ Commit messages, PR/MR titles and descriptions, issues, and comments carry only 
 
 When changing agent or command access, edit the profiles and assignments in
 `sai/install-manifest.json`; `bin/capabilities.js` projects native declarations
-and installed command requirements for both harnesses. Before an operation or
+and installed command requirements for both harnesses. Every generated global shell
+rule (Claude Code `Bash(...)` and `PowerShell(...)`, opencode shell rules) names
+both the `~` form and the absolute form of the install root, double-quoted
+(`node "<root>/sai/tools/x.js"`), because neither harness expands `~` in a
+permission rule and PowerShell does not expand it in a native-executable
+argument; the instructions keep the `~` candidates and tell the agent to run the
+absolute path its existence check returned (`sai/policies/tool-resolution.md`).
+The rules are therefore machine-specific: `doctor` reports a profile copied from
+another home as drift, and a reinstall regenerates it. Before an operation or
 after a required tool is rejected, consult `sai/policies/tool-access.md` for
 effective-access verification and remediation. When presenting research
 diagnostics, consult `sai/policies/explore-agent.md` § Missing-tool notice

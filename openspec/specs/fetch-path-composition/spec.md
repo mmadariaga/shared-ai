@@ -9,7 +9,7 @@ Define how agents that load a fetch skill write paths inside and outside the pro
 
 Both the Claude Code and opencode fetch skills SHALL encode the path-composition rule in the existing `## Active harness and roots` section as prompt hygiene. The rule SHALL be inherited by every agent that loads fetch on both harnesses. It SHALL govern how a path is written and SHALL NOT govern where an agent may go.
 
-Inside the project, agents SHALL write paths relative to the working directory and SHALL NOT compose an absolute path from the project-root string. Outside the project, agents SHALL use the path exactly as supplied and SHALL NOT derive it by string manipulation.
+Inside the project, agents SHALL write paths relative to the working directory and SHALL NOT compose an absolute path from the project-root string. Outside the project, agents SHALL use the path exactly as supplied and SHALL NOT derive it by string manipulation, with one permitted change: a path a tool returned MAY have its backslashes turned into forward slashes, and nothing else.
 
 The rule SHALL carry the supporting observation inline, stated as an observation rather than a proven mechanism: composed absolute paths have dropped a path segment, while relative paths and literal absolute paths resolved correctly in every observed run. The rule SHALL NOT include an expiry or removal condition and SHALL NOT be framed as a workaround.
 
@@ -23,11 +23,16 @@ The opencode fetch skill SHALL NOT carry a severity note framing a mis-composed 
 #### Scenario: out-of-project path is used literally
 - **WHEN** an agent that loaded fetch is given a concrete path outside the project
 - **THEN** that path is used exactly as supplied
-- **AND** the path is not derived by string manipulation
+- **AND** the path is not derived by string manipulation beyond the permitted slash conversion of a tool-returned path
+
+#### Scenario: tool-returned path may use forward slashes
+- **WHEN** an agent that loaded fetch runs an out-of-project path that a tool returned with backslashes
+- **THEN** it may turn those backslashes into forward slashes
+- **AND** it changes nothing else in the path
 
 #### Scenario: both harness skills state the same composition rule
 - **WHEN** `skills/claude/fetch/SKILL.md` and `skills/opencode/fetch/SKILL.md` are read
-- **THEN** both state the in-project relative and out-of-project literal cases in `## Active harness and roots`
+- **THEN** both state the in-project relative and out-of-project literal cases, including the same slash-conversion exception, in `## Active harness and roots`
 - **AND** both state that every agent that loads fetch inherits the rule on both harnesses
 - **AND** neither skill carries the #13715 load-bearing hang note or issue link; the rule stands as prompt hygiene with the dropped-segment observation
 

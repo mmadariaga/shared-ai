@@ -1293,24 +1293,31 @@ function installAgentProjection(projection, notices) {
   return tunableSeedInstaller(projection);
 }
 
-function expandForInstall(harness, roots, repoRoot = REPOSITORY_ROOT) {
+// The install root is the global directory whose absolute form the generated shell permission rules name.
+// A project-local refresh writes into the project but still names the global candidates.
+function globalInstallRoot(harness) {
+  return harness === 'claude' ? CLAUDE_BASE : resolveOpencodeBase();
+}
+
+function expandForInstall(harness, roots, repoRoot = REPOSITORY_ROOT, installRoot = roots.base) {
   const manifest = loadInstallManifest(repoRoot);
   return expandInstallManifest(manifest, {
     harness,
     repoRoot,
     destinationRoot: destinationRoots(harness, roots),
+    installRoot,
   });
 }
 
-function projectOverrideProjections(harness, projectPath, repoRoot = REPOSITORY_ROOT) {
+function projectOverrideProjections(harness, projectPath, repoRoot = REPOSITORY_ROOT, installRoot = globalInstallRoot(harness)) {
   const base = path.resolve(projectPath, harness === 'claude' ? '.claude' : '.opencode');
-  return expandForInstall(harness, { base }, repoRoot)
+  return expandForInstall(harness, { base }, repoRoot, installRoot)
     .filter(projection => ['customizable-copy', 'tunable-seed'].includes(projection.strategy));
 }
 
 // Updating the global installation cannot refresh the local definitions that
 // shadow it. Refresh only existing, manifest-owned files in the named project.
-function refreshProjectOverrides(harness, projectPath, { notices } = {}) {
+function refreshProjectOverrides(harness, projectPath, { notices, installRoot } = {}) {
   const base = path.resolve(projectPath, harness === 'claude' ? '.claude' : '.opencode');
   let baseStat;
   try { baseStat = fs.lstatSync(base); } catch (error) {
@@ -1324,7 +1331,7 @@ function refreshProjectOverrides(harness, projectPath, { notices } = {}) {
     return;
   }
   cleanupRetiredProjections(harness, { base }, { notices });
-  for (const projection of projectOverrideProjections(harness, projectPath)) {
+  for (const projection of projectOverrideProjections(harness, projectPath, REPOSITORY_ROOT, installRoot)) {
     let safe = true;
     for (const candidate of [path.dirname(projection.destinationPath), projection.destinationPath]) {
       let stat;
@@ -1457,7 +1464,7 @@ function installClaude(destBase, { projectPath, notices } = {}) {
   require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('claude', { base: targetPath }, { notices });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
-  if (projectPath) refreshProjectOverrides('claude', projectPath, { notices });
+  if (projectPath) refreshProjectOverrides('claude', projectPath, { notices, installRoot: targetPath });
 
   writeVersionMarker(targetPath);
 }
@@ -1475,7 +1482,7 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices, p
   require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('opencode', { base: targetPath }, { notices });
   for (const projection of projections) installProjection(projection, targetPath, notices);
-  if (projectPath) refreshProjectOverrides('opencode', projectPath, { notices });
+  if (projectPath) refreshProjectOverrides('opencode', projectPath, { notices, installRoot: targetPath });
 
   writeVersionMarker(targetPath);
 }
