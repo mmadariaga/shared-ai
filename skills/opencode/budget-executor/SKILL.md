@@ -21,6 +21,8 @@ Fetch @sai/policies/executor-agent.md
 
 Give the executor the exact command(s) to run, in order, and the output you need back. A goal without a command also works: the executor then picks the narrowest command that meets it. Either way it runs and reports; diagnosis and fixes stay with you.
 
+A report without a final result for a requested command (`pending`, `running`, or no entry) is an obstacle under `sai/policies/obstacle-escalation.md`: read the result from the evidence the report names, such as its output log, or dispatch again, and do not wait for a later message from that executor.
+
 ## Dispatch mode
 
 The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant is the containing rule for this case: a background child is dispatched only from a dispatcher that outlives it and awaits its result, and synchronous dispatch satisfies this.

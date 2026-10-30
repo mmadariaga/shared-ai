@@ -26,6 +26,8 @@ Dispatch in the background only from a main agent, routed SAI coordinator, or ro
 
 Give the executor the exact command(s) to run, in order, and the output you need back. A goal without a command also works: the executor then picks the narrowest command that meets it. Either way it runs and reports; diagnosis and fixes stay with you.
 
+A report without a final result for a requested command (`pending`, `running`, or no entry) is an obstacle under `sai/policies/obstacle-escalation.md`: read the result from the evidence the report names, such as its output log, or dispatch again, and do not wait for a later message from that executor.
+
 ## Warming and dispose
 
 Fetch @sai/policies/cache-warming.md
