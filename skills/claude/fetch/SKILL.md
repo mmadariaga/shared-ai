@@ -22,7 +22,7 @@ Resolve project-local `.claude/` before user-global `~/.claude/`. These are the 
 Every agent that loads fetch inherits this rule, on both harnesses. It governs how a path is written, not where an agent may go.
 
 - Inside the project: write paths relative to the working directory. Never compose an absolute path from the project-root string.
-- Outside the project: use the path exactly as supplied. Never derive it by string manipulation.
+- Outside the project: use the path exactly as supplied. Never derive it by string manipulation. The one permitted change: a path a tool returned may have its backslashes turned into forward slashes, and nothing else.
 
 Observed: composed absolute paths have dropped a path segment (a worker in `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\sai\commands` for a directory inside the repository), while relative paths and literal absolute paths resolved correctly in every observed run.
 

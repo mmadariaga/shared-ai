@@ -389,12 +389,12 @@ function loadMatrixTemplates(matrix, harness, repoRoot) {
   return templates;
 }
 
-function matrixRenderFor(manifest, harness, repoRoot) {
+function matrixRenderFor(manifest, harness, repoRoot, installRoot) {
   const matrix = manifest['worker-matrix'];
   if (!matrix) return [];
   assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
   const templates = loadMatrixTemplates(matrix, harness, repoRoot);
-  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities), templates);
+  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities, { [harness]: installRoot }), templates);
   return rendered
     .filter(item => item.harness === harness)
     .map(item => ({
@@ -406,7 +406,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
     }));
 }
 
-function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabilities }) {
+function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabilities, installRoot }) {
   const bindingsSection = matrix.bindings;
   const agentsSection = matrix.agents;
   assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
@@ -418,7 +418,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabi
   let matrixDef;
   let rendered;
   try {
-    matrixDef = defineWorkerMatrix(matrix.entries, capabilities);
+    matrixDef = defineWorkerMatrix(matrix.entries, capabilities, { [harness]: installRoot });
     rendered = materializeWorkerMatrix(matrixDef, templates);
   } catch (error) {
     throw new Error(`${harness} worker matrix: ${error.message}`);
@@ -454,7 +454,9 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabi
   return projections;
 }
 
-function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) {
+// `installRoot` is the absolute directory whose global candidates the generated shell permission rules also name.
+// It defaults to the root being installed into; project-local refreshes pass the global root explicitly.
+function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot, installRoot = destinationRoot && destinationRoot.root }) {
   if (manifest.capabilities) require('./capabilities').validateRegistry(manifest.capabilities);
   validateMatrixEntriesForInstall(manifest, harness);
   validateManifest(manifest);
@@ -473,17 +475,17 @@ function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
   for (const rule of manifest.projections.filter(candidate => candidate.harnesses.includes(harness))) {
     if (rule.matrix) continue;
     for (const projection of expandRule(rule, { harness, repoRoot, destinationRoot })) {
-      addProjection(manifest.capabilities ? require('./capabilities').projectFile(projection, manifest.capabilities, repoRoot) : projection);
+      addProjection(manifest.capabilities ? require('./capabilities').projectFile(projection, manifest.capabilities, repoRoot, installRoot) : projection);
     }
   }
   if (manifest['worker-matrix'] !== undefined) {
-    for (const projection of expandWorkerMatrix(manifest['worker-matrix'], { harness, repoRoot, destinationRoot, capabilities: manifest.capabilities })) {
+    for (const projection of expandWorkerMatrix(manifest['worker-matrix'], { harness, repoRoot, destinationRoot, capabilities: manifest.capabilities, installRoot })) {
       addProjection(projection);
     }
   }
   if (manifest.capabilities && SUPPORTED_HARNESSES.has(harness)) {
-    addProjection(require('./capabilities').requirementsProjection(manifest.capabilities, harness, destinationRoot, repoRoot));
-    for (const projection of require('./capabilities').profileProjections(manifest.capabilities, harness, destinationRoot, repoRoot)) addProjection(projection);
+    addProjection(require('./capabilities').requirementsProjection(manifest.capabilities, harness, destinationRoot, repoRoot, installRoot));
+    for (const projection of require('./capabilities').profileProjections(manifest.capabilities, harness, destinationRoot, repoRoot, installRoot)) addProjection(projection);
   }
   return [...destinations.values()]
     .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id))

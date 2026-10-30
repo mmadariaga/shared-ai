@@ -65,14 +65,33 @@ function validateRegistry(registry) {
   }
 }
 
-function shellPatterns(patterns, harness) {
-  const root = harness === 'claude' ? '.claude' : '.opencode';
-  const global = harness === 'claude' ? '~/.claude' : '~/.config/opencode';
-  return (patterns || []).flatMap(pattern => /\{(?:sai|skills)\}/.test(pattern)
-    ? [root, global].map(base => pattern.replaceAll('{sai}', `${base}/sai`).replaceAll('{skills}', `${base}/skills`).replaceAll('{harness}', harness)) : [pattern]);
+// The install root is written with forward slashes and the drive letter as Node reports it.
+function normalizeInstallRoot(installRoot) {
+  if (installRoot === undefined || installRoot === null || installRoot === '') return undefined;
+  return String(installRoot).replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
-function translate(registry, name, harness) {
+// The absolute form double-quotes the command path, as the instructions document it: `node "<path>"`.
+// A path token that ends in a wildcard keeps only its opening quote, so the wildcard still spans the rest.
+function quoteCommandPath(pattern) {
+  return pattern.replace(/^(node )(\S+)/, (_, command, token) => `${command}"${token}${token.endsWith('*') ? '' : '"'}`);
+}
+
+function shellPatterns(patterns, harness, installRoot) {
+  const root = harness === 'claude' ? '.claude' : '.opencode';
+  const global = harness === 'claude' ? '~/.claude' : '~/.config/opencode';
+  const absolute = normalizeInstallRoot(installRoot);
+  const expand = (pattern, base) => pattern.replaceAll('{sai}', `${base}/sai`).replaceAll('{skills}', `${base}/skills`).replaceAll('{harness}', harness);
+  return (patterns || []).flatMap(pattern => {
+    if (!/\{(?:sai|skills)\}/.test(pattern)) return [pattern];
+    const forms = [root, global].map(base => expand(pattern, base));
+    // Quote before expanding, so a root with spaces stays inside the quotes.
+    if (absolute) forms.push(expand(quoteCommandPath(pattern), absolute));
+    return forms;
+  });
+}
+
+function translate(registry, name, harness, installRoot) {
   if (!['claude', 'opencode'].includes(harness)) throw new Error(`Unsupported capability harness: ${harness}`);
   const profile = resolveProfile(registry, name);
   const tools = [];
@@ -95,7 +114,7 @@ function translate(registry, name, harness) {
   }
   if (profile.shell?.length) {
     tools.push('Bash', 'PowerShell');
-    for (const resource of shellPatterns(profile.shell, harness)) grant('shell', resource);
+    for (const resource of shellPatterns(profile.shell, harness, installRoot)) grant('shell', resource);
   }
   if (profile.delegate?.length) {
     tools.push('Agent');
@@ -124,7 +143,7 @@ function translate(registry, name, harness) {
     grant('read', '*.env.example');
   }
   const allowed = tools.filter(tool => !['Bash', 'PowerShell'].includes(tool));
-  allowed.push(...shellPatterns(profile.shell, 'claude').flatMap(pattern => ['Bash', 'PowerShell'].map(tool => pattern === '*' ? tool : `${tool}(${pattern.replace(/ \*$/, ':*')})`)));
+  allowed.push(...shellPatterns(profile.shell, 'claude', harness === 'claude' ? installRoot : undefined).flatMap(pattern => ['Bash', 'PowerShell'].map(tool => pattern === '*' ? tool : `${tool}(${pattern.replace(/ \*$/, ':*')})`)));
   const nativeTools = harness === 'claude' ? [...new Set(tools)]
     : [...new Set(rules.filter(rule => rule.effect === 'allow' && rule.action !== 'external_directory').map(rule => rule.action))];
   const toolRequirements = [];
@@ -145,9 +164,9 @@ function permissionYaml(rules) {
   return rules.map(rule => `  - action: ${JSON.stringify(rule.action)}\n    resource: ${JSON.stringify(rule.resource)}\n    effect: ${rule.effect}`).join('\n');
 }
 
-function projectSource(text, registry, kind, name, harness) {
+function projectSource(text, registry, kind, name, harness, installRoot) {
   const profileName = assignment(registry, kind, name);
-  const native = translate(registry, profileName, harness);
+  const native = translate(registry, profileName, harness, installRoot);
   const values = {
     capabilityTools: native.tools,
     capabilityAllowedTools: native.allowedTools,
@@ -160,19 +179,19 @@ function projectSource(text, registry, kind, name, harness) {
   });
 }
 
-function projectFile(projection, registry, repoRoot) {
+function projectFile(projection, registry, repoRoot, installRoot) {
   const source = projection.sourcePath.replaceAll(path.sep, '/');
   const match = /\/(agents|commands)\/(claude|opencode)\/([^/]+)\.md$/.exec(source);
   if (!match || match[3] === 'worker-template') return projection;
   const text = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
   return { ...projection,
     sourcePath: path.join(repoRoot, '.tmp', 'capability-sources', projection.harness, match[1], `${match[3]}.md`),
-    sourceText: projectSource(text, registry, match[1], match[3], projection.harness) };
+    sourceText: projectSource(text, registry, match[1], match[3], projection.harness, installRoot) };
 }
 
-function requirementsProjection(registry, harness, destinationRoot, repoRoot) {
+function requirementsProjection(registry, harness, destinationRoot, repoRoot, installRoot) {
   const commands = Object.fromEntries(Object.entries(registry.assignments.commands).map(([name, profile]) =>
-    [name, { profileName: profile, ...translate(registry, profile, harness) }]));
+    [name, { profileName: profile, ...translate(registry, profile, harness, installRoot) }]));
   return {
     id: `${harness}-capability-requirements`, harness, strategy: 'copy', ownership: 'managed', drift: 'content',
     // Uninstall materializes generated sources here; never use executable source.
@@ -182,13 +201,13 @@ function requirementsProjection(registry, harness, destinationRoot, repoRoot) {
   };
 }
 
-function profileProjections(registry, harness, destinationRoot, repoRoot) {
+function profileProjections(registry, harness, destinationRoot, repoRoot, installRoot) {
   return Object.keys(registry.profiles).map(name => ({
     id: `${harness}-capability-profile-${name}`, harness, strategy: 'copy', ownership: 'managed', drift: 'content',
     sourcePath: path.join(repoRoot, '.tmp', 'capability-sources', harness, 'profiles', `${name}.json`),
     destinationPath: path.join(destinationRoot.sai, 'capabilities', `${name}.json`),
-    sourceText: JSON.stringify({ harness, profileName: name, ...translate(registry, name, harness) }, null, 2) + '\n',
+    sourceText: JSON.stringify({ harness, profileName: name, ...translate(registry, name, harness, installRoot) }, null, 2) + '\n',
   }));
 }
 
-module.exports = { resolveProfile, assignment, validateRegistry, translate, permissionYaml, projectSource, projectFile, requirementsProjection, profileProjections };
+module.exports = { resolveProfile, assignment, validateRegistry, translate, permissionYaml, normalizeInstallRoot, projectSource, projectFile, requirementsProjection, profileProjections };
