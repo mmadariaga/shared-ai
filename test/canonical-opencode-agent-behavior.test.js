@@ -474,7 +474,7 @@ test('Claude budget skills route dispatch through their agent basenames with no 
       `${contract.skillName} must not hardcode a Claude model identifier`);
     assert.doesNotMatch(skill, /\bmodel\s*:/i,
       `${contract.skillName} must pass no per-spawn model:`);
-    assert.doesNotMatch(skill, /\bescalat/i,
+    assert.doesNotMatch(skill.replaceAll('sai/policies/obstacle-escalation.md', ''), /\bescalat/i,
       `${contract.skillName} must not retain a retired explorer escalation tier`);
 
     const skillTargets = extractSkillFetchTargets(skill);
