@@ -1487,7 +1487,7 @@ test('Step 2 fresh install seeds the generic opencode agent files from their sou
         'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
         `specs/opencode-generic-agent-files/spec.md: ${name} should bootstrap opencode fetch resolution before its policy Fetch`
       );
-      assert.equal(fs.readFileSync(agentPath, 'utf8'), require('./helpers/capability-source').readProjected(`agents/opencode/${name}.md`),
+      assert.equal(fs.readFileSync(agentPath, 'utf8'), require('./helpers/capability-source').readProjected(`agents/opencode/${name}.md`, tmpDir),
         `${name} should be identical to its compiled opencode source`);
       assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${name}.owner.json`)), false,
         `specs/opencode-generic-agent-files/spec.md: ${name} must not gain an ownership sidecar`);

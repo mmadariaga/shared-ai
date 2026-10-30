@@ -17,8 +17,8 @@ function permissionRules(text) {
   const block = text.match(/^permissions:\r?\n((?:[ \t].*(?:\r?\n|$))+)/m);
   assert.ok(block, 'the explore agent must extend the built-in permissions');
   const rules = [...block[1].matchAll(
-    /^  - action: (\S+)\r?\n    resource: "([^"]+)"\r?\n    effect: (allow|deny|ask)\r?$/gm,
-  )].map(([, action, resource, effect]) => ({ action: JSON.parse(action), resource, effect }));
+    /^  - action: (\S+)\r?\n    resource: ("(?:[^"\\]|\\.)+")\r?\n    effect: (allow|deny|ask)\r?$/gm,
+  )].map(([, action, resource, effect]) => ({ action: JSON.parse(action), resource: JSON.parse(resource), effect }));
   assert.equal(rules.length, (block[1].match(/^  - action:/gm) || []).length,
     'every permission declaration must be checked');
   return rules;
@@ -61,7 +61,7 @@ test('the managed OpenCode explore projection carries the permission fix', () =>
   assert.equal(projection.strategy, 'tunable-seed');
   const projected = projection.sourceText !== undefined
     ? projection.sourceText : fs.readFileSync(projection.sourcePath, 'utf8');
-  assert.deepEqual(permissionRules(projected), permissionRules(source));
+  assert.deepEqual(permissionRules(projected), permissionRules(readProjected('agents/opencode/budget-explorer.md', destinationRoot.root)));
 });
 
 test('Claude Code retains equivalent research tool access and both harnesses load the shared policy', () => {

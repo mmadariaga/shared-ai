@@ -8,12 +8,12 @@ Define how the opencode fetch skill resolves `Fetch @<subpath>` directives to ex
 ### Requirement: Active harness and roots includes path composition without changing resolution or namespace scope
 Both the Claude Code and opencode fetch skills SHALL include the path-composition rule in `## Active harness and roots` as part of the shared fetch path contract. The other requirements in this capability SHALL remain unchanged by the composition rule: the two-root resolution (Read-project-first then Read-global-second, gated by the once-per-session project-local `sai/` root probe), the `sai/` / `commands/` / `skills/` namespace invariant, the out-of-namespace stop-before-read rule, harness mirroring, and the skills-path `skill` tool mapping.
 
-The composition rule SHALL distinguish derived paths from literal paths. In-project paths are written relative to the working directory, and no absolute path is composed from the project-root string. Out-of-project paths are used exactly as supplied, with no derivation by string manipulation. A literal absolute path that was supplied as such (for example `~/.config/opencode/skills/fetch/SKILL.md`) SHALL remain valid.
+The composition rule SHALL distinguish derived paths from literal paths. In-project paths are written relative to the working directory, and no absolute path is composed from the project-root string. Out-of-project paths are used exactly as supplied, with no derivation by string manipulation, except that a path a tool returned MAY have its backslashes turned into forward slashes and nothing else. A literal absolute path that was supplied as such (for example `~/.config/opencode/skills/fetch/SKILL.md`) SHALL remain valid.
 
 #### Scenario: composition is stated beside the existing root order
 - **WHEN** either fetch skill is read at `## Active harness and roots`
 - **THEN** the section still establishes harness identity and project-local-before-user-global root order
-- **AND** it also states the in-project relative and out-of-project literal composition cases
+- **AND** it also states the in-project relative and out-of-project literal composition cases, including the slash-conversion exception for a tool-returned path
 
 #### Scenario: existing resolution and namespace rules are untouched
 - **WHEN** a `Fetch @<subpath>` directive is resolved after the composition rule is present

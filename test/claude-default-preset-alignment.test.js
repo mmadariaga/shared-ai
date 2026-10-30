@@ -38,7 +38,7 @@ function projections(harness) {
   const destinationRoot = Object.fromEntries(
     ['agents', 'commands', 'config', 'sai', 'skills', 'root'].map(key => [key, path.join(base, key)]),
   );
-  return { base, entries: asLinux(() => expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })) };
+  return { base, entries: asLinux(() => expandInstallManifest(manifest, { harness, repoRoot, destinationRoot, installRoot: harness === 'claude' ? '/home/test/.claude' : '/home/test/.config/opencode' })) };
 }
 
 test('all 35 Claude shipped roles match the audit-renumbered OPUS preset exactly', () => {
@@ -75,5 +75,5 @@ test('generated opencode agents, command wrappers, and configuration match the c
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 41);
-  assert.equal(hash(JSON.stringify(output)), '3f06b58688d9b325c1de768bde7052cc4848b11ff3cb5669817cbf788afb7298');
+  assert.equal(hash(JSON.stringify(output)), '392b40b527d7fdbd3834bc77f82778bf6b8c5f93c0178c6d336d0d36478eba68');
 });

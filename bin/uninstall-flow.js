@@ -21,7 +21,10 @@ const REPOSITORY_ROOT = path.join(__dirname, '..');
 
 function materializeMatrixSource(projection, harness) {
   if (projection.sourceText === undefined) return projection.sourcePath;
-  const target = projection.sourcePath;
+  // Generated text depends on the install root, so each distinct text gets its own scratch file:
+  // two enumerations with different roots (or in parallel processes) never overwrite each other's source.
+  const digest = crypto.createHash('sha256').update(projection.sourceText).digest('hex').slice(0, 12);
+  const target = path.join(path.dirname(projection.sourcePath), digest, path.basename(projection.sourcePath));
   flow.ensureDir(path.dirname(target));
   const expected = Buffer.from(projection.sourceText);
   try {
@@ -93,6 +96,7 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       ruleId: projection.id,
       strategy: projection.strategy,
     };
+    if (projection.sourceText !== undefined) entry.sourceText = projection.sourceText;
     if (projection.strategy === 'tunable-seed') {
       entry.assetType = 'claude-managed-agent';
       entry.tunableKeys = projection.harness === 'claude' ? flow.CLAUDE_TUNABLE_KEYS : flow.OPENCODE_TUNABLE_KEYS;
