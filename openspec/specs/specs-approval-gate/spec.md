@@ -38,8 +38,19 @@ Once the existence precondition passes, `sai-2-design` SHALL record the approval
 - **THEN** `sai-2-design` stops with an explicit failure message naming the file and the error, and does not generate `design.md` or `tasks.md`
 
 ### Requirement: sai-2-design requires proposal and specs to exist
-Before stamping the approval or generating any artifact, `sai-2-design` SHALL confirm that `openspec/changes/<change-name>/proposal.md` exists AND at least one file matching `openspec/changes/<change-name>/specs/**/*.md` exists.
+Before stamping the approval or generating any artifact, `sai-2-design` SHALL confirm that `openspec/changes/<change-name>/proposal.md` exists AND either at least one file matching `openspec/changes/<change-name>/specs/**/*.md` exists or the change's `.openspec.yaml` sets `skip_specs: true`.
 
 #### Scenario: sai-2-design halts when the change has no specs
 - **WHEN** `/sai-2-design <change-name>` is run and `proposal.md` or every `specs/**/*.md` is missing
 - **THEN** the command halts and prints: "Change '<change-name>' not found or has no specs. Run /sai-1-spec to create it first."
+
+#### Scenario: sai-2-design starts a change declared to have no specs
+- **WHEN** `/sai-2-design <change-name>` is run on a change with `proposal.md`, no `specs/**/*.md`, and `skip_specs: true` in `.openspec.yaml`
+- **THEN** the command starts and designs from the proposal
+
+### Requirement: sai-2-design writes no specs approval for a skip_specs change
+For a change whose `.openspec.yaml` sets `skip_specs: true`, `sai-2-design` SHALL write no `approval.specs` key, because the change has no specs to approve.
+
+#### Scenario: No approval key is stamped
+- **WHEN** `/sai-2-design` runs on a change with `skip_specs: true`
+- **THEN** `.openspec.yaml` gains no `approval.specs.approved_at` or `approval.specs.notes` key

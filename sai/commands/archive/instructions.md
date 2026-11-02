@@ -33,7 +33,9 @@ an association from a branch number or an ordinary `Refs` mention.
    - **EXEMPT** (silent): `interfaces`, never collected into any set and never
      named in a diagnostic.
 4. **CORE.** For a backfilled change, skip `design` and `tasks`; `proposal` and
-   `specs` are always checked. Collect every
+   `specs` are always checked. A `specs` artifact whose `status` is `skipped`
+   (the change declares `skip_specs: true`, so it has no spec files by design)
+   is satisfied and never collected. Collect every
    remaining CORE artifact whose `status` is not `done`. When any is collected,
    close the run with a terminal result whose summary is exactly
    **"Missing CORE artifact(s): <id1>, <id2>. Archive blocked."**, with no AUDIT
@@ -55,7 +57,8 @@ an association from a branch number or an ordinary `Refs` mention.
 For each delta spec capability, compare it with its main spec at
 `openspec/specs/<capability>/spec.md` and report a combined, informational
 delta-sync summary. A capability with no main spec is a new addition, reported
-as `[ADD] <capability>`. The `openspec archive <name> --yes --json` CLI performs
+as `[ADD] <capability>`. A change whose `specs` status is `skipped` has no delta
+spec: report that no delta syncs and list no capability. The `openspec archive <name> --yes --json` CLI performs
 the actual synchronization and move in one validated operation; SAI reports,
 and never duplicates, that work.
 

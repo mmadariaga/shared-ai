@@ -69,3 +69,10 @@ Rendering the bulk table SHALL be strictly read-only: it SHALL issue one `opensp
 #### Scenario: N status calls, no writes
 - **WHEN** the bulk table is rendered for N active changes
 - **THEN** `sai-status` issues N `openspec status --change {name} --json` calls plus local file reads, and creates, modifies, or deletes no file under any `openspec/` path
+
+### Requirement: Bulk rows show skipped specs
+Each bulk table row SHALL render the specs cell as `skipped` when the CLI reports the change's `specs` artifact as `skipped`, SHALL identify artifacts by the CLI output's `id` field with `name` as fallback, and the legend SHALL explain the `skipped` cell as specs declared absent through `skip_specs`.
+
+#### Scenario: A skip_specs change row shows skipped
+- **WHEN** a listed change's CLI status names artifacts by `id` and reports `specs` as `skipped`
+- **THEN** its row shows `skipped` in the specs cell and the legend explains that cell

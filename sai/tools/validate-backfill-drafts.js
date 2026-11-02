@@ -25,7 +25,12 @@ function collect(input, cwd) {
     const { bytes } = verify(dir, ref);
     files.set(ref.destination, bytes);
   }
-  if (!files.has(`${prefix}.openspec.yaml`) || !files.has(`${prefix}proposal.md`) || files.size < 3) throw new Error('Incomplete draft set');
+  if (!files.has(`${prefix}.openspec.yaml`) || !files.has(`${prefix}proposal.md`)) throw new Error('Incomplete draft set');
+  // A no-specs set declares skip_specs and carries no spec; any other set carries at least one.
+  const noSpecs = /^skip_specs:[ \t]*true[ \t]*$/m.test(files.get(`${prefix}.openspec.yaml`).toString('utf8'));
+  const specCount = files.size - 2;
+  if (noSpecs && specCount > 0) throw new Error('A draft set that declares skip_specs carries no capability spec');
+  if (!noSpecs && specCount === 0) throw new Error('Incomplete draft set');
   // Copy every specification, including untouched capabilities, at its relative path.
   // Only a missing optional root means absent; unreadable or unsafe entries fail.
   function copyInput(relative, optional = false) {

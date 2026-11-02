@@ -12,11 +12,14 @@ is loaded.
 2. On creation, run `openspec new change "<name>"` with the block's `Change
    name`. A refinement run skips it, because the change directory already
    exists.
-3. Run `openspec instructions proposal --change "<name>" --json` and write
+3. When the block declares `**Specs**: none — <reason>` and `specs/` holds no
+   file, merge `skip_specs: true` into the change's `.openspec.yaml` now,
+   keeping every other key verbatim and never rewriting the whole file.
+4. Run `openspec instructions proposal --change "<name>" --json` and write
    `proposal.md` to the `resolvedOutputPath` it returns, from its `template`,
    `instruction`, and `rules`, grounded in your research. `context` and `rules`
    constrain the content; keep both out of every artifact.
-4. Stop there: `specs/**` is the next step.
+5. Stop there: `specs/**` is the next step.
 
 Questions go out as a `needs_input` report, and the step ends with your report.
 

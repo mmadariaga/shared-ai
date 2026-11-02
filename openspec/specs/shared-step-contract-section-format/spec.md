@@ -41,3 +41,10 @@ The extraction of the format specification to a policy file SHALL be behavior-pr
 - **WHEN** design generates `interfaces.md` after the format extraction
 - **THEN** the file's section structure, per-step keying, omission rule, and content remain unchanged
 - **AND** the file remains consumable by all existing downstream surfaces including apply's routing tree
+
+### Requirement: Assertions anchor to the proposal under skip_specs
+For a change whose `.openspec.yaml` sets `skip_specs: true`, `sai/policies/step-contract-format.md` SHALL let each test assertion cite a statement of `proposal.md`, by its section heading and the statement's wording, instead of a `specs/**/*.md` requirement or scenario. Changes with spec files SHALL keep anchoring assertions to specs.
+
+#### Scenario: A no-specs change anchors assertions to the proposal
+- **WHEN** design writes `interfaces.md` for a change with `skip_specs: true`
+- **THEN** each test assertion cites a `proposal.md` statement by section heading and wording
