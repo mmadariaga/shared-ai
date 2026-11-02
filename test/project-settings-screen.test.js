@@ -452,7 +452,7 @@ test('I1: section headers are passed as non-selectable rows and an unparseable l
 
 test('E12: the screen lists exactly its five keys, none of the repository, project or organization keys', () => {
   assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']);
-  assert.deepEqual([...modelCustomization.MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Cache warming', 'Exit']);
+  assert.deepEqual([...modelCustomization.MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
 });
 
 // The `Cache warming` section: role defaults and guided rules for the nested `warming` value (E1-E8).
@@ -598,7 +598,7 @@ test('the section keeps the file byte-identical on an interrupt, backing out of 
   assert.equal(read(broken), '{ nope');
 });
 
-test('the post-setup menu offers Cache warming and opens the section with the guided pairs of installed files', async () => {
+test('the post-setup menu opens the Cache warming section with the guided pairs of installed files when its visibility is enabled', async () => {
   const directory = project();
   const roots = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, fs.mkdtempSync(path.join(os.tmpdir(), `warming-${name}-`))]));
   fs.writeFileSync(path.join(roots.claudeCommands, 'sai-explore.md'), '---\nname: sai-explore\nmodel: opus\neffort: high\n---\n\nbody\n');
@@ -608,9 +608,22 @@ test('the post-setup menu offers Cache warming and opens the section with the gu
     projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
     claudeGlobalAgentRoot: roots.claudeAgents, claudeGlobalCommandRoot: roots.claudeCommands,
     opencodeGlobalAgentRoot: roots.opencodeAgents, opencodeGlobalCommandRoot: roots.opencodeCommands,
-    promptChoice: script(answers, seen), promptInput: async () => '',
+    promptChoice: script(answers, seen), promptInput: async () => '', cacheWarmingMenuEnabled: true,
   });
   assert.equal(outcome.reason, 'cancelled');
-  assert.ok(seen[0].options.includes('Cache warming'));
+  assert.deepEqual(seen[0].options.slice(-2), ['Cache warming', 'Exit']);
   assert.deepEqual(warmingOf(directory), { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] });
+});
+
+test('a Cache warming answer is cancelled and opens no warming screen while the entry is hidden', async () => {
+  const directory = project();
+  const seen = [];
+  const outcome = await modelCustomization.runPostSetupMenu({
+    projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
+    promptChoice: script(['Cache warming'], seen), promptInput: async () => '',
+  });
+  assert.equal(outcome.reason, 'cancelled');
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].options.includes('Cache warming'), false);
+  assert.equal(fs.existsSync(path.join(directory, FILE)), false);
 });

@@ -17,7 +17,11 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Cache warming', 'Exit']);
+// Cache warming stays implemented but is hidden from the post-setup menu until it is tested; flip to re-enable.
+const CACHE_WARMING_MENU_ENABLED = false;
+const ALL_MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Cache warming', 'Exit']);
+const visibleMenuOptions = cacheWarmingEnabled => Object.freeze(ALL_MENU_OPTIONS.filter(option => cacheWarmingEnabled || option !== 'Cache warming'));
+const MENU_OPTIONS = visibleMenuOptions(CACHE_WARMING_MENU_ENABLED);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
@@ -1294,7 +1298,9 @@ async function runPostSetupMenuInternal({
   promptChoice: selectChoice = promptSelect,
   promptChecklist: selectChecklist = installFlowPromptChecklist,
   promptInput = defaultPromptInput,
+  cacheWarmingMenuEnabled = CACHE_WARMING_MENU_ENABLED, // test-only override of the visibility constant
 } = {}) {
+  const menuOptions = visibleMenuOptions(cacheWarmingMenuEnabled);
   const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
   const effectiveOpencodeCommandRoot = opencodeGlobalCommandRoot !== undefined ? opencodeGlobalCommandRoot : defaultOpencodeGlobalCommandRoot();
   const effectiveClaudePresetDir = claudePresetDir !== undefined
@@ -1330,7 +1336,7 @@ async function runPostSetupMenuInternal({
       if (screen === 'menu') {
         const action = await promptChoice(
           'Post-setup customization:',
-          MENU_OPTIONS,
+          menuOptions,
           undefined,
           null,
         );
@@ -1360,7 +1366,7 @@ async function runPostSetupMenuInternal({
           await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput });
           continue;
         }
-        if (action === 'Cache warming') {
+        if (action === 'Cache warming' && cacheWarmingMenuEnabled) {
           const pairs = guidedWarmingPairs({
             projectPath,
             packageRoot,
