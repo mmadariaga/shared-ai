@@ -7,7 +7,7 @@ Define the behavioral parity requirements that the design coordinator-worker ref
 ## Requirements
 
 ### Requirement: Routed and inline design paths preserve artifact parity
-The routed Claude Code and opencode paths and the inline Copilot path SHALL produce the same `design.md`, `tasks.md`, and `interfaces.md` formats, required sections, provenance and verify-first markers, routing metadata, Implementation Context, Required Documentation, Manual Verification, and cross-artifact step alignment required by the current design workflow.
+The routed Claude Code and opencode paths and the inline Copilot path SHALL produce the same `design.md`, `tasks.md`, and `interfaces.md` formats, required sections, record-family and verify-first markers, routing metadata, Implementation Context, Required Documentation, Manual Verification, and cross-artifact step alignment required by the current design workflow. No path SHALL emit a provenance marker.
 
 #### Scenario: Equivalent change is designed on different harnesses
 - **WHEN** the same proposal, approved specs, codebase snapshot, glossary, learnings, and user answers are processed through a routed path and the Copilot inline path

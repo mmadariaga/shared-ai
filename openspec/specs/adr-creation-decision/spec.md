@@ -30,43 +30,6 @@ Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolv
 - **WHEN** a design step evaluates all three ADR/DDR criteria
 - **THEN** it resolves and records `**Record family**: adr|ddr` through the canonical routing test.
 
-### Requirement: Resolve the record family before the culture gate
-
-Implementation planning SHALL evaluate the three ADR/DDR criteria and resolve exactly one record family before applying the creation culture gate. A recorded `**Record family**: adr|ddr` marker in `design.md` SHALL be used when present; otherwise the canonical ordered routing test SHALL be used. The user SHALL never be asked to choose between ADR and DDR.
-
-#### Scenario: Family resolution precedes culture evaluation
-
-- **WHEN** a decision satisfies all three criteria and its family is resolved
-- **THEN** the implementation flow checks only that resolved family's culture signal before deciding creation
-
-### Requirement: Use the resolved family's physical index as the sole culture signal
-
-The creation decision MUST use only `docs/adr/0000-INDEX.md` for the `adr` family or `docs/ddr/0000-INDEX.md` for the `ddr` family as the culture signal, and MUST read its existence from `index_exists` in the decision-record inventory (`sai/tools/decision-records.js inventory --family <family>`) run once per resolved family after all three criteria hold. That inventory SHALL be the only source of index existence. Other records, the other family's index, and files outside the recognized locations MUST NOT establish culture.
-
-#### Scenario: Existing resolved-family index
-
-- **WHEN** the resolved family's physical `0000-INDEX.md` exists
-- **THEN** a qualifying decision is created directly without an approval question
-
-#### Scenario: Index inside a folder ignored in git
-
-- **WHEN** the resolved family's folder is ignored in git and its `0000-INDEX.md` exists on disk
-- **THEN** the inventory reports the index present and a qualifying decision is created directly without an approval question
-
-#### Scenario: Records exist without an index
-
-- **WHEN** the inventory lists records for the resolved family and reports `index_exists: false`
-- **THEN** the culture signal is absent and creation still requires explicit approval
-
-### Requirement: Require approval when the resolved-family index is absent
-
-When a decision satisfies all three criteria but the resolved family's physical index is absent, implementation planning SHALL ask for explicit approval before creating the record, regardless of whether records exist elsewhere or no records exist. Approved creation SHALL use the cold-build branch.
-
-#### Scenario: Missing resolved-family index
-
-- **WHEN** a qualifying decision has no resolved-family index
-- **THEN** the flow asks for approval naming the resolved family and creates nothing unless approval is explicit
-
 ### Requirement: Make non-qualifying decisions a no-op
 
 A decision that fails any of the three ADR/DDR criteria SHALL create no record and SHALL ask no creation question, regardless of index state.
@@ -78,12 +41,12 @@ A decision that fails any of the three ADR/DDR criteria SHALL create no record a
 
 ### Requirement: Skip creation for a decision that already has a record
 
-Before any creation ask, implementation planning SHALL look in the resolved family's decision-record inventory `records` for a record that already documents the decision, judging by slug and reading a candidate to confirm. When one exists, planning SHALL create no record and SHALL ask nothing for that decision. This check SHALL precede the culture gate.
+Before creating a record, the creator SHALL look in the resolved family's records, in `docs/<family>/` and its `archive/` folder, for a record that already cites the decision: its `## Provenance` section names the change in backticks and the decision's title. When one exists, it SHALL create no record for that decision, ask nothing, and list the decision as skipped in the closing report. A later run on the same change SHALL NOT re-create a record that already cites the change.
 
 #### Scenario: Decision already recorded
 
-- **WHEN** a qualifying decision is already documented by a record listed in the inventory
-- **THEN** planning creates no second record and asks no creation question for it
+- **WHEN** a qualifying decision is already cited by a record of its family whose `## Provenance` names the change and the decision's title
+- **THEN** the creator creates no second record, asks nothing, and lists the decision as skipped in the closing report
 
 ### Requirement: Number a new record from the inventory
 

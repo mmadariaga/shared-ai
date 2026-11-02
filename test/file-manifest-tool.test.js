@@ -158,7 +158,20 @@ test('fold writes the manifest in place and is idempotent; verify matches', () =
   }
 });
 
-test('fold creates a missing manifest after the Architecture Snapshot', () => {
+test('fold creates a missing manifest at the end of Target State when the design has no Architecture Snapshot', () => {
+  const { root, design } = project(TASKS, '## Target State\n\nThe finished shape.\n\n## Context\n\nc\n');
+  try {
+    assert.equal(run('verify', root).payload.status, 'missing');
+    assert.equal(run('fold', root).status, 0);
+    const text = fs.readFileSync(design, 'utf8');
+    assert.match(text, /The finished shape\.\n\n### File Manifest\n\n- A x\/a\.md[\s\S]*\n\n## Context/);
+    assert.equal(run('verify', root).status, 0);
+  } finally {
+    fs.rmSync(root, { recursive: true });
+  }
+});
+
+test('fold creates a missing manifest after the Architecture Snapshot of a design written before it retired', () => {
   const { root, design } = project(TASKS, '## Target State\n\n### Architecture Snapshot\n\nNone — no planned public surfaces\n\n## Context\n\nc\n');
   try {
     assert.equal(run('verify', root).payload.status, 'missing');

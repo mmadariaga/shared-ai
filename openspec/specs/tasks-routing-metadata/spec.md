@@ -95,7 +95,7 @@ The `<context>` token SHALL be one of `small`, `medium`, `large`, and only these
 
 ### Requirement: Difficulty vocabulary is measured against the implementer
 
-The design task-generation step SHALL define the implementer once beside the Routing line as the agent that implements the Step in `/sai-3-implement`, no more capable than the design agent and usually less. The `<difficulty>` token SHALL be one of `low`, `medium`, `high`, and only these values. It SHALL state how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract, and SHALL state that `/sai-3-implement` uses it to decide how much production code to write. When unsure, the design agent SHALL choose the higher value. A Step with no RED block SHALL still carry `difficulty`, judged on the plan and contract with no tests to guide the implementer.
+The design task-generation step SHALL define the implementer once beside the Routing line as the agent that implements the Step in `/sai-3-implement`, no more capable than the design agent and usually less. The `<difficulty>` token SHALL be one of `low`, `medium`, `high`, and only these values. It SHALL state how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract. It SHALL state that the token is reserved for routing GREEN workers by difficulty later and that no command consumes it today, so the design agent judges it for that future reader. When unsure, the design agent SHALL choose the higher value. A Step with no RED block SHALL still carry `difficulty`, judged on the plan and contract with no tests to guide the implementer.
 
 #### Scenario: Uncertain difficulty rounds up
 - **WHEN** the design agent is unsure between two difficulty levels
@@ -104,6 +104,10 @@ The design task-generation step SHALL define the implementer once beside the Rou
 #### Scenario: Step without tests still carries difficulty
 - **WHEN** a Step has no RED block (docs or config)
 - **THEN** its Routing line still carries a `difficulty` judged on the plan and contract alone
+
+#### Scenario: Difficulty has no consumer today
+- **WHEN** `sai/commands/design/steps/tasks.md` is read at its `difficulty` bullet
+- **THEN** it states that the token is reserved for future GREEN routing and that no command consumes it today
 
 ### Requirement: Glossary defines the routing vocabulary
 

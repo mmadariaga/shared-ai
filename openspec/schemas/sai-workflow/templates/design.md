@@ -2,10 +2,6 @@
 
 <!-- Finished shape the change converges on (one concrete artifact). -->
 
-### Architecture Snapshot
-
-<!-- Planned public surfaces, or exactly: None — no planned public surfaces -->
-
 ### File Manifest
 
 <!-- Net fold of tasks.md Files Affected as Markdown bullets (- <token> <path> (Step N)), one entry per line, or exactly: None — no files affected -->
@@ -25,7 +21,6 @@
 ## Decisions
 
 ### D1: <!-- Decision title -->
-**Provenance**: <!-- user | codebase-forced | derived -->
 **Record family**: <!-- adr | ddr when criteria apply -->
 **Alternatives considered**:
 - <!-- Alternative rejected and why -->

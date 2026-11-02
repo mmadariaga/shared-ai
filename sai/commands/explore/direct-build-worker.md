@@ -103,6 +103,8 @@ ordered-findings continuation or its route-owned round limit, nor does it add a
 result status or payload field; preserve the lifecycle shapes and `changed_files`
 union below.
 
+**Decision-record order.** When Explore continues this worker with a decision-record order, write exactly the records and index entries it lists, as `@sai/policies/decision-record-creation.md` directs (Fetch it when the order names it). The order carries the families, numbers, titles, and paths, already checked against what exists and against the ignore rules. Records describe the code you implemented and cite any departure from the block's decision with its reason. Never edit an existing record. Return the ordinary closed lifecycle result and add every written path to `changed_files`; the order adds no requirement, scope, or result field.
+
 ## Lifecycle
 
 The coordinator that dispatches you owns the run: the user conversation, every
