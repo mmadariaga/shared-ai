@@ -59,3 +59,36 @@ The public-chat policy SHALL govern wording only and SHALL NOT authorize file wr
 
 - **WHEN** an Explore session presents explanatory text under this policy
 - **THEN** the read-only contract remains authoritative and no write is authorized by the policy
+
+### Requirement: User-facing explanatory messages carry a single leading arrow marker
+
+In Claude Code and opencode, the author SHALL start every user-facing explanatory message with exactly `➡️` followed by one space, regardless of language. This SHALL cover progress updates, questions, and summaries, not only messages requiring a reply. The rule SHALL live in `sai/policies/public-chat.md` as a shared rule rather than being duplicated in each command.
+
+Each message SHALL carry one leading marker, not one per paragraph or forwarded passage. Authors SHALL add it at the source, including in user-facing `question`, `message`, and `summary` string values. Presenting agents SHALL forward that text unchanged without adding a second marker.
+
+The prefix SHALL mark the message, not its internal content. It SHALL NOT be inserted into code, documents, structured data outside those user-facing string values, picker options, or internal agent communications. Existing exact-text exceptions and byte-for-byte protocol protections SHALL prevail: when a contract prohibits prefixes or requires an exact first line, the message SHALL remain as required without prepending the marker.
+
+#### Scenario: Progress updates and summaries use the same prefix as questions
+
+- **WHEN** an author creates a user-facing progress update, question, or summary in either supported harness without an exact-text exception
+- **THEN** the message begins with exactly `➡️` followed by one space regardless of its language or whether it requires a reply
+
+#### Scenario: A message has multiple paragraphs or forwarded passages
+
+- **WHEN** an author creates one explanatory message containing several paragraphs or forwarded passages
+- **THEN** the message carries one leading marker rather than a marker per paragraph or passage
+
+#### Scenario: A coordinator presents a worker-authored field
+
+- **WHEN** a worker authors a user-facing `question`, `message`, or `summary` string and a coordinator presents it
+- **THEN** the worker adds the marker at the source and the coordinator forwards the text unchanged without adding a second marker
+
+#### Scenario: A contract requires an exact first line or no prefix
+
+- **WHEN** a message contract requires an exact first line or prohibits prefixes
+- **THEN** the author preserves the required message without prepending the arrow marker
+
+#### Scenario: A message contains protected content
+
+- **WHEN** an explanatory message includes code, documents, structured data, or picker options, or an agent creates internal communications
+- **THEN** the rule inserts no marker into that content and changes no byte-for-byte protected protocol content
