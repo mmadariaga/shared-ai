@@ -41,4 +41,4 @@
 
 <!-- Only checks no automated test in the plan covers, or None + one-line reason. -->
 
-<!-- Write-time authority: sai/commands/design/instructions.md ### Generate design.md -->
+<!-- Write-time authority: sai/commands/design/steps/design.md ## Generate design.md -->
