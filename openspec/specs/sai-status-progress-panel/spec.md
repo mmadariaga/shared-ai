@@ -179,3 +179,18 @@ The `sai-status` command SHALL run entirely in the main session with no `budget-
 
 - **WHEN** a change still holds an `implementation.md` from the old planner
 - **THEN** the panel neither reads nor reports that file
+
+### Requirement: A skipped specs artifact shows as skipped and is satisfied
+When `openspec status --json` reports the `specs` artifact as `skipped` (the change declares `skip_specs: true`), the panel SHALL render the specs cell as `skipped` instead of the approval states, and the `Next:` hint SHALL treat specs as present and approved, so it never points to `/sai-1-spec` because of the specs. The panel SHALL identify each artifact by the `id` field of the CLI output, falling back to `name`.
+
+#### Scenario: Skipped specs render as skipped
+- **WHEN** the CLI reports the `specs` artifact of a change as `skipped`
+- **THEN** the specs cell reads `skipped`
+
+#### Scenario: Next hint passes over skipped specs
+- **WHEN** the specs artifact is `skipped` and `design.md` is absent
+- **THEN** the `Next:` line points to `/sai-2-design`, as for approved specs, and never to `/sai-1-spec`
+
+#### Scenario: Artifacts named by id are recognized
+- **WHEN** the CLI output identifies artifacts by `id` rather than `name`
+- **THEN** the panel maps each artifact to its cell
