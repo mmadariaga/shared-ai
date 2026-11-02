@@ -221,3 +221,32 @@ The existing artifact destination, dependency on Interfaces, apply requirements,
 #### Scenario: registration and lifecycle remain unchanged
 - **WHEN** the schema overview entry is compared with its prior registration
 - **THEN** its destination remains change-overview.md, its dependency remains Interfaces, and it does not become an apply prerequisite
+
+### Requirement: Proposal and specs instructions copy the upstream spec-driven text
+The `proposal` and `specs` artifact instructions in `openspec/schemas/sai-workflow/schema.yaml` SHALL copy the `spec-driven` 1.15.0 instruction text verbatim, followed by exactly one SAI additions block delimited by `<!-- sai-additions:begin -->` and `<!-- sai-additions:end -->`. SAI-only rules, including the Proposal Research Documentation, Request Additional Notes, and Additional Notes sections, the no-fenced-code rule, and the `skip_specs` rule, SHALL live inside that block.
+
+#### Scenario: Each instruction carries one trailing additions block
+- **WHEN** the `proposal` or `specs` instruction in `schema.yaml` is read
+- **THEN** it holds the upstream text followed by one delimited SAI additions block that states the `skip_specs` rule
+
+#### Scenario: The additions restrict skip_specs to the block declaration
+- **WHEN** an author reads the SAI additions of the `proposal` or `specs` instruction
+- **THEN** they say to set `skip_specs: true` only when the Ready to Propose block declares `**Specs**: none — <reason>`, never on the author's own judgment
+
+### Requirement: A drift test guards the copied upstream text
+The test suite SHALL compare the part of each copied instruction outside the SAI additions block with a stored snapshot of the `spec-driven` 1.15.0 schema under `test/fixtures/`, which is not installed into projects. A difference SHALL fail the test and name the diverging section, and an edit inside the SAI additions block SHALL keep it passing.
+
+#### Scenario: Diverging copied text fails and names the section
+- **WHEN** the copied proposal or specs text differs from the stored 1.15.0 snapshot
+- **THEN** the drift test fails with a message naming the instruction and the first diverging section
+
+#### Scenario: Edits inside the additions block pass
+- **WHEN** only the text inside the SAI additions block changes
+- **THEN** the drift test passes
+
+### Requirement: The copied text uses only commands of the reference CLI
+The copied upstream text SHALL cite only `openspec` subcommands and options that exist in the reference CLI 1.13.0, and no CLI version check SHALL be added to the prerequisite check.
+
+#### Scenario: A cited command absent from CLI 1.13.0 fails the suite
+- **WHEN** the copied text cites an `openspec` subcommand or option outside the CLI 1.13.0 set
+- **THEN** the drift test suite fails naming that subcommand or option

@@ -29,7 +29,7 @@ Required sections:
 - **Open Questions**: outstanding unknowns to resolve
 - **Manual Verification** (the closing section of `design.md` — always emitted last): a hard filter listing only checks that no automated test in the plan covers and that `/sai-4-review` does not already cover. A check automatable as an ordinary test belongs in a step's `**Testing Strategy**` and `interfaces.md`, never here. Qualifying classes, each emitted only when the change makes it applicable: **generated-artifact drift** (migrations, test snapshots, designer/tool-generated files, lockfiles, committed build output — still in sync with their source after the change) and **end-to-end smoke across real runtimes** (the shortest manual path through the changed behavior that confirms the pieces connect, which no automated test in the plan can exercise). Each item names what to check and what a correct result looks like — never an unanchored "verify it works". When nothing is manual-only, emit the section with an explicit `None` and a one-line reason, so a reader distinguishes "nothing to check" from "not considered".
 
-Reference `proposal.md` for motivation, `specs/**/*.md` for requirements.
+Reference `proposal.md` for motivation, `specs/**/*.md` for requirements. A change whose `.openspec.yaml` sets `skip_specs: true` has no specs: reference the statements of `proposal.md`'s What Changes for requirements.
 
 ## Target State (authored first in design.md)
 

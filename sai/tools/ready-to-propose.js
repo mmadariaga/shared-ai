@@ -16,7 +16,8 @@
  *           inside prose counts (false positives accepted).
  *   strict  The full block format of sai/policies/ready-to-propose-format.md:
  *           every field label in order, kebab-case `**Change name**`, mandatory
- *           sections non-empty (or `- None`), optional
+ *           sections non-empty (or `- None`), the optional no-specs line
+ *           `**Specs**: none — <reason>` with a non-empty reason, optional
  *           `**Request Additional Notes**` with content, `**Overview language**`
  *           as the last line, each block terminated by a `---` line, and change
  *           names unique across the set. Set-level distribution rules (each `E`
@@ -160,6 +161,7 @@ const STRICT_FIELDS = [
   { label: 'Backlog origin', inline: true, optional: true },
   { label: 'What', inline: true },
   { label: 'Why', inline: true },
+  { label: 'Specs', inline: true, optional: true },
   { label: 'Capabilities in scope' },
   { label: 'Research Leads' },
   { label: 'Decisions & Rationale' },
@@ -179,6 +181,8 @@ const HEADING = '## Ready to Propose';
 const SEPARATOR = '---';
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LABEL_LINE = /^\*\*(.+?)\*\*:(.*)$/;
+/** The no-specs declaration: `none — <reason>`; the reason is captured and must not be blank. */
+const SPECS_NONE = /^none\s*—(.*)$/;
 
 function normalize(text) {
   return String(text ?? '').replace(/\r\n?/g, '\n');
@@ -321,6 +325,16 @@ function checkStrictBlock(lines, block, index) {
       if (!KEBAB_CASE.test(name)) {
         violations.push(violation(line, 'INVALID_CHANGE_NAME',
           `change name "${name}" must be kebab-case`));
+      }
+    }
+    if (entry.label === 'Specs' && entry.inline !== '') {
+      const declaration = SPECS_NONE.exec(entry.inline);
+      if (!declaration) {
+        violations.push(violation(line, 'INVALID_SPECS_FIELD',
+          'Specs must read "none — <reason>"'));
+      } else if (declaration[1].trim() === '') {
+        violations.push(violation(line, 'EMPTY_SPECS_REASON',
+          'Specs: none needs a reason after the dash'));
       }
     }
     if (entry.label === 'Backlog origin' && entry.inline !== '') {

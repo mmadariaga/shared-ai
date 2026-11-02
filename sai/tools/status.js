@@ -151,6 +151,11 @@ function countTaskProgress(filePath) {
   }
 }
 
+/** The artifact's identifier in `openspec status --json`: `id` in CLI 1.13.0, `name` in earlier output. */
+function artifactKey(artifact) {
+  return artifact.id ?? artifact.name;
+}
+
 /**
  * Get artifact status from CLI output
  * CLI returns "done" or "ready" or "blocked"
@@ -174,9 +179,10 @@ function getArtifactStatuses(cwd, changeName) {
 
     if (data.artifacts && Array.isArray(data.artifacts)) {
       for (const artifact of data.artifacts) {
-        if (ARTIFACTS.includes(artifact.name)) {
-          statuses[artifact.name] = {
+        if (ARTIFACTS.includes(artifactKey(artifact))) {
+          statuses[artifactKey(artifact)] = {
             present: artifact.status === 'done',
+            skipped: artifact.status === 'skipped',
             status: artifact.status,
           };
         }
@@ -186,6 +192,15 @@ function getArtifactStatuses(cwd, changeName) {
   } catch (err) {
     throw new ToolError(`failed to parse openspec status JSON: ${err.message}`);
   }
+}
+
+/**
+ * Specs cell: `skipped` for a change that declares skip_specs (no specs by
+ * design, so nothing to approve), otherwise the 3-state present/approved cell.
+ */
+function specsCellFor(statuses, specsApproved) {
+  if (statuses.specs.skipped) return 'skipped';
+  return specsApproved ? '●' : (statuses.specs.present ? '○' : '·');
 }
 
 /**
@@ -229,8 +244,7 @@ function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskP
     }
   }
 
-  // Specs 3-state cell
-  const specsCell = specsApproved ? '●' : (statuses.specs.present ? '○' : '·');
+  const specsCell = specsCellFor(statuses, specsApproved);
 
   // Overview state handling (E3)
   let overviewCell = '·';
@@ -262,14 +276,17 @@ function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskP
  * auditStatus is an object mapping audit name to boolean (true = satisfied)
  */
 function resolveNext(statuses, specsApproved, taskProgress, auditStatus) {
-  // specs absent
-  if (!statuses.specs.present) {
-    return '/sai-1-spec';
-  }
+  // A skipped specs artifact is satisfied: it has no files and nothing to approve.
+  if (!statuses.specs.skipped) {
+    // specs absent
+    if (!statuses.specs.present) {
+      return '/sai-1-spec';
+    }
 
-  // specs present, not approved
-  if (!specsApproved) {
-    return '/sai-2-design';
+    // specs present, not approved
+    if (!specsApproved) {
+      return '/sai-2-design';
+    }
   }
 
   // approved, design or tasks absent
@@ -508,9 +525,10 @@ async function renderBulk(cwd, gatherFn, listFn) {
 
       if (data.artifacts && Array.isArray(data.artifacts)) {
         for (const artifact of data.artifacts) {
-          if (ARTIFACTS.includes(artifact.name)) {
-            statuses[artifact.name] = {
+          if (ARTIFACTS.includes(artifactKey(artifact))) {
+            statuses[artifactKey(artifact)] = {
               present: artifact.status === 'done',
+              skipped: artifact.status === 'skipped',
               status: artifact.status,
             };
           }
@@ -545,7 +563,7 @@ async function renderBulk(cwd, gatherFn, listFn) {
         }
       }
 
-      const specsCell = specsApproved ? '●' : (statuses.specs.present ? '○' : '·');
+      const specsCell = specsCellFor(statuses, specsApproved);
 
       // Overview state handling
       let overviewCell = '·';
@@ -596,7 +614,7 @@ async function renderBulk(cwd, gatherFn, listFn) {
     }
   }
 
-  const legend = 'Legend: ● present · ○ specs present-unapproved · · absent · ! problem-state overview · N/A not-applicable audit';
+  const legend = 'Legend: ● present · ○ specs present-unapproved · skipped specs declared absent (skip_specs) · · absent · ! problem-state overview · N/A not-applicable audit';
   tableLines.push('');
   tableLines.push(legend);
 

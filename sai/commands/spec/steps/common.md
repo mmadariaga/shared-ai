@@ -64,7 +64,10 @@ validation step runs it, and so does every fix round and every refinement
 edit. Correct every failure before the step completes.
 
 - `proposal.md` exists and is non-empty.
-- At least one non-empty `specs/**/*.md` exists.
+- At least one non-empty `specs/**/*.md` exists. The one exception is a change
+  whose `.openspec.yaml` sets `skip_specs: true`: it has no spec, `specs/` holds
+  no file, `openspec validate` passes, and Rule #1 and Rule #2 have nothing to
+  check.
 - Every requirement has at least one valid scenario.
 - This invocation writes only within the write surface of `worker.md`. Pre-existing
   later-phase artifacts such as `design.md` or `tasks.md` are left untouched
