@@ -76,6 +76,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/artifact-review-contract.md',
     '@sai/policies/finding-state.md',
     '@sai/policies/sai-learnings-format.md',
+    '@sai/policies/decision-record-creation.md',
     '@sai/policies/inherent-risk.md',
     '@sai/orchestration/workers/bindings/red-worker.md',
     '@sai/orchestration/workers/bindings/green-worker.md',
@@ -159,7 +160,68 @@ test('the implement coordinator reuses the design context and promotes learnings
   assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
   assert.match(close, /Fetch @sai\/policies\/sai-learnings-format\.md/);
   assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
-  assert.match(read('sai/commands/design/steps/tasks.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
+  assert.match(read('sai/commands/design/steps/research.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
+});
+
+test('the learnings loop reaches design, RED, GREEN, and review from the file itself', () => {
+  const coordinator = read(COORDINATORS[0]);
+  const tasksStep = read('sai/commands/design/steps/tasks.md');
+  assert.match(coordinator, /the path `SAI_LEARNINGS\.md` when that file exists at the project root \(when it does not, the brief does not mention the file\)/);
+  for (const file of ['sai/commands/design/steps/research.md', 'sai/commands/implement/steps/red-step.md', 'sai/commands/implement/steps/green-step.md', 'sai/commands/review/steps/resolve-review-analysis.md']) {
+    const source = read(file);
+    assert.match(source, /SAI_LEARNINGS\.md/, `${file} reads the learnings file`);
+    assert.match(source, /sai-learnings-format\.md/, `${file} points at the shared consumption rules`);
+  }
+  assert.match(read('sai/commands/implement/steps/green-step.md'), /put in `notes` each file outside the change whose code contradicts an entry/);
+  assert.match(read('sai/commands/implement/steps/green-step.md'), /each entry that failed on execution/);
+  assert.match(read('sai/commands/implement/steps/red-step.md'), /put in `notes` each entry that failed on execution \(its key and the failure\)/);
+  assert.match(coordinator, /When the report of RED or GREEN names an entry that failed on execution, or when your own run of a Test Command taken from `SAI_LEARNINGS\.md` fails because of the entry and another command works, write a deviation that starts `SAI_LEARNINGS\.md stale:`/);
+  assert.match(tasksStep, /when they disagree, write the `SAI_LEARNINGS\.md` command/);
+  assert.doesNotMatch(tasksStep, /when they disagree, write the researched value/);
+  const format = read('sai/policies/sai-learnings-format.md');
+  assert.match(format, /## Consumption/);
+  assert.match(format, /An entry wins over contradicting code/);
+  assert.match(format, /Correction and deletion need execution evidence/);
+  assert.doesNotMatch(format, /Invalidation is supersede-only/);
+  const close = coordinator.slice(coordinator.indexOf('## Close'));
+  assert.match(close, /`SAI_LEARNINGS\.md stale:`/);
+  assert.match(close, /`## Learnings Corrections` section/);
+  const tasks = tasksStep;
+  assert.doesNotMatch(tasks, /\*\*Stack\*\*|\*\*Conventions\*\*|\*\*Avoid\*\*/);
+  const tasksTemplate = read('openspec/schemas/sai-workflow/templates/tasks.md');
+  assert.doesNotMatch(tasksTemplate, /\*\*Stack\*\*|\*\*Conventions\*\*|\*\*Avoid\*\*/);
+  assert.match(tasksTemplate, /\*\*Test Command\*\*/);
+});
+
+test('plan departures need execution evidence and every deviation reaches the closing report', () => {
+  const coordinator = read(COORDINATORS[0]);
+  assert.doesNotMatch(coordinator, /whenever that is cheaper/);
+  assert.match(coordinator, /only when execution shows that following it does not work/);
+  assert.match(coordinator, /Saving work is not a reason/);
+  assert.match(coordinator, /also when the decision came from the `Ready to Propose` block/);
+  assert.match(coordinator, /you never stop to ask/);
+  const design = read('sai/commands/design/steps/design.md');
+  assert.doesNotMatch(design, /Provenance/);
+  assert.match(design, /\*\*Record family\*\*: adr\|ddr/);
+});
+
+test('decision records are created once by the outermost implementing command', () => {
+  const policy = read('sai/policies/decision-record-creation.md');
+  assert.match(policy, /decision-records\.js/);
+  assert.match(policy, /git check-ignore -q/);
+  assert.match(policy, /adr-index\.template\.md/);
+  assert.match(policy, /A change receives its records once/);
+  const implement = read(COORDINATORS[0]);
+  assert.match(implement, /Create the decision records, only when the run completed and this command is the outermost implementing command/);
+  assert.match(implement, /Inside `\/sai-build` skip this step/);
+  const build = read('sai/commands/build/coordinator.md');
+  assert.match(build, /Segments 1 and 3 create no decision records/);
+  assert.match(build, /Fetch @sai\/policies\/decision-record-creation\.md/);
+  assert.match(read('sai/commands/deep-review/coordinator.md'), /creates the decision records of `@sai\/policies\/decision-record-creation\.md`/);
+  const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(directBuild, /Fetch @sai\/policies\/decision-record-creation\.md and prepare its order/);
+  assert.doesNotMatch(directBuild, /persistent ADR\/DDR creation remains owned by the normal implementation flow/);
+  assert.match(read('sai/commands/explore/direct-build-worker.md'), /\*\*Decision-record order\.\*\*/);
 });
 
 test('RED owns tests and stubs while GREEN owns production code and never writes tests', () => {

@@ -12,48 +12,22 @@ The durable learnings artifact SHALL live at exactly one place: the project root
 
 The filename SHALL be namespaced with the `SAI_` prefix. A generic name such as `LEARNINGS.md` SHALL NOT be used, because shared-ai installs into third-party repositories where such a file could collide with pre-existing retrospective or onboarding notes and silently feed unrelated prose into the pipeline.
 
-The `/sai-3-implement` coordinator SHALL be the only writer of `SAI_LEARNINGS.md`, by its learnings promotion at run close. No other command, coordinator, or worker SHALL write it.
+The `/sai-3-implement` coordinator SHALL be the only writer of `SAI_LEARNINGS.md`, by its learnings promotion at run close and by the evidence-backed correction or deletion of a stale entry at the same close. No other command, coordinator, or worker SHALL write it.
 
 #### Scenario: Phase reads the learnings file
 
 - **WHEN** any SAI phase reads the durable learnings artifact
-- **THEN** it reads `./SAI_LEARNINGS.md` at the project root
-- **AND** it does not look for a copy under `openspec/changes/{name}/` or any other directory
+- **THEN** it reads `./SAI_LEARNINGS.md` at the project root and does not look for a copy under `openspec/changes/{name}/` or any other directory
 
 #### Scenario: Promotion writes the file
 
-- **WHEN** any SAI phase would create or update the durable learnings artifact
-- **THEN** only the `/sai-3-implement` coordinator does so, by its learnings promotion at run close, and it writes `./SAI_LEARNINGS.md` at the project root and in no other directory
+- **WHEN** any SAI phase would create, update, correct, or delete an entry of the durable learnings artifact
+- **THEN** only the `/sai-3-implement` coordinator does so, at run close, and it writes `./SAI_LEARNINGS.md` at the project root and in no other directory
 
 #### Scenario: Consumer repo already has a generic learnings file
 
 - **WHEN** the consuming repository already contains a `LEARNINGS.md` written by humans for an unrelated purpose
 - **THEN** SAI neither reads nor writes that file, because the canonical name it looks for is `SAI_LEARNINGS.md`
-
-### Requirement: Four fixed sections mirroring Implementation Context
-
-`SAI_LEARNINGS.md` SHALL contain exactly four content sections, in this order: `## Stack`, `## Conventions`, `## Avoid`, `## Test Command`. No fifth section SHALL be introduced, and no section SHALL be renamed.
-
-These four section names are deliberately identical to the four fields of `tasks.md`'s `## Implementation Context` (per `tasks-implementation-context`). For **Stack**, **Conventions**, and **Avoid** the identity is load-bearing, not cosmetic: it lets `/sai-2-design` merge section-into-field without a mapping layer.
-
-**Test Command** is an explicit exception to that identity, and SHALL NOT be assumed to merge field-to-field. Its consuming field is contractually a single directly-executable command string, so its section obeys the single-valued shape defined below rather than the keyed-entry shape used by the other three sections. Any statement that all four sections merge without translation is incorrect and SHALL NOT be written into the format file or any instruction body.
-
-A section with no entries SHALL be present with its heading and left empty rather than omitted, so that the file's shape is stable for a reader matching on headings.
-
-#### Scenario: File is bootstrapped with a single entry
-
-- **WHEN** the `/sai-3-implement` coordinator promotes one qualifying **Avoid** fact at run close and no `SAI_LEARNINGS.md` exists
-- **THEN** it creates the file at the project root per the bootstrap rules of `sai/policies/sai-learnings-format.md`, with all four section headings present and the entry under **Avoid**
-
-#### Scenario: A fact does not fit the four sections
-
-- **WHEN** a candidate fact matches none of Stack, Conventions, Avoid, or Test Command
-- **THEN** no SAI command promotes it, and no new section is created to hold it
-
-#### Scenario: Design reads the four sections
-
-- **WHEN** `/sai-2-design` reads `SAI_LEARNINGS.md` while authoring `## Implementation Context`
-- **THEN** it takes the Stack, Conventions, and Avoid sections as the source for the matching fields and the Test Command section as the source for the test-command field, as `sai/commands/design/steps/tasks.md` directs
 
 ### Requirement: Test Command is single-valued and keyless
 
@@ -109,8 +83,8 @@ A repository without `SAI_LEARNINGS.md` SHALL behave exactly as it does today.
 
 #### Scenario: sai-2-design runs in a repo with no learnings file
 
-- **WHEN** `/sai-2-design` authors `## Implementation Context` in a repository with no `SAI_LEARNINGS.md`
-- **THEN** it derives all four fields from codebase research exactly as it does today, and emits no warning about the missing file
+- **WHEN** `/sai-2-design` runs in a repository with no `SAI_LEARNINGS.md`
+- **THEN** its research step skips the file and it derives **Test Command** from codebase research, emitting no warning about the missing file
 
 #### Scenario: sai-4-apply starts in a repo with no learnings file
 
@@ -121,3 +95,38 @@ A repository without `SAI_LEARNINGS.md` SHALL behave exactly as it does today.
 
 - **WHEN** the Direct Build implementer starts in a repository with no `SAI_LEARNINGS.md`
 - **THEN** it proceeds from the block alone, with no error and no notice
+
+### Requirement: Four fixed sections
+
+`SAI_LEARNINGS.md` SHALL contain exactly four content sections, in this order: `## Stack`, `## Conventions`, `## Avoid`, `## Test Command`. No fifth section SHALL be introduced, and no section SHALL be renamed. The section names SHALL NOT be tied to fields of `tasks.md`: no instruction merges a section into a `tasks.md` field, and design, RED, GREEN, and review read the sections directly.
+
+A section with no entries SHALL be present with its heading and left empty rather than omitted, so that the file's shape is stable for a reader matching on headings.
+
+#### Scenario: File is bootstrapped with a single entry
+
+- **WHEN** the `/sai-3-implement` coordinator promotes one qualifying **Avoid** fact at run close and no `SAI_LEARNINGS.md` exists
+- **THEN** it creates the file at the project root per the bootstrap rules of `sai/policies/sai-learnings-format.md`, with all four section headings present and the entry under **Avoid**
+
+#### Scenario: A fact does not fit the four sections
+
+- **WHEN** a candidate fact matches none of Stack, Conventions, Avoid, or Test Command
+- **THEN** no SAI command promotes it, and no new section is created to hold it
+
+#### Scenario: The format file names no tasks.md field mapping
+
+- **WHEN** `sai/policies/sai-learnings-format.md` is read
+- **THEN** it states no identity between its four section names and the fields of `tasks.md`'s `## Implementation Context`
+
+### Requirement: Correction and deletion need execution evidence
+
+The `/sai-3-implement` coordinator SHALL correct or delete a `SAI_LEARNINGS.md` entry only when a deviation of its run records that following the entry failed on execution. A correction SHALL replace the entry by key; an entry with no durable fact left SHALL be deleted. Each correction or deletion SHALL be written to the `## Learnings Corrections` section of the change's `design.md` and SHALL appear in the closing report. A belief that an entry is old, contradicted by code, or irrelevant SHALL NOT be evidence: the entry stays, and the closing report shows the contradiction.
+
+#### Scenario: An entry contradicted only by code
+
+- **WHEN** a run finds code that contradicts a `SAI_LEARNINGS.md` entry and no execution failed because of the entry
+- **THEN** the entry stays unchanged and the closing report shows the contradiction
+
+#### Scenario: An entry that failed on execution
+
+- **WHEN** a deviation of the run records that following an entry failed on execution and another approach worked
+- **THEN** the coordinator corrects or deletes that entry at close and records the correction in `## Learnings Corrections` of the change's `design.md`

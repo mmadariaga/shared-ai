@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Implement-new loads only non-stopping cross-cutting policies
 
-The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `obstacle-escalation` for its obstacles and escalation, `artifact-review-contract` for the step review, `finding-state` for the audit findings, and `sai-learnings-format` for the learnings promotion at run close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
+The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `obstacle-escalation` for its obstacles and escalation, `artifact-review-contract` for the step review, `finding-state` for the audit findings, `sai-learnings-format` for the learnings promotion and correction at run close, and `decision-record-creation` for the decision records at its completed close. `/sai-build` SHALL load `decision-record-creation` at its own close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
 
 #### Scenario: Shared stopping orchestration is absent
 
@@ -22,7 +22,7 @@ The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutti
 #### Scenario: The learnings format policy is loaded only for promotion
 
 - **WHEN** the `/sai-3-implement` coordinator card is inspected
-- **THEN** it fetches `@sai/policies/sai-learnings-format.md` only in its run-close learnings promotion, when a deviation qualifies
+- **THEN** it fetches `@sai/policies/sai-learnings-format.md` only in its run-close learnings step, when a deviation qualifies for promotion or a `SAI_LEARNINGS.md stale:` deviation names an entry
 
 ### Requirement: Start preconditions
 
@@ -61,7 +61,7 @@ To find the test commands, the coordinator SHALL take the `**Test Command**` fie
 
 ### Requirement: Per-step RED, GREEN, review, and commit cycle
 
-The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, the `## Required Documentation` entries of `tasks.md` relevant to the step, writable paths, and the path where the worker writes its report. Each documentation entry SHALL carry its path or URL with its note, as context to read that adds no requirement; the brief SHALL carry no documentation entry when the section is missing or every subsection is `None`, and the run SHALL continue. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then run the adversarial step review of the `implement-new-adversarial-review` capability, whose bounded fix rounds are not attempts of the step. After the step's commit it SHALL emit `step-done`.
+The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, the `## Required Documentation` entries of `tasks.md` relevant to the step, writable paths, the path where the worker writes its report, and the path `SAI_LEARNINGS.md` when that file exists at the project root (the brief SHALL NOT mention the file when it does not). Each documentation entry SHALL carry its path or URL with its note, as context to read that adds no requirement; the brief SHALL carry no documentation entry when the section is missing or every subsection is `None`, and the run SHALL continue. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then run the adversarial step review of the `implement-new-adversarial-review` capability, whose bounded fix rounds are not attempts of the step. After the step's commit it SHALL emit `step-done`.
 
 #### Scenario: GREEN modifies a test file
 
@@ -104,7 +104,7 @@ Each step SHALL close with one local commit authorized by invoking the command. 
 
 ### Requirement: Coordinator authority over the plan
 
-The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` during the run, and SHALL write only the fixed marks in the audit reports; workers SHALL write only tests, stubs, and production code. An override in a worker brief SHALL take precedence over the plan. When artifacts contradict each other, it SHALL keep the reading that preserves the intent of `proposal.md` and edit the other artifact without asking. It SHALL record every difference between the work and the plan as a deviation and print the deviation list in the closing report.
+The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` during the run, and SHALL write only the fixed marks in the audit reports; workers SHALL write only tests, stubs, and production code. The plan holds decisions the user agreed in Explore. The coordinator SHALL depart from the plan, by editing it or by an override in a worker brief, only when execution shows that following it does not work: the plan contradicts the code or the tests, a planned signature or file does not fit, a step cannot close as grouped, or two artifacts contradict each other. Saving work SHALL NOT be a reason. It SHALL choose the alternative that preserves the intent of `proposal.md`, also when the decision came from the `Ready to Propose` block, and SHALL NOT stop to ask. An override in a worker brief SHALL take precedence over the plan and SHALL need the same evidence as any departure. When artifacts contradict each other, it SHALL keep the reading that preserves the intent of `proposal.md` and edit the other artifact without asking. It SHALL record every difference between the work and the plan as a deviation with its reason and print the deviation list in the closing report, also inside `/sai-build` and `/sai-deep-review`.
 
 #### Scenario: Contradictory plan artifacts
 
@@ -115,6 +115,11 @@ The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`
 
 - **WHEN** the coordinator fixes an audit finding
 - **THEN** its only edit to the audit report is the fixed mark on that finding's heading line
+
+#### Scenario: A cheaper alternative is no reason to depart
+
+- **WHEN** following a plan decision works on execution but another approach would save work
+- **THEN** the coordinator follows the plan decision and records no deviation for it
 
 ### Requirement: Obstacles and escalation
 

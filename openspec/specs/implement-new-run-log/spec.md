@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-resilience. Update Purpose after
 
 ### Requirement: Learnings promotion at run close
 
-At every run close, before printing the closing report, the `/sai-3-implement` coordinator SHALL promote learnings from the entries of the run's `deviations.md`. A deviation SHALL qualify only when it is a project fact that fits Stack, Conventions, Avoid, or Test Command: it names a repository-level artifact (a package, build target, command, configuration file, compiler or linter rule, or framework version constraint), not a symbol or file the change introduced or renamed. When no deviation qualifies, the coordinator SHALL leave `SAI_LEARNINGS.md` untouched and create no file. Otherwise it SHALL fetch `sai/policies/sai-learnings-format.md` and write only the project-root `SAI_LEARNINGS.md` as that format directs: key, append, supersede, and bootstrap. Only the coordinator SHALL promote; no worker SHALL write `SAI_LEARNINGS.md`. The run SHALL NOT stage or commit the file. When the coordinator wrote the file, the closing report SHALL name its path, the entries added and superseded per section, and that the file is uncommitted; otherwise the report SHALL carry no learnings line.
+At every run close, before printing the closing report, the `/sai-3-implement` coordinator SHALL promote learnings from the entries of the run's `deviations.md`. A deviation SHALL qualify only when it is a project fact that fits Stack, Conventions, Avoid, or Test Command: it names a repository-level artifact (a package, build target, command, configuration file, compiler or linter rule, or framework version constraint), not a symbol or file the change introduced or renamed. Deviations that start `SAI_LEARNINGS.md contradiction:` or `SAI_LEARNINGS.md stale:` SHALL NOT be promotion candidates. For each `SAI_LEARNINGS.md stale:` deviation, the coordinator SHALL correct the named entry by key with the alternative that worked, or delete it when no durable fact remains, and SHALL write each correction or deletion to a `## Learnings Corrections` section at the end of the change's `design.md` (section, key, previous value, new value or `deleted`, and the evidence), creating the section when absent; when `design.md` does not exist, the closing report alone SHALL carry them. When no deviation qualifies and no `stale:` deviation names an entry, the coordinator SHALL leave `SAI_LEARNINGS.md` untouched and create no file. Otherwise it SHALL fetch `sai/policies/sai-learnings-format.md` and write only the project-root `SAI_LEARNINGS.md` as that format directs: key, append, supersede, correct, delete, and bootstrap. Only the coordinator SHALL promote, correct, or delete; no worker SHALL write `SAI_LEARNINGS.md`. The run SHALL NOT stage or commit the file or the corrections section. When the coordinator wrote the file, the closing report SHALL name its path, the entries added and superseded per section, each correction or deletion with its evidence, and that the file is uncommitted; otherwise the report SHALL carry no learnings line. The closing report SHALL also carry one line per `SAI_LEARNINGS.md contradiction:` deviation with the file's path and the entry's key.
 
 #### Scenario: A qualifying deviation is promoted
 
@@ -16,13 +16,18 @@ At every run close, before printing the closing report, the `/sai-3-implement` c
 
 #### Scenario: No deviation qualifies
 
-- **WHEN** the run closes and no deviation is a project fact fitting Stack, Conventions, Avoid, or Test Command
+- **WHEN** the run closes, no deviation is a project fact fitting Stack, Conventions, Avoid, or Test Command, and no `SAI_LEARNINGS.md stale:` deviation names an entry
 - **THEN** `SAI_LEARNINGS.md` is left untouched, no file is created, and the closing report carries no learnings line
 
 #### Scenario: A deviation about the change's own symbols
 
 - **WHEN** a deviation names a symbol or file this change introduced or renamed
 - **THEN** it does not qualify and is not promoted
+
+#### Scenario: A stale entry is corrected
+
+- **WHEN** the run closes with a `SAI_LEARNINGS.md stale:` deviation naming an entry, its failure, and the alternative that worked
+- **THEN** the coordinator corrects or deletes that entry, writes the change to `## Learnings Corrections` in the change's `design.md`, and lists it with its evidence in the closing report
 
 ### Requirement: Closing report at run close
 
@@ -45,7 +50,7 @@ The `/sai-3-implement` run SHALL close when every task is checked, every open fi
 
 ### Requirement: No run record is persisted
 
-The `/sai-3-implement` coordinator SHALL NOT write the deviations, the overrides, or the pending findings to any file in the change directory or elsewhere in the repository; the closing report SHALL be their only record. The coordinator SHALL NOT compose `openspec/changes/{name}/build-log.md`, and a `build-log.md` that already exists in a change SHALL stay untouched: the run SHALL NOT read, remove, or regenerate it.
+The `/sai-3-implement` coordinator SHALL NOT write the deviations, the overrides, or the pending findings to any file in the change directory or elsewhere in the repository; the closing report SHALL be their only record. Two writes are not run records and SHALL remain allowed: the `## Learnings Corrections` section of the change's `design.md`, and a decision record that cites a deviation from the decision it records. The coordinator SHALL NOT compose `openspec/changes/{name}/build-log.md`, and a `build-log.md` that already exists in a change SHALL stay untouched: the run SHALL NOT read, remove, or regenerate it.
 
 #### Scenario: A change with an earlier build log
 

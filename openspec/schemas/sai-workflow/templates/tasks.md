@@ -30,14 +30,6 @@
 
 ## Implementation Context
 
-**Stack**: <!-- language/framework + versions -->
-
-**Conventions**:
-<!-- 2-5 project-specific bullets -->
-
-**Avoid**:
-<!-- stack-specific anti-patterns -->
-
 **Test Command**:
 <!-- suite command + parameterised scoping idiom, or None — no test runner in this project -->
 

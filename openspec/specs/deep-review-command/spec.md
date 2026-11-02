@@ -121,17 +121,22 @@ A rerun of an interrupted `/sai-deep-review` SHALL go through the review segment
 
 ### Requirement: Commits follow the segment order and stay local
 
-`/sai-deep-review` SHALL commit `review.md` once through the review segment, then each verified audit report once and alone, with only its own path, then each report in which the Assessment pass wrote marks once, then once per fix step through the fix segment, then once for the inherent-risk ratings block that the fix segment stores in `review.md` when it fixed a finding, and SHALL add no other commit. While the audit workers run in parallel, the coordinator SHALL issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility. A report the project ignores SHALL stay on disk uncommitted. Nothing SHALL be pushed, and only the fix segment SHALL change code.
+`/sai-deep-review` SHALL commit `review.md` once through the review segment, then each verified audit report once and alone, with only its own path, then each report in which the Assessment pass wrote marks once, then once per fix step through the fix segment, then once for the inherent-risk ratings block that the fix segment stores in `review.md` when it fixed a finding, then once for the decision records that the completed fix segment creates at its close when the design has a decision carrying `**Record family**` that no record cites yet, and SHALL add no other commit. While the audit workers run in parallel, the coordinator SHALL issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility. A report or record the project ignores SHALL stay on disk uncommitted. Nothing SHALL be pushed, and only the fix segment SHALL change code.
 
 #### Scenario: Two audits and two fix steps
 
-- **WHEN** a run completes two audits, marks one report in the Assessment pass, and its fix segment completes two steps
+- **WHEN** a run completes two audits, marks one report in the Assessment pass, and its fix segment completes two steps on a change whose design has no uncited decision carrying `**Record family**`
 - **THEN** the commits are one for `review.md`, one per audit report, one for the marked report, one per fix step, and one for the ratings block, each local
 
 #### Scenario: Parallel audits commit one at a time
 
 - **WHEN** the security and accessibility reports are verified while both workers ran in parallel
 - **THEN** the coordinator commits the security report alone and then the accessibility report alone
+
+#### Scenario: The fix segment records a design decision
+
+- **WHEN** the fix segment completes on a change whose `design.md` has a decision carrying `**Record family**` that no record cites yet
+- **THEN** the fix segment's close adds one local commit holding the new record and its index entry
 
 ### Requirement: The close reports every segment
 

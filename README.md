@@ -227,6 +227,8 @@ changes should not undo casually. SAI proposes one when all three criteria apply
 2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
+Design marks each qualifying decision with its record family. The implementing command (`/sai-3-implement`, `/sai-build`, `/sai-deep-review`, or Direct Build) creates the record when its run completes, so the record describes the code that was built.
+
 ### Consistent project terminology
 Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review checks that new code stays consistent with the project's language.
 

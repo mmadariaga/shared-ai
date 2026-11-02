@@ -80,7 +80,7 @@ The assessment keeps no memory: a rerun regenerates `review.md` and the activate
 
 ### Fix segment
 
-Follow `sai/commands/implement/coordinator.md` exactly as segment 5, with the change name as `arguments_value`. Hand it the reports above as its Composition reports. It applies every open fixable finding of those reports that carries no ` (EXCLUDED: …)` mark, one RED and GREEN cycle per step with its own local commit, marks each finding it fixes, and runs the suites against the baseline it recorded. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says. Its closing line `Implement done.` is replaced by this command's.
+Follow `sai/commands/implement/coordinator.md` exactly as segment 5, with the change name as `arguments_value`. Hand it the reports above as its Composition reports. It applies every open fixable finding of those reports that carries no ` (EXCLUDED: …)` mark, one RED and GREEN cycle per step with its own local commit, marks each finding it fixes, and runs the suites against the baseline it recorded. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says. At its completed Close it also creates the decision records of `@sai/policies/decision-record-creation.md`, because this command is the outermost implementing command; a run whose fix segment did not run creates none. Its closing line `Implement done.` is replaced by this command's.
 
 An interrupted fix segment resumes through that coordinator's own Resuming rule. Nothing else of this command resumes.
 

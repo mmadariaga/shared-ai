@@ -58,9 +58,9 @@ The `tasks` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` 
 
 ### Requirement: Required Documentation omits the learnings file
 
-`/sai-2-design` SHALL NOT list `SAI_LEARNINGS.md` in `## Required Documentation`, even when it consulted the file, because the `## Implementation Context` profile is the delivery channel for its content. The merge of the learnings file into `## Implementation Context` and the cap of five **Conventions** bullets SHALL remain unchanged.
+`/sai-2-design` SHALL NOT list `SAI_LEARNINGS.md` in `## Required Documentation`, even when it consulted the file, because the `/sai-3-implement` step brief carries its path when the file exists. `## Implementation Context` SHALL NOT carry a copy of the learnings file's entries.
 
 #### Scenario: Design consulted the learnings file
 
-- **WHEN** `/sai-2-design` reads `SAI_LEARNINGS.md` while authoring `tasks.md`
+- **WHEN** `/sai-2-design` reads `SAI_LEARNINGS.md` in its research step
 - **THEN** `## Required Documentation` lists the proposal, the specs, and the other consulted resources, and does not list `SAI_LEARNINGS.md`

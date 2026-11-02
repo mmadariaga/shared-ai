@@ -1,6 +1,6 @@
 # ADR/DDR Criteria and Routing Test (shared instruction)
 
-Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family) and `sai/commands/explore/direct-build-coordinator.md` (Direct Build pass). The criteria and the routing test live ONLY here — no fetching body restates them inline.
+Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family) and `sai/commands/explore/direct-build-coordinator.md` (Direct Build pass). The criteria and the routing test live ONLY here — no fetching body restates them inline. The record that a qualifying decision becomes is created at the close of the implementing command, per `@sai/policies/decision-record-creation.md`.
 
 ## The three criteria
 
