@@ -13,7 +13,7 @@ It has no documented behavior flags.
 
 ## In detail
 
-For a specific change, the command states which process documents exist, whether the proposal has been approved, how many of the tasks in `tasks.md` are checked, and where the change is located if it has already been archived.
+For a specific change, the command states which process documents exist, whether the proposal has been approved, how many of the tasks in `tasks.md` are checked, and where the change is located if it has already been archived. For a change that declares no specs (`skip_specs: true`, from a `**Specs**: none` block), the specs show as `skipped` instead of missing.
 
 It also presents a `Next:` suggestion based on the observed state. This suggestion points to the next reasonable action, such as preparing the design, implementing the tasks, or reviewing the result.
 
