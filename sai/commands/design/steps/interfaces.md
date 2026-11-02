@@ -8,7 +8,7 @@ Write to `openspec/changes/{resolved_change_name}/interfaces.md`.
 
 `interfaces.md` is the per-step **contract** — the new/modified public signatures plus the exact assertions a test author needs — kept in a separate file from `tasks.md` so it is consumable without the implementation body. Derive it from the **same fresh step decomposition** as `tasks.md`, in the same run. Regenerate it wholesale every run; there is NO cross-run preservation path at the design stage, so its `## Step N` keys always match the current `tasks.md` and cannot desync.
 
-Fetch @sai/policies/step-contract-format.md
+Fetch @sai/policies/step-contract-format.md. A change whose `.openspec.yaml` sets `skip_specs: true` has no spec scenarios: anchor each assertion to a statement of `proposal.md`, as that policy says.
 
 Emit one section per qualifying step, keyed by the same integer as `tasks.md`; apply the fetched policy's format and omission rules in full.
 

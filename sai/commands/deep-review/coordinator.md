@@ -64,7 +64,7 @@ A failed audit's findings never enter the Assessment pass and are never handed t
 
 The fix tail runs only when segment 1 completed and at least one report holds a fixable finding. The reports are `review.md` plus the report of each audit that completed in this run, in the order review, security, performance, accessibility. Reports of audits that did not run, or failed, are not reports of this run: they stay unread and untouched. Fixable, open, and Question mean what `finding-state.md` says. When no report holds a fixable finding (zero findings, or Questions only), run no Assessment pass and no fix segment.
 
-**Startable check.** Before the Assessment pass, check that `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/`. When any is absent, run no Assessment pass and no fix segment, write nothing, and carry on to the Close, which prints `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.` after the summary. The review and the audits stay done.
+**Startable check.** Before the Assessment pass, check that `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and either at least one file under `specs/` or a `.openspec.yaml` that sets `skip_specs: true`. When any is absent, run no Assessment pass and no fix segment, write nothing, and carry on to the Close, which prints `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.` after the summary. The review and the audits stay done.
 
 ### Assessment pass
 

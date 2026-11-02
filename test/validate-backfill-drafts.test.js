@@ -179,3 +179,22 @@ test('both receivers require CLI validation and accepted-input freshness', () =>
   }
   assert.match(fs.readFileSync(path.resolve(__dirname, '../sai/commands/backfill/worker.md'), 'utf8'), /failed freshness check writes nothing/);
 });
+function noSpecsSet(f) {
+  f.put('.openspec.yaml', 'schema: sai-workflow\ncreated: 2026-10-25\nbackfilled: true\nskip_specs: true\n');
+  f.input.draft_references = f.input.draft_references.filter(ref => !ref.destination.includes('/specs/'));
+}
+test('a draft set that declares skip_specs and carries no spec is complete and the real CLI accepts it', real, t => {
+  const f = fixture(t);
+  noSpecsSet(f);
+  assert.equal(collect(f.input, f.cwd).files.some(([file]) => file.startsWith('openspec/changes/example-change/specs/')), false);
+  const result = f.run();
+  assert.equal(result.ok, true, JSON.stringify(result));
+});
+test('a draft set without skip_specs still needs a spec, and skip_specs with a spec is rejected', t => {
+  const withoutSpec = fixture(t);
+  withoutSpec.input.draft_references = withoutSpec.input.draft_references.filter(ref => !ref.destination.includes('/specs/'));
+  assert.throws(() => collect(withoutSpec.input, withoutSpec.cwd), /Incomplete draft set/);
+  const withSpec = fixture(t);
+  withSpec.put('.openspec.yaml', 'schema: sai-workflow\ncreated: 2026-10-25\nbackfilled: true\nskip_specs: true\n');
+  assert.throws(() => collect(withSpec.input, withSpec.cwd), /declares skip_specs carries no capability spec/);
+});

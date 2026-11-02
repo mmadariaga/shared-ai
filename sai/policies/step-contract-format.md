@@ -13,14 +13,14 @@ Each step that introduces a new/modified public interface or a testable assertio
 
 **Interfaces**: <new or modified public signatures introduced in this step — function/method signatures, exported types, class or module public surface. Signatures only, no implementation body.>
 
-**Test assertions**: <the exact assertions that verify this step — expected input → expected output/behavior — each anchored to a `specs/**/*.md` requirement or scenario by path.>
+**Test assertions**: <the exact assertions that verify this step — expected input → expected output/behavior — each anchored to a `specs/**/*.md` requirement or scenario by path, or to a `proposal.md` statement when the change declares `skip_specs`.>
 ```
 
 ## Field rules
 
 - **Section heading**: `## Step N: <title>` uses the corresponding step's integer from `tasks.md`.
 - **Interfaces** contains signatures only, with no implementation body.
-- **Test assertions** contains concrete expected inputs and outputs or behaviors, each citing a `specs/**/*.md` requirement or scenario by path.
+- **Test assertions** contains concrete expected inputs and outputs or behaviors, each citing a `specs/**/*.md` requirement or scenario by path. A change whose `.openspec.yaml` sets `skip_specs: true` has no spec file: each assertion cites a statement of `proposal.md` instead, by its section heading and the statement's wording.
 
 ## Omission rule
 

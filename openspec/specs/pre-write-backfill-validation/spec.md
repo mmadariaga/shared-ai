@@ -6,7 +6,7 @@ Validate complete backfill draft sets against current project inputs before repo
 ## Requirements
 
 ### Requirement: Shared receiver-side validation of complete backfill draft sets
-Standalone backfill and Direct Build receivers in Claude Code and opencode SHALL use one shared validate-backfill-drafts.js tool after schema and preservation checks to validate the entire latest reference set before writes or execute authorization. The tool SHALL require canonical metadata, proposal, and at least one capability spec, verify every transfer reference, and reject duplicate or non-allow-listed destinations. It SHALL create a private temporary project outside the repository through temp-root.js and copy all current specifications with their relative paths, applicable configuration, schemas, and exact verified draft bytes. Existing unreadable, symbolic, unsafe, or nonregular inputs SHALL fail rather than be treated as absent. It SHALL run openspec validate <name> --type change --json --no-interactive in that project without initializing or registering a store or modifying source project files.
+Standalone backfill and Direct Build receivers in Claude Code and opencode SHALL use one shared validate-backfill-drafts.js tool after schema and preservation checks to validate the entire latest reference set before writes or execute authorization. The tool SHALL require canonical metadata, proposal, and at least one capability spec unless the metadata declares `skip_specs: true`, in which case the set SHALL carry no capability spec. It SHALL verify every transfer reference and reject duplicate or non-allow-listed destinations. It SHALL create a private temporary project outside the repository through temp-root.js and copy all current specifications with their relative paths, applicable configuration, schemas, and exact verified draft bytes. Existing unreadable, symbolic, unsafe, or nonregular inputs SHALL fail rather than be treated as absent. It SHALL run openspec validate <name> --type change --json --no-interactive in that project without initializing or registering a store or modifying source project files.
 
 #### Scenario: Both entry points validate before writing
 - **WHEN** standalone backfill or Direct Build has a complete schema-valid and preservation-valid draft set
@@ -19,6 +19,18 @@ Standalone backfill and Direct Build receivers in Claude Code and opencode SHALL
 #### Scenario: An input cannot be safely copied
 - **WHEN** a present specification or other validation input is unreadable, symbolic, or invalid as a file or directory
 - **THEN** validation fails with diagnostics and leaves repository files unchanged
+
+#### Scenario: A declared no-specs set is complete without a spec
+- **WHEN** the draft set holds `.openspec.yaml` with `skip_specs: true` and `proposal.md`, and no capability spec
+- **THEN** the tool treats the set as complete and runs the CLI validation
+
+#### Scenario: A set without the marker still needs a spec
+- **WHEN** the draft set has no capability spec and its metadata does not declare `skip_specs: true`
+- **THEN** the tool fails with `Incomplete draft set`
+
+#### Scenario: The marker with a spec is rejected
+- **WHEN** the metadata declares `skip_specs: true` and the set carries a capability spec
+- **THEN** the tool fails and states that a set declaring skip_specs carries no capability spec
 
 ### Requirement: Failed or incomplete validation grants no write authority
 The validator SHALL accept only a successful CLI exit with complete JSON evidence naming the expected change as valid in the expected temporary project and unchanged collected inputs. CLI rejection, an unavailable CLI, timeout, incomplete output, copy failure, or changed inputs SHALL return failure with retained diagnostics and authorize no repository writes. For a CLI rejection, timeout, incomplete output, copy failure, or changed inputs, receivers SHALL return diagnostics for correction under their existing obstacle budgets and repeat all checks on the complete corrected set; an unavailable CLI SHALL follow the force-majeure rule instead. Review-cap exhaustion SHALL NOT bypass validation. Successful evidence SHALL include fingerprint, project_dir, and CLI diagnostics. Validation evidence SHALL remain outside repository artifacts and remain available while correction or recovery needs it. At an accepted closure, receivers SHALL remove each returned project_dir with temp-root.js removal for the active harness; a failed or escalated closure SHALL keep the projects as evidence.
