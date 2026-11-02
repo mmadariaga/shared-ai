@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen and the **Cache warming** section of `npx github:mmadariaga/shared-ai setup`, or by hand. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx github:mmadariaga/shared-ai setup`, or by hand; the `warming` setting is edited by hand only. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -78,17 +78,15 @@ node sai/tools/project-settings.js warming --provider anthropic --model haiku --
 
 It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or `off`, and `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
 
-### Cache warming section
+### Editing `warming` by hand
 
-Run `npx github:mmadariaga/shared-ai setup` and choose **Cache warming** in the post-setup menu. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`; this section does, and you can still edit the file by hand. It shows one default per role, then guided rules per role:
+Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one default per role, then rules per role. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`, and neither does any other step of `npx github:mmadariaga/shared-ai setup`.
 
-- **Role defaults**: `Default for agent` and `Default for subagent`. Each is `off` or `every <interval> min, up to <max> min`. A new project shows both as `off`, so nothing warms until you enable one.
-- **Guided rules**: one row for each (provider, model) pair that an installed SAI file declares in its `model` frontmatter, with any effort or variant suffix (`#xhigh`) removed. The `agent` role lists the pairs of installed commands and utilities. The `subagent` role lists the pairs of installed workers and helpers. A file without a `model` key adds no row; provider rules and the defaults cover it. The section reads the files of both harnesses and writes nothing to them.
-- **Existing rules** that match no installed pair, for example a hand-written rule or one for a full model id, are listed with the note `(no installed file uses it)`. You can edit or remove them, and a save never drops them.
-
-Choose a row to **Enable** it, set it to **Off** (`false` for a default, `"enabled": false` for a rule), or, for a rule, **Remove rule**. **Enable** asks for the interval and the maximum in minutes. An empty answer keeps the pre-filled value, which is the current one or `4` and `30` when none exists. Values must be positive and `max` at least `interval`; the section asks again otherwise, so it never writes an invalid value.
-
-Leaving with **Done** saves when at least one edit changed the value. The section writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the section prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the section warns that the local value replaces the one it writes, and it still writes only the base file.
+- A new project has no `warming` key, so nothing warms until you add one.
+- Edit the `warming` key only; the other keys and comments of the file stay as they are, and a reinstall keeps the stored values.
+- Values must be positive, and `max` at least `interval`. An invalid `warming` value is dropped with a warning and nothing warms, as described under [Cache warming](#cache-warming).
+- When `.sai/settings.local.jsonc` defines `warming`, its value replaces the whole value of `.sai/settings.jsonc`.
+- Check the result with the resolver command shown under [Cache warming](#cache-warming).
 
 The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).
 

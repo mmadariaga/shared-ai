@@ -5,7 +5,7 @@ TTY-only post-setup customization menu and isolated harness adapters that apply 
 
 ### Requirement: Post-setup customization menu
 
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly seven actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, `Cache warming`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project behavior settings` MUST open the project behavior settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again. Selecting `Cache warming` MUST open the cache warming section with no harness selection, passing the guided warming pairs built from the installed files of both harnesses, and when that section returns, whether saved, unchanged, failed, or discarded, the flow MUST present the post-setup menu again.
+The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The visibility of the `Cache warming` action MUST be decided by a module-internal constant in `bin/model-customization.js`, which ships disabled; no environment variable, setting, or CLI flag SHALL read or set it. While that constant is disabled, the menu MUST provide exactly six actions, in this order: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, and `Exit`, on Claude Code and opencode installs alike. When the constant is enabled, the menu MUST provide those actions with `Cache warming` immediately before `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project behavior settings` MUST open the project behavior settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again. When the constant is enabled, selecting `Cache warming` MUST open the cache warming section with no harness selection, passing the guided warming pairs built from the installed files of both harnesses, and when that section returns, whether saved, unchanged, failed, or discarded, the flow MUST present the post-setup menu again. While the constant is disabled, an answer that names `Cache warming` MUST be treated like any other label outside the shown options: the menu run MUST end as `cancelled` and the cache warming section MUST NOT open.
 
 #### Scenario: User exits from the post-setup menu
 
@@ -44,8 +44,18 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 
 #### Scenario: User opens cache warming from the post-setup menu
 
-- **WHEN** the user selects `Cache warming`, which the menu lists immediately before `Exit`
+- **WHEN** the cache warming visibility constant is enabled and the user selects `Cache warming`, which the menu then lists immediately before `Exit`
 - **THEN** the flow MUST open the cache warming section with the guided pairs of the installed files and present the post-setup menu again when it returns
+
+#### Scenario: Menu hides cache warming while its visibility constant is disabled
+
+- **WHEN** setup completes its existing work with the shipped, disabled cache warming visibility constant
+- **THEN** the post-setup menu MUST list exactly `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, and `Exit`, without `Cache warming`
+
+#### Scenario: Hidden cache warming answer is cancelled
+
+- **WHEN** the cache warming visibility constant is disabled and the menu receives an answer that names `Cache warming`
+- **THEN** the menu run MUST end as `cancelled` without opening the cache warming section or creating `.sai/settings.jsonc`
 
 ### Requirement: TTY-only interaction
 
