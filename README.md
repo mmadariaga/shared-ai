@@ -118,6 +118,8 @@ Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks 
 
 For sliced work, you choose again for each slice. Ambiguous decisions still come back to you on unattended routes.
 
+A change with no spec-level behavior, such as a pure refactor, tooling, or documentation change, can skip specs. When `/sai-explore` judges a change to be such a case, it asks whether the block declares `**Specs**: none — <reason>`. You can also ask for the line yourself. Then `/sai-1-spec` writes only `proposal.md` and sets `skip_specs: true` in `.openspec.yaml`, `/sai-2-design` and `/sai-3-implement` work from the proposal, `/sai-status` shows the specs as `skipped`, and `/sai-archive` syncs no delta.
+
 Choose the planned route when you need tests-first implementation. Direct Build
 does not use the same RED → GREEN process; check its results before publishing.
 

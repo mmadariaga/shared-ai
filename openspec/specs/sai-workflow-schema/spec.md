@@ -250,3 +250,18 @@ The copied upstream text SHALL cite only `openspec` subcommands and options that
 #### Scenario: A cited command absent from CLI 1.13.0 fails the suite
 - **WHEN** the copied text cites an `openspec` subcommand or option outside the CLI 1.13.0 set
 - **THEN** the drift test suite fails naming that subcommand or option
+
+### Requirement: Specs additions override the upstream lines that conflict with the spec worker
+The SAI additions block of the `specs` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL carry the lines that override the copied upstream text where it conflicts with unattended runs, refinement runs, and the spec worker write surface, while the copied upstream text stays unchanged. In an unattended run (`/sai-1-spec`, `/sai-plan`, or a `/sai-explore` route) the spec worker SHALL write each spec file without first announcing which capability it writes. In a refinement run the spec worker SHALL rewrite the existing spec files that the feedback touches. The spec worker SHALL never edit a file under `openspec/specs/**`; a needed capability Purpose change SHALL be recorded in the proposal's Additional Notes instead.
+
+#### Scenario: Unattended run writes spec files without an announcement
+- **WHEN** the spec worker writes spec files in an unattended run
+- **THEN** the SAI additions direct it to write each file without first saying which capability it writes, overriding the upstream announcement line
+
+#### Scenario: Refinement run rewrites the touched spec files
+- **WHEN** the spec worker runs with existing spec files and a feedback file
+- **THEN** the SAI additions direct it to rewrite the existing spec files that the feedback touches, and the upstream "Do not rewrite an existing file unless the user asks you to" line does not block it
+
+#### Scenario: Purpose change is recorded in the proposal
+- **WHEN** a change needs a capability Purpose change
+- **THEN** the SAI additions direct the spec worker to write no file under `openspec/specs/**` and to record the Purpose change in the proposal's Additional Notes
