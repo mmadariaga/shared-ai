@@ -6,6 +6,14 @@
 
 Explanatory text a user reads in the conversation: coordinator and utility-command text, and the `question`, `message`, and `summary` fields a worker returns for a coordinator to present. The author of the text applies this policy, including when authoring worker fields; the presenting coordinator forwards those fields unchanged. Reasoning, worker session text, payloads, code, paths, panel labels, and persistent artifacts are outside it.
 
+## Message prefix
+
+In Claude Code and opencode, the author starts every user-facing explanatory message with exactly `➡️` followed by one space, regardless of language. This covers progress updates, questions, and summaries, not only messages that require a reply.
+
+Use one leading marker per message, not per paragraph or forwarded passage. The author adds it at the source, including in user-facing `question`, `message`, and `summary` string values; the presenting agent forwards that text unchanged without adding a second marker.
+
+The prefix marks the message, not its internal content. Keep it out of code, documents, structured data outside those user-facing string values, picker options, and internal agent communications. Existing exact-text exceptions prevail: when a contract prohibits prefixes or requires an exact first line, preserve that message as required without prepending the marker. Keep the byte-for-byte protections in Protocol preservation below.
+
 ## Write for a context-switched reader
 
 The reader has just switched back to this chat and remembers none of it. Every explanatory message:
