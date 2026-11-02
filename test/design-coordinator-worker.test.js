@@ -537,7 +537,7 @@ test('Target State contract lives in the design instruction and design template'
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  for (const heading of ['### Architecture Snapshot', '### File Manifest']) {
+  for (const heading of ['### File Manifest']) {
     assert.match(instruction, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `design instruction should contain ${heading}`);
   }
@@ -545,7 +545,7 @@ test('Target State contract lives in the design instruction and design template'
   assert.match(instruction, /## Target State/);
 
   for (const contract of [designTemplate]) {
-    assert.match(contract, /### Architecture Snapshot/);
+    assert.doesNotMatch(contract, /### Architecture Snapshot|Provenance/);
     assert.match(contract, /### File Manifest/);
   }
 
@@ -557,7 +557,7 @@ test('Target State contract lives in the design instruction and design template'
     assert.ok(targetStateIndex < contextIndex,
       '## Target State should be placed before other top-level design sections');
   }
-  assert.ok(instruction.indexOf('## Target State') < instruction.indexOf('### Architecture Snapshot'),
+  assert.ok(instruction.indexOf('## Target State') < instruction.indexOf('### File Manifest'),
     'the design step should deliver Target State before its nested sections');
 
   assert.doesNotMatch(interfacesTemplate, /## Target State/);
@@ -986,14 +986,15 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
   const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
   assertSkeletonOrder(targetState, [
-    '### Architecture Snapshot',
     '### File Manifest',
   ], 'design.md ## Target State');
+  assert.doesNotMatch(design, /### Architecture Snapshot/,
+    'design.md must not contain an Architecture Snapshot');
   assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,
     'design.md must not contain an ## Endpoint Map section');
 
-  assert.match(design, /^\*\*Provenance\*\*:\s*(?:<!--.*-->)?\s*$/m,
-    'design.md must contain a **Provenance**: marker with an optional inline placeholder');
+  assert.doesNotMatch(design, /Provenance/,
+    'design.md must not contain a Provenance marker');
   assert.match(design, /^\*\*Record family\*\*:\s*(?:<!--.*-->)?\s*$/m,
     'design.md must contain a **Record family**: marker with an optional inline placeholder');
 
@@ -1038,74 +1039,16 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
     'design.md must not retain an endpoint Path table header');
 });
 
-// ─── Step 5: split architecture snapshot by boundary ───────────────────────
+// ─── Architecture Snapshot retired: Target State keeps only the File Manifest ──
 
-const ARCHITECTURE_BOUNDARY_HEADINGS = [
-  '#### External Surfaces',
-  '#### Internal Public Surfaces',
-];
-const ARCHITECTURE_SECTION_HEADINGS = [
-  '### Architecture Snapshot',
-  '### File Manifest',
-];
-const WHOLE_INVENTORY_EMPTY_SENTINEL = 'None — no planned public surfaces';
-const FILE_MANIFEST_EMPTY_SENTINEL = 'None';
+const TARGET_STATE_SECTION_HEADINGS = ['### File Manifest'];
 
-function escapeArchitectureLiteral(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+test('the live design step carries no Architecture Snapshot and keeps the File Manifest form', () => {
+  const instructions = artifact('sai/commands/design/steps/design.md');
 
-function assertExternalFirstBoundaryHeadings(source, label) {
-  let cursor = source.indexOf('### Architecture Snapshot');
-  if (cursor === -1) cursor = source.indexOf('### Snapshot');
-  assert.ok(cursor >= 0, `${label} should declare its architecture snapshot heading`);
-
-  const nextSiblingOffset = source.slice(cursor + 4).search(/\n### (?!#)/);
-  const nextSibling = nextSiblingOffset === -1 ? -1 : cursor + 4 + nextSiblingOffset;
-  const architecture = source.slice(cursor, nextSibling === -1 ? undefined : nextSibling);
-  for (const heading of ARCHITECTURE_BOUNDARY_HEADINGS) {
-    const position = architecture.indexOf(heading);
-    assert.ok(position >= 0,
-      `${label} should contain ${heading} after its architecture snapshot heading`);
-    assert.ok(position > 0,
-      `${label} should nest ${heading} below its architecture snapshot heading`);
-    cursor = position;
-  }
-}
-
-function assertArchitectureEmptinessContract(source, label) {
-  const wholeInventory = escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL);
-  assert.match(source, new RegExp(`(?:whole|entire|shared)[\\s\\-]*inventory[\\s\\S]{0,260}${wholeInventory}|${wholeInventory}[\\s\\S]{0,260}(?:whole|entire|shared)[\\s\\-]*inventory`, 'i'),
-    `${label} should define a shared whole-inventory empty form`);
-  assert.match(source, /(?:External|external)[\s\S]{0,260}None|None[\s\S]{0,260}(?:External|external)/,
-    `${label} should define an external block-specific empty form`);
-  assert.match(source, /(?:Internal|internal)[\s\S]{0,260}None|None[\s\S]{0,260}(?:Internal|internal)/,
-    `${label} should define an internal block-specific empty form`);
-  if (label === 'live design instructions') {
-    assert.match(source, new RegExp(`File Manifest[\\s\\S]{0,320}${escapeArchitectureLiteral(FILE_MANIFEST_EMPTY_SENTINEL)}`, 'i'),
-      `${label} should keep File Manifest emptiness independently representable`);
-    assert.match(source, /(?:independent|separate|own|regardless)[\s\S]{0,180}(?:File Manifest|manifest)|(?:File Manifest|manifest)[\s\S]{0,180}(?:independent|separate|own|regardless)/i,
-      `${label} should keep File Manifest None independent of architecture emptiness`);
-  }
-}
-
-test('Step 5: live design instructions use external-first nested boundary headings', () => {
-  for (const [label, relativePath] of [
-    ['live design step', 'sai/commands/design/steps/design.md'],
-  ]) {
-    assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
-  }
-});
-
-test('Step 5: live design distinguishes shared, block-specific, and File Manifest empty forms', () => {
-  for (const [label, relativePath] of [
-    ['live design step', 'sai/commands/design/steps/design.md'],
-  ]) {
-    assertArchitectureEmptinessContract(artifact(relativePath), label);
-  }
-  assert.equal(FILE_MANIFEST_EMPTY_SENTINEL, 'None', 'File Manifest should retain its plain None sentinel literal');
-  assert.match(WHOLE_INVENTORY_EMPTY_SENTINEL, /^None\s+[—-]\s+no planned public surfaces$/,
-    'the shared whole-inventory sentinel should remain a fixed English literal');
+  assert.doesNotMatch(instructions, /Architecture Snapshot|External Surfaces|Internal Public Surfaces|no planned public surfaces/);
+  assert.match(instructions, /After that artifact, `## Target State` carries one subsection, `### File Manifest`/);
+  assert.match(instructions, /None — no files affected/);
 });
 
 test('overview excludes Architecture Snapshot and its complete subtree', () => {
@@ -1123,26 +1066,16 @@ test('overview wrappers and source headings stay English while explanatory prose
   assert.match(overview, /translate only natural-language explanatory prose/);
 });
 
-test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
-  const instructions = artifact('sai/commands/design/steps/design.md');
-  assert.match(instructions,
-    /unclear[\s\S]{0,220}external|external[\s\S]{0,220}unclear/i,
-    'live design instructions should route unclear boundary classification to external');
-  assert.match(instructions,
-    /(?:direct(?:ly)?|explicit(?:ly)?)[\s\S]{0,240}(?:inventory|File Manifest|source artifacts?|files?|paths?)|(?:inventory|File Manifest|source artifacts?|files?|paths?)[\s\S]{0,240}(?:direct(?:ly)?|explicit(?:ly)?)/i,
-    'live design instructions should require a direct source inventory');
-});
-
-test('Step 5: design templates keep exactly two Target State siblings, retain their order, and have no nested boundary headings', () => {
+test('design templates keep exactly the File Manifest sibling under Target State and no nested boundary headings', () => {
   const design = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const targetStateStart = design.indexOf('## Target State');
   const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
   const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
   const headings = (targetState.match(/^### (?!#).+$/gm) || []);
 
-  assert.deepEqual(headings, ARCHITECTURE_SECTION_HEADINGS,
-    'design.md should keep exactly the Architecture Snapshot and File Manifest siblings');
-  assertSkeletonOrder(targetState, ARCHITECTURE_SECTION_HEADINGS, 'design.md ## Target State');
+  assert.deepEqual(headings, TARGET_STATE_SECTION_HEADINGS,
+    'design.md should keep exactly the File Manifest sibling');
+  assertSkeletonOrder(targetState, TARGET_STATE_SECTION_HEADINGS, 'design.md ## Target State');
   assert.doesNotMatch(targetState, /^#### (?:External Surfaces|Internal Public Surfaces)\s*$/m,
     'design.md templates must not embed boundary headings in the Target State skeleton');
   assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,

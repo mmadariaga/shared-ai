@@ -347,6 +347,9 @@ function renderBody(lines) {
   return lines.length === 0 ? [EMPTY_LINE] : lines.map((line) => `- ${line}`);
 }
 
+// A missing manifest goes at the end of `## Target State`. A design written
+// before the Architecture Snapshot was retired still carries that subsection,
+// and the manifest then goes after it.
 function insertionPoint(designLines) {
   const snap = designLines.findIndex((l) => l.trim() === '### Architecture Snapshot');
   const target = designLines.findIndex((l) => l.trim() === '## Target State');

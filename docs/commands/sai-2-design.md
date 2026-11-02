@@ -23,7 +23,9 @@ The outputs are `design.md`, `tasks.md`, and `interfaces.md`. Each task has a
 category, context size, and difficulty judged for the later implementer. Tasks
 map one-to-one to implementation Steps; each must leave a buildable, passing
 commit boundary, including any existing tests it breaks. Public signatures and
-exact test assertions live in `interfaces.md`, while project conventions and
-commands accompany the tasks.
+exact test assertions live in `interfaces.md`, while the project's test command
+accompanies the tasks. The design reads `SAI_LEARNINGS.md` when it exists. It
+writes no ADR or DDR: it marks each qualifying decision with its record family,
+and the implementing command creates the record at its close.
 
 Without `proposal.md` and specs the command stops before any dispatch. It ends when the design is complete and does not implement the solution or execute tasks from the plan. In normal use, it stops so the user can review the design before running [`/sai-3-implement`](sai-3-implement.md) or [`/sai-build`](sai-build.md). [`/sai-plan`](sai-plan.md) runs this command after `/sai-1-spec` in one invocation.

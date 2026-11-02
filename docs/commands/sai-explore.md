@@ -28,6 +28,7 @@ warns once (`Warning: the writing-for-agents skill is unavailable, so the list
 is shown without its review.`), skips the review pass, and continues with its
 own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
+Direct Build also creates the ADR or DDR records of the block's qualifying decisions, written by the implementer on the coordinator's order, inside its single local commit.
 
 In Claude Code and opencode, each E/I list question explains that a bare
 `next-step` confirms the displayed list and advances. Confirmation applies only

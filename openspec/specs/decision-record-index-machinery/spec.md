@@ -35,7 +35,11 @@ The `<domain unit>` noun (the noun substituted into the `## By <domain unit>` H2
 
 ### Requirement: The `<domain unit>` noun is derived from the mapping list and the records' content
 
-The `<domain unit>` noun SHALL be derived at cold-build time by the cold build's procedure. The cold build:
+The `<domain unit>` noun of an index SHALL be chosen by the procedure that creates the index.
+
+When the decision-record creation policy (`sai/policies/decision-record-creation.md`) creates a missing index because a new record is the first of its family, it SHALL create the index from the family's index template, remove the skeleton note and the cold-build comments, and name each `<domain unit>` placeholder after the unit the new record concerns. It SHALL NOT run the mapping-list derivation below, and it SHALL NOT recompute the noun of an index that already exists: it adds entry lines under the existing structure.
+
+When a cold build creates an index, it SHALL derive the noun at cold-build time. The cold build:
 
 1. Reads the abstract surface's mapping list (the framework values, pinned in this spec).
 2. Scans every decision record's content for domain-unit references — the specific command/module/endpoint/etc. identifiers the records mention.
@@ -49,30 +53,27 @@ The cold build's derivation is total and project-wide — it processes every rec
 #### Scenario: Cold build derives the noun with the highest matching count
 
 - **WHEN** the cold build counts the decision records' domain-unit references against each mapping rule
-- **THEN** the noun substituted into `## By <domain unit>` is the noun whose rule has the highest count
-- **THEN** a tie between two mapping rules at adjacent precedence positions breaks in favor of the earlier rule (the one declared higher in the framework list)
+- **THEN** the noun substituted into `## By <domain unit>` is the noun whose rule has the highest count, and a tie between two mapping rules at adjacent precedence positions breaks in favor of the earlier rule
 
 #### Scenario: Cold build derives a fallback noun from the raw per-record context
 
 - **WHEN** no mapping rule in the framework list matches any domain-unit reference the decision records mention
-- **THEN** the cold build SHALL examine the dominant grouping noun found near the references in the raw per-ADR context returned by the `budget-explorer` subagent
-- **THEN** the cold build SHALL substitute the dominant grouping noun into `## By <domain unit>`
-- **THEN** if the dominant grouping noun cannot be resolved from the raw per-ADR context, the cold build SHALL substitute the framework fallback noun `domain unit` into `## By <domain unit>`
+- **THEN** the cold build substitutes the dominant grouping noun found near the references in the raw per-ADR context into `## By <domain unit>`, or the framework fallback noun `domain unit` when that noun cannot be resolved
 
 #### Scenario: Cold build falls back to the framework noun when no rule and no context match
 
-- **WHEN** the cold build evaluates every mapping rule against the decision records' domain-unit references
-- **AND** no mapping rule matches any reference
-- **AND** the raw per-ADR context returns no dominant grouping noun
-- **THEN** the cold build substitutes the framework fallback noun `domain unit` into `## By <domain unit>`
-- **THEN** no error is raised — the fallback is the contractually-defined answer to "no mapping rule matches and no dominant grouping noun can be derived"
+- **WHEN** no mapping rule matches any reference and the raw per-ADR context returns no dominant grouping noun
+- **THEN** the cold build substitutes the framework fallback noun `domain unit` into `## By <domain unit>` and raises no error
 
 #### Scenario: Derived noun is not a per-index binding
 
 - **WHEN** a concrete decision-record index spec declares its per-index bindings
-- **THEN** the spec lists exactly three bindings (storage directory, index filename, index H1)
-- **THEN** the spec does NOT include a `<domain unit>` noun among its bindings
-- **THEN** the spec MAY reference the noun as "the noun derived by the cold build from the abstract surface's mapping list" but SHALL NOT pin a specific noun as the per-index binding
+- **THEN** the spec lists exactly three bindings (storage directory, index filename, index H1) and does NOT include or pin a `<domain unit>` noun among them
+
+#### Scenario: Creation policy names the unit after the new record
+
+- **WHEN** the decision-record creation policy creates the first ADR of a project that has no `docs/adr/0000-INDEX.md`, for a new record
+- **THEN** it creates the index from `sai/commands/implement/adr-index.template.md`, names each `<domain unit>` placeholder after the unit that record concerns, and runs no mapping-list derivation
 
 ### Requirement: The mapping list is a closed precedence-ordered list of pattern-form rules
 
