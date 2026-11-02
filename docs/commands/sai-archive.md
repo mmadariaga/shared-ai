@@ -23,4 +23,6 @@ Once everything is authorized, the change is removed from the active changes are
 
 In a `Direct Build - Unattended` run, the user has already explicitly authorized the complete process: prepare the required documentation, synchronize it, move the change to the archive, stage only the relevant files, and create one local commit. Nothing is sent to a remote server.
 
+A change that declares `skip_specs: true` has no delta spec: the archive treats its specs as satisfied, reports that no delta syncs, and lists no capability.
+
 A change whose delta removes every requirement of a capability retires that capability: the archive records the retirement, and the CLI deletes the spec. When the change keeps a verified originating issue, the archive commit includes it as a closing reference for the pull request. A lost or unverifiable origin only produces a warning. Azure Boards items are not supported.

@@ -66,3 +66,48 @@ When the received block declares `**Specs**: none — <reason>`, backfill, inclu
 #### Scenario: Without the declaration no draft carries skip_specs
 - **WHEN** backfill runs from a block without the `**Specs**` line
 - **THEN** the drafted `.openspec.yaml` carries no `skip_specs` key
+
+### Requirement: Explore asks the no-specs question for a no-specs candidate
+On entry into `Crystallize`, after the slicing assessment and before the crystallization language gate, `/sai-explore` SHALL decide the `**Specs**` line of each block. A change or slice with no spec-level behavior, such as a pure refactor, tooling, or documentation change, is a no-specs candidate. For each candidate, and for each candidate slice in a sliced set, Explore SHALL ask once through the native picker with options `yes` and `no`, with a question that proposes a reason and states the consequence (no spec files and no delta sync at archive), and SHALL let the user edit the reason through the picker's free-text answer. Explore SHALL emit `**Specs**: none — <reason>` with the agreed reason only on a `yes` answer. For a change or slice that is not a candidate, Explore SHALL ask nothing and emit no `**Specs**` line. When the user asks for `**Specs**: none` on a change Explore did not judge a candidate, Explore SHALL state the same consequence and emit the line only after the user confirms.
+
+#### Scenario: A candidate gets the question and a yes emits the line
+- **WHEN** Explore crystallizes a no-specs candidate and the user answers `yes`
+- **THEN** the block carries `**Specs**: none — <reason>` with the agreed reason right after `**Why**`
+
+#### Scenario: A no answer emits no line
+- **WHEN** Explore asks the no-specs question for a candidate and the user answers `no`
+- **THEN** the block carries no `**Specs**` line
+
+#### Scenario: Each candidate slice is asked once
+- **WHEN** Explore crystallizes a sliced set that contains candidate slices
+- **THEN** it asks the no-specs question once for each candidate slice
+
+#### Scenario: A change with spec-level behavior gets no question
+- **WHEN** Explore crystallizes a change or slice that has spec-level behavior
+- **THEN** it asks no no-specs question and emits no `**Specs**` line
+
+#### Scenario: A user request is confirmed before the line is emitted
+- **WHEN** the user asks for `**Specs**: none` on a change Explore did not judge a candidate
+- **THEN** Explore states that the change gets no spec files and no delta sync at archive, and emits the line only after the user confirms
+
+### Requirement: The Specs field rule points to the Explore question
+The `**Specs**` field rule in `sai/policies/ready-to-propose-format.md` SHALL name the no-specs question in `sai/commands/explore/steps/crystallization-protocol.md` as the step through which Explore agrees the field with the user, and the Explore step SHALL leave the line's format and validation to `sai/policies/ready-to-propose-format.md`.
+
+#### Scenario: The format rule names the owning step
+- **WHEN** a reader looks up who agrees the `**Specs**` field in `sai/policies/ready-to-propose-format.md`
+- **THEN** the rule points to the no-specs question in `sai/commands/explore/steps/crystallization-protocol.md`
+
+### Requirement: Documentation describes the no-specs case
+The project and command documentation SHALL describe the no-specs case. `AGENTS.md` SHALL state that the design worker writes no specs approval key for a change with `skip_specs: true`. `docs/commands/sai-status.md` SHALL state that the specs of such a change show as `skipped`. `README.md` and the `docs/commands` pages of `sai-explore`, `sai-1-spec`, `sai-2-design`, and `sai-archive` SHALL explain the `**Specs**: none — <reason>` declaration or how that command honors `skip_specs`.
+
+#### Scenario: AGENTS.md states the approval exception
+- **WHEN** a reader reads the specs approval rules in `AGENTS.md`
+- **THEN** both the Specs approval bullet and the Specs approval gate section say that a `skip_specs: true` change gets no approval key
+
+#### Scenario: The status doc names the skipped value
+- **WHEN** a reader reads `docs/commands/sai-status.md`
+- **THEN** it says that the specs of a `skip_specs: true` change show as `skipped` instead of missing
+
+#### Scenario: README and command docs explain the declaration
+- **WHEN** a reader reads `README.md` or the `sai-explore`, `sai-1-spec`, `sai-2-design`, or `sai-archive` command doc
+- **THEN** it explains the `**Specs**: none — <reason>` declaration or how that command handles a `skip_specs: true` change

@@ -185,6 +185,9 @@ artifacts:
 
       - Do NOT use fenced code blocks (```) inside requirement bodies. The parser treats any line starting with ## as a section boundary even inside fenced blocks, which breaks scenario detection. Use 4-space indented blocks instead. The example above shows the delta layout only; do not copy its fence.
       - A change whose `.openspec.yaml` sets `skip_specs: true` has no spec file: write none. Only the Ready to Propose block's `**Specs**: none — <reason>` declaration sets that marker, never the author; a proposal that lists no capability without that declaration goes back to the proposal, not to the marker.
+      - In an unattended run (`/sai-1-spec`, `/sai-plan`, or a `/sai-explore` route) the spec worker never talks to the user. Write each spec file without first saying which capability you are writing; this overrides "Before each file, say in one line which capability you are writing".
+      - In a refinement run (existing spec files and a feedback file), rewrite the existing spec files that the feedback touches. The feedback is the user's ask, so "Do not rewrite an existing file unless the user asks you to" does not block it.
+      - Never edit a file under `openspec/specs/**`, whatever the `<planningHome.root>` text above allows. When the change needs a capability Purpose change, write no file there and record the Purpose change in the proposal's Additional Notes.
       <!-- sai-additions:end -->
     requires:
       - proposal

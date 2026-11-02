@@ -211,3 +211,10 @@ Once at the crystallization language gate, before the English skip, the agent SH
 #### Scenario: Unavailable setting falls through
 - **WHEN** the settings tool exits non-zero or returns `value: null`
 - **THEN** the agent prints the warnings or one failure line and continues with the English skip or the normal question
+
+### Requirement: Specs, Depends on, and Backlog origin scaffolding stays English
+Under the crystallization language gate, the `**Depends on**`, `**Backlog origin**`, and `**Specs**` bold field labels SHALL remain English scaffolding regardless of the chosen language. The `**Depends on**` values (change names and `None`), the `**Backlog origin**` URL, and the literal `none` with its em dash in the `**Specs**` line SHALL also stay English and verbatim; only the reason of the `**Specs**` line is free-text prose and SHALL follow the chosen language.
+
+#### Scenario: Fixed literals stay English in a non-English block
+- **WHEN** a non-English crystallization language is chosen and the emitted block carries `**Depends on**`, `**Backlog origin**`, and `**Specs**: none — <reason>` lines
+- **THEN** the labels, the `**Depends on**` values, the `**Backlog origin**` URL, and the literal `none` with its em dash are rendered in English and verbatim, and only the Specs reason is rendered in the chosen language
