@@ -4745,7 +4745,8 @@ test('guided warming pairs list each installed (provider, model) once per role, 
   }
 });
 
-test('the post-setup menu lists Cache warming before Exit', () => {
+test('the post-setup menu hides Cache warming while its visibility constant is off', () => {
   const options = modelCustomization.MENU_OPTIONS;
-  assert.equal(options.indexOf('Cache warming'), options.indexOf('Exit') - 1);
+  assert.equal(options.includes('Cache warming'), false);
+  assert.equal(options.at(-1), 'Exit');
 });

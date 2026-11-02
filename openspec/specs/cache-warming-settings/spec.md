@@ -51,12 +51,12 @@ The project settings catalogue in `sai/tools/project-settings.js` SHALL accept o
 
 ### Requirement: Warming setting documentation
 
-`docs/project-settings.md` SHALL list `warming` in the catalogue table and SHALL describe, in a Cache warming section, the value shape, the resolution order including the model-family step for provider `anthropic`, the `family` origin, how the provider and model of a worker or helper derive from its installed agent `model` frontmatter on each harness, that timings are resolved again for every arm, that the project behavior settings screen does not edit `warming` while the `Cache warming` section of the setup flow does, how that section lists role defaults, guided rules, and unmatched rules, and the resolver command.
+`docs/project-settings.md` SHALL list `warming` in the catalogue table and SHALL describe, in a Cache warming section, the value shape, the resolution order including the model-family step for provider `anthropic`, the `family` origin, how the provider and model of a worker or helper derive from its installed agent `model` frontmatter on each harness, that timings are resolved again for every arm, and the resolver command. While the `Cache warming` post-setup menu action is hidden, the documentation SHALL state that `warming` is edited by hand only, SHALL explain how to set the `warming` key in `.sai/settings.jsonc` or in `.sai/settings.local.jsonc` for a personal override, SHALL state that neither the project behavior settings screen nor any other step of the setup flow edits `warming`, and SHALL NOT direct readers to the `Cache warming` menu action.
 
 #### Scenario: Reader looks up the warming setting
 - **WHEN** a user reads `docs/project-settings.md`
 - **THEN** the catalogue table links `warming` to a Cache warming section with an example value and the resolver command
 
 #### Scenario: Reader learns how to edit warming in setup
-- **WHEN** a user reads the Cache warming section of `docs/project-settings.md`
-- **THEN** it names the `Cache warming` post-setup menu action, the role defaults and guided rules it edits, and that it writes only the `warming` key of `.sai/settings.jsonc`
+- **WHEN** a user reads `docs/project-settings.md` to learn how to change `warming` while the `Cache warming` post-setup menu action is hidden
+- **THEN** it explains editing the `warming` key by hand in `.sai/settings.jsonc` or `.sai/settings.local.jsonc`, states that no setup step edits `warming`, and does not name the `Cache warming` menu action
