@@ -68,7 +68,7 @@ artifacts:
     description: Technical design — decisions, trade-offs, Target State, and ADR/DDR evaluation with the record family resolved by the ordered routing test
     template: design.md
     instruction: |
-      Fetch and follow sai/commands/design/instructions.md section ### Generate design.md exactly. This instruction is an informative reference only; it does not restate the design generation contract.
+      Fetch and follow sai/commands/design/steps/design.md section ## Generate design.md exactly. This instruction is an informative reference only; it does not restate the design generation contract.
     requires:
       - proposal
       - specs
@@ -78,7 +78,7 @@ artifacts:
     description: Implementation task list — narrative steps for human review and sai-3-implement to work through
     template: tasks.md
     instruction: |
-      Fetch and follow sai/commands/design/instructions.md section ### Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.
+      Fetch and follow sai/commands/design/steps/tasks.md section ## Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.
     requires:
       - specs
       - design
@@ -88,7 +88,7 @@ artifacts:
     description: Per-step interface contract — new/modified public signatures plus exact spec-anchored test assertions, keyed by Step N to tasks.md; consumable without the implementation body
     template: interfaces.md
     instruction: |
-      Fetch and follow sai/commands/design/instructions.md section ### Generate interfaces.md exactly. This instruction is an informative reference only; it does not restate the interface generation contract.
+      Fetch and follow sai/commands/design/steps/interfaces.md section ## Generate interfaces.md exactly. This instruction is an informative reference only; it does not restate the interface generation contract.
     requires:
       - tasks
 

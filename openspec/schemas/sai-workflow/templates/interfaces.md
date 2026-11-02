@@ -4,4 +4,4 @@
 
 **Test assertions**: <!-- exact assertions anchored to specs/**/*.md -->
 
-<!-- Write-time authority: sai/commands/design/instructions.md ### Generate interfaces.md -->
+<!-- Write-time authority: sai/commands/design/steps/interfaces.md ## Generate interfaces.md -->
