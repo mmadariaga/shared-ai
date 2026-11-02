@@ -16,12 +16,17 @@ The design worker's instruction mass SHALL be split into exactly six step files 
 
 ### Requirement: common.md is the always-active step surface for design
 
-`sai/commands/design/steps/common.md` SHALL be fetched at dispatch and stay in force for the entire run, carrying the step-delivery meta-rule, generation scope, artifact-only scope, decision style, cost-and-budget discipline summary, and the glossary-format and remember policy fetches. It SHALL NOT fetch `sai/policies/sai-learnings-format.md`; that policy loads in the tasks step at its point of use.
+`sai/commands/design/steps/common.md` SHALL be fetched at dispatch and stay in force for the entire run, carrying the step-delivery meta-rule, generation scope, artifact-only scope, decision style, cost-and-budget discipline summary, and the glossary-format and remember policy fetches. It SHALL NOT fetch `sai/policies/sai-learnings-format.md`; that policy loads in the research step at its point of use, only when a project-root `SAI_LEARNINGS.md` exists.
 
 #### Scenario: dispatch loads common.md once
 
 - **WHEN** the design worker is dispatched
 - **THEN** its initial surface includes the worker contract plus `sai/commands/design/steps/common.md`, with every other step path arriving solely through coordinator continuation lines
+
+#### Scenario: the research step loads the learnings format
+
+- **WHEN** the design worker runs its research step in a project with a root `SAI_LEARNINGS.md`
+- **THEN** the research step fetches `sai/policies/sai-learnings-format.md`, and neither `common.md` nor the tasks step fetches it
 
 ### Requirement: The overview step file reinforces the pinned worker-card mechanics
 

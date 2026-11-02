@@ -86,16 +86,16 @@ Missing Interfaces blocks SHALL produce no invented interfaces or assertions. So
 
 ### Requirement: Target State remains authoritative in design.md but is not projected into the overview
 
-Design SHALL remain authoritative for its Target State, Architecture Snapshot, and deterministic File Manifest. Interfaces SHALL continue to carry per-Step contracts rather than Target State, snapshot, or manifest sections.
+Design SHALL remain authoritative for its Target State and deterministic File Manifest. Interfaces SHALL continue to carry per-Step contracts rather than Target State, snapshot, or manifest sections.
 
-Overview generation SHALL exclude Architecture Snapshot and File Manifest subtrees rather than adapt or fold them. It SHALL preserve remaining selected Target State content and hierarchy, omitting that heading only if exclusion leaves it empty. It SHALL NOT require `file-manifest.js verify` as overview validation. Existing design manifest generation and verification behavior outside overview generation SHALL remain unchanged.
+Overview generation SHALL exclude File Manifest subtrees, and the Architecture Snapshot subtree that a design written before it retired still carries, rather than adapt or fold them. It SHALL preserve remaining selected Target State content and hierarchy, omitting that heading only if exclusion leaves it empty. It SHALL NOT require `file-manifest.js verify` as overview validation. Existing design manifest generation and verification behavior outside overview generation SHALL remain unchanged.
 
 #### Scenario: design Target State remains detailed and authoritative
 - **WHEN** the design phase completes for a change
-- **THEN** design retains its authoritative Target State and existing snapshot and manifest structure while the overview independently applies its source-selection exclusions
+- **THEN** design retains its authoritative Target State and manifest structure while the overview independently applies its source-selection exclusions
 
 #### Scenario: Architecture Snapshot is adapted for approval
-- **WHEN** a design contains an Architecture Snapshot
+- **WHEN** a design written before the Architecture Snapshot retired still contains one
 - **THEN** the overview excludes that complete subtree instead of rendering an adapted Target Architecture or Snapshot section
 
 #### Scenario: implementation approach omits step-level delivery detail
@@ -107,8 +107,8 @@ Overview generation SHALL exclude Architecture Snapshot and File Manifest subtre
 - **THEN** overview generation does not run manifest-fold verification or select either manifest as output, and existing design-tool verification remains independent
 
 #### Scenario: public-surface sentinel is not projected
-- **WHEN** Architecture Snapshot contains the no-planned-public-surfaces sentinel
-- **THEN** the overview excludes it with the snapshot subtree while design retains its existing sentinel behavior
+- **WHEN** an older design's Architecture Snapshot contains the no-planned-public-surfaces sentinel
+- **THEN** the overview excludes it with the snapshot subtree
 
 #### Scenario: remaining Target State content survives exclusions
 - **WHEN** Target State contains selected prose or another non-excluded subsection
@@ -226,11 +226,11 @@ Acceptance SHALL remain transactional: the complete candidate SHALL be validated
 
 ### Requirement: Target State subsections remain exact in design.md only
 
-Authoritative design Target State SHALL continue to contain exactly Architecture Snapshot followed by File Manifest, with existing design-target-state absence behavior. That design-authoring rule SHALL NOT create an overview allowlist or override overview exclusions. The overview SHALL copy remaining selected Target State content when present and omit the container when empty after exclusions.
+Authoritative design Target State SHALL contain its finished-shape artifact followed by exactly one subsection, File Manifest, with existing design-target-state absence behavior. That design-authoring rule SHALL NOT create an overview allowlist or override overview exclusions. The overview SHALL copy remaining selected Target State content when present and omit the container when empty after exclusions.
 
 #### Scenario: design Target State retains its two subsections
 - **WHEN** design is generated
-- **THEN** Target State contains Architecture Snapshot followed by File Manifest without an additional sibling subsection
+- **THEN** Target State contains File Manifest as its only subsection, with no Architecture Snapshot
 
 #### Scenario: overview has no Target State admitted-section rule
 - **WHEN** the overview is generated

@@ -30,7 +30,7 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 
 `interfaces.md` SHALL be organized as one `## Step N` section per step, using the same integer `Step N` keying as `tasks.md` and `implementation.md`. Each `## Step N` heading in `interfaces.md` SHALL correspond to the `## Step N` of the same number in `tasks.md`.
 
-`interfaces.md` SHALL admit **no** leading non-`Step N` top-level section: the `## Target State` section and its `### Architecture Snapshot` and `### File Manifest` subsections, defined by the `design-target-state` and `change-overview-artifact` capabilities, SHALL be emitted in `design.md` and `change-overview.md` and SHALL NOT be emitted in `interfaces.md`. Every top-level section of `interfaces.md` SHALL be a `## Step N` section, with exactly one admitted exception: the `None — no step contracts` sentinel defined by the `interfaces.md is never empty` requirement of this capability, which is the sole content when no step admits a contract. No other non-`Step N` section SHALL appear anywhere in the file. The per-step keying rule governs every `## Step N` section of `interfaces.md`.
+`interfaces.md` SHALL admit **no** leading non-`Step N` top-level section: the `## Target State` section and its `### File Manifest` subsection, defined by the `design-target-state` and `change-overview-artifact` capabilities, SHALL be emitted in `design.md` and SHALL NOT be emitted in `interfaces.md`, and no `### Architecture Snapshot` subsection SHALL appear in it. Every top-level section of `interfaces.md` SHALL be a `## Step N` section, with exactly one admitted exception: the `None — no step contracts` sentinel defined by the `interfaces.md is never empty` requirement of this capability, which is the sole content when no step admits a contract. No other non-`Step N` section SHALL appear anywhere in the file. The per-step keying rule governs every `## Step N` section of `interfaces.md`.
 
 `interfaces.md` SHALL be regenerated wholesale on every `sai-2-design` run, alongside `design.md` and `tasks.md`, from the same fresh step decomposition. There is NO cross-run preservation path at the design stage (unlike `implement.md`'s re-run preservation of `implementation.md`), so `interfaces.md` keys always reflect the current `tasks.md` and cannot desync from it across re-runs.
 
@@ -40,18 +40,15 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 
 #### Scenario: interfaces.md regenerated wholesale on re-run
 - **WHEN** `sai-2-design` is re-run and produces a new `tasks.md` decomposition
-- **THEN** `interfaces.md` is regenerated in full from that same fresh decomposition, so its `## Step N` keys always match the current `tasks.md`
-- **AND** no `## Step N` section from a prior `interfaces.md` is preserved across the re-run — there is no design-stage preservation path, so orphaned or desynced step sections cannot arise
+- **THEN** `interfaces.md` is regenerated in full from that same fresh decomposition, so its `## Step N` keys always match the current `tasks.md` and no `## Step N` section from a prior `interfaces.md` is preserved across the re-run
 
 #### Scenario: no non-step top-level section is admitted
 - **WHEN** `sai-2-design` generates `interfaces.md`
-- **THEN** every top-level section of `interfaces.md` is a `## Step N` section
-- **AND** no `## Target State` section and no `### Architecture Snapshot` or `### File Manifest` subsection appears in the file — that content lives in `change-overview.md`
+- **THEN** every top-level section of `interfaces.md` is a `## Step N` section, and no `## Target State` section and no `### Architecture Snapshot` or `### File Manifest` subsection appears in the file
 
 #### Scenario: no trailing non-step section
 - **WHEN** a reader scans `interfaces.md` from the first `## Step N` heading to the end of the file
-- **THEN** every top-level section in that range is a `## Step N` section
-- **AND** no additional non-step section is emitted after the step sections
+- **THEN** every top-level section in that range is a `## Step N` section, and no additional non-step section is emitted after the step sections
 
 ### Requirement: interfaces.md is never empty
 

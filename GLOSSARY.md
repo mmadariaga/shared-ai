@@ -10,9 +10,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Ambient Agent**: "An agent session that is not running a SAI command — the audience for the **Orientation Index**, which it never auto-loads and reaches only through a pointer in a consumer project's own agent instructions."
 *Avoid*: background agent, idle agent, non-SAI agent, ambient session
 
-**Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces in external-first and internal-public boundary blocks, with project-root-relative paths and portable ASCII relationships or execution flows for design review; excluded from `change-overview.md`."
-*Avoid*: architecture summary, architecture diagram, interface overview
-
 **Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, `/sai-plan`); spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
@@ -99,9 +96,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
 *Avoid*: Tests Affected, Broken Tests, test impact, regressions
 
-**External Surface**: "A planned public promise available to uncontrolled callers, users, or integrations outside the repository's controlled caller boundary, including a typed command, produced artifact format, installed file layout, or public code surface."
-*Avoid*: endpoint map, external API (when the promise is not an API), public surface (when the caller boundary matters)
-
 **Failure Class**: "The closed machine-readable classification on a failed routed-worker outcome that identifies the repair boundary without relying on summary prose."
 *Avoid*: failure kind, failure reason, error category
 
@@ -146,9 +140,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Intent Reconciliation**: "The comparison of a **Backfilled Change**'s verified diff evidence with an optional user statement of capabilities and constraints, classified as matched, stated-but-unevidenced, or evidenced-but-unstated."
 *Avoid*: intent merge, intent diff, blind backfill
-
-**Internal Public Surface**: "A planned public promise available only to controlled callers within the repository or another explicitly controlled part of the change, even though the surface is intentionally public within that boundary."
-*Avoid*: private surface, internal API (when the surface is not an API), external surface
 
 **Machine Registry**: "The code registry of hosted state machines backing the stage machine platform, where each entry defines `initialState`, `transition`, and `project` and adding a machine is a module plus one registration line."
 *Avoid*: machine list, model registry, machine catalog
@@ -212,9 +203,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Progress Step**: "A single named entry in a **Progress Plan**, carrying a stable id and a user-facing label; a worker reports its completion by id in a **Progress Event**."
 *Avoid*: task, todo item, checklist item, plan entry
-
-**Provenance Marker**: "The pinned `**Provenance**` sub-field on every `design.md` Decision carrying one of `user` / `codebase-forced` / `derived`, signalling how re-litigable the decision is downstream."
-*Avoid*: Decision Source, Origin, decision tag, author marker
 
 **Question Context Contract**: "The mandatory five-element anatomy of every user-facing decision prompt — what is being decided, why it matters, plain-language options, essential state context, and plain wording — single-sourced in `sai/policies/question-context.md` and required of worker `needs_input` questions, design notice messages, and the fixed instruction gates."
 *Avoid*: decision prompt, question anatomy, prompt context, context contract, question template
@@ -280,7 +268,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Target State**: "The single leading review section of `design.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section; authored and persisted by the design phase. Only content remaining after the Change Overview's exclusions is projected into `change-overview.md`; an empty Target State container is omitted there."
 *Avoid*: end state, final shape, goal state, summary section
 
-**Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **RED Worker**, which is otherwise given no way to obtain it."
+**Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and read by the `/sai-3-implement` coordinator, which finds the project's suites and the scoping idiom for the step tests there."
 *Avoid*: run command, test runner, test script, testing command, suite command
 
 **Tool Fence**: "The Claude Code `allowed-tools` frontmatter list on a routed coordinator entrypoint that grants the coordinator's declared lifecycle and panel tools while excluding capabilities outside that entrypoint's contract; the seven routed progress coordinators include `TaskCreate`, `TaskUpdate`, `TaskGet`, and `TaskList`, while opencode carries no equivalent and keeps the prose contract."
@@ -317,9 +305,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Phase Adapter**, a **Phase Policy**, and the **Orchestration Core** are retired: each goal-driven card states its own lifecycle, and harness-specific dispatch lives in the standalone worker bindings.
 - The **Build Command** orders `/sai-3-implement`, `/sai-4-review`, and a second `/sai-3-implement` run in one session; it is not a distinct worker identity. `/sai-deep-review` orders `/sai-4-review`, the activated audits, an Assessment pass, and a `/sai-3-implement` run the same way.
 - The **Plan Command** orders `/sai-1-spec` and `/sai-2-design` in one session, runs both **Segments** unattended through the shared plan cycle, records its **Assumptions** in its run directory and closing report only, and is what the explore `Plan - Unattended` route follows.
-- An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
-- An **Architecture Snapshot** relates to an external-first **External Surface** block and an **Internal Public Surface** block.
-- A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
+- A **File Manifest** belongs to one **Target State** and answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
 - An **Envelope Contract Violation** is a **Failure Class** when a nested result cannot be trusted under its closed output shape.
 - A **Failure Class** belongs to one failed routed-worker outcome and is distinct from the overview generator's inner `failure_kind` field.
@@ -346,7 +332,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Pre-Crystallization Stage TODO** is distinct from an **Idea Progress List** and a **Progress Plan**: the stage TODO renders the user-paced pre-crystallization progression, the idea list tracks post-crystallization idea evidence, and the plan is adapter-declared and marked from worker progress events.
 - An **Overview Language** value is supplied by an explicit overview-language flag or selected by the overview-language gate, asked in round 3 of the route round and applied only for **Plan (unattended)** (or is the literal `None`), remains conversation-only per crystallized idea or slice set, and the selected language is forwarded only to the `/sai-plan` coordinator followed by the **Pipeline Selector**'s `Plan (unattended)` option; `None` omits the overview-language option, and the value is never written to any artifact.
 - A **Pipeline Selector** closes every crystallization turn and, after a clean Direct Build (unattended) slice completion while pending slices remain, is re-presented for the next per-slice authorization; `Plan (unattended)` follows the **Plan Command**, `Direct Build (unattended)` starts the direct implementation lane, and `Manual` starts none and leaves later execution to an explicit request.
-- A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **RED Worker**; a GREEN-direct dispatch receives the Step's own verification commands instead.
+- A **Test Command** belongs to one change's `## Implementation Context`, the only field of that section, and is read by the `/sai-3-implement` coordinator.
 - An **Intent Reconciliation** compares a **Backfilled Change**'s verified diff with its optional intent statement and never treats the two sources as interchangeable evidence.
 - An **Intent Reconciliation** reports **Scope Drift** for evidenced work that the intent statement does not name, while still allowing the evidence-backed behavior to be specced.
 - A **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync of the design artifacts that the implement coordinator corrects as a deviation.
@@ -366,7 +352,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Routing Line** is judged by purpose, not derived from paths; its **Routing Difficulty** is measured against the implementer.
 - A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; its snapshot and manifest subsections are excluded from `change-overview.md`. A **Step Contract** belongs to the same `interfaces.md` artifact as the other per-step sections, appearing once per step.
 - A **Change Overview** is derived from the five sai-2 source artifacts of one change — `proposal.md`, `specs/**`, `design.md`, `tasks.md`, and `interfaces.md` — and is generated once after the sai-2 initial feedback loop closes.
-- A **Change Overview** copies Proposal's Why and What Changes, then all present Design sections in source order except **Architecture Snapshot**, **File Manifest**, and Context, then every Tasks Step with corresponding selected **Step Contract** fields and literal Files Affected. **Target State** is retained only when content remains after exclusions; `interfaces.md` carries only **Step Contract** sections.
+- A **Change Overview** copies Proposal's Why and What Changes, then all present Design sections in source order except **File Manifest** and Context (and the `Architecture Snapshot` section that a design written earlier still carries), then every Tasks Step with corresponding selected **Step Contract** fields and literal Files Affected. **Target State** is retained only when content remains after exclusions; `interfaces.md` carries only **Step Contract** sections.
 - An **Overview State** belongs to one change's `.openspec.yaml` and is written only by the design worker; `sai-status` and `sai-archive` consume it instead of inspecting `change-overview.md` contents.
 - A **Verify-First Marker** on a risk constrains **Routing Line** step ordering in `tasks.md`, sequencing the work that resolves the risk before the step it names.
 - A **Question Context Contract** governs every user-facing decision prompt: worker `needs_input` questions, design notice messages, and the fixed instruction gates.
@@ -377,7 +363,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Auto-Answer** is given only when confidence is clearly above the **Confidence Threshold**; unclear or below-threshold confidence escalates the worker question to the user instead of auto-answering.
 - An **Autonomy Audit Log** is presented in conversation in the **Direct Build - Unattended** terminal report and is never written to any file, artifact, or configuration.
 - A **DDR** encodes a **Domain Invariant**; an **ADR** documents a decision that does not.
-- A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker.
+- A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker; the outermost implementing command creates the record at its close.
 - A **Worktree Name Triple** belongs to one git worktree created by `/sai-worktree` and is derived from the main worktree's directory name plus the first free counter slot.
 - An **Ambient Agent** is the audience of an **Orientation Index** and never auto-loads it; it reaches the index only through a pointer in a consumer project's own agent instructions.
 - An **Orientation Index** is installed at the harness root through the `root` **Destination Class** projection of `sai/install-manifest.json`.
@@ -397,9 +383,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Flagged ambiguities
 
-- **External Surface vs Internal Public Surface** — both are planned public promises, but they differ by caller boundary. **Resolution:** **External Surface** names a promise available to uncontrolled callers and is listed first; **Internal Public Surface** names a promise available only to controlled callers within the repository or change; unclear cases use the external classification.
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
-- **"Change Overview" vs the design review sections** — the **Change Overview** and the `## Target State` / `### Architecture Snapshot` / `### File Manifest` sections hosted in `design.md` all present review-oriented content, so a bare "overview" or "snapshot" is ambiguous about which surface is meant. **Resolution:** **Change Overview** names the whole-change `change-overview.md` source projection; **Target State**, **Architecture Snapshot**, and **File Manifest** name the authoritative `design.md` sections. The overview excludes Architecture Snapshot and File Manifest and omits an empty Target State container; the qualified terms are always used, and the overview never becomes a source of truth over the source artifacts.
+- **"Change Overview" vs the design review sections** — the **Change Overview** and the `## Target State` / `### File Manifest` sections hosted in `design.md` all present review-oriented content, so a bare "overview" or "snapshot" is ambiguous about which surface is meant. **Resolution:** **Change Overview** names the whole-change `change-overview.md` source projection; **Target State** and **File Manifest** name the authoritative `design.md` sections. The overview excludes File Manifest and omits an empty Target State container; the qualified terms are always used, and the overview never becomes a source of truth over the source artifacts.
 - **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` (authoritative per step), copied literally into the corresponding Change Overview Step; **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view, excluded from `change-overview.md`) — the two are never synonyms, and `tasks.md` remains the authority.
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings". Artifact reviews use `H1`/`M1`/`L1` identifiers on the closed `High`/`Medium`/`Low` set (no `Critical`), while all four audit commands share one `Critical`-based severity vocabulary — `Critical`/`High`/`Medium`/`Low`, plus the review-only `Question` category and the `sai-7`/`sai-8`-only `Informational` level — with severity-prefixed identifiers (`C`/`H`/`M`/`L`, plus `Q`/`I`) and a closing `Summary:` tally line per report. **Resolution:** **Review Finding** names the artifact-review item only; audit findings use the shared audit severity vocabulary and are never called Review Findings.
 - **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/commands/{phase}/{artifact}-report.template.md` is the write-time contract fetched by the phase instruction. **Resolution:** schema scaffolds are descriptive under **Schema Template Authority** and point at the command-owned contract via a Write-time authority comment — they are not a second write-time contract and are not pinned to content parity.

@@ -6,139 +6,27 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 ## Requirements
 
-### Requirement: sai-2-design merges the learnings file into Implementation Context
-
-When `/sai-2-design` authors `tasks.md`'s `## Implementation Context`, it SHALL read `SAI_LEARNINGS.md` from the project root and merge **Stack** into **Stack**, **Conventions** into **Conventions**, and **Avoid** into **Avoid**. These three merge field-to-field, with no reshaping of entry content.
-
-**Test Command** SHALL NOT be merged field-to-field. The consuming field is contractually a single directly-executable command, and `/sai-2-design` SHALL populate it from its own research as it does today. The learnings **Test Command** section SHALL be used only as corroboration: when fresh research and the recorded command agree, the field is written as researched; when they disagree, the field is written as researched and the disagreement is surfaced per the contradiction-notice requirement below.
-
-When `/sai-2-design` takes any value from the learnings **Test Command** section, it SHALL take the command line only. It SHALL NOT carry the `*Observed:*` provenance line, a bullet marker, or a key prefix into the field, because an implementation run copies this field into its runnable test commands and any such syntax would render it non-executable.
-
-The merge SHALL be additive to codebase research, not a replacement for it. The existing requirement that each field be derived from actual codebase research SHALL continue to hold; a populated `SAI_LEARNINGS.md` SHALL NOT be accepted as a substitute for that research, and SHALL NOT license a placeholder in any field.
-
-Where a learnings entry and fresh research disagree about the same repo-level artifact, `/sai-2-design` SHALL prefer what it observes in the current codebase, because the learnings entry is a record of what was true when it was written.
-
-The merge SHALL NOT change the shape of `## Implementation Context`. It remains exactly four fields, **Conventions** keeps its 2–5 bullet quota, and **Test Command** remains a sibling field outside that quota.
-
-#### Scenario: Design merges an Avoid entry
-
-- **WHEN** `/sai-2-design` authors `## Implementation Context` in a repo whose `SAI_LEARNINGS.md` records an anti-pattern under **Avoid**
-- **THEN** that anti-pattern appears in the **Avoid** field alongside the anti-patterns derived from this change's own research
-
-#### Scenario: Learnings file disagrees with the current codebase
-
-- **WHEN** a **Test Command** entry in `SAI_LEARNINGS.md` names a runner invocation that no longer matches the project's test tooling
-- **THEN** `/sai-2-design` writes the command it observes in the current project, not the one recorded in the file
-
-#### Scenario: Merge does not relax the research requirement
-
-- **WHEN** `SAI_LEARNINGS.md` populates three of the four fields
-- **THEN** `/sai-2-design` still performs codebase research for all four and does not leave any field as a bare copy standing in for research it did not do
-
-#### Scenario: Conventions quota is preserved
-
-- **WHEN** merging would push **Conventions** past five bullets
-- **THEN** `/sai-2-design` selects within the 2–5 bullet quota rather than exceeding it, applying the precedence rule below
-
-#### Scenario: Test Command provenance never reaches the field
-
-- **WHEN** `/sai-2-design` writes **Test Command** in a repo whose `SAI_LEARNINGS.md` records a command with an `*Observed:*` line beneath it
-- **THEN** the field contains only the executable command string, with no `*Observed:*` line, bullet marker, or key prefix
-
-#### Scenario: Blind test-writer receives the merged field
-
-- **WHEN** an implementation run copies the **Test Command** field into its runnable test commands and a blind test-writer later runs its Step's command
-- **THEN** the command is directly executable from the project root, because the merge carried no bullet or provenance syntax into the field
-
-### Requirement: Fresh research takes precedence within the Conventions quota
-
-`## Implementation Context`'s **Conventions** field is capped at 2–5 bullets, and the merge introduces a second source competing for that cap. `/sai-2-design` SHALL resolve the contention deterministically rather than ad hoc.
-
-Bullets derived from this change's own codebase research SHALL be placed first. Bullets merged from `SAI_LEARNINGS.md` SHALL fill the remaining slots up to the cap of five, in the order they appear in the file. When the two sources together exceed five bullets, the merged learnings bullets SHALL be the ones dropped.
-
-`/sai-2-design` SHALL NOT drop a research-derived bullet in order to admit a learnings bullet, and SHALL NOT exceed five bullets to accommodate both. The cap and the 2-bullet floor are unchanged.
-
-A learnings bullet that duplicates a research-derived bullet SHALL be treated as already present rather than consuming a second slot.
-
-#### Scenario: Both sources together exceed the cap
-
-- **WHEN** this change's research yields four **Conventions** bullets and `SAI_LEARNINGS.md` contributes three more
-- **THEN** the field contains the four research-derived bullets first and exactly one merged bullet, and the remaining two learnings bullets are dropped rather than displacing research or pushing the field past five
-
-#### Scenario: Learnings bullet duplicates research
-
-- **WHEN** a learnings **Conventions** entry states the same convention a research-derived bullet already states
-- **THEN** it is not written a second time and does not consume a slot
-
-#### Scenario: Research alone fills the cap
-
-- **WHEN** this change's research yields five **Conventions** bullets
-- **THEN** no learnings bullet is merged into **Conventions**, and the field is written from research alone
-
-### Requirement: Design surfaces learnings entries its research contradicts
-
-When `/sai-2-design` prefers a freshly-researched value over a `SAI_LEARNINGS.md` entry concerning the same repo-level artifact, it SHALL surface that disagreement to the user as a contradiction notice naming the entry's key, the recorded value, and the researched value.
-
-The notice SHALL be printed output only. `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this requirement SHALL NOT be read as granting it any write authority over that file. `SAI_LEARNINGS.md` SHALL remain writable only by the `/sai-3-implement` coordinator's learnings promotion at run close.
-
-The notice exists because supersede-by-key alone cannot reach a class of stale entries: promotion fires only from a deviation, and a correct value in `## Implementation Context` is what prevents the failure that would otherwise expose one, so an entry corrected at design time may never be re-observed by an implement run. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
-
-When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
-
-#### Scenario: Research contradicts a recorded entry
-
-- **WHEN** `/sai-2-design` researches a build target for which `SAI_LEARNINGS.md` records a fact the current codebase contradicts
-- **THEN** it writes the researched value into `## Implementation Context` and prints a contradiction notice naming that key, the recorded value, and the researched value
-
-#### Scenario: Design does not edit the learnings file
-
-- **WHEN** `/sai-2-design` detects a contradicted entry
-- **THEN** `SAI_LEARNINGS.md` is left byte-for-byte unchanged, and the entry is removed only if a human acts on it
-
-#### Scenario: No contradictions found
-
-- **WHEN** every learnings entry agrees with fresh research
-- **THEN** no contradiction notice is printed
-
-### Requirement: sai-3-implement never reads the learnings file directly
-
-`/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md` for its planning or step work. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract. The coordinator MAY read `SAI_LEARNINGS.md` only to locate the project's test command when `tasks.md`'s `**Test Command**` is missing or holds the sentinel `None — no test runner in this project`, and to apply its learnings promotion at run close, as `sai/commands/implement/coordinator.md` states.
-
-`/sai-3-implement` starts from its supplied material, and `## Implementation Context` is part of it. A direct read of the learnings file would repeat work `/sai-2-design` already did when it merged the file.
-
-No instruction file other than that coordinator test-command fallback and run-close promotion SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `/sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
-
-#### Scenario: sai-3-implement plans a change in a repo with a learnings file
-
-- **WHEN** `/sai-3-implement` runs in a repository containing `SAI_LEARNINGS.md`
-- **THEN** its step library reads only its existing inputs, and any promoted fact reaches the steps solely through the four fields of `## Implementation Context`
-
-#### Scenario: The design test command makes the learnings lookup unnecessary
-
-- **WHEN** `/sai-3-implement` starts and `tasks.md` carries a runnable `**Test Command**`
-- **THEN** the coordinator takes the test command from `tasks.md` and does not read `SAI_LEARNINGS.md` to find it
-
 ### Requirement: Promoted facts never breach test-writer blindness
 
-A promoted fact reaching the blind test-writer through `## Implementation Context` SHALL never reveal the current Step's GREEN implementation body.
+A `SAI_LEARNINGS.md` entry that the RED worker reads SHALL never reveal the current Step's GREEN implementation body.
 
-This invariant is held closed by construction rather than by an added filter: an entry in the writing profile is expected to key on a repo-level artifact and never on a symbol the change being applied introduces. A fact that cannot name the change's new symbols cannot disclose that change's implementation body. No command currently checks this expectation.
+This invariant is held closed by construction rather than by an added filter: an entry keys on a repo-level artifact and never on a symbol the change being applied introduces. A fact that cannot name the change's new symbols cannot disclose that change's implementation body.
 
-The invariant SHALL be stated explicitly wherever the writing profile and the test-writer's injected slice are specified, rather than left as an implicit consequence. The coordinator SHALL NOT inject an accumulated learning directly into any dispatch: the writing profile is the only channel through which a promoted fact reaches a worker.
+The coordinator SHALL NOT inject an accumulated learning into any dispatch: the step brief carries only the path of `SAI_LEARNINGS.md`, and the worker reads the file itself.
 
 #### Scenario: A promoted Stack fact reaches the test-writer
 
-- **WHEN** the blind test-writer receives the writing profile (the **Stack**, **Conventions**, and **Avoid** fields of `## Implementation Context`) and that profile carries a promoted entry
+- **WHEN** the RED worker reads `SAI_LEARNINGS.md` and the file carries a promoted **Stack** entry
 - **THEN** the entry names a repo-level artifact such as a framework version or a project convention, and reveals nothing about the current Step's implementation body
 
 #### Scenario: Injection-time blindness is unchanged
 
-- **WHEN** the coordinator composes a blind test-writer dispatch
-- **THEN** the dispatch carries the writing profile and no accumulated learning, and nothing in it reveals the current Step's GREEN body
+- **WHEN** the coordinator composes a RED step brief
+- **THEN** the brief carries the path of `SAI_LEARNINGS.md` and no accumulated learning, and nothing in it reveals the current Step's GREEN body
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 
-`sai/commands/design/steps/tasks.md` SHALL fetch `sai/policies/sai-learnings-format.md` at the Implementation Context item, so the format contract is in context wherever the file is read. It SHALL fetch it only at that point of use and only when a project-root `SAI_LEARNINGS.md` exists; it SHALL NOT fetch it at dispatch and never when the file is absent.
+Each reader SHALL fetch `sai/policies/sai-learnings-format.md` at its point of use, only when a project-root `SAI_LEARNINGS.md` exists, and never when the file is absent: the design research step when it reads the file, the RED and GREEN step files when the brief names the file, the review analysis step at its Consistency with Codebase pass, and the `/sai-3-implement` coordinator in its run-close learnings promotion. The design tasks step SHALL NOT fetch it for an Implementation Context merge.
 
 Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
 
@@ -149,8 +37,8 @@ Harness parity SHALL ride the shared instruction bodies rather than being duplic
 
 #### Scenario: sai-2-design tasks step with SAI_LEARNINGS.md present
 
-- **WHEN** the design worker executes the tasks step and a project-root `SAI_LEARNINGS.md` exists
-- **THEN** it fetches `sai/policies/sai-learnings-format.md` at the Implementation Context item before merging the learnings
+- **WHEN** the design worker runs in a project with a root `SAI_LEARNINGS.md`
+- **THEN** it fetches `sai/policies/sai-learnings-format.md` in its research step and reads § Consumption, and its tasks step merges nothing into `## Implementation Context`
 
 #### Scenario: sai-2-design without SAI_LEARNINGS.md
 
@@ -161,3 +49,45 @@ Harness parity SHALL ride the shared instruction bodies rather than being duplic
 
 - **WHEN** the same command is invoked under a different harness
 - **THEN** the promotion and consumption behavior is identical, because it is defined in the shared instruction bodies rather than in per-harness wrapper copies
+
+### Requirement: Design, RED, GREEN, and review read SAI_LEARNINGS.md directly
+
+When a project-root `SAI_LEARNINGS.md` exists, the design research step, the RED and GREEN workers of `/sai-3-implement`, and the review analysis step SHALL read it directly, per `sai/policies/sai-learnings-format.md` § Consumption. No instruction SHALL copy its entries into another artifact, so the file is the only copy. The design worker SHALL apply its entries to the decisions of `design.md` and the steps of `tasks.md` without copying them into either, and SHALL NOT list the file under `## Required Documentation`. The `/sai-3-implement` step brief SHALL carry the path `SAI_LEARNINGS.md` when the file exists, and SHALL NOT mention the file when it does not. The review's Consistency with Codebase pass SHALL check conventions against the code and the file's entries, and against the code only when the file does not exist. When the file does not exist, every reader SHALL skip it silently, with no warning, prompt, or halt.
+
+#### Scenario: Design reads the learnings file in its research step
+
+- **WHEN** the design worker runs its research step in a project with a root `SAI_LEARNINGS.md`
+- **THEN** it reads the file, applies its entries to the decisions of `design.md` and the steps of `tasks.md`, and copies no entry into either
+
+#### Scenario: The step brief carries the learnings path
+
+- **WHEN** the `/sai-3-implement` coordinator writes a step brief in a project with a root `SAI_LEARNINGS.md`
+- **THEN** the brief names the path `SAI_LEARNINGS.md`, and RED and GREEN read the file before writing
+
+#### Scenario: No learnings file
+
+- **WHEN** design, RED, GREEN, or review runs in a project with no `SAI_LEARNINGS.md`
+- **THEN** it proceeds with no warning, the step brief does not mention the file, and review checks conventions against the code only
+
+### Requirement: A learnings entry wins over contradicting code
+
+When existing code does the opposite of a `SAI_LEARNINGS.md` entry, the entry SHALL be taken as correct: design, RED, and GREEN SHALL follow it in what they write. Contradicting code in a file the change modifies SHALL be corrected in the same step. Contradicting code in a file the change does not touch SHALL stay unchanged; GREEN SHALL report its path and the entry's key in `notes`, the coordinator SHALL record it as a deviation starting `SAI_LEARNINGS.md contradiction:`, and the closing report SHALL show the path and the entry's key. A belief that an entry is old, contradicted by code, or irrelevant SHALL NOT be evidence to correct or delete it.
+
+#### Scenario: Contradicting code outside the change
+
+- **WHEN** GREEN finds that a file the change does not touch contradicts a `SAI_LEARNINGS.md` entry
+- **THEN** that file stays unchanged, and the closing report shows its path and the entry's key
+
+#### Scenario: Contradicting code inside the change
+
+- **WHEN** a file the step modifies contradicts a `SAI_LEARNINGS.md` entry
+- **THEN** the step follows the entry and corrects that code in the same step
+
+### Requirement: Execution settles a stale learnings entry
+
+When following a `SAI_LEARNINGS.md` entry fails on execution (the compiler, linter, or tests reject what it directs), the entry SHALL be treated as stale. RED and GREEN SHALL write the alternative that works and report the entry's key and the failure in `notes`; when the coordinator's own run of a Test Command taken from the file fails because of the entry and another command works, the same SHALL apply. The coordinator SHALL record a deviation starting `SAI_LEARNINGS.md stale:` with the entry's section and key, the failure as evidence, and the alternative that worked. At its close it SHALL correct the entry by key with that alternative, or delete it when no durable fact remains, and SHALL write each correction or deletion to a `## Learnings Corrections` section at the end of the change's `design.md` (section, key, previous value, new value or `deleted`, and the evidence), creating the section when absent; when `design.md` does not exist, the closing report alone SHALL carry them. The closing report SHALL list each correction or deletion with its evidence. The run SHALL NOT stage or commit `SAI_LEARNINGS.md` or the corrections section.
+
+#### Scenario: A stale entry is corrected at close
+
+- **WHEN** GREEN reports that following a `SAI_LEARNINGS.md` entry failed on execution and names the alternative that worked
+- **THEN** the coordinator records a `SAI_LEARNINGS.md stale:` deviation, corrects or deletes the entry at close, writes the change to `## Learnings Corrections` in `design.md`, and lists it in the closing report

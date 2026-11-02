@@ -81,9 +81,14 @@ The spec steps SHALL be delivered by pointer through the linear machine `spec-st
 
 ### Requirement: Spec and design segments close with their own lines
 
-A completed spec segment SHALL print the decision summary, the consistency warnings, the assumptions, the pending findings, the scope observations, the skipped checks, and the commit outcome, and end with exactly ``Spec done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` in a new chat when ready.`` A completed design segment SHALL print its summary, the Architecture Snapshot when this run created or changed `design.md`, the assumptions, the notices and spec corrections, the pending findings, the scope observations, the skipped checks, the overview result when asked, and the commit outcome, and end with exactly ``Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready.`` A segment that failed, stopped, or ended on an unanswered escalation SHALL end with its report and no closing line. Inside `/sai-plan` the plan closing line SHALL replace both.
+A completed spec segment SHALL print the decision summary, the consistency warnings, the assumptions, the pending findings, the scope observations, the skipped checks, and the commit outcome, and end with exactly ``Spec done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` in a new chat when ready.`` A completed design segment SHALL print its summary, the assumptions, the notices and spec corrections, the pending findings, the scope observations, the skipped checks, the overview result when asked, and the commit outcome, and end with exactly ``Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready.`` The design segment SHALL NOT print an Architecture Snapshot and SHALL NOT keep a copy of the previous `design.md` for that print. A segment that failed, stopped, or ended on an unanswered escalation SHALL end with its report and no closing line. Inside `/sai-plan` the plan closing line SHALL replace both.
 
 #### Scenario: a completed spec segment prints the spec closing line
 
 - **WHEN** `/sai-1-spec` completes on its own
 - **THEN** it ends with the `Spec done in openspec/changes/{name}/.` line naming `/sai-2-design {name}`
+
+#### Scenario: a completed design segment prints no Architecture Snapshot
+
+- **WHEN** `/sai-2-design` completes on its own
+- **THEN** its closing report carries no Architecture Snapshot and it ends with the `Design done in openspec/changes/{name}/.` line naming `/sai-3-implement {name}`

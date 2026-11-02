@@ -7,6 +7,7 @@ Active step: research. Gather source evidence for design and identify any unreso
 Read the following known files in the main agent (paths are fixed by convention):
 - `openspec/changes/{resolved_change_name}/proposal.md` — motivation, what changes, capabilities in scope
 - All files matching `openspec/changes/{resolved_change_name}/specs/**/*.md` — capability delta specs
+- The project-root `SAI_LEARNINGS.md`, only when it exists: Fetch @sai/policies/sai-learnings-format.md, read § Consumption, and apply its entries to the decisions of `design.md` and the steps of `tasks.md` without copying them into either. When it does not exist, skip this silently: no warning, no prompt. Only the `/sai-3-implement` coordinator's learnings promotion at run close writes the file, and this step never edits it.
 
 ## Codebase research (delegated)
 

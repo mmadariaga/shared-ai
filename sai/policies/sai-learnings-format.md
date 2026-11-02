@@ -6,7 +6,7 @@
 
 Canonical structure for `SAI_LEARNINGS.md` — the durable record of execution-observed facts about how a repository actually builds, tests, and behaves. Modeled structurally on `sai/policies/glossary-format.md`.
 
-The `/sai-3-implement` coordinator is the only writer: it promotes learnings from the deviations of its run at run close. This file is consumed by the promotion and consumption instructions. Any agent that reads, writes, or audits `SAI_LEARNINGS.md` must conform to this format.
+The `/sai-3-implement` coordinator is the only writer: it promotes learnings from the deviations of its run at run close, and it corrects or deletes an entry that execution evidence proved stale. Design, RED, GREEN, and review read the file directly (§ Consumption). Any agent that reads, writes, or audits `SAI_LEARNINGS.md` must conform to this format.
 
 ## Scope
 
@@ -52,10 +52,6 @@ The file contains exactly four content sections, in this order. No fifth section
 *Observed:* {change-name}
 ```
 
-These four section names are deliberately identical to the four fields of `tasks.md`'s `## Implementation Context`. For **Stack**, **Conventions**, and **Avoid** that identity is load-bearing rather than cosmetic: it lets `/sai-2-design` merge section-into-field with no mapping layer.
-
-**Test Command is an explicit exception to that identity** and does NOT merge field-to-field. Any statement that all four sections merge without translation is incorrect and must not be written into this file or any instruction body.
-
 ## Rules
 
 - **Key on a repo-level artifact.** For **Stack**, **Conventions**, and **Avoid**, every entry carries a `{key}` naming a package, a build target, a command, a configuration file, a compiler or linter rule, or a framework version constraint. The key never names a symbol, function, class, module, or file that the change being applied introduced or renamed.
@@ -70,7 +66,15 @@ These four section names are deliberately identical to the four fields of `tasks
 - **Append into the matching section** when the key is new to that section.
 - **Supersede by key** when the key already exists in the same section: the newer entry replaces the older one in place. The older entry is not retained alongside it and is not preserved as history within the file. Supersede matches on the key only, and only within a single section — two entries with the same key in different sections are distinct and do not supersede each other.
 - **Supersede for Test Command replaces the whole section.** Because that section holds at most one entry, a newer observation of the project's test invocation replaces the existing command outright rather than matching a key.
-- **Invalidation is supersede-only.** No SAI phase has authority to delete an entry because it believes the entry to be contradicted, out of date, or no longer relevant. This converts an active-detection problem into a passive-write property: an entry is corrected when a later run observes the same key again, and a stale entry otherwise survives until then. A phase that detects a contradiction surfaces it as printed output and leaves the file unchanged.
+- **Correction and deletion need execution evidence.** The coordinator corrects or deletes an entry only when a deviation of its run records that following the entry failed on execution. A correction replaces the entry by key, as above; an entry with no durable fact left is deleted. Each correction or deletion is written to the `## Learnings Corrections` section of the change's `design.md` (section, key, previous value, new value or `deleted`, and the evidence) and appears in the closing report. A belief that an entry is old, contradicted by code, or irrelevant is not evidence: the entry stays, and the closing report shows the contradiction.
+
+## Consumption
+
+Design (in its research step), RED, GREEN, and review read the root `SAI_LEARNINGS.md` directly when it exists. No instruction copies its entries into another artifact, so the file is the only copy and cannot go stale in a second place. When the file does not exist, they skip it silently: no warning, no prompt, no halt.
+
+- **An entry wins over contradicting code.** What you write follows the entry. Existing code that does the opposite is wrong: correct it in the same step when the change already modifies that file. When the change does not touch the file, leave it unchanged and report its path and the entry's key (GREEN reports them in `notes`; the coordinator lists them in the closing report).
+- **Execution settles a doubt.** When following an entry fails on execution (the compiler, linter, or tests reject what it directs), the entry is stale. Write the alternative that works, and report the entry's key and the failure as evidence (GREEN reports them in `notes`); the coordinator records a deviation and corrects the entry at close.
+- **Review checks conventions against the code and these entries.** A new construct that an entry rules out is a Consistency finding.
 
 ## Bootstrap (when no `SAI_LEARNINGS.md` exists yet)
 

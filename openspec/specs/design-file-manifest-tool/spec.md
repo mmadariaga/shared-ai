@@ -7,7 +7,7 @@ Define the deterministic fold and verification of the design File Manifest by `s
 
 ### Requirement: File Manifest is written by a deterministic tool
 
-The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step N` section's `**Files Affected**` entries of a change's `tasks.md` into the `### File Manifest` subsection of the same change's `design.md` and write it there. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it beneath `### Architecture Snapshot`. Every non-empty manifest entry SHALL be emitted as a Markdown bullet prefixed with `- `, with one logical entry per line. The empty sentinel and its reason SHALL remain unbulleted. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
+The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step N` section's `**Files Affected**` entries of a change's `tasks.md` into the `### File Manifest` subsection of the same change's `design.md` and write it there. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it at the end of `## Target State`, before the next `##` section; when a `design.md` written before the Architecture Snapshot retired still carries `### Architecture Snapshot`, it SHALL create it after that subsection. Every non-empty manifest entry SHALL be emitted as a Markdown bullet prefixed with `- `, with one logical entry per line. The empty sentinel and its reason SHALL remain unbulleted. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
 
 #### Scenario: fold writes the net-folded manifest
 
@@ -21,8 +21,8 @@ The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step
 
 #### Scenario: fold creates a missing manifest
 
-- **WHEN** `design.md` has a `## Target State` section with `### Architecture Snapshot` but no `### File Manifest`, and `fold` runs
-- **THEN** the tool writes `### File Manifest` with the folded lines directly after the snapshot, before the next `##` section
+- **WHEN** `design.md` has a `## Target State` section with no `### Architecture Snapshot` and no `### File Manifest`, and `fold` runs
+- **THEN** the tool writes `### File Manifest` with the folded lines at the end of `## Target State`, before the next `##` section
 
 #### Scenario: empty fold carries the None sentinel
 
@@ -33,6 +33,11 @@ The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step
 
 - **WHEN** fold runs on a valid legacy unbulleted manifest and then runs again without task changes
 - **THEN** the first run emits single-prefixed bullet entries and the second reports unchanged without duplicating bullets
+
+#### Scenario: fold places a missing manifest after a legacy snapshot
+
+- **WHEN** a `design.md` written before the Architecture Snapshot retired has `### Architecture Snapshot` under `## Target State` but no `### File Manifest`, and `fold` runs
+- **THEN** the tool writes `### File Manifest` directly after the snapshot, before the next `##` section
 
 ### Requirement: The tool reproduces the normative net fold
 
