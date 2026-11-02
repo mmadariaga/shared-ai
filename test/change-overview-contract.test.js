@@ -1142,9 +1142,9 @@ test('navigation re-enters the same picker after every non-closing turn and keep
 // ─── RED slice: single-source design artifact contract pointers ─────────────
 
 const DESIGN_ARTIFACT_POINTERS = [
-  { id: 'design', anchor: '### Generate design.md' },
-  { id: 'tasks', anchor: '### Generate tasks.md' },
-  { id: 'interfaces', anchor: '### Generate interfaces.md' },
+  { id: 'design', anchor: '## Generate design.md' },
+  { id: 'tasks', anchor: '## Generate tasks.md' },
+  { id: 'interfaces', anchor: '## Generate interfaces.md' },
 ];
 
 const DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS = [
@@ -1279,8 +1279,8 @@ test('design artifact schema instructions are non-empty command-owned pointers w
     const instruction = schemaLiteralBlockForContract(entry, 'instruction');
 
     assert.ok(instruction.trim().length > 0, `${id} instruction should be non-empty`);
-    assert.match(instruction, /sai\/commands\/design\/instructions\.md/,
-      `${id} instruction should point to the shared design instruction`);
+    assert.match(instruction, new RegExp(escapeSchemaContractRegExp(`sai/commands/design/steps/${id}.md`)),
+      `${id} instruction should point to its design step file`);
     assert.match(instruction, new RegExp(escapeSchemaContractRegExp(anchor)),
       `${id} instruction should name its generation anchor`);
     for (const forbidden of DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS) {
@@ -1321,21 +1321,21 @@ const DESIGN_SKELETON_TEMPLATES = [
   {
     id: 'design',
     path: 'openspec/schemas/sai-workflow/templates/design.md',
-    anchor: '### Generate design.md',
+    anchor: '## Generate design.md',
   },
   {
     id: 'tasks',
     path: 'openspec/schemas/sai-workflow/templates/tasks.md',
-    anchor: '### Generate tasks.md',
+    anchor: '## Generate tasks.md',
   },
   {
     id: 'interfaces',
     path: 'openspec/schemas/sai-workflow/templates/interfaces.md',
-    anchor: '### Generate interfaces.md',
+    anchor: '## Generate interfaces.md',
   },
 ];
 
-const DESIGN_SKELETON_AUTHORITY = 'sai/commands/design/instructions.md';
+const designStepAuthority = id => `sai/commands/design/steps/${id}.md`;
 const DESIGN_SKELETON_FORBIDDEN = [
   'Endpoint Map',
   'None — no step contracts',
@@ -1434,8 +1434,8 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
 
   for (const { id, anchor } of DESIGN_SKELETON_TEMPLATES) {
     const template = templates[id];
-    assert.equal(countSkeletonLiteral(template, DESIGN_SKELETON_AUTHORITY), 1,
-      `${id}.md must have exactly one shared design-instruction authority path`);
+    assert.equal(countSkeletonLiteral(template, designStepAuthority(id)), 1,
+      `${id}.md must have exactly one design step authority path`);
     assert.equal(countSkeletonLiteral(template, anchor), 1,
       `${id}.md must have exactly one ${anchor} generation anchor`);
 

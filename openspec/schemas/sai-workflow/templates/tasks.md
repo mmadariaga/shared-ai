@@ -33,4 +33,4 @@
 **Test Command**:
 <!-- suite command + parameterised scoping idiom, or None — no test runner in this project -->
 
-<!-- Write-time authority: sai/commands/design/instructions.md ### Generate tasks.md -->
+<!-- Write-time authority: sai/commands/design/steps/tasks.md ## Generate tasks.md -->

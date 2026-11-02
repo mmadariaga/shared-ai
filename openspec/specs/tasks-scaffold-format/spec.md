@@ -122,13 +122,13 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 ### Requirement: schema-tasks-instruction-updated
 
-The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field delegate to the `### Generate tasks.md` section of `sai/commands/design/instructions.md`, which SHALL describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The schema instruction SHALL NOT restate that format, and SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format."
+The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field delegate to the `## Generate tasks.md` section of `sai/commands/design/steps/tasks.md`, which SHALL describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The schema instruction SHALL NOT restate that format, and SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format."
 
 The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format with the placeholders `category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other -->`, `context=<!-- small|medium|large -->` and `difficulty=<!-- low|medium|high -->`. The template SHALL show `**Files Affected**` as one Markdown bullet line per change, each line carrying `- ` followed by a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
 
 #### Scenario: schema instruction matches narrative format with trailing sections, Routing line, and change-type Files Affected
 - **WHEN** `openspec instructions tasks --change <name>` is run
-- **THEN** the returned `instruction` field directs the agent to the `### Generate tasks.md` section of `sai/commands/design/instructions.md`, which describes the `## Step N:` scaffold, the `**Routing**` line, the change-type `**Files Affected**` format, and the mandatory trailing sections; the schema instruction itself contains no reference to the apply phase parsing `- [ ]` markers
+- **THEN** the returned `instruction` field directs the agent to the `## Generate tasks.md` section of `sai/commands/design/steps/tasks.md`, which describes the `## Step N:` scaffold, the `**Routing**` line, the change-type `**Files Affected**` format, and the mandatory trailing sections; the schema instruction itself contains no reference to the apply phase parsing `- [ ]` markers
 
 #### Scenario: tasks template shows the Routing line in key=value form and change-type Files Affected entries
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
