@@ -114,7 +114,7 @@ separate verified operation when applicable. Retain returned `correspondence` wi
 The same mapping is stored in each issue's `sai-backlog-slices@1` marker, so
 import and `lookup-slice` can recover it independently of this conversation.
 When the caller stores the blocks for later planning dispatch, return the
-complete verified correspondence to `backlog-origin-transport.md`: that owner
+complete verified correspondence to `sai/policies/backlog-origin-transport.md`: that owner
 amends the stored blocks with actual child origins and new hashes before cold
 planning dispatch. Conversation-only retention is not sufficient for that path.
 
