@@ -101,7 +101,10 @@ test('POSIX cancellation kills only the dedicated owned group', async () => {
     spawn: (_command, _args, options) => { assert.equal(options.detached, true); return child; },
     kill: (...args) => {
       kills.push(args);
-      if (args[1] === 0) throw Object.assign(new Error('group is gone'), { code: 'ESRCH' });
+      if (args[1] === 0) {
+        process.nextTick(() => child.emit('exit', null, 'SIGKILL'));
+        throw Object.assign(new Error('group is gone'), { code: 'ESRCH' });
+      }
     },
   });
   controller.abort();
@@ -130,12 +133,15 @@ test('Windows cancellation targets the owned PID tree and bounds a hanging taskk
   assert.equal(child.unreferenced, true);
 });
 
-test('real asynchronous runner can be cancelled without waiting for its process', async () => {
+test('real asynchronous runner confirms owned process exit before settling cancellation', { timeout: 15_000 }, async () => {
   const { spawn } = require('node:child_process');
   const controller = new AbortController();
   let owned;
   const pending = defaultRunCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
     signal: controller.signal,
+    // OS process startup/termination competes with the full suite on CI. The
+    // deterministic tests above cover the short production cleanup deadline.
+    cleanupTimeoutMs: 5_000,
     spawn: (...args) => {
       const child = spawn(...args);
       if (!owned) owned = child;
@@ -148,6 +154,48 @@ test('real asynchronous runner can be cancelled without waiting for its process'
   await assert.rejects(pending, /cancelled/);
   await exited;
   assert.throws(() => process.kill(owned.pid, 0), { code: 'ESRCH' }, 'the real owned root must be gone, not merely unreferenced');
+});
+
+test('Windows cancellation waits for root exit when taskkill closes first', async () => {
+  const root = fakeChild(1234);
+  const helper = fakeChild(1235);
+  const controller = new AbortController();
+  let calls = 0;
+  let settled = false;
+  const result = defaultRunCommand('opencode', ['models'], {
+    signal: controller.signal, platform: 'win32', cleanupTimeoutMs: 1000,
+    spawn: () => ++calls === 1 ? root : helper,
+  });
+  const rejection = assert.rejects(result, error => {
+    settled = true;
+    return error.message === 'Query cancelled.' && !error.cleanupFailure;
+  });
+  controller.abort();
+  helper.emit('close', 0);
+  await tick();
+  assert.equal(settled, false, 'taskkill success must not settle before root exit confirmation');
+  assert.equal(root.unreferenced, undefined, 'the pending exit must retain its event-loop handle');
+  root.emit('exit', null, 'SIGKILL');
+  await rejection;
+  assert.equal(root.unreferenced, true);
+});
+
+test('Windows cleanup deadline still applies when taskkill succeeds but root exit is missing', async () => {
+  const root = fakeChild(1234);
+  const helper = fakeChild(1235);
+  const controller = new AbortController();
+  let calls = 0;
+  const result = defaultRunCommand('opencode', ['models'], {
+    signal: controller.signal, platform: 'win32', cleanupTimeoutMs: 10,
+    spawn: () => ++calls === 1 ? root : helper,
+  });
+  controller.abort();
+  helper.emit('close', 0);
+  await assert.rejects(result, error => /cleanup failed.*deadline/.test(error.cleanupFailure));
+  assert.equal(root.killed, true);
+  assert.equal(root.listenerCount('exit'), 1, 'the temporary cleanup listener must be removed');
+  root.emit('exit', null, 'SIGKILL');
+  assert.equal(root.unreferenced, true);
 });
 
 for (const mode of ['throw', 'error', 'nonzero', 'hang', 'success']) {
@@ -166,7 +214,10 @@ for (const mode of ['throw', 'error', 'nonzero', 'hang', 'success']) {
         setImmediate(() => {
           if (mode === 'error') helper.emit('error', new Error('EACCES'));
           if (mode === 'nonzero') helper.emit('close', 1);
-          if (mode === 'success') helper.emit('close', 0);
+          if (mode === 'success') {
+            root.emit('exit', null, 'SIGKILL');
+            helper.emit('close', 0);
+          }
         });
         return helper;
       },
