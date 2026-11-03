@@ -94,3 +94,25 @@ When the discovery command launch throws, the command exits non-zero, any non-em
 #### Scenario: Catalog non-zero exit reports stderr or status
 - **WHEN** the catalog command exits with a non-zero status
 - **THEN** the selector logs the command failure detail and cancels without showing a selection screen.
+
+### Requirement: Bounded asynchronous discovery queries
+Each model or variant discovery query SHALL execute asynchronously with an independent centralized, test-replaceable 30-second deadline excluding user selection time. Discovery SHALL attempt existing CLI commands without requiring an open OpenCode interface or managing a shared service. The injectable runner SHALL accept an abort signal and cleanup deadline while preserving Windows PowerShell argument transport and direct non-Windows execution.
+
+#### Scenario: Hung query reaches its deadline
+- **WHEN** a catalog query never returns, including an injected runner ignoring abort
+- **THEN** the query SHALL abort and return a timeout diagnostic after its deadline and bounded cleanup without producing settings
+
+#### Scenario: User choice time is outside the query deadline
+- **WHEN** the user takes longer than the query deadline to choose a provider or model after successful catalog discovery
+- **THEN** selection SHALL remain available and variant discovery SHALL receive its own complete deadline
+
+### Requirement: Bounded owned-process query cleanup
+Cancellation or timeout SHALL attempt termination only of the created Windows PID tree using taskkill /PID with /T /F or the dedicated non-Windows process group. Cleanup SHALL have a test-replaceable one-second limit. Failed or unconfirmed cleanup SHALL report possible surviving descendants and attempt fallback only to an owned root that has not exited. Cleanup SHALL release streams and handles, stop polling, ignore late helper callbacks, and never target unrelated OpenCode instances by name.
+
+#### Scenario: Cleanup failure reports uncertainty
+- **WHEN** the cleanup helper fails or termination cannot be confirmed before its deadline
+- **THEN** the query SHALL report cleanup failure and uncertainty rather than silently claiming termination and SHALL finish within the cleanup bound
+
+#### Scenario: Exited root is not killed again
+- **WHEN** cleanup fails after the owned root has exited or a finished helper emits late callbacks
+- **THEN** cleanup SHALL NOT kill that exited root or repeat termination because of late callbacks
