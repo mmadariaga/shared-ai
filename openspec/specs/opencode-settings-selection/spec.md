@@ -130,3 +130,18 @@ The OpenCode settings selector SHALL return a failed result with an actionable d
 
 - **WHEN** the catalog command succeeds technically but returns an empty or malformed catalog
 - **THEN** the selector SHALL return status `failed` with a diagnostic identifying the empty or invalid catalog and SHALL configure no agent
+
+### Requirement: Responsive discovery wait controls
+An interactive discovery wait SHALL show what is being queried, handle Escape as back, and handle q or Ctrl+C as cancellation. Catalog Escape SHALL return BACK to target selection; variant Escape SHALL return to model selection. Input end, close, or error SHALL abort with an input-closed diagnostic. Every success, failure, or cancellation SHALL remove temporary key and input-close listeners and release raw-input ownership. Late cancelled results SHALL NOT produce settings or writes.
+
+#### Scenario: Cancel keys work during a pending query
+- **WHEN** the user presses q or Ctrl+C during either discovery query
+- **THEN** the query SHALL abort and return cancellation without settings or requiring the terminal tab to close
+
+#### Scenario: Input closure aborts discovery
+- **WHEN** terminal input ends, closes, or errors during discovery
+- **THEN** the query SHALL abort with an input-closed diagnostic without settings
+
+#### Scenario: Input is restored and late responses discarded
+- **WHEN** a query ends or is cancelled and its runner later responds
+- **THEN** temporary listeners SHALL be removed, adjacent-screen keyboard operation SHALL remain usable, and a cancelled response SHALL be discarded without settings changes

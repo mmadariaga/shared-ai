@@ -697,15 +697,15 @@ test('opencode createLocalOverride persists a selected variant through the adapt
   }
 });
 
-test('default command runner resolves Windows npm shims without interpolating arguments into shell syntax', () => {
+test('default command runner resolves Windows npm shims without interpolating arguments into shell syntax', async () => {
   const calls = [];
   const commandArgs = ['models', 'provider&echo-not-a-command', '--verbose'];
-  const result = defaultRunCommand('opencode', commandArgs, {
+  const result = await defaultRunCommand('opencode', commandArgs, {
     platform: 'win32',
     env: { PATH: 'sentinel-path' },
-    spawnSync(executable, args, options) {
+    spawn(executable, args, options) {
       calls.push({ executable, args, options });
-      return { stdout: 'catalog output', stderr: '', status: 0, error: null };
+      return commandChild('catalog output');
     },
   });
 
@@ -722,20 +722,30 @@ test('default command runner resolves Windows npm shims without interpolating ar
     'PowerShell should splat the decoded argument array into the CLI invocation');
 });
 
-test('default command runner keeps direct argument-vector execution outside Windows', () => {
+function commandChild(stdout = '') {
+  const { EventEmitter } = require('events');
+  const { PassThrough } = require('stream');
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  process.nextTick(() => { child.stdout.write(stdout); child.emit('close', 0); });
+  return child;
+}
+
+test('default command runner keeps direct argument-vector execution outside Windows', async () => {
   const calls = [];
-  defaultRunCommand('opencode', ['models'], {
+  await defaultRunCommand('opencode', ['models'], {
     platform: 'linux',
-    spawnSync(executable, args, options) {
+    spawn(executable, args, options) {
       calls.push({ executable, args, options });
-      return { stdout: '', stderr: '', status: 0, error: null };
+      return commandChild();
     },
   });
 
   assert.deepEqual(calls, [{
     executable: 'opencode',
     args: ['models'],
-    options: { encoding: 'utf8' },
+    options: { env: process.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
   }]);
 });
 
@@ -1738,8 +1748,8 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
       assert.equal(result.status, 'skipped');
       assert.equal(result.reason, 'cancelled');
       assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
-      assert.equal(promptCalls, 4,
-        'exactly menu, harness, the scope screen, and the provider screen are prompted: no prompt follows the provider-screen null');
+      assert.equal(promptCalls, 5,
+        'provider cancellation returns to the customization menu');
       assert.deepEqual(runnerCalls, [['models']],
         'the catalog runner is invoked exactly once before the provider screen, never with --refresh');
     } finally {
@@ -4623,8 +4633,12 @@ test('runPostSetupMenu renders target diagnostics, while setup keeps unexpected 
   }
 });
 
-test('catalog failures reach the post-setup menu as visible failures, not cancellation', async () => {
+test('catalog failures are reported before returning to the post-setup menu', async () => {
   const scratch = makeScratchRepo();
+  const snapshot = () => Object.fromEntries(fs.readdirSync(scratch, { recursive: true })
+    .filter(name => fs.statSync(path.join(scratch, name)).isFile())
+    .map(name => [name, fs.readFileSync(path.join(scratch, name)).toString('base64')]));
+  const before = snapshot();
   try {
     for (const catalog of [
       () => ({ stdout: '', stderr: 'service refused request', status: 1 }),
@@ -4636,16 +4650,16 @@ test('catalog failures reach the post-setup menu as visible failures, not cancel
       const restore = patchFactory('createOpencodeAdapter', deps => original({ ...deps, runCommand: catalog }));
       const capture = captureConsole();
       try {
-        const choices = ['Customize models', 'OpenCode', 'Workers'];
+        const choices = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
         const outcome = await runPostSetupMenu({
           projectPath: scratch,
           isTTY: true,
           promptChoice: async () => choices.shift() ?? assert.fail('catalog failure must not open another screen'),
           promptChecklist: async (_items, defaults) => ({ status: 'confirmed', items: [defaults[0]] }),
         });
-        assert.equal(outcome.status, 'failed');
-        assert.match(outcome.diagnostics[0], /service refused request|catalog is empty|Malformed model catalog|spawn failed/);
-        assert.ok(capture.logs.some(message => message.includes(outcome.diagnostics[0])));
+        assert.equal(outcome.status, 'skipped');
+        assert.ok(capture.logs.some(message => /service refused request|catalog is empty|Malformed model catalog|spawn failed/.test(message)));
+        assert.deepEqual(snapshot(), before, 'failed discovery must not change any configuration or source file');
       } finally {
         capture.restore();
         restore();

@@ -977,6 +977,26 @@ function releaseRawInput(input) {
   if (typeof pendingRelease.unref === 'function') pendingRelease.unref();
 }
 
+function queryWaitControls(label, controller, input = process.stdin, output = process.stdout) {
+  if (!input.isTTY) return () => {};
+  function onKey(str, key) {
+    if (key?.name === 'escape') controller.abort(BACK);
+    else if (str === 'q' || key?.sequence === '\x03') controller.abort('cancelled');
+  }
+  function onClosed() { controller.abort('input-closed'); }
+  acquireRawInput(input);
+  input.on('keypress', onKey);
+  for (const event of ['end', 'close', 'error']) input.on(event, onClosed);
+  function cleanup() {
+    input.removeListener('keypress', onKey);
+    for (const event of ['end', 'close', 'error']) input.removeListener(event, onClosed);
+    releaseRawInput(input);
+  }
+  try { output.write(`${label}… Esc back · q/Ctrl-C cancel\n`); }
+  catch (error) { cleanup(); throw error; }
+  return cleanup;
+}
+
 // Line-input screens (readline.question) cannot share the navigator's
 // deferred raw-mode session: the pending setImmediate would pause stdin while
 // the question is waiting, emptying the event loop so Node exits right after
@@ -1878,6 +1898,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  queryWaitControls,
   PACKAGE_VERSION,
   ensureDir,
   copy,

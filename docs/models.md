@@ -7,6 +7,14 @@ and opencode support project-local overrides. See
 Project behavior settings, which are not models, have their own menu entry; see
 [project settings](project-settings.md).
 
+OpenCode model and variant discovery works without opening its interface first.
+Each query has a 30-second limit. While it runs, **Esc** goes back and **q** or
+**Ctrl+C** cancels to the customization menu. A failed or cancelled query changes
+no model settings and retains the selected targets for an explicit retry. Cleanup
+targets only the query's own process tree and has a one-second wait limit.
+Time spent choosing a provider, model, or variant does not count toward a query's
+limit. Claude Code's model and effort selection is unchanged.
+
 The opencode defaults below balance cost and reasoning demand. The command
 coordinates the run; its worker does the technical work. Configure these roles
 separately when you want stronger reasoning without paying the same rate for

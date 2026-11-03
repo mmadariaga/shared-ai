@@ -85,3 +85,10 @@ When the model-list query launch throws, the query exits non-zero, its stdout ca
 #### Scenario: Verbose non-zero exit reports stderr or status
 - **WHEN** the model-list command exits with a non-zero status
 - **THEN** the selector SHALL log the command failure detail and degrade to model-only without showing a variant screen
+
+### Requirement: Bounded cancellable variant query
+The existing opencode api model.list query SHALL execute asynchronously with its own 30-second deadline excluding user selection time and bounded owned-process cleanup. Escape SHALL reopen model selection without settings. Timeout or failure SHALL return a diagnostic without settings; q or Ctrl+C SHALL cancel. Successful responses SHALL retain existing parsing and cached selection.
+
+#### Scenario: Variant query hangs
+- **WHEN** catalog discovery succeeded but model.list does not respond
+- **THEN** the variant query SHALL expire independently and return failure without settings

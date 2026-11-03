@@ -12,6 +12,7 @@ const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
   prepareLineInput,
+  queryWaitControls,
   BACK,
   INPUT_CLOSED,
   CHECKLIST_SEPARATOR,
@@ -24,6 +25,8 @@ const visibleMenuOptions = cacheWarmingEnabled => Object.freeze(ALL_MENU_OPTIONS
 const MENU_OPTIONS = visibleMenuOptions(CACHE_WARMING_MENU_ENABLED);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
+const OPENCODE_QUERY_TIMEOUT_MS = 30_000;
+const OPENCODE_CLEANUP_TIMEOUT_MS = 1_000;
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Ctrl+A toggle all · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
@@ -826,32 +829,181 @@ function buildVariantDisplayOptions(variants) {
 
 function defaultRunCommand(executable, args, {
   platform = process.platform,
-  spawnSync = childProcess.spawnSync,
+  spawn = childProcess.spawn,
   env = process.env,
+  signal,
+  cleanupTimeoutMs = OPENCODE_CLEANUP_TIMEOUT_MS,
+  kill = process.kill,
 } = {}) {
-  let result;
+  let command = executable;
+  let commandArgs = args;
+  const options = { env, detached: platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true };
   if (platform === 'win32') {
     const script = '$commandArgs = @((ConvertFrom-Json -InputObject $env:SAI_COMMAND_ARGS)); '
       + '& $env:SAI_COMMAND_EXECUTABLE @commandArgs; exit $LASTEXITCODE';
-    result = spawnSync('powershell.exe', [
+    command = 'powershell.exe';
+    commandArgs = [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
       '-Command',
       script,
-    ], {
-      encoding: 'utf8',
-      env: {
-        ...env,
-        SAI_COMMAND_EXECUTABLE: executable,
-        SAI_COMMAND_ARGS: JSON.stringify(args),
-      },
-    });
-  } else {
-    result = spawnSync(executable, args, { encoding: 'utf8' });
+    ];
+    options.env = {
+      ...env,
+      SAI_COMMAND_EXECUTABLE: executable,
+      SAI_COMMAND_ARGS: JSON.stringify(args),
+    };
   }
-  if (result.error) throw result.error;
-  return { stdout: result.stdout, stderr: result.stderr, status: result.status };
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error('Query cancelled.')); return; }
+    let child;
+    try { child = spawn(command, commandArgs, options); } catch (error) { reject(error); return; }
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    let rootExited = false;
+    function finish(error, status) {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', abort);
+      if (error) reject(error);
+      else resolve({ stdout, stderr, status });
+    }
+    function abort() {
+      // The PID/group belongs to this query only; never search for OpenCode by name.
+      let cleanup;
+      let completed = false;
+      let failing = false;
+      let poll;
+      const timer = setTimeout(() => {
+        fail('termination deadline expired');
+      }, cleanupTimeoutMs);
+      function done(failure) {
+        if (completed) return;
+        completed = true;
+        clearTimeout(timer);
+        clearTimeout(poll);
+        cleanup?.removeListener('close', onCleanupClose);
+        cleanup?.removeListener('error', onCleanupError);
+        // A stopped helper may still emit an error. It must not run cleanup again.
+        cleanup?.on('error', () => {});
+        cleanup?.unref();
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        child.unref();
+        const error = new Error(failure ? `OpenCode query cleanup failed: ${failure}. Owned descendants may still be running.` : 'Query cancelled.');
+        if (failure) error.cleanupFailure = error.message;
+        finish(error);
+      }
+      function fail(reason) {
+        if (completed || failing) return;
+        failing = true;
+        try { cleanup?.kill('SIGKILL'); } catch { /* The helper itself may have exited. */ }
+        // ChildProcess tracks exit state; never send a fallback to an exited root.
+        if (!rootExited) {
+          try { child.kill('SIGKILL'); } catch { /* Tree failure is still reported. */ }
+        }
+        done(reason);
+      }
+      function onCleanupClose(code) {
+        if (completed || failing) return;
+        if (code === 0) done();
+        else fail(`taskkill exited with status ${code}`);
+      }
+      function onCleanupError(error) { fail(`taskkill could not run: ${error.message}`); }
+      function checkGroup() {
+        if (completed) return;
+        try { kill(-child.pid, 0); }
+        catch (error) {
+          if (error.code === 'ESRCH') { done(); return; }
+          fail(`cannot confirm owned process group termination: ${error.message}`);
+          return;
+        }
+        poll = setTimeout(checkGroup, Math.min(20, cleanupTimeoutMs));
+      }
+      if (!child.pid) { done(); return; }
+      if (platform === 'win32') {
+        try {
+          cleanup = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+          cleanup.once('close', onCleanupClose);
+          cleanup.once('error', onCleanupError);
+        } catch (error) { onCleanupError(error); }
+      } else {
+        try { kill(-child.pid, 'SIGKILL'); }
+        catch (error) {
+          if (error.code === 'ESRCH') { done(); return; }
+          fail(`cannot terminate owned process group: ${error.message}`);
+          return;
+        }
+        checkGroup();
+      }
+    }
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stdout?.on('data', chunk => { if (!settled) stdout += chunk; });
+    child.stderr?.on('data', chunk => { if (!settled) stderr += chunk; });
+    child.once('exit', () => { rootExited = true; });
+    child.once('error', error => { if (!signal?.aborted) finish(error); });
+    child.once('close', status => { rootExited = true; if (!signal?.aborted) finish(null, status); });
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+  });
+}
+
+async function queryOpencode(args, label, runCommand, {
+  queryTimeoutMs = OPENCODE_QUERY_TIMEOUT_MS,
+  cleanupTimeoutMs = OPENCODE_CLEANUP_TIMEOUT_MS,
+  waitControls = queryWaitControls,
+} = {}) {
+  const controller = new AbortController();
+  const stopControls = waitControls(label, controller);
+  let timer;
+  let cleanupTimer;
+  let onAbort;
+  let closed = false;
+  try {
+    const pending = Promise.resolve().then(() => runCommand('opencode', args, { signal: controller.signal, cleanupTimeoutMs }));
+    const cancelled = new Promise(resolve => {
+      onAbort = () => {
+        // Injected runners may ignore AbortSignal. Ignore their late result and
+        // cap their cleanup wait as well as the native runner's process cleanup.
+        const done = (failure) => {
+          if (closed) return;
+          closed = true;
+          const detail = failure ? ` ${failure}` : '';
+          if (controller.signal.reason === 'timeout') {
+            resolve({ status: 'failed', diagnostic: `${label} timed out after ${queryTimeoutMs} ms.${detail}` });
+          } else if (controller.signal.reason === 'input-closed') {
+            resolve({ status: 'failed', diagnostic: `Terminal input closed during OpenCode discovery.${detail}` });
+          } else {
+            if (failure) console.error(`Post-setup customization: ${failure}`);
+            resolve(controller.signal.reason === BACK ? BACK : CANCELLED);
+          }
+        };
+        // The native runner has its own bounded cleanup. Leave one scheduler
+        // turn for its outcome before reporting an uncooperative injected runner.
+        cleanupTimer = setTimeout(() => {
+          cleanupTimer = setTimeout(() => done('OpenCode query cleanup failed: termination could not be confirmed before the cleanup deadline. Owned descendants may still be running.'), 0);
+        }, cleanupTimeoutMs);
+        pending.then(() => done(), error => done(error.cleanupFailure || 'OpenCode query cleanup failed: runner did not confirm process termination.'));
+      };
+      controller.signal.addEventListener('abort', onAbort, { once: true });
+      if (controller.signal.aborted) onAbort();
+    });
+    timer = setTimeout(() => controller.abort('timeout'), queryTimeoutMs);
+    return await Promise.race([
+      pending.then(value => controller.signal.aborted ? cancelled : value,
+        error => { if (controller.signal.aborted) return cancelled; throw error; }),
+      cancelled,
+    ]);
+  } finally {
+    closed = true;
+    clearTimeout(timer);
+    clearTimeout(cleanupTimer);
+    controller.signal.removeEventListener('abort', onAbort);
+    stopControls();
+  }
 }
 
 function parseModelCatalog(stdout) {
@@ -922,13 +1074,14 @@ function extractApiVariants(modelList, provider, model) {
   return ids;
 }
 
-async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
+async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand, queryOptions) {
   let catalogOutcome;
   try {
-    catalogOutcome = runCommand('opencode', ['models']);
+    catalogOutcome = await queryOpencode(['models'], 'Querying OpenCode models', runCommand, queryOptions);
   } catch (error) {
     return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${error.message}` };
   }
+  if (catalogOutcome === BACK || catalogOutcome === CANCELLED || catalogOutcome?.status === 'failed') return catalogOutcome;
   if (catalogOutcome.status !== 0) {
     const detail = typeof catalogOutcome.stderr === 'string' ? catalogOutcome.stderr.trim() : '';
     return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${detail || `exit status ${catalogOutcome.status}`}` };
@@ -988,10 +1141,12 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     if (cachedAvailable === null) {
       let apiOutcome;
       try {
-        apiOutcome = runCommand('opencode', ['api', 'model.list']);
+        apiOutcome = await queryOpencode(['api', 'model.list'], 'Querying OpenCode model variants', runCommand, queryOptions);
       } catch (error) {
         return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${error.message}` };
       }
+      if (apiOutcome === BACK) { screen = 'model'; continue; }
+      if (apiOutcome === CANCELLED || apiOutcome?.status === 'failed') return apiOutcome;
       if (apiOutcome.status !== 0) {
         const detail = typeof apiOutcome.stderr === 'string' ? apiOutcome.stderr.trim() : '';
         return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${detail || `exit status ${apiOutcome.status}`}` };
@@ -1091,6 +1246,9 @@ function createOpencodeAdapter({
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   runCommand = defaultRunCommand,
+  queryTimeoutMs = OPENCODE_QUERY_TIMEOUT_MS,
+  cleanupTimeoutMs = OPENCODE_CLEANUP_TIMEOUT_MS,
+  waitControls = queryWaitControls,
 } = {}) {
   const effectiveAgentRoot = globalAgentRoot !== undefined ? globalAgentRoot : defaultOpencodeGlobalAgentRoot();
   const effectiveCommandRoot = globalCommandRoot !== undefined ? globalCommandRoot : defaultOpencodeGlobalCommandRoot();
@@ -1113,7 +1271,7 @@ function createOpencodeAdapter({
         family,
       });
     },
-    selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
+    selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand, { queryTimeoutMs, cleanupTimeoutMs, waitControls }),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
       const targetName = typeof target === 'string' ? target : target.name;
@@ -1323,6 +1481,7 @@ async function runPostSetupMenuInternal({
     return outcome;
   };
 
+  const retainedTargets = new Map();
   for (;;) {
     let screen = 'menu';
     let adapter = null;
@@ -1877,7 +2036,7 @@ async function runPostSetupMenuInternal({
 
         const selection = await promptChecklist(
           targets,
-          selectableEntries.map(entry => entry.value),
+          retainedTargets.get(`${harness}:${scope}`) || selectableEntries.map(entry => entry.value),
           undefined,
           MODEL_CHECKLIST_LEGEND,
           { preventEmptyConfirm: true, displayOptions: labels, header, toggleAll: true },
@@ -1897,6 +2056,7 @@ async function runPostSetupMenuInternal({
           screen = 'targets';
           continue;
         }
+        if (harness === 'OpenCode') retainedTargets.set(`${harness}:${scope}`, selectedTargets.map(target => target.value));
         screen = 'settings';
         continue;
       }
@@ -1907,12 +2067,21 @@ async function runPostSetupMenuInternal({
         continue;
       }
       if (settings && settings.status === 'failed') {
+        if (harness === 'OpenCode') {
+          console.error(`Post-setup customization: ${settings.diagnostic}`);
+          screen = 'menu';
+          continue;
+        }
         return failedCustomization(settings.diagnostic);
       }
-      if (settings === CANCELLED) return skippedOutcome('cancelled');
+      if (settings === CANCELLED) {
+        if (harness === 'OpenCode') { screen = 'menu'; continue; }
+        return skippedOutcome('cancelled');
+      }
       if (!settings || typeof settings.model !== 'string' || settings.model === '') {
         return failedCustomization('No valid model setting was returned for the selected targets.');
       }
+      retainedTargets.delete(`${harness}:${scope}`);
       break;
     }
 
@@ -2009,6 +2178,8 @@ async function runPostSetupMenu(options) {
 }
 
 module.exports = {
+  queryOpencode,
+  OPENCODE_QUERY_TIMEOUT_MS,
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG,
   SCOPE_OPTIONS,
