@@ -875,6 +875,7 @@ function defaultRunCommand(executable, args, {
       let cleanup;
       let completed = false;
       let failing = false;
+      let treeTerminated = false;
       let poll;
       const timer = setTimeout(() => {
         fail('termination deadline expired');
@@ -884,6 +885,7 @@ function defaultRunCommand(executable, args, {
         completed = true;
         clearTimeout(timer);
         clearTimeout(poll);
+        child.removeListener('exit', onRootExit);
         cleanup?.removeListener('close', onCleanupClose);
         cleanup?.removeListener('error', onCleanupError);
         // A stopped helper may still emit an error. It must not run cleanup again.
@@ -895,6 +897,15 @@ function defaultRunCommand(executable, args, {
         const error = new Error(failure ? `OpenCode query cleanup failed: ${failure}. Owned descendants may still be running.` : 'Query cancelled.');
         if (failure) error.cleanupFailure = error.message;
         finish(error);
+      }
+      function onRootExit() {
+        if (treeTerminated) done();
+      }
+      function confirmTermination() {
+        treeTerminated = true;
+        // A successful termination helper can close before Node delivers the
+        // root's exit event. Keep its handle and the cleanup deadline until then.
+        if (rootExited || !child.pid) done();
       }
       function fail(reason) {
         if (completed || failing) return;
@@ -908,7 +919,7 @@ function defaultRunCommand(executable, args, {
       }
       function onCleanupClose(code) {
         if (completed || failing) return;
-        if (code === 0) done();
+        if (code === 0) confirmTermination();
         else fail(`taskkill exited with status ${code}`);
       }
       function onCleanupError(error) { fail(`taskkill could not run: ${error.message}`); }
@@ -916,13 +927,14 @@ function defaultRunCommand(executable, args, {
         if (completed) return;
         try { kill(-child.pid, 0); }
         catch (error) {
-          if (error.code === 'ESRCH') { done(); return; }
+          if (error.code === 'ESRCH') { confirmTermination(); return; }
           fail(`cannot confirm owned process group termination: ${error.message}`);
           return;
         }
         poll = setTimeout(checkGroup, Math.min(20, cleanupTimeoutMs));
       }
-      if (!child.pid) { done(); return; }
+      child.once('exit', onRootExit);
+      if (!child.pid) { confirmTermination(); return; }
       if (platform === 'win32') {
         try {
           cleanup = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
@@ -932,7 +944,7 @@ function defaultRunCommand(executable, args, {
       } else {
         try { kill(-child.pid, 'SIGKILL'); }
         catch (error) {
-          if (error.code === 'ESRCH') { done(); return; }
+          if (error.code === 'ESRCH') { confirmTermination(); return; }
           fail(`cannot terminate owned process group: ${error.message}`);
           return;
         }
