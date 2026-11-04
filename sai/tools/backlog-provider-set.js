@@ -10,7 +10,9 @@ const origin = require('./backlog-set-origin');
 function bind(provider, mechanics) {
   // Descriptions compare byte for byte unless the provider declares which stored forms are the same content.
   const same = mechanics.equivalent || ((sent, received) => sent === received);
-  const accepted = (sent, received) => sent.some(value => typeof value === 'string' && same(value, received));
+  const accepted = (sent, received, format) => sent.some(value => typeof value === 'string' && same(value, received, format));
+  // A provider may keep a description format per issue; the origin keeps its own and every created item has the provider's.
+  const formatOf = (receipt, index) => mechanics.formatOf?.(receipt.proposal, index);
   function query(request, io) {
     const validation = blocks.validateDependencySet(request.blocks);
     if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
@@ -40,7 +42,7 @@ function bind(provider, mechanics) {
       ...(index ? { change_name: slices[index - 1].change_name } : {}), ...(upper ? { child_of: upper } : {}) };
     const links = index ? [`Parent: ${value.parent}`, ...slices[index - 1].depends_on.map(name => `Depends on: ${slices.find(slice => slice.change_name === name).issue}`)]
       : [...slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`), ...(upper ? origin.upperLinks(upper) : [])];
-    return mechanics.append(receipt.items[index].description, links, value);
+    return mechanics.append(receipt.items[index].description, links, value, formatOf(receipt, index));
   }
   function report(receipt, message) {
     const pending = receipt.items.flatMap((item, index) => [!item.issue && `create:${index}`, !item.references && `references:${index}`,
@@ -70,7 +72,7 @@ function bind(provider, mechanics) {
     for (let index = 0; index < receipt.items.length; index++) {
       const item = receipt.items[index];
       if (!item.issue && item.attempted) {
-        const matches = mechanics.inventory(receipt.proposal, io).filter(row => !item.baseline.includes(row.issue.id) && row.title === item.title && same(item.description, row.description) && row.actor === receipt.proposal.actor);
+        const matches = mechanics.inventory(receipt.proposal, io).filter(row => !item.baseline.includes(row.issue.id) && row.title === item.title && same(item.description, row.description, formatOf(receipt, index)) && row.actor === receipt.proposal.actor);
         const chosen = matches.find(row => row.issue.url === request.identified?.[index]);
         if (chosen) item.issue = chosen.issue;
         else candidates.push({ index, issues: matches.map(row => row.issue) });
@@ -78,8 +80,8 @@ function bind(provider, mechanics) {
       if (!item.issue) continue;
       const current = mechanics.read(receipt.proposal, item.issue, io);
       const expected = receipt.items.every(row => row.issue) ? body(receipt, index) : item.description;
-      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !accepted(origin.bodies(item, expected), current.description)) throw new Error('Existing result diverged; no continuation is authorized');
-      item.references = same(expected, current.description) && expected !== item.description;
+      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !accepted(origin.bodies(item, expected), current.description, formatOf(receipt, index))) throw new Error('Existing result diverged; no continuation is authorized');
+      item.references = same(expected, current.description, formatOf(receipt, index)) && expected !== item.description;
       if (index && receipt.items[0].issue) {
         try {
         if (receipt.proposal.hierarchy === 'native') item.hierarchy = mechanics.hasRelation(receipt.proposal, item.issue, receipt.items[0].issue, 'parent', io);
@@ -114,14 +116,14 @@ function bind(provider, mechanics) {
   function perform(receipt, file, io) {
     try {
       check(receipt, io);
-      for (const item of receipt.items) {
+      for (const [index, item] of receipt.items.entries()) {
         if (item.issue) continue;
         if (item.attempted) return report(receipt, 'Recover and identify the existing creation before continuing');
         item.baseline = mechanics.inventory(receipt.proposal, io).map(row => row.issue.id);
         item.attempted = true; save(file, receipt);
         item.issue = mechanics.create(receipt.proposal, item, io); save(file, receipt);
         const current = mechanics.read(receipt.proposal, item.issue, io);
-        if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !same(item.description, current.description)) throw new Error('Creation identity or complete content not verified');
+        if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !same(item.description, current.description, formatOf(receipt, index))) throw new Error('Creation identity or complete content not verified');
       }
       // An origin is rewritten last, so an interrupted publication never lists children that do not exist.
       const order = receipt.items.map((row, index) => index);
@@ -129,9 +131,9 @@ function bind(provider, mechanics) {
       for (const index of order) {
         const item = receipt.items[index], expected = body(receipt, index);
         const current = mechanics.read(receipt.proposal, item.issue, io);
-        if (current.title !== item.title || !accepted(origin.bodies(item, expected), current.description)) throw new Error('Content diverged; renew approval');
-        if (!same(expected, current.description)) mechanics.writeReferences(receipt.proposal, current, expected, io);
-        if (!same(expected, mechanics.read(receipt.proposal, item.issue, io).description)) throw new Error('Written references not verified');
+        if (current.title !== item.title || !accepted(origin.bodies(item, expected), current.description, formatOf(receipt, index))) throw new Error('Content diverged; renew approval');
+        if (!same(expected, current.description, formatOf(receipt, index))) mechanics.writeReferences(receipt.proposal, current, expected, io);
+        if (!same(expected, mechanics.read(receipt.proposal, item.issue, io).description, formatOf(receipt, index))) throw new Error('Written references not verified');
         item.references = true; save(file, receipt);
         if (!index) continue;
         const relations = [ ...(receipt.proposal.hierarchy === 'native' ? [{ other: receipt.items[0].issue, kind: 'parent' }] : []),

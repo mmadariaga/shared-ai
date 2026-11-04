@@ -29,8 +29,8 @@ Project rules stay enabled. Missing additional required fields stop creation;
 do not supply them automatically or bypass rules.
 
 Read `azuredevops-content.md` before description editing. Show the returned
-organization, project, visibility, type, title and full outgoing HTML as literal
-content alongside source Markdown. Ask **"Create this exact work item of this
+organization, project, visibility, type, title and full outgoing Markdown as
+literal content (a new work item is created in Markdown format). Ask **"Create this exact work item of this
 type in this Azure project?"** under common confirm/edit/cancel rules. Complete
 when the outgoing proposal and unchanged token have explicit approval.
 
@@ -70,9 +70,15 @@ The selected type applies to parent and children: show it for each item before
 approval. Project rules remain enabled; follow shared publication recovery for
 pending operations. Incompatible types or hierarchy rules require a human
 decision about scope changes, not an automatic type change.
-Child blocks are losslessly escaped HTML pre blocks; show their full outgoing
-HTML alongside source Markdown. Structured correspondence is a visible escaped
-`sai-backlog-slices@1` pre block so HTML sanitizers need not retain comments.
+Every work item a set creates is Markdown (the format operation is sent in its
+creation request): child blocks are losslessly kept as fenced code blocks, links
+are Markdown lines, and structured correspondence is a fenced
+`sai-backlog-slices@1` code block that Azure keeps, unlike a comment. Show the
+full outgoing Markdown of each item. An originating work item keeps its own
+format and never receives the format operation: a Markdown origin is rewritten in
+Markdown, an HTML origin in HTML (escaped `<p>` lines and a visible escaped
+`sai-backlog-slices@1` pre block). A set update likewise writes each work item
+in its own format, so a Markdown parent may have HTML children or the reverse.
 The adapter separately verifies native Parent/Child and Predecessor relations.
 Only agreed immediate dependencies receive Predecessor links. On an established
 native relation failure, the common explicitly approved written fallback is

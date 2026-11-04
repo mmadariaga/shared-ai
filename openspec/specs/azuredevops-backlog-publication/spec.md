@@ -31,14 +31,14 @@ Azure Boards publication SHALL resolve organization and project from explicit de
 
 ### Requirement: Deterministic outgoing Boards content
 
-The adapter SHALL convert supported Markdown descriptions to deterministic HTML before publication approval. Supported forms SHALL include ATX headings, paragraphs and line breaks, flat ordered and unordered lists, blockquotes, inline code, fenced code with optional language, bold, italic, HTTP(S) and mailto inline links, and the exact backlog identifier-counter comment. Code text SHALL remain literal and escaped; the counter comment SHALL remain metadata. Unsupported nested or indented blocks, tables, raw HTML, images, reference links, footnotes, strikethrough, task lists, backslash escapes outside code, and unsupported or unbalanced syntax SHALL stop preparation rather than silently degrade content. A title-only update SHALL preserve the existing HTML description without conversion or a description-field write.
+The description format SHALL be a property of each Azure Boards work item. Creation SHALL send the Markdown description unconverted, together with the `add /multilineFieldsFormat/System.Description = Markdown` operation in the same creation request, so tables, images, and nested lists SHALL NOT be rejected for a new work item. An update SHALL read the work item's format from the top-level `multilineFieldsFormat["System.Description"]` value of the read it already performs, with no additional request, and SHALL treat the work item as Markdown only when that value equals `markdown` compared case-insensitively. An update of a Markdown work item SHALL send the Markdown description unconverted. An update of any other work item SHALL convert supported Markdown to deterministic HTML before publication approval. An update SHALL NOT send the `/multilineFieldsFormat/System.Description` operation, so it SHALL NOT switch an HTML work item to Markdown. A Markdown description SHALL be rejected before approval, naming its line, when it contains raw HTML outside backtick code spans and fenced code blocks; the exact backlog identifier-counter comment SHALL remain allowed. For HTML conversion, supported forms SHALL include ATX headings, paragraphs and line breaks, flat ordered and unordered lists, blockquotes, inline code, fenced code with optional language, bold, italic, HTTP(S) and mailto inline links, and the exact backlog identifier-counter comment. Code text SHALL remain literal and escaped; the counter comment SHALL remain metadata. Unsupported nested or indented blocks, tables, raw HTML, images, reference links, footnotes, strikethrough, task lists, backslash escapes outside code, and unsupported or unbalanced syntax SHALL stop HTML preparation rather than silently degrade content. A title-only update SHALL preserve the existing description without conversion or a description-field write.
 
 #### Scenario: Supported formatted description
-- **WHEN** a description contains headings, emphasis, literal code, links, flat lists, and the supported counter comment
+- **WHEN** an update of an HTML work item carries a description that contains headings, emphasis, literal code, links, flat lists, and the supported counter comment
 - **THEN** conversion produces the corresponding deterministic HTML while preserving literal code and counter metadata.
 
 #### Scenario: Unsupported content
-- **WHEN** outgoing Markdown contains an unsupported form
+- **WHEN** outgoing Markdown for an HTML work item contains a form the converter does not support
 - **THEN** preparation fails before approval and publication, retaining the draft for an explicitly agreed supported representation.
 
 #### Scenario: Title-only update
@@ -49,9 +49,25 @@ The adapter SHALL convert supported Markdown descriptions to deterministic HTML 
 - **WHEN** a supported Markdown replacement cannot preserve the agreed unaffected meaning
 - **THEN** the skill asks for clarification and stops until the replacement boundary is agreed.
 
+#### Scenario: New work item is created in Markdown
+- **WHEN** creation publishes a description that contains a table, an image, or a nested list
+- **THEN** the creation request sends the description unconverted with the `add /multilineFieldsFormat/System.Description = Markdown` operation and preparation does not reject those forms.
+
+#### Scenario: Markdown work item update
+- **WHEN** an update targets a work item whose read returns `multilineFieldsFormat["System.Description"]` equal to `markdown` in any letter case
+- **THEN** the update sends the Markdown description unconverted and sends no format operation.
+
+#### Scenario: HTML work item update keeps HTML
+- **WHEN** an update targets a work item whose `multilineFieldsFormat` is empty, absent, or holds another value
+- **THEN** the update sends HTML through the converter with its rejections and sends no format operation.
+
+#### Scenario: Raw HTML in a Markdown description
+- **WHEN** a Markdown description contains raw HTML outside backtick code spans and fenced code blocks
+- **THEN** preparation fails before approval with an error that names the line, and HTML inside code spans or fenced code blocks is accepted.
+
 ### Requirement: Exact Boards publication approval and project-rule enforcement
 
-Before ordinary creation or update approval, the skill SHALL display the exact destination, visibility, work-item type, title, description and every resolved planning change, including automatic parent linkage. Azure descriptions SHALL show source Markdown and outgoing HTML. The skill SHALL ask "Apply this exact work-item content and these planning changes?" through the existing confirm, edit and cancel workflow. Approval SHALL bind destination, type, content, planning inputs, authenticated identity and the unchanged confirmation token. The adapter SHALL publish content first and then apply approved planning fields separately, with project rules enabled. It SHALL NOT invent additional required field values or bypass project rules. Changed inputs SHALL require fresh preparation and approval.
+Before ordinary creation or update approval, the skill SHALL display the exact destination, visibility, work-item type, title, description and every resolved planning change, including automatic parent linkage. Azure descriptions SHALL show the exact outgoing content in the work item's format: Markdown for a creation or an update of a Markdown work item, and the converted outgoing HTML for an update of an HTML work item. The skill SHALL ask "Apply this exact work-item content and these planning changes?" through the existing confirm, edit and cancel workflow. Approval SHALL bind destination, type, content, planning inputs, authenticated identity and the unchanged confirmation token. The adapter SHALL publish content first and then apply approved planning fields separately, with project rules enabled. It SHALL NOT invent additional required field values or bypass project rules. Changed inputs SHALL require fresh preparation and approval.
 
 #### Scenario: Exact creation approval
 - **WHEN** the user approves the displayed type, destination, outgoing content, and resolved planning changes
@@ -151,7 +167,7 @@ Offline tests SHALL cover exact planning approval, content-before-planning write
 
 ### Requirement: Boards slice sets preserve type content and native relationship meaning
 
-Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. When the set is published under an originating work item, that work item SHALL be the parent and SHALL keep its own work-item type; only the created children SHALL use the invocation-selected type, and each child SHALL be linked to the origin with a `Hierarchy-Reverse` relation. Child blocks SHALL be preserved as losslessly escaped HTML pre blocks, and full source Markdown and outgoing HTML SHALL be shown before approval. Correspondence SHALL be stored in a visible escaped `sai-backlog-slices@1` pre block. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
+Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. When the set is published under an originating work item, that work item SHALL be the parent and SHALL keep its own work-item type; only the created children SHALL use the invocation-selected type, and each child SHALL be linked to the origin with a `Hierarchy-Reverse` relation. Every work item the set creates SHALL be created in Markdown format, with the format operation in its creation request: child blocks SHALL be preserved losslessly as fenced code blocks whose fence is longer than any backtick run inside the block, relationship references SHALL be Markdown lines, and correspondence SHALL be stored in a fenced `sai-backlog-slices@1` code block. An originating work item SHALL keep its own description format and SHALL NOT receive the format operation: a Markdown origin SHALL be rewritten in Markdown, and an HTML origin SHALL be rewritten in HTML with escaped relationship lines and a visible escaped `sai-backlog-slices@1` pre block. The full outgoing content of each item SHALL be shown before approval. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
 
 #### Scenario: Approved slice set
 
@@ -167,6 +183,16 @@ Azure DevOps crystallized slice publication SHALL create the agreed parent and o
 
 - **WHEN** a slice set is published under an originating work item whose type differs from the invocation-selected type
 - **THEN** the origin keeps its type as the parent, the children use the selected type, and no type-change error is raised for the origin.
+
+#### Scenario: Created set items are Markdown
+
+- **WHEN** a slice set publication creates its parent or its children
+- **THEN** each creation request carries the `add /multilineFieldsFormat/System.Description = Markdown` operation, each child block is a fenced code block, and the slice marker is a fenced `sai-backlog-slices@1` code block.
+
+#### Scenario: HTML origin keeps HTML
+
+- **WHEN** a slice set is published under an originating work item whose description format is HTML
+- **THEN** the origin's rewritten description is HTML with a visible escaped `sai-backlog-slices@1` pre block, no format operation is sent for it, and its created children are Markdown.
 
 ### Requirement: Boards child assignment is revision conditional and separate from content
 
@@ -204,27 +230,42 @@ Azure selected-child assignment SHALL inspect authenticated identity and current
 
 ### Requirement: Boards description verification accepts only harmless Azure normalization
 
-The Azure DevOps adapter SHALL compare a sent description with a description read back from Azure Boards directionally. The received description SHALL be equivalent to the sent description only when it equals the sent description plus whitespace inserted between block tags (`p`, `li`, `ul`, `ol`, `h1`-`h6`, `pre`, `blockquote`), immediately before a block closing tag, or at the start or end of the description next to a block tag, with the exact `backlog-id-counters` comment optionally removed. Whitespace removed anywhere, whitespace added before an inline closing tag, any whitespace change inside `<pre>` or `<code>`, any other comment, a counters comment with different values, and any change to text, links, or structure SHALL remain differences. Titles SHALL be compared exactly. Comparisons between two Azure reads (the stale-baseline digest and the pending-update digest) SHALL remain exact. The comparison SHALL be supplied only by the Azure DevOps adapter; GitHub and GitLab publication SHALL compare descriptions byte for byte.
+The Azure DevOps adapter SHALL compare a sent description with a description read back from Azure Boards directionally, using the rule of the work item's description format. For an HTML work item, the received description SHALL be equivalent to the sent description only when it equals the sent description plus whitespace inserted between block tags (`p`, `li`, `ul`, `ol`, `h1`-`h6`, `pre`, `blockquote`), immediately before a block closing tag, or at the start or end of the description next to a block tag, with the exact `backlog-id-counters` comment optionally removed. Whitespace removed anywhere, whitespace added before an inline closing tag, any whitespace change inside `<pre>` or `<code>`, any other comment, a counters comment with different values, and any change to text, links, or structure SHALL remain differences. For a Markdown work item, the received description SHALL be equivalent to the sent description only when both match after entity decoding of `&quot;`, `&amp;`, `&lt;`, `&gt;`, and numeric character references, with at most the exact `backlog-id-counters` comment removed and only whitespace left at its place; entity decoding SHALL be a single pass, and every other difference SHALL remain a difference. Titles SHALL be compared exactly. Comparisons between two Azure reads (the stale-baseline digest and the pending-update digest) SHALL remain exact. The comparison SHALL be supplied only by the Azure DevOps adapter; GitHub and GitLab publication SHALL compare descriptions byte for byte.
 
 #### Scenario: Added block whitespace and a dropped counters comment
 
-- **WHEN** Azure Boards returns the sent description with whitespace added between block tags or before a block closing tag and without the exact counters comment
+- **WHEN** Azure Boards returns the sent HTML description with whitespace added between block tags or before a block closing tag and without the exact counters comment
 - **THEN** verification treats the description as equal to the sent content.
 
 #### Scenario: Meaningful whitespace or content changes
 
-- **WHEN** the returned description removes whitespace, adds whitespace before an inline closing tag, changes whitespace inside `<pre>` or `<code>`, carries another comment or a counters comment with different values, or changes text, links, or structure
+- **WHEN** the returned HTML description removes whitespace, adds whitespace before an inline closing tag, changes whitespace inside `<pre>` or `<code>`, carries another comment or a counters comment with different values, or changes text, links, or structure
 - **THEN** verification reports a difference, even when harmless normalization also occurs.
 
 #### Scenario: Slice set readback after normalization
 
-- **WHEN** a slice set publication rereads an Azure work item after creation or after writing slice references and finds only harmless normalization
+- **WHEN** a slice set publication rereads an Azure work item after creation or after writing slice references and finds only harmless normalization for that work item's format
 - **THEN** the set publication continues and its recovery readback reports completion.
 
 #### Scenario: Other providers stay byte-exact
 
 - **WHEN** a GitLab slice set publication reads back a description that differs from the sent one only by added whitespace
 - **THEN** creation verification fails as a content mismatch.
+
+#### Scenario: Markdown description stored with entities
+
+- **WHEN** Azure Boards returns a sent Markdown description with `"` encoded as `&quot;`, including inside a code fence, a non-BMP character encoded as a numeric reference, and the exact counters comment removed
+- **THEN** verification treats the description as equal to the sent content.
+
+#### Scenario: Markdown description changed beyond entities
+
+- **WHEN** a returned Markdown description differs from the sent one after entity decoding in text, whitespace outside the removed counters comment, or a counters comment with different values
+- **THEN** verification reports a difference.
+
+#### Scenario: Lost Markdown creation is recovered without a duplicate
+
+- **WHEN** the response of a Markdown work item creation is lost and recovery finds a candidate whose description matches the sent one under the Markdown equivalence
+- **THEN** recovery offers that candidate for confirmation and creates no second work item.
 
 ### Requirement: Direct verification and shared bounded publication recovery
 

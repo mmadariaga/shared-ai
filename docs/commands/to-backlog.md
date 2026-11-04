@@ -56,7 +56,8 @@ remain outside scope.
 Creation inserts GitHub issues into a writable Project, creates GitLab issues
 without board insertion, or asks for the Azure work-item type for this invocation.
 You review full content and the exact destination before confirming, editing,
-or cancelling. Azure Boards shows source Markdown and converted outgoing HTML.
+or cancelling. Azure Boards creates Markdown work items and shows the outgoing
+Markdown; updating an existing HTML work item shows the converted outgoing HTML.
 A changed update baseline requires fresh approval; the proposal operation reports
 a no-op only when the intended content and all requested planning fields match.
 Before approving an update, GitHub and GitLab show that their content check and

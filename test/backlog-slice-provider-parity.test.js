@@ -77,6 +77,8 @@ function fixture(platform) {
       if (method === 'POST') {
         state.writes.push({ method, body });
         const row = create(body.find(part => part.path === '/fields/System.Title').value, body.find(part => part.path === '/fields/System.Description').value);
+        const format = body.find(part => part.path === '/multilineFieldsFormat/System.Description');
+        if (format) row.multilineFieldsFormat = { 'System.Description': format.value.toLowerCase() };
         if (state.lost) { state.lost = false; throw new Error('lost response'); }
         return JSON.stringify(row);
       }
@@ -273,14 +275,16 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.throws(() => f.adapter['continue-set']({ receipt: file }, f.io), /approval/);
   });
 }
-test('azuredevops: harmless Azure normalization does not stop a set publication or its recovery readback', t => {
+test('azuredevops: Azure entity encoding of a Markdown set does not stop its publication or its recovery readback', t => {
   const f = fixture('azuredevops');
-  f.state.normalize = html => html.replace(/<\/p>/g, '\n</p>');
+  f.state.normalize = text => text.replace(/"/g, '&quot;').replace(/α/g, '&#945;');
   const { result, file } = publish(t, f);
   assert.equal(result.status, 'complete', result.message);
   assert.equal(f.state.rows.length, 3);
   assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
-  assert.match(f.state.rows[0].fields['System.Description'], /\n<\/p>/);
+  assert.match(f.state.rows[0].fields['System.Description'], /&quot;version&quot;:1/);
+  assert.match(f.state.rows[0].fields['System.Description'], /&#945;/);
+  assert.equal(identity.decode(f.state.rows[0].fields['System.Description']).role, 'parent');
 });
 test('azuredevops: a meaningful change in a set item stays a divergence', t => {
   const f = fixture('azuredevops');
@@ -706,3 +710,71 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(f.state.writes.length, before + 1);
   });
 }
+
+// Azure sets: every work item a set creates is Markdown; an existing originating work item keeps its own format.
+const FORMAT = '/multilineFieldsFormat/System.Description';
+const publishSet = (t, f) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-format-')); fs.chmodSync(directory, 0o700);
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, 'receipt.json'), ready = f.adapter['query-set'](f.request, f.io);
+  assert.equal(ready.status, 'ready', JSON.stringify(ready));
+  return { file, ready, result: f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, f.io) };
+};
+const creations = f => sets(f).filter(write => write.method === 'POST');
+test('azuredevops E1 E4 I2 I4: a set creates Markdown work items with fenced blocks, Markdown links and a fenced marker', t => {
+  const f = fixture('azuredevops'), { file, ready, result } = publishSet(t, f);
+  assert.equal(ready.proposal.format, 'markdown');
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(creations(f).length, 3);
+  for (const write of creations(f)) assert.deepEqual(write.body.find(part => part.path === FORMAT), { op: 'add', path: FORMAT, value: 'Markdown' });
+  // The format is never sent again when the references are written into the created work items.
+  for (const write of sets(f).filter(write => write.method === 'PATCH')) assert.ok(write.body.every(part => part.path !== FORMAT));
+  f.state.rows.forEach(row => assert.equal(row.multilineFieldsFormat['System.Description'], 'markdown'));
+  const [parent, ...children] = f.state.rows.map(row => row.fields['System.Description']);
+  assert.match(parent, /^Full parent α\n\nChild: blocker — .*\nChild: dependent — .*\n```\nsai-backlog-slices@1 /);
+  for (const child of children) {
+    assert.match(child, /^```\n## Ready to Propose[\s\S]*\n```\n\nParent: .*\n(Depends on: .*\n)?```\nsai-backlog-slices@1 /);
+    assert.doesNotMatch(child, /<pre>|<p>/);
+  }
+  assert.equal(identity.decode(parent).role, 'parent');
+  assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
+  // A later update reads each work item as Markdown and finds nothing to change.
+  const update = { origin: f.url(1), title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  assert.equal(f.adapter['query-set-update'](update, f.io).status, 'no_changes');
+});
+test('azuredevops E1 E3 E8: raw HTML in the parent description is rejected before any set write', t => {
+  const f = fixture('azuredevops'); f.request.description = 'Parent\n\n<p>raw</p>';
+  assert.throws(() => f.adapter['query-set'](f.request, f.io), /raw HTML.*line 3/);
+  assert.equal(sets(f).length, 0);
+});
+test('azuredevops E3 E8: an existing HTML origin keeps HTML and never receives the format operation, its children are Markdown', t => {
+  const f = fixture('azuredevops'), { row, url } = seedOrigin(f);
+  const { file, ready, result } = publishSet(t, f);
+  assert.equal(ready.proposal.format, 'html');
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(creations(f).length, 2);
+  for (const write of creations(f)) assert.ok(write.body.some(part => part.path === FORMAT));
+  assert.ok(sets(f).every(write => write.method === 'POST' || write.body.every(part => part.path !== FORMAT)));
+  assert.equal(row.multilineFieldsFormat, undefined);
+  const body = text(f, row);
+  assert.match(body, /^<p>Agreed whole objective<\/p>\n<p>Child: blocker — .*<br>Child: dependent — .*<\/p>\n<pre>sai-backlog-slices@1 /);
+  assert.equal(identity.decode(body).role, 'parent');
+  for (const child of f.state.rows.slice(1)) {
+    assert.equal(child.multilineFieldsFormat['System.Description'], 'markdown');
+    assert.ok(text(f, child).startsWith('```\n## Ready to Propose'));
+    assert.ok(text(f, child).includes(`\n\`\`\`\n\nParent: ${url}\n`));
+    assert.ok(text(f, child).includes('\n```\nsai-backlog-slices@1 '));
+  }
+  assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
+});
+test('azuredevops E2 E8: an existing Markdown origin receives Markdown without the format operation', t => {
+  const f = fixture('azuredevops'), { row } = seedOrigin(f, 'Old *origin*');
+  row.multilineFieldsFormat = { 'System.Description': 'Markdown' };
+  const { file, ready, result } = publishSet(t, f);
+  assert.equal(ready.proposal.format, 'markdown');
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.ok(sets(f).every(write => write.method === 'POST' || write.body.every(part => part.path !== FORMAT)));
+  assert.match(text(f, row), /^Agreed whole objective\n\nChild: blocker — .*\nChild: dependent — .*\n```\nsai-backlog-slices@1 /);
+  assert.equal(row.multilineFieldsFormat['System.Description'], 'Markdown');
+  assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
+});

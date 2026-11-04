@@ -129,3 +129,18 @@ for (const provider of ['github', 'gitlab', 'azuredevops']) {
     assert.deepEqual(f.state.writes, [1, 2, 3]);
   });
 }
+test('azuredevops E8 I6: a set update writes each work item in its own description format', t => {
+  const f = fixture(t, 'azuredevops'), [parent, one, two] = f.rows;
+  const asMarkdown = row => { row.format = 'markdown'; row.baseline.description = `old\n${identity.encodeMarkdown(identity.decode(row.baseline.description))}`; };
+  asMarkdown(parent); asMarkdown(two); one.format = 'html';
+  const ready = f.tool['query-set-update'](f.request), described = ready.proposal.items.map(item => item.request.description);
+  assert.equal(ready.status, 'ready');
+  assert.match(described[0], /^refined objective\n\nChild: one — .*\nChild: two — .*\n```\nsai-backlog-slices@1 /);
+  assert.doesNotMatch(described[0], /<p>|<pre>/);
+  assert.match(described[1], /^<pre>.*<\/pre>\n<p>Parent: .*<\/p>\n<pre>sai-backlog-slices@1 /s);
+  assert.match(described[2], /^```\n## Ready to Propose[\s\S]*\n```\n\nParent: .*\n```\nsai-backlog-slices@1 /);
+  assert.doesNotMatch(described[2], /<p>|<pre>/);
+  for (const [i, row] of f.rows.entries()) assert.equal(identity.decode(described[i]).role, i ? 'child' : 'parent', `item ${i}`);
+  assert.equal(f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation }).status, 'complete');
+  assert.deepEqual(f.state.writes, [1, 2, 3]);
+});

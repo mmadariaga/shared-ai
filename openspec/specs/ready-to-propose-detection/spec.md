@@ -105,3 +105,17 @@ The `convert` sub-command SHALL hold the issue sections and `Maturity` values as
 
 - **WHEN** the regression test reads the tool constants and the issue format policy
 - **THEN** the mandatory sections, optional sections, and `Maturity` values match
+
+### Requirement: Issue HTML detection ignores tags inside code
+
+The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL set aside backtick code spans and fenced code blocks before it looks for structural HTML tags (`h1`-`h6`, `p`, `div`, `ul`, `ol`, `li`, `br`), and SHALL treat the description as Markdown when it finds no structural tag outside code, when an opening Markdown heading is present, or when it is otherwise in doubt. The tool SHALL export this decision as `isHtmlDescription` so other adapters reuse the same detector.
+
+#### Scenario: Tags only inside code
+
+- **WHEN** an issue description is Markdown whose only HTML tags appear inside backtick code spans or fenced code blocks
+- **THEN** the detector treats it as Markdown and conversion keeps the text unchanged.
+
+#### Scenario: Structural HTML outside code
+
+- **WHEN** an issue description has structural HTML tags outside code and no Markdown heading
+- **THEN** the detector treats it as HTML.

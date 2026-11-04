@@ -1,5 +1,29 @@
 # Deterministic Boards description content
 
+The description format is a property of each work item. A new work item is
+created in Markdown format: the description is sent as written, together with the
+`add /multilineFieldsFormat/System.Description = Markdown` operation in the same
+creation request, so tables, images and nested lists are available. An update
+reads the format from the work item itself (`multilineFieldsFormat`, compared
+case-insensitively with `markdown`) and never sends the format operation: a
+Markdown work item receives Markdown, any other work item receives HTML, so an
+update never switches an HTML work item to Markdown.
+
+## Markdown work items
+
+Raw HTML outside backtick code spans and fenced code blocks is rejected before
+approval, naming its line, because Azure rewrites it and verification would
+report a difference. The exact `backlog-id-counters` comment from
+`sai/policies/issue-format.md` is the one allowed comment.
+
+Verification and no-change detection treat the sent and stored descriptions as
+equivalent when they match after entity decoding (`&quot;`, `&amp;`, `&lt;`,
+`&gt;` and numeric references such as `&#128640;`, which Azure writes even inside
+code fences) and, at most, the removal of the counters comment. Every other
+difference stays a difference. Two Azure reads of one work item compare exactly.
+
+## HTML work items
+
 `azure-markdown.js` is the conversion authority. Supported: ATX headings,
 paragraphs and line breaks, flat ordered/unordered lists, blockquotes, inline
 code, fenced code with optional language, bold, italic, HTTP(S)/mailto inline
@@ -21,14 +45,15 @@ Exact examples:
 - [guide](https://a.test)   => <ul><li><a href="https://a.test">guide</a></li></ul>
 ```
 
-Update baselines are HTML. For a title-only change omit `description` or pass
+An HTML baseline is HTML. For a title-only change omit `description` or pass
 the exact unchanged baseline: its bytes are preserved and no description field
 is written. For description edits agree the complete supported Markdown
 replacement, preserving unaffected meaning. If that boundary cannot be met,
-ask and stop until resolved. Approval binds the returned exact outgoing HTML.
+ask and stop until resolved. Approval binds the returned exact outgoing content,
+HTML for an HTML work item and Markdown for a Markdown one.
 
 Verification and no-change detection accept the harmless normalization Azure
-applies to a stored description instead of requiring exact bytes: whitespace
+applies to a stored HTML description instead of requiring exact bytes: whitespace
 added between block tags (`p`, `li`, `ul`, `ol`, `h1`-`h6`, `pre`,
 `blockquote`) or immediately before a block closing tag, and the removal of the
 exact `backlog-id-counters` comment. Every other difference stays a real
