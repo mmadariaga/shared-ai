@@ -89,7 +89,7 @@ The framework mapping list (in precedence order):
 
 The fallback noun is `domain unit`. The cold build substitutes the fallback noun when no mapping rule matches any reference and the raw per-ADR context returns no dominant grouping noun (see the "Cold build falls back to the framework noun when no rule and no context match" scenario above).
 
-This requirement is the definition of the list. Because this spec is not installed with the prompts, `sai/commands/implement/steps/decision-record-index.md` SHALL restate the five rules, their precedence, the tie-break to the earlier rule, and the fallback chain, and that restatement SHALL match this requirement.
+This requirement is the definition of the list. No installed prompt restates it: the only installed procedure that creates an index, `sai/policies/decision-record-creation.md`, names the unit after the new record and runs no mapping-list derivation (see the creation-policy rule above). A future installed cold build SHALL restate the five rules, their precedence, the tie-break to the earlier rule, and the fallback chain, and that restatement SHALL match this requirement.
 
 #### Scenario: Framework mapping list uses exactly the five closed pattern-forms
 
@@ -101,8 +101,8 @@ This requirement is the definition of the list. Because this spec is not install
 #### Scenario: Framework mapping list is pinned in the spec
 
 - **WHEN** a maintainer reads this requirement's framework mapping list
-- **THEN** the list is normative — this spec defines it, the installed step file `sai/commands/implement/steps/decision-record-index.md` restates the same five rules in the same order, and no `bin/` script defines it
-- **AND** a future change to a framework value (e.g. adding a sixth pattern-form, changing the precedence order) updates this requirement's framework list and the step file's restatement together
+- **THEN** the list is normative — this spec defines it, no installed prompt restates it, and no `bin/` script defines it
+- **AND** a future change to a framework value (e.g. adding a sixth pattern-form, changing the precedence order) updates this requirement's framework list
 
 ### Requirement: The cross-cutting threshold contract is pinned in the abstract surface
 
@@ -252,21 +252,21 @@ Cross-family relationships SHALL preserve explicit `adr:` or `ddr:` prefixes in 
 
 The abstract surface's framework values — the mapping list (with its five pattern-form rules and their precedence), the fallback noun (`domain unit`), the cross-cutting threshold trio (`min_count = 2`, `target_range = [8, 12]`, `collapse_below = 8`) — are pinned in this spec. They are NOT configurable by a project in this slice: no project-level config block, sidecar file, or environment variable supplies them.
 
-This spec is the requirement record and is not installed with the prompts. The installed step file `sai/commands/implement/steps/decision-record-index.md` SHALL restate the framework values, and the cold build reads them from that step file at run time. The restatement SHALL match this spec.
+This spec is the requirement record and is not installed with the prompts. The installed index templates (`sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`) restate the cross-cutting threshold values in their `## Conventions` and cold-build comments, and that restatement SHALL match this spec. The mapping list and the fallback noun are restated by no installed prompt, because the creation policy runs no mapping-list derivation.
 
 A future slice MAY add a project-level config block for overriding the framework values; that slice is out of scope here, and the framework values SHALL remain the contractually-defined defaults until that slice lands.
 
 #### Scenario: Unconfigured project inherits the framework values
 
 - **WHEN** a project uses the cold build with no project-level config block for the framework values (this slice has no such block)
-- **THEN** the cold build applies the mapping list, fallback noun, and threshold values as the installed step file states them, which equal this spec's "Mapping list" and "Cross-cutting threshold contract" requirements
+- **THEN** the cold build applies the mapping list, fallback noun, and threshold values as this spec states them, which equal this spec's "Mapping list" and "Cross-cutting threshold contract" requirements
 - **AND** a project that today has a hand-curated `docs/adr/0000-INDEX.md` with a `## By command` H2 sees no change to the cold-build output, because the framework mapping list's `slash-command → command` rule produces the same H2 noun (`command`) and the framework threshold trio (`2 / 8–12 / 8`) produces the same threshold structure
 
 #### Scenario: Framework values are pinned in the spec, not in code
 
 - **WHEN** a maintainer reads the framework mapping list and threshold values
-- **THEN** the values are normative in this spec, they are restated in `sai/commands/implement/steps/decision-record-index.md` so an installed prompt carries them, and they are not defined by a `bin/` script or other code path
-- **AND** a future change to a framework value (e.g. adding a sixth pattern-form, raising the target to `[10, 15]`) updates this spec and the step file's restatement together, not a code path
+- **THEN** the values are normative in this spec, the threshold values are restated in the installed index templates so an installed prompt carries them, and they are not defined by a `bin/` script or other code path
+- **AND** a future change to a framework value (e.g. adding a sixth pattern-form, raising the target to `[10, 15]`) updates this spec and the templates' restatement together, not a code path
 
 ### Requirement: Concrete indexes consume the abstract surface, not duplicate it
 

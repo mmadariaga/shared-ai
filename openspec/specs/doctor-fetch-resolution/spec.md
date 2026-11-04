@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how `doctor` resolves each wrapper's `Fetch @` references with the resolution order of its harness.
 
 ## Requirements
 ### Requirement: Fetch @ reference resolution per wrapper

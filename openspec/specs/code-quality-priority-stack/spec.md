@@ -2,13 +2,13 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the Code Quality Priority Stack: the single policy file that ranks the code-quality rules the implementing workers apply, the project-alignment meta-rule that outranks it, and the deterministic resolution of tensions between its rules.
 
 ## Requirements
 
 ### Requirement: Priority Stack Section In Implementation Instructions
 
-The Code Quality Priority Stack SHALL live in its own policy file, `sai/policies/code-quality-priority-stack.md`, which opens with the heading `# Code Quality Priority Stack`. The always-active implementation step file (`sai/commands/implement/steps/common.md`) SHALL load it unconditionally with the line `Fetch @sai/policies/code-quality-priority-stack.md` in its fetch block, after `Fetch @sai/policies/glossary-format.md`. It MUST NOT contain a `## Code Quality Priority Stack` section of its own. No other file under `sai/` SHALL contain a `## Code Quality Priority Stack` section. The policy MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
+The Code Quality Priority Stack SHALL live in its own policy file, `sai/policies/code-quality-priority-stack.md`, which opens with the heading `# Code Quality Priority Stack`. The rules shared by the RED and GREEN workers (`sai/commands/implement/worker-common.md`) SHALL load it unconditionally with the line ``Fetch `@sai/policies/code-quality-priority-stack.md` `` in its opening fetch block. It MUST NOT contain a `## Code Quality Priority Stack` section of its own. No other file under `sai/` SHALL contain a `## Code Quality Priority Stack` section. The policy MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
 
 1. YAGNI — do not build behavior, abstraction, or configurability that is not required by the current change.
 2. SOLID (object-oriented designs only), expressed operationally.
@@ -23,10 +23,10 @@ The Code Quality Priority Stack SHALL live in its own policy file, `sai/policies
 - **THEN** it opens with `# Code Quality Priority Stack`
 - **AND** it lists the six rules in the exact priority order above, numbered so that a lower number outranks a higher one
 
-#### Scenario: Implementation step library always loads the policy
+#### Scenario: Implementation workers always load the policy
 
-- **WHEN** a reader inspects `sai/commands/implement/steps/common.md`
-- **THEN** its fetch block contains the line `Fetch @sai/policies/code-quality-priority-stack.md`
+- **WHEN** a reader inspects `sai/commands/implement/worker-common.md`
+- **THEN** its opening fetch block contains the line ``Fetch `@sai/policies/code-quality-priority-stack.md` ``
 - **AND** the file contains no `## Code Quality Priority Stack` section
 
 #### Scenario: The stack has a single source
@@ -36,7 +36,7 @@ The Code Quality Priority Stack SHALL live in its own policy file, `sai/policies
 
 ### Requirement: SOLID Stated Operationally
 
-Within the priority stack, the SOLID rule MUST be expressed as concrete, checkable behaviors (for example: a unit has one reason to change; new behavior is added by extension without breaking existing callers) and MUST NOT be stated as the bare slogan "follow SOLID". This keeps it consistent with `sai/commands/design/instructions.md`, which rejects generic best-practices such as "follow SOLID" or "write clean code" as project Conventions.
+Within the priority stack, the SOLID rule MUST be expressed as concrete, checkable behaviors (for example: a unit has one reason to change; new behavior is added by extension without breaking existing callers) and MUST NOT be stated as the bare slogan "follow SOLID". A bare slogan gives the worker nothing to check.
 
 #### Scenario: No generic SOLID slogan
 

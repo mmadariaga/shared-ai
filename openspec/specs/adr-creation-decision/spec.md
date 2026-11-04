@@ -17,7 +17,7 @@ Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolv
 
 #### Scenario: The criteria and routing test are single-sourced
 
-- **WHEN** `sai/commands/design/steps/design.md` and `sai/commands/implement/steps/artifact-analysis.md` are read at their criteria-evaluation surfaces
+- **WHEN** `sai/commands/design/steps/design.md` and `sai/commands/explore/direct-build-coordinator.md` are read at their criteria-evaluation surfaces
 - **THEN** each fetches `sai/policies/adr-ddr-criteria.md` and neither restates the three criteria or the ordered routing test inline
 
 #### Scenario: sai-1 carries no criteria-evaluation surface

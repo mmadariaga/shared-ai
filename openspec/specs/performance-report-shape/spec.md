@@ -38,7 +38,7 @@ Every finding SHALL keep its fields (Location, Category, Symptom, Evidence, Root
 When the diff is empty or the selected scope after `--tier` has no performance surface, the worker SHALL write a `performance.md` with only the title, the provenance line, and `## Not Applicable` with its justification, with no findings and no tally line. The justification SHALL name the tier filter when the filter excluded the touched surface.
 
 #### Scenario: Tier filter excludes the touched surface
-- **WHEN** `/sai-7-performance` runs with `--tier queue` on a diff that touches only frontend files
+- **WHEN** `/sai-6-performance` runs with `--tier queue` on a diff that touches only frontend files
 - **THEN** the report is a Not Applicable report whose justification names the tier filter, and the run returns `completed`
 
 ### Requirement: Saved report verification

@@ -63,12 +63,12 @@ The commit coordinator card SHALL state an "OpenSpec independence" note: `sai-co
 
 ### Requirement: End-to-end worker registration
 
-The `sai-commit-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` gains the `commit` phase entry bringing the matrix to ten entries and extends the worker-identity regex to admit `sai-commit-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/commit/launcher.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.`
+The `sai-commit-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `commit` phase entry and its worker-identity regex admits `sai-commit-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/commit/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.`
 
-#### Scenario: Install validates the ten-worker roster
+#### Scenario: Install validates the worker roster
 
 - **WHEN** install-time roster and binding validation runs after the change
-- **THEN** the derived roster contains ten workers including `sai-commit-worker` and both harness projections for it are present exactly once
+- **THEN** the derived roster contains `sai-commit-worker` among the matrix workers and both harness projections for it are present exactly once
 
 ### Requirement: Session-grant scope has a single source
 

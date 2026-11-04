@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Requires Claude Code-only skills to declare their compatibility metadata.
 
 ## Requirements
 ### Requirement: Claude-only skills declare compatibility metadata

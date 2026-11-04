@@ -171,7 +171,7 @@ The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` f
 - **WHEN** difficulty is resolved for command:sai-commit and worker:sai-3-green-worker
 - **THEN** each lookup SHALL use its complete identity and return a single up-arrow and a double up-arrow respectively
 #### Scenario: Low-difficulty coordinator still shows medium context
-- **WHEN** the checklist displays `command:sai-6-security`
+- **WHEN** the checklist displays `command:sai-5-security`
 - **THEN** it SHALL show `Medium` under `CONTEXT` and a single arrow under `DIFFICULTY`
 #### Scenario: Fresh Step workers carry less context than their supervisor
 - **WHEN** the checklist displays `command:sai-3-implement` and its RED and GREEN workers

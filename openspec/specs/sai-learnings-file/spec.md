@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the project-root `SAI_LEARNINGS.md` file: its location and name, its single-valued Test Command, and its dedicated format policy.
 
 ## Requirements
 

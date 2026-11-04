@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the `proposal.md` that `/sai-backfill` generates: written inside the change folder, marked as post-hoc, and describing the behavior actually implemented.
 
 ## Requirements
 ### Requirement: proposal.md generated inside openspec/changes/{name}/

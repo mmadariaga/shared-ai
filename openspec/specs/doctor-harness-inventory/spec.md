@@ -2,20 +2,20 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how `doctor` detects the installed harnesses and classifies each detected harness's expected files as present, missing, or unexpected.
 
 ## Requirements
 ### Requirement: harness auto-detection
 
-The doctor SHALL auto-detect which of the three supported harnesses (Claude Code, opencode, Copilot) are installed by testing whether each harness's user-global dir is present, using the same OS-aware base paths the installer computes (`~/.claude`, `~/.config/opencode`, and the Copilot `Code/User` location for the current OS). It SHALL NOT require a `--harness` flag. A harness whose user-global dir is absent SHALL be reported as not installed rather than emitting missing-file errors for it.
+The doctor SHALL auto-detect which of the two supported harnesses (Claude Code, opencode) are installed by testing whether each harness's user-global dir is present, using the same OS-aware base paths the installer computes (`~/.claude` and `~/.config/opencode`). It SHALL NOT require a `--harness` flag. A harness whose user-global dir is absent SHALL be reported as not installed rather than emitting missing-file errors for it.
 
 #### Scenario: only installed harnesses get sections
-- **WHEN** the user has a `~/.claude` dir but no opencode or Copilot user-global dir
-- **THEN** the doctor emits a Claude Code section and reports opencode and Copilot as not installed, without flagging their expected files as missing
+- **WHEN** the user has a `~/.claude` dir but no opencode user-global dir
+- **THEN** the doctor emits a Claude Code section and reports opencode as not installed, without flagging their expected files as missing
 
-#### Scenario: all three harnesses detected
-- **WHEN** all three harness user-global dirs are present
-- **THEN** the doctor emits a labeled section for each of the three harnesses
+#### Scenario: both harnesses detected
+- **WHEN** both harness user-global dirs are present
+- **THEN** the doctor emits a labeled section for each harness
 
 ### Requirement: per-harness file inventory
 
@@ -32,11 +32,3 @@ For each detected harness, the doctor SHALL classify the harness's expected file
 #### Scenario: unexpected file is reported
 - **WHEN** a file the installer would not write is found in a doctor-inspected harness location
 - **THEN** the doctor lists that file as unexpected for that harness
-
-### Requirement: Copilot project-local override reporting
-
-For Copilot, the doctor SHALL inspect both the user-global prompts location and the project-local prompts location, and SHALL report when a project-local override of a prompt exists. It SHALL report the override as informational and SHALL NOT assume the override is wrong.
-
-#### Scenario: project-local Copilot override is reported, not failed
-- **WHEN** a Copilot prompt exists both user-global and project-local
-- **THEN** the doctor reports the project-local override for that prompt without failing the Copilot section solely because the override exists

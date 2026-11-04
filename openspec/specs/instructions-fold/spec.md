@@ -39,19 +39,19 @@ Every command-owned template currently under `sai/instructions/_templates/` SHAL
 - **WHEN** review, security, performance, accessibility, or PR instructions load a template
 - **THEN** each resolves only its own `@sai/commands/{name}/{artifact}.template.md` neighbor and does not substitute another command's template
 
-### Requirement: shared-and-canonical-exceptions-have-root-ownership
+### Requirement: shared-and-canonical-files-have-command-ownership
 
-The shared `change-overview.md` instruction SHALL move to `sai/change-overview.md`, and the canonical project-agnostic index templates SHALL move to `sai/adr-index.template.md` and `sai/ddr-index.template.md`. These files SHALL not be placed under a command directory or recreated under `sai/instructions/`.
+The shared `change-overview.md` instruction SHALL live at `sai/commands/design/change-overview.md`, owned by the design command, its only consumer, and the canonical project-agnostic index templates SHALL live at `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`, owned by the implement command. These files SHALL NOT be kept at the `sai/` root or recreated under `sai/instructions/`.
 
 #### Scenario: shared overview instruction remains uniquely addressable
 
 - **WHEN** a maintained caller loads the change-overview generation contract
-- **THEN** it resolves `@sai/change-overview.md`, with no active `@sai/instructions/change-overview.md` reference
+- **THEN** it resolves `@sai/commands/design/change-overview.md`, with no active `@sai/change-overview.md` or `@sai/instructions/change-overview.md` reference
 
 #### Scenario: index templates remain canonical
 
-- **WHEN** the implementation instruction performs an ADR or DDR cold build
-- **THEN** it resolves `@sai/adr-index.template.md` or `@sai/ddr-index.template.md` respectively, and the root templates preserve their project-agnostic skeletons and ADR/DDR parity
+- **WHEN** the decision-record creation policy builds a missing ADR or DDR index
+- **THEN** it resolves `@sai/commands/implement/adr-index.template.md` or `@sai/commands/implement/ddr-index.template.md` respectively, and the templates preserve their project-agnostic skeletons and ADR/DDR parity
 
 ### Requirement: folded-fetch-contract-is-atomic
 

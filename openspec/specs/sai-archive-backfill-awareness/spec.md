@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Makes the archive Classification Check consult `.openspec.yaml`, so a backfilled change is exempt from the design and tasks artifacts while other changes are unaffected.
 
 ## Requirements
 ### Requirement: Classification Check MUST consult .openspec.yaml

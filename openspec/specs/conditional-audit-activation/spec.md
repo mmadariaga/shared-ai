@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the conditional activation rules for audit segments in the `/sai-review` composition, including the zero-audit terminal and artifact regeneration semantics.
+Defines the conditional activation rules for the audit segments of `/sai-deep-review`, including the zero-audit terminal and artifact regeneration semantics.
 
 ## Requirements
 
@@ -36,4 +36,4 @@ Activating an audit SHALL always regenerate its artifact, silently overwriting a
 
 #### Scenario: Non-recommended audit leaves its artifact untouched
 - **WHEN** the accessibility triage resolves to not-recommended and `accessibility.md` already exists
-- **THEN** the composition SHALL NOT dispatch the accessibility audit and SHALL leave the existing `accessibility.md` unchanged
+- **THEN** `/sai-deep-review` SHALL NOT dispatch the accessibility audit and SHALL leave the existing `accessibility.md` unchanged

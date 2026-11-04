@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the project health checks `doctor` runs, which absorb the prerequisite checks and contribute to its aggregate exit code.
 
 ## Requirements
 ### Requirement: project health checks absorb prereqs

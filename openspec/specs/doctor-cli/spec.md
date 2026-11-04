@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the `doctor` subcommand: its routing, its built-ins-only implementation, and its read-only diagnosis.
 
 ## Requirements
 ### Requirement: doctor subcommand routing
