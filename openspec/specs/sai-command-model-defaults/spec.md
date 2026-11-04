@@ -8,7 +8,7 @@ Keep coordinator and worker model defaults rooted in their live harness declarat
 
 ### Requirement: Coordinator defaults are declared by wrappers
 
-The coordinator defaults for `/sai-1-spec`, `/sai-2-design`, and `/sai-6-security` SHALL come from the `model` and `effort` frontmatter of their respective `commands/claude/sai-*.md` wrappers (or `model` and `variant` for `commands/opencode/sai-*.md`). No spec or README table SHALL independently pin those values.
+The coordinator defaults for `/sai-1-spec`, `/sai-2-design`, and `/sai-5-security` SHALL come from the `model` and `effort` frontmatter of their respective `commands/claude/sai-*.md` wrappers (or `model` and `variant` for `commands/opencode/sai-*.md`). No spec or README table SHALL independently pin those values.
 
 #### Scenario: User runs a numbered command without a model override
 - **WHEN** the user invokes a numbered command in Claude Code or opencode

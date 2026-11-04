@@ -32,13 +32,13 @@ The spec worker's write surface in `sai/commands/spec/worker.md` SHALL identify 
 
 ### Requirement: Reader phases resolve GLOSSARY.md at project root
 
-The implement and review phases SHALL resolve `GLOSSARY.md` at the project root. `sai/commands/implement/steps/plan-generation.md` SHALL state the project-root location explicitly rather than an unqualified "if it exists". `sai/commands/review/steps/resolve-review-analysis.md` SHALL continue to resolve `GLOSSARY.md` at the repo root.
+The implement and review phases SHALL resolve `GLOSSARY.md` at the project root. The GREEN step file `sai/commands/implement/steps/green-step.md` SHALL direct the GREEN worker to follow the `GLOSSARY.md` terms where the file exists; the worker runs from the project root, so that relative name resolves to the project-root file and never to the change folder. `sai/commands/review/steps/resolve-review-analysis.md` SHALL continue to resolve `GLOSSARY.md` at the repo root.
 
 #### Scenario: implement resolves at root
 
-- **WHEN** `sai/commands/implement/steps/plan-generation.md` is read
-- **THEN** its `GLOSSARY.md` reader step names the project root as the location
-- **AND** the "if it exists" wording resolves to the project-root path, not the change folder
+- **WHEN** `sai/commands/implement/steps/green-step.md` is read
+- **THEN** its production-code step directs the worker to follow the `GLOSSARY.md` terms where the file exists
+- **AND** that relative name resolves to the project-root path, not the change folder
 
 #### Scenario: review resolves at root
 

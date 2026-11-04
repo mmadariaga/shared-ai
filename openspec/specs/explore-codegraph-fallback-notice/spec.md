@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the one-time research-tooling check at the start of an explore session and the notice that matches the detected state.
 
 ## Requirements
 

@@ -43,10 +43,10 @@ Every rule a reader of an installable file needs at run time SHALL be written in
 - **WHEN** a dispatcher reads the `## Dispatch mode` section of `skills/opencode/budget-explorer/SKILL.md`, `skills/opencode/budget-executor/SKILL.md`, or `skills/opencode/budget-subagent/SKILL.md`
 - **THEN** the section names the dispatch-safety invariant as the containing rule and states it in one sentence — a background child is dispatched only from a dispatcher that outlives it and awaits its result, and synchronous dispatch satisfies this — with no spec path
 
-#### Scenario: The decision-record index step states its own rules
+#### Scenario: The decision-record creation policy states its own rules
 
-- **WHEN** the planning worker reads `sai/commands/implement/steps/decision-record-index.md` in a project that has no shared-ai specs
-- **THEN** the step file itself gives the domain-unit noun rules with their precedence and fallback, the cross-cutting thresholds, the relationship family boundary, and the five index-output invariants
+- **WHEN** an implementing command reads `sai/policies/decision-record-creation.md` and the index templates it names in a project that has no shared-ai specs
+- **THEN** the policy itself gives how a missing index is created and its `<domain unit>` placeholder named, and how an entry line is added, and the templates give the cross-cutting thresholds and the relationship token forms, with no shared-ai spec path
 
 ### Requirement: References to the target project's own specs remain
 

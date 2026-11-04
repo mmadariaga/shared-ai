@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Defines the concurrent dispatch and sequential Result Loop processing model for audit segments in the `/sai-review` composition, including isolation of `needs_input` pauses and failure containment.
+Defines the parallel worker creation and the one-at-a-time result processing of the audit cycles in `/sai-deep-review`, including isolation of `needs_input` pauses and failure containment.
 
 ## Requirements
 
-### Requirement: Soft-parallel audit dispatch with sequential Result Loop processing
+### Requirement: Soft-parallel audit dispatch with one-at-a-time result processing
 
 When one or more audits activate, `/sai-deep-review` SHALL create their workers in one harness-native batch (several `Agent` calls in one turn on Claude Code, several `task` calls on opencode), each creation carrying only the ready prompt, and SHALL drive one cycle of `sai/commands/audit/coordinator.md` per worker. The workers SHALL run in parallel, while the coordinator SHALL handle their results one at a time in the fixed order security → performance → accessibility among the results that are ready. Each audit SHALL write a disjoint report, so concurrency is safe.
 

@@ -7,7 +7,7 @@ TBD
 
 ### Requirement: The managed worker registry and manifest project accessibility routing deterministically
 
-The installer SHALL register one managed worker identity for `sai-8-accessibility-worker` in the single managed-worker registry and SHALL add explicit manifest projections for the canonical accessibility worker contract, Claude Code and opencode bindings, and the managed Claude agent. It SHALL NOT project a forwarding skill for either routed harness. Registry-derived runtime metadata, ownership records, destination paths, and projection inventories SHALL be deterministic and collision-safe.
+The installer SHALL register one managed worker identity for `sai-7-accessibility-worker` in the single managed-worker registry and SHALL add explicit manifest projections for the canonical accessibility worker contract, Claude Code and opencode bindings, and the managed Claude agent. It SHALL NOT project a forwarding skill for either routed harness. Registry-derived runtime metadata, ownership records, destination paths, and projection inventories SHALL be deterministic and collision-safe.
 
 #### Scenario: Accessibility worker is installed
 - **WHEN** the installer expands the manifest for a fresh installation

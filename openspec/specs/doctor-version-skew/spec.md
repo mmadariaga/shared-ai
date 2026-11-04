@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how `doctor` detects version skew between the installed files and the source, through the `.version` marker or a file-diff fallback, without reading the network.
 
 ## Requirements
 ### Requirement: version skew via .version marker

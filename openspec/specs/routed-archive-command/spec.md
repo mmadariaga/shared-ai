@@ -68,12 +68,12 @@ The ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json
 
 ### Requirement: End-to-end worker registration
 
-The `sai-archive-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` gains the `archive` phase entry bringing the matrix to eleven entries and extends the worker-identity regex to admit `sai-archive-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the eleven-worker roster; and `sai/commands/archive/launcher.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/archive-worker.md and use it.`
+The `sai-archive-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `archive` phase entry and its worker-identity regex admits `sai-archive-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/archive/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/archive-worker.md and use it.`
 
-#### Scenario: Install validates the eleven-worker roster
+#### Scenario: Install validates the worker roster
 
 - **WHEN** install-time roster and binding validation runs after the change
-- **THEN** the derived roster contains eleven workers including `sai-archive-worker` and both harness projections for it are present exactly once
+- **THEN** the derived roster contains `sai-archive-worker` among the matrix workers and both harness projections for it are present exactly once
 
 ### Requirement: Fixed content assignment across the two cards
 

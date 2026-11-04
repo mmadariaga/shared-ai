@@ -11,7 +11,7 @@ Every projected opencode worker agent SHALL contain the literal prompt `Fetch @s
 
 #### Scenario: Current managed workers load their own contracts
 
-- **WHEN** the projected opencode worker agent files are enumerated, including `sai-1-spec-proposal-worker.md`, `sai-2-design-worker.md`, `sai-3-red-worker.md`, `sai-3-green-worker.md`, `sai-4-review-worker.md`, `sai-6-security-worker.md`, `sai-7-performance-worker.md`, and `sai-8-accessibility-worker.md`
+- **WHEN** the projected opencode worker agent files are enumerated, including `sai-1-spec-proposal-worker.md`, `sai-2-design-worker.md`, `sai-3-red-worker.md`, `sai-3-green-worker.md`, `sai-4-review-worker.md`, `sai-5-security-worker.md`, `sai-6-performance-worker.md`, and `sai-7-accessibility-worker.md`
 - **THEN** each file SHALL contain a body fetch using `Fetch @sai/orchestration/workers/<worker-name>.md and follow it exactly.` for its own agent filename stem
 - **AND** no agent file SHALL point to another worker's contract
 

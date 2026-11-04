@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the language gate on `/sai-explore` artifact reviews: English input skips it and non-English input asks for the review language.
 
 ## Requirements
 

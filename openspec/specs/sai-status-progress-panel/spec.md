@@ -6,17 +6,17 @@ The sai-status-progress-panel capability defines the read-only progress panel th
 
 ## Requirements
 
-### Requirement: sai-status command and wrappers exist across all three harnesses
+### Requirement: sai-status command and wrappers exist for both harnesses
 
-A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline). The body file now dispatches to the deterministic status tool rather than containing an inline prose algorithm.
+A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md` and `commands/opencode/sai-status.md`. The body and both wrappers SHALL be edited together in a single commit (mirror discipline). The body file now dispatches to the deterministic status tool rather than containing an inline prose algorithm.
 
 #### Scenario: body file present
-- **WHEN** `sai/commands/` is listed
-- **THEN** `sai-status.md` is present
+- **WHEN** `sai/commands/status/` is listed
+- **THEN** `body.md` is present
 
-#### Scenario: all three wrappers present
-- **WHEN** `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are listed
-- **THEN** `sai-status.md`, `sai-status.md`, and `sai-status.prompt.md` are present respectively
+#### Scenario: both wrappers present
+- **WHEN** `commands/claude/` and `commands/opencode/` are listed
+- **THEN** each contains `sai-status.md`
 
 ### Requirement: interfaces.md is exempt; change-overview.md state is read from .openspec.yaml
 
@@ -144,14 +144,14 @@ The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...
 
 ### Requirement: sai-status is read-only
 
-The `sai-status` command SHALL NOT write, create, or delete any file — including anything under `openspec/changes/{name}/`, `openspec/specs/`, and `.openspec.yaml`. Each wrapper SHALL restrict itself to read-only tools via its harness's mechanism: Claude Code via `allowed-tools`, Copilot via `tools:`, and opencode via model-discipline only (opencode has no per-command tool-restriction frontmatter, matching `sai-explore`'s current state). The deterministic tool is read-only and creates no state mutations.
+The `sai-status` command SHALL NOT write, create, or delete any file — including anything under `openspec/changes/{name}/`, `openspec/specs/`, and `.openspec.yaml`. Each wrapper SHALL restrict itself to read-only tools via its harness's mechanism: Claude Code via `allowed-tools`, and opencode via model-discipline only (opencode has no per-command tool-restriction frontmatter, matching `sai-explore`'s current state). The deterministic tool is read-only and creates no state mutations.
 
 #### Scenario: no writes performed
 - **WHEN** `/sai-status <change-name>` runs to completion
 - **THEN** no file under `openspec/changes/<change-name>/`, `openspec/specs/`, or `.openspec.yaml` is created, modified, or deleted
 
-#### Scenario: Claude and Copilot wrappers declare read-only tools
-- **WHEN** the frontmatter of `commands/claude/sai-status.md` and `commands/copilot/sai-status.prompt.md` is read
+#### Scenario: Claude wrapper declares read-only tools
+- **WHEN** the frontmatter of `commands/claude/sai-status.md` is read
 - **THEN** the declared tool set excludes file-writing tools
 
 ### Requirement: sai-status performs no subagent dispatch and has no fast-track flag

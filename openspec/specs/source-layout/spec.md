@@ -7,15 +7,15 @@ Define the canonical repository source and harness projection layout.
 ### Requirement: sai-payload-directory
 The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards. Routed cards SHALL provide `coordinator.md` and `worker.md`, plus a retained `invocation.md` only when that routed phase uses a separate invocation card. The implementation command SHALL use its coordinator, worker, and step library without requiring `sai/commands/implement/invocation.md`.
 
-The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed and goal-driven cards (`coordinator.md`, `worker.md`), utility cards (`body.md`) that the command wrapper fetches directly, and command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). No `command-bootstrap.md` card SHALL exist. Three root exceptions live at the `sai/` root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
+The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed and goal-driven cards (`coordinator.md`, `worker.md`), utility cards (`body.md`) that the command wrapper fetches directly, and command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). No `command-bootstrap.md` card SHALL exist. No root exception lives at the `sai/` root: each formerly shared file is owned by the single command that consumes it — the shared overview-generation instruction at `sai/commands/design/change-overview.md` (owned by the design command, its only consumer) and the index templates at `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md` (owned by the implement command). There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
 
 #### Scenario: command cards and folded instructions exist at the folded paths
 - **WHEN** the fold is applied
-- **THEN** command cards exist under `sai/commands/{name}/` with no `command-bootstrap.md` in any command folder, and every phase's instruction content is present at `sai/commands/{name}/instructions.md` with its co-located `.template.md` files
+- **THEN** command cards exist under `sai/commands/{name}/` with no `command-bootstrap.md` in any command folder, each command that keeps command-local instruction content (`archive`, `backfill`, `commit`, `explore`, `worktree`) has it at `sai/commands/{name}/instructions.md`, and the routed phases with a worker `steps/` library carry their instruction content in that library, with their co-located `.template.md` files
 
 #### Scenario: no maintained sai/instructions tree remains
 - **WHEN** the fold is applied
-- **THEN** no file lives under a maintained `sai/instructions/` tree; the shared overview-generation instruction is at `sai/change-overview.md` and the index templates at `sai/adr-index.template.md` and `sai/ddr-index.template.md`
+- **THEN** no file lives under a maintained `sai/instructions/` tree; the shared overview-generation instruction is at `sai/commands/design/change-overview.md` and the index templates at `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`, with no copy at the `sai/` root
 
 #### Scenario: Implementation command-card layout reflects retirement
 

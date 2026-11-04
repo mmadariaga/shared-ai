@@ -30,7 +30,7 @@ All maintained `sai-*` wrapper files at `commands/claude/` and `commands/opencod
 
 ### Requirement: command-body-instruction-fetch-paths
 
-All maintained SAI command cards that load command-owned instructions SHALL use `Fetch @sai/commands/<name>/instructions.md`, and cards that load command-owned templates SHALL use the matching neighboring `Fetch @sai/commands/<name>/<artifact>.template.md` path. Shared and canonical exceptions SHALL use `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, or `Fetch @sai/ddr-index.template.md` as applicable. The obsolete `@sai/instructions/` namespace SHALL NOT appear in active command cards, invocation cores, or maintained instruction/template fetch directives.
+All maintained SAI command cards that load command-owned instructions SHALL use `Fetch @sai/commands/<name>/instructions.md`, and cards that load command-owned templates SHALL use the matching neighboring `Fetch @sai/commands/<name>/<artifact>.template.md` path. The shared overview instruction and the index templates SHALL be loaded from their owning command folders: `@sai/commands/design/change-overview.md`, `@sai/commands/implement/adr-index.template.md`, or `@sai/commands/implement/ddr-index.template.md` as applicable. The obsolete `@sai/instructions/` namespace SHALL NOT appear in active command cards, invocation cores, or maintained instruction/template fetch directives.
 When a command has additional instruction files, each additional file SHALL use its own distinct neighboring `@sai/commands/<name>/<secondary>.instructions.md` path; the archive secondary instruction SHALL use `@sai/commands/archive/archive-commit-gate.instructions.md` and SHALL be fetched after the primary archive instruction.
 
 #### Scenario: archive invocation preserves ordered multi-instruction fetches
@@ -43,10 +43,10 @@ When a command has additional instruction files, each additional file SHALL use 
 - **WHEN** an implementation or audit command card loads its output template
 - **THEN** it uses the owning command's `.template.md` neighbor and never `@sai/instructions/_templates/`
 
-#### Scenario: root exceptions use root paths
+#### Scenario: shared files use their owning command paths
 
 - **WHEN** a maintained caller loads `change-overview.md`, an ADR index template, or a DDR index template
-- **THEN** it uses the corresponding `@sai/` root path and no `@sai/instructions/` alias
+- **THEN** it uses the owning command's path (`@sai/commands/design/` or `@sai/commands/implement/`) and neither a `@sai/` root path nor a `@sai/instructions/` alias
 
 ### Requirement: non-sai-wrapper-fetch-paths-unchanged
 Wrapper files that do not fetch SAI command cards SHALL remain unchanged by this capability; the folded instruction-path update SHALL apply only to active SAI command cards and their maintained callers.
@@ -65,10 +65,10 @@ Claude Code and opencode SHALL resolve the folded `@sai/commands/` and `@sai/` p
 - **WHEN** Claude Code resolves `@sai/commands/spec/steps/common.md`
 - **THEN** it reads the installed Claude `sai/commands/spec/steps/common.md` projection
 
-#### Scenario: opencode resolves a folded root template
+#### Scenario: opencode resolves a command-owned template
 
-- **WHEN** opencode resolves `@sai/adr-index.template.md`
-- **THEN** it reads the installed opencode `sai/adr-index.template.md` projection and not an unnamespaced command-root file
+- **WHEN** opencode resolves `@sai/commands/implement/adr-index.template.md`
+- **THEN** it reads the installed opencode `sai/commands/implement/adr-index.template.md` projection and not an unnamespaced command-root file
 
 ### Requirement: The fetch skill SHALL explicitly document that `@sai/commands/` and `@commands/` are different namespaces
 

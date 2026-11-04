@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the five-step progress plans for the audit commands (`sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`): their canonical step ids and labels, additive milestone reporting from the audit workers, gated-optional milestone reconciliation, terminal reconciliation, and separation from the `sai-explore` Idea Progress List.
+Define the five-step progress plans for the audit commands (`sai-4-review`, `sai-5-security`, `sai-6-performance`, `sai-7-accessibility`): their canonical step ids and labels, additive milestone reporting from the audit workers, gated-optional milestone reconciliation, terminal reconciliation, and separation from the `sai-explore` Idea Progress List.
 
 ## Requirements
 

@@ -15,7 +15,7 @@ Every opencode wrapper for a change-consuming `sai-*` command SHALL contain one 
 - **THEN** its body ends with exactly one `InvocationEnvelope:` block containing only `command_name` and `arguments_value`, with no trailing labelled line
 
 #### Scenario: all nine change-consuming wrappers use the same label-free shape
-- **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-build.md`, `sai-deep-review.md`)
+- **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md`, `sai-archive.md`, `sai-build.md`, `sai-deep-review.md`)
 - **THEN** each one has exactly the two envelope keys, forwards `$ARGUMENTS` through `arguments_value`, and contains no labelled change-name line or other trailing content
 
 #### Scenario: change-picker uses arguments value

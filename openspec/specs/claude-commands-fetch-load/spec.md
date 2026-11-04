@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Requires every Claude Code command wrapper to load the fetch skill before any `@sai/` fetch.
 
 ## Requirements
 ### Requirement: All claude command wrappers load the fetch skill before any @sai/ fetch

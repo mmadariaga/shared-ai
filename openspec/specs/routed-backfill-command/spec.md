@@ -85,12 +85,12 @@ The ordinary backfill worker SHALL compose only temporary drafts. The coordinato
 
 ### Requirement: End-to-end worker registration
 
-The `sai-backfill-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` gains the `backfill` phase entry bringing the matrix to twelve entries and extends the worker-identity regex to admit `sai-backfill-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the twelve-worker roster; and `sai/commands/backfill/launcher.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.`
+The `sai-backfill-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `backfill` phase entry and its worker-identity regex admits `sai-backfill-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/backfill/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.`
 
-#### Scenario: Install validates the twelve-worker roster
+#### Scenario: Install validates the worker roster
 
 - **WHEN** install-time roster and binding validation runs after the change
-- **THEN** the derived roster contains twelve workers including `sai-backfill-worker` and both harness projections for it are present exactly once
+- **THEN** the derived roster contains `sai-backfill-worker` among the matrix workers and both harness projections for it are present exactly once
 
 ### Requirement: Terminal completion literal and Ready-to-Archive handoff
 

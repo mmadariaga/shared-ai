@@ -2,18 +2,18 @@
 
 ## Purpose
 
-Provide six independently loadable SAI instruction output templates while preserving the existing generated-artifact contracts and phase behavior.
+Provide independently loadable SAI output templates — the four review and audit report templates and the two decision-record index templates — while preserving the existing generated-artifact contracts and phase behavior.
 
 ## Requirements
 
 ### Requirement: Dedicated template files
 
-The instruction library SHALL contain five independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
+The instruction library SHALL contain four independently loadable Markdown report-template files next to their owning command folders under `sai/commands/`, with these mappings: `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, and `sai/commands/accessibility/accessibility-report.template.md`. No PR body template exists: `/sai-pr` is retired and the `to-pr` skill formats its description from `skills/universal/to-pr/description-format.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
 
 #### Scenario: all command templates are independently available
 
 - **WHEN** an instruction phase loads its assigned template
-- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other four template contracts remain independently addressable
+- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other three report-template contracts remain independently addressable
 
 ### Requirement: Audit report contracts are preserved independently
 
@@ -55,21 +55,13 @@ Security, performance, and accessibility SHALL retain their mandatory Not Applic
 - **WHEN** the review template's Low finding is read
 - **THEN** it carries `Location`, `Problem` and `Suggested fix` like the other severities, with no `Suggestion` field
 
-### Requirement: Pull request body contract is preserved
-
-The pull request body template SHALL preserve its Summary, Goal, Design Decisions table, Audits checkboxes, and Out of Scope/Follow-ups sections, including optional-section omission, audit checkbox semantics, concise user-facing bullets, and faithful-to-diff constraints.
-
-#### Scenario: Pull request body is assembled from the extracted template
-- **WHEN** the PR phase drafts `openspec/changes/{change-name}/pr.md`
-- **THEN** it produces the same body sections and audit-status semantics as the former inline `<output_template>` block
-
 ### Requirement: Parent instructions load templates by exact path
 
-Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
+Each affected worker step file SHALL load its template using the exact neighboring directive: `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, or `@sai/commands/accessibility/accessibility-report.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
 
 #### Scenario: parent instruction resolves its assigned neighbor
 
-- **WHEN** a harness executes one of the five affected command instructions
+- **WHEN** a harness executes one of the four affected review or audit commands
 - **THEN** it resolves exactly one matching `sai/commands/{name}/*.template.md` file and retains the phase-specific surrounding workflow rules
 
 ### Requirement: Extraction fidelity and projection verification are explicit
@@ -147,10 +139,10 @@ The instruction library SHALL contain a DDR index template at `sai/commands/impl
 - **THEN** the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons with cold-build markers naming the DDR family
 - **THEN** the template SHALL NOT list any specific `### /sai-N-*` subsection, any specific cross-cutting category name, or any DDR entry
 
-#### Scenario: Implement.md references the DDR template by exact path
+#### Scenario: The creation policy references the DDR template by exact path
 
-- **WHEN** a maintainer reads the DDR index-maintenance branch of `sai/commands/implement/steps/decision-record-index.md`
-- **THEN** the branch instruction SHALL name `sai/commands/implement/ddr-index.template.md` by exact path as the DDR cold-build source rather than reproducing the index structure inline
+- **WHEN** a maintainer reads the folder-and-index step of `sai/policies/decision-record-creation.md`
+- **THEN** it SHALL name `sai/commands/implement/ddr-index.template.md` by exact path as the source of a missing DDR index rather than reproducing the index structure inline
 
 ### Requirement: The two index template instances stay in parity
 
