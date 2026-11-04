@@ -2,13 +2,13 @@
 name: fetch
 description: >
   Resolves Fetch @<path> references in instructions for Claude Code only — NOT compatible with opencode. Maps @<subpath> to
-  .claude/<subpath> (project) then ~/.claude/<subpath> (global), and @skills/<name>/SKILL.md
+  .claude/<subpath> (project) then ~/.claude/<subpath> (global) through one deterministic tool call, and @skills/<name>/SKILL.md
   to the Skill tool. This skill MUST be loaded before any @sai/ fetch directive.
 license: MIT
 compatibility: claude
 metadata:
   author: Mikel Madariaga
-  version: "1.0"
+  version: "2.0"
 ---
 
 ## Active harness and roots
@@ -16,15 +16,6 @@ metadata:
 Active harness identity: `claude`.
 
 Resolve project-local `.claude/` before user-global `~/.claude/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
-
-### Path composition
-
-Every agent that loads fetch inherits this rule, on both harnesses. It governs how a path is written, not where an agent may go.
-
-- Inside the project: write paths relative to the working directory. Never compose an absolute path from the project-root string.
-- Outside the project: use the path exactly as supplied. Never derive it by string manipulation. The one permitted change: a path a tool returned may have its backslashes turned into forward slashes, and nothing else.
-
-Observed: composed absolute paths have dropped a path segment (a worker in `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\sai\commands` for a directory inside the repository), while relative paths and literal absolute paths resolved correctly in every observed run.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
@@ -34,27 +25,45 @@ Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instructi
 |---------|-----------|
 | `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>`, e.g. `Skill("budget")` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | See Project-local `sai/` root probe below. |
+| `Fetch @<subpath>` (any other path) | Call the fetch tool below, once per directive. |
 
-### Project-local `sai/` root probe
+### The fetch tool
 
-This session probes the project-local `sai/` root exactly once, on the first `Fetch @<subpath>` directive whose path begins with `sai/`, not on the harness root itself — a project without a local SAI copy can still have `.claude/skills/` from `openspec init`.
+The tool sits in this skill's base directory, which the harness reports when it loads the skill. Run it in the form the installed shell permission rules cover, following `sai/policies/tool-resolution.md`:
 
-- **Not yet probed, or probed and found present**: Read `.claude/<subpath>` first; if it exists, use its content and, for the first `sai/`-prefixed directive, remember for the rest of this session that the project-local `sai/` root is present. If that Read finds no file, Read `~/.claude/<subpath>` directly; if that read also fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/). For the first `sai/`-prefixed directive, a failed local Read also means: remember for the rest of this session that the project-local `sai/` root is absent.
-- **Probed and found absent**: resolve every subsequent `Fetch @<subpath>` directive whose path begins with `sai/` by reading `~/.claude/<subpath>` directly, with no local Read attempt; other prefixes keep the local-first read above; if that read fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/)
-- A project-local `sai/` root created after this session's probe is not seen until the next session.
+- When the base directory is the project-local copy (`.claude/skills/fetch` under the working directory), run it relative to the working directory exactly as written: `node .claude/skills/fetch/fetch.js --harness claude <subpath>`.
+- Otherwise run the absolute base directory the harness reported, with backslashes turned into forward slashes and nothing else, double-quoted, and the subpath of the directive:
+
+```
+node "<base directory>/fetch.js" --harness claude <subpath>
+```
+
+The tool looks in `.claude/` of the working directory (a worktree included) and then in `~/.claude/`, checks each subpath on every call, and uses the first file that exists. It prints a header, one blank line, and the unchanged content:
+
+```
+path: <absolute resolved path>
+root: project|global
+<blank line>
+<content>
+```
+
+- Use the content as the fetched file. The header `path` is absolute, uses `/` separators, and comes from the resolution itself: use it as given when you need to name or Read the file, and never compose a path yourself.
+- When the output holds a header and a `too-large` line instead of content, the file exceeds the output cap: Read the exact `path` from the header.
+- When the tool exits with an error (the subpath is outside the scope, the file is in neither root, or the usage is wrong), stop the directive and report the tool's message.
+- When the tool cannot run (permission rejected, `node` absent, or an install without `fetch.js`), stop the directive and report the failure with the action that fixes it: reinstall shared-ai, or review the shell permission for `node ~/.claude/skills/fetch/fetch.js`. Do not fall back to resolving the path yourself.
+- The tool takes one subpath per call and never follows `Fetch @` directives inside the content it returns.
 
 ### Path scope
 
-Every path a fetch directive resolves names exactly one file beginning with `sai/`, `commands/`, or `skills/` under the project-local or user-global root; the harness root itself is never named. A directive whose resolved path would land outside those three prefixes — a fourth top-level segment such as `@vendor/notes.md`, or a root-naming directive such as `@sai/` — is rejected before any filesystem access. Report the directive and the three permitted prefixes and stop.
+The tool enforces this scope: every path a fetch directive resolves names exactly one file beginning with `sai/`, `commands/`, or `skills/` under the project-local or user-global root; the harness root itself is never named. A subpath outside those three prefixes — a fourth top-level segment such as `@vendor/notes.md`, a root-naming directive such as `@sai/`, an absolute path, or a path with `..` — is rejected before any filesystem access, and the `skills/<name>/SKILL.md` form is rejected with a pointer to the Skill tool. Report the directive and the three permitted prefixes and stop.
 
 ### Recursion
 
-Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively — the fetch rules remain active for all subsequent instructions in this session.
+Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively to each one whose condition holds, one call at a time — the fetch rules remain active for all subsequent instructions in this session.
 
 ### File disambiguation
 
-`@sai/commands/X.md` and `@commands/X.md` are different files. Always read the full resolved path, and treat two references as the same file only when their full paths match:
+`@sai/commands/X.md` and `@commands/X.md` are different files. Treat two references as the same file only when their full resolved paths match:
 
 | Reference | Resolves to |
 |-----------|-------------|

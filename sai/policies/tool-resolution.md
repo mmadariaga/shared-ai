@@ -8,7 +8,11 @@ substitution, to avoid drift between copies.
 Use the copy that lives beside the referencing policy file: a copy under a
 different root is a different version. Do **not** build its path by joining a
 root string to a suffix — composed absolute paths are known to drop a segment
-(see the "Path composition" rule in the fetch skill). Take the **first
+(a worker in a worktree produced a path without its repository folder), while
+relative paths and paths a tool returned resolved correctly. Inside the project
+write paths relative to the working directory; outside it use a path exactly as a
+tool returned it, with backslashes turned into forward slashes and nothing else.
+Take the **first
 candidate below that exists**, checking each with a tool that returns the path
 it found (`Glob` on Claude Code and opencode, or a shell existence check).
 
