@@ -1,6 +1,6 @@
 # Issue intake
 
-Fetch @sai/policies/issue-origin-preservation.md. On `work`, retain the
+Fetch `@sai/policies/issue-origin-preservation.md`. On `work`, retain the
 imported or conversation-verified selected issue URL for block creation and
 conversion. Check that the resulting block retains it before storage; use the
 validated amendment protocol when a block was already prepared. Context-only

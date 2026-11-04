@@ -232,7 +232,7 @@ test('the guard policy is single-sourced, resolves its tool through tool-resolut
   const policy = fs.readFileSync(POLICY, 'utf8');
   assert.match(policy, /node <tool-path> snapshot --json --cwd <project-root>/);
   assert.match(policy, /node <tool-path> verify --base <guard_base> \[--allow-commit\] --json --cwd <project-root>/);
-  assert.match(policy, /Fetch\s+@sai\/policies\/tool-resolution\.md/,
+  assert.match(policy, /Fetch\s+`?@sai\/policies\/tool-resolution\.md/,
     'the guard resolves its tool through the single tool-resolution source');
   for (const verdict of ['clean', 'violation', 'allowed', 'n/a']) {
     assert.ok(policy.includes(`**\`${verdict}\`**`), `the policy must handle the ${verdict} verdict`);

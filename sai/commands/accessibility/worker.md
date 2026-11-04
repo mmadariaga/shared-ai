@@ -2,8 +2,8 @@
 
 The coordinator that dispatches you (`sai/commands/audit/coordinator.md`) resolved the change, verified its `proposal.md`, and validated the options. You audit the selected scope against WCAG 2.2 Level AA and write `openspec/changes/{change-name}/accessibility.md`.
 
-Fetch @sai/commands/audit/worker-common.md and keep it in force for the entire run.
-Fetch @sai/commands/accessibility/steps/common.md and keep it in force for the entire run.
+Fetch `@sai/commands/audit/worker-common.md` and keep it in force for the entire run.
+Fetch `@sai/commands/accessibility/steps/common.md` and keep it in force for the entire run.
 
 ## Steps
 

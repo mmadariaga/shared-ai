@@ -130,7 +130,7 @@ test('STEP1_RETIRE_INLINE: active-reference audit rejects retired loaders but ex
 test('STEP1_RETIRE_INLINE: active-reference audit also rejects the deleted inline adapter', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step1-inline-audit-'));
   try {
-    writeFixture(root, 'README.md', 'Fetch @sai/orchestration/inline-invocation.md\n');
+    writeFixture(root, 'README.md', 'Fetch `@sai/orchestration/inline-invocation.md`\n');
     assert.ok(auditActiveReferences(root).length > 0,
       'active-reference audit should report the deleted inline adapter reference');
   } finally {

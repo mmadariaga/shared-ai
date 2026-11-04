@@ -37,11 +37,11 @@ test('existing dependency work remains installed without expanding review/audit 
     assert.match(fetch, /checks each subpath on every call/);
   }
   for (const phase of ['review', 'security', 'performance', 'accessibility']) {
-    assert.match(read(`sai/commands/${phase}/steps/common.md`), /Fetch @skills\/budget-ro\/SKILL\.md/);
+    assert.match(read(`sai/commands/${phase}/steps/common.md`), /Fetch `@skills\/budget-ro\/SKILL\.md`/);
     const worker = read(`sai/commands/${phase}/worker.md`);
-    assert.doesNotMatch(worker, /Fetch @sai\/policies\/prereqs-check\.md|prereqs\.js/);
+    assert.doesNotMatch(worker, /Fetch `@sai\/policies\/prereqs-check\.md`|prereqs\.js/);
   }
-  assert.doesNotMatch(read('sai/commands/deep-review/coordinator.md'), /Fetch @sai\/policies\/prereqs/);
+  assert.doesNotMatch(read('sai/commands/deep-review/coordinator.md'), /Fetch `@sai\/policies\/prereqs/);
 });
 
 test('combined startup retains failure, legitimate early-outcome and reconstruction contracts', () => {

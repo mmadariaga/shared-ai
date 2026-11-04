@@ -11,7 +11,7 @@ numbering of those steps is stable.
 
 ---
 
-Fetch @sai/policies/commit-rules.md
+Fetch `@sai/policies/commit-rules.md`
 
 ## Inputs
 

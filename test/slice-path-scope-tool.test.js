@@ -431,7 +431,7 @@ test('the policy is the single source of the invocation and the coverage rule', 
   const policy = fs.readFileSync(POLICY, 'utf8');
   assert.match(policy, /node <tool-path> snapshot --json --cwd <project-root>/);
   assert.match(policy, /node <tool-path> verify --snapshot <slice_snapshot> --json --cwd <project-root>/);
-  assert.match(policy, /Fetch @sai\/policies\/tool-resolution\.md/);
+  assert.match(policy, /Fetch `@sai\/policies\/tool-resolution\.md`/);
   assert.match(policy, /## Commit coverage/);
   for (const field of ['`foreign`', '`uncovered`', '`clean`', '`mismatch`', '`n/a`']) {
     assert.ok(policy.includes(field), `the policy must name ${field}`);

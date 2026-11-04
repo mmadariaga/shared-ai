@@ -8,7 +8,7 @@ A message that is `warm-up` followed by a warming line is the warm-up order of t
 
 ## Tool-preference ladder
 
-After goal disclosure, Fetch @sai/policies/tool-access.md and check your declared
+After goal disclosure, Fetch `@sai/policies/tool-access.md` and check your declared
 profile. Consider only profile-granted tools at every ladder level, including
 web research and Code Mode's auxiliary grant. An excluded level is not a missing
 runtime tool. Do not use an ungranted shell command to detect availability.

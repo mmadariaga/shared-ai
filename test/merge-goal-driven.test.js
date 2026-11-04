@@ -22,23 +22,23 @@ function section(text, startHeading, endHeading) {
   return end === -1 ? text.slice(start) : text.slice(start, end);
 }
 
-const fetches = text => text.split('\n').filter(line => line.startsWith('Fetch @')).map(line => line.replace(/ and .*$/, '').trim());
+const fetches = text => text.split('\n').filter(line => /^Fetch `?@/.test(line)).map(line => line.replace(/ and .*$/, '').trim());
 const coordinator = () => read('sai/commands/merge/coordinator.md');
 const STEPS = ['strategy', 'apply', 'test-correction', 'renumbering-plan'];
 
 test('the coordinator is one goal-driven card that loads only the six policies and no budget binding', () => {
   const card = coordinator();
   assert.deepEqual(fetches(card).slice(0, 6), [
-    'Fetch @sai/policies/public-chat.md',
-    'Fetch @sai/policies/remember.md',
-    'Fetch @skills/safe-operations/SKILL.md',
-    'Fetch @sai/policies/tool-resolution.md',
-    'Fetch @sai/policies/obstacle-escalation.md',
-    'Fetch @sai/policies/incremental-review.md',
+    'Fetch `@sai/policies/public-chat.md`',
+    'Fetch `@sai/policies/remember.md`',
+    'Fetch `@skills/safe-operations/SKILL.md`',
+    'Fetch `@sai/policies/tool-resolution.md`',
+    'Fetch `@sai/policies/obstacle-escalation.md`',
+    'Fetch `@sai/policies/incremental-review.md`',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery',
     'no-commit-guard', 'command-execution', 'commit-rules', 'budget-explorer', 'budget-executor', 'budget-subagent']) {
-    assert.doesNotMatch(card, new RegExp(`Fetch @[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);
+    assert.doesNotMatch(card, new RegExp(`Fetch \`?@[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);
   }
   assert.match(card, /the only subagent of this run is the merge worker/);
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
@@ -51,14 +51,14 @@ test('the wrappers load the harness fetch skill and the coordinator directly, wi
   const claude = read('commands/claude/sai-merge.md');
   const opencode = read('commands/opencode/sai-merge.md');
   for (const wrapper of [claude, opencode]) {
-    assert.match(wrapper, /Fetch @sai\/commands\/merge\/coordinator\.md and follow it exactly, forwarding the InvocationEnvelope block below\./);
+    assert.match(wrapper, /Fetch `@sai\/commands\/merge\/coordinator\.md` and follow it exactly, forwarding the InvocationEnvelope block below\./);
     assert.doesNotMatch(wrapper, /adapters\/|command-bootstrap/);
     assert.match(wrapper, /command_name: merge\n {2}arguments_value: \$ARGUMENTS/);
     assert.match(wrapper, /\[<branch>\] \[--rebase\|--squash\]/);
     assert.doesNotMatch(wrapper, /fast-track applies/i);
   }
   assert.match(claude, /argument-hint: "\[<branch>\] \[optional: --rebase \| --squash\]"/);
-  assert.match(claude, /^Fetch @skills\/fetch\/SKILL\.md$/m);
+  assert.match(claude, /^Fetch `@skills\/fetch\/SKILL\.md`$/m);
   assert.match(opencode, /^Fetch @~\/\.config\/opencode\/skills\/fetch\/SKILL\.md before you continue\.$/m);
 });
 
@@ -297,7 +297,7 @@ test('E16: Claude Code and opencode render the same standalone merge binding fro
   assert.deepEqual(rendered.map(item => [item.harness, item.templateName]), [['claude', 'claudeStandaloneBinding'], ['opencode', 'opencodeStandaloneBinding']]);
   for (const item of rendered) {
     assert.equal(item.destinationName, 'merge-worker.md');
-    assert.match(item.text, /Fetch @sai\/commands\/merge\/worker\.md and follow it exactly\./);
+    assert.match(item.text, /Fetch `@sai\/commands\/merge\/worker\.md` and follow it exactly\./);
     assert.match(item.text, /Return event: ready now; await task disclosure in the same-worker continuation\./);
   }
   for (const harness of ['claude', 'opencode']) {

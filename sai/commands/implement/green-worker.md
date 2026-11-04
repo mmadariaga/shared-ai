@@ -1,6 +1,6 @@
 # GREEN worker (`/sai-3-implement`)
 
-Fetch @sai/commands/implement/worker-common.md and follow it exactly.
+Fetch `@sai/commands/implement/worker-common.md` and follow it exactly.
 
 You own the production code of the change. You never write tests.
 

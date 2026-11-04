@@ -8,12 +8,12 @@
 
 **The POC profile is never a route option here.** This selector recognizes exactly the three route choices below. The Direct Build `--no-specs` profile (the POC lane's pinned execution profile, `pipeline-direct-build.md`) is reachable only from inside the POC lane, which runs before `Review edge cases` and has already closed by the time this choice is presented; it is never offered as a fourth route or as a variant of any route here.
 
-Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
-Fetch @sai/commands/explore/steps/slice.md for inventory wiring only.
-Fetch @sai/commands/explore/steps/pipeline-selector.md for supervision state only.
-Fetch @sai/commands/explore/steps/idea-list.md for route-owned entries only.
-Fetch @sai/policies/question-context.md and follow it for the route picker.
-Fetch @sai/policies/question-rounds.md and follow it for every round below.
+Fetch `@sai/policies/stage-machine.md` and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
+Fetch `@sai/commands/explore/steps/slice.md` for inventory wiring only.
+Fetch `@sai/commands/explore/steps/pipeline-selector.md` for supervision state only.
+Fetch `@sai/commands/explore/steps/idea-list.md` for route-owned entries only.
+Fetch `@sai/policies/question-context.md` and follow it for the route picker.
+Fetch `@sai/policies/question-rounds.md` and follow it for every round below.
 
 **Waiting state (no machine version bump).** The machine stays `explore-slice@1`.
 - **Before inventory** — the initial `idle` state has no complete inventory. Plan and Direct Build intents are rejected; `next.follow` is `none`.
@@ -61,7 +61,7 @@ pending execution.
 
 The normal post-crystallization flow is three conditional question rounds, each presented under `@sai/policies/question-rounds.md`: **round 1** asks the backlog, branch and assignment questions; **round 2** asks publication approval and the branch base; **round 3** asks the route and, conditionally, the Direct Build continuation and the change overview question (`## Native route picker`, `## Change overview question`). A round with no applicable question is skipped. The three rounds describe the normal flow, not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures add interactions outside them. Explore presents the questions and coordinates the rounds; `to-backlog` and `new-change-branch` keep their validation and execution and never depend on Explore.
 
-After `to-backlog` finishes with a completed set publication on any supported provider, Fetch @sai/policies/backlog-origin-transport.md and complete it before resolving the branch name. Transport failure leaves this action pending and blocks route disclosure; a returned correspondence kept only in conversation is not completion.
+After `to-backlog` finishes with a completed set publication on any supported provider, Fetch `@sai/policies/backlog-origin-transport.md` and complete it before resolving the branch name. Transport failure leaves this action pending and blocks route disclosure; a returned correspondence kept only in conversation is not completion.
 
 Pass the complete recorded block set, whether the feature was explicitly sliced, and existing whole-objective parent content to the accepted `to-backlog` owner. When the conversation started from an existing backlog issue and the feature is sliced, also name that originating issue: `to-backlog` publishes the slices as its children and rewrites its description with the whole-objective content, instead of creating a replacement parent. Retain its structured correspondence, not titles, for later selected-slice provenance. Pass only one issue identity to `new-change-branch`: the current slice's returned identity for a single change or `per-slice`, or the originating principal issue's identity for `shared`; reuse an already-prepared initial branch. Dependency order comes from the validator-owned stored inventory, with blockers before dependents and original order among independent slices. Optional actions do not authorize assignment; only the assignment question's own answer does.
 
@@ -170,7 +170,7 @@ Gate 9 is the question whether to create `change-overview.md` and in which langu
 
 1. An explicit `--overview-lang <language>` or the user's direct statement of the language supplies its value.
 2. A value already resolved for this crystallized idea or slice set is reused.
-3. Fetch @sai/policies/tool-resolution.md and run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>`, resolving `<tool-path>` for `project-settings.js`. A returned `value` (`English`, `None`, or a language name) resolves `overview_language`. A non-zero exit, unparseable output, or `value: null` is an absent setting: print the tool's `warnings`, or one line naming the failure, and continue.
+3. Fetch `@sai/policies/tool-resolution.md` and run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>`, resolving `<tool-path>` for `project-settings.js`. A returned `value` (`English`, `None`, or a language name) resolves `overview_language`. A non-zero exit, unparseable output, or `value: null` is an absent setting: print the tool's `warnings`, or one line naming the failure, and continue.
 4. With no option, statement, set value, or setting answering, the overview option is absent and round 3 carries the overview question.
 
 Values and validation: `docs/project-settings.md`. When a setting resolved the value, print `Project setting explore.overviewLanguage: <value>` once before the first worker dispatch of a Plan route, never for Direct Build or Manual.
@@ -206,7 +206,7 @@ After publication-origin transport, read and display the selected slice's amende
   - **Single-change path**: emit the existing `**Open a new chat**` instruction and run `/sai-1-spec` with the content above.
   - **Sliced path**: Tell the user to take the **first** block to a new chat with `/sai-1-spec`, and that each later slice becomes its own change once its predecessor is specced (the "new change per follow-up" pattern). When the user closes a slice with `next-slice`, tell them that `next-slice` confirms the slice is implemented and committed.
 - **recommendation**: one keep-window-open prose outside the handoff block, rendered in the user's language per the crystallization language gate (crystallization-language-gates.md step-local item 8) / `sai/policies/remember.md` (only the recommendation is localized — `Ready to Propose` scaffolding and next-step command lines stay English). It tells the user to keep this explore window open and return to it to review and refine the artifacts that `/sai-1-spec` and `/sai-2-design` create next, and closes the post-**Manual** turn. It names the literal token `review-loop` exactly once for the user-triggered review loop; the token is never presented through a picker and is never auto-started or auto-offered. The recommendation names no pipeline token.
-- **warming**: on the sliced path only, once the handoff and the recommendation are printed, Fetch @sai/commands/explore/steps/handoff-warming.md as the last step of the turn and follow it; it keeps this chat's cache warm while the user is away when slices remain. The single-change path loads nothing.
+- **warming**: on the sliced path only, once the handoff and the recommendation are printed, Fetch `@sai/commands/explore/steps/handoff-warming.md` as the last step of the turn and follow it; it keeps this chat's cache warm while the user is away when slices remain. The single-change path loads nothing.
 
 The handoff's surrounding prose follows the selected crystallization language per the crystallization language gate (crystallization-language-gates.md step-local item 8); `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English.
 

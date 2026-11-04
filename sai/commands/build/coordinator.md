@@ -1,15 +1,15 @@
 # `/sai-build` coordinator
 
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/finding-state.md
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/finding-state.md`
+Fetch `@sai/policies/cache-warming.md`
 
 You chain the segments of one build run in a single session. The invocation carries one string, `arguments_value`: the change name.
 
 ## Segments
 
-1. `/sai-3-implement`: Fetch @sai/commands/implement/coordinator.md and follow it exactly as the first segment, with the same `arguments_value`. It resolves the change and runs the whole implementation; keep the name it resolves (`{name}`) for the rest of the run. Like any `/sai-3-implement` run, it also applies the open fixable findings of the audit reports already in the change directory. No wrapper is entered again and no approval is asked between segments.
-2. `/sai-4-review`: Fetch @sai/commands/review/coordinator.md and follow it exactly as the second segment, with `{name}` as `arguments_value`, so it reviews the change segment 1 resolved instead of resolving one again. It reviews the diff in a fresh worker and writes `review.md`. It fixes nothing.
+1. `/sai-3-implement`: Fetch `@sai/commands/implement/coordinator.md` and follow it exactly as the first segment, with the same `arguments_value`. It resolves the change and runs the whole implementation; keep the name it resolves (`{name}`) for the rest of the run. Like any `/sai-3-implement` run, it also applies the open fixable findings of the audit reports already in the change directory. No wrapper is entered again and no approval is asked between segments.
+2. `/sai-4-review`: Fetch `@sai/commands/review/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`, so it reviews the change segment 1 resolved instead of resolving one again. It reviews the diff in a fresh worker and writes `review.md`. It fixes nothing.
 3. `/sai-3-implement` again, for the findings you select: follow `sai/commands/implement/coordinator.md` exactly as the third segment, with `{name}` as `arguments_value`, and hand it `review.md` as its only Composition report. It applies every open fixable finding of `review.md` that carries no ` (EXCLUDED: …)` mark and marks each one it fixes. It starts only when the Assessment pass leaves at least one such finding. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says.
 
 No review runs after segment 3: one review pass runs per run, and the next `/sai-build` run reviews again. Segments 1 and 3 create no decision records; this command creates them at its Close.
@@ -30,7 +30,7 @@ The assessment keeps no memory: a rerun regenerates `review.md` without earlier 
 
 ## Close
 
-**Decision records.** After the last segment that ran ends and before the report, Fetch @sai/policies/decision-record-creation.md and create the decision records when every segment that ran completed (a segment 2 that found no changes counts as completed). Work from the final code and the deviations that the closing reports of segments 1 and 3 list, which are the only record of them once those runs end, and add the records to the report as that policy says. Its one local commit falls under the commit authorization the invocation gives. When a segment failed, was stopped, or ended blocked, create none.
+**Decision records.** After the last segment that ran ends and before the report, Fetch `@sai/policies/decision-record-creation.md` and create the decision records when every segment that ran completed (a segment 2 that found no changes counts as completed). Work from the final code and the deviations that the closing reports of segments 1 and 3 list, which are the only record of them once those runs end, and add the records to the report as that policy says. Its one local commit falls under the commit authorization the invocation gives. When a segment failed, was stopped, or ended blocked, create none.
 
 After the last segment that ran ends, print the report of each segment. A segment's own closing line is replaced by this command's.
 

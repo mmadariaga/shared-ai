@@ -229,7 +229,7 @@ test('the retirement declaration single source states every rule', () => {
 
 test('archive cards point to the retirement declaration instead of restating it', () => {
   for (const card of ['sai/commands/archive/worker.md', 'sai/commands/archive/coordinator.md']) {
-    assert.match(read(card), /Fetch @sai\/commands\/archive\/retirement-declaration\.md/, `${card} must fetch the single source`);
+    assert.match(read(card), /Fetch `@sai\/commands\/archive\/retirement-declaration\.md`/, `${card} must fetch the single source`);
   }
   assert.match(read('sai/commands/archive/instructions.md'), /@sai\/commands\/archive\/retirement-declaration\.md/);
   assert.match(read('sai/commands/archive/archive-commit-gate.instructions.md'), /retirement-declaration\.md` § Disclosure/);

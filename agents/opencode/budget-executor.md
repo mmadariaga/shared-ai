@@ -9,7 +9,7 @@ permissions:
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/policies/tool-access.md; check access after task disclosure.
-Fetch @sai/policies/executor-agent.md
+Fetch `@sai/policies/tool-access.md`; check access after task disclosure.
+Fetch `@sai/policies/executor-agent.md`
 
 <!-- User customizations below this line -->

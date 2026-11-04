@@ -2,7 +2,7 @@
 
 Active step: close-performance-outcome. The step is done when `performance.md` is saved, verified in its form, and `completed` is returned with the summary defined below.
 
-Fetch @sai/commands/performance/performance-report.template.md
+Fetch `@sai/commands/performance/performance-report.template.md`
 
 ## 1. Draft
 

@@ -178,7 +178,7 @@ test('every audit worker adopts the shared pointer rule and reports the scope st
   for (const name of ['security', 'performance', 'accessibility']) {
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
-    assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/, `${name} worker should load the shared rules`);
+    assert.match(worker, /Fetch `@sai\/commands\/audit\/worker-common\.md`/, `${name} worker should load the shared rules`);
     assert.doesNotMatch(worker, /Startup Handshake|worker-core\.md|§ Step-machine task disclosure/, `${name} worker keeps no shared-orchestration rule`);
     assert.doesNotMatch(common, /progress event|worker contract's Active Step Execution/, `${name} common.md keeps no progress-event rule`);
     const machine = require(`../sai-state/machines/${name}-steps.js`);

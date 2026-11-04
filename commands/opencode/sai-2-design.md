@@ -6,7 +6,7 @@ subtask: false
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
+Fetch `@sai/commands/design/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: design

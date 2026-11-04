@@ -147,7 +147,7 @@ test('grouped design and implementation phase assets preserve their former sourc
     if (phase.invocation) {
       const invocation = fs.readFileSync(path.join(phase.directory, 'invocation.md'), 'utf8');
       assert.equal(invocation, fs.readFileSync(phase.invocation, 'utf8'));
-      assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
+      assert.match(invocation, new RegExp(`Fetch \`@${phase.instruction.replaceAll('/', '\\/')}`));
     }
   }
 

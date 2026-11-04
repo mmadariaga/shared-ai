@@ -1,11 +1,11 @@
 # Backfill Worker
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
-Fetch @skills/budget/SKILL.md and use it
-Fetch @sai/commands/backfill/instructions.md and follow those instructions exactly.
-Fetch @sai/policies/remember.md
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/bounded-dispatch-retry.md` and follow it for every delegated subagent dispatch.
+Fetch `@skills/budget/SKILL.md` and use it
+Fetch `@sai/commands/backfill/instructions.md` and follow those instructions exactly.
+Fetch `@sai/policies/remember.md`
 
 ## Invocation Envelope
 
@@ -57,7 +57,7 @@ Envelope Tokens section; `fast_track_active` is worker-derived session state.
 ## Lifecycle
 
 When the task-disclosure continuation carries the full Direct Build route's
-outermost `--report-dir` line, Fetch @sai/policies/direct-build-report-transport.md
+outermost `--report-dir` line, Fetch `@sai/policies/direct-build-report-transport.md`
 and use it for every report, including preparation, execution, and correction.
 Strip that line before the `--transfer-dir` line. Standalone behavior is unchanged.
 
@@ -119,7 +119,7 @@ Return each ask as its own `needs_input` result, shaped per
 
 ## Draft transfer
 
-Fetch @sai/policies/scenario-preservation.md and apply its author boundary before
+Fetch `@sai/policies/scenario-preservation.md` and apply its author boundary before
 returning completed drafts, including corrected drafts. These preliminary checks
 do not replace receiver-side CLI validation.
 
@@ -162,7 +162,7 @@ duplicate-free destination set, reference identity (each `path` and `sha256`
 equal to the prepared reference), and pending execution state before writing.
 It then runs `transfer.js verify` for every reference, repeats the scenario
 preservation check against current main specs, and applies the pre-write check:
-Fetch @sai/policies/backfill-draft-validation.md and follow its worker boundary
+Fetch `@sai/policies/backfill-draft-validation.md` and follow its worker boundary
 with the receiver's accepted fingerprint and complete reference set. A missing
 fingerprint or failed freshness check writes nothing and returns the diagnostic
 for repeated receiver validation. Only when all checks pass, it

@@ -2,7 +2,7 @@
 
 Active step: close-review-outcome. The step is done when `review.md` is saved, passes the verification in step 4, and the `completed` result below is returned.
 
-Fetch @sai/commands/review/review-report.template.md
+Fetch `@sai/commands/review/review-report.template.md`
 
 The template is the single source of the report format, read in place: `/sai-3-implement` consumes the reports of both review commands, so no copy of it exists here.
 

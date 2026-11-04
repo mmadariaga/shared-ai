@@ -1,11 +1,11 @@
 # `/sai-deep-review` coordinator
 
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/finding-state.md
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/finding-state.md`
+Fetch `@sai/policies/cache-warming.md`
 
 You chain the segments of one deep-review run in a single session. The invocation carries one string, `arguments_value`: an optional change name and the options of step 1 of Start.
 
@@ -17,7 +17,7 @@ Commits are local only and nothing is pushed. Only the `/sai-3-implement` fix se
 
 ## Segments
 
-1. `/sai-4-review`: Fetch @sai/commands/review/coordinator.md and follow it exactly as the first segment. It resolves the change, reviews the diff in a fresh worker, and writes and commits `review.md`. It fixes nothing. Its closing line `Review done.` is replaced by this command's.
+1. `/sai-4-review`: Fetch `@sai/commands/review/coordinator.md` and follow it exactly as the first segment. It resolves the change, reviews the diff in a fresh worker, and writes and commits `review.md`. It fixes nothing. Its closing line `Review done.` is replaced by this command's.
 2. Triage: read the audit activation from `review.md` (see Triage).
 3. Audits: the audits the triage activated run in parallel, each as one cycle of `sai/commands/audit/coordinator.md` (see Audits).
 4. Assessment pass: you judge the findings of `review.md` and of this run's audit reports (see Assessment pass).
@@ -29,7 +29,7 @@ Each segment disposes its own workers when it ends, as `cache-warming.md` says, 
 
 ## Start
 
-1. Drop every `--fast-track` token from `arguments_value`, silently: the command already runs with no human in the loop. Fetch @sai/commands/review/options.md, @sai/commands/security/options.md, @sai/commands/performance/options.md, and @sai/commands/accessibility/options.md. The options this command accepts are exactly the union of the options those four files declare; this command keeps no list of its own. A token that starts with `--` is an option, and an option that takes a value consumes the next token as its value. The one token left over, when there is one, is the change name. An unknown option, a second leftover token, an option without its value, or a value outside the set a declaration lists prints this and ends the run, writing nothing: `Cannot start /sai-deep-review: unknown or malformed argument '{token}'. The parent branch is passed as --parent-branch <branch>.`
+1. Drop every `--fast-track` token from `arguments_value`, silently: the command already runs with no human in the loop. Fetch `@sai/commands/review/options.md`, `@sai/commands/security/options.md`, `@sai/commands/performance/options.md`, and `@sai/commands/accessibility/options.md`. The options this command accepts are exactly the union of the options those four files declare; this command keeps no list of its own. A token that starts with `--` is an option, and an option that takes a value consumes the next token as its value. The one token left over, when there is one, is the change name. An unknown option, a second leftover token, an option without its value, or a value outside the set a declaration lists prints this and ends the run, writing nothing: `Cannot start /sai-deep-review: unknown or malformed argument '{token}'. The parent branch is passed as --parent-branch <branch>.`
 2. Run segment 1 with `arguments_value` set to the change name followed by `{options-for-review}`. `{options-for-X}` is the possibly empty list of the options that `sai/commands/X/options.md` declares, in the order and with the values the user wrote them. The review never receives `--full` or `--path`: it keeps reviewing the diff. An empty change name takes the only change with a `proposal.md`, as that segment says; keep the name it resolves for the rest of the run.
 
 Report the options aimed only at an audit and given to a run in which that audit did not run, as the Close says.
@@ -46,7 +46,7 @@ Activating an audit always regenerates its report, replacing any existing one. A
 
 ## Audits
 
-Fetch @sai/commands/audit/coordinator.md. For each activated audit, run the cycle that file defines (its step 5 of Start, and its The worker, Close, and Obstacles sections), with `command_name` set to the audit and these values in place of its Start steps 1 to 4, which this command has already done: the change is `{name}`, the options are `{options-for-audit}`, and the report is `openspec/changes/{name}/{audit}.md`.
+Fetch `@sai/commands/audit/coordinator.md`. For each activated audit, run the cycle that file defines (its step 5 of Start, and its The worker, Close, and Obstacles sections), with `command_name` set to the audit and these values in place of its Start steps 1 to 4, which this command has already done: the change is `{name}`, the options are `{options-for-audit}`, and the report is `openspec/changes/{name}/{audit}.md`.
 
 **Accessibility URL.** When accessibility is activated, the run has `--runtime`, and the run has no `--url`, ask the user for the dev-server URL now, before any audit worker exists, in one question that also lets them decline, as that coordinator's step 4 describes. An answer that is a URL joins the accessibility options. A decline hands the accessibility worker `--runtime` without a URL, and the runtime part of its report is marked unavailable. After this point, only a worker question that nothing answers and whose answer would change a report can reach the user, and it pauses only its own audit (see below).
 

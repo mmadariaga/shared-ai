@@ -1,6 +1,6 @@
 # Merge mechanical evidence
 
-Fetch @sai/policies/tool-resolution.md and resolve `merge.js` once for this invocation. Use that same installed copy for every call. Both Claude Code and opencode install it through the existing `sai-tools` projection.
+Fetch `@sai/policies/tool-resolution.md` and resolve `merge.js` once for this invocation. Use that same installed copy for every call. Both Claude Code and opencode install it through the existing `sai-tools` projection.
 
 ## Evidence, not authority
 

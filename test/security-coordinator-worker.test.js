@@ -23,7 +23,7 @@ function matrixBinding(harness, phase) {
 
 test('Step 1 security worker card loads the shared audit rules and no shared-orchestration protocol', () => {
   const worker = artifact('sai/commands/security/worker.md');
-  assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
+  assert.match(worker, /Fetch `@sai\/commands\/audit\/worker-common\.md`/);
   assert.doesNotMatch(worker, /worker-core\.md|bounded-dispatch-retry|verified-precondition-handback/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -86,14 +86,14 @@ test('step-gated: the security worker loads steps/common.md at dispatch and exec
   const worker = artifact('sai/commands/security/worker.md');
   const shared = artifact('sai/commands/audit/worker-common.md');
 
-  assert.match(worker, /Fetch @sai\/commands\/security\/steps\/common\.md and keep it in force for the entire run/,
+  assert.match(worker, /Fetch `@sai\/commands\/security\/steps\/common\.md` and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
   assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan in one Steps section');
   assert.match(shared, /Fetch the file the pointer names, and skip the fetch when you already loaded it in this session/,
     'the worker executes only the coordinator-named step');
   assert.match(shared, /Run the audit's scope step inline: it has no file/,
     'the fileless first step should run before the first pointer');
-  assert.doesNotMatch(worker, /Fetch @sai\/commands\/security\/invocation\.md/,
+  assert.doesNotMatch(worker, /Fetch `@sai\/commands\/security\/invocation\.md`/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
   assert.match(shared, /A step you decided to skip because it does not apply is complete: report it in the same batch/,
     'a legitimately skipped stage still advances the pointer past it');

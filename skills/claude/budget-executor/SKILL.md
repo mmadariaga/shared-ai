@@ -30,7 +30,7 @@ A report without a final result for a requested command (`pending`, `running`, o
 
 ## Warming and dispose
 
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/cache-warming.md`
 
 The executor never arms: its report declares `warming: false`, so it is never sent a warming line or a `warm-up`, and there is nothing to dispose.
 
@@ -38,4 +38,4 @@ The executor never arms: its report declares `warming: false`, so it is never se
 
 The agent fetches `@sai/policies/executor-agent.md`, which owns exact-command execution, narrow low-output command choice, parallel independent commands, no self-correction, structured failure reporting, and the raw-output boundary. There is no tool-call cap.
 
-Fetch @sai/policies/executor-agent.md
+Fetch `@sai/policies/executor-agent.md`
