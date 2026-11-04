@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the one-time research-tooling check at the start of an explore session and the notice that matches the detected state.
+Records that `/sai-explore` runs no research-tooling probe of its own: availability detection belongs to the explorer, and the session renders only the eligible diagnostics the explorer returns.
 
 ## Requirements
 

@@ -24,7 +24,7 @@ After dropping `--fast-track` and splitting off the options, the run SHALL resol
 
 ### Requirement: Prerequisites run through the review segment, not the coordinator
 
-The `/sai-deep-review` coordinator SHALL run no OpenSpec prerequisite check of its own and SHALL NOT fetch `@sai/policies/prereqs.md` (retired). The check runs once per run, through the review segment it follows first (`sai/commands/review/coordinator.md`, which fetches `@sai/policies/prereqs-check.md`), and the implement fix segment runs its own. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `finding-state`, and `cache-warming`, and no audit cycle SHALL run a prerequisite check.
+The `/sai-deep-review` coordinator SHALL run no OpenSpec prerequisite check of its own and SHALL NOT fetch `@sai/policies/prereqs.md` (retired). The check runs at the start of the review segment it follows first (`sai/commands/review/coordinator.md`, which fetches `@sai/policies/prereqs-check.md`), and again at the start of the implement fix segment when that segment runs. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `finding-state`, and `cache-warming`, and no audit cycle SHALL run a prerequisite check.
 
 #### Scenario: Segments inherit satisfied prerequisites
 - **WHEN** the review segment completes and an audit cycle activates
