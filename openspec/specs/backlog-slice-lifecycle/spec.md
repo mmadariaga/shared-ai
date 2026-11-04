@@ -69,7 +69,7 @@ Publication SHALL retain a private receipt and report created issues and pending
 
 ### Requirement: Published correspondence is durable and explicitly validated
 
-Complete publication SHALL return structured correspondence containing version, supported platform, parent URL and one unique child URL per change name with immediate dependencies. Each published issue SHALL carry the correspondence in a `sai-backlog-slices@1` marker identifying its role. Azure HTML SHALL carry a visible escaped pre block. Validation SHALL reject malformed, duplicate, self-referential, incomplete or cyclic correspondence. Canonical identities SHALL support GitHub, GitLab and Azure DevOps. Read-only lookup SHALL use explicit change-name correspondence rather than titles, verify matching parent correspondence and require a user decision for zero or multiple candidates.
+Complete publication SHALL return structured correspondence containing version, supported platform, parent URL and one unique child URL per change name with immediate dependencies. Each published issue SHALL carry the correspondence in a `sai-backlog-slices@1` marker identifying its role. An Azure HTML work item SHALL carry a visible escaped pre block. An Azure Markdown work item SHALL carry a fenced code block holding the `sai-backlog-slices@1` line, because Azure DevOps removes HTML comments. GitHub and GitLab SHALL keep the comment marker. Decoding SHALL recognize the pre block, the fenced code block after entity decoding, and the comment, and SHALL treat more than one marker as ambiguous. Validation SHALL reject malformed, duplicate, self-referential, incomplete or cyclic correspondence. Canonical identities SHALL support GitHub, GitLab and Azure DevOps. Read-only lookup SHALL use explicit change-name correspondence rather than titles, verify matching parent correspondence and require a user decision for zero or multiple candidates.
 
 #### Scenario: Publication correspondence recovered later
 
@@ -80,6 +80,11 @@ Complete publication SHALL return structured correspondence containing version, 
 
 - **WHEN** an issue contains duplicate markers or invalid child correspondence
 - **THEN** validation rejects the correspondence rather than selecting a marker or inferring identity from its title.
+
+#### Scenario: Fenced marker read back from a Markdown work item
+
+- **WHEN** a Markdown Azure work item returns its fenced `sai-backlog-slices@1` marker with `"` encoded as `&quot;`
+- **THEN** decoding entity-decodes the description and returns the same correspondence that was encoded.
 
 ### Requirement: Hierarchical GitHub import is complete and preserves selection
 
@@ -566,3 +571,12 @@ Set-update execution SHALL retain a private durable record of destinations, appr
 
 - **WHEN** an update response is lost but rereading the issue confirms the approved content was applied
 - **THEN** recovery recognizes that operation as complete and does not repeat its remote write.
+
+### Requirement: Azure set content updates follow each work item's own description format
+
+An Azure DevOps published set content update SHALL choose the description format of each work item separately from that work item's own read, and SHALL NOT pre-convert the parent description before that choice. A Markdown work item SHALL receive its description, relationship lines, and a fenced `sai-backlog-slices@1` marker in Markdown, with a child block kept as a fenced code block. Any other work item SHALL receive HTML, with a child block in an escaped pre block, relationship lines in an escaped paragraph, and the escaped pre block marker. Equivalence for each work item SHALL use the comparison rule of that work item's format.
+
+#### Scenario: Mixed formats in one set
+
+- **WHEN** a set content update covers a Markdown parent and HTML children, or an HTML parent and Markdown children
+- **THEN** each work item is written in its own format and no work item receives content in the other format.

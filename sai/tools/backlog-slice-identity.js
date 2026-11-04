@@ -1,5 +1,7 @@
 'use strict';
 
+const { decodeEntities } = require('./azure-markdown');
+
 const PREFIX = '<!-- sai-backlog-slices@1 ';
 
 function platformFor(value) {
@@ -62,9 +64,15 @@ function decode(body) {
   const html = String(body).match(/<pre>sai-backlog-slices@1 ([\s\S]*?)<\/pre>/g) || [];
   if (html.length) {
     if (html.length !== 1 || String(body).includes(PREFIX)) throw new Error('Ambiguous slice identity');
-    const text = html[0].replace(/^<pre>|<\/pre>$/g, '').replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    const text = decodeEntities(html[0].replace(/^<pre>|<\/pre>$/g, ''));
     if (!text.startsWith('sai-backlog-slices@1 ')) throw new Error('Invalid HTML slice identity');
     return checkIdentity(JSON.parse(text.slice('sai-backlog-slices@1 '.length)));
+  }
+  // A Markdown Boards description keeps the marker as a fenced code block, which Azure stores with `"` as an entity.
+  const fencedMarkers = decodeEntities(String(body)).replace(/\r\n/g, '\n').match(/^(`{3,}|~{3,})[^\n]*\nsai-backlog-slices@1 [^\n]*\n\1[ \t]*$/gm) || [];
+  if (fencedMarkers.length) {
+    if (fencedMarkers.length !== 1 || String(body).includes(PREFIX)) throw new Error('Ambiguous slice identity');
+    return checkIdentity(JSON.parse(fencedMarkers[0].split('\n')[1].slice('sai-backlog-slices@1 '.length)));
   }
   const markers = String(body).split('\n').filter(line => line.startsWith(PREFIX));
   if (!markers.length) return null;
@@ -73,4 +81,10 @@ function decode(body) {
 }
 const escape = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function encodeHtml(value) { return `<pre>${escape(`sai-backlog-slices@1 ${JSON.stringify(checkIdentity(value))}`)}</pre>`; }
-module.exports = { upper, encode, encodeHtml, decode, checkIdentity, normalize, platformFor, escape };
+/** A fenced code block holding `text` exactly; the fence is longer than any backtick run inside it. */
+function fenced(text) {
+  const fence = '`'.repeat(Math.max(3, ...(text.match(/`+/g) || []).map(run => run.length + 1)));
+  return `${fence}\n${text}\n${fence}`;
+}
+function encodeMarkdown(value) { return fenced(`sai-backlog-slices@1 ${JSON.stringify(checkIdentity(value))}`); }
+module.exports = { upper, encode, encodeHtml, encodeMarkdown, fenced, decode, checkIdentity, normalize, platformFor, escape };
