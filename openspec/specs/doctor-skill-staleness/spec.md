@@ -7,7 +7,7 @@ Defines how `doctor` detects stale OpenSpec skills and tolerates an absent CLI o
 ## Requirements
 ### Requirement: OpenSpec skill staleness detection
 
-For each project-local OpenSpec skill (an `openspec-*` skill directory under a harness's project-local skills location such as `.claude/skills/`, `.opencode/skills/`, or `.github/skills/`), the doctor SHALL read the skill's `generatedBy` frontmatter value and compare it against the installed OpenSpec CLI version (as reported by `openspec --version`). A skill whose `generatedBy` does not match the CLI version SHALL be flagged as stale, with a recommendation to re-run `openspec init`.
+For each project-local OpenSpec skill (an `openspec-*` skill directory under a harness's project-local skills location such as `.claude/skills/` or `.opencode/skills/`), the doctor SHALL read the skill's `generatedBy` frontmatter value and compare it against the installed OpenSpec CLI version (as reported by `openspec --version`). A skill whose `generatedBy` does not match the CLI version SHALL be flagged as stale, with a recommendation to re-run `openspec init`.
 
 #### Scenario: version match is not stale
 - **WHEN** a project-local OpenSpec skill's `generatedBy` equals the installed OpenSpec CLI version

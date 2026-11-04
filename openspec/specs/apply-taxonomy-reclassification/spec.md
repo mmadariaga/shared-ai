@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Defines the documentation taxonomy of the RED and GREEN workers of `/sai-3-implement` in `AGENTS.md`, `README.md`, and `GLOSSARY.md`. (The capability was first written to reclassify the retired `/sai-4-apply`.)
+Defines the `GLOSSARY.md` vocabulary of the RED and GREEN workers of `/sai-3-implement`. (The capability was first written to reclassify the retired `/sai-4-apply`.)
 
 ## Requirements
 
 ### Requirement: glossary-red-green-vocabulary
 
-`GLOSSARY.md` SHALL define the RED Worker and GREEN Worker terms with the `/sai-3-implement` worker model: the RED Worker is the Step-execution worker (`sai-3-red-worker`) that authors tests (blind to the GREEN implementation body in the split flow; authoring green tests under the green-exception) and the GREEN Worker is the Step-execution worker (`sai-3-green-worker`) that implements with an absolute test-file prohibition. The existing **Blind Test-Writer** and **Implementation Dispatch** entries SHALL be updated or aliased to the new worker vocabulary, and the **Step Projection** relationship SHALL no longer state that apply has no coordinator-worker boundary.
+`GLOSSARY.md` SHALL define the RED Worker and GREEN Worker terms with the `/sai-3-implement` worker model: the RED Worker is the managed worker (`sai-3-red-worker`) that lives for the whole run and writes each step's failing tests and the interface stubs they import, with no production logic, and the GREEN Worker is the managed worker (`sai-3-green-worker`) that lives for the whole run and writes each step's production code under an absolute test-file and `interfaces.md` prohibition.
 
 #### Scenario: glossary defines the two workers
 
@@ -18,4 +18,4 @@ Defines the documentation taxonomy of the RED and GREEN workers of `/sai-3-imple
 #### Scenario: stale no-boundary statements are removed
 
 - **WHEN** `GLOSSARY.md` is read after the change
-- **THEN** no entry states that apply has no coordinator-worker boundary, and the Step Projection relationship reflects that the projection is never marked from worker progress events
+- **THEN** no entry describes an apply command or a coordinator-less implementation flow

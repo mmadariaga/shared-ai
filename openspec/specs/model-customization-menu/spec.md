@@ -455,7 +455,7 @@ The empty-enumeration notice SHALL read `No customization targets are available 
 - **THEN** the system SHALL present exactly that family in alphabetical order with no separators
 #### Scenario: All tail orders merge block then commit block before utilities
 - **WHEN** the user enters the All checklist for a harness
-- **THEN** the system SHALL present the sai-merge block, then the sai-commit orchestrator-plus-worker block, then the separator with utilities sai-pr, sai-retire-docs, sai-status, and sai-worktree
+- **THEN** the system SHALL present the sai-merge block, then the sai-commit orchestrator-plus-worker block, then the separator with utilities sai-retire-docs, sai-retrospective, sai-status, and sai-worktree
 
 ### Requirement: Navigable cancellation aborts customization
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how the accessibility audit worker discovers the change's surface: discovery is delegated to `budget-explorer`, and the main agent does not read the diff itself.
+Defines how the accessibility audit worker discovers the change's surface: the worker inspects a scope of five or fewer UI files itself and delegates discovery to `budget-explorer` above that, and the main agent does not read the diff itself.
 
 ## Requirements
 
