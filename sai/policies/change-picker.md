@@ -10,7 +10,7 @@ The resolution itself — the supplied-name short-circuit and the 0/1/N branches
 
 ### The change-picker tool
 
-Fetch @sai/policies/tool-resolution.md and resolve the tool path per its § `sai/tools/*.js` copies, substituting `change-picker.js`. If no candidate exists, name the candidates you tried and stop; do not resolve the name in prose.
+Fetch `@sai/policies/tool-resolution.md` and resolve the tool path per its § `sai/tools/*.js` copies, substituting `change-picker.js`. If no candidate exists, name the candidates you tried and stop; do not resolve the name in prose.
 
 Invoke it the same way from every root:
 

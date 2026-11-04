@@ -1,6 +1,6 @@
 # Merge step: strategy
 
-Fetch @sai/commands/merge/steps/common.md and read it once.
+Fetch `@sai/commands/merge/steps/common.md` and read it once.
 
 Goal: decide how every conflict of this stop resolves, by commit intent, before anything is written.
 

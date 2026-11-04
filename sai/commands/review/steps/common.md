@@ -1,7 +1,7 @@
 # Review Step — Common (always active)
 
-Fetch @skills/budget-ro/SKILL.md and use it
-Fetch @sai/policies/remember.md
+Fetch `@skills/budget-ro/SKILL.md` and use it
+Fetch `@sai/policies/remember.md`
 
 ## Role
 

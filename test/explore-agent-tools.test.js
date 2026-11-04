@@ -76,6 +76,6 @@ test('Claude Code retains equivalent research tool access and both harnesses loa
     assert.ok(tools.includes(tool), `Claude Code must retain ${tool}`);
   }
   for (const text of [source, claude]) {
-    assert.match(text, /Fetch @sai\/policies\/explore-agent\.md/);
+    assert.match(text, /Fetch `@sai\/policies\/explore-agent\.md`/);
   }
 });

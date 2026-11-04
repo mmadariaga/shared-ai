@@ -2,9 +2,9 @@
 
 Rules shared by the RED and GREEN workers of `/sai-3-implement`. The coordinator that dispatches you owns the plan, the tests' verdict, and git.
 
-Fetch @sai/policies/remember.md
-Fetch @sai/policies/repository-artifact-scope.md and use it as the shared protected-surface rule. Your role's allowed files below are narrower and prevail.
-Fetch @sai/policies/code-quality-priority-stack.md
+Fetch `@sai/policies/remember.md`
+Fetch `@sai/policies/repository-artifact-scope.md` and use it as the shared protected-surface rule. Your role's allowed files below are narrower and prevail.
+Fetch `@sai/policies/code-quality-priority-stack.md`
 Apply it within your role and the brief; it grants no path or permission.
 
 ## Lifetime

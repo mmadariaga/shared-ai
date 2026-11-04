@@ -37,8 +37,8 @@ test('explore bindings delegate mechanics and surface policy, keeping only the f
   const claude = read('sai/adapters/claude/idea-list-render.md');
   const opencode = read('sai/adapters/opencode/idea-list-render.md');
 
-  assert.match(claude, /Fetch @sai\/adapters\/claude\/panel-render\.md/);
-  assert.match(opencode, /Fetch @sai\/adapters\/opencode\/panel-render\.md/);
+  assert.match(claude, /Fetch `@sai\/adapters\/claude\/panel-render\.md`/);
+  assert.match(opencode, /Fetch `@sai\/adapters\/opencode\/panel-render\.md`/);
   for (const binding of [claude, opencode]) {
     assert.match(binding, /sai-explore-stage:<stage-id>/);
     assert.match(binding, /sai-idea-list:<change-name>/);

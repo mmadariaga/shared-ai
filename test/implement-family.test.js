@@ -12,7 +12,7 @@ const { resolveProfile, translate } = require('../bin/capabilities');
 const { matrixRenderFor } = require('../bin/install-manifest');
 
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
-const fetches = source => source.split(/\r?\n/).filter(line => line.includes('Fetch @'));
+const fetches = source => source.split(/\r?\n/).filter(line => /Fetch `?@/.test(line));
 
 const COORDINATORS = [
   'sai/commands/implement/coordinator.md',
@@ -88,7 +88,7 @@ test('the implement, review, and build coordinators load only the policies that 
   ];
   for (const file of COORDINATORS) {
     for (const line of fetches(read(file))) {
-      assert.ok(allowed.some(target => line.includes(`Fetch ${target}`)), `${file} fetches an unexpected target: ${line}`);
+      assert.ok(allowed.some(target => line.includes(`Fetch \`${target}`)), `${file} fetches an unexpected target: ${line}`);
     }
   }
   const implementNew = read(COORDINATORS[0]);
@@ -99,8 +99,8 @@ test('the implement, review, and build coordinators load only the policies that 
 
 test('/sai-build chains /sai-3-implement, one /sai-4-review pass, and a fix segment', () => {
   const build = read(COORDINATORS[1]);
-  assert.match(build, /Fetch @sai\/commands\/implement\/coordinator\.md/);
-  assert.match(build, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly as the second segment, with `\{name\}` as `arguments_value`/);
+  assert.match(build, /Fetch `@sai\/commands\/implement\/coordinator\.md`/);
+  assert.match(build, /Fetch `@sai\/commands\/review\/coordinator\.md` and follow it exactly as the second segment, with `\{name\}` as `arguments_value`/);
   assert.match(build, /keep the name it resolves \(`\{name\}`\) for the rest of the run/);
   assert.match(build, /hand it `review\.md` as its only Composition report/);
   assert.doesNotMatch(build, /third segment, with the same `arguments_value`/);
@@ -158,7 +158,7 @@ test('the implement coordinator reuses the design context and promotes learnings
   const close = source.slice(source.indexOf('## Close'));
   assert.match(close, /Promote learnings, before the report/);
   assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
-  assert.match(close, /Fetch @sai\/policies\/sai-learnings-format\.md/);
+  assert.match(close, /Fetch `@sai\/policies\/sai-learnings-format\.md`/);
   assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
   assert.match(read('sai/commands/design/steps/research.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
 });
@@ -216,10 +216,10 @@ test('decision records are created once by the outermost implementing command', 
   assert.match(implement, /Inside `\/sai-build` skip this step/);
   const build = read('sai/commands/build/coordinator.md');
   assert.match(build, /Segments 1 and 3 create no decision records/);
-  assert.match(build, /Fetch @sai\/policies\/decision-record-creation\.md/);
+  assert.match(build, /Fetch `@sai\/policies\/decision-record-creation\.md`/);
   assert.match(read('sai/commands/deep-review/coordinator.md'), /creates the decision records of `@sai\/policies\/decision-record-creation\.md`/);
   const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
-  assert.match(directBuild, /Fetch @sai\/policies\/decision-record-creation\.md and prepare its order/);
+  assert.match(directBuild, /Fetch `@sai\/policies\/decision-record-creation\.md` and prepare its order/);
   assert.doesNotMatch(directBuild, /persistent ADR\/DDR creation remains owned by the normal implementation flow/);
   assert.match(read('sai/commands/explore/direct-build-worker.md'), /\*\*Decision-record order\.\*\*/);
 });
@@ -366,7 +366,7 @@ test('the coordinator reviews each step adversarially with bounded fix rounds an
   assert.match(review, /direct-build-coordinator\.md` Step 2/);
   assert.match(review, /spec fidelity, test gaming, and excess scope/);
   assert.match(review, /Empirical/);
-  assert.match(review, /Fetch @sai\/policies\/artifact-review-contract\.md/);
+  assert.match(review, /Fetch `@sai\/policies\/artifact-review-contract\.md`/);
   assert.match(review, /scope observation/);
   assert.match(review, /no test goes through RED first/);
   assert.match(review, /Fix rounds are not attempts/);
@@ -386,11 +386,11 @@ test('both coordinator review loops follow the incremental review policy and sta
   assert.match(policy, /`Pre-existing` finding is never sent to a worker/);
   assert.match(policy, /review-delta\.js/);
   const implement = read(COORDINATORS[0]);
-  assert.match(implement, /Fetch @sai\/policies\/incremental-review\.md/);
+  assert.match(implement, /Fetch `@sai\/policies\/incremental-review\.md`/);
   assert.match(implement, /reviews\/step-\{n\}-round-\{k\}\.tree/);
   assert.match(implement, /one final pass over the round-3 delta and its consumers/);
   const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
-  assert.match(directBuild, /Fetch @sai\/policies\/incremental-review\.md/);
+  assert.match(directBuild, /Fetch `@sai\/policies\/incremental-review\.md`/);
   assert.match(directBuild, /one final pass over the round-3 delta and its consumers/);
   assert.match(directBuild, /`review_snapshot`/);
   assert.doesNotMatch(read('sai/commands/review/coordinator.md'), /incremental-review/);
@@ -403,7 +403,7 @@ test('the implement and review bindings render from the standalone template and 
       const audit = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === phase);
       assert.doesNotMatch(audit.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} ${phase}`);
       assert.match(audit.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-      assert.match(audit.text, new RegExp(`Fetch @sai/commands/${phase}/worker\\.md`));
+      assert.match(audit.text, new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\``));
     }
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
       .filter(item => item.kind === 'binding' && ['red', 'green', 'review'].includes(item.phase));
@@ -414,12 +414,12 @@ test('the implement and review bindings render from the standalone template and 
       const contract = item.phase === 'review'
         ? 'review/worker'
         : `implement/${item.phase}-worker`;
-      assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
+      assert.match(item.text, new RegExp(`Fetch \`@sai/commands/${contract}\\.md\``));
     }
     const directBuild = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'direct-build');
     assert.doesNotMatch(directBuild.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} direct-build`);
     assert.match(directBuild.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-    assert.match(directBuild.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md/);
+    assert.match(directBuild.text, /Fetch `@sai\/commands\/explore\/direct-build-worker\.md`/);
   }
 });
 
@@ -441,7 +441,7 @@ test('every git add checks the ignore rules, the review sees new files, and the 
 
 test('audit reports are applied after the tasks through the step cycle, marked fixed, and never redone', () => {
   const source = read(COORDINATORS[0]);
-  assert.match(source, /Fetch @sai\/policies\/finding-state\.md/);
+  assert.match(source, /Fetch `@sai\/policies\/finding-state\.md`/);
   const audit = source.slice(source.indexOf('## Audit findings'), source.indexOf('## Workers'));
   for (const report of ['review.md', 'security.md', 'performance.md', 'accessibility.md']) {
     assert.ok(audit.includes(report), `the audit section must name ${report}`);
@@ -462,7 +462,7 @@ test('the implement close stores the inherent-risk ratings in review.md before t
   const ratings = close.indexOf('Store the inherent-risk ratings');
   assert.ok(ratings !== -1 && ratings < close.indexOf('Promote learnings, before the report'), 'ratings come before the learnings step');
   assert.match(close, /only when the run completed, marked at least one finding of any audit report fixed, and `openspec\/changes\/\{name\}\/review\.md` exists/);
-  assert.match(close, /Fetch @sai\/policies\/inherent-risk\.md/);
+  assert.match(close, /Fetch `@sai\/policies\/inherent-risk\.md`/);
   assert.match(close, /`\*\*Reviewed:\*\*` line of `review\.md` names/);
   assert.match(close, /prints `fresh`/);
   assert.match(close, /git check-ignore -q/);

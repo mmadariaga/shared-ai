@@ -19,7 +19,7 @@ test('the archive and backfill wrappers fetch the skill and the coordinator card
     for (const harness of ['claude', 'opencode']) {
       const wrapper = read(`commands/${harness}/sai-${name}.md`)
         .split('<!-- User customizations below this line -->')[0].trimEnd() + '\n';
-      assert.match(wrapper, new RegExp(`Fetch @sai/commands/${name}/coordinator\\.md and follow it exactly`));
+      assert.match(wrapper, new RegExp(`Fetch \`@sai/commands/${name}/coordinator\\.md\` and follow it exactly`));
       assert.doesNotMatch(wrapper, /@sai\/adapters\/|command-bootstrap\.md/);
       assert.ok(wrapper.includes('This invocation starts clean'));
       assert.match(wrapper, new RegExp(`command_name: ${name}\\n  arguments_value: \\$ARGUMENTS\\n$`));
@@ -35,10 +35,10 @@ test('the archive and backfill coordinators are goal-driven cards on the shared 
     for (const heading of ['## Goal', '## Start', '## Obstacles', '## Close']) {
       assert.ok(card.includes(heading), `${name} coordinator has ${heading}`);
     }
-    assert.ok(card.includes('Fetch @sai/policies/obstacle-escalation.md'));
+    assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
     assert.match(card, /Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
     assert.ok(card.includes(`Fetch @sai/orchestration/workers/bindings/${name}-worker.md and use it.`));
-    assert.ok(card.includes('Fetch @sai/policies/no-commit-guard.md'));
+    assert.ok(card.includes('Fetch `@sai/policies/no-commit-guard.md`'));
     assert.ok(card.includes('guard_base'));
     assert.doesNotMatch(card, LEGACY);
     assert.doesNotMatch(card, /<TASK>|original_envelope|replacement_reconstruction_fields|recovery_policy|phase adapter/i);
@@ -50,7 +50,7 @@ test('E6: archive keeps its fast-track parse, its gates, and its terminal litera
   assert.match(card, /positional token `--fast-track`/);
   assert.match(card, /print the exact line `> FAST-TRACK MODE ACTIVE`/);
   assert.match(card, /`fast_track_active` declared beside it as session state, never as an envelope key/);
-  assert.match(card, /Fetch @sai\/policies\/change-picker\.md and follow it exactly/);
+  assert.match(card, /Fetch `@sai\/policies\/change-picker\.md` and follow it exactly/);
   assert.match(card, /Under `fast_track_active` it skips its selector as that file says; without the flag every gate still asks/);
   assert.match(card, /exactly `Archive done\.`/);
   assert.match(card, /archive-commit-gate\.instructions\.md/);
@@ -85,11 +85,11 @@ test('Direct Build keeps dispatching the archive and backfill workers through st
       assert.ok(binding, `${harness} ${phase} binding`);
       assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
       assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-      assert.match(binding.text, new RegExp(`Fetch @sai/commands/${phase}/worker\\.md`));
+      assert.match(binding.text, new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\``));
     }
   }
   const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
-  assert.match(pipeline, /Fetch @sai\/orchestration\/workers\/bindings\/archive-worker\.md and use it\./);
+  assert.match(pipeline, /Fetch `@sai\/orchestration\/workers\/bindings\/archive-worker\.md` and use it\./);
   assert.match(pipeline, /--direct-build-prepare/);
   assert.match(read('sai/commands/archive/worker.md'), /--direct-build-execute/);
   assert.match(read('sai/commands/backfill/worker.md'), /--direct-build-execute/);

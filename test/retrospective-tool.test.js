@@ -260,7 +260,7 @@ const OC = { root: 'ses_root0001', worker: 'ses_worker01', aux: 'ses_aux00001', 
 const at = (clock) => Date.parse(`2026-01-01T${clock}Z`);
 
 function envelope(name, args = '') {
-  return `Fetch @sai/commands/${name}/body.md and follow it exactly, forwarding the InvocationEnvelope block below.\n\nInvocationEnvelope:\n  command_name: ${name}\n  arguments_value: ${args}\n\n<!-- User customizations below this line -->`;
+  return `Fetch \`@sai/commands/${name}/body.md\` and follow it exactly, forwarding the InvocationEnvelope block below.\n\nInvocationEnvelope:\n  command_name: ${name}\n  arguments_value: ${args}\n\n<!-- User customizations below this line -->`;
 }
 
 const doneTime = (clock) => ({ created: at(clock), completed: at(clock) + 1 });
@@ -468,7 +468,7 @@ opencodeTest('opencode excerpt: pages records by ID for a session and for a chil
     makeOpencodeDb(config);
     const first = run(config, ['excerpt', '--project', PROJECT, '--session', OC.root, '--from', `msg_${OC.root}_02`, '--count', '3', '--max-chars', '12']).payload;
     assert.deepEqual(first.records.map(r => r.id), [`msg_${OC.root}_02`, `msg_${OC.root}_04`, `msg_${OC.root}_05`]);
-    assert.match(first.records[0].text, /^Fetch @sai\/c… \[\+\d+ chars\]$/);
+    assert.match(first.records[0].text, /^Fetch `@sai\/… \[\+\d+ chars\]$/);
     assert.equal(first.next_record, `msg_${OC.root}_06`);
     const next = run(config, ['excerpt', '--project', PROJECT, '--session', OC.root, '--from', first.next_record, '--count', '1']).payload;
     assert.deepEqual(next.records[0].tool_results.map(r => [r.tool_use_id, r.is_error]), [['call-1', false], ['call-2', false], ['call-3', true], ['call-4', false], ['call-5', false]]);

@@ -9,7 +9,7 @@ const manifest = require('../sai/install-manifest.json');
 
 const repoRoot = path.join(__dirname, '..');
 const POLICY = 'sai/policies/code-quality-priority-stack.md';
-const FETCH_LINE = 'Fetch @sai/policies/code-quality-priority-stack.md';
+const FETCH_LINE = 'Fetch `@sai/policies/code-quality-priority-stack.md`';
 const REVIEW_PASS_6 = 'sai/commands/review/steps/resolve-review-analysis.md';
 const STACK_HEADING = '## Code Quality Priority Stack';
 const CODE_WRITERS = [
@@ -53,7 +53,7 @@ test('code-writing workers explicitly load the single-source policy within their
   assert.match(read(CODE_WRITERS[0]), /within the crystallized block's scope/);
   assert.match(read(CODE_WRITERS[1]), /within your role and the brief/);
   for (const file of ['sai/commands/implement/red-worker.md', 'sai/commands/implement/green-worker.md']) {
-    assert.ok(read(file).includes('Fetch @sai/commands/implement/worker-common.md'), file);
+    assert.ok(read(file).includes('Fetch `@sai/commands/implement/worker-common.md`'), file);
   }
 });
 

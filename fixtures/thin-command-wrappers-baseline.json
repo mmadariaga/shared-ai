@@ -24,160 +24,160 @@
   "wrappers": {
     "claude": {
       "sai-1-spec.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/spec/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/spec/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-2-design.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/design/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-3-implement.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/implement/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-build.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-4-review.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-5-security.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-6-performance.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-7-accessibility.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-archive.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/archive/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/archive/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-backfill.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/backfill/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/backfill/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-commit.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/commit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/commit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-merge.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/merge/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-plan.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/plan/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/plan/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-explore.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/idea-list-render.md and use it.",
-        "Fetch @sai/commands/explore/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/adapters/claude/idea-list-render.md` and use it.",
+        "Fetch `@sai/commands/explore/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-retire-docs.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/retire-docs/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/retire-docs/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-retrospective.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/retrospective/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/retrospective/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-deep-review.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-status.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/status/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/status/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-worktree.md": [
-        "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/commands/worktree/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/worktree/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ]
     },
     "opencode": {
       "sai-1-spec.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/spec/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/spec/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-2-design.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/design/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-3-implement.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/implement/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-build.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-4-review.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-5-security.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-6-performance.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-7-accessibility.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-archive.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/archive/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/archive/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-backfill.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/backfill/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/backfill/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-commit.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/commit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/commit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-merge.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/merge/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-plan.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/plan/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/plan/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-explore.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/idea-list-render.md and use it.",
-        "Fetch @sai/commands/explore/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/adapters/opencode/idea-list-render.md` and use it.",
+        "Fetch `@sai/commands/explore/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-retire-docs.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/retire-docs/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/retire-docs/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-retrospective.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/retrospective/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/retrospective/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-deep-review.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-status.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/status/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/status/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-worktree.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/commands/worktree/body.md and follow it exactly, forwarding the InvocationEnvelope block below."
+        "Fetch `@sai/commands/worktree/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ]
     }
   }

@@ -174,7 +174,7 @@ test('both receivers escalate a missing CLI as force majeure and remove validati
 test('both receivers require CLI validation and accepted-input freshness', () => {
   for (const file of ['sai/commands/backfill/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {
     const text = fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
-    assert.match(text, /Fetch @sai\/policies\/backfill-draft-validation.md/);
+    assert.match(text, /Fetch `@sai\/policies\/backfill-draft-validation.md`/);
     assert.match(text, /freshness check|accepted-fingerprint `check`/);
   }
   assert.match(fs.readFileSync(path.resolve(__dirname, '../sai/commands/backfill/worker.md'), 'utf8'), /failed freshness check writes nothing/);

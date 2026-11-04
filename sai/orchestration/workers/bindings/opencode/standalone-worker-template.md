@@ -10,7 +10,7 @@ Create the worker with the ready prompt alone. The returned task ID is its
 handle for the whole run. A replacement worker is created with the same call.
 
 ```
-task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```")
+task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch `@{{workerContract}}` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```")
 ```
 
 ## Continue
@@ -24,7 +24,7 @@ task(task_id: "<captured task ID>", prompt: "<message>")
 
 ## Warm and dispose
 
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/cache-warming.md`
 
 The worker may keep its prompt cache warm between messages. Resolve its
 timings and add the warming line to every task message and continuation, as the

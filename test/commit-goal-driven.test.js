@@ -15,7 +15,7 @@ const LEGACY = /command-runner|worker-core|bounded-recovery|stop-options|unatten
 test('the commit wrappers fetch the skill and the coordinator card directly', () => {
   for (const harness of ['claude', 'opencode']) {
     const wrapper = read(`commands/${harness}/sai-commit.md`);
-    assert.match(wrapper, /Fetch @sai\/commands\/commit\/coordinator\.md and follow it exactly/);
+    assert.match(wrapper, /Fetch `@sai\/commands\/commit\/coordinator\.md` and follow it exactly/);
     assert.doesNotMatch(wrapper, /@sai\/adapters\/|command-bootstrap\.md/);
     assert.ok(wrapper.includes('This invocation starts clean'));
   }
@@ -27,7 +27,7 @@ test('the commit coordinator is a goal-driven card on the shared obstacle policy
   for (const heading of ['## Goal', '## Start', '## Obstacles', '## Close']) {
     assert.ok(card.includes(heading), `coordinator has ${heading}`);
   }
-  assert.ok(card.includes('Fetch @sai/policies/obstacle-escalation.md'));
+  assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
   assert.doesNotMatch(card, LEGACY);
   assert.doesNotMatch(card, /<TASK>|original_envelope|replacement_reconstruction_fields|recovery_policy/);
 });
@@ -55,7 +55,7 @@ test('the commit worker runs on a standalone binding and no longer loads the leg
     assert.ok(binding, `${harness} commit binding`);
     assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
     assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-    assert.match(binding.text, /Fetch @sai\/commands\/commit\/worker\.md/);
+    assert.match(binding.text, /Fetch `@sai\/commands\/commit\/worker\.md`/);
   }
 });
 

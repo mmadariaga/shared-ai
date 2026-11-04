@@ -14,7 +14,7 @@ Agent(
   subagent_type: "{{workerName}}",
   name: "{{workerName}}",
   run_in_background: true,
-  prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```"
+  prompt: "Worker contract: Fetch `@{{workerContract}}` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```"
 )
 ```
 
@@ -29,7 +29,7 @@ SendMessage(to: "<captured agent ID>", message: "<message>")
 
 ## Warm and dispose
 
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/cache-warming.md`
 
 The worker may keep its prompt cache warm between messages. Resolve its
 timings and add the warming line to every task message and continuation, as the

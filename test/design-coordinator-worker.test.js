@@ -145,7 +145,7 @@ function capture(fn) {
 // ─── specs/deduplicate-sai-2-design/spec.md ────────────────────────────────
 
 const DESIGN_WORKER_CONTRACT_PROMPT =
-  'Worker contract: Fetch @sai/commands/design/worker.md and follow it exactly.';
+  'Worker contract: Fetch `@sai/commands/design/worker.md` and follow it exactly.';
 
 test('Step 2 both harness design bindings fetch the identical neutral design worker contract', () => {
   for (const harness of ['claude', 'opencode']) {
@@ -585,7 +585,7 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
 
   const status = artifact('commands/claude/sai-status.md');
   assert.equal(status.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-status'));
-  assert.match(status, /Fetch @sai\/commands\/status\/body\.md and follow it exactly/);
+  assert.match(status, /Fetch `@sai\/commands\/status\/body\.md` and follow it exactly/);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
   assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,
     'sai-status must not gain a free git grant');

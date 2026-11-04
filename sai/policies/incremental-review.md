@@ -2,7 +2,7 @@
 
 The pass rules of the coordinator review-fix loops: the step review of `/sai-3-implement`, the functional fix loop of Direct Build (Step 2 of `sai/commands/explore/direct-build-coordinator.md`), and the artifact review rounds of the `/sai-1-spec` and `/sai-2-design` segments (`sai/commands/plan/cycle.md`), which review the segment's artifact paths instead of a diff. `/sai-4-review`, the Direct Build suite-gate rounds (Step 2b), and every other review loop keep their own behavior and do not load this file.
 
-Fetch @sai/policies/tool-resolution.md
+Fetch `@sai/policies/tool-resolution.md`
 
 The goal is that a loop converges: unchanged code is read once, a fixed finding is not reported again, and only a problem the change caused opens a fix round.
 

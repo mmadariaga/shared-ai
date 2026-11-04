@@ -13,7 +13,7 @@ const AUDITS = ['security', 'performance', 'accessibility'];
 test('the deep-review coordinator loads only the cross-cutting policies and none of the shared orchestration', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
   const head = coordinator.slice(0, coordinator.indexOf('## Goal'));
-  const fetched = [...head.matchAll(/^Fetch @(\S+)/gm)].map(match => match[1]);
+  const fetched = [...head.matchAll(/^Fetch `?@([^\s`]+)/gm)].map(match => match[1]);
   assert.deepEqual(fetched, [
     'sai/policies/public-chat.md',
     'sai/policies/remember.md',
@@ -29,7 +29,7 @@ test('the deep-review coordinator loads only the cross-cutting policies and none
 
 test('the deep-review coordinator runs the segments in the shape of /sai-build, in order', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
-  const review = coordinator.indexOf('Fetch @sai/commands/review/coordinator.md');
+  const review = coordinator.indexOf('Fetch `@sai/commands/review/coordinator.md`');
   const triage = coordinator.indexOf('## Triage');
   const url = coordinator.indexOf('**Accessibility URL.**');
   const batch = coordinator.indexOf('**Parallel cycles.**');
@@ -38,7 +38,7 @@ test('the deep-review coordinator runs the segments in the shape of /sai-build, 
   assert.ok(review !== -1 && review < triage && triage < url && url < batch && batch < assessment && assessment < fix);
   assert.match(coordinator, /[Ff]ollow `sai\/commands\/implement\/coordinator\.md` exactly as segment 5/);
   assert.match(coordinator, /Composition reports/);
-  assert.match(coordinator, /Fetch @sai\/commands\/audit\/coordinator\.md/);
+  assert.match(coordinator, /Fetch `@sai\/commands\/audit\/coordinator\.md`/);
   assert.match(coordinator, /several `Agent` calls in one turn on Claude Code, several `task` calls on opencode/);
   assert.match(coordinator, /in the fixed order security, performance, accessibility/);
   assert.match(coordinator, /Only the `\/sai-3-implement` fix segment changes code/);

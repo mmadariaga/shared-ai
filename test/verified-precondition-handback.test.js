@@ -48,7 +48,7 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
   assert.doesNotMatch(glossary, /\*\*Precondition Redirect\*\*:/);
 });
 
-const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
+const policyFetch = 'Fetch `@sai/policies/verified-precondition-handback.md`';
 // The plan family (spec, design, plan) runs outside the shared orchestration, like the
 // implement family, and loads none of the shared hand-back policy.
 // The audit workers, the shared audit coordinator, and /sai-deep-review run outside it too.
@@ -127,7 +127,7 @@ test('excluded non-card surfaces do not fetch the policy directly', () => {
   ];
 
   for (const file of excluded) {
-    assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /Fetch @sai\/policies\/verified-precondition-handback\.md/,
+    assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /Fetch `@sai\/policies\/verified-precondition-handback\.md`/,
       `${path.relative(repoRoot, file)} must not fetch the policy directly`);
   }
 });

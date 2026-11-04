@@ -21,15 +21,15 @@ test('each review and audit command declares its options in its own options.md',
     const declared = [...options.matchAll(/^- `(--[a-z-]+)/gm)].map(match => match[1]);
     assert.deepEqual(declared, flags, `${command}/options.md declares exactly its options`);
     if (command === 'review') {
-      assert.match(read('sai/commands/review/coordinator.md'), /Fetch @sai\/commands\/review\/options\.md/);
+      assert.match(read('sai/commands/review/coordinator.md'), /Fetch `@sai\/commands\/review\/options\.md`/);
       continue;
     }
     // The audits share one coordinator, which validates the options of the audit it is given.
     const coordinator = read('sai/commands/audit/coordinator.md');
-    assert.match(coordinator, /Fetch @sai\/commands\/\{audit\}\/options\.md/);
+    assert.match(coordinator, /Fetch `@sai\/commands\/\{audit\}\/options\.md`/);
     assert.match(coordinator, /a second positional value/);
     assert.match(coordinator, /The parent branch is passed as --parent-branch <branch>\./);
-    assert.match(read(`sai/commands/${command}/steps/common.md`), new RegExp(`Fetch @sai/commands/${command}/options\\.md`));
+    assert.match(read(`sai/commands/${command}/steps/common.md`), new RegExp(`Fetch \`@sai/commands/${command}/options\\.md\``));
   }
 });
 

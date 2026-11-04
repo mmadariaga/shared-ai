@@ -5,10 +5,10 @@ model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
-Fetch @skills/fetch/SKILL.md
+Fetch `@skills/fetch/SKILL.md`
 This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
+Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: security

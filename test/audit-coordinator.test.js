@@ -24,7 +24,7 @@ test('the shared audit coordinator follows the review coordinator shape: Goal, S
 
 test('the audit coordinator loads only the cross-cutting policies that never stop a run', () => {
   const coordinator = read('sai/commands/audit/coordinator.md');
-  const fetched = [...coordinator.matchAll(/^Fetch @(\S+)/gm)].map(match => match[1]);
+  const fetched = [...coordinator.matchAll(/^Fetch `?@([^\s`]+)/gm)].map(match => match[1]);
   assert.deepEqual(fetched, [
     'sai/policies/public-chat.md',
     'sai/policies/remember.md',
@@ -75,9 +75,9 @@ test('each audit has its options, steps, worker, binding, machine, and wrapper i
     const worker = read(`sai/commands/${audit}/worker.md`);
     const machine = registry.get(`${audit}-steps@1`);
     assert.ok(machine, `${audit}-steps@1 is registered`);
-    assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
-    assert.match(worker, new RegExp(`Fetch @sai/commands/${audit}/steps/common\\.md`));
-    assert.match(read(`sai/commands/${audit}/steps/common.md`), /Fetch @skills\/budget-ro\/SKILL\.md/);
+    assert.match(worker, /Fetch `@sai\/commands\/audit\/worker-common\.md`/);
+    assert.match(worker, new RegExp(`Fetch \`@sai/commands/${audit}/steps/common\\.md\``));
+    assert.match(read(`sai/commands/${audit}/steps/common.md`), /Fetch `@skills\/budget-ro\/SKILL\.md`/);
     for (const step of machine.STEPS) assert.ok(worker.includes(`\`${step}\``), `${audit} worker lists ${step}`);
     for (const [step, file] of Object.entries(machine.STAGE_FILES)) {
       if (file !== 'none') assert.ok(fs.existsSync(path.join(repoRoot, file)), `${file} exists for ${step}`);
@@ -89,7 +89,7 @@ test('each audit has its options, steps, worker, binding, machine, and wrapper i
       assert.doesNotMatch(binding.text, /command-runner|continue_after_|panel-render/);
       const wrapper = read(`commands/${harness}/${COMMAND[audit]}.md`);
       assert.match(wrapper, new RegExp(`command_name: ${audit}\\n`));
-      assert.match(wrapper, /Fetch @sai\/commands\/audit\/coordinator\.md/);
+      assert.match(wrapper, /Fetch `@sai\/commands\/audit\/coordinator\.md`/);
     }
   }
 });

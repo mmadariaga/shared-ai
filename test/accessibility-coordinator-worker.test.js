@@ -73,7 +73,7 @@ function collectOutput() {
 
 test('Step 1 accessibility worker card loads the shared audit rules and no shared-orchestration protocol', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
+  assert.match(worker, /Fetch `@sai\/commands\/audit\/worker-common\.md`/);
   assert.doesNotMatch(worker, /worker-core\.md|bounded-dispatch-retry|verified-precondition-handback/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -124,10 +124,10 @@ test('Step 2 the audit coordinator creates one worker per cycle and never audits
   assert.match(coordinator, /key: `\{audit\}-\{name\}`/);
   assert.match(coordinator, /commit nothing but this one file/);
   for (const loaded of ['public-chat', 'remember', 'safe-operations', 'tool-resolution', 'finding-state']) {
-    assert.match(coordinator, new RegExp(`Fetch @(?:sai/policies|skills)/${loaded}`), `the coordinator loads ${loaded}`);
+    assert.match(coordinator, new RegExp(`Fetch \`?@(?:sai/policies|skills)/${loaded}`), `the coordinator loads ${loaded}`);
   }
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition']) {
-    assert.doesNotMatch(coordinator, new RegExp(`Fetch @[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);
+    assert.doesNotMatch(coordinator, new RegExp(`Fetch \`?@[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);
   }
 });
 
@@ -229,7 +229,7 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
 
 test('Step 3 Claude Code and opencode wrappers fetch the shared audit coordinator, which fetches the worker binding', () => {
   const coordinator = artifact('sai/commands/audit/coordinator.md');
-  assert.match(coordinator, /Fetch @sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md and use it/,
+  assert.match(coordinator, /Fetch `@sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md` and use it/,
     'the coordinator should load the neutral audit binding');
 
   const wrappers = [
@@ -239,12 +239,12 @@ test('Step 3 Claude Code and opencode wrappers fetch the shared audit coordinato
 
   for (const [harness, wrapperPath, bindingHarness] of wrappers) {
     const wrapper = artifact(wrapperPath);
-    assert.match(wrapper, /Fetch @sai\/commands\/audit\/coordinator\.md and follow it exactly/,
+    assert.match(wrapper, /Fetch `@sai\/commands\/audit\/coordinator\.md` and follow it exactly/,
       `${harness} should fetch the shared audit coordinator`);
     assert.doesNotMatch(wrapper, /command-bootstrap\.md|@sai\/adapters\//,
       `${harness} should load no bootstrap and no boot adapter`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
-    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-7-accessibility-worker\/SKILL\.md/,
+    assert.doesNotMatch(wrapper, /Fetch `@skills\/sai-7-accessibility-worker\/SKILL\.md`/,
       `${harness} should not load the worker forwarding skill`);
     assert.match(
       matrixBinding(bindingHarness, 'accessibility'),
@@ -436,14 +436,14 @@ test('step-gated: the accessibility worker loads steps/common.md at dispatch and
   const worker = artifact('sai/commands/accessibility/worker.md');
   const shared = artifact('sai/commands/audit/worker-common.md');
 
-  assert.match(worker, /Fetch @sai\/commands\/accessibility\/steps\/common\.md and keep it in force for the entire run/,
+  assert.match(worker, /Fetch `@sai\/commands\/accessibility\/steps\/common\.md` and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
   assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan in one Steps section');
   assert.match(shared, /Fetch the file the pointer names, and skip the fetch when you already loaded it in this session/,
     'the worker executes only the coordinator-named step');
   assert.match(shared, /Run the audit's scope step inline: it has no file/,
     'the fileless first step should run before the first pointer');
-  assert.doesNotMatch(worker, /Fetch @sai\/commands\/accessibility\/invocation\.md/,
+  assert.doesNotMatch(worker, /Fetch `@sai\/commands\/accessibility\/invocation\.md`/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
   assert.match(shared, /A step you decided to skip because it does not apply is complete: report it in the same batch/,
     'a legitimately skipped stage still advances the pointer past it');

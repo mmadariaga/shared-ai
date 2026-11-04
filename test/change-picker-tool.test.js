@@ -179,7 +179,7 @@ test('both pickers delegate to the one tool and keep their literals byte-identic
   assert.ok(change.includes(SELECT_QUESTION));
   assert.ok(!change.includes('--bulk-option'), 'only sai-status asks for the bulk-view option');
   for (const policy of [change, status]) {
-    assert.ok(policy.includes('Fetch @sai/policies/tool-resolution.md'),
+    assert.ok(policy.includes('Fetch `@sai/policies/tool-resolution.md`'),
       'tool-path candidates are single-sourced in tool-resolution.md, not mirrored');
     assert.ok(!policy.includes('~/.config/opencode/sai/tools/change-picker.js'),
       'pickers must not restate the tool-resolution candidates');

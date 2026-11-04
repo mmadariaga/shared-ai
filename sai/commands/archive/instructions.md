@@ -13,7 +13,7 @@ that route.
 
 ## Classification Check
 
-Fetch @sai/policies/issue-origin-preservation.md and read the selected change's
+Fetch `@sai/policies/issue-origin-preservation.md` and read the selected change's
 `backlog_origin` before the archive move and carry that known value in the
 pre-flight summary for the mutation owner to compare with archived metadata.
 If a known origin is absent or unverifiable, warn and continue. Do not infer
@@ -65,7 +65,7 @@ and never duplicates, that work.
 ## Capability retirement
 
 Detect capability-emptying deltas and check the declaration preconditions as
-defined in @sai/commands/archive/retirement-declaration.md. A blocking
+defined in `@sai/commands/archive/retirement-declaration.md`. A blocking
 precondition closes the pre-flight with the refusal; otherwise the emptied
 capabilities travel in the summary as `retired_capabilities`.
 

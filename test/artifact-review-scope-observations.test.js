@@ -96,7 +96,7 @@ test('the plan closing reports carry review and design-worker scope observations
 test('the design step classifies a spec gap before asking and records a scope observation as a non-goal', () => {
   const handling = section(read('sai/commands/design/steps/design.md'), 'Spec-problem handling during design');
 
-  assert.match(handling, /Fetch @sai\/policies\/artifact-review-contract\.md and apply its § Scope observations/);
+  assert.match(handling, /Fetch `@sai\/policies\/artifact-review-contract\.md` and apply its § Scope observations/);
   assert.match(handling, /non-goal of the form "out of scope: X — revisit when Y"/);
   assert.match(handling, /with no question/);
   assert.ok(handling.indexOf('§ Scope observations') < handling.indexOf('**Clarity present**'),

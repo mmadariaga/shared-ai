@@ -231,7 +231,7 @@ function materializeWorkerMatrix(matrix, templates) {
     if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
   }
   return matrix.entries.flatMap(entry => {
-    const common = { ...entry, canonicalFetch: `Fetch @${entry.workerContract} and follow it exactly.` };
+    const common = { ...entry, canonicalFetch: `Fetch \`@${entry.workerContract}\` and follow it exactly.` };
     return [
       {
         kind: 'binding',
