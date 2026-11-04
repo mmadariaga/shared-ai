@@ -115,7 +115,7 @@ The panel SHALL display implementation progress as a checked-vs-total count deri
 
 ### Requirement: panel prints a Next hint
 
-The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/sai-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox. Next hint resolution uses a deterministic first-match decision table reading the panel's derived cells. With design and tasks present, a change with any unchecked or no checkbox in `tasks.md` SHALL route to `/sai-3-implement`, and a change with every task checked and no `review.md` SHALL route to `/sai-4-review`.
+The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/to-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox. Next hint resolution uses a deterministic first-match decision table reading the panel's derived cells. With design and tasks present, a change with any unchecked or no checkbox in `tasks.md` SHALL route to `/sai-3-implement`, and a change with every task checked and no `review.md` SHALL route to `/sai-4-review`.
 
 #### Scenario: next command suggested
 
