@@ -1,7 +1,7 @@
 # normative-instruction-citations Specification
 
 ## Purpose
-TBD - created by archiving change repair-dead-cross-references. Update Purpose after archive.
+Keeps citations in normative instructions pointed at the file that defines the cited behavior, so a reader who follows one lands on the rule itself.
 
 ## Requirements
 
@@ -21,9 +21,9 @@ Explore item 10 (Plan / Direct Build supervision contract) citations in normativ
 
 ### Requirement: implement testability-rule citations resolve to the rule's current location
 
-Citations to the implement testability rule in normative instructions SHALL resolve to the line where the rule currently resides.
+Citations to the implement testability rule in normative instructions SHALL resolve to the files where the rule currently resides: the RED acceptance in `sai/commands/implement/coordinator.md` (RED closes only when the step's tests fail by assertion on the behavior under test) and the no-meaningful-test rule in `sai/commands/implement/steps/red-step.md`. A citation SHALL name the file, never a line number.
 
 #### Scenario: Testability rule current location
 
-- **WHEN** `sai/commands/implement/steps/plan-generation.md` cites the testability rule
-- **THEN** the citation names the RED → GREEN hard rule in `sai/commands/implement/steps/common.md`, where the rule resides, rather than a line number
+- **WHEN** a normative instruction cites the implement testability rule
+- **THEN** the citation names `sai/commands/implement/coordinator.md` or `sai/commands/implement/steps/red-step.md`, where the rule resides, rather than a line number

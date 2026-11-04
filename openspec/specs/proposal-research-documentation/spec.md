@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the Proposal Research Documentation section of `proposal.md`, its declaration in the sai-workflow schema, and its template scaffold.
 
 ## Requirements
 ### Requirement: proposal.md SHALL include a Proposal Research Documentation section

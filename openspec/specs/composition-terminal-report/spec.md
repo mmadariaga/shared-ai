@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the combined terminal report format for the `/sai-review` composition, including per-audit outcome lines and the cross-segment changed-files union.
+Defines the combined terminal report format of `/sai-deep-review`, including per-audit outcome lines and the cross-segment changed-files union.
 
 ## Requirements
 

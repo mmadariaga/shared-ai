@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keeps the explore context-isolation block in the instruction file both explore wrappers load, and keeps the non-numbered commands free of STOP+print handoff blocks.
 
 ## Requirements
 
@@ -22,12 +22,8 @@ The Context Isolation block (no write commands, crystallization protocol) SHALL 
 - **THEN** the full Context Isolation text (including the crystallization block template) is present and no inline proposal refusal path remains
 
 ### Requirement: no-handoff-for-nonnumbered
-Non-numbered instruction files (the files backing sai-explore, sai-archive, sai-commit, and sai-pr) SHALL NOT receive a STOP+print handoff block as part of this deduplication.
+Non-numbered instruction files (the files backing sai-explore, sai-archive, and sai-commit) SHALL NOT receive a STOP+print handoff block as part of this deduplication.
 
 #### Scenario: no handoff in commit instruction
 - **WHEN** `sai/commands/commit/instructions.md` is read
 - **THEN** it contains no STOP+print handoff block of the form used in sai-1 through sai-8
-
-#### Scenario: no handoff in pr instruction
-- **WHEN** `sai/commands/pr/instructions.md` is read
-- **THEN** it contains no "when ready" STOP+print pointing to a next sai step

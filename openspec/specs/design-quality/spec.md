@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the decision summary the design phase prints at its end, one line per item, with items omitted under the hard cap signaled.
 
 ## Requirements
 ### Requirement: Decision summary printed at end of design phase

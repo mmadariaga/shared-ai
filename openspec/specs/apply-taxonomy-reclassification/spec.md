@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the documentation taxonomy updates that reclassify `/sai-4-apply` from a utility card to a routed card in `AGENTS.md`, `README.md`, and `GLOSSARY.md`.
+Defines the documentation taxonomy of the RED and GREEN workers of `/sai-3-implement` in `AGENTS.md`, `README.md`, and `GLOSSARY.md`. (The capability was first written to reclassify the retired `/sai-4-apply`.)
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # review-new-command Specification
 
 ## Purpose
-`/sai-4-review-new` is the review-only command of the `-new` family: it reviews a change's diff against its parent branch in a fresh worker and writes `review.md`, leaving every finding fix to `/sai-3-implement-new`.
+`/sai-4-review` is the review-only command: it reviews a change's diff against its parent branch in a fresh worker and writes `review.md`, leaving every finding fix to `/sai-3-implement`. (The capability keeps the name of the `-new` family it was written for, which has since replaced the earlier commands under their own names.)
 
 ## Requirements
 

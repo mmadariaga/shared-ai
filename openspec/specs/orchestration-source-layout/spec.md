@@ -66,12 +66,12 @@ Task-only command instructions SHALL live under `sai/commands/{name}/instruction
 - **THEN** it resolves `sai/commands/{name}/instructions.md` and observes the same instruction content in the same effective order
 
 ### Requirement: Complete migration inventory
-The maintained source-layout inventory SHALL classify every current file in `sai/instructions/` exactly once into its final canonical path: the primary command instructions SHALL use `sai/commands/{name}/instructions.md`; the archive secondary instruction SHALL use `sai/commands/archive/archive-commit-gate.instructions.md`; command-owned templates SHALL use neighboring `.template.md` files; `change-overview.md` SHALL use `sai/change-overview.md`; and `adr-index.md` and `ddr-index.md` SHALL use `sai/adr-index.template.md` and `sai/ddr-index.template.md`. No unlisted file shall move by implication, and archived records MAY retain historical paths.
+The maintained source-layout inventory SHALL classify every current file in `sai/instructions/` exactly once into its final canonical path: the primary command instructions SHALL use `sai/commands/{name}/instructions.md`; the archive secondary instruction SHALL use `sai/commands/archive/archive-commit-gate.instructions.md`; command-owned templates SHALL use neighboring `.template.md` files; `change-overview.md` SHALL use `sai/commands/design/change-overview.md`; and `adr-index.md` and `ddr-index.md` SHALL use `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`. No unlisted file shall move by implication, and archived records MAY retain historical paths.
 
 #### Scenario: migration plan covers every moved source
 
 - **WHEN** the design phase defines the folded file moves and caller updates
-- **THEN** it covers every former command instruction and template exactly once, both root exceptions exactly once, and every active caller atomically
+- **THEN** it covers every former command instruction and template exactly once, each command-owned shared file exactly once, and every active caller atomically
 
 #### Scenario: archive multi-instruction inventory is collision-free
 
@@ -126,7 +126,7 @@ The installer SHALL project the folded command-local and root canonical source s
 #### Scenario: fresh projection contains only folded paths
 
 - **WHEN** a supported harness projection is expanded after the fold
-- **THEN** its managed `sai/` root contains the folded command instructions/templates and root exceptions, with no active old instruction destination
+- **THEN** its managed `sai/` root contains the folded command instructions/templates and command-owned shared files, with no active old instruction destination
 
 ### Requirement: Single structured installation manifest
 `sai/install-manifest.json` SHALL remain the single structured source of truth for the folded active source-to-runtime projections and any retirement records. Adding, moving, or removing a folded source SHALL be represented once in the manifest and consumed consistently by installer, doctor, and uninstall.

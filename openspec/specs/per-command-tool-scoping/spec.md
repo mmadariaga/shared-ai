@@ -2,21 +2,22 @@
 
 ## Purpose
 
-Scope read-only tool access for command wrappers: which tools each surface may grant.
+Scope tool access for command wrappers: which tools each surface may grant, from read-only Explore to the writing goal-driven coordinators.
 
 ## Requirements
 
-### Requirement: Routed coordinator read scope is sufficient but non-writing
+### Requirement: Routed coordinator scope follows the coordinator contract
 
-The seven routed planning and audit command wrappers SHALL receive canonical profile-derived read, search, skill, interaction, dispatch, panel, messaging, and scoped execution pre-approvals required by their coordinator contracts, without native write or bare shell pre-approvals. Command access SHALL be checked independently of worker access. Explore SHALL receive its own profile-derived research and scoped execution pre-approvals, including contracted CodeGraph access. Claude allowed-tools SHALL be described as pre-approval rather than an enforced exclusion of unlisted tools. Opencode SHALL retain its active primary agent without a command-local permission field.
+The seven routed planning, implementation, review, and audit command wrappers (Spec, Design, Implement, Review, Security, Performance, and Accessibility) SHALL receive the canonical profile-derived pre-approvals their goal-driven coordinator contracts require. Because these coordinators write their own artifacts and reports, run the mechanical checks, and execute their local commits themselves, their profiles (`implement-command` and the profiles that extend it, and `audit-command` and the profiles that extend it, in `sai/install-manifest.json`) SHALL grant native write and unrestricted shell access together with read, search, skill, interaction, dispatch, panel, and messaging access, and SHALL delegate only to the workers and helpers their contracts name. Command access SHALL be checked independently of worker access. Explore SHALL receive its own profile-derived research and scoped execution pre-approvals, including contracted CodeGraph access. Claude allowed-tools SHALL be described as pre-approval rather than an enforced exclusion of unlisted tools. Opencode SHALL retain its active primary agent without a command-local permission field.
 
-#### Scenario: All seven routed coordinators receive the restored read tools
+#### Scenario: All seven routed coordinators receive their contracted tools
 - **WHEN** Claude wrappers for Spec, Design, Implement, Review, Security, Performance, and Accessibility are inspected after projection
-- **THEN** each declares its contracted profile-derived read scope and command access check without a separate research-availability probe duty
+- **THEN** each declares its contracted profile-derived scope and command access check without a separate research-availability probe duty
 
-#### Scenario: Write-capable tools remain absent
-- **WHEN** any of these seven wrappers' allowed-tools lists is inspected
-- **THEN** it contains neither Edit nor Write nor a bare unrestricted shell pre-approval
+#### Scenario: Write and shell access follow the profile
+- **WHEN** any of these seven wrappers' allowed-tools lists is inspected after projection
+- **THEN** it contains Edit, Write, and an unrestricted shell pre-approval, because its profile declares `write: true` and `shell: ["*"]`
+- **AND** its delegation pre-approvals name only the workers and helpers listed in its profile's `delegate`
 
 #### Scenario: Existing read-scoped commands do not change
 - **WHEN** capability projection is applied
@@ -37,23 +38,6 @@ The Claude Explore wrapper SHALL project canonical pre-approvals covering readin
 #### Scenario: Required read tools are positively present
 - **WHEN** projected Explore frontmatter is inspected
 - **THEN** its pre-approvals include Read, Glob, Grep, and scoped openspec and git shell access
-
-### Requirement: Copilot sai-explore drops the terminal and keeps the language-gate picker
-
-The Copilot wrapper `commands/copilot/sai-explore.prompt.md` SHALL declare a `tools:` frontmatter that omits the terminal tool `execute` and grants the VS Code option-picker `vscode/askQuestions` in place of the broad `vscode` category. The non-writing tools `read`, `search`, `web`, and `todo` SHALL be retained.
-
-#### Scenario: Terminal tool removed, narrow picker granted
-
-- **WHEN** `commands/copilot/sai-explore.prompt.md` frontmatter is inspected
-- **THEN** the `tools:` list does not contain `execute`
-- **AND** the `tools:` list contains `vscode/askQuestions`
-- **AND** it does not retain the broad `vscode` category entry
-
-#### Scenario: VS Code language gates remain operable
-
-- **WHEN** a non-English `sai-explore` turn reaches the artifact-review or crystallization language gate inside VS Code
-- **THEN** the gate can present its question through `vscode/askQuestions`
-- **AND** `web` and `todo` remain available for non-writing use
 
 ### Requirement: Read-only scoping preserves sai-explore's non-writing operations
 
