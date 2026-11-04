@@ -151,10 +151,10 @@ test('E8 a missing or unknown harness is a usage error that reads nothing', () =
 
 test('E10 directives inside the returned content are returned as text, never followed', () => {
   const { cwd, home } = fixture();
-  write(path.join(cwd, '.claude/sai/a.md'), 'Fetch @sai/b.md\n');
+  write(path.join(cwd, '.claude/sai/a.md'), 'Fetch `@sai/b.md`\n');
   write(path.join(cwd, '.claude/sai/b.md'), 'SECOND');
   const result = run(['--harness', 'claude', 'sai/a.md'], { cwd, home });
-  assert.ok(result.out.endsWith('\n\nFetch @sai/b.md\n'));
+  assert.ok(result.out.endsWith('\n\nFetch `@sai/b.md`\n'));
   assert.ok(!result.out.includes('SECOND'));
 });
 
@@ -211,7 +211,7 @@ test('both fetch skills call the tool with their own harness and keep the skill-
   for (const harness of ['claude', 'opencode']) {
     const text = fs.readFileSync(path.join(repoRoot, 'skills', harness, 'fetch', 'SKILL.md'), 'utf8');
     assert.match(text, new RegExp(`node "<base directory>/fetch\\.js" --harness ${harness} <subpath>`));
-    assert.match(text, /Fetch @skills\/<name>\/SKILL\.md/);
+    assert.match(text, /Fetch `@skills\/<name>\/SKILL\.md`/);
     assert.doesNotMatch(text, /probes the project-local|Project-local `sai\/` root probe|### Path composition/);
     assert.match(text, /Do not fall back to resolving the path yourself/);
   }

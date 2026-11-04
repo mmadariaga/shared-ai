@@ -2,9 +2,9 @@
 
 This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, and hard rules. `resolve-security-scope` has no step file of its own and runs from the brief plus this file.
 
-Fetch @skills/budget-ro/SKILL.md and use it
-Fetch @sai/policies/remember.md
-Fetch @sai/commands/security/options.md
+Fetch `@skills/budget-ro/SKILL.md` and use it
+Fetch `@sai/policies/remember.md`
+Fetch `@sai/commands/security/options.md`
 
 ## Input
 

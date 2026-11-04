@@ -1,16 +1,16 @@
 # `/sai-archive` coordinator
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/prereqs-paths.md
-Fetch @sai/commands/archive/retirement-declaration.md
-Fetch @sai/policies/scenario-preservation.md
-Fetch @sai/policies/command-execution.md and follow it exactly.
-Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for every `sai-archive-worker` stretch.
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/prereqs-paths.md`
+Fetch `@sai/commands/archive/retirement-declaration.md`
+Fetch `@sai/policies/scenario-preservation.md`
+Fetch `@sai/policies/command-execution.md` and follow it exactly.
+Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-archive-worker` stretch.
 
 You are the driver of the run and the only user-facing voice. The invocation carries one string, `arguments_value`: `[change-name] [--fast-track]`. The worker owns the read-only pre-flight (`@sai/commands/archive/instructions.md`). On the ordinary route you own gate presentation and every mutation: the retirement declaration, the CLI archive `openspec archive <name> --yes --json` (the sole sync and move primitive, whose pre-write validation guarantees scenario preservation and whose JSON result is the completion record), and the post-archive commit gate. On the Direct Build (unattended) route you validate and authorize the worker's prepared order and the same worker executes it.
 
@@ -23,7 +23,7 @@ Archive one completed change. The run is done when the CLI archive moved the cha
 1. **Fast-track parse.** Inspect `arguments_value` for the positional token `--fast-track`.
    - Present: set the in-conversation boolean `fast_track_active` to true, remove the token and trim the surrounding whitespace, print the exact line `> FAST-TRACK MODE ACTIVE` as ordinary conversation text (never write it to a file), and use the cleaned remainder as the effective request from here on.
    - Absent: leave `fast_track_active` false and use `arguments_value` verbatim.
-2. **Change resolution.** Fetch @sai/policies/change-picker.md and follow it exactly against the cleaned request. On its stop paths (no active changes, declined confirmation), print its exact stop text and end the run without creating a worker. The resolved name is the effective request from here on.
+2. **Change resolution.** Fetch `@sai/policies/change-picker.md` and follow it exactly against the cleaned request. On its stop paths (no active changes, declined confirmation), print its exact stop text and end the run without creating a worker. The resolved name is the effective request from here on.
 3. **Create the worker.** `Fetch @sai/orchestration/workers/bindings/archive-worker.md and use it.` The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the resolved change name goes to the same worker in the next message as `arguments_value`, with `fast_track_active` declared beside it as session state, never as an envelope key. The Direct Build (unattended) composition instead sends an initial `--direct-build-prepare` marker and keeps `direct_build_mode` outside the envelope. A worker that returns no ready is an obstacle (see Obstacles).
 4. **Open the guard window.** Take a `snapshot` and hold the returned SHA as the invocation-scoped `guard_base`.
 
@@ -47,7 +47,7 @@ Present the confirming summary, then run in order (`archive_content_fix_attempte
 - **CLI archive** — run `openspec archive <name> --yes --json` and parse the JSON. On success the sync and move are complete: add the realized archive path and the spec paths from the pre-flight inventory (the CLI's `specsUpdated` is not a path list) to the union. A change that declares `skip_specs` has no delta spec, so the CLI syncs nothing and the union gains the archive path alone. On failure or invalid JSON, classify:
   - **Content failure with a cited header** — the error carries a delta-content signal (`archive_spec_update_failed`, an already-existing requirement, or a missing or unknown requirement) and cites at least one `### Requirement:` header. Once per run (`archive_content_fix_attempted`): `Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.`, create one `sai-backfill-worker`, and send it a `--fix-delta-headers <name>` envelope carrying the verbatim CLI error and the cited headers after its ready. It returns corrected content for those headers only. Validate it against the sai-workflow delta format, write it to an OS-temp directory, and check it with `node <check-delta-headers.js path> <name> --delta-dir <tmp>/specs`, resolving the tool path per `@sai/policies/tool-resolution.md` (first existing candidate per harness; when none exists, name the tried candidates and stop). On a pass, write the corrected specs and retry the CLI archive once. Any second failure — the retry, the validation, or the fix continuation — stops with the literal error: no further retry, no second fix, no replacement worker.
   - **Every other failure** — an archive-directory collision, an empty index, an infrastructure error (missing binary, timeout, invalid JSON), a failure on a `--skip-specs` run or on a change that declares `skip_specs`, or a content signal with no cited header: report the exact error and stop, with no fallback, staging, retry, or commit.
-- **Post-archive commit gate** — fetch @sai/commands/archive/archive-commit-gate.instructions.md and apply it exactly. Under `fast_track_active` it skips its selector as that file says; without the flag every gate still asks.
+- **Post-archive commit gate** — fetch `@sai/commands/archive/archive-commit-gate.instructions.md` and apply it exactly. Under `fast_track_active` it skips its selector as that file says; without the flag every gate still asks.
 
 ### Direct Build (unattended) route
 

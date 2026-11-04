@@ -725,7 +725,7 @@ test('canonical identity surfaces reject former routed names', () => {
     'README.md',
     'AGENTS.md',
   ];
-  const former = /sai-design-coordinator|sai-implementation-coordinator|sai-design-planning-worker|sai-implementation-planning-worker|Fetch @sai\/compat\/(?:design|implement)-invocation-core\.md/;
+  const former = /sai-design-coordinator|sai-implementation-coordinator|sai-design-planning-worker|sai-implementation-planning-worker|Fetch `@sai\/compat\/(?:design|implement)-invocation-core\.md`/;
   for (const relativePath of paths) {
     assert.doesNotMatch(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'), former, relativePath);
   }

@@ -103,7 +103,7 @@ test('the review never reads build-log.md, and the report format has one source'
   for (const file of [common, read(STEPS['establish-diff-scope']), read(STEPS['resolve-review-analysis']), read('sai/commands/review/worker.md')]) {
     assert.doesNotMatch(file, /build-log\.md/);
   }
-  assert.match(read(STEPS['close-review-outcome']), /Fetch @sai\/commands\/review\/review-report\.template\.md/);
+  assert.match(read(STEPS['close-review-outcome']), /Fetch `@sai\/commands\/review\/review-report\.template\.md`/);
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/review-report.template.md')));
 });
 
@@ -177,7 +177,7 @@ test('finding-state defines the excluded mark and /sai-3-implement skips exclude
 test('the command wrappers and the ADR that extends 0194 exist', () => {
   for (const harness of ['claude', 'opencode']) {
     const wrapper = read(`commands/${harness}/sai-4-review.md`);
-    assert.match(wrapper, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly/);
+    assert.match(wrapper, /Fetch `@sai\/commands\/review\/coordinator\.md` and follow it exactly/);
     assert.match(wrapper, /command_name: review$/m);
     assert.doesNotMatch(wrapper, /@sai\/adapters\//);
   }

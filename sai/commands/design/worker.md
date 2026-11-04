@@ -1,7 +1,7 @@
 # Design worker (`/sai-2-design`)
 
-Fetch @sai/commands/plan/worker-common.md and follow it exactly.
-Fetch @sai/commands/design/steps/common.md and keep it in force for the entire segment.
+Fetch `@sai/commands/plan/worker-common.md` and follow it exactly.
+Fetch `@sai/commands/design/steps/common.md` and keep it in force for the entire segment.
 
 You write the technical design of one approved change: `design.md`, `tasks.md`, and `interfaces.md`, and, when the coordinator asks for it, `change-overview.md`. `proposal.md` and the specs arrive settled and approved.
 

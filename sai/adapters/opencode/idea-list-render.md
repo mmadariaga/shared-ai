@@ -1,6 +1,6 @@
 # Opencode Idea-List Render Binding
 
-Fetch @sai/adapters/opencode/panel-render.md and use it for the panel mechanics.
+Fetch `@sai/adapters/opencode/panel-render.md` and use it for the panel mechanics.
 
 This binding maps the `sai-explore` panel surfaces onto opencode todo entry fields. The surface rules live in `sai/commands/explore/steps/common.md` (chat-start clear and Phase A stage TODO, loaded at invocation start) and `sai/commands/explore/steps/idea-list.md` (Phase B idea list, loaded later).
 

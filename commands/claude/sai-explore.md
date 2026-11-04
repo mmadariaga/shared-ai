@@ -5,12 +5,12 @@ model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
-Receipt: check the load receipt at the start of every explore turn and finish the load first when it is missing; the rule lives in @sai/commands/explore/body.md § Load receipt.
-Fetch @skills/fetch/SKILL.md
+Receipt: check the load receipt at the start of every explore turn and finish the load first when it is missing; the rule lives in `@sai/commands/explore/body.md` § Load receipt.
+Fetch `@skills/fetch/SKILL.md`
 This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/adapters/claude/idea-list-render.md and use it.
-Fetch @sai/commands/explore/body.md and follow it exactly, forwarding the InvocationEnvelope block below.
+Fetch `@sai/adapters/claude/idea-list-render.md` and use it.
+Fetch `@sai/commands/explore/body.md` and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: explore

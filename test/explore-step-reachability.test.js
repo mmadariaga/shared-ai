@@ -11,7 +11,7 @@ const nucleusFile = path.join(__dirname, '..', 'sai', 'commands', 'explore', 'in
 function findFetchDirectives(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
-    const fetchRegex = /Fetch @sai\/commands\/explore\/steps\/([a-z-]+\.md)/g;
+    const fetchRegex = /Fetch `?@sai\/commands\/explore\/steps\/([a-z-]+\.md)/g;
     const fetches = [];
     let match;
     while ((match = fetchRegex.exec(content)) !== null) {
@@ -150,7 +150,7 @@ test('next.follow delivers optional actions and the route picker together, never
   for (const startup of [nucleusFile, path.join(explorerStepsDir, 'common.md'),
     path.join(__dirname, '..', 'sai', 'commands', 'explore', 'body.md')]) {
     const source = fs.readFileSync(startup, 'utf8');
-    assert.doesNotMatch(source, /Fetch @skills\/(?:to-backlog|new-change-branch)\/SKILL\.md/);
+    assert.doesNotMatch(source, /Fetch `?@skills\/(?:to-backlog|new-change-branch)\/SKILL\.md/);
     assert.doesNotMatch(source, /Would you like to (?:create or update a backlog item|create and switch to a local change branch)/);
   }
   for (const intent of ['plan', 'direct-build']) {
@@ -185,7 +185,7 @@ test('crystallization-protocol.md detects open decisions before loading the slic
   assert.equal(fetches[0], 'open-decisions.md', 'the open-decision step is the first fetch of the file');
   assert.ok(protocol.indexOf('open-decisions.md') < protocol.indexOf('slicing-assessment.md'),
     'detection precedes the slicing assessment load');
-  assert.match(protocol, /Only when at least one exists, Fetch @sai\/commands\/explore\/steps\/open-decisions\.md and complete that step before loading anything below/);
+  assert.match(protocol, /Only when at least one exists, Fetch `@sai\/commands\/explore\/steps\/open-decisions\.md` and complete that step before loading anything below/);
   assert.match(protocol, /With none, continue below and show nothing about this check/);
 
   const slicing = fs.readFileSync(path.join(explorerStepsDir, 'slicing-assessment.md'), 'utf8');
@@ -199,7 +199,7 @@ test('crystallization-protocol.md detects open decisions before loading the slic
 test('follow-load is driven by next.follow with no whitelist and a stop-on-failure rule', () => {
   const instructions = fs.readFileSync(nucleusFile, 'utf8');
   const policy = fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'stage-machine.md'), 'utf8');
-  assert.match(instructions, /Fetch @sai\/policies\/stage-machine\.md/);
+  assert.match(instructions, /Fetch `@sai\/policies\/stage-machine\.md`/);
   assert.match(policy, /fetch whatever `next\.follow` names/);
   assert.match(policy, /There is no file whitelist/);
   assert.match(policy, /show the error and wait for the user/);

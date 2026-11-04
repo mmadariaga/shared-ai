@@ -2,8 +2,8 @@
 name: fetch
 description: >
   Resolves Fetch @<path> references in instructions for Claude Code only — NOT compatible with opencode. Maps @<subpath> to
-  .claude/<subpath> (project) then ~/.claude/<subpath> (global) through one deterministic tool call, and @skills/<name>/SKILL.md
-  to the Skill tool. This skill MUST be loaded before any @sai/ fetch directive.
+  .claude/<subpath> (project) then ~/.claude/<subpath> (global) through one deterministic tool call, and `@skills/<name>/SKILL.md`
+  to the Skill tool. This skill MUST be loaded before any `@sai/` fetch directive.
 license: MIT
 compatibility: claude
 metadata:
@@ -19,13 +19,15 @@ Resolve project-local `.claude/` before user-global `~/.claude/`. These are the 
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
-Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instruction text by the first matching row:
+Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instruction text by the first matching row.
+
+A directive may write its path inside an inline code span, as in ``Fetch `@sai/<path>` `` or ``Also fetch `@skills/<name>/SKILL.md` ``. The backticks only wrap the path: it is the same directive as the bare form, so read the path inside the span and resolve it by the same rows. Instruction files write the backticked form so the harness does not attach each referenced file on its own.
 
 | Pattern | Resolution |
 |---------|-----------|
-| `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>`, e.g. `Skill("budget")` |
-| `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | Call the fetch tool below, once per directive. |
+| `Fetch @skills/<name>/SKILL.md`, backticked: ``Fetch `@skills/<name>/SKILL.md` `` | Invoke the `Skill` tool with skill name `<name>`, e.g. `Skill("budget")` |
+| `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.`, backticked: ``Fetch `@skills/<name>/SKILL.md` and follow those instructions exactly.`` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
+| `Fetch @<subpath>` (any other path), backticked: ``Fetch `@<subpath>` `` | Call the fetch tool below, once per directive. |
 
 ### The fetch tool
 

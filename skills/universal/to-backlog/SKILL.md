@@ -52,7 +52,7 @@ sections 2–4 below. Without slices, keep these sections.
 A single ordinary non-sliced proposal is not a slice set: keep one-issue capture
 unless the crystallized context explicitly identifies it as a sliced set.
 
-For both **create** and **update**, Fetch @sai/policies/issue-format.md and read it
+For both **create** and **update**, Fetch `@sai/policies/issue-format.md` and read it
 before drafting. Apply its format and final drafting checks; on update, use its preservation boundary.
 
 Read the conversation, prioritizing recent messages while retaining earlier

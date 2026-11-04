@@ -19,11 +19,11 @@ test('the Direct Build card is a goal-driven card on the shared obstacle policy'
   for (const heading of ['## Goal', '## Start', '## Run state', '## The run', '## Resume', '## Obstacles', '## Close']) {
     assert.ok(card.includes(heading), `the card has ${heading}`);
   }
-  assert.ok(card.includes('Fetch @sai/policies/obstacle-escalation.md'));
+  assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
   assert.match(card, /Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
-  assert.ok(card.includes('Fetch @sai/orchestration/workers/bindings/direct-build-worker.md and use it.'));
-  assert.ok(card.includes('Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it'));
-  assert.ok(card.includes('Fetch @sai/orchestration/workers/bindings/archive-worker.md and use it.'));
+  assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/direct-build-worker.md` and use it.'));
+  assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/backfill-worker.md` and use it'));
+  assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/archive-worker.md` and use it.'));
   assert.doesNotMatch(card, LEGACY);
   assert.doesNotMatch(card, /Bounded Recovery|Cause Locus|diagnosis_rounds|replacement_reconstruction_fields/);
 });
@@ -56,13 +56,13 @@ test('E9: a missing or unexportable block stops before dispatch and offers the s
 
 test('I4: the pipeline step keeps the export, the card fetch, its arguments, and what is explore\'s own', () => {
   const pipeline = read(PIPELINE);
-  assert.match(pipeline, /Fetch @sai\/commands\/explore\/direct-build-coordinator\.md and follow it exactly/);
+  assert.match(pipeline, /Fetch `@sai\/commands\/explore\/direct-build-coordinator\.md` and follow it exactly/);
   assert.match(pipeline, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(pipeline, /--block-file <absolute path returned by export>\n {2}--block-hash <sha256 returned by export>/);
   assert.match(pipeline, /Direct Build `--no-specs` profile \(POC\)/);
   assert.match(pipeline, /Successful slice completion transition/);
   assert.doesNotMatch(pipeline, LEGACY);
-  assert.doesNotMatch(pipeline, /Fetch @sai\/orchestration\/workers\/bindings\/(?:backfill|archive)-worker\.md/);
+  assert.doesNotMatch(pipeline, /Fetch `@sai\/orchestration\/workers\/bindings\/(?:backfill|archive)-worker\.md/);
   assert.ok(pipeline.length < read(CARD).length, 'the supervision moved into the card');
 });
 
@@ -81,7 +81,7 @@ test('I8: the direct-build, backfill, and archive workers no longer load worker-
   for (const file of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/archive/worker.md']) {
     const source = read(file);
     assert.doesNotMatch(source, /worker-core/, `${file} does not load worker-core`);
-    assert.ok(source.includes('Fetch @sai/policies/public-chat.md and follow it exactly.'));
+    assert.ok(source.includes('Fetch `@sai/policies/public-chat.md` and follow it exactly.'));
     assert.match(source, /event: ready\nchanged_files: \[\]/, `${file} carries its own ready handshake`);
   }
   const transport = read('sai/policies/direct-build-report-transport.md');
@@ -100,7 +100,7 @@ test('I8: sai-direct-build-worker renders from the standalone template on both h
     assert.ok(binding, `${harness} direct-build binding`);
     assert.match(binding.text, /Create the worker with the ready prompt alone/);
     assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
-    assert.match(binding.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md and follow it exactly/);
+    assert.match(binding.text, /Fetch `@sai\/commands\/explore\/direct-build-worker\.md` and follow it exactly/);
     assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
   }
 });

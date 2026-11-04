@@ -10,7 +10,7 @@ test('CLI invocation surface: instructions.md fetches the common policy and name
   const policy = fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'stage-machine.md'), 'utf8');
 
   // Single source: the operational contract lives in the common policy.
-  assert.match(instructions, /Fetch @sai\/policies\/stage-machine\.md/);
+  assert.match(instructions, /Fetch `@sai\/policies\/stage-machine\.md`/);
   assert.match(instructions, /explore-idea@1/);
   assert.match(instructions, /explore-slice@1/);
   assert.doesNotMatch(instructions, /explore-stage@1/);

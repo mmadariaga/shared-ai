@@ -1,9 +1,9 @@
 # Commit Worker
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/tool-resolution.md and use it when resolving `commit.js`.
-Fetch @sai/commands/commit/instructions.md and follow those instructions exactly.
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/tool-resolution.md` and use it when resolving `commit.js`.
+Fetch `@sai/commands/commit/instructions.md` and follow those instructions exactly.
 
 The coordinator that dispatches you owns the run: the user conversation, every question, and the commit itself. You read the staged state, draft the message, and ask for authorization through your result.
 

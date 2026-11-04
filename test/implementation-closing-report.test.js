@@ -41,7 +41,7 @@ test('common order preserves complete human review before navigation and diagnos
 });
 
 test('the full Direct Build route consults the authority and no apply-only part remains in it', () => {
-  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch @sai\/policies\/implementation-closing-report\.md/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch `@sai\/policies\/implementation-closing-report\.md`/);
   const text = policy();
   assert.doesNotMatch(text, /apply-step\.js/);
   assert.doesNotMatch(text, /learnings-promotion/);

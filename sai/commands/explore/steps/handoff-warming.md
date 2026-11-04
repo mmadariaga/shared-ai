@@ -1,6 +1,6 @@
 **Hand-off warming.** At a hand-off close, explore keeps its own prompt cache warm until the user returns with `next-slice` or a fixed deadline passes, so the next slice does not resume cold. The mechanism is the hand-off wait of `@sai/policies/cache-warming.md`; this file owns the decisions around it: when it applies, where the timings come from, the question, and the stop.
 
-Fetch @sai/policies/cache-warming.md and follow its § Hand-off wait. Fetch @sai/policies/tool-resolution.md to resolve `project-settings.js`.
+Fetch `@sai/policies/cache-warming.md` and follow its § Hand-off wait. Fetch `@sai/policies/tool-resolution.md` to resolve `project-settings.js`.
 
 **Hand-off close.** The successful end of a Plan - Unattended slice (`pipeline-plan-unattended.md` § Close) or of a sliced Manual hand-off (`route-selector.md` § Post-Manual handoff), where the user goes to another chat and returns here with `next-slice`. Run this file as the last step of that close, after its text is printed.
 

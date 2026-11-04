@@ -13,7 +13,7 @@ the working tree and with a commit order.
 ## The tool
 
 `sai/tools/slice-path-scope.js` makes the check and only reads the repository.
-Fetch @sai/policies/tool-resolution.md and resolve the copy with `<name>` set
+Fetch `@sai/policies/tool-resolution.md` and resolve the copy with `<name>` set
 to `slice-path-scope.js`. The invocations are byte-identical whichever
 candidate wins:
 

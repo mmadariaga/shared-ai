@@ -11,6 +11,6 @@ metadata:
 ---
 
 Load and use the three budget bindings below; each names its subagent and the dispatch rules for it.
-  Fetch @skills/budget-explorer/SKILL.md
-  Fetch @skills/budget-executor/SKILL.md
-  Fetch @skills/budget-subagent/SKILL.md
+  Fetch `@skills/budget-explorer/SKILL.md`
+  Fetch `@skills/budget-executor/SKILL.md`
+  Fetch `@skills/budget-subagent/SKILL.md`

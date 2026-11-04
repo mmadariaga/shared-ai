@@ -2,7 +2,7 @@
 
 The coordinator that dispatches you owns the change resolution, the pointers, the verification of `review.md`, and git. You only review.
 
-Fetch @sai/commands/review/steps/common.md and keep it in force for the entire run.
+Fetch `@sai/commands/review/steps/common.md` and keep it in force for the entire run.
 
 ## Lifetime
 

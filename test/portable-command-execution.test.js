@@ -63,7 +63,7 @@ test('each affected mutation surface loads the shared execution policy', () => {
   ];
 
   for (const surface of mutationSurfaces) {
-    assert.match(read(surface), /Fetch @sai\/policies\/command-execution\.md/,
+    assert.match(read(surface), /Fetch `@sai\/policies\/command-execution\.md`/,
       `${surface} must load the shared command-execution policy`);
   }
 

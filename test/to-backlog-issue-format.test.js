@@ -91,10 +91,10 @@ test('identifier allocation uses retained history rather than remaining-list len
 
 test('both drafting branches must load the same installed reference before drafting', () => {
   const prepare = skill.split('## 2. Prepare one item')[1].split('## 3. Review and confirm')[0];
-  assert.match(prepare, /For both \*\*create\*\* and \*\*update\*\*, Fetch @sai\/policies\/issue-format\.md/);
+  assert.match(prepare, /For both \*\*create\*\* and \*\*update\*\*, Fetch `@sai\/policies\/issue-format\.md`/);
   assert.match(prepare, /read it\s+before drafting/);
   assert.match(prepare, /final drafting checks pass/);
-  assert.ok(prepare.indexOf('Fetch @sai/policies/issue-format.md') < prepare.indexOf('Draft only a title'));
+  assert.ok(prepare.indexOf('Fetch `@sai/policies/issue-format.md`') < prepare.indexOf('Draft only a title'));
   assert.match(skill, /Wait for an explicit answer/);
   assert.match(skill, /A prior general grant, unattended mode,\s+or command invocation is not confirmation/);
 });

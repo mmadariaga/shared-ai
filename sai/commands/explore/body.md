@@ -1,9 +1,9 @@
 <TASK>
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/public-chat.md and follow it exactly.
-  First step: Fetch @sai/policies/tool-access.md and check the wrapper's required capability profile. The prerequisite check below runs right after it, before every remaining step.
-  When a run stops on an error or an unexpected condition, Fetch @sai/policies/obstacle-escalation.md and close the stop with its § Escalate to the user.
+  Fetch `@sai/policies/verified-precondition-handback.md`
+  Fetch `@sai/policies/public-chat.md` and follow it exactly.
+  First step: Fetch `@sai/policies/tool-access.md` and check the wrapper's required capability profile. The prerequisite check below runs right after it, before every remaining step.
+  When a run stops on an error or an unexpected condition, Fetch `@sai/policies/obstacle-escalation.md` and close the stop with its § Escalate to the user.
 
   ## Load receipt
   The load is the sequence of reads and calls of this command, from the wrapper through `sai-state spawn`. It ends with the load receipt: the `verdict: pass` of the `prereqs.js` check plus the id returned by `sai-state spawn`, both produced after the most recent `/sai-explore` invocation in the chat. The receipt is made of those two tool outputs; only they count, and a receipt from before the latest invocation does not.
@@ -15,14 +15,14 @@
   - **Harnesses.** Claude Code (a message delivered mid-turn) and opencode (a queued user message) follow these same rules.
 
   ## Prerequisite checks
-  Fetch @sai/policies/prereqs-paths.md and retain the OpenSpec path table in this conversation — local artifact reads use the direct paths from it.
-  Fetch @sai/policies/prereqs-check.md and run its `sai/tools/prereqs.js` check inline in the main session, right after the capability-profile check and before every remaining step, on every invocation — including sessions that never touch `openspec/`; never delegate or defer it. Pass `--require-openspec-skills claude` on Claude Code and `--require-openspec-skills opencode` on opencode. Continue only on exit 0 (`verdict: pass`); on a halt print the policy's literal for the reported `failed_check`, and treat an incomplete check exactly as the policy says — never as `verdict: pass`.
+  Fetch `@sai/policies/prereqs-paths.md` and retain the OpenSpec path table in this conversation — local artifact reads use the direct paths from it.
+  Fetch `@sai/policies/prereqs-check.md` and run its `sai/tools/prereqs.js` check inline in the main session, right after the capability-profile check and before every remaining step, on every invocation — including sessions that never touch `openspec/`; never delegate or defer it. Pass `--require-openspec-skills claude` on Claude Code and `--require-openspec-skills opencode` on opencode. Continue only on exit 0 (`verdict: pass`); on a halt print the policy's literal for the reported `failed_check`, and treat an incomplete check exactly as the policy says — never as `verdict: pass`.
 
   ## Behaviors
-  Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @skills/budget/SKILL.md and use it
+  Fetch `@skills/safe-operations/SKILL.md` and use it
+  Fetch `@skills/budget/SKILL.md` and use it
   Delegate all discovery research to the budget-explorer subagent with a goal and an output contract. The main session reasons and synthesizes, reading directly only `openspec/` artifacts, its fetched instruction and policy files, and stage-machine state. `WebFetch`, `WebSearch`, and punctual `Glob`/`Grep`/`Read` are exceptions for a one-off verification or while the explorer is unavailable; re-delegate as soon as it is back. The explorer detects CodeGraph availability itself: its `ladder_discards` field is the only availability signal, so the main session runs no probe and prints no availability literal.
-  Before the first executor dispatch of pre-crystallization Explore, Fetch @sai/policies/investigation-batch.md and follow it exactly.
+  Before the first executor dispatch of pre-crystallization Explore, Fetch `@sai/policies/investigation-batch.md` and follow it exactly.
   **Explorer two-phase startup.** Every pre-crystallization budget-explorer dispatch runs in two phases. The initial dispatch is ready-only: base instructions only, with no goal, output contract, change or topic, or provenance, and a ready prompt that names no tool; the explorer returns exactly `event: ready` with empty `changed_files` before any work. The goal and output contract then travel only in a continuation on the same handle: `SendMessage` to the captured agent handle on Claude Code, `task(task_id: "<captured task ID>", prompt: "<goal + output contract>")` on opencode. Each parallel explorer does its own ready. Keep the handle for the whole run: the explorer is live, so every later sequential search goes to the same explorer as a continuation (no new ready, and its own tool-call ceiling), and searches that run at once start further explorers, each with its own ready and reused the same way. Follow `@sai/policies/cache-warming.md` for every explorer: its messages carry no warming line, and the policy's `warm-up` order readies an idle explorer you will reuse. Dispose the explorers as the policy says when a route ends or is abandoned; otherwise their `max` window bounds them. Ready opens no guard window. Ready and task retry separately with identical prompts under the shared bounded retry budget (at most two retries each), and a missing ready relaunches fresh with the original minimal envelope. Every explorer dispatch pays both phases, a single-file read included. Routed spec and design dispatches keep their own two-phase startup, unwrapped.
 
   ## Fast-track token
@@ -38,13 +38,13 @@
   - The cleaned request and `overview_language` are invocation-scoped. They are never written to a change artifact or configuration file.
 
   ## Load instructions (in order)
-  Fetch @sai/commands/explore/instructions.md
-  Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly.
-  Fetch @sai/policies/remember.md
-  Fetch @sai/policies/question-context.md
+  Fetch `@sai/commands/explore/instructions.md`
+  Fetch `@skills/openspec-explore/SKILL.md` and follow those instructions exactly.
+  Fetch `@sai/policies/remember.md`
+  Fetch `@sai/policies/question-context.md`
   Run `sai-state spawn --key <stable-key>` per `@sai/policies/stage-machine.md` as the final step of the load, and retain the returned `id` as the load receipt's session id: every stage event of this invocation emits against it.
   On an invocation turn (a user message that runs `/sai-explore`), when the chat holds a hand-off wait of an earlier invocation (a background task id and chain from `steps/handoff-warming.md`), stop it through `@sai/policies/cache-warming.md` § Stop your own wait and discard that invocation's hand-off answers. Then run `sai-state reset <id> explore-idea@1` and `sai-state reset <id> explore-slice@1` right after `sai-state spawn`, so the invocation starts from the initial stage, empty lists, and no slice inventory even when the chat holds the receipt of an earlier invocation; a parked Direct Build resumes only inside the invocation that parked it, and a new invocation discards its cursors with the rest of the state. A recovery load (a turn that is not an invocation, lacks the receipt, and completes the load before answering) runs `spawn` only and keeps the current stage, the agreed lists, and the slice inventory.
-  Chat language: after `sai-state spawn` and its resets, Fetch @sai/policies/tool-resolution.md and run `node <tool-path> get explore.chatPublicLanguage --json --cwd <project-root>`, resolving `<tool-path>` for `project-settings.js`. When it returns a `value`, adopt it as if the user had written "let's talk in <value>" before discussing any idea or change: all explanatory chat text of this invocation uses that language from the first message after the load, writing in another language does not change it, and only the user's explicit request for another language replaces it for the rest of the invocation. Reasoning stays English; fixed literals (STOP notices, halt messages, picker labels) and every artifact, the `Ready to Propose` block and the change overview included, are unaffected. A non-zero exit, unparseable output, or `value: null` is an absent setting: print the tool's `warnings`, or one line naming the failure, and continue without a language instruction.
+  Chat language: after `sai-state spawn` and its resets, Fetch `@sai/policies/tool-resolution.md` and run `node <tool-path> get explore.chatPublicLanguage --json --cwd <project-root>`, resolving `<tool-path>` for `project-settings.js`. When it returns a `value`, adopt it as if the user had written "let's talk in <value>" before discussing any idea or change: all explanatory chat text of this invocation uses that language from the first message after the load, writing in another language does not change it, and only the user's explicit request for another language replaces it for the rest of the invocation. Reasoning stays English; fixed literals (STOP notices, halt messages, picker labels) and every artifact, the `Ready to Propose` block and the change overview included, are unaffected. A non-zero exit, unparseable output, or `value: null` is an absent setting: print the tool's `warnings`, or one line naming the failure, and continue without a language instruction.
 
   ## Run
   **User's request:** the cleaned request after the fast-track strip and the overview-language parse.

@@ -78,7 +78,7 @@ function isRetiredPerPhaseSource(source, harness) {
 }
 
 function canonicalWorkerFetch(phase) {
-  return `Fetch @${PHASE_CONTRACT_PATH[phase]} and follow it exactly.`;
+  return `Fetch \`@${PHASE_CONTRACT_PATH[phase]}\` and follow it exactly.`;
 }
 
 function normalizeDestination(destination, destinationRoot) {
@@ -271,7 +271,7 @@ test('worker bindings land at identical neutral destinations and preserve the ha
         const matching = fs.readdirSync(bindingsDir)
           .filter(name => name.endsWith('-worker.md'))
           .filter(name => fs.readFileSync(path.join(bindingsDir, name), 'utf8')
-            .includes(`Fetch @${contract} and follow it exactly.`));
+            .includes(`Fetch \`@${contract}\` and follow it exactly.`));
         assert.equal(matching.length, 1,
           `${harness} should install exactly one implement binding for ${workerName}`);
         assert.match(fs.readFileSync(path.join(bindingsDir, matching[0]), 'utf8'),
@@ -280,10 +280,10 @@ test('worker bindings land at identical neutral destinations and preserve the ha
       }
       const redFile = fs.readdirSync(bindingsDir)
         .find(name => fs.readFileSync(path.join(bindingsDir, name), 'utf8')
-          .includes('Fetch @sai/commands/implement/red-worker.md and follow it exactly.'));
+          .includes('Fetch `@sai/commands/implement/red-worker.md` and follow it exactly.'));
       const greenFile = fs.readdirSync(bindingsDir)
         .find(name => fs.readFileSync(path.join(bindingsDir, name), 'utf8')
-          .includes('Fetch @sai/commands/implement/green-worker.md and follow it exactly.'));
+          .includes('Fetch `@sai/commands/implement/green-worker.md` and follow it exactly.'));
       assert.ok(redFile && greenFile, `${harness} should install both RED and GREEN bindings`);
       assert.notEqual(redFile, greenFile,
         `${harness} RED and GREEN bindings must not share a destination file`);
@@ -309,7 +309,7 @@ test('generated worker agents expose exactly one frontmatter block and one canon
         assert.equal(fs.existsSync(agentPath), true, `${harness} should install ${workerName} agent`);
         const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
         const bootstrap = harness === 'claude'
-          ? 'Fetch @skills/fetch/SKILL.md'
+          ? 'Fetch `@skills/fetch/SKILL.md`'
           : 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.';
         const body = text.slice(text.indexOf('\n---\n') + '\n---\n'.length).trim();
         assert.equal(body.split('\n')[0], bootstrap,
@@ -317,7 +317,7 @@ test('generated worker agents expose exactly one frontmatter block and one canon
         assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
           `${harness} ${workerName} agent should contain exactly one frontmatter block`);
         assert.equal(
-          (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+          (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
           1,
           `${harness} ${workerName} agent should contain exactly one canonical worker Fetch`
         );
@@ -340,9 +340,9 @@ test('generated worker agents expose exactly one frontmatter block and one canon
 });
 
 function workerContractFor(workerName) {
-  if (IMPLEMENT_WORKER_NAME[workerName]) return `Fetch @${IMPLEMENT_WORKER_NAME[workerName]} and follow it exactly.`;
+  if (IMPLEMENT_WORKER_NAME[workerName]) return `Fetch \`@${IMPLEMENT_WORKER_NAME[workerName]}\` and follow it exactly.`;
   const phase = Object.entries(WORKER_NAME).find(([, name]) => name === workerName)[0];
-  return `Fetch @${PHASE_CONTRACT_PATH[phase]} and follow it exactly.`;
+  return `Fetch \`@${PHASE_CONTRACT_PATH[phase]}\` and follow it exactly.`;
 }
 
 test('design-only options stay out of every other binding in both harnesses', () => {

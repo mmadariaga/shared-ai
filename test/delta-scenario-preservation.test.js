@@ -183,7 +183,7 @@ test('shared contracts enforce separate author, receiver, and archive checks on 
   assert.doesNotMatch(policy, /scenario_exception_reference|--scenario-exceptions/);
   for (const file of ['sai/commands/backfill/worker.md', 'sai/commands/backfill/coordinator.md',
     'sai/commands/archive/coordinator.md', 'sai/commands/explore/direct-build-coordinator.md']) {
-    assert.match(read(file), /Fetch @sai\/policies\/scenario-preservation\.md/);
+    assert.match(read(file), /Fetch `@sai\/policies\/scenario-preservation\.md`/);
   }
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /cannot be accepted through review-round cap exhaustion/);
 });

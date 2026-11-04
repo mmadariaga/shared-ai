@@ -89,7 +89,7 @@ test('own-spec citation detector flags both forms and spares target-project refe
         'Write `openspec/specs/{name}/spec.md`.',
         'Delta at specs/<capability>/spec.md',
         'Never modify `openspec/specs/**`.',
-        'Fetch @sai/policies/commit-rules.md',
+        'Fetch `@sai/policies/commit-rules.md`',
         'Follow commit-rules for the message.',
         'An unknown `not-a-capability` capability.',
       ].join('\n'),

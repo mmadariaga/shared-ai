@@ -2,7 +2,7 @@
 
 Active step: close-accessibility-outcome. The step is done when `accessibility.md` is saved and verified and `completed` is returned with the summary defined below.
 
-Fetch @sai/commands/accessibility/accessibility-report.template.md
+Fetch `@sai/commands/accessibility/accessibility-report.template.md`
 
 ## 1. Draft
 

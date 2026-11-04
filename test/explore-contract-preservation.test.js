@@ -78,10 +78,10 @@ test('approach comparison: conversation-only decisions reuse handoff fields with
 
 test('approach comparison: both harness entry paths load the same discovery instructions (I5)', () => {
   for (const harness of ['claude', 'opencode']) {
-    assert.ok(source(`commands/${harness}/sai-explore.md`).includes('Fetch @sai/commands/explore/body.md and follow it exactly'));
+    assert.ok(source(`commands/${harness}/sai-explore.md`).includes('Fetch `@sai/commands/explore/body.md` and follow it exactly'));
   }
-  assert.match(source('sai/commands/explore/body.md'), /Fetch @sai\/commands\/explore\/instructions\.md/);
-  assert.match(source('sai/commands/explore/instructions.md'), /Fetch @sai\/commands\/explore\/steps\/common\.md/);
+  assert.match(source('sai/commands/explore/body.md'), /Fetch `@sai\/commands\/explore\/instructions\.md`/);
+  assert.match(source('sai/commands/explore/instructions.md'), /Fetch `@sai\/commands\/explore\/steps\/common\.md`/);
   assert.equal(ideaMachine.project(ideaMachine.initialState).next.follow, 'sai/commands/explore/steps/common.md');
 });
 
@@ -181,7 +181,7 @@ test('load receipt: wrappers carry only the pointer and body.md owns the rule (I
     const wrapper = source(`commands/${harness}/sai-explore.md`);
     const lines = wrapper.split('\n');
     const closing = lines.indexOf('---', 1);
-    assert.match(lines[closing + 1], /^Receipt: .*every explore turn.*@sai\/commands\/explore\/body\.md § Load receipt\.$/,
+    assert.match(lines[closing + 1], /^Receipt: .*every explore turn.*`@sai\/commands\/explore\/body\.md` § Load receipt\.$/,
       `${harness} wrapper must lead with the receipt pointer after the frontmatter`);
     assert.doesNotMatch(wrapper, /deferred message/i, `${harness} wrapper must not restate the rule`);
   }
@@ -199,7 +199,7 @@ test('load receipt: wrappers carry only the pointer and body.md owns the rule (I
 test('load receipt: sai-state spawn is the final load step and stage events emit on the receipt id (I2)', () => {
   const body = source('sai/commands/explore/body.md');
   const spawn = body.indexOf('Run `sai-state spawn --key <stable-key>`');
-  assert.ok(spawn > body.indexOf('Fetch @sai/policies/remember.md'), 'spawn must follow the instruction loads');
+  assert.ok(spawn > body.indexOf('Fetch `@sai/policies/remember.md`'), 'spawn must follow the instruction loads');
   assert.ok(spawn < body.indexOf('## Run'), 'spawn must precede the Run section');
   const instructions = source('sai/commands/explore/instructions.md');
   assert.match(instructions, /emits against the owning machine on the receipt id from the load/);

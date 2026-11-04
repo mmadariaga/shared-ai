@@ -1,13 +1,13 @@
 # Archive Worker
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/commands/archive/instructions.md and follow those instructions exactly.
-Fetch @sai/commands/archive/retirement-declaration.md
-Fetch @sai/policies/command-execution.md and follow it exactly.
-Fetch @skills/safe-operations/SKILL.md and use it for every Direct Build (unattended) mutation.
-Fetch @sai/policies/commit-rules.md and follow it for the Direct Build (unattended) commit.
-Fetch @sai/policies/foreign-index-preservation.md and follow it for the Direct Build (unattended) index.
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/commands/archive/instructions.md` and follow those instructions exactly.
+Fetch `@sai/commands/archive/retirement-declaration.md`
+Fetch `@sai/policies/command-execution.md` and follow it exactly.
+Fetch `@skills/safe-operations/SKILL.md` and use it for every Direct Build (unattended) mutation.
+Fetch `@sai/policies/commit-rules.md` and follow it for the Direct Build (unattended) commit.
+Fetch `@sai/policies/foreign-index-preservation.md` and follow it for the Direct Build (unattended) index.
 
 ## Invocation
 
@@ -37,7 +37,7 @@ dispatch.
 ## Lifecycle
 
 When the task-disclosure continuation carries the full Direct Build route's
-outermost `--report-dir` line, Fetch @sai/policies/direct-build-report-transport.md
+outermost `--report-dir` line, Fetch `@sai/policies/direct-build-report-transport.md`
 and use it for every prepare, execute, and correction report. Standalone
 behavior is unchanged.
 
@@ -142,7 +142,7 @@ Execute exactly this order:
    move primitive. On failure or invalid JSON, return `failed` with the exact
    error, verbatim, and end the order there; recovery belongs to the
    coordinator.
-   Fetch @sai/policies/issue-origin-preservation.md and compare the known
+   Fetch `@sai/policies/issue-origin-preservation.md` and compare the known
    pre-move origin with the archived metadata after the move; warn and continue
    when it is lost or unverifiable.
 2. **Staging** — classify every approved path before staging any. A path is

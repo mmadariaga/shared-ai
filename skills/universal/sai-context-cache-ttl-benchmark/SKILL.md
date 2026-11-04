@@ -72,7 +72,7 @@ helper finds the harness and the SAI temp root itself.
 1. Run `status`. When it prints `record-found`, an earlier run did not finish and
    left the local file changed: run `restore`, report its result (print the
    `warning` of a `changed` result), and go on. Permission is asked again below.
-2. Fetch @sai/policies/cache-warming.md. Ask the user for permission through the
+2. Fetch `@sai/policies/cache-warming.md`. Ask the user for permission through the
    native picker to write the warming override, and say what it does: it
    replaces the `warming` entry of `.sai/settings.local.jsonc` (the file is
    created when absent), every SAI session in the project stops warming from its

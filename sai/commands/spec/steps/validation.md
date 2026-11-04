@@ -10,7 +10,7 @@ then report the `validation` step.
 
 ## Cited-path gate
 
-Fetch @sai/policies/tool-resolution.md, resolve `check-cited-paths.js` by it,
+Fetch `@sai/policies/tool-resolution.md`, resolve `check-cited-paths.js` by it,
 and run `node <tool> sai-1 <change-name> --cwd <project-root>`. A non-zero exit
 blocks: fix every cited evidence path in `proposal.md` and `specs/**` (the
 tool's basename candidates are suggestions; it never rewrites artifacts) and

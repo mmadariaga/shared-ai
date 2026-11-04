@@ -2,9 +2,9 @@
 
 Active step: audit-performance-tiers. Evaluate every hot path of the selected scope against the checklists of its tier. The step is done when every hot path is evaluated against every item of its tier's checklist and the cross-cutting checklist, and every flaw is recorded with its fields; then report `step-done` for `audit-performance-tiers`.
 
-Fetch @sai/commands/performance/performance-report.template.md
+Fetch `@sai/commands/performance/performance-report.template.md`
 
-For each tier in the selected scope: Fetch @sai/commands/performance/checklists/<tier>.md
+For each tier in the selected scope: Fetch `@sai/commands/performance/checklists/<tier>.md`
 
 Record each flaw with the fields of the finding shape in the template.
 

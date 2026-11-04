@@ -114,7 +114,7 @@ test('both harnesses share one round presentation policy', () => {
   assert.match(rounds, /one `AskUserQuestion` call carrying every question of the round/);
   assert.match(rounds, /`question` call when the picker accepts several questions, and one call per question, consecutively and in the same order, otherwise/);
   assert.match(rounds, /Consecutive calls in the same order form one round/);
-  assert.match(read('sai/commands/explore/steps/route-selector.md'), /Fetch @sai\/policies\/question-rounds\.md/, 'route-selector references the shared policy');
+  assert.match(read('sai/commands/explore/steps/route-selector.md'), /Fetch `@sai\/policies\/question-rounds\.md`/, 'route-selector references the shared policy');
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/deep-review/findings-selection.md')), false, 'the deep-review findings round is retired');
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry, or opencode's `question` tool with custom\/free-text input enabled/);
 });
@@ -161,6 +161,6 @@ test('implementation start verifies an advance assignment approval instead of as
   assert.match(start, /Every later slice of the same set reuses it/);
   assert.match(start, /stop before that slice's implementation and ask keep, replace, or\s+skip/);
   for (const caller of ['sai/commands/explore/direct-build-coordinator.md']) {
-    assert.match(read(caller), /Fetch @sai\/policies\/backlog-implementation-start\.md/, `${caller} keeps invoking it`);
+    assert.match(read(caller), /Fetch `@sai\/policies\/backlog-implementation-start\.md`/, `${caller} keeps invoking it`);
   }
 });

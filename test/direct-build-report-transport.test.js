@@ -149,9 +149,9 @@ test('Direct Build contracts bind all three workers while preserving other route
   const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
   const policy = read('sai/policies/direct-build-report-transport.md');
   for (const worker of ['explore/direct-build-worker', 'backfill/worker', 'archive/worker']) {
-    assert.match(read(`sai/commands/${worker}.md`), /Fetch @sai\/policies\/direct-build-report-transport.md/);
+    assert.match(read(`sai/commands/${worker}.md`), /Fetch `@sai\/policies\/direct-build-report-transport.md`/);
   }
-  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch @sai\/policies\/direct-build-report-transport.md/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch `@sai\/policies\/direct-build-report-transport.md`/);
   for (const evidence of [/Claude Code and\s+opencode/, /initial `event: ready` return is unchanged/,
     /standalone backfill and archive commands keep their existing transport/,
     /call that returns no response establishes neither/, /never resends an execute order/,

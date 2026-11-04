@@ -2,8 +2,8 @@
 
 How a plan segment runs, whether it runs alone (`/sai-1-spec`, `/sai-2-design`) or inside `/sai-plan`. The segment card that fetched this file names its worker binding, step machine, steps, artifact paths, mechanical checks, review criteria, commit paths, and closing report. This file owns the rest.
 
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/cache-warming.md`
 
 You are the driver of the segment. You decide, answer, check, review, and commit. The worker only writes the segment's artifacts, and never runs git. Segments exchange nothing but artifacts on disk.
 
@@ -23,7 +23,7 @@ Whoever opened the run closes it. Inside `/sai-plan`, the plan coordinator opene
 
 ## The worker
 
-Fetch @sai/commands/plan/worker-common.md for the report shape and the task message you send. Create the segment's worker once, when the segment needs it, with the binding the segment card names. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle. Continue it with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
+Fetch `@sai/commands/plan/worker-common.md` for the report shape and the task message you send. Create the segment's worker once, when the segment needs it, with the binding the segment card names. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle. Continue it with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
 
 **Warm and dispose.** Following `cache-warming.md`, resolve the worker's timings at every message to it and end the message with the warming line the policy defines. Under the policy's Dispose rule, dispose the worker when a new worker replaces it, when the segment closes (the segment boundary, before a following segment starts), and when the run closes. A `needs_input` question that you escalate to the user keeps the worker armed until the answer. An executor or explorer you dispatched is disposed as the policy says.
 
@@ -47,8 +47,8 @@ A check whose tool cannot be resolved per `tool-resolution.md` is reported as sk
 
 ## Review
 
-Fetch @sai/policies/incremental-review.md
-Fetch @sai/policies/artifact-review-contract.md
+Fetch `@sai/policies/incremental-review.md`
+Fetch `@sai/policies/artifact-review-contract.md`
 
 The artifacts were written by a worker that read the input, so attack them yourself before they settle. The passes follow `incremental-review.md`, with the artifacts of the segment as the reviewed set instead of a diff. Take a snapshot with `review-delta.js` over the segment's artifact paths (name each path that `git check-ignore -q` reports as ignored, so it enters the snapshot) before the first pass and after each fix round.
 

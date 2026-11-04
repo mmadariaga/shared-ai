@@ -15,7 +15,7 @@ that commits and self-resets evades the guard by design.
 ## The tool
 
 `sai/tools/no-commit-guard.js` makes the checks. Fetch
-@sai/policies/tool-resolution.md and resolve the copy with `<name>` set to
+`@sai/policies/tool-resolution.md` and resolve the copy with `<name>` set to
 `no-commit-guard.js`; the first existing candidate wins. Run it, read its
 verdict, and follow § Verdict handling: the verdict is final, so run no git
 probe of your own in its place and never repair a verdict. The invocations are

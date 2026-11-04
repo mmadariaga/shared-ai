@@ -142,13 +142,13 @@ function bindingParameters(phase, harness) {
 const CLAUDE_BINDING_TEMPLATE = [
   'Bind the {{phase}} worker for harness {{harness}}.',
   'Dispatch Agent("{{workerName}}", { prompt: "Execute the {{phase}} worker." })',
-  'Fetch @{{workerContract}} and follow it exactly.',
+  'Fetch `@{{workerContract}}` and follow it exactly.',
 ].join('\n');
 
 const OPENCODE_BINDING_TEMPLATE = [
   'Bind the {{phase}} worker for harness {{harness}}.',
   'Dispatch task("{{workerName}}", { prompt: "Execute the {{phase}} worker." })',
-  'Fetch @{{workerContract}} and follow it exactly.',
+  'Fetch `@{{workerContract}}` and follow it exactly.',
 ].join('\n');
 
 const CLAUDE_AGENT_TEMPLATE = [
@@ -373,7 +373,7 @@ test('renderWorkerTemplate preserves opencode task(...) dispatch syntax', () => 
 test('renderWorkerTemplate preserves the canonical worker-contract Fetch targets', () => {
   for (const phase of CANONICAL_PHASE_ORDER) {
     const rendered = renderWorkerTemplate(CLAUDE_BINDING_TEMPLATE, bindingParameters(phase, 'Claude Code'));
-    assert.ok(rendered.includes(`Fetch @${contractFor(phase)} and follow it exactly.`),
+    assert.ok(rendered.includes(`Fetch \`@${contractFor(phase)}\` and follow it exactly.`),
       `${phase} rendering should preserve its canonical contract Fetch target`);
     assert.ok(rendered.includes(`Bind the ${phase} worker`),
       `${phase} rendering should substitute its phase identity`);
@@ -480,13 +480,13 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
     assert.equal(typeof item.text, 'string', `${item.destinationName} should carry rendered string text`);
     assert.ok(item.text.length > 0, `${item.destinationName} text should be non-empty`);
     if (PHASE_ORDER.includes(item.phase)) {
-      assert.ok(item.text.includes(`Fetch @${contractFor(item.phase)} and follow it exactly.`),
+      assert.ok(item.text.includes(`Fetch \`@${contractFor(item.phase)}\` and follow it exactly.`),
         `${item.destinationName} should carry the canonical Fetch target for ${item.phase}`);
     } else if (item.phase === 'direct-build') {
-      assert.match(item.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md and follow it exactly\./,
+      assert.match(item.text, /Fetch `@sai\/commands\/explore\/direct-build-worker\.md` and follow it exactly\./,
         `${item.destinationName} should carry its explore-owned direct-build Fetch target`);
     } else {
-      assert.match(item.text, /Fetch @sai\/commands\/(?:implement\/(?:red|green)-worker|review\/worker)\.md and follow it exactly\./,
+      assert.match(item.text, /Fetch `@sai\/commands\/(?:implement\/(?:red|green)-worker|review\/worker)\.md` and follow it exactly\./,
         `${item.destinationName} should carry its implement or review Fetch target`);
     }
     assert.doesNotMatch(item.text, /\{\{/,
@@ -509,10 +509,10 @@ test('the RED and GREEN bindings fetch their own contracts and never resolve thr
   for (const harness of ['claude', 'opencode']) {
     const redBindings = projections.filter(item =>
       item.kind === 'binding' && item.harness === harness &&
-      item.text.includes('Fetch @sai/commands/implement/red-worker.md and follow it exactly.'));
+      item.text.includes('Fetch `@sai/commands/implement/red-worker.md` and follow it exactly.'));
     const greenBindings = projections.filter(item =>
       item.kind === 'binding' && item.harness === harness &&
-      item.text.includes('Fetch @sai/commands/implement/green-worker.md and follow it exactly.'));
+      item.text.includes('Fetch `@sai/commands/implement/green-worker.md` and follow it exactly.'));
     assert.equal(redBindings.length, 1, `${harness} should render exactly one RED binding`);
     assert.equal(greenBindings.length, 1, `${harness} should render exactly one GREEN binding`);
     assert.notEqual(redBindings[0].destinationName, greenBindings[0].destinationName,
