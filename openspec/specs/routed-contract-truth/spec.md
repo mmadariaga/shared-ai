@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD — seeded from the `repair-copilot-contract-prose` delta spec.
+Keeps live coordinator, routing, binding, and installation contracts describing Claude Code and opencode as the only supported routed harnesses, with one guard against retired-party prose.
 
 ## Requirements
 

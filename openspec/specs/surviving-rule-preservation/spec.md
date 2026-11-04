@@ -1,7 +1,7 @@
 # surviving-rule-preservation Specification
 
 ## Purpose
-TBD - created by archiving change archive-copilot-capability-specs. Update Purpose after archive.
+Ensures that archiving the Copilot-era capability specs keeps every rule still in force in its canonical active home, and presents no retired Copilot behavior as an active contract.
 ## Requirements
 ### Requirement: Live normative content is preserved before archival
 

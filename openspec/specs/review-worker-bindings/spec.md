@@ -37,9 +37,9 @@ Both routed review bindings SHALL preserve the read-only research branch: budget
 - **THEN** no mutation I/O is required or dispatched
 - **AND** only the review steps and report writing are authorized
 
-### Requirement: Copilot receives no routed review binding
+### Requirement: Routed review bindings exist for the supported harnesses only
 
-The review-worker binding capability SHALL be limited to Claude Code and opencode. It SHALL not add a Copilot routed worker definition, forwarding skill, or binding, and it SHALL document that Copilot retains the inline adapter path for this change.
+The review-worker binding capability SHALL be limited to Claude Code and opencode, the only supported harnesses. It SHALL add no routed worker definition, forwarding skill, or binding for any other harness.
 
 #### Scenario: Installation surfaces are inspected
 - **WHEN** routed review-worker assets are enumerated
