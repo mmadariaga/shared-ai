@@ -18,13 +18,9 @@ Claude Code and opencode wrapper projections SHALL use customizable-copy instead
 - **WHEN** installOpencode() encounters an existing managed wrapper
 - **THEN** managed content is refreshed while destination model#variant and suffix survive without ordinary per-file copy logs
 
-#### Scenario: Copilot prompt reinstall
-- **WHEN** the supported wrapper projection inventory is expanded
-- **THEN** Claude Code and opencode participate in customizable-copy and this change adds no Copilot projection
-
 ### Requirement: install script emits no per-file log line for any file copy
 
-The install functions `installClaude()`, `installOpencode()`, and `installCopilot()` SHALL NOT emit any per-file log line (no `Overwriting <path>`, no `Creating <path>`, no `Skipping <path>`) while copying wrapper, command, instruction, skill, or agent files. The installer is a declarative repo-to-user-global sync, not a file-by-file installer; the per-harness summary lines printed by `main()`, the `copyOpencodeConfig` permission-merge messaging, and the migration notice (`opencode-agent-migration-notice`) are the only per-harness feedback the user needs.
+The install functions `installClaude()` and `installOpencode()` SHALL NOT emit any per-file log line (no `Overwriting <path>`, no `Creating <path>`, no `Skipping <path>`) while copying wrapper, command, instruction, skill, or agent files. The installer is a declarative repo-to-user-global sync, not a file-by-file installer; the per-harness summary lines printed by `main()`, the `copyOpencodeConfig` permission-merge messaging, and the migration notice (`opencode-agent-migration-notice`) are the only per-harness feedback the user needs.
 
 #### Scenario: Claude Code install emits no per-file log
 - **WHEN** `installClaude()` is invoked
@@ -34,12 +30,8 @@ The install functions `installClaude()`, `installOpencode()`, and `installCopilo
 - **WHEN** `installOpencode()` is invoked
 - **THEN** no `Overwriting`, `Creating`, or `Skipping` line is emitted per file during the copy loop
 
-#### Scenario: Copilot install emits no per-file log
-- **WHEN** `installCopilot()` is invoked
-- **THEN** no `Overwriting`, `Creating`, or `Skipping` line is emitted per file during the copy loop
-
 #### Scenario: per-harness summary lines are preserved
-- **WHEN** `installClaude()`, `installOpencode()`, or `installCopilot()` returns
+- **WHEN** `installClaude()` or `installOpencode()` returns
 - **THEN** `main()` continues to print the per-harness summary block (`<Harness> commands installed to: <path>` and the matching SAI and skills lines) and the shared `Reminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow.` line as the final line of `main()`
 
 #### Scenario: the retired agent-key merge notice is never printed
@@ -67,9 +59,9 @@ The `copy(src, dest)` helper exported by `install-flow.js` SHALL overwrite an ex
 - **WHEN** `copy(src, dest)` is called and the parent of `dest` does not exist
 - **THEN** the parent directory is created and the file is copied into it, with no per-file log line emitted
 
-### Requirement: install script behavior is uniform across Claude Code, Opencode, and GitHub Copilot
+### Requirement: install script behavior is uniform across Claude Code and Opencode
 
-`installClaude()`, `installOpencode()`, and `installCopilot()` SHALL use the same file-copy helper (`copy`) and SHALL all overwrite existing destination files on reinstall for every file type the function handles (wrappers, commands, instructions, skills, and agents). The harness-specific install functions SHALL differ only in source paths, destination paths, and the per-harness summary lines they cause `main()` to print — not in copy semantics. This is the harness-universality invariant: a user re-running the installer against any combination of the three harnesses sees identical silent-overwrite behavior.
+`installClaude()` and `installOpencode()` SHALL share the same copy semantics and SHALL both refresh existing destination files on reinstall for every file type the function handles (wrappers, commands, instructions, skills, and agents), subject to the customizable-copy and tunable-seed preservation rules. The harness-specific install functions SHALL differ only in source paths, destination paths, and the per-harness summary lines they cause `main()` to print — not in copy semantics. This is the harness-universality invariant: a user re-running the installer against either harness or both sees identical silent-overwrite behavior.
 
 #### Scenario: Claude Code install overwrites every file type silently
 - **WHEN** `installClaude()` runs and a wrapper, command, instruction, or skill file already exists at its destination
@@ -79,6 +71,3 @@ The `copy(src, dest)` helper exported by `install-flow.js` SHALL overwrite an ex
 - **WHEN** `installOpencode()` runs and a wrapper, command, instruction, or skill file already exists at its destination
 - **THEN** every such file is overwritten with the repo version and no per-file log line is emitted
 
-#### Scenario: Copilot install overwrites every file type silently
-- **WHEN** `installCopilot()` runs and a prompt, command, instruction, skill, or agent file already exists at its destination
-- **THEN** every such file is overwritten with the repo version and no per-file log line is emitted

@@ -256,16 +256,6 @@ An active supervised run SHALL begin only after a valid native Plan picker answe
 - **WHEN** a supervised spec or design review round resolves the deferred-gate condition while a run is active
 - **THEN** the active-supervision interval remains active across the supervised gate application point and no user-facing artifact feedback picker is presented
 
-### Requirement: Copilot acknowledges unavailable supervision
-
-On GitHub Copilot, a Plan - Unattended selection SHALL dispatch no spec worker or reviewer and SHALL reply that pipeline supervision is unavailable on this harness, so the shared instruction contains no harness-conditional selector emission. All other Copilot explore behavior SHALL remain unchanged.
-
-#### Scenario: Copilot user selects Auto
-
-- **WHEN** the user selects Plan - Unattended in a GitHub Copilot explore session
-- **THEN** explore replies that supervision is unavailable on this harness
-- **AND** it performs no worker dispatch and no artifact write.
-
 ### Requirement: Authorize Direct Build - Unattended dispatch
 
 A valid native picker answer for `Direct Build - Unattended` SHALL authorize the delegated-write exception for the Direct Build workers and pre-authorize exactly one local commit executed by the archive worker inside its closed order. It SHALL remain consent to selection and dispatch only.

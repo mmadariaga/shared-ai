@@ -21,10 +21,6 @@ When a routed fetch skill encounters an identity-bearing path slot whose value d
 - **WHEN** a worker encounters `bindings/claude/design-worker.md` after dispatch in an opencode session
 - **THEN** it does not read or resolve the path, reports the existing failed result with the refused path and `opencode`, and waits for an explicit fresh-worker dispatch instead of retrying automatically
 
-#### Scenario: Copilot omits the routed-binding stop rule
-- **WHEN** the Copilot fetch skill establishes its active identity and resolution roots
-- **THEN** it does not add a `bindings/<identity>/` stop rule because Copilot dispatches inline and receives no routed binding path
-
 #### Scenario: A harness-neutral path keeps normal resolution
 - **WHEN** a fetch directive contains no identity-bearing slot
 - **THEN** the active fetch skill applies its existing project-local, user-global, skill, missing-file, and recursion rules without treating the directive as a cross-harness stop

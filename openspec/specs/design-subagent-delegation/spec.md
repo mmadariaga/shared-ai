@@ -18,10 +18,6 @@ For routed design, the coordinator SHALL perform no file I/O, including OpenSpec
 - **WHEN** the routed design worker needs to inspect source code
 - **THEN** it SHALL dispatch budget-explorer through the configured Claude binding or opencode `explore` task and SHALL act on that report rather than reading source code directly
 
-#### Scenario: Inline Copilot design needs source evidence
-- **WHEN** the inline Copilot design path needs to understand source files outside `proposal.md` and `specs/**/*.md`
-- **THEN** it SHALL delegate discovery through its existing research-subagent path
-
 ### Requirement: The design worker SHALL be the source of truth for codebase facts presented to the coordinator
 The coordinator SHALL use the design worker's technical findings as the source of truth for codebase facts and SHALL not re-read source files. On the clean route it SHALL not re-read change artifacts. On the non-clean diagnosis route it MAY independently read only the declared planning artifacts and prior-phase inputs to verify the closure and determine cause locus; this is authoritative lifecycle verification, not a competing source-discovery path. The worker SHALL remain responsible for resolving technical ambiguity through its research helper or a structured user question and SHALL not bypass that helper by reading source files itself.
 
@@ -53,7 +49,7 @@ The non-clean diagnosis exception SHALL be phase-scoped and terminal-route-scope
 - **AND** later lifecycle turns SHALL not use the exception unless a new non-clean closure occurs
 
 ### Requirement: Design research delegation MUST declare an output contract
-Every research subagent spawned by the design worker or the Copilot inline design path MUST receive an output contract specifying exact response fields, a hard length cap, and whether raw file contents are forbidden. Research subagents SHALL return evidence to the technical owner and SHALL NOT write design artifacts.
+Every research subagent spawned by the design worker MUST receive an output contract specifying exact response fields, a hard length cap, and whether raw file contents are forbidden. Research subagents SHALL return evidence to the technical owner and SHALL NOT write design artifacts.
 
 #### Scenario: Design worker delegates codebase research
 - **WHEN** the design worker launches a research subagent

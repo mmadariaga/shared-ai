@@ -1,19 +1,19 @@
 # asymmetry-documentation Specification
 
 ## Purpose
-Documents how harness-specific enforcement gaps and observed runtime states are recorded in `AGENTS.md` so asymmetries between Claude Code, opencode, and Copilot stay explicit rather than silent.
+Documents how harness-specific enforcement gaps and observed runtime states are recorded in `AGENTS.md` so asymmetries between Claude Code and opencode stay explicit rather than silent.
 
 ## Requirements
 
-### Requirement: AGENTS.md records the frontmatter enforcement in two harnesses
+### Requirement: AGENTS.md records what the command frontmatter does and does not enforce
 
-`AGENTS.md` SHALL document that `sai-explore`'s explore-mode read-only guarantee is enforced through per-command frontmatter in Claude Code (`allowed-tools`) and GitHub Copilot (`tools:`), promoting the `explore.md` "No file writes" rule from a model-discipline convention to an enforced constraint in those two harnesses.
+`AGENTS.md` SHALL document that `sai-explore`'s explore-mode "No file writes" boundary lives in `sai/commands/explore/instructions.md`, that Claude Code's command `allowed-tools` pre-approves selected tools but does not remove unlisted tools, and that neither harness's mechanism alone enforces read-only command execution, so the contract boundary and the delegated-write authorization gates stay in force on both.
 
 #### Scenario: Enforcement is discoverable in AGENTS.md
 
 - **WHEN** a reader consults `AGENTS.md` about `sai-explore`
-- **THEN** it states that the read-only guarantee is enforced via `allowed-tools` in Claude Code and via `tools:` in Copilot
-- **AND** it ties this to the `explore.md` "No file writes" guarantee
+- **THEN** it states that Claude Code's `allowed-tools` pre-approves selected tools without removing unlisted ones
+- **AND** it ties the read-only boundary to the "No file writes" rule of `sai/commands/explore/instructions.md`
 
 ### Requirement: AGENTS.md records the opencode gap and its rationale
 
@@ -21,7 +21,7 @@ Documents how harness-specific enforcement gaps and observed runtime states are 
 
 #### Scenario: The asymmetry is explicit, not silent
 
-- **WHEN** a reader consults `AGENTS.md` about why the opencode `sai-explore` wrapper differs from the Claude Code and Copilot wrappers
+- **WHEN** a reader consults `AGENTS.md` about why the opencode `sai-explore` wrapper differs from the Claude Code wrapper
 - **THEN** it explains that opencode's command frontmatter has no tool-restriction field
 - **AND** it states that the opencode wrapper is deliberately unchanged with model discipline as the fallback
 - **AND** it records that the read-only sub-agent alternative was rejected for breaking main-session interactivity
