@@ -24,7 +24,7 @@ test('repository-artifact scope defines the two protected update protocols', () 
 test('direct-build implementer uses repository-artifact scope and protects published specs', () => {
   const worker = read('sai/commands/explore/direct-build-worker.md');
 
-  assert.match(worker, /Fetch @sai\/policies\/repository-artifact-scope\.md and use it\./);
+  assert.match(worker, /Fetch `@sai\/policies\/repository-artifact-scope\.md` and use it\./);
   assert.match(worker, /Write any artifact the crystallized change requires, within the\s+repository-artifact scope and its protected update protocols/);
 });
 

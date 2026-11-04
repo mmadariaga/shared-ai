@@ -98,7 +98,7 @@ function fetchLines(source) {
   return source
     .split(/\r?\n/)
     .map(line => line.trim())
-    .filter(line => line.startsWith('Fetch @'));
+    .filter(line => /^Fetch `?@/.test(line));
 }
 
 test('baseline fixture captures the pre-change directive inventory', () => {
@@ -182,7 +182,7 @@ test('mutation-test sandbox exclusion preserves detection in real active contrac
 });
 
 const HARNESS_FETCH = {
-  claude: 'Fetch @skills/fetch/SKILL.md',
+  claude: 'Fetch `@skills/fetch/SKILL.md`',
   opencode: 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
 };
 
@@ -246,20 +246,20 @@ test('change and status pickers use only arguments_value and preserve the empty-
 });
 
 const DIRECT_COORDINATOR_COORDINATOR = {
-  'sai-1-spec.md': 'Fetch @sai/commands/spec/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-2-design.md': 'Fetch @sai/commands/design/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-plan.md': 'Fetch @sai/commands/plan/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-3-implement.md': 'Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-4-review.md': 'Fetch @sai/commands/review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-build.md': 'Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-deep-review.md': 'Fetch @sai/commands/deep-review/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-merge.md': 'Fetch @sai/commands/merge/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-commit.md': 'Fetch @sai/commands/commit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-archive.md': 'Fetch @sai/commands/archive/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-backfill.md': 'Fetch @sai/commands/backfill/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-5-security.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-6-performance.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
-  'sai-7-accessibility.md': 'Fetch @sai/commands/audit/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-1-spec.md': 'Fetch `@sai/commands/spec/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-2-design.md': 'Fetch `@sai/commands/design/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-plan.md': 'Fetch `@sai/commands/plan/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-3-implement.md': 'Fetch `@sai/commands/implement/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-4-review.md': 'Fetch `@sai/commands/review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-build.md': 'Fetch `@sai/commands/build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-deep-review.md': 'Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-merge.md': 'Fetch `@sai/commands/merge/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-commit.md': 'Fetch `@sai/commands/commit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-archive.md': 'Fetch `@sai/commands/archive/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-backfill.md': 'Fetch `@sai/commands/backfill/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-5-security.md': 'Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-6-performance.md': 'Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-7-accessibility.md': 'Fetch `@sai/commands/audit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
 };
 const CLEAN_START = 'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.';
 
@@ -304,8 +304,8 @@ test('the utility wrappers fetch the harness skill and their body card directly,
     for (const [file, folder] of wrapperCommands.filter(([name]) => BODY_WRAPPERS.has(name))) {
       const source = read(`commands/${harness}/${file}`);
       const expected = [HARNESS_FETCH[harness]];
-      if (folder === 'explore') expected.push(`Fetch @sai/adapters/${harness}/idea-list-render.md and use it.`);
-      expected.push(`Fetch @sai/commands/${folder}/body.md and follow it exactly, forwarding the InvocationEnvelope block below.`);
+      if (folder === 'explore') expected.push(`Fetch \`@sai/adapters/${harness}/idea-list-render.md\` and use it.`);
+      expected.push(`Fetch \`@sai/commands/${folder}/body.md\` and follow it exactly, forwarding the InvocationEnvelope block below.`);
       assert.deepEqual(fetchLines(source), expected, `${harness}/${file} should fetch only the harness skill, its renderer, and its body card`);
       assert.deepEqual(fixture.wrappers[harness][file], fetchLines(source), `${harness}/${file} should match its baseline entry`);
       assert.ok(source.split(/\r?\n/).includes(CLEAN_START), `${harness}/${file} should carry the session-clean preamble`);
@@ -319,10 +319,10 @@ test('the utility wrappers fetch the harness skill and their body card directly,
 test('the utility body cards check the capability profile and load public chat and the obstacle policy themselves', () => {
   for (const folder of ['explore', 'retire-docs', 'retrospective', 'status', 'worktree']) {
     const card = read(`sai/commands/${folder}/body.md`);
-    assert.match(card, /Fetch @sai\/policies\/public-chat\.md and follow it exactly\./, `${folder} loads public chat`);
-    assert.match(card, /First step: Fetch @sai\/policies\/tool-access\.md and check the wrapper's required capability profile\./, `${folder} checks its capability profile`);
-    assert.match(card, /Fetch @sai\/policies\/obstacle-escalation\.md and close the stop with its § Escalate to the user\./, `${folder} closes unplanned stops through the obstacle policy`);
-    assert.match(card, /Fetch @sai\/policies\/verified-precondition-handback\.md/, `${folder} keeps the precondition hand-back policy`);
+    assert.match(card, /Fetch `@sai\/policies\/public-chat\.md` and follow it exactly\./, `${folder} loads public chat`);
+    assert.match(card, /First step: Fetch `@sai\/policies\/tool-access\.md` and check the wrapper's required capability profile\./, `${folder} checks its capability profile`);
+    assert.match(card, /Fetch `@sai\/policies\/obstacle-escalation\.md` and close the stop with its § Escalate to the user\./, `${folder} closes unplanned stops through the obstacle policy`);
+    assert.match(card, /Fetch `@sai\/policies\/verified-precondition-handback\.md`/, `${folder} keeps the precondition hand-back policy`);
     assert.doesNotMatch(card, /boot-provided|command-runner|stop-options|boot adapter/i, `${folder} names no retired entry surface`);
   }
 });
@@ -337,7 +337,7 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
       assert.doesNotMatch(source, new RegExp(`@sai/commands/${folder}\\.md`), `${harness}/${file} should have no flat @sai/commands/${folder}.md path`);
       assert.doesNotMatch(source, /# Isolation Mode/, `${harness}/${file} should have no isolation block`);
       assert.doesNotMatch(source, /## Prerequisite|prereqs\.md/, `${harness}/${file} should have no prerequisite section`);
-      assert.doesNotMatch(source, /Fetch @skills\/sai-/, `${harness}/${file} should have no behavior-skill fetch`);
+      assert.doesNotMatch(source, /Fetch `@skills\/sai-/, `${harness}/${file} should have no behavior-skill fetch`);
     }
   }
 });
@@ -345,10 +345,10 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
 test('final wrappers: both sai-explore wrappers keep idea-list-render while the Plan route follows the plan coordinator', () => {
   const claudeExplore = read('commands/claude/sai-explore.md');
   const opencodeExplore = read('commands/opencode/sai-explore.md');
-  assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
-  assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
+  assert.match(claudeExplore, /Fetch `@sai\/adapters\/claude\/idea-list-render\.md`/, 'Claude explore should keep idea-list-render');
+  assert.match(opencodeExplore, /Fetch `@sai\/adapters\/opencode\/idea-list-render\.md`/, 'opencode explore should keep idea-list-render');
   const planRoute = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(planRoute, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
+  assert.match(planRoute, /Fetch `@sai\/commands\/plan\/coordinator\.md` and follow it exactly/);
   assert.doesNotMatch(planRoute, /bindings\/(?:spec|design)-worker\.md/, 'the Plan route dispatches no worker itself');
 });
 

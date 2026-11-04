@@ -1,6 +1,6 @@
 # Archive Commit Gate
 
-Fetch @sai/policies/command-execution.md and follow it exactly.
+Fetch `@sai/policies/command-execution.md` and follow it exactly.
 
 The coordinator-owned post-archive commit gate of `/sai-archive`, applied on
 the ordinary route after `openspec archive <name> --yes --json` succeeded.
@@ -59,7 +59,7 @@ no further git mutation. Exit 1 continues with the selected action.
 4. Add the retired-capability body lines of
    `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
    retired capabilities.
-5. Fetch @sai/policies/issue-origin-preservation.md and check the known
+5. Fetch `@sai/policies/issue-origin-preservation.md` and check the known
    pre-move origin against the archived metadata, warning without blocking
    when lost or unverifiable. Add the closing lines of `sai/policies/commit-rules.md` § Closing Lines for
    the archived change.

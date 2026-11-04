@@ -10,7 +10,7 @@ const WORKER_NAME = 'sai-5-security-worker';
 const SENTINEL = 'SAI_CONTRACT_SMOKE_SENTINEL';
 const LOCAL_MARKER = 'SAI_PROJECT_LOCAL_CONTRACT_MARKER';
 const GLOBAL_MARKER = 'SAI_ISOLATED_GLOBAL_CONTRACT_MARKER';
-const REGISTRATION_PROMPT = `Fetch @sai/orchestration/workers/${WORKER_NAME}.md and follow it exactly.`;
+const REGISTRATION_PROMPT = `Fetch \`@sai/orchestration/workers/${WORKER_NAME}.md\` and follow it exactly.`;
 
 function writeMarkerContract(contractPath, marker) {
   fs.mkdirSync(path.dirname(contractPath), { recursive: true });

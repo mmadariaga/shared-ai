@@ -357,7 +357,7 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /updates the task id in `handoff_wait`/);
   assert.match(step, /task id currently held in `handoff_wait`/);
   for (const loader of ['sai/commands/explore/steps/pipeline-plan-unattended.md', 'sai/commands/explore/steps/route-selector.md']) {
-    assert.match(read(loader), /Fetch @sai\/commands\/explore\/steps\/handoff-warming\.md/, loader);
+    assert.match(read(loader), /Fetch `@sai\/commands\/explore\/steps\/handoff-warming\.md`/, loader);
   }
   assert.match(read('sai/commands/explore/steps/slice.md'), /stop the hand-off wait first/);
   assert.match(read('sai/commands/explore/body.md'), /hand-off wait of an earlier invocation/);

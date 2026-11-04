@@ -6,9 +6,9 @@ there is no transport operation. This is provenance transport only: publication
 confirmation remains owned by `to-backlog`; no implementation or assignment runs.
 The protocol is identical in Claude Code and opencode.
 
-Fetch @sai/policies/stage-machine.md and use its stored-block and amendment protocol.
-Fetch @sai/policies/tool-resolution.md to locate `ready-to-propose.js`.
-Fetch @sai/policies/block-hygiene-judgment.md for amendment validation.
+Fetch `@sai/policies/stage-machine.md` and use its stored-block and amendment protocol.
+Fetch `@sai/policies/tool-resolution.md` to locate `ready-to-propose.js`.
+Fetch `@sai/policies/block-hygiene-judgment.md` for amendment validation.
 
 1. Require the verified publication result's complete `correspondence`, with
    one child URL per recorded change name and the parent URL separately. Read

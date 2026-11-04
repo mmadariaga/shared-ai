@@ -2,7 +2,7 @@
 
 Active step: close-security-outcome. The step is done when `security.md` is saved, verified in its form, and `completed` is returned with the summary defined below.
 
-Fetch @sai/commands/security/security-report.template.md
+Fetch `@sai/commands/security/security-report.template.md`
 
 ## 1. Draft
 

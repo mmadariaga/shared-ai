@@ -31,7 +31,7 @@ function artifact(relativePath) {
 
 test('Step 1 performance worker card loads the shared audit rules and no shared-orchestration protocol', () => {
   const worker = artifact('sai/commands/performance/worker.md');
-  assert.match(worker, /Fetch @sai\/commands\/audit\/worker-common\.md/);
+  assert.match(worker, /Fetch `@sai\/commands\/audit\/worker-common\.md`/);
   assert.doesNotMatch(worker, /worker-core\.md|bounded-dispatch-retry|verified-precondition-handback/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -54,8 +54,8 @@ test('performance scope grammar lives in options.md, validated by the audit coor
   for (const flag of ['--full', '--path', '--tier', '--runtime', '--parent-branch']) {
     assert.ok(common.includes(`\`${flag}\``), `common.md § Scope should apply ${flag}`);
   }
-  assert.match(common, /Fetch @sai\/commands\/performance\/options\.md/);
-  assert.match(coordinator, /Fetch @sai\/commands\/\{audit\}\/options\.md/);
+  assert.match(common, /Fetch `@sai\/commands\/performance\/options\.md`/);
+  assert.match(coordinator, /Fetch `@sai\/commands\/\{audit\}\/options\.md`/);
   assert.match(coordinator, /a value outside the set `options\.md` declares/);
   assert.match(coordinator, /a second positional value/);
   assert.match(common, /^## Scope$/m);
@@ -82,7 +82,7 @@ test('performance close step writes and verifies only performance.md in its two 
   const close = artifact('sai/commands/performance/steps/close-performance-outcome.md');
   const worker = artifact('sai/commands/performance/worker.md');
 
-  assert.match(close, /Fetch @sai\/commands\/performance\/performance-report\.template\.md/);
+  assert.match(close, /Fetch `@sai\/commands\/performance\/performance-report\.template\.md`/);
   assert.ok(close.includes('openspec/changes/{change-name}/performance.md'));
   assert.match(close, /\*\*Normal report\*\*/);
   assert.match(close, /\*\*Not Applicable report\*\*/);
@@ -126,7 +126,7 @@ test('performance step files and tier checklists follow the single-source layout
       `${id} opens with a checkable completion criterion`);
     assert.doesNotMatch(artifact(`sai/commands/performance/steps/${id}.md`), /Phase [1-6]\b/);
   }
-  assert.ok(tierAudit.includes('For each tier in the selected scope: Fetch @sai/commands/performance/checklists/<tier>.md'));
+  assert.ok(tierAudit.includes('For each tier in the selected scope: Fetch `@sai/commands/performance/checklists/<tier>.md`'));
   for (const tier of ['backend', 'frontend', 'db', 'queue']) {
     assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/performance/checklists', `${tier}.md`)),
       `the ${tier} checklist should exist`);
@@ -168,7 +168,7 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
     const source = binding.binding;
     assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-6-performance-worker`, 'i'),
       `${binding.name} binding should dispatch only its canonical worker`);
-    assert.ok(source.includes('Fetch @sai/commands/performance/worker.md and follow it exactly'),
+    assert.ok(source.includes('Fetch `@sai/commands/performance/worker.md` and follow it exactly'),
       `${binding.name} binding should hand the worker its own contract`);
     assert.ok(source.includes(binding.continuation),
       `${binding.name} binding should continue the same worker`);
@@ -229,7 +229,7 @@ test('Step 3 managed-agent identity and binding remain while forwarding skill so
 
 test('Step 4 performance wrappers fetch the shared audit coordinator, which fetches the binding', () => {
   const coordinator = artifact('sai/commands/audit/coordinator.md');
-  assert.match(coordinator, /Fetch @sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md and use it/,
+  assert.match(coordinator, /Fetch `@sai\/orchestration\/workers\/bindings\/\{audit\}-worker\.md` and use it/,
     'the coordinator should fetch the matching neutral binding');
 
   const wrappers = [
@@ -258,12 +258,12 @@ test('Step 4 performance wrappers fetch the shared audit coordinator, which fetc
       assert.doesNotMatch(source, wrapper.forbiddenVariant,
         `${wrapper.name} wrapper should not carry a separate variant line`);
     }
-    assert.match(source, /Fetch @sai\/commands\/audit\/coordinator\.md and follow it exactly/,
+    assert.match(source, /Fetch `@sai\/commands\/audit\/coordinator\.md` and follow it exactly/,
       `${wrapper.name} wrapper should fetch the shared audit coordinator`);
     assert.match(source, /command_name: performance/, `${wrapper.name} wrapper should name its audit`);
     assert.doesNotMatch(source, /command-bootstrap\.md|@sai\/adapters\//,
       `${wrapper.name} wrapper should load no bootstrap and no boot adapter`);
-    assert.doesNotMatch(source, /Fetch @skills\/sai-6-performance-worker\/SKILL\.md/,
+    assert.doesNotMatch(source, /Fetch `@skills\/sai-6-performance-worker\/SKILL\.md`/,
       `${wrapper.name} wrapper should not fetch the worker forwarding skill`);
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
     assert.doesNotMatch(source, wrapper.forbidden,
@@ -300,14 +300,14 @@ test('step-gated: the performance worker loads steps/common.md at dispatch and e
   const worker = artifact('sai/commands/performance/worker.md');
   const shared = artifact('sai/commands/audit/worker-common.md');
 
-  assert.match(worker, /Fetch @sai\/commands\/performance\/steps\/common\.md and keep it in force for the entire run/,
+  assert.match(worker, /Fetch `@sai\/commands\/performance\/steps\/common\.md` and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
   assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan in one Steps section');
   assert.match(shared, /Fetch the file the pointer names, and skip the fetch when you already loaded it in this session/,
     'the worker executes only the coordinator-named step');
   assert.match(shared, /Run the audit's scope step inline: it has no file/,
     'the fileless first step should run before the first pointer');
-  assert.doesNotMatch(worker, /Fetch @sai\/commands\/performance\/invocation\.md/,
+  assert.doesNotMatch(worker, /Fetch `@sai\/commands\/performance\/invocation\.md`/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
   assert.match(shared, /A step you decided to skip because it does not apply is complete: report it in the same batch/,
     'a legitimately skipped stage still advances the pointer past it');

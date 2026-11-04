@@ -17,7 +17,7 @@ const { checkWorkerEmissionOwnership } = require('../sai/tools/lint.js');
 
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 const exists = relative => fs.existsSync(path.join(repoRoot, relative));
-const fetches = source => source.split(/\r?\n/).filter(line => line.includes('Fetch @'));
+const fetches = source => source.split(/\r?\n/).filter(line => /Fetch `?@/.test(line));
 
 const COORDINATORS = [
   'sai/commands/spec/coordinator.md',
@@ -127,7 +127,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
   };
   for (const [file, targets] of Object.entries(allowed)) {
     for (const line of fetches(read(file))) {
-      assert.ok(targets.some(target => line.includes(`Fetch ${target}`)), `${file} fetches an unexpected target: ${line}`);
+      assert.ok(targets.some(target => line.includes(`Fetch \`${target}`)), `${file} fetches an unexpected target: ${line}`);
     }
   }
   for (const file of ['sai/commands/spec/coordinator.md', 'sai/commands/design/coordinator.md']) {
@@ -139,8 +139,8 @@ test('the plan coordinators load only the policies that never stop a run', () =>
 
 test('/sai-plan chains the spec and design coordinators as segments like /sai-build chains its own', () => {
   const plan = read('sai/commands/plan/coordinator.md');
-  assert.match(plan, /Fetch @sai\/commands\/spec\/coordinator\.md and follow it exactly as the first segment/);
-  assert.match(plan, /Fetch @sai\/commands\/design\/coordinator\.md and follow it exactly as the second segment/);
+  assert.match(plan, /Fetch `@sai\/commands\/spec\/coordinator\.md` and follow it exactly as the first segment/);
+  assert.match(plan, /Fetch `@sai\/commands\/design\/coordinator\.md` and follow it exactly as the second segment/);
   assert.match(plan, /No wrapper is entered again and no approval is asked between segments/);
   assert.match(plan, /the disk wins\. The spec segment counts as done, the block \(if one came\) does not rewrite them/);
   assert.match(plan, /Only one of them exists: the change is partly present, which is neither a creation nor a complete set/);
@@ -208,7 +208,7 @@ test('the shared cycle owns the goal-driven rules for questions, checks, review,
   assert.match(cycle, /Never force-add with `-f`/);
   assert.match(cycle, /never push/);
   assert.match(cycle, /When every commit path is ignored, close the segment without a commit and say so in the closing report/);
-  assert.match(cycle, /Fetch @sai\/policies\/obstacle-escalation\.md/);
+  assert.match(cycle, /Fetch `@sai\/policies\/obstacle-escalation\.md`/);
   assert.match(cycle, /Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
   assert.match(cycle, /hand-over file/);
   assert.match(cycle, /The disk wins over the store/);
@@ -350,20 +350,20 @@ test('the spec and design workers keep their names and render from the standalon
       assert.doesNotMatch(item.text, /panel-render/, `${harness} ${item.phase} binds no progress panel`);
       assert.doesNotMatch(item.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_/, `${harness} ${item.phase}`);
       assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-      assert.match(item.text, new RegExp(`Fetch @sai/commands/${item.phase}/worker\\.md and follow it exactly`));
+      assert.match(item.text, new RegExp(`Fetch \`@sai/commands/${item.phase}/worker\\.md\` and follow it exactly`));
     }
   }
 });
 
 test('the three wrappers fetch the harness skill and their coordinator directly with the session-clean preamble', () => {
   const START = 'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.';
-  const skill = { claude: 'Fetch @skills/fetch/SKILL.md', opencode: 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.' };
+  const skill = { claude: 'Fetch `@skills/fetch/SKILL.md`', opencode: 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.' };
   for (const harness of ['claude', 'opencode']) {
     for (const [file, folder] of [['sai-1-spec', 'spec'], ['sai-2-design', 'design'], ['sai-plan', 'plan']]) {
       const source = read(`commands/${harness}/${file}.md`);
       assert.deepEqual(fetches(source).map(line => line.trim()), [
         skill[harness],
-        `Fetch @sai/commands/${folder}/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.`,
+        `Fetch \`@sai/commands/${folder}/coordinator.md\` and follow it exactly, forwarding the InvocationEnvelope block below.`,
       ], `${harness}/${file}`);
       assert.ok(source.split(/\r?\n/).includes(START), `${harness}/${file} carries the session-clean preamble`);
       assert.doesNotMatch(source, /@sai\/adapters\/|command-bootstrap\.md/);
@@ -378,7 +378,7 @@ test('the three wrappers fetch the harness skill and their coordinator directly 
 test('the Plan route of explore is a thin step that follows /sai-plan', () => {
   const plan = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
   assert.ok(plan.length < 9000, `the Plan step stays thin (${plan.length} bytes)`);
-  assert.match(plan, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
+  assert.match(plan, /Fetch `@sai\/commands\/plan\/coordinator\.md` and follow it exactly/);
   assert.match(plan, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(plan, /BLOCK_NOT_FOUND/);
   assert.match(plan, /@sai\/policies\/obstacle-escalation\.md/);

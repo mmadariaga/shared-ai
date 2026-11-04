@@ -10,7 +10,7 @@ metadata:
   version: "1.0"
 ---
 
-Fetch @sai/policies/budget-agent.md
+Fetch `@sai/policies/budget-agent.md`
 
 ## OpenCode Binding
 
@@ -28,7 +28,7 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 ## Warming and dispose
 
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/cache-warming.md`
 
 The task message carries no warming line, and the result declares `warming: false`. When the card you follow reuses the subagent after an idle stretch, send it the policy's `warm-up` order first. Dispose the helper only when its latest message declared `warming: true`; otherwise dispose nothing.
 

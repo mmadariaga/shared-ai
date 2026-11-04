@@ -142,9 +142,9 @@ test('sai-archive and file-manifest no longer depend on implementation.md or app
 
 test('the deep review reviews, audits, assesses, and fixes through the implement segment with no human selection', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
-  assert.match(coordinator, /Fetch @sai\/commands\/review\/coordinator\.md and follow it exactly as the first segment/);
+  assert.match(coordinator, /Fetch `@sai\/commands\/review\/coordinator\.md` and follow it exactly as the first segment/);
   assert.match(coordinator, /follow `sai\/commands\/implement\/coordinator\.md` exactly as the fix segment/i);
-  assert.match(coordinator, /Fetch @sai\/commands\/audit\/coordinator\.md/);
+  assert.match(coordinator, /Fetch `@sai\/commands\/audit\/coordinator\.md`/);
   assert.match(coordinator, /Assessment pass/);
   assert.match(coordinator, /even with `--full` or `--path`/);
   assert.match(coordinator, /`no-changes`|found no changes against the parent branch/);

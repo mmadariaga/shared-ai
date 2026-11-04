@@ -175,7 +175,7 @@ for (const [harness, install] of [['claude', installClaude], ['opencode', instal
       for (const wrapper of ['sai-explore', 'sai-retire-docs', 'sai-status', 'sai-worktree']) {
         const installed = fs.readFileSync(path.join(upgraded, 'commands', `${wrapper}.md`), 'utf8');
         assert.doesNotMatch(installed, RETIRED_NAMES, `${wrapper} points at no retired file after the upgrade`);
-        assert.match(installed, /Fetch @sai\/commands\/[a-z-]+\/body\.md and follow it exactly/);
+        assert.match(installed, /Fetch `@sai\/commands\/[a-z-]+\/body\.md` and follow it exactly/);
       }
     } finally {
       fs.rmSync(fresh, { recursive: true, force: true });

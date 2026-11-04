@@ -91,7 +91,7 @@ const WORKER_CONTRACT_BY_NAME = {
 };
 
 function expectedWorkerPrompt(phase) {
-  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
+  return `Worker contract: Fetch \`@sai/commands/${phase}/worker.md\` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -419,7 +419,7 @@ test('installOpencode projects every routed binding into neutral destinations', 
       assert.equal(fs.existsSync(destination), true, `${workerName} (${phase}) binding should use a neutral destination`);
       const text = fs.readFileSync(destination, 'utf8');
       assert.equal(
-        (text.match(new RegExp(`Fetch @sai/commands/${phase}/worker\\.md and follow it exactly\\.`, 'g')) || []).length,
+        (text.match(new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\` and follow it exactly\\.`, 'g')) || []).length,
         1,
         `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
       );
@@ -448,9 +448,9 @@ test('installOpencode projects the adapter idea-list render glue and resolves it
     assert.deepEqual(fs.readFileSync(installedPanel), fs.readFileSync(panelSource),
       'the installed opencode panel adapter should preserve source bytes');
     const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
-    assert.match(wrapper, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/,
+    assert.match(wrapper, /Fetch `@sai\/adapters\/opencode\/idea-list-render\.md`/,
       'sai-explore should resolve the opencode idea-list adapter');
-    assert.match(wrapper, /^Receipt: .*@sai\/commands\/explore\/body\.md § Load receipt/m,
+    assert.match(wrapper, /^Receipt: .*`@sai\/commands\/explore\/body\.md` § Load receipt/m,
       'sai-explore should carry the load receipt pointer');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1302,7 +1302,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${workerName} should contain exactly one frontmatter block`);
       assert.equal(
-        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
         1,
         `specs/managed-worker-registry/spec.md: ${workerName} should carry exactly one canonical worker Fetch`);
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
@@ -1528,10 +1528,10 @@ test('Step 3 install seeds the managed opencode worker agent files with their ca
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${worker} should contain exactly one frontmatter block`);
       assert.equal(
-        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
         1,
         `specs/managed-worker-registry/spec.md: ${worker} should carry exactly one canonical worker Fetch`);
-      assert.ok(text.includes(`Fetch @sai/commands/${WORKER_CONTRACT_BY_NAME[worker].phase}/worker.md and follow it exactly.`),
+      assert.ok(text.includes(`Fetch \`@sai/commands/${WORKER_CONTRACT_BY_NAME[worker].phase}/worker.md\` and follow it exactly.`),
         `specs/managed-worker-registry/spec.md: ${worker} should target its own worker contract`);
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
       assert.ok(projection, `specs/managed-worker-registry/spec.md: ${worker} should be an active opencode projection`);
@@ -1680,9 +1680,9 @@ test('opencode utility wrappers fetch their body card directly and load no boot 
       const wrapperPath = path.join(tmpDir, 'commands', `${name}.md`);
       assert.ok(fs.existsSync(wrapperPath), `${name}.md should be installed`);
       const wrapper = fs.readFileSync(wrapperPath, 'utf8');
-      assert.match(wrapper, new RegExp(`Fetch @sai/commands/${UTILITY_COMMANDS[name]}/body\\.md and follow it exactly`),
+      assert.match(wrapper, new RegExp(`Fetch \`@sai/commands/${UTILITY_COMMANDS[name]}/body\\.md\` and follow it exactly`),
         `${name} should fetch its body card directly`);
-      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\/(?:claude|opencode)\/boot\.md/,
+      assert.doesNotMatch(wrapper, /Fetch `@sai\/adapters\/(?:claude|opencode)\/boot\.md/,
         `${name} must load no boot adapter`);
     }
     for (const harness of ['claude', 'opencode']) {
@@ -1691,7 +1691,7 @@ test('opencode utility wrappers fetch their body card directly and load no boot 
     }
     for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-archive', 'sai-backfill', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
-      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
+      assert.doesNotMatch(wrapper, /Fetch `@sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
     }
   } finally {
@@ -1713,9 +1713,9 @@ test('opencode utility wrappers forward the envelope to a body card that carries
       assert.deepEqual(fs.readdirSync(cardDir), UTILITY_CARD_CONTENTS[name],
         `the ${name} utility card directory should contain exactly its folded card inventory`);
       const body = fs.readFileSync(path.join(cardDir, 'body.md'), 'utf8');
-      assert.match(body, /Fetch @sai\/policies\/public-chat\.md and follow it exactly\./,
+      assert.match(body, /Fetch `@sai\/policies\/public-chat\.md` and follow it exactly\./,
         `the ${name} body card should load public chat itself`);
-      assert.match(body, /First step: Fetch @sai\/policies\/tool-access\.md and check the wrapper's required capability profile\./,
+      assert.match(body, /First step: Fetch `@sai\/policies\/tool-access\.md` and check the wrapper's required capability profile\./,
         `the ${name} body card should check the capability profile itself`);
     }
   } finally {

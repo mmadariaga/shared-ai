@@ -1,6 +1,6 @@
 # Capability Retirement Declaration
 
-Fetch @sai/policies/command-execution.md and follow it for command execution.
+Fetch `@sai/policies/command-execution.md` and follow it for command execution.
 
 A **capability-emptying delta** is a delta spec whose `## REMOVED Requirements`
 names every requirement currently published in

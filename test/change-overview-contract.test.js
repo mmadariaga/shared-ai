@@ -257,7 +257,7 @@ test('sentinel emitted when no step admits a contract', () => {
   const instruction = artifact('sai/commands/design/steps/interfaces.md');
   const format = artifact('sai/policies/step-contract-format.md');
 
-  assert.match(instruction, /Fetch @sai\/policies\/step-contract-format\.md/,
+  assert.match(instruction, /Fetch `@sai\/policies\/step-contract-format\.md`/,
     'the design instruction should fetch the canonical step-contract format');
   assert.match(format, /None — no step contracts/,
     'the format policy should define the exact None — no step contracts sentinel');
@@ -455,8 +455,8 @@ test('installation projects the shared change-overview instruction through the r
 test('overview dispatch transports the contract by Fetch and names both harness bindings', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
-  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
-    'worker.md should instruct the subagent to Fetch @sai/commands/design/change-overview.md');
+  assert.match(worker, /Fetch `@sai\/commands\/design\/change-overview\.md`/,
+    'worker.md should instruct the subagent to Fetch `@sai/commands/design/change-overview.md`');
   assert.match(worker, /follow it exactly/i,
     'worker.md should instruct the subagent to follow the fetched contract exactly');
   assert.match(worker, /Agent\(subagent_type: budget-subagent\)/,
@@ -477,7 +477,7 @@ test('overview dispatch prompt stays minimal', () => {
     'the dispatch prompt should carry the resolved change name');
   assert.match(dispatchBlock, /overview_language/,
     'the dispatch prompt should carry the overview_language value');
-  assert.match(dispatchBlock, /Fetch @sai\/commands\/design\/change-overview\.md/,
+  assert.match(dispatchBlock, /Fetch `@sai\/commands\/design\/change-overview\.md`/,
     'the dispatch prompt should carry the Fetch directive');
 
   // The prompt does not enumerate the shared contract's source mappings.
@@ -540,7 +540,7 @@ test('opted-in Continue preserves the fetched single-file generator contract and
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
   const instruction = artifact('sai/commands/design/change-overview.md');
 
-  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+  assert.match(worker, /Fetch `@sai\/commands\/design\/change-overview\.md`/,
     'the generation continuation must still fetch the shared overview contract');
   assert.match(worker, /follow it exactly/i,
     'the generation continuation must follow the fetched contract exactly');
@@ -618,7 +618,7 @@ test('schema and worker transport coverage is not satisfied by template-only sec
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
 
-  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+  assert.match(worker, /Fetch `@sai\/commands\/design\/change-overview\.md`/,
     'worker.md should carry the Fetch transport independently of the template');
   assert.match(schema, /sai\/commands\/design\/change-overview\.md/,
     'schema.yaml should name the command-owned contract path independently of the template');

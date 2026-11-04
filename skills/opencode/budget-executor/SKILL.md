@@ -10,7 +10,7 @@ metadata:
   version: "1.0"
 ---
 
-Fetch @sai/policies/executor-agent.md
+Fetch `@sai/policies/executor-agent.md`
 
 ## OpenCode Binding
 
@@ -33,7 +33,7 @@ The model for `budget-executor` subagents is controlled by the `model` frontmatt
 
 ## Warming and dispose
 
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/cache-warming.md`
 
 The executor never arms: its report declares `warming: false`, so it is never sent a warming line or a `warm-up`, and there is nothing to dispose.
 

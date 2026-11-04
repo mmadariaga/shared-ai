@@ -26,7 +26,7 @@ const SKILL_BASES = {
 
 function parseFetchRefs(text) {
   const refs = [];
-  const re = /(?:Also fetch|Fetch)\s+@([^\s`)]+)/g;
+  const re = /(?:Also fetch|Fetch)\s+`?@([^\s`)]+)/g;
   let m;
   while ((m = re.exec(text)) !== null) refs.push(m[1].replace(/[.,;:]+$/, ''));
   return refs;

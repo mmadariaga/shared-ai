@@ -228,7 +228,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   );
 
   for (const [harness, wrapper] of [['Claude Code', claudeWrapper], ['opencode', opencodeWrapper]]) {
-    assert.match(wrapper, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/,
+    assert.match(wrapper, /Fetch `@sai\/commands\/explore\/body\.md` and follow it exactly/,
       `${harness} must load the shared Explore behavior`);
     assert.doesNotMatch(wrapper, /route-selector|route-choice|Plan - Unattended|Direct Build - Unattended/,
       `${harness} wrapper must not implement a separate route-choice path`);
@@ -489,8 +489,8 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   const claude = spec('commands/claude/sai-explore.md');
   const opencode = spec('commands/opencode/sai-explore.md');
 
-  assert.match(claude, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/);
-  assert.match(opencode, /Fetch @sai\/commands\/explore\/body\.md and follow it exactly/);
+  assert.match(claude, /Fetch `@sai\/commands\/explore\/body\.md` and follow it exactly/);
+  assert.match(opencode, /Fetch `@sai\/commands\/explore\/body\.md` and follow it exactly/);
   assert.equal(
     claude.match(/command_name:\s*explore/)?.[0],
     opencode.match(/command_name:\s*explore/)?.[0]
@@ -866,7 +866,7 @@ test('the Plan route follows /sai-plan and keeps the plan family out of explore'
   const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
   const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
 
-  assert.match(plan, /Fetch @sai\/commands\/plan\/coordinator\.md and follow it exactly/);
+  assert.match(plan, /Fetch `@sai\/commands\/plan\/coordinator\.md` and follow it exactly/);
   assert.match(plan, /--block-file <absolute path returned by export>/);
   assert.match(plan, /--block-hash <sha256 returned by export>/);
   assert.match(plan, /Set \`active_change\` before dispatch and reject duplicate starts for the full active interval/);
@@ -903,8 +903,8 @@ test('crystallization renders a temporary mode-specific route without changing t
 
 test('selector starts only the first pending slice and does not fetch Plan or Direct Build files at presentation', () => {
   const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
-  assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
-  assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
+  assert.doesNotMatch(routeSelector, /Fetch `@sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md`/);
+  assert.doesNotMatch(routeSelector, /Fetch `@sai\/commands\/explore\/steps\/pipeline-direct-build\.md`/);
   assert.match(routeSelector, /emit `\{intent: plan\}` or `\{intent: direct-build\}` to `explore-slice@1`/);
   assert.match(routeSelector, /machine starts only the first pending slice/i);
   assert.match(routeSelector, /never send a slice name or `pick`/i);

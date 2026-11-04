@@ -7,7 +7,7 @@ const path = require('node:path');
 const { readProjected } = require('./helpers/capability-source');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const CLAUDE_FETCH_BOOTSTRAP = 'Fetch @skills/fetch/SKILL.md';
+const CLAUDE_FETCH_BOOTSTRAP = 'Fetch `@skills/fetch/SKILL.md`';
 const OPENCODE_FETCH_BOOTSTRAP = 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.';
 
 const POLICIES = [
@@ -187,7 +187,7 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
     }
 
     const body = source.slice(frontmatter[0].length).split('<!-- User customizations below this line -->')[0].trim();
-    assert.ok(body.startsWith(OPENCODE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch @sai/policies/${name}-agent.md`),
+    assert.ok(body.startsWith(OPENCODE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch \`@sai/policies/${name}-agent.md\``),
       `${name} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,
       /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
@@ -275,7 +275,7 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
     }
 
     const body = source.slice(frontmatter[0].length).split('<!-- User customizations below this line -->')[0].trim();
-    assert.ok(body.startsWith(CLAUDE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch ${agent.fetchTarget}`),
+    assert.ok(body.startsWith(CLAUDE_FETCH_BOOTSTRAP) && body.endsWith(`Fetch \`${agent.fetchTarget}\``),
       `${agent.fileName} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,
       /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
@@ -293,7 +293,7 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
   const globalPolicyPath = path.join(scratch, 'sai', 'policies', 'explore-agent.md');
   const localAgentPath = path.join(projectPath, '.opencode', 'agents', 'budget-explorer.md');
   const localPolicyPath = path.join(projectPath, '.opencode', 'sai', 'policies', 'explore-agent.md');
-  const fetchLine = 'Fetch @sai/policies/explore-agent.md';
+  const fetchLine = 'Fetch `@sai/policies/explore-agent.md`';
   const localExtension = 'PROJECT_LOCAL_EXTENSION_MARKER';
   const globalMarker = 'GLOBAL_CANONICAL_POLICY_MARKER';
 
@@ -395,7 +395,7 @@ function extractSkillFetchTargets(content) {
   return content
     .split(/\r?\n/)
     .map(line => line.trim())
-    .filter(line => /^Fetch @sai\/policies\/(?:budget|executor|explore)-agent\.md$/.test(line));
+    .filter(line => /^Fetch `@sai\/policies\/(?:budget|executor|explore)-agent\.md`$/.test(line));
 }
 
 test('OpenCode budget skills match their generic-agent policy targets and local contracts', () => {
@@ -407,9 +407,9 @@ test('OpenCode budget skills match their generic-agent policy targets and local 
     const skillTargets = extractSkillFetchTargets(skill);
     const agentTargets = extractSkillFetchTargets(agent);
 
-    assert.deepEqual(skillTargets, [`Fetch ${contract.fetchTarget}`],
+    assert.deepEqual(skillTargets, [`Fetch \`${contract.fetchTarget}\``],
       `${contract.skillName} must contain exactly one matching canonical Fetch target`);
-    assert.deepEqual(agentTargets, [`Fetch ${contract.fetchTarget}`],
+    assert.deepEqual(agentTargets, [`Fetch \`${contract.fetchTarget}\``],
       `${contract.agentName} must contain exactly one matching canonical Fetch target`);
     assert.doesNotMatch(skill,
       /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
@@ -478,7 +478,7 @@ test('Claude budget skills route dispatch through their agent basenames with no 
       `${contract.skillName} must not retain a retired explorer escalation tier`);
 
     const skillTargets = extractSkillFetchTargets(skill);
-    assert.deepEqual(skillTargets, [`Fetch ${contract.fetchTarget}`],
+    assert.deepEqual(skillTargets, [`Fetch \`${contract.fetchTarget}\``],
       `${contract.skillName} must contain exactly one matching canonical Fetch target`);
 
     for (const marker of contract.markers) {

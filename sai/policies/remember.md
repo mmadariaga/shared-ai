@@ -4,7 +4,7 @@ Standing rules for every SAI command session: main session, coordinator, or work
 
 ## Language
 
-Fetch @skills/token-efficient-languages/SKILL.md
+Fetch `@skills/token-efficient-languages/SKILL.md`
 
 The user can override any of the three rules explicitly.
 

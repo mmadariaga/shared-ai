@@ -1,15 +1,15 @@
 # `/sai-merge` coordinator
 
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/incremental-review.md
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/incremental-review.md`
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: `[<branch>] [--rebase|--squash]`. Where `remember.md` and `incremental-review.md` say to dispatch a `budget-explorer`, you do that lookup yourself: the only subagent of this run is the merge worker. You write in the language of the chat.
 
-Resolve `merge.js`, `temp-root.js`, `review-delta.js`, and the `sai-state` CLI per `tool-resolution.md`. Fetch @sai/commands/merge/mechanics.md for what each `merge.js` call gives.
+Resolve `merge.js`, `temp-root.js`, `review-delta.js`, and the `sai-state` CLI per `tool-resolution.md`. Fetch `@sai/commands/merge/mechanics.md` for what each `merge.js` call gives.
 
 ## Goal
 

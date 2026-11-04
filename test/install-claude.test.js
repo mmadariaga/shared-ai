@@ -72,7 +72,7 @@ function stripTunableLines(text) {
 }
 
 function expectedWorkerPrompt(phase) {
-  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
+  return `Worker contract: Fetch \`@sai/commands/${phase}/worker.md\` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -365,7 +365,7 @@ test('installClaude projects every routed binding into neutral destinations', ()
       assert.equal(fs.existsSync(destination), true, `${workerName} (${phase}) binding should use a neutral destination`);
       const text = fs.readFileSync(destination, 'utf8');
       assert.equal(
-        (text.match(new RegExp(`Fetch @sai/commands/${phase}/worker\\.md and follow it exactly\\.`, 'g')) || []).length,
+        (text.match(new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\` and follow it exactly\\.`, 'g')) || []).length,
         1,
         `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
       );
@@ -394,9 +394,9 @@ test('installClaude projects the adapter idea-list render glue and resolves it f
     assert.deepEqual(fs.readFileSync(installedPanel), fs.readFileSync(panelSource),
       'the installed Claude panel adapter should preserve source bytes');
     const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
-    assert.match(wrapper, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/,
+    assert.match(wrapper, /Fetch `@sai\/adapters\/claude\/idea-list-render\.md`/,
       'sai-explore should resolve the Claude idea-list adapter');
-    assert.match(wrapper, /^Receipt: .*@sai\/commands\/explore\/body\.md § Load receipt/m,
+    assert.match(wrapper, /^Receipt: .*`@sai\/commands\/explore\/body\.md` § Load receipt/m,
       'sai-explore should carry the load receipt pointer');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -466,7 +466,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `managed agent should contain exactly one frontmatter block: ${projection.destinationPath}`);
       assert.equal(
-        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
         1,
         `managed agent should carry exactly one canonical worker Fetch: ${projection.destinationPath}`);
       const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
@@ -497,14 +497,14 @@ test('Claude installer projects the three budget-agent destinations with role-ma
       assert.notEqual(frontmatterEnd, -1, `${agent} should contain a frontmatter terminator`);
       assert.equal(
         text.slice(frontmatterEnd + '\n---\n'.length).trim().split('\n')[0],
-        'Fetch @skills/fetch/SKILL.md',
+        'Fetch `@skills/fetch/SKILL.md`',
         `${agent} should bootstrap Claude fetch resolution before its policy Fetch`
       );
       assert.equal(
-        (text.match(new RegExp(`Fetch @sai/policies/${role}-agent\\.md`, 'g')) || []).length, 1,
+        (text.match(new RegExp(`Fetch \`@sai/policies/${role}-agent\\.md\``, 'g')) || []).length, 1,
         `${agent} should carry exactly one role-matched policy Fetch for ${role}`
       );
-      assert.equal((text.match(/Fetch @sai\/commands\//g) || []).length, 0,
+      assert.equal((text.match(/Fetch `@sai\/commands\//g) || []).length, 0,
         `${agent} must not carry a routed worker Fetch`);
     }
   } finally {
@@ -651,7 +651,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     if (visited.has(relativePath)) return;
     visited.add(relativePath);
     const source = readInstalled(relativePath);
-    for (const match of source.matchAll(/Fetch @((?:sai|skills)\/[^\s`]+)/g)) {
+    for (const match of source.matchAll(/Fetch `?@((?:sai|skills)\/[^\s`]+)/g)) {
       const target = path.normalize(match[1]);
       if (match[1].startsWith('skills/')) continue;
       if (match[1].includes('{')) continue; // `{name}` template, not a fetch target
@@ -668,10 +668,10 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
 
      for (const [wrapperPath, folder, binding] of wrappers) {
        const wrapper = readInstalled(wrapperPath);
-        assert.match(wrapper, new RegExp(`Fetch @sai/commands/${folder}/command-bootstrap\\.md`));
+        assert.match(wrapper, new RegExp(`Fetch \`@sai/commands/${folder}/command-bootstrap\\.md\``));
         const launcherPath = path.join('sai', 'commands', folder, 'command-bootstrap.md');
        const launcher = readInstalled(launcherPath);
-       assert.match(launcher, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
+       assert.match(launcher, new RegExp(`Fetch \`@sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}\``));
        resolveFetches(wrapperPath, available, loaded);
        resolveFetches(launcherPath, available, loaded);
        resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', binding), available, loaded);
@@ -680,7 +680,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     // The commit wrapper fetches its goal-driven coordinator directly; the coordinator
     // fetches the commit binding, and the binding fetches the worker card.
     const commitWrapperPath = path.join('commands', 'sai-commit.md');
-    assert.match(readInstalled(commitWrapperPath), /Fetch @sai\/commands\/commit\/coordinator\.md/);
+    assert.match(readInstalled(commitWrapperPath), /Fetch `@sai\/commands\/commit\/coordinator\.md`/);
     assert.equal(available.has(path.join('sai', 'commands', 'commit', 'command-bootstrap.md')), false);
     resolveFetches(commitWrapperPath, available, loaded);
     resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', 'commit-worker.md'), available, loaded);
@@ -689,7 +689,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     // coordinator fetches its worker binding, and the binding fetches the worker card.
     for (const name of ['archive', 'backfill']) {
       const wrapperPath = path.join('commands', `sai-${name}.md`);
-      assert.match(readInstalled(wrapperPath), new RegExp(`Fetch @sai/commands/${name}/coordinator\\.md`));
+      assert.match(readInstalled(wrapperPath), new RegExp(`Fetch \`@sai/commands/${name}/coordinator\\.md\``));
       assert.equal(available.has(path.join('sai', 'commands', name, 'command-bootstrap.md')), false);
       resolveFetches(wrapperPath, available, loaded);
       resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', `${name}-worker.md`), available, loaded);
@@ -699,7 +699,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     // audit's binding and worker through the same isolated root.
     for (const name of ['sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapperPath = path.join('commands', `${name}.md`);
-      assert.match(readInstalled(wrapperPath), /Fetch @sai\/commands\/audit\/coordinator\.md/);
+      assert.match(readInstalled(wrapperPath), /Fetch `@sai\/commands\/audit\/coordinator\.md`/);
       resolveFetches(wrapperPath, available, loaded);
     }
     for (const audit of ['security', 'performance', 'accessibility']) {
@@ -856,9 +856,9 @@ test('Claude utility wrappers fetch their body card directly and load no boot ad
       const wrapperPath = path.join(tmpDir, 'commands', `${name}.md`);
       assert.ok(fs.existsSync(wrapperPath), `${name}.md should be installed`);
       const wrapper = fs.readFileSync(wrapperPath, 'utf8');
-      assert.match(wrapper, new RegExp(`Fetch @sai/commands/${UTILITY_COMMANDS[name]}/body\\.md and follow it exactly`),
+      assert.match(wrapper, new RegExp(`Fetch \`@sai/commands/${UTILITY_COMMANDS[name]}/body\\.md\` and follow it exactly`),
         `${name} should fetch its body card directly`);
-      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\/(?:claude|opencode)\/boot\.md/,
+      assert.doesNotMatch(wrapper, /Fetch `@sai\/adapters\/(?:claude|opencode)\/boot\.md/,
         `${name} must load no boot adapter`);
     }
     for (const harness of ['claude', 'opencode']) {
@@ -867,7 +867,7 @@ test('Claude utility wrappers fetch their body card directly and load no boot ad
     }
     for (const name of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-3-implement', 'sai-4-review', 'sai-build', 'sai-deep-review', 'sai-commit', 'sai-archive', 'sai-backfill', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
       const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
-      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\//,
+      assert.doesNotMatch(wrapper, /Fetch `@sai\/adapters\//,
         `${name} fetches its coordinator directly and loads no boot adapter`);
     }
   } finally {
@@ -889,9 +889,9 @@ test('Claude utility wrappers forward the envelope to a body card that carries i
       assert.deepEqual(fs.readdirSync(cardDir), UTILITY_CARD_CONTENTS[name],
         `the ${name} utility card directory should contain exactly its folded card inventory`);
       const body = fs.readFileSync(path.join(cardDir, 'body.md'), 'utf8');
-      assert.match(body, /Fetch @sai\/policies\/public-chat\.md and follow it exactly\./,
+      assert.match(body, /Fetch `@sai\/policies\/public-chat\.md` and follow it exactly\./,
         `the ${name} body card should load public chat itself`);
-      assert.match(body, /First step: Fetch @sai\/policies\/tool-access\.md and check the wrapper's required capability profile\./,
+      assert.match(body, /First step: Fetch `@sai\/policies\/tool-access\.md` and check the wrapper's required capability profile\./,
         `the ${name} body card should check the capability profile itself`);
     }
   } finally {

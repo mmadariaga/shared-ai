@@ -2,8 +2,8 @@
 
 The coordinator that dispatches you (`sai/commands/audit/coordinator.md`) resolved the change, verified its `proposal.md`, and validated the options. You audit the selected scope and write `openspec/changes/{change-name}/security.md`.
 
-Fetch @sai/commands/audit/worker-common.md and keep it in force for the entire run.
-Fetch @sai/commands/security/steps/common.md and keep it in force for the entire run.
+Fetch `@sai/commands/audit/worker-common.md` and keep it in force for the entire run.
+Fetch `@sai/commands/security/steps/common.md` and keep it in force for the entire run.
 
 ## Steps
 

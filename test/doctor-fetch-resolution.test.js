@@ -78,7 +78,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('1: Fetch @sai/commands/x/command-bootstrap.md resolved via global fallback — no error', async () => {
+  test('1: Fetch `@sai/commands/x/command-bootstrap.md` resolved via global fallback — no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
@@ -89,7 +89,7 @@ describe('doctor fetch resolution', () => {
       }
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x/command-bootstrap.md\n');
+      fs.appendFileSync(wrapper, '\nFetch `@sai/commands/fr-test-x/command-bootstrap.md`\n');
 
       const targetDir = path.join(claudeBase, 'sai', 'commands', 'fr-test-x');
       ensureDir(targetDir);
@@ -112,14 +112,14 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('2: Fetch @sai/commands/missing/command-bootstrap.md resolvable nowhere — error + exit 1', async () => {
+  test('2: Fetch `@sai/commands/missing/command-bootstrap.md` resolvable nowhere — error + exit 1', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
       installClaude(claudeBase);
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing/command-bootstrap.md\n');
+      fs.appendFileSync(wrapper, '\nFetch `@sai/commands/fr-test-missing/command-bootstrap.md`\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -140,7 +140,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('4a: Fetch @skills/fetch/SKILL.md — installed skill, no error', async () => {
+  test('4a: Fetch `@skills/fetch/SKILL.md` — installed skill, no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
@@ -162,14 +162,14 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('4b: Fetch @skills/nonexistent/SKILL.md — absent skill, error', async () => {
+  test('4b: Fetch `@skills/nonexistent/SKILL.md` — absent skill, error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
       installClaude(claudeBase);
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @skills/nonexistent/SKILL.md\n');
+      fs.appendFileSync(wrapper, '\nFetch `@skills/nonexistent/SKILL.md`\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -241,9 +241,9 @@ describe('doctor fetch resolution', () => {
         for (const [wrapper, target] of refs) {
           const source = fs.readFileSync(path.join(base, 'commands', wrapper), 'utf8');
            const fetchRoot = target.startsWith('adapters/') ? 'sai/' : 'sai/orchestration/workers/';
-           assert.match(source, new RegExp(`Fetch @${fetchRoot}${target.replace(/[\\/.-]/g, '\\$&')}`),
+           assert.match(source, new RegExp(`Fetch \`@${fetchRoot}${target.replace(/[\\/.-]/g, '\\$&')}`),
              `${sectionName} ${wrapper} should use ${target}`);
-          assert.doesNotMatch(source, /Fetch @skills\/sai-[^\s/]+-worker\/SKILL\.md/,
+          assert.doesNotMatch(source, /Fetch `@skills\/sai-[^\s/]+-worker\/SKILL\.md`/,
             `${sectionName} ${wrapper} should not use a worker skill fetch`);
         }
       }
@@ -279,7 +279,7 @@ describe('doctor fetch resolution', () => {
              const bindingText = fs.readFileSync(
                path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8');
              assert.equal(
-               (bindingText.match(/Fetch @sai\/commands\/[a-z-]+\/worker\.md and follow it exactly\./g) || []).length,
+               (bindingText.match(/Fetch `@sai\/commands\/[a-z-]+\/worker\.md` and follow it exactly\./g) || []).length,
                1,
                `${sectionName} ${target} should carry exactly one canonical worker Fetch`
              );
@@ -291,7 +291,7 @@ describe('doctor fetch resolution', () => {
            }
          }
 
-        assert.equal(refText.filter(text => /Fetch @skills\/sai-.*worker\/SKILL\.md/.test(text)).length, 0,
+        assert.equal(refText.filter(text => /Fetch `@skills\/sai-.*worker\/SKILL\.md`/.test(text)).length, 0,
           `${sectionName} should contain no active worker skill fetches`);
       }
 
@@ -360,7 +360,7 @@ describe('doctor fetch resolution', () => {
         assert.ok(fs.existsSync(buildWrapper), `${harness} harness should install sai-build.md`);
         assert.match(
           fs.readFileSync(buildWrapper, 'utf8'),
-          /Fetch @sai\/commands\/build\/coordinator\.md/,
+          /Fetch `@sai\/commands\/build\/coordinator\.md`/,
           `${harness} sai-build wrapper should resolve the build coordinator`
         );
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md']) {
@@ -467,7 +467,7 @@ test('Step 3 neutral fetch contracts retain recursion and skill loading', () => 
     sourceArtifact('skills/claude/fetch/SKILL.md'),
     sourceArtifact('skills/opencode/fetch/SKILL.md'),
   ]) {
-    assert.match(source, /Fetch @skills\/<name>\/SKILL\.md/);
+    assert.match(source, /Fetch `@skills\/<name>\/SKILL\.md`/);
     assert.match(source, /skill(?: tool)?/i);
     assert.match(source, /Recursion/);
     assert.match(source, /recursively/);
@@ -613,4 +613,20 @@ test('Step 3 the repository contains no active reference to any superseded desti
     assert.equal(references.some(reference => reference.reference === destination), false,
       `active repository content must not reference the superseded path ${destination}`);
   }
+});
+
+test('parseFetchRefs reads the backticked and the bare directive as the same reference', () => {
+  const { parseFetchRefs } = require('../bin/doctor.js');
+  const text = [
+    'Fetch `@skills/fetch/SKILL.md`',
+    'Fetch `@sai/commands/commit/coordinator.md` and follow it exactly.',
+    'Also fetch `@sai/policies/remember.md`, then continue.',
+    'Fetch @sai/policies/public-chat.md and follow it exactly.',
+  ].join('\n');
+  assert.deepEqual(parseFetchRefs(text), [
+    'skills/fetch/SKILL.md',
+    'sai/commands/commit/coordinator.md',
+    'sai/policies/remember.md',
+    'sai/policies/public-chat.md',
+  ]);
 });

@@ -1,6 +1,6 @@
 # Merge step: renumbering plan
 
-Fetch @sai/commands/merge/steps/common.md and read it once.
+Fetch `@sai/commands/merge/steps/common.md` and read it once.
 
 Goal: plan how the ADR and DDR records that the source branch introduced get unique identifiers on the final integrated tree, and every reference to a renamed record stays correct. The plan is read-only: the coordinator applies it. The brief names the provenance file, the `merge.js collision` receipt, and the verification outcome.
 

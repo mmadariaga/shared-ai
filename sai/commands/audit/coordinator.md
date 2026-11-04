@@ -1,14 +1,14 @@
 # Audit coordinator (`/sai-5-security`, `/sai-6-performance`, `/sai-7-accessibility`)
 
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/finding-state.md
-Fetch @sai/policies/cache-warming.md
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/finding-state.md`
+Fetch `@sai/policies/cache-warming.md`
 
-You are the driver of the run. The invocation carries `command_name`, the audit (`security`, `performance`, or `accessibility`), and one string, `arguments_value`: an optional change name and the options of step 2 of Start. Fetch @sai/commands/{audit}/options.md. It declares the options this audit accepts, the slash command it belongs to (`{command}` below), and the form of the parent branch. `{Audit}` is the audit name with a capital initial, and `{report}` is `openspec/changes/{name}/{audit}.md`.
+You are the driver of the run. The invocation carries `command_name`, the audit (`security`, `performance`, or `accessibility`), and one string, `arguments_value`: an optional change name and the options of step 2 of Start. Fetch `@sai/commands/{audit}/options.md`. It declares the options this audit accepts, the slash command it belongs to (`{command}` below), and the form of the parent branch. `{Audit}` is the audit name with a capital initial, and `{report}` is `openspec/changes/{name}/{audit}.md`.
 
 ## Goal
 
@@ -26,7 +26,7 @@ The run is a cycle for one worker: create it, disclose the task, process its `st
 
 ## The worker
 
-Fetch @sai/orchestration/workers/bindings/{audit}-worker.md and use it.
+Fetch `@sai/orchestration/workers/bindings/{audit}-worker.md` and use it.
 
 Create the audit's worker once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
 

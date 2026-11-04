@@ -1,13 +1,13 @@
 # `/sai-4-review` coordinator
 
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/finding-state.md
-Fetch @sai/policies/cache-warming.md
-Fetch @sai/commands/review/options.md. It declares the options this command accepts and the form of the parent branch.
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/finding-state.md`
+Fetch `@sai/policies/cache-warming.md`
+Fetch `@sai/commands/review/options.md`. It declares the options this command accepts and the form of the parent branch.
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: an optional change name and the options of step 2 of Start.
 
@@ -17,7 +17,7 @@ Review a change's diff against its parent branch in a fresh worker and leave the
 
 ## Start
 
-1. Fetch @sai/policies/prereqs-check.md and run its check. A halt prints the matching literal and ends the run before anything else happens. Fetch @sai/policies/prereqs-paths.md for the artifact paths.
+1. Fetch `@sai/policies/prereqs-check.md` and run its check. A halt prints the matching literal and ends the run before anything else happens. Fetch `@sai/policies/prereqs-paths.md` for the artifact paths.
 2. Drop any `--fast-track` token from `arguments_value`. The remainder holds an optional change name, the first token that does not start with `--` and is not an option's value, and the options below. An unknown `--` token, a second positional value, or an option without its value prints this and ends the run, writing nothing: `Cannot start /sai-4-review: unknown or malformed argument '{token}'. The parent branch is passed as --parent-branch <branch>.`
    - `--parent-branch <branch>`: the branch the diff is taken against. Default: detected by the worker.
 3. An empty change name takes the only change directory under `openspec/changes/` (archive excluded) that has a `proposal.md`. When there are none or several, print this and end the run, without escalating and writing nothing: `Cannot start /sai-4-review: name the change ({candidates, or none}).`
@@ -26,7 +26,7 @@ Review a change's diff against its parent branch in a fresh worker and leave the
 
 ## The worker
 
-Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.
+Fetch `@sai/orchestration/workers/bindings/review-worker.md` and use it.
 
 Create `sai-4-review-worker` once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
 

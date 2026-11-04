@@ -1,11 +1,11 @@
 # Merge step: apply
 
-Fetch @sai/commands/merge/steps/common.md and read it once.
+Fetch `@sai/commands/merge/steps/common.md` and read it once.
 
 Goal: write the resolution the accepted strategy describes, and report exactly what you wrote. The brief names the strategy report you apply, the snapshot record and its hash, and the paths of findings to fix, when any.
 
 Before authoring a code resolution or a coordinator-authorized code correction,
-Fetch @sai/policies/code-quality-priority-stack.md
+Fetch `@sai/policies/code-quality-priority-stack.md`
 Apply it within the accepted strategy, behavior-preservation requirements, and authorized ranges; those restrictions prevail. Choosing a complete existing version (`git-ours` or `git-theirs`) alone requires no policy load.
 
 ## Writing

@@ -10,7 +10,7 @@ The resolution itself — the supplied-name short-circuit and the 0/1/N branches
 
 ### The change-picker tool
 
-Fetch @sai/policies/tool-resolution.md and resolve the tool path per its § `sai/tools/*.js` copies, substituting `change-picker.js`; if no candidate exists, name the candidates you tried and stop. The bulk-view option is the only difference, and it is an invocation flag:
+Fetch `@sai/policies/tool-resolution.md` and resolve the tool path per its § `sai/tools/*.js` copies, substituting `change-picker.js`; if no candidate exists, name the candidates you tried and stop. The bulk-view option is the only difference, and it is an invocation flag:
 
 ```
 node <tool-path> resolve "<arguments_value>" --bulk-option --json --cwd <project-root>

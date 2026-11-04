@@ -1,16 +1,16 @@
 <TASK>
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-First step: Fetch @sai/policies/tool-access.md and check the wrapper's required capability profile.
-When a run stops on an error or an unexpected condition, Fetch @sai/policies/obstacle-escalation.md and close the stop with its § Escalate to the user.
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+First step: Fetch `@sai/policies/tool-access.md` and check the wrapper's required capability profile.
+When a run stops on an error or an unexpected condition, Fetch `@sai/policies/obstacle-escalation.md` and close the stop with its § Escalate to the user.
 
 ## Artifact paths
-Fetch @sai/policies/prereqs-paths.md
+Fetch `@sai/policies/prereqs-paths.md`
 
 ## Load instructions (in order)
-Fetch @sai/policies/status-picker.md and follow it exactly.
-Fetch @sai/policies/remember.md
+Fetch `@sai/policies/status-picker.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
 
 ## Run the status tool
 

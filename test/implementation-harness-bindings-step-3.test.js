@@ -363,7 +363,7 @@ test('Step 3 opencode agent files install with subagent frontmatter and the cano
       assert.match(content, /^model:/m, `${worker} should declare a model`);
       assert.match(content, /^permissions:\s*$/m, `${worker} should declare V2 permissions`);
       assert.match(content, /action: "\*"\n\s+resource: "\*"\n\s+effect: deny/, `${worker} should deny undeclared actions`);
-      assert.ok(content.includes(`Fetch @sai/commands/${WORKER_CONTRACT_DIRS[worker]}/worker.md and follow it exactly.`),
+      assert.ok(content.includes(`Fetch \`@sai/commands/${WORKER_CONTRACT_DIRS[worker]}/worker.md\` and follow it exactly.`),
         `${worker} body should fetch its worker contract`);
     }
   } finally {

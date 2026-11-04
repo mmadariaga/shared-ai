@@ -7,7 +7,7 @@ Active step: research. Gather source evidence for design and identify any unreso
 Read the following known files in the main agent (paths are fixed by convention):
 - `openspec/changes/{resolved_change_name}/proposal.md` — motivation, what changes, capabilities in scope
 - All files matching `openspec/changes/{resolved_change_name}/specs/**/*.md` — capability delta specs; a change whose `.openspec.yaml` sets `skip_specs: true` has none, and its proposal is the sole statement of what changes
-- The project-root `SAI_LEARNINGS.md`, only when it exists: Fetch @sai/policies/sai-learnings-format.md, read § Consumption, and apply its entries to the decisions of `design.md` and the steps of `tasks.md` without copying them into either. When it does not exist, skip this silently: no warning, no prompt. Only the `/sai-3-implement` coordinator's learnings promotion at run close writes the file, and this step never edits it.
+- The project-root `SAI_LEARNINGS.md`, only when it exists: Fetch `@sai/policies/sai-learnings-format.md`, read § Consumption, and apply its entries to the decisions of `design.md` and the steps of `tasks.md` without copying them into either. When it does not exist, skip this silently: no warning, no prompt. Only the `/sai-3-implement` coordinator's learnings promotion at run close writes the file, and this step never edits it.
 
 ## Codebase research (delegated)
 
@@ -19,7 +19,7 @@ Launch `budget-explorer` with this goal and output contract:
 
 Use the report to make design decisions. If directly affected callers, tests, or claims remain unverified, continue with a targeted `budget-explorer` request before closing this step. Research is done when every file the design changes, its callers, and its tests are verified. Carry unresolved design decisions into `design.md` for the tasks-step gate.
 
-When consuming `ladder_discards`, Fetch @sai/policies/explore-agent.md and apply
+When consuming `ladder_discards`, Fetch `@sai/policies/explore-agent.md` and apply
 only § Missing-tool notice presentation; retain internal diagnostics without
 adopting the explorer's role, ladder execution, or shell restrictions.
 

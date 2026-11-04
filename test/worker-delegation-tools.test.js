@@ -73,10 +73,10 @@ function workerEntries() {
 }
 
 test('budget fetch detection ignores prose mentions', () => {
-  assert.equal(BUDGET_FETCH.test('Fetch @skills/budget/SKILL.md'), true);
-  assert.equal(BUDGET_FETCH.test('Fetch @skills/budget-explorer/SKILL.md'), true);
-  assert.equal(BUDGET_FETCH.test('Fetch @skills/budget-executor/SKILL.md'), true);
-  assert.equal(BUDGET_FETCH.test('Fetch @skills/budget-subagent/SKILL.md'), true);
+  assert.equal(BUDGET_FETCH.test('Fetch `@skills/budget/SKILL.md`'), true);
+  assert.equal(BUDGET_FETCH.test('Fetch `@skills/budget-explorer/SKILL.md`'), true);
+  assert.equal(BUDGET_FETCH.test('Fetch `@skills/budget-executor/SKILL.md`'), true);
+  assert.equal(BUDGET_FETCH.test('Fetch `@skills/budget-subagent/SKILL.md`'), true);
   assert.equal(BUDGET_FETCH.test('Dispatch a budget-explorer subagent for conflict scanning.'), false);
   assert.equal(BUDGET_FETCH.test('The @skills/budget/SKILL.md load lives in the worker card.'), false);
 });

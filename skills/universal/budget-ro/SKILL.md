@@ -11,5 +11,5 @@ metadata:
 ---
 
 Load and use the two bindings below; the first names the explorer subagent and its dispatch rules, the second the language contract.
-  Fetch @skills/budget-explorer/SKILL.md
-  Fetch @skills/token-efficient-languages/SKILL.md
+  Fetch `@skills/budget-explorer/SKILL.md`
+  Fetch `@skills/token-efficient-languages/SKILL.md`

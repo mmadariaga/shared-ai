@@ -1,14 +1,14 @@
 # `/sai-commit` coordinator
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @skills/safe-operations/SKILL.md and use it.
-Fetch @sai/policies/tool-resolution.md
-Fetch @sai/policies/obstacle-escalation.md
-Fetch @sai/policies/command-execution.md and follow it exactly.
-Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for every `sai-commit-worker` stretch.
-Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@skills/safe-operations/SKILL.md` and use it.
+Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/command-execution.md` and follow it exactly.
+Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-commit-worker` stretch.
+Fetch `@sai/policies/commit-rules.md` and follow it at the commit gate.
 
 You are the driver of the run and the only user-facing voice. The invocation carries one string, `arguments_value`: `[--scope X] [--type Y] [--no-body] [--amend] [--allow-attribution]`. The command operates on git state only and needs no `openspec` binary, no `openspec/` directory, and no `schema: sai-workflow`.
 

@@ -1,8 +1,8 @@
 # Spec worker (`/sai-1-spec`)
 
-Fetch @sai/commands/plan/worker-common.md and follow it exactly.
-Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
-Fetch @sai/commands/spec/steps/common.md and keep it in force for the entire segment.
+Fetch `@sai/commands/plan/worker-common.md` and follow it exactly.
+Fetch `@sai/policies/bounded-dispatch-retry.md` and follow it for every delegated subagent dispatch.
+Fetch `@sai/commands/spec/steps/common.md` and keep it in force for the entire segment.
 
 You write the normative translation of a request: `proposal.md` and the capability delta specs of one change. Design, tasks, code, tests, and configuration belong to later phases.
 
@@ -26,7 +26,7 @@ Run this step inline before any pointer. The message names the mode:
   **No-specs declaration.** When the block carries `**Specs**: none — <reason>`, the change has no spec-level behavior. Write `proposal.md` only, list no capability in it, write no file under `specs/`, and set `skip_specs: true` in `.openspec.yaml`. When files already exist under `specs/`, leave them and do not set the marker: the files on disk win. A block without that line never leads to `skip_specs`: no judgment of yours replaces the block's declaration, so such a change always gets at least one spec file.
 - **Refinement.** The change already holds `proposal.md` or `specs/**`, and the brief names a feedback file. Work from the existing artifacts and the feedback; no block stands behind it. Apply exactly the feedback, keep every statement it does not touch, and leave a requirement or scenario alone unless the feedback or Rule #1 of `common.md` reaches it. When a piece of feedback does not hold against the artifacts or the code, leave the artifacts unchanged for it and name it, with the reason, in `notes`.
 
-Fetch @sai/policies/issue-origin-preservation.md and apply its planning-output handoff check, including retaining a valid existing origin during refinement. When the validated block contains `**Backlog origin**`, preserve the validator's returned `backlog_origin` (that exact selected issue URL) as the change's `.openspec.yaml` `backlog_origin`, and list that metadata path in `changed_files`. This is issue provenance only: you perform no assignment or other remote mutation, and a parent context URL never replaces the selected child origin.
+Fetch `@sai/policies/issue-origin-preservation.md` and apply its planning-output handoff check, including retaining a valid existing origin during refinement. When the validated block contains `**Backlog origin**`, preserve the validator's returned `backlog_origin` (that exact selected issue URL) as the change's `.openspec.yaml` `backlog_origin`, and list that metadata path in `changed_files`. This is issue provenance only: you perform no assignment or other remote mutation, and a parent context URL never replaces the selected child origin.
 
 Report `spec-intake` together with `research` in the first report, after the research step the first pointer names.
 

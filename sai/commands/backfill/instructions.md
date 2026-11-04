@@ -238,7 +238,7 @@ Only after Phases 1–5 complete with no abort and a confirmed change name, comp
 
 ### 6a. Draft `.openspec.yaml`
 
-Fetch @sai/policies/issue-origin-preservation.md and apply it to the received
+Fetch `@sai/policies/issue-origin-preservation.md` and apply it to the received
 block and the selected change's existing metadata, when present. Preserve the
 validated `backlog_origin` as an optional key in either form below; it is
 independent of usable intent and never sets `prior_intent` by itself. Compare

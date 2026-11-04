@@ -291,7 +291,7 @@ test('I6: both Explore list stages reach list-writing.md and keep their list con
   assert.match(edge, /draft, review pass, and display sequence/);
   assert.match(edge, /review pass from `list-writing\.md` runs after these private corrections and before the one-message emission/);
   assert.ok(edge.indexOf('fixed in the list privately') < edge.indexOf('review pass from `list-writing.md`'));
-  assert.match(edge, /Fetch @sai\/commands\/explore\/list-writing\.md/);
+  assert.match(edge, /Fetch `@sai\/commands\/explore\/list-writing\.md`/);
   assert.match(edge, /@sai\/commands\/explore\/list-writing\.md/);
   assert.match(edge, /`E1` through `En`/);
   assert.match(edge, /An empty list \(`- None`\) runs no probes\./);
@@ -299,7 +299,7 @@ test('I6: both Explore list stages reach list-writing.md and keep their list con
   const impl = fs.readFileSync(path.join(REPO, 'sai', 'commands', 'explore', 'steps', 'implementation-details.md'), 'utf8');
   assert.doesNotMatch(impl, /Use the writing-for-agents skill to create the list\./);
   assert.match(impl, /draft, review pass, and display sequence/);
-  assert.match(impl, /Fetch @sai\/commands\/explore\/list-writing\.md/);
+  assert.match(impl, /Fetch `@sai\/commands\/explore\/list-writing\.md`/);
   assert.match(impl, /@sai\/commands\/explore\/list-writing\.md/);
   assert.match(impl, /`I1` through `In`/);
 });

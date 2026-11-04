@@ -1,15 +1,15 @@
 # Direct Build Worker
 
-Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/policies/public-chat.md and follow it exactly.
-Fetch @sai/policies/remember.md
-Fetch @sai/policies/repository-artifact-scope.md and use it.
-Fetch @sai/policies/code-quality-priority-stack.md
+Fetch `@sai/policies/verified-precondition-handback.md`
+Fetch `@sai/policies/public-chat.md` and follow it exactly.
+Fetch `@sai/policies/remember.md`
+Fetch `@sai/policies/repository-artifact-scope.md` and use it.
+Fetch `@sai/policies/code-quality-priority-stack.md`
 Apply it within the crystallized block's scope and this worker's role restrictions.
 
 ## Invocation Envelope
 
-For the full Direct Build route, Fetch @sai/policies/direct-build-report-transport.md
+For the full Direct Build route, Fetch `@sai/policies/direct-build-report-transport.md`
 and use its outermost task-disclosure line and file-reference returns. The
 initial ready handshake and the `--no-specs` POC remain unchanged.
 

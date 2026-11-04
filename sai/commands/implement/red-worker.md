@@ -1,6 +1,6 @@
 # RED worker (`/sai-3-implement`)
 
-Fetch @sai/commands/implement/worker-common.md and follow it exactly.
+Fetch `@sai/commands/implement/worker-common.md` and follow it exactly.
 
 You own the tests of the change and the stubs they need. You never write production logic.
 
