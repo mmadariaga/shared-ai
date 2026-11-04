@@ -7,7 +7,7 @@ The plan segment cycle is the shared unattended run of a `/sai-1-spec` or `/sai-
 
 ### Requirement: Plan run state lives in plan-run@1 and a private run directory
 
-The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the `plan-run@1` machine, built on the shared run core, with the segments `spec` and `design` and the events `start`, `segment-start`, `segment-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. The state SHALL hold identifiers and paths only. The session key SHALL be `plan-{name}`, shared by `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`. A fresh run SHALL create its run directory outside the repository with `temp-root.js mkdtemp --prefix plan-{name}-`, and free text (assumptions, reports, findings, baselines, hand-over files) SHALL live in files in that directory. Whoever opened the run SHALL close it: inside `/sai-plan` the plan coordinator opens and closes the run and each segment only emits `segment-start` and `segment-done`. `implement-run@1` SHALL keep its behavior.
+The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the `plan-run@1` machine, built on the shared run core, with the segments `spec` and `design` and the events `start`, `segment-start`, `segment-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. The state SHALL hold identifiers and paths only. The session key SHALL be `plan-{name}`, shared by `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`. A fresh run SHALL create its run directory outside the repository with `temp-root.js mkdtemp --harness <claude|opencode> --prefix plan-{name}-`, passing no other argument (in particular no `--cwd`), and free text (assumptions, reports, findings, baselines, hand-over files) SHALL live in files in that directory. Whoever opened the run SHALL close it: inside `/sai-plan` the plan coordinator opens and closes the run and each segment only emits `segment-start` and `segment-done`. `implement-run@1` SHALL keep its behavior.
 
 #### Scenario: a fresh run opens a private run directory
 
@@ -18,6 +18,11 @@ The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the
 
 - **WHEN** `sai-state/registry.js` is loaded
 - **THEN** `plan-run@1` is registered and `implement-run@1` keeps its id, events, and behavior
+
+#### Scenario: the mkdtemp call uses only documented arguments
+
+- **WHEN** the segment cycle instruction tells a fresh run to create its run directory
+- **THEN** the `mkdtemp` invocation carries only `--harness <claude|opencode>` and `--prefix plan-{name}-`, and no `--cwd`
 
 ### Requirement: Segment workers are standalone and report through a file
 
