@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Pins the change-scoped path where `/sai-backfill` writes capability specs.
 
 ## Requirements
 ### Requirement: Backfill writes capability specs to the change-scoped path

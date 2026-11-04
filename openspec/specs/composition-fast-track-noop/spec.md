@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the behavioral no-op treatment of an explicit `--fast-track` token in the `/sai-review` composition, which strips the token without becoming a fast-track parser member.
+Defines the behavioral no-op treatment of an explicit `--fast-track` token in `/sai-deep-review`, which strips the token without becoming a fast-track parser member.
 
 ## Requirements
 

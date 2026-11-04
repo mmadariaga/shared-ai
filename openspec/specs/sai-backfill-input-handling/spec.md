@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how `/sai-backfill` handles its input: it never uses the change picker, resolves an empty argument itself, and proposes a change name concisely.
 ## Requirements
 ### Requirement: Wrapper MUST NOT fetch the change-picker
 

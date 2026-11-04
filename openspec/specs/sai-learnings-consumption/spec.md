@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how the design, RED, GREEN, and review phases read `SAI_LEARNINGS.md` without breaching test-writer blindness.
 
 ## Requirements
 

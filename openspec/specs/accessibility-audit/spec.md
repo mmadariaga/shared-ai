@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines how the accessibility audit worker discovers the change's surface: discovery is delegated to `budget-explorer`, and the main agent does not read the diff itself.
 
 ## Requirements
 

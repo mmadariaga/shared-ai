@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the `.version` marker the installer writes in each harness's user-global directory.
 
 ## Requirements
 ### Requirement: installer writes a .version marker per harness

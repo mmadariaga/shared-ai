@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the bounded, deterministic parse of the three surface-triage sections in the regenerated `review.md` that drives conditional audit activation in the `/sai-review` composition.
+Defines the bounded, deterministic parse of the three surface-triage sections in the regenerated `review.md` that drives conditional audit activation in `/sai-deep-review`.
 
 ## Requirements
 

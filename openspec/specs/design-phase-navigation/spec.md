@@ -52,13 +52,13 @@ The `/sai-2-design` wrappers SHALL NOT load the `sai-3-implementation-worker` bi
 #### Scenario: Claude sai-2 wrapper drops the sai-3 binding fetch
 
 - **WHEN** `commands/claude/sai-2-design.md` is read
-- **THEN** it SHALL fetch the design-worker binding skill and SHALL NOT fetch the `sai-3-implementation-worker` binding skill
+- **THEN** it SHALL fetch only the harness fetch skill and `sai/commands/design/coordinator.md`, which fetches the design-worker binding `@sai/orchestration/workers/bindings/design-worker.md`, and neither SHALL fetch the `sai-3-implementation-worker` binding
 - **AND** its `allowed-tools` SHALL still permit `Skill`, `Agent`, `SendMessage`, and `AskUserQuestion`
 
 #### Scenario: opencode sai-2 wrapper drops the sai-3 binding fetch
 
 - **WHEN** `commands/opencode/sai-2-design.md` is read
-- **THEN** it SHALL fetch the design-worker binding skill and SHALL NOT fetch the `sai-3-implementation-worker` binding skill
+- **THEN** it SHALL fetch only the harness fetch skill and `sai/commands/design/coordinator.md`, which fetches the design-worker binding `@sai/orchestration/workers/bindings/design-worker.md`, and neither SHALL fetch the `sai-3-implementation-worker` binding
 
 ### Requirement: The routed coordinator-worker seam is preserved
 

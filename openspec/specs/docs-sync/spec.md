@@ -5,7 +5,7 @@ This capability keeps maintained documentation, ADRs, and literal-path tests ali
 ## Requirements
 
 ### Requirement: agents-md-structure-table
-`AGENTS.md` structure table SHALL list `sai/commands/` (command cards carrying command-local `instructions.md` and co-located `.template.md` files), the root exceptions `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`, `commands/claude/`, `commands/opencode/`, and `configs/` as the canonical source-layout names. The structure table SHALL NOT list a maintained `sai/instructions/` tree. All previous path references (`commands/sai/`, `instructions/sai/`, `claude/commands/`, `opencode/commands/`, `opencode/opencode.jsonc`) SHALL be replaced with their new equivalents.
+`AGENTS.md` structure table SHALL list `sai/commands/` (command cards carrying command-local `instructions.md` and co-located `.template.md` files), the command-owned shared files `sai/commands/design/change-overview.md`, `sai/commands/implement/adr-index.template.md`, and `sai/commands/implement/ddr-index.template.md`, `commands/claude/`, `commands/opencode/`, and `configs/` as the canonical source-layout names. The structure table SHALL NOT list a maintained `sai/instructions/` tree. All previous path references (`commands/sai/`, `instructions/sai/`, `claude/commands/`, `opencode/commands/`, `opencode/opencode.jsonc`) SHALL be replaced with their new equivalents.
 
 #### Scenario: structure table reflects the folded layout
 - **WHEN** `AGENTS.md` is read
@@ -13,7 +13,7 @@ This capability keeps maintained documentation, ADRs, and literal-path tests ali
 
 #### Scenario: folded paths present in table
 - **WHEN** `AGENTS.md` is read
-- **THEN** the structure table SHALL contain entries for `sai/commands/`, the command-local instruction/template pattern, the three root exceptions (`sai/change-overview.md`, `sai/adr-index.template.md`, `sai/ddr-index.template.md`), `commands/claude/`, `commands/opencode/`, and `configs/`
+- **THEN** the structure table SHALL contain entries for `sai/commands/`, the command-local instruction/template pattern, the three command-owned shared files (`sai/commands/design/change-overview.md`, `sai/commands/implement/adr-index.template.md`, `sai/commands/implement/ddr-index.template.md`), `commands/claude/`, `commands/opencode/`, and `configs/`
 
 ### Requirement: agents-md-fetch-convention-section
 
@@ -22,7 +22,7 @@ The maintained fetch-convention documentation in `AGENTS.md`, `README.md`, insta
 #### Scenario: maintained documentation shows folded paths
 
 - **WHEN** a maintainer reads the maintained source-layout or fetch-convention documentation
-- **THEN** it identifies command-local instruction/template paths and the root exception paths, with no active moved-content reference to `@sai/instructions/`
+- **THEN** it identifies command-local instruction/template paths and the command-owned shared file paths, with no active moved-content reference to `@sai/instructions/`
 
 #### Scenario: historical references remain traceable
 
