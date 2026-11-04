@@ -16,8 +16,8 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 #### Scenario: Every current binding carries the matching template
 
 - **WHEN** the fourteen active binding files are inspected
-- **THEN** each initial `Agent` or `task` dispatch SHALL contain the ready-only literal template for its own worker contract with no envelope slot
-- **AND** the Claude binding SHALL retain background `Agent` dispatch semantics while the opencode binding SHALL retain `task` dispatch semantics
+- **THEN** each initial `Agent` or `subagent` dispatch SHALL contain the ready-only literal template for its own worker contract with no envelope slot
+- **AND** the Claude binding SHALL retain background `Agent` dispatch semantics while the opencode binding SHALL use background `subagent` dispatch semantics (`background: true`)
 
 #### Scenario: The existing invocation envelope passes through unchanged
 
@@ -44,7 +44,7 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 
 ### Requirement: Binding continuations remain answer-only and harness-native
 
-Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage`, opencode bindings SHALL continue the captured task through `task(task_id: ...)`, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it, followed by the warming line of `sai/policies/cache-warming.md` when the worker's resolved timings are not `off`.
+Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage`, opencode bindings SHALL continue the captured worker through `subagent(agent: ..., sessionID: ..., background: true)` with the agent used at creation and the captured `sessionID`, only after its completion notification has arrived, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it, followed by the warming line of `sai/policies/cache-warming.md` when the worker's resolved timings are not `off`.
 
 #### Scenario: Feedback continues the same worker
 

@@ -195,7 +195,7 @@ test('Step 2 --runtime authorizes every scanner and an unavailable scanner never
 });
 
 test('Step 2 Claude and opencode bindings continue the same worker with the coordinator message', () => {
-  for (const [harness, continuation] of [['claude', 'SendMessage(to: "<captured agent ID>"'], ['opencode', 'task(task_id: "<captured task ID>"']]) {
+  for (const [harness, continuation] of [['claude', 'SendMessage(to: "<captured agent ID>"'], ['opencode', 'subagent(agent: "sai-7-accessibility-worker", description: "accessibility worker", sessionID: "<captured sessionID>"']]) {
     const binding = matrixBinding(harness, 'accessibility');
     assert.ok(binding.includes(continuation), 'the binding should continue the same worker');
     assert.match(binding, /message: "<message>"|prompt: "<message>"/,
@@ -381,6 +381,7 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
       claudeBase: base,
       opencodeBase: path.join(projectRoot, 'missing-opencode'),
       execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       out: captured.out,
     });
     assert.equal(code, 0, 'doctor should accept the restored managed agent');

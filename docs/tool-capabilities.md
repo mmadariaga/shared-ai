@@ -35,7 +35,7 @@ managed coordinator agent. Boot checks command access separately from workers.
 ## Native semantics and verification
 
 Verified against the published native references and the available CLIs:
-Claude Code 2.1.285 and opencode 2.0.21.
+Claude Code 2.1.285 and opencode 2.2.5 (minimum supported opencode: 2.2.0).
 
 - Claude Code agent `tools` filters the pool. Command `allowed-tools` is a
   turn-scoped pre-approval, not a deny-list. Inherited deny/ask and organization

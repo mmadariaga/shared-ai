@@ -42,7 +42,7 @@ test('security transport: the audit coordinator carries arguments_value, the wor
 
   assert.match(coordinator, /one string, `arguments_value`/);
   assert.match(coordinator, /The creation dispatch carries only the ready prompt/);
-  assert.match(coordinator, /`SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode/);
+  assert.match(coordinator, /`SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent` and the captured `sessionID` on opencode/);
   assert.doesNotMatch(worker, /arguments_value/, 'the worker receives a brief, not the raw argument string');
   for (const source of [coordinator, worker, ...bindings]) {
     assert.doesNotMatch(source, /wrapper_echo_value/,
@@ -52,8 +52,8 @@ test('security transport: the audit coordinator carries arguments_value, the wor
   assert.match(bindings[0], /Agent/);
   assert.match(bindings[0], /SendMessage\(to: "<captured agent ID>"/);
   assert.match(bindings[1], /sai-5-security-worker/);
-  assert.match(bindings[1], /task/i);
-  assert.match(bindings[1], /task\(task_id: "<captured task ID>"/);
+  assert.match(bindings[1], /subagent/i);
+  assert.match(bindings[1], /subagent\(agent: "sai-5-security-worker", description: "security worker", sessionID: "<captured sessionID>"/);
 });
 
 test('security worker contract enumerates the five ids and pins the batch semantics', () => {

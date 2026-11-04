@@ -47,6 +47,7 @@ async function runDoctor({ projectRoot, claudeBase, opencodeBase }) {
     claudeBase,
     opencodeBase,
     execOpenspec: execOk,
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out,
   });
   const raw = end();

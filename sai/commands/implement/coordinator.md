@@ -81,7 +81,7 @@ A fixed finding stays as it is, and so does a checked task: neither is done agai
 Fetch `@sai/orchestration/workers/bindings/red-worker.md` and use it.
 Fetch `@sai/orchestration/workers/bindings/green-worker.md` and use it.
 
-Create each worker when its first step needs it, and keep it for the whole run. The creation dispatch carries only the ready prompt; the worker returns `event: ready` and the first brief goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue a worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
+Create each worker when its first step needs it, and keep it for the whole run. The creation dispatch carries only the ready prompt; the worker returns `event: ready` and the first brief goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue a worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent` and the captured `sessionID` on opencode, after the worker's completion notification has arrived.
 
 **Warm and dispose.** Following `cache-warming.md`, resolve each worker's timings at every message to it and end the message with the warming line the policy defines. Under the policy's Dispose rule, dispose a worker when a new worker replaces it, and dispose both workers and the live explorer at Close, before the `close` event. An executor never arms and is not disposed.
 

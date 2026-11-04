@@ -56,6 +56,6 @@ This change SHALL NOT modify `commands/opencode/sai-explore.md`. The opencode wr
 #### Scenario: Containment is the only layer this change adopts
 
 - **WHEN** a reader consults `AGENTS.md` about the budget-subagent hang-resilience change
-- **THEN** it states that the only containment layer is background dispatch on Claude Code, which keeps a hung child reachable for reaping but does not terminate it automatically
+- **THEN** it states that the only containment layer is background dispatch on both harnesses, Claude Code through `Agent(run_in_background: true)` and opencode through the v2 `subagent` tool with `background: true`, which keeps a hung child reachable for reaping but does not terminate it automatically
 - **AND** it states that no wall-clock bound is assumed to fire
-- **AND** it states that the opencode half of the change is documentation parity only, since opencode's `task` tool has no `run_in_background` parameter
+- **AND** it states that opencode v1 `task` dispatch is retired and that neither harness cancels a hung child automatically

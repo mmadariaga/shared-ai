@@ -64,6 +64,7 @@ async function runDoctor({ projectRoot, execOpenspec }) {
     opencodeBase,
     copilot,
     execOpenspec,
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out,
   });
   const raw = end();
@@ -80,6 +81,7 @@ describe('doctor skill staleness', () => {
       const { code, parsed } = await runDoctor({
         projectRoot,
         execOpenspec: execVersion('1.5.0'),
+        execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       });
 
       assert.equal(code, 0);
@@ -101,6 +103,7 @@ describe('doctor skill staleness', () => {
       const { code, parsed } = await runDoctor({
         projectRoot,
         execOpenspec: execVersion('1.5.0'),
+        execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       });
 
       assert.equal(code, 0);
@@ -124,6 +127,7 @@ describe('doctor skill staleness', () => {
       const { code, parsed } = await runDoctor({
         projectRoot,
         execOpenspec: execVersion('1.5.0'),
+        execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       });
 
       assert.equal(code, 0);
@@ -144,6 +148,7 @@ describe('doctor skill staleness', () => {
       const { code, parsed } = await runDoctor({
         projectRoot,
         execOpenspec: execVersion('1.5.0'),
+        execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       });
 
       assert.equal(code, 0);
@@ -165,6 +170,7 @@ describe('doctor skill staleness', () => {
       const { code, parsed } = await runDoctor({
         projectRoot,
         execOpenspec: execNoVersion(),
+        execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       });
 
       assert.equal(code, 0);

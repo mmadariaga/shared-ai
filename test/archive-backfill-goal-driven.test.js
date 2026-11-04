@@ -84,7 +84,7 @@ test('Direct Build keeps dispatching the archive and backfill workers through st
         .find(item => item.kind === 'binding' && item.phase === phase);
       assert.ok(binding, `${harness} ${phase} binding`);
       assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
-      assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
       assert.match(binding.text, new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\``));
     }
   }

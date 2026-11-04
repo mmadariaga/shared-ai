@@ -6,7 +6,7 @@ Define the binding-derived roster of managed opencode workers and its install-ti
 ## Requirements
 
 ### Requirement: Binding dispatches define the managed opencode worker roster
-The installer SHALL validate the managed opencode worker roster by scanning every Markdown binding under `sai/orchestration/workers/bindings/opencode/` and extracting explicit initial `task(subagent_type: "...")` string declarations. Every binding file SHALL contain exactly one such initial `subagent_type` declaration and exactly one initial dispatch prompt matching the encoded worker-dispatch-prompt-template contract for the extracted worker. The parser SHALL capture the initial dispatch's double-quoted `prompt` value, decode its literal `\n` escape sequences for validation, and ignore continuation calls carrying `task_id`. Extracted names SHALL be unique across files, and the derived roster SHALL be deterministic. The roster SHALL be the only source of managed opencode worker membership; a hand-maintained membership flag MUST NOT add or remove a dispatched worker. The roster SHALL NOT be joined with registration-default records, because the opencode workers are registered as owned markdown agent files declared by the install manifest, not as configuration registration defaults.
+The installer SHALL validate the managed opencode worker roster by scanning every Markdown binding under `sai/orchestration/workers/bindings/opencode/` and extracting explicit initial `subagent(agent: "...")` string declarations. Every binding file SHALL contain exactly one such initial `agent` declaration and exactly one initial dispatch prompt matching the encoded worker-dispatch-prompt-template contract for the extracted worker. The parser SHALL capture the initial dispatch's double-quoted `prompt` value, decode its literal `\n` escape sequences for validation, and ignore continuation calls carrying `sessionID`, which continue an existing subagent and are never initial dispatches. Extracted names SHALL be unique across files, and the derived roster SHALL be deterministic. The roster SHALL be the only source of managed opencode worker membership; a hand-maintained membership flag MUST NOT add or remove a dispatched worker. The roster SHALL NOT be joined with registration-default records, because the opencode workers are registered as owned markdown agent files declared by the install manifest, not as configuration registration defaults.
 
 #### Scenario: Current bindings produce a complete validated roster
 - **WHEN** the installer loads the current opencode worker bindings
@@ -14,15 +14,15 @@ The installer SHALL validate the managed opencode worker roster by scanning ever
 - **AND** every binding's initial prompt is validated against its matching literal contract-aware template
 
 #### Scenario: A new binding is automatically included only when valid
-- **WHEN** a new Markdown binding containing one valid initial `task(subagent_type: "new-worker")` declaration and its matching encoded literal contract-aware prompt is present under the opencode binding directory
+- **WHEN** a new Markdown binding containing one valid initial `subagent(agent: "new-worker")` declaration and its matching encoded literal contract-aware prompt is present under the opencode binding directory
 - **THEN** `new-worker` is included in the validated roster without an additional membership-list edit
 
 #### Scenario: A binding has a missing, malformed, or mismatched dispatch contract
-- **WHEN** a binding file does not contain exactly one parseable initial `subagent_type` declaration, its initial prompt is not a parseable encoded string, or its decoded prompt does not match the worker-specific template
+- **WHEN** a binding file does not contain exactly one parseable initial `agent` declaration, its initial prompt is not a parseable encoded string, or its decoded prompt does not match the worker-specific template
 - **THEN** installation fails with an actionable error identifying the binding and the failed declaration or prompt assertion rather than silently omitting or guessing its worker name
 
 #### Scenario: Two binding files declare the same worker
-- **WHEN** two binding files contain valid `subagent_type` declarations with the same worker name
+- **WHEN** two binding files contain valid `agent` declarations with the same worker name
 - **THEN** installation fails with an actionable duplicate-declaration error identifying the conflicting bindings
 
 ### Requirement: Roster validation is isolated to opencode consumers

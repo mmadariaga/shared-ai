@@ -349,7 +349,7 @@ test('the spec and design workers keep their names and render from the standalon
     for (const item of bindings) {
       assert.doesNotMatch(item.text, /panel-render/, `${harness} ${item.phase} binds no progress panel`);
       assert.doesNotMatch(item.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_/, `${harness} ${item.phase}`);
-      assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
       assert.match(item.text, new RegExp(`Fetch \`@sai/commands/${item.phase}/worker\\.md\` and follow it exactly`));
     }
   }

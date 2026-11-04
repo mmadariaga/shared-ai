@@ -126,7 +126,7 @@ test('the implement-new coordinator carries the run goals and every pinned edge-
   assert.match(source, /red-steps@1/);
   assert.match(source, /green-steps@1/);
   assert.match(source, /SendMessage/);
-  assert.match(source, /task_id/);
+  assert.match(source, /sessionID/);
   assert.match(source, /git diff --cached --name-only/);
   assert.match(source, /every task is already checked/);
 });
@@ -402,7 +402,7 @@ test('the implement and review bindings render from the standalone template and 
     for (const phase of ['security', 'performance', 'accessibility']) {
       const audit = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === phase);
       assert.doesNotMatch(audit.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} ${phase}`);
-      assert.match(audit.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(audit.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
       assert.match(audit.text, new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\``));
     }
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
@@ -410,7 +410,7 @@ test('the implement and review bindings render from the standalone template and 
     assert.deepEqual(bindings.map(item => item.destinationName), ['red-worker.md', 'green-worker.md', 'review-worker.md'], harness);
     for (const item of bindings) {
       assert.doesNotMatch(item.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_/, `${harness} ${item.phase}`);
-      assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
       const contract = item.phase === 'review'
         ? 'review/worker'
         : `implement/${item.phase}-worker`;
@@ -418,7 +418,7 @@ test('the implement and review bindings render from the standalone template and 
     }
     const directBuild = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'direct-build');
     assert.doesNotMatch(directBuild.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} direct-build`);
-    assert.match(directBuild.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+    assert.match(directBuild.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
     assert.match(directBuild.text, /Fetch `@sai\/commands\/explore\/direct-build-worker\.md`/);
   }
 });

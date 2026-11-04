@@ -52,6 +52,7 @@ async function runDoctor({ projectRoot, claudeBase, opencodeBase, copilot, fetch
     opencodeBase,
     copilot,
     execOpenspec: execOk,
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out,
   };
   if (fetchLatestVersion !== undefined) opts.fetchLatestVersion = fetchLatestVersion;

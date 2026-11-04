@@ -352,7 +352,7 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
     forbidden: [/^## Universal Behavior$/m],
     markers: [
       /agent keyword[\s\S]{0,80}`budget-subagent` \(lowercase\)/i,
-      /synchronously/i,
+      /subagent\(agent: "budget-[a-z]+", description: "budget-[a-z]+", prompt: <prompt>, background: true\)/,
       /`model` frontmatter of the budget-subagent agent file/i,
       /structured completion report/i,
       /permission-block abort/i,
@@ -368,7 +368,7 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
     forbidden: [/^## Universal Behavior$/m],
     markers: [
       /agent keyword[\s\S]{0,80}`budget-executor` \(lowercase\)/i,
-      /synchronously/i,
+      /subagent\(agent: "budget-[a-z]+", description: "budget-[a-z]+", prompt: <prompt>, background: true\)/,
       /`model` frontmatter of the budget-executor agent file/i,
       /tool[- ]call\s+cap[\s\S]{0,20}\bnone\b/i,
       /## Cost model/i,
@@ -381,7 +381,7 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
     forbidden: [/^## Output contract$/m, /Every subagent spawn MUST declare/i],
     markers: [
       /`budget-explorer` \(lowercase\)[\s\S]{0,100}keyword/i,
-      /synchronously/i,
+      /subagent\(agent: "budget-[a-z]+", description: "budget-[a-z]+", prompt: <prompt>, background: true\)/,
       /`model` frontmatter of the budget-explorer agent file/i,
       /40 tool calls/i,
       /output contract/i,
