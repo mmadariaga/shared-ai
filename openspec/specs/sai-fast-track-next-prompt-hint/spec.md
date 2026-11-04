@@ -8,38 +8,27 @@ This capability makes completion guidance surface `--fast-track` on recommended 
 
 ### Requirement: Completion next-prompt recommendations append a fast-track hint when the recommended command supports the flag
 
-When a command's `## Completion` block prints a next-prompt recommendation naming a follow-on command (a code span of the form `/sai-{N}-{name} {name}` or `/sai-{name} {name}`), the recommendation SHALL have the literal string ` (--fast-track)` appended immediately after the recommended-command code span — and before any remaining sentence text such as "**in a new chat** when ready." — if and only if the recommended command is a member of the fast-track set.
+When a command's completion prints a next-prompt recommendation naming a follow-on command (a code span of the form `/sai-{N}-{name} {name}` or `/sai-{name} {name}`), the recommendation SHALL have the literal string ` (--fast-track)` appended immediately after the recommended-command code span — and before any remaining sentence text such as "**in a new chat** when ready." — if and only if the recommended command is a member of the fast-track set.
 
-The fast-track set is not owned by this capability: it is the single canonical membership list defined by the `sai-fast-track-flag` capability ("The fast-track command set is the single canonical membership list" requirement in `openspec/specs/sai-fast-track-flag/spec.md`), whose membership is not restated here and which must stop listing the retired `sai-4-apply`. This requirement resolves membership against that list rather than restating it as an independent source.
+The fast-track set is not owned by this capability: it is the single canonical membership list defined by the `sai-fast-track-flag` capability ("The fast-track command set is the single canonical membership list" requirement in `openspec/specs/sai-fast-track-flag/spec.md`), whose membership (`sai-archive` and `sai-backfill`) is not otherwise restated here. This requirement resolves membership against that list rather than restating it as an independent source.
 
 The hint SHALL be evaluated on the **recommended** command, not the emitting command. The emitting command does not need to support `--fast-track` itself for its completion to carry the hint. The hint is purely textual: it changes only the printed completion string and SHALL NOT alter any behavior of the emitting or recommended command. The recommended command's behavior is unchanged unless the user subsequently types the `--fast-track` flag.
 
 The hint SHALL be single-sourced in the same shared instruction, card, or body file both harnesses fetch, so Claude Code and opencode print identical completion strings.
 
-The concrete emitting locations that gain the hint under this requirement, because each recommends a fast-track-set command, are:
-- `sai/commands/spec/coordinator.md` completion → recommends `/sai-2-design {name}`
-- `sai/commands/backfill/coordinator.md` terminal navigation (printed after validated artifacts are written) → recommends `/sai-archive {name}`
+The only emitting location that gains the hint under this requirement, because it recommends a fast-track-set command, is the `sai/commands/backfill/coordinator.md` terminal navigation (printed after validated artifacts are written), which recommends `/sai-archive {name}`. The `sai/commands/spec/coordinator.md` completion recommends `/sai-2-design {name}`, which accepts and ignores `--fast-track`, so it carries no hint.
 
 #### Scenario: Supported recommended command receives the hint
 
 - **WHEN** a completion recommends a command that belongs to the canonical fast-track set
 - **THEN** it places ` (--fast-track)` immediately after that recommended command's code span
 
-### Requirement: Preserve the overview-enabled fast-track hint
+#### Scenario: sai-1-spec completion carries no hint
 
-The spec completion recommendation SHALL append `--overview-lang Lang` alongside `--fast-track` when demonstrating the overview-enabled `sai-2-design` continuation, without changing command execution semantics.
+- **WHEN** `/sai-1-spec` completes and prints ``Spec done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` in a new chat when ready.``
+- **THEN** no ` (--fast-track)` is appended, because `sai-2-design` is not in the fast-track set
 
-#### Scenario: Completion hint demonstrates both flags
-
-- **WHEN** the spec coordinator prints the recommendation for the next design phase
-- **THEN** the recommendation contains `--fast-track --overview-lang Lang` after the change name
-
-#### Scenario: sai-1-spec completion appends the hint
-
-- **WHEN** `sai-1-spec` reaches its MANDATORY STOP and prints "Spec proposal done … run `/sai-2-design {name}` **in a new chat** when ready."
-- **THEN** the printed line reads "… run `/sai-2-design {name}` (--fast-track) **in a new chat** when ready.", because `sai-2-design` is in the fast-track set
-
-#### Scenario: sai-3-implement completion appends the hint
+#### Scenario: sai-3-implement completion carries no hint
 
 - **WHEN** `/sai-3-implement` completes
 - **THEN** it ends with exactly `Implement done.` and appends no ` (--fast-track)` hint, because it recommends no follow-on command
