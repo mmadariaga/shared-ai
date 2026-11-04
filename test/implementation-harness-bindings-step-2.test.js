@@ -71,7 +71,7 @@ test('Step 2 standalone harness bindings expose the create and continue calls an
 test('Step 3 removes worker proxy skills while preserving harness-specific binding sources', () => {
   for (const [harness, permissionTarget] of [
     ['claude', /Agent\s*\(/],
-    ['opencode', /task\s*\(/],
+    ['opencode', /subagent\s*\(/],
   ]) {
     for (const [worker, filename] of WORKERS) {
       assert.equal(fs.existsSync(path.join(repoRoot, 'skills', harness, worker, 'SKILL.md')), false,

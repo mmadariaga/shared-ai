@@ -117,7 +117,7 @@ test('the worker is created once with the ready handshake, dispatches only budge
   const coordinator = read(COORDINATOR);
   assert.match(coordinator, /Create `sai-4-review-worker` once for the run/);
   assert.match(coordinator, /SendMessage/);
-  assert.match(coordinator, /task_id/);
+  assert.match(coordinator, /sessionID/);
   assert.match(coordinator, /review-steps@1/);
 });
 

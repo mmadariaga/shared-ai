@@ -349,14 +349,18 @@ function quotedFieldValues(argumentsText, fieldName) {
   return [...argumentsText.matchAll(matcher)].map(match => match[1]);
 }
 
-function parseInitialDispatches(text, callName, bindingPath) {
+// An initial dispatch names its agent in `nameField`; a call that carries
+// `continuationField` (the opencode `sessionID`) continues an existing subagent
+// and is never an initial dispatch.
+function parseInitialDispatches(text, callName, bindingPath, { nameField = 'subagent_type', continuationField = null } = {}) {
   assertOneStringInvocationEnvelope(text, bindingPath);
   const dispatches = [];
   for (const argumentsText of collectCallArguments(text, callName, bindingPath)) {
-    const names = quotedFieldValues(argumentsText, 'subagent_type');
+    if (continuationField !== null && new RegExp(`(?:^|,)\\s*${continuationField}\\s*:`).test(argumentsText)) continue;
+    const names = quotedFieldValues(argumentsText, nameField);
     if (names.length === 0) continue;
     if (names.length !== 1) {
-      throw new Error(`Binding ${bindingPath} must contain exactly one initial ${callName}(subagent_type: "...") declaration but found ${names.length}.`);
+      throw new Error(`Binding ${bindingPath} must contain exactly one initial ${callName}(${nameField}: "...") declaration but found ${names.length}.`);
     }
     const prompts = quotedFieldValues(argumentsText, 'prompt');
     if (prompts.length !== 1 || prompts[0].includes('\n') || prompts[0].includes('\r')) {
@@ -428,6 +432,8 @@ function validateClaudeWorkerBindings() {
   }
 }
 
+const OPENCODE_DISPATCH_FIELDS = { nameField: 'agent', continuationField: 'sessionID' };
+
 function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
   const canonicalBindings = matrixBindings('opencode');
   const validate = () => {
@@ -457,9 +463,9 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     const seenBy = new Map();
     for (const bindingPath of bindingFiles) {
       const text = fs.readFileSync(bindingPath, 'utf8');
-      const dispatches = parseInitialDispatches(text, 'task', bindingPath);
+      const dispatches = parseInitialDispatches(text, 'subagent', bindingPath, OPENCODE_DISPATCH_FIELDS);
       if (dispatches.length !== 1) {
-        throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
+        throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial subagent dispatch but found ${dispatches.length}.`);
       }
       const { name, prompt } = dispatches[0];
       const binding = rosterByEntry.get(name);
@@ -476,7 +482,7 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     }
     for (const workerName of rosterByEntry.keys()) {
       if (!seenBy.has(workerName)) {
-        throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial task dispatch.`);
+        throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial subagent dispatch.`);
       }
     }
     if (seenBy.size !== 13) {
@@ -488,9 +494,9 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     const seenBy = new Map();
     for (const binding of canonicalBindings) {
     const bindingPath = path.join(bindingsDir, binding.destinationName);
-    const dispatches = parseInitialDispatches(canonicalBindingText(binding), 'task', bindingPath);
+    const dispatches = parseInitialDispatches(canonicalBindingText(binding), 'subagent', bindingPath, OPENCODE_DISPATCH_FIELDS);
     if (dispatches.length !== 1) {
-      throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
+      throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial subagent dispatch but found ${dispatches.length}.`);
     }
     const { name, prompt } = dispatches[0];
     const expected = rosterByEntry.get(name);

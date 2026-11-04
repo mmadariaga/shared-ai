@@ -48,6 +48,7 @@ async function runDoctor(projectRoot, claudeBase, opencodeBase) {
     claudeBase,
     opencodeBase,
     execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out: captured.out,
   });
   return { code, report: JSON.parse(captured.read()) };

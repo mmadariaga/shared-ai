@@ -500,35 +500,62 @@ function opencodeConfigDepthRecords(opencodeBase) {
   if (errors.length > 0 || !isPlainObjectValue(root)) {
     return [{ section, name, severity: 'warn', message: `could not parse ${short} as JSONC object, skipping depth content validation`, recommendation: 'Verify the opencode config file parses as a JSON object' }];
   }
-  const topPresent = Object.hasOwn(root, 'subagent_depth');
-  const topValue = topPresent ? root.subagent_depth : undefined;
-  const topValid = topPresent && isValidDepthValue(topValue);
-  let expPresent = false;
-  let expValue;
-  let expContainerInvalid = false;
-  if (root.experimental === undefined) {
-    expPresent = false;
-  } else if (isPlainObjectValue(root.experimental)) {
-    expPresent = Object.hasOwn(root.experimental, 'subagent_depth');
-    if (expPresent) expValue = root.experimental.subagent_depth;
-  } else {
-    expPresent = true;
-    expContainerInvalid = true;
-  }
-  const expValid = !expContainerInvalid && expPresent && isValidDepthValue(expValue);
-  if (!topPresent && !expPresent) {
-    return [{ section, name, severity: 'error', message: `missing subagent_depth in ${short}: expected at least one of top-level subagent_depth or experimental.subagent_depth >= 2`, recommendation: 'Re-run the installer to backfill subagent_depth at 2' }];
-  }
-  if (topPresent && !topValid) {
-    return [{ section, name, severity: 'error', message: `invalid top-level subagent_depth in ${short}: expected a number >= 2`, recommendation: 'Set top-level subagent_depth to 2 or higher' }];
-  }
-  if (expContainerInvalid) {
+  // opencode v2 reads the depth from the `experimental` key alone: a top-level
+  // `subagent_depth` is never consulted, so it can neither satisfy nor fail the check.
+  if (root.experimental !== undefined && !isPlainObjectValue(root.experimental)) {
     return [{ section, name, severity: 'error', message: `invalid experimental in ${short}: expected an object with subagent_depth >= 2`, recommendation: 'Set experimental.subagent_depth to 2 or higher' }];
   }
-  if (expPresent && !expValid) {
+  if (root.experimental === undefined || !Object.hasOwn(root.experimental, 'subagent_depth')) {
+    return [{ section, name, severity: 'error', message: `missing experimental.subagent_depth in ${short}: expected a number >= 2 (a top-level subagent_depth is not read by opencode v2)`, recommendation: 'Re-run the installer to backfill experimental.subagent_depth at 2' }];
+  }
+  if (!isValidDepthValue(root.experimental.subagent_depth)) {
     return [{ section, name, severity: 'error', message: `invalid experimental.subagent_depth in ${short}: expected a number >= 2`, recommendation: 'Set experimental.subagent_depth to 2 or higher' }];
   }
-  return [{ section, name, severity: 'ok', message: `subagent_depth valid in ${short}` }];
+  return [{ section, name, severity: 'ok', message: `experimental.subagent_depth valid in ${short}` }];
+}
+
+const OPENCODE_MIN_VERSION = '2.2.0';
+
+function defaultExecOpencode(args) {
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync(['opencode', ...args].join(' '), { encoding: 'utf8', shell: true });
+  }
+  return childProcess.spawnSync('opencode', args, { encoding: 'utf8' });
+}
+
+function compareVersions(a, b) {
+  const left = a.split('.').map(Number);
+  const right = b.split('.').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+// Runs `opencode --version` and compares the first X.Y.Z of its output with the
+// minimum. An absent binary or unparseable output is a warning (version unverified),
+// never an error. Called only when the opencode harness is checked.
+function opencodeVersionRecords(execOpencode = defaultExecOpencode) {
+  const section = '[Opencode]';
+  const name = 'opencode version';
+  let result = null;
+  try {
+    result = execOpencode(['--version']);
+  } catch {
+    result = null;
+  }
+  const output = result && !result.error && result.status === 0
+    ? `${result.stdout || ''}\n${result.stderr || ''}`
+    : '';
+  const match = /(?<!\d)(\d+\.\d+\.\d+)/.exec(output);
+  if (!match) {
+    return [{ section, name, severity: 'warn', message: `opencode version unverified: the opencode binary was not found or its version output could not be parsed (minimum ${OPENCODE_MIN_VERSION})`, recommendation: `Install opencode ${OPENCODE_MIN_VERSION} or later and make sure \`opencode --version\` runs` }];
+  }
+  const installed = match[1];
+  if (compareVersions(installed, OPENCODE_MIN_VERSION) < 0) {
+    return [{ section, name, severity: 'error', message: `opencode ${installed} is installed; the minimum supported version is ${OPENCODE_MIN_VERSION}`, recommendation: `Upgrade opencode to ${OPENCODE_MIN_VERSION} or later` }];
+  }
+  return [{ section, name, severity: 'ok', message: `opencode ${installed} meets the minimum ${OPENCODE_MIN_VERSION}` }];
 }
 
 function versionSkewRecords(harness, expectedEntries, latest) {
@@ -556,6 +583,7 @@ async function main(options = {}) {
     opencodeBase,
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
+    execOpencode = defaultExecOpencode,
     out = process.stdout,
     fetchLatestVersion = defaultFetchLatestVersion,
   } = options;
@@ -581,6 +609,7 @@ async function main(options = {}) {
     sectionRecords.push(...versionSkewRecords(h, entries, latest));
     if (h.kind === 'opencode') {
       sectionRecords.push(...opencodeConfigDepthRecords(h.base));
+      sectionRecords.push(...opencodeVersionRecords(execOpencode));
     }
     records.push(...sectionRecords);
   }
@@ -602,4 +631,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords, opencodeVersionRecords };

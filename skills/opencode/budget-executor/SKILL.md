@@ -25,7 +25,7 @@ A report without a final result for a requested command (`pending`, `running`, o
 
 ## Dispatch mode
 
-The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant is the containing rule for this case: a background child is dispatched only from a dispatcher that outlives it and awaits its result, and synchronous dispatch satisfies this.
+Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child: `subagent(agent: "budget-executor", description: "budget-executor", prompt: <prompt>, background: true)`. Capture the returned `sessionID` and await the completion notification on the dispatcher's own turn, matching each notification to its subagent by `sessionID` when several run at once; never sleep or poll. A continuation passes the same `agent` plus the captured `sessionID` and `background: true`, and only after the previous notification has arrived.
 
 ## Model resolution
 

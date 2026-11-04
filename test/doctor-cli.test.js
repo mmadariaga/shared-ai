@@ -49,6 +49,7 @@ test('main --json with healthy fixture produces three ok records and exits 0', a
       claudeBase,
       opencodeBase,
       execOpenspec: execOk,
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       out,
     });
     assert.equal(code, 0);
@@ -70,7 +71,7 @@ test('main --json with failing openspec binary produces error for openspec binar
   const projectRoot = makeGoodFixture();
   try {
     const { stream: out, end } = collectOut();
-    const code = await main({ argv: ['--json'], projectRoot, execOpenspec: execFail, out });
+    const code = await main({ argv: ['--json'], projectRoot, execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }), execOpenspec: execFail, out });
     assert.equal(code, 1);
     const raw = end();
     const parsed = JSON.parse(raw);
@@ -88,7 +89,7 @@ test('main --json with missing openspec dir produces error for openspec director
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-'));
   try {
     const { stream: out, end } = collectOut();
-    const code = await main({ argv: ['--json'], projectRoot: tmpDir, execOpenspec: execOk, out });
+    const code = await main({ argv: ['--json'], projectRoot: tmpDir, execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }), execOpenspec: execOk, out });
     assert.equal(code, 1);
     const raw = end();
     const parsed = JSON.parse(raw);
@@ -109,7 +110,7 @@ test('main --json with config missing sai-workflow schema produces error for wor
   fs.writeFileSync(path.join(configDir, 'config.yaml'), 'schema: other-schema\n');
   try {
     const { stream: out, end } = collectOut();
-    const code = await main({ argv: ['--json'], projectRoot: tmpDir, execOpenspec: execOk, out });
+    const code = await main({ argv: ['--json'], projectRoot: tmpDir, execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }), execOpenspec: execOk, out });
     const raw = end();
     const parsed = JSON.parse(raw);
     const health = parsed['[Project health]'];

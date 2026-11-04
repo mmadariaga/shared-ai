@@ -195,7 +195,7 @@ test('doctor and uninstall recognize migrated settings and protect changed new-n
   let output = '';
   out.on('data', chunk => { output += chunk.toString(); });
   const code = await doctor({ argv: ['--json'], projectRoot: f.root, claudeBase: claude, opencodeBase: f.base,
-    execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }), out });
+    execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }), execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }), out });
   assert.equal(code, 0, output);
   const protectedPath = f.projections[0].destinationPath;
   fs.appendFileSync(protectedPath, '\nUser customization.\n');
