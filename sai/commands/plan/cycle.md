@@ -17,7 +17,7 @@ Emit an event by piping its JSON to `emit <id> plan-run@1 -`, resolving the CLI 
 
 - A `running` or `escalated` stage whose `dir` lies inside the SAI temp root (`temp-root.js resolve --harness <claude|opencode>` returns it as `root`) is an interrupted run: follow Resuming and skip the rest of this paragraph.
 - Any other stage (`idle`, or `completed` and `stopped` left by an earlier run), or a `dir` outside the SAI temp root, starts fresh. In the second case emit `close` with outcome `stopped` first to retire the old run, and never read or delete its folder.
-- A fresh run creates its directory outside the repository with `node <tool-path> mkdtemp --harness <claude|opencode> --prefix plan-{name}- --cwd <project-root>` (`temp-root.js` resolved per `tool-resolution.md`), which returns JSON and makes a private child of the SAI temp root, and emits `start` with the `dir` it returns. When the tool reports `ok: false`, print its `error` and end the run, writing nothing.
+- A fresh run creates its directory outside the repository with `node <tool-path> mkdtemp --harness <claude|opencode> --prefix plan-{name}-` (`temp-root.js` resolved per `tool-resolution.md`), which returns JSON and makes a private child of the SAI temp root, and emits `start` with the `dir` it returns. When the tool reports `ok: false`, print its `error` and end the run, writing nothing.
 
 Whoever opened the run closes it. Inside `/sai-plan`, the plan coordinator opened it and the segment only emits `segment-start` and `segment-done`.
 

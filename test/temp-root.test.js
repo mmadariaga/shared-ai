@@ -225,6 +225,17 @@ test('the CLI creates and removes a run directory and reports usage errors', { s
   }
 });
 
+test('--help prints the usage and exits 0 without a harness, while unknown arguments still exit 2', () => {
+  for (const args of [['--help'], ['mkdtemp', '--help'], ['bogus', '--help']]) {
+    const helped = cli(args);
+    assert.equal(helped.status, 0);
+    assert.equal(helped.json.ok, true);
+    assert.match(helped.json.usage, /^Usage: temp-root\.js /);
+  }
+  const rejected = cli(['mkdtemp', '--harness', 'claude', '--cwd', '/project']);
+  assert.deepEqual([rejected.status, rejected.json.code], [2, 'USAGE']);
+});
+
 const { harnessFromInstalledPath } = require(TOOL);
 
 test('the harness derives from the installed root a tool runs from', () => {
