@@ -56,10 +56,10 @@ The opencode resolution rule SHALL match the Claude Code rule owned by `claude-f
 
 ### Requirement: Opencode skills path resolution uses the skill tool
 
-When the opencode fetch skill encounters `Fetch @skills/<name>/SKILL.md` — with or without the "and follow those instructions exactly" suffix — it SHALL resolve the directive through the `skill` tool with skill name `<name>`, not through a file Read of `skills/<name>/SKILL.md`; the Read-then-Read rule SHALL NOT apply to skills paths. The Claude Code skill-tool mapping remains owned by `claude-fetch-resolution` and is not restated here.
+When the opencode fetch skill encounters `Fetch @skills/<name>/SKILL.md` — with or without the "and follow those instructions exactly" suffix — it SHALL resolve the directive through the `skill` tool with skill name `<name>`, not through a file Read of `skills/<name>/SKILL.md`; the Read-then-Read rule SHALL NOT apply to skills paths. When that skill is already loaded through the `skill` tool in this conversation and its content is still in the agent's own context, the agent SHALL follow the loaded skill with no second `skill` call, as the `fetch-loaded-copy-reuse` capability defines. The Claude Code skill-tool mapping remains owned by `claude-fetch-resolution` and is not restated here.
 
 #### Scenario: skills path triggers skill tool
-- **WHEN** `Fetch @skills/budget/SKILL.md` is encountered by the opencode fetch skill
+- **WHEN** `Fetch @skills/budget/SKILL.md` is encountered by the opencode fetch skill and the `budget` skill is not already loaded in the agent's context
 - **THEN** the `skill` tool is invoked with name `budget`
 - **AND** no file path under `~/.config/opencode/skills/` is read
 
@@ -67,9 +67,13 @@ When the opencode fetch skill encounters `Fetch @skills/<name>/SKILL.md` — wit
 - **WHEN** `Fetch @skills/openspec-propose/SKILL.md and follow those instructions exactly.` is encountered by the opencode fetch skill
 - **THEN** the `skill` tool is invoked with name `openspec-propose`, then its instructions are followed
 
+#### Scenario: skill already loaded and still in context
+- **WHEN** `Fetch @skills/budget-explorer/SKILL.md` is encountered by the opencode fetch skill and the agent already loaded that skill through the `skill` tool in this conversation, with its content still in context
+- **THEN** the agent follows the loaded skill and makes no second `skill` call
+
 ### Requirement: Opencode fetch resolution runs the same deterministic tool
 
-The opencode fetch skill SHALL resolve every `Fetch @<subpath>` directive that does not have the form `skills/<name>/SKILL.md` by running the same fetch tool `fetch.js` as Claude Code, once per directive, with `--harness opencode`. When the skill's base directory is the project-local copy `.opencode/skills/fetch` under the working directory, the skill SHALL run `node .opencode/skills/fetch/fetch.js --harness opencode <subpath>` relative to the working directory as written. Otherwise it SHALL run `node "<base directory>/fetch.js" --harness opencode <subpath>`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted. One source file, `skills/universal/fetch/fetch.js`, SHALL be installed beside the fetch `SKILL.md` of both harnesses by the `fetch-tool` projection of `sai/install-manifest.json`, as a managed, content-tracked file covered by `doctor` and `uninstall`.
+The opencode fetch skill SHALL resolve every `Fetch @<subpath>` directive that does not have the form `skills/<name>/SKILL.md` by running the same fetch tool `fetch.js` as Claude Code, once per directive, with `--harness opencode`, except a directive that the `fetch-loaded-copy-reuse` capability lets the agent follow from a complete copy it already loaded in this conversation. When the skill's base directory is the project-local copy `.opencode/skills/fetch` under the working directory, the skill SHALL run `node .opencode/skills/fetch/fetch.js --harness opencode <subpath>` relative to the working directory as written. Otherwise it SHALL run `node "<base directory>/fetch.js" --harness opencode <subpath>`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted. One source file, `skills/universal/fetch/fetch.js`, SHALL be installed beside the fetch `SKILL.md` of both harnesses by the `fetch-tool` projection of `sai/install-manifest.json`, as a managed, content-tracked file covered by `doctor` and `uninstall`.
 
 The tool SHALL check `.opencode/<subpath>` under the working directory and then `~/.config/opencode/<subpath>`, on every call and with no session memory, and SHALL use the first file that exists. When neither holds the file, it SHALL run `opencode debug paths` and check the subpath under the directory printed on its `config` line. When that command fails or the file is not there, it SHALL exit with code 1 and `File not found: <subpath> (tried <paths>)`, naming every path it tried. Its output header, its `too-large` handling, the agent's use of the header path, and the stop on an error or on a tool that cannot run SHALL match the Claude Code rule, with no prose fallback. The opencode output cap SHALL be 30000 characters until a measured value replaces it. The resolution SHALL NOT use Glob, LS, or any directory listing.
 
@@ -93,6 +97,10 @@ The tool SHALL check `.opencode/<subpath>` under the working directory and then 
 #### Scenario: fetch tool installed for both harnesses
 - **WHEN** the installer projects the `fetch-tool` entry for Claude Code and opencode
 - **THEN** `fetch.js` sits beside `skills/fetch/SKILL.md` under each harness root, and `doctor` reports it when missing or drifted
+
+#### Scenario: already-loaded subpath is followed without a tool run
+- **WHEN** an opencode agent meets `Fetch @sai/policies/cache-warming.md` after the fetch tool already returned that subpath's complete content in this conversation, still in its context
+- **THEN** the agent follows the loaded copy and runs no fetch tool for that directive
 
 ### Requirement: The fetch tool enforces the path scope before any filesystem access
 

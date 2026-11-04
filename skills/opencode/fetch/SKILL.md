@@ -61,6 +61,16 @@ The tool enforces this scope: every path a fetch directive resolves names exactl
 
 Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively to each one whose condition holds, one call at a time — the fetch rules remain active for all subsequent instructions in this session.
 
+### Loaded-copy reuse
+
+Follow a copy you already loaded in this conversation instead of loading it again. You judge this against your own context, on every directive:
+
+- A `Fetch @<subpath>` directive whose subpath the fetch tool already returned in this conversation, with that complete content still in your context, is followed from the loaded copy, with no tool call. A complete result is the full output of the fetch tool, or the full Read of the header `path` after a `too-large` result.
+- A `Fetch @skills/<name>/SKILL.md` directive for a skill already loaded through the `skill` tool, with its content still in your context, is followed from the loaded skill, with no second `skill` call.
+- Run the tool or the `skill` tool again when the loaded content has left your context (a compaction or summary that kept only a mention of it), when you are unsure it is still there, or when the earlier read was partial. A file the harness attached from an `@path` mention, and a Read of another copy of the file, are not loaded copies.
+- The copy is keyed on the subpath: a copy installed under another root after the first load is picked up once the loaded content has left your context.
+- Only content you loaded yourself counts. A subagent or worker never reuses the loaded copy of the agent that dispatched it, and a continued subagent reuses only what it loaded itself.
+
 ### File disambiguation
 
 `@sai/commands/X.md` and `@commands/X.md` are different files. Treat two references as the same file only when their full resolved paths match:
