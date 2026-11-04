@@ -14,9 +14,9 @@ The Claude Code and opencode `/sai-4-review` entrypoints SHALL invoke a review c
 - **THEN** the wrapper enters the review coordinator and its matching review-worker binding
 - **AND** it does not execute the inline review instruction as the coordinator's technical workflow
 
-#### Scenario: Copilot starts review
+#### Scenario: The retired review entrypoint is absent
 - **WHEN** the command catalog is read
-- **THEN** no `/sai-5-review` command exists, so Copilot has no review entrypoint under that name to start
+- **THEN** no `/sai-5-review` command exists on either harness, so `/sai-4-review` is the only review entrypoint
 
 ### Requirement: Review invocation envelope preserves both positional arguments
 

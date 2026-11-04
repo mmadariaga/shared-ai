@@ -64,11 +64,10 @@ The install manifest SHALL stop projecting the seven Claude Code and seven openc
 - **AND** it does not classify the destination as a missing active projection or a generic unexpected file
 - **AND** it leaves the destination bytes unchanged
 
-#### Scenario: Copilot projections remain unchanged
+#### Scenario: Only the supported harnesses carry the retirement
 
-- **WHEN** the retirement manifest is expanded for Copilot
-- **THEN** it contains no proxy skill retirement or routed worker-binding projection
-- **AND** Copilot continues to use its existing inline path
+- **WHEN** the retirement manifest is expanded
+- **THEN** its proxy skill retirements and routed worker-binding projections target Claude Code and opencode only
 
 ### Requirement: Obsolete proxy skill sources are deleted
 

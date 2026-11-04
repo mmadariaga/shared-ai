@@ -50,7 +50,7 @@ Opencode wrappers for non-change-consuming SAI commands (`sai-1-spec`, `sai-back
 
 The opencode invocation-envelope adapter addresses opencode's wrapper substitution boundary. Other harnesses may substitute arguments directly into their body or use their own envelope path, but no supported harness SHALL depend on a transcript line or labelled wrapper text for change-name resolution. The shared change-picker contract remains authoritative: trimmed non-empty `arguments_value` wins, and the 0/1/N fallback runs only when it is empty.
 
-#### Scenario: Claude Code and Copilot remain independent of wrapper labels
+#### Scenario: Claude Code remains independent of wrapper labels
 
 - **WHEN** the shipped harness command trees are listed
 - **THEN** only `commands/claude/` and `commands/opencode/` exist, with no GitHub Copilot change-consuming wrapper, and the Claude Code change-consuming command's change-name behavior does not require a labelled wrapper line

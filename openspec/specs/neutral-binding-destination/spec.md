@@ -23,6 +23,6 @@ The source entries for Claude Code and opencode SHALL continue to resolve from `
 - **WHEN** the installer expands a routed binding projection for one harness
 - **THEN** it SHALL select that harness's source file while writing the neutral destination, without merging or rewriting the source trees
 
-#### Scenario: Copilot remains without routed projections
-- **WHEN** the complete manifest is expanded for Copilot
-- **THEN** it SHALL contain no routed worker-binding projection
+#### Scenario: Only the supported harnesses receive routed projections
+- **WHEN** the complete manifest is expanded
+- **THEN** it SHALL contain routed worker-binding projections for Claude Code and opencode only
