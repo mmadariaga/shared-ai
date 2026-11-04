@@ -26,7 +26,7 @@ function mock(state = {}) {
     assert.equal(args[args.indexOf('--organization') + 1], 'https://dev.azure.com/team');
     assert.equal(args[args.indexOf('--detect') + 1], 'false');
     assert.equal(args[args.indexOf('--output') + 1], 'json');
-    if (args[0] === 'boards') return JSON.stringify({ id: 42, fields: { 'System.TeamProject': state.project || 'My Project', 'System.Title': 'Custom item', 'System.State': 'Custom closed', 'System.WorkItemType': 'Custom type', 'System.Description': state.empty ? '' : html } });
+    if (args[0] === 'boards') return JSON.stringify({ id: 42, fields: { 'System.TeamProject': state.project || 'My Project', 'System.Title': 'Custom item', 'System.State': 'Custom closed', 'System.WorkItemType': 'Custom type', 'System.Description': state.empty ? '' : state.description ?? html }, ...(state.multiline ? { multilineFieldsFormat: state.multiline } : {}) });
     assert.deepEqual(args.slice(0, 8), ['devops', 'invoke', '--organization', 'https://dev.azure.com/team', '--area', 'wit', '--resource', 'comments']);
     assert.ok(args.includes('project=My Project') && args.includes('workItemId=42') && args.includes('$top=100'));
     assert.equal(args[args.indexOf('--http-method') + 1], 'GET');
@@ -136,4 +136,46 @@ test('Windows Azure execution bypasses shell syntax and disables automatic exten
   `;
   const result = spawnSync(process.execPath, ['-e', script], { cwd: path.resolve(__dirname, '..'), encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+});
+
+test('E9 I1 I3: a Markdown work item imports as Markdown with its description entity-decoded, an HTML one as before', () => {
+  const stored = '## Goal\n\nSay &quot;hi&quot; &#128640;\n\n```\n&lt;b&gt; &amp; x\n```';
+  for (const multiline of [{ 'System.Description': 'markdown' }, { 'System.Description': 'Markdown' }]) {
+    const result = azure.read(reference, mock({ description: stored, multiline }));
+    assert.equal(result.item.description_format, 'markdown');
+    assert.equal(result.item.description, '## Goal\n\nSay "hi" \u{1F680}\n\n```\n<b> & x\n```');
+    assert.equal(result.item.description_missing, false);
+  }
+  for (const multiline of [{}, { 'System.Description': 'html' }]) {
+    // An HTML work item keeps its stored text even when it reads like Markdown.
+    const result = azure.read(reference, mock({ description: stored, multiline }));
+    assert.equal(result.item.description_format, 'html');
+    assert.equal(result.item.description, stored);
+  }
+});
+test('E9 E10: without the multilineFieldsFormat key the deterministic detector decides and doubt means Markdown', () => {
+  const format = description => azure.read(reference, mock({ description })).item.description_format;
+  assert.equal(format(html), 'html');
+  assert.equal(format('<h2>Goal</h2><p>text</p>'), 'html');
+  assert.equal(format('## Goal\n\ntext'), 'markdown');
+  assert.equal(format('plain text'), 'markdown');
+  assert.equal(format('Use `<p>` and <br> in `<div>` text'), 'html');
+  assert.equal(format('Use `<p>` and `<div>` here'), 'markdown');
+  assert.equal(format('```html\n<p>x</p>\n```\ntext'), 'markdown');
+  assert.equal(format('<p>real</p>\n```\n<div>x</div>\n```'), 'html');
+});
+test('E4 I4: a Markdown work item carries its slice identity as a fenced code block read after entity decoding', () => {
+  const identity = require('../sai/tools/backlog-slice-identity');
+  const url = n => `https://dev.azure.com/org/Project/_workitems/edit/${n}`;
+  const parent = { version: 1, platform: 'azuredevops', role: 'parent', parent: url(1), slices: [{ change_name: 'one', issue: url(2), depends_on: [] }] };
+  const marker = identity.encodeMarkdown(parent);
+  assert.match(marker, /^```\nsai-backlog-slices@1 \{.*\}\n```$/);
+  assert.deepEqual(identity.decode(`Text\n\n${marker}\n`), parent);
+  assert.deepEqual(identity.decode(`Text\r\n\r\n${marker.replace(/\n/g, '\r\n').replace(/"/g, '&quot;')}`), parent);
+  assert.deepEqual(identity.decode(`\`\`\`\`\n${marker}\n\`\`\`\`\n`), parent);
+  assert.equal(identity.decode('```\nplain code\n```'), null);
+  assert.throws(() => identity.decode(`${marker}\n\n${marker}`), /Ambiguous/);
+  assert.deepEqual(identity.decode(identity.encodeHtml(parent)), parent);
+  assert.deepEqual(identity.decode(identity.encode(parent)), parent);
+  assert.equal(identity.fenced('a ```` b\n```'), '`````\na ```` b\n```\n`````');
 });

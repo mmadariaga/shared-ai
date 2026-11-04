@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const azure = require('./azure-publication');
 const source = require('./from-backlog-azuredevops');
-const { convert } = require('./azure-markdown');
+const { convert, decodeEntities, checkMarkdown } = require('./azure-markdown');
 const { digest, receiptPath, save } = require('./to-backlog-github');
 const classify = value => {
   try { return azure.repositoryAddress(value) || source.address(value) ? 'match' : null; } catch { return null; }
@@ -46,11 +46,27 @@ function addsOnlyWhitespace(sent, received) {
   }
   return i === sent.length;
 }
-const equivalent = (sent, received) => typeof sent === 'string' && typeof received === 'string'
-  && (addsOnlyWhitespace(sent, received) || addsOnlyWhitespace(sent.replace(COUNTERS, ''), received));
-function content(request, baseline, rendered = false) {
+// A Markdown description is stored as sent, with `"` and non-BMP characters as entities, and without the counters comment.
+// Both sides are entity-decoded; only whitespace at the removed comment's place may differ.
+const COUNTERS_COMMENT = /<!-- backlog-id-counters: E=\d+ I=\d+ Q=\d+ -->/;
+function markdownEquivalent(sent, received) {
+  const stored = decodeEntities(received), full = decodeEntities(sent);
+  if (stored === full) return true;
+  const comment = COUNTERS_COMMENT.exec(sent);
+  if (!comment) return false;
+  const before = decodeEntities(sent.slice(0, comment.index)).trimEnd(), after = decodeEntities(sent.slice(comment.index + comment[0].length)).trimStart();
+  if (stored.length < before.length + after.length || !stored.startsWith(before) || !stored.endsWith(after)) return false;
+  const middle = stored.slice(before.length, stored.length - after.length);
+  // Text on both sides of the removed comment stays separated by the whitespace around it.
+  return !middle.trim() && (middle.length > 0 || !before || !after);
+}
+const equivalent = (sent, received, format) => typeof sent === 'string' && typeof received === 'string'
+  && (format === 'markdown' ? markdownEquivalent(sent, received)
+    : addsOnlyWhitespace(sent, received) || addsOnlyWhitespace(sent.replace(COUNTERS, ''), received));
+function content(request, baseline, rendered = false, markdown = false) {
   if (typeof request.title !== 'string' || !request.title.trim() || /[\r\n]/.test(request.title)) throw new Error('Nonempty single-line title required');
   if (baseline && (request.description === undefined || request.description === baseline.description)) return { title: request.title, description: baseline.description };
+  if (markdown) return { title: request.title, description: checkMarkdown(request.description) };
   return { title: request.title, description: rendered ? request.description : convert(request.description) };
 }
 function readItem(target, number, io) {
@@ -58,7 +74,9 @@ function readItem(target, number, io) {
   const fields = row.fields;
   if (!Number.isSafeInteger(row.id) || row.id !== number || !Number.isSafeInteger(row.rev) || row.rev < 1 || !fields || !azure.equal(fields['System.TeamProject'], target.project) || typeof fields['System.Title'] !== 'string' || typeof fields['System.WorkItemType'] !== 'string' || (fields['System.Description'] != null && typeof fields['System.Description'] !== 'string')) throw new Error('Incomplete or incompatible Boards work item');
   return { issue: { id: row.id, number: row.id, url: `${target.url}/_workitems/edit/${row.id}` },
-    baseline: { rev: row.rev, title: fields['System.Title'], description: fields['System.Description'] ?? '' }, type: fields['System.WorkItemType'], actor: fields['System.CreatedBy']?.id };
+    baseline: { rev: row.rev, title: fields['System.Title'], description: fields['System.Description'] ?? '' }, type: fields['System.WorkItemType'], actor: fields['System.CreatedBy']?.id,
+    // The work item is the only reliable source of its description format; only an exact `markdown` makes it one.
+    format: String(row.multilineFieldsFormat?.['System.Description']).toLowerCase() === 'markdown' ? 'markdown' : 'html' };
 }
 function planningState(row) {
   const parents = (row.relations || []).filter(link => link.rel === 'System.LinkTypes.Hierarchy-Reverse').map(link => link.url);
@@ -120,7 +138,7 @@ function pendingPlanning(plan, state) {
 }
 function planningOutcome(receipt, io) {
   const p = receipt.proposal, row = relationRow(p, receipt.issue, io), state = planningState(row);
-  if (row.fields['System.WorkItemType'] !== p.type || row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '')) throw new Error('Content changed during planning verification');
+  if (row.fields['System.WorkItemType'] !== p.type || row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '', p.format)) throw new Error('Content changed during planning verification');
   const pending = pendingPlanning(p.planning, state);
   if (!pending.length) return { status: 'complete', issue: receipt.issue, confirmed: ['content', ...Object.keys(p.planning).filter(key => key !== 'baseline')], pending: [] };
   return { status: 'partial_failure', issue: receipt.issue, confirmed: ['content', ...['parent', 'iteration', 'assignee'].filter(key => p.planning[key] !== undefined && !pending.includes(key))], pending, current: state,
@@ -133,7 +151,7 @@ function applyPlanning(receipt, file, io, continuation) {
     if (target.actor !== p.actor || target.projectId !== p.projectId || target.visibility !== p.visibility || (p.planning.assignee && target.uniqueName !== p.planning.assignee.uniqueName)) throw new Error('Planning destination or authenticated identity changed');
     const row = relationRow(p, receipt.issue, io), state = planningState(row), pending = pendingPlanning(p.planning, state);
     if (continuation && continuation !== digest({ proposal: p, issue: receipt.issue, rev: row.rev, state })) throw new Error('Planning changed after continuation approval; verify and approve again');
-    if (row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '')) throw new Error('Content changed before planning; reconcile and approve again');
+    if (row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '', p.format)) throw new Error('Content changed before planning; reconcile and approve again');
     if (!continuation && p.planning.baseline && digest(state) !== digest(p.planning.baseline) && pending.length) throw new Error('Planning fields changed; reconcile and approve again');
     if (p.planning.parent && state.parent && !azure.equal(state.parent, p.planning.parent.url)) throw new Error('A different native parent already exists');
     if (!pending.length) return planningOutcome(receipt, io);
@@ -145,14 +163,16 @@ function applyPlanning(receipt, file, io, continuation) {
     return recover({ receipt: file }, io);
   } catch (error) { return { status: 'partial_failure', issue: receipt.issue, receipt: file, confirmed: ['content'], message: error.message }; }
 }
-function query(request, io) {
+// A new work item is created as Markdown. `markdown` is false only for the description of a set's originating work item
+// that is already HTML: it keeps its format and is rewritten as HTML.
+function query(request, io, markdown = true) {
   if (!request.type) return { status: 'needs_input', reason: 'work-item-type-required', message: 'Select the work-item type for this invocation; no default type is stored' };
   if (!source.segment(request.type)) throw new Error('Invalid work-item type');
   const target = azure.inspect(request.repository, io, request.project);
   const type = azure.api(target, 'wit', 'workitemtypes', { project: target.project, type: request.type }, io);
   if (type.name !== request.type) throw new Error('Invalid or incompatible work-item type');
   const plan = planning(request, target, io);
-  const proposal = { provider: 'azuredevops', repository: target.url, ...target, type: type.name, ...content(request), ...(plan ? { planning: plan } : {}) };
+  const proposal = { provider: 'azuredevops', repository: target.url, ...target, type: type.name, format: markdown ? 'markdown' : 'html', ...content(request, undefined, false, markdown), ...(plan ? { planning: plan } : {}) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 function readUpdate(request, io) {
@@ -160,16 +180,16 @@ function readUpdate(request, io) {
   if (ref.status !== 'resolved' || !ref.project) throw new Error('Complete work-item URL required for update');
   const target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
   const item = readItem(target, ref.number, io);
-  return { status: 'complete', ...target, repository: target.url, issue: item.issue, baseline: item.baseline, type: item.type,
+  return { status: 'complete', ...target, repository: target.url, issue: item.issue, baseline: item.baseline, type: item.type, format: item.format,
     planning_state: planningState(relationRow(target, item.issue, io)) };
 }
 function queryUpdate(request, io, rendered = false) {
   const current = readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Boards revision changed; prepare and explicitly approve again' };
   const plan = planning(request, current, io, current.issue);
-  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered), ...(plan ? { planning: plan } : {}) };
+  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered, current.format === 'markdown'), ...(plan ? { planning: plan } : {}) };
   delete proposal.status;
-  if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
+  if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description, current.format) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 function list(proposal, io) {
@@ -189,7 +209,7 @@ function outcome(receipt, io) {
   if (!receipt.issue) return { status: 'uncertain', message: 'No verified creation identity; query candidates and obtain user clarification, never repeat creation' };
   const row = readItem(target, receipt.issue.number, io);
   if (row.issue.url !== receipt.issue.url || row.type !== p.type) throw new Error('Recovery item identity changed');
-  if (row.baseline.title === p.title && equivalent(p.description, row.baseline.description)) return p.planning ? planningOutcome(receipt, io) : { status: 'complete', issue: row.issue };
+  if (row.baseline.title === p.title && equivalent(p.description, row.baseline.description, p.format)) return p.planning ? planningOutcome(receipt, io) : { status: 'complete', issue: row.issue };
   if (p.operation === 'update' && digest(row.baseline) === digest(p.baseline)) return { status: 'pending', issue: row.issue, message: 'Update is not visible; fresh approval and a new receipt are required before retrying' };
   return { status: p.operation === 'update' ? 'divergent' : 'uncertain', issue: row.issue, current: row.baseline, message: 'Remote content differs; reconcile and obtain fresh approval' };
 }
@@ -207,6 +227,8 @@ function execute(request, io, updating, rendered = false) {
   const patch = updating ? [{ op: 'test', path: '/rev', value: p.baseline.rev }] : [];
   patch.push({ op: 'add', path: '/fields/System.Title', value: p.title });
   if (!updating || p.description !== p.baseline.description) patch.push({ op: 'add', path: '/fields/System.Description', value: p.description });
+  // Only a creation sets the format; an update never changes the format of an existing work item.
+  if (!updating) patch.push({ op: 'add', path: '/multilineFieldsFormat/System.Description', value: 'Markdown' });
   try {
     const result = azure.api(p, 'wit', 'workitems', { project: p.project, ...(updating ? { id: p.issue.number } : { type: p.type }) }, io, updating ? 'PATCH' : 'POST', patch, {}, true);
     if (!Number.isSafeInteger(result.id) || result.id < 1 || (updating && result.id !== p.issue.number)) throw new Error('Incomplete write response');
@@ -228,7 +250,7 @@ function recover(request, io) {
       const p = receipt.proposal, target = azure.inspect(p.repository, io);
       if (target.projectId !== p.projectId || target.actor !== p.actor || target.visibility !== p.visibility) throw new Error('Recovery identity changed');
       const candidates = list(p, io).filter(id => !receipt.baseline.includes(id)).map(id => readItem(target, id, io))
-        .filter(row => row.type === p.type && row.actor === p.actor && row.baseline.title === p.title && equivalent(p.description, row.baseline.description));
+        .filter(row => row.type === p.type && row.actor === p.actor && row.baseline.title === p.title && equivalent(p.description, row.baseline.description, p.format));
       const chosen = candidates.find(row => row.issue.url === request.issueUrl);
       if (!chosen) return { status: 'uncertain', candidates: candidates.map(row => row.issue), message: 'Confirm the actual created item URL; matching title alone is not publication evidence. Do not create again.' };
       receipt.issue = chosen.issue; save(file, receipt);
@@ -259,7 +281,7 @@ function readOrigin(request, io) {
   requireEditable(current, io);
   const ref = source.resolve(request.origin, io);
   const found = source.nativeRelations({ ...ref, project: ref.project }, io);
-  return { issue: current.issue, repository: current.repository, baseline: current.baseline, closed: CLOSED.includes(found.row.fields['System.State']), children: () => found.children };
+  return { issue: current.issue, repository: current.repository, baseline: current.baseline, format: current.format, closed: CLOSED.includes(found.row.fields['System.State']), children: () => found.children };
 }
 function setRead(p, item, io) {
   const row = readItem(p, item.number, io);
@@ -278,14 +300,18 @@ function hasRelation(p, item, other, kind, io) {
   return (relationRow(p, item, io).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
 }
 const set = require('./backlog-provider-set').bind('azuredevops', {
-  query, equivalent, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
+  query: (request, io) => query(request, io, request.description_format !== 'html'), equivalent,
+  // The originating work item keeps its own format; every work item the set creates is Markdown.
+  formatOf: (p, index) => index ? 'markdown' : p.format, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
   // Preserve every character of the agreed block, including the Markdown separator.
-  renderBlock: text => `<pre>${sliceIdentity.escape(text)}</pre>`,
-  append: (description, links, value) => `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
+  renderBlock: text => sliceIdentity.fenced(text),
+  append: (description, links, value, format) => format === 'markdown' ? `${description}\n\n${links.join('\n')}\n${sliceIdentity.encodeMarkdown(value)}`
+    : `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
   inventory: (p, io) => list(p, io).map(number => setRead(p, { number }, io)), read: setRead,
   create: (p, item, io) => {
     const row = azure.api(p, 'wit', 'workitems', { project: p.project, type: p.type }, io, 'POST', [
-      { op: 'add', path: '/fields/System.Title', value: item.title }, { op: 'add', path: '/fields/System.Description', value: item.description }
+      { op: 'add', path: '/fields/System.Title', value: item.title }, { op: 'add', path: '/fields/System.Description', value: item.description },
+      { op: 'add', path: '/multilineFieldsFormat/System.Description', value: 'Markdown' }
     ], {}, true);
     if (!Number.isSafeInteger(row.id) || row.id < 1) throw new Error('Incomplete work-item creation identity');
     return { id: row.id, number: row.id, url: `${p.url}/_workitems/edit/${row.id}` };

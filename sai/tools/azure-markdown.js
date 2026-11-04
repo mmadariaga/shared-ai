@@ -57,4 +57,39 @@ function convert(markdown) {
   }
   return output.join('\n');
 }
-module.exports = { convert };
+// Azure stores a Markdown description with `"` and non-BMP characters encoded as entities, even inside code fences.
+// One pass, so `&amp;quot;` decodes to `&quot;` and never further.
+const ENTITIES = { quot: '"', amp: '&', lt: '<', gt: '>' };
+function decodeEntities(text) {
+  return String(text).replace(/&(?:(quot|amp|lt|gt)|#(\d+)|#[xX]([0-9a-fA-F]+));/g, (match, name, decimal, hex) => {
+    if (name) return ENTITIES[name];
+    const code = decimal !== undefined ? parseInt(decimal, 10) : parseInt(hex, 16);
+    return code <= 0x10FFFF ? String.fromCodePoint(code) : match;
+  });
+}
+const COUNTERS_LINE = /^<!-- backlog-id-counters: E=\d+ I=\d+ Q=\d+ -->$/;
+const RAW_HTML = /<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>|<!--|<![a-zA-Z]|<\?/;
+// Blank fenced code blocks and code spans, keeping every newline so a line number still points at the source line.
+function setAsideCode(text, keepCounters) {
+  let fence = null;
+  const lines = text.split(/\r?\n/).map(line => {
+    if (fence) {
+      const close = new RegExp(`^ {0,3}${fence[0]}{${fence.length},}\\s*$`);
+      if (close.test(line)) fence = null;
+      return '';
+    }
+    const open = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (open) { fence = open[1]; return ''; }
+    return keepCounters && COUNTERS_LINE.test(line) ? '' : line;
+  });
+  return lines.join('\n').replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, span => span.replace(/[^\n]/g, ' '));
+}
+// Azure rewrites raw HTML in a Markdown description, which a later verification would report as a difference.
+function checkMarkdown(markdown) {
+  if (typeof markdown !== 'string' || /\x00/.test(markdown)) throw new Error('String Markdown required');
+  const lines = setAsideCode(markdown, true).split('\n');
+  const at = lines.findIndex(line => RAW_HTML.test(line));
+  if (at >= 0) throw new Error(`Unsupported raw HTML outside code in the Markdown description at line ${at + 1}; Azure DevOps rewrites it`);
+  return markdown;
+}
+module.exports = { convert, decodeEntities, checkMarkdown, setAsideCode };

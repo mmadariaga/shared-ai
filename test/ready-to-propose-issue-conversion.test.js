@@ -150,3 +150,15 @@ test('convert reports usage errors for a missing flag value', () => {
   const result = spawnSync(process.execPath, [TOOL, 'convert', '--change-name'], { input: '', encoding: 'utf8' });
   assert.equal(result.status, 2);
 });
+
+test('E10 I7: HTML detection ignores tags inside code spans and fenced code blocks and defaults to Markdown', () => {
+  const detector = require('../sai/tools/ready-to-propose');
+  const markdown = 'Use `<p>` and `<br>` or `<div>` in text.\n\n```html\n<ul><li>x</li></ul>\n```\n\n- item';
+  assert.equal(detector.isHtmlDescription(markdown), false);
+  assert.equal(detector.issueToMarkdown(markdown), markdown);
+  assert.equal(detector.isHtmlDescription('Only `<p>` and `<div>` literals'), false);
+  assert.equal(detector.isHtmlDescription('<p>real</p> and `<b>`'), true);
+  assert.equal(detector.isHtmlDescription('```\n<p>x</p>\n```\n<p>real</p>'), true);
+  assert.equal(detector.isHtmlDescription('# Heading\n<p>x</p>'), false);
+  assert.equal(detector.isHtmlDescription(''), false);
+});

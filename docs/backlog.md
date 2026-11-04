@@ -172,9 +172,12 @@ result, recovery verifies the existing item and offers an exact continuation for
 pending planning changes, requiring explicit approval without recreating content.
 
 Before publication, you see the exact destination and full outgoing content and
-can confirm, edit, or cancel. Azure Boards converts supported Markdown to HTML
-and shows both before approval; unsupported forms block publication. A title-only
-update preserves existing HTML. Changed update baselines require a new review
+can confirm, edit, or cancel. Azure Boards work items are created in Markdown
+format and receive your Markdown as written; raw HTML outside code blocks is
+rejected before approval. An update follows the format of the work item itself:
+a Markdown item receives Markdown, and an existing HTML item keeps receiving HTML
+through the converter, which blocks unsupported forms. A title-only update
+preserves the existing description. Changed update baselines require a new review
 and approval.
 
 Keep the local receipt and item link when publication is partial or uncertain.

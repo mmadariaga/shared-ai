@@ -93,6 +93,7 @@ function fixture() {
       for (const part of body) {
         if (part.path.startsWith('/fields/')) row.fields[part.path.slice(8)] = part.path.endsWith('AssignedTo') ? { id: 'actor', uniqueName: part.value } : part.value;
         if (part.path === '/relations/-') (row.relations ||= []).push(part.value);
+        if (part.path === '/multilineFieldsFormat/System.Description') row.multilineFieldsFormat = { 'System.Description': part.value.toLowerCase() };
       }
       row.rev++; state.items.set(id, row);
       if (state.lost || planning && state.lostPlanning) throw new Error('Connection lost after submission');
@@ -203,7 +204,7 @@ test('planning E1 I2 I4: exact approval binds resolved planning; content precede
   const result = boards.publish({ ...planningRequest, confirmation: ready.confirmation, receipt: file }, io);
   assert.equal(result.status, 'complete');
   assert.equal(state.writes.length, 2);
-  assert.deepEqual(state.writes[0].body.map(part => part.path), ['/fields/System.Title', '/fields/System.Description']);
+  assert.deepEqual(state.writes[0].body.map(part => part.path), ['/fields/System.Title', '/fields/System.Description', '/multilineFieldsFormat/System.Description']);
   assert.deepEqual(state.writes[1].body.map(part => part.path), ['/rev', '/relations/-', '/fields/System.IterationPath', '/fields/System.AssignedTo']);
   assert.equal(state.writes[1].body.at(-1).value, 'me@example.test');
   assert.equal(boards.recover({ receipt: file }, io).status, 'complete');
@@ -554,8 +555,8 @@ test('E2 E3 E4 I1 I2: meaningful differences, including those next to normalizat
   assert.equal(normalizationCase('text\n\nmore', '<p>text\n</p>\n<p>changed</p>').status, 'ready');
 });
 test('E5 I2: creation recovery recognizes normalized content once and still rejects different content', () => {
-  for (const [received, found] of [['<h2>Body</h2>\n\n<p>Exact\n</p>', true], ['<h2>Body</h2>\n<p>Exact changed</p>', false]]) {
-    const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create', description: '## Body\nExact' };
+  for (const [received, found] of [['## Body\nSay &quot;hi&quot; &#128640;', true], ['## Body\nSay &quot;hi&quot; changed', false]]) {
+    const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create', description: '## Body\nSay "hi" \u{1F680}' };
     const ready = boards.query(request, io), file = receipt(); state.lost = true;
     assert.equal(boards.publish({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
     state.items.get(2).fields['System.Description'] = received;
@@ -621,4 +622,74 @@ test('I2 I10: references are branch-specific, approval limitations precede appro
       assert.ok(access.shell.every(command => !/^az |^git /.test(command)), 'Only helper access, no independent az/push grant');
     }
   }
+});
+// Markdown descriptions (E1 E2 E3 E4 E5 E7, I1 I2 I3 I4 I5): the format is a property of each work item.
+const markdownMark = { 'System.Description': 'Markdown' };
+const tableText = '## Plan\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- one\n  - nested';
+test('E1 I2: creation sends the Markdown unconverted with the format operation in the same PATCH', () => {
+  const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create', description: tableText };
+  const ready = boards.query(request, io), file = receipt();
+  assert.equal(ready.proposal.format, 'markdown');
+  assert.equal(boards.publish({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+  assert.equal(state.writes.length, 1);
+  assert.deepEqual(state.writes[0].body, [{ op: 'add', path: '/fields/System.Title', value: 'Create' }, { op: 'add', path: '/fields/System.Description', value: tableText },
+    { op: 'add', path: '/multilineFieldsFormat/System.Description', value: 'Markdown' }]);
+  assert.equal(state.writes[0].args.includes('--api-version') ? state.writes[0].args[state.writes[0].args.indexOf('--api-version') + 1] : '7.1', '7.1');
+});
+test('E2 I1: updating a Markdown work item sends the Markdown unconverted and never the format operation', () => {
+  for (const format of ['Markdown', 'markdown', 'MARKDOWN']) {
+    const { io, state } = fixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+    Object.assign(state.items.get(1), { multilineFieldsFormat: { 'System.Description': format } });
+    const current = boards['read-update']({ reference }, io), request = { reference, baseline: current.baseline, title: 'Old', description: tableText };
+    assert.equal(current.format, 'markdown');
+    const ready = boards['query-update'](request, io), file = receipt();
+    assert.equal(ready.proposal.description, tableText);
+    assert.equal(boards.update({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+    assert.deepEqual(state.writes[0].body.map(part => part.path), ['/rev', '/fields/System.Title', '/fields/System.Description']);
+    assert.equal(state.items.get(1).multilineFieldsFormat['System.Description'], format);
+  }
+});
+test('E3 I1: updating an HTML work item converts with the current rejections and never sends the format operation', () => {
+  for (const marker of [undefined, {}, { 'System.Description': 'Html' }]) {
+    const { io, state } = fixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+    if (marker) state.items.get(1).multilineFieldsFormat = marker;
+    const current = boards['read-update']({ reference }, io);
+    assert.equal(current.format, 'html');
+    const base = { reference, baseline: current.baseline, title: 'Old' };
+    assert.throws(() => boards['query-update']({ ...base, description: tableText }, io), /Unsupported Markdown/);
+    const request = { ...base, description: '## Plan\n\ntext' }, ready = boards['query-update'](request, io);
+    assert.equal(ready.proposal.description, '<h2>Plan</h2>\n<p>text</p>');
+    assert.equal(boards.update({ ...request, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'complete');
+    assert.ok(state.writes[0].body.every(part => !part.path.startsWith('/multilineFieldsFormat')));
+  }
+});
+test('E5 I3: Markdown verification accepts entity decoding and the removed counters comment and nothing else', () => {
+  const stored = '## A\n\nSay &quot;hi&quot; &#128640; `&lt;b&gt;`';
+  const check = (sent, received) => {
+    const { io, state } = fixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+    Object.assign(state.items.get(1), { multilineFieldsFormat: markdownMark }); state.items.get(1).fields['System.Description'] = received;
+    const baseline = boards['read-update']({ reference }, io).baseline;
+    return boards['query-update']({ reference, baseline, title: baseline.title, description: sent }, io).status;
+  };
+  assert.equal(check('## A\n\nSay "hi" \u{1F680} `<b>`', stored), 'no_changes');
+  assert.equal(check(`## A\n\ntext\n\n${counters}`, '## A\n\ntext'), 'no_changes');
+  assert.equal(check(`## A\n\ntext\n\n${counters}`, '## A\n\ntext\n'), 'no_changes');
+  assert.equal(check(`## A\n\n${counters}\n\ntext`, '## A\n\ntext'), 'no_changes');
+  assert.equal(check('## A\n\nSay "hi" \u{1F680} `<b>`', stored.replace('hi', 'ho')), 'ready');
+  assert.equal(check('text', 'text '), 'ready');
+  assert.equal(check('text\n\nmore', 'text\nmore'), 'ready');
+  assert.equal(check(`text\n\n${counters}`, 'text\n\n<!-- other -->'), 'ready');
+  assert.equal(check(`a\n\n${counters}\n\nb`, 'ab'), 'ready');
+});
+test('E7 I5: raw HTML outside code is rejected before publication naming its line, and code keeps its tags', () => {
+  const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create' };
+  assert.throws(() => boards.query({ ...request, description: 'fine\n\n<p>raw</p>' }, io), /raw HTML.*line 3/);
+  assert.throws(() => boards.query({ ...request, description: '<!-- hidden -->' }, io), /raw HTML.*line 1/);
+  const ok = 'Use `<p>` here\n\n```html\n<div>x</div>\n```\n\n````\n```\n<b>\n```\n````\n\n<https://a.test>\n\n' + counters;
+  assert.equal(boards.query({ ...request, description: ok }, io).status, 'ready');
+  assert.equal(state.writes.length, 0);
+});
+test('I3: one entity decoder serves every reader and decodes in a single pass', () => {
+  const { decodeEntities } = require('../sai/tools/azure-markdown');
+  assert.equal(decodeEntities('&quot;a&quot; &amp; &lt;b&gt; &#128640; &#x1F680; &amp;quot; &unknown; &#99999999;'), '"a" & <b> \u{1F680} \u{1F680} &quot; &unknown; &#99999999;');
 });

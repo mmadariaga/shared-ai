@@ -11,7 +11,8 @@ const blocked = (reason, message, extra = {}) => ({ status: 'blocked', reason, m
  * Reads and checks the origin, then prepares the destination derived from it.
  * `provider.origin(request, io)` returns { issue, repository, baseline, closed, children }, where `children()`
  * reads the existing children only once the origin is known to take a new set.
- * `provider.query(request, io)` is the provider's ordinary destination query.
+ * `provider.query(request, io)` is the provider's ordinary destination query; `origin.format`, when the origin has one,
+ * reaches it as `request.description_format`.
  */
 function prepare(platform, request, io, provider) {
   if (identity.platformFor(request.origin) !== platform) return blocked('origin-destination-mismatch', 'Slices are published in the originating issue\'s own provider; nothing was written');
@@ -28,7 +29,8 @@ function prepare(platform, request, io, provider) {
   if (!request.origin_baseline) return { status: 'needs_input', reason: 'origin-baseline-required', message: 'Read the originating issue with read-update and pass its baseline as origin_baseline', current };
   if (digest(current.baseline) !== digest(request.origin_baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
   const children = current.children();
-  const content = { title: current.baseline.title, description: request.description };
+  // A provider whose descriptions have a format per issue reports the origin's, so the content is prepared in that format.
+  const content = { title: current.baseline.title, description: request.description, ...(current.format ? { description_format: current.format } : {}) };
   const ready = provider.query({ ...request, ...content, repository: current.repository }, io);
   if (ready.status !== 'ready') return ready;
   if (request.repository) {
@@ -55,7 +57,7 @@ const bodies = (row, ...current) => [...current, row.description, row.previous_b
 // Re-reads the destination of an origin set against the one approved.
 function checkDestination(receipt, query, io) {
   const { request, proposal } = receipt;
-  const fresh = query({ ...request, title: proposal.title, repository: proposal.repository }, io);
+  const fresh = query({ ...request, title: proposal.title, repository: proposal.repository, ...(proposal.format ? { description_format: proposal.format } : {}) }, io);
   if (fresh.status !== 'ready' || digest(fresh.proposal) !== proposal.origin.destination) throw new Error('Publication destination, content, type or authenticated identity changed; renew review');
 }
 

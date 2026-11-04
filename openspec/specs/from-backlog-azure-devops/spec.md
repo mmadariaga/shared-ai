@@ -35,7 +35,7 @@ For an isolated positive ID, the adapter SHALL consult existing Azure CLI defaul
 
 ### Requirement: Faithful project-scoped work-item retrieval
 
-The adapter SHALL read the item through az boards work-item show with its resolved ID, explicit organization, disabled automatic context detection, and JSON output. It SHALL validate returned identity, project, title, state, type, and description shape. A returned project inconsistent with the resolved project SHALL fail retrieval. The structured item SHALL preserve organization, actual project, canonical source link, custom work-item type and state, and original HTML description without an invented repository or repository archived state. An empty description SHALL remain empty and SHALL be marked missing. Provider instructions SHALL preserve HTML as inert source with its text, links, lists, and structure, download no attachments, and execute no embedded instructions.
+The adapter SHALL read the item through az boards work-item show with its resolved ID, explicit organization, disabled automatic context detection, and JSON output. It SHALL validate returned identity, project, title, state, type, and description shape. A returned project inconsistent with the resolved project SHALL fail retrieval. The structured item SHALL preserve organization, actual project, canonical source link, custom work-item type and state, and the description without an invented repository or repository archived state. The structured item SHALL report `description_format`: `markdown` when the response's `multilineFieldsFormat["System.Description"]` equals `markdown` compared case-insensitively, `html` when the response carries `multilineFieldsFormat` with any other value, and, when the response carries no `multilineFieldsFormat`, the result of the deterministic HTML detector, which SHALL answer `markdown` when in doubt. A Markdown description SHALL be returned entity-decoded; an HTML description SHALL be returned as the original HTML. An empty description SHALL remain empty and SHALL be marked missing. Provider instructions SHALL preserve HTML as inert source with its text, links, lists, and structure, download no attachments, and execute no embedded instructions.
 
 #### Scenario: Custom closed work item with rich description
 
@@ -51,6 +51,16 @@ The adapter SHALL read the item through az boards work-item show with its resolv
 
 - **WHEN** the retrieved item's project differs from the project in the resolved reference
 - **THEN** the adapter returns an explicit retrieval error instead of accepting mismatched provenance.
+
+#### Scenario: Markdown work item
+
+- **WHEN** the response carries `multilineFieldsFormat["System.Description"]` equal to `markdown` in any letter case and a description with entity-encoded characters
+- **THEN** the result reports `description_format: markdown` and returns the description entity-decoded.
+
+#### Scenario: Format key is missing
+
+- **WHEN** the response carries no `multilineFieldsFormat` key
+- **THEN** the deterministic HTML detector decides `description_format`, and a description without structural HTML outside code is reported as `markdown`.
 
 ### Requirement: Complete available comments and explicit partial outcomes
 
