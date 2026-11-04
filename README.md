@@ -6,7 +6,7 @@ Start with one command: **`/sai-explore`**. It helps you clarify the idea and ch
 
 Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure. Shared-AI owns the code, quality and cost efficiency layers.
 
-Works great on **opencode v2** with an **opencode-go** subscription + any frontier model provider sub (Anthropic / OpenAI / OpenCode Zen). Can also run on **Claude Code**.
+Works great on **opencode v2** (minimum 2.2.0, tested on 2.2.5) with an **opencode-go** subscription + any frontier model provider sub (Anthropic / OpenAI / OpenCode Zen). opencode v1 is not supported. Can also run on **Claude Code**.
 
 ## TL;DR
 
@@ -236,7 +236,7 @@ Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review c
 
 ## Installation
 
-Requires **Node.js 22 or newer**. Provider workflows additionally need their own authenticated CLIs; SAI does not install or authenticate them.
+Requires **Node.js 22 or newer**. On opencode it requires version **2.2.0 or later** (tested on 2.2.5) with `experimental.subagent_depth` set to 2 or higher; `doctor` checks both. Provider workflows additionally need their own authenticated CLIs; SAI does not install or authenticate them.
 
 Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 

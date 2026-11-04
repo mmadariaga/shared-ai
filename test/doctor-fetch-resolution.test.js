@@ -47,6 +47,7 @@ async function runDoctor({ projectRoot, claudeBase, opencodeBase }) {
     claudeBase,
     opencodeBase,
     execOpenspec: execOk,
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out,
   });
   const raw = end();
@@ -285,7 +286,7 @@ describe('doctor fetch resolution', () => {
              );
              assert.match(
                bindingText,
-               sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
+               sectionName === '[Claude Code]' ? /Agent\(/ : /subagent\(/,
                `${sectionName} ${target} should preserve its dispatch mechanism`
              );
            }

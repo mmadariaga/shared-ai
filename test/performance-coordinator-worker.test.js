@@ -159,8 +159,8 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
     {
       name: 'opencode',
       binding: matrixBinding('opencode', 'performance'),
-      mechanism: 'task',
-      continuation: 'task(task_id: "<captured task ID>"',
+      mechanism: 'subagent',
+      continuation: 'subagent(agent: "sai-6-performance-worker", description: "performance worker", sessionID: "<captured sessionID>"',
     },
   ];
 

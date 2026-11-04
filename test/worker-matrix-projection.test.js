@@ -262,8 +262,8 @@ test('worker bindings land at identical neutral destinations and preserve the ha
       );
       assert.match(claudeText, /Agent\s*\(/,
         `claude ${phase} binding should preserve the Agent dispatch primitive`);
-      assert.match(opencodeText, /task\s*\(/,
-        `opencode ${phase} binding should preserve the task dispatch primitive`);
+      assert.match(opencodeText, /subagent\s*\(/,
+        `opencode ${phase} binding should preserve the subagent dispatch primitive`);
     }
     for (const [base, harness] of [[claudeBase, 'claude'], [opencodeBase, 'opencode']]) {
       const bindingsDir = path.join(base, 'sai', 'orchestration', 'workers', 'bindings');
@@ -275,7 +275,7 @@ test('worker bindings land at identical neutral destinations and preserve the ha
         assert.equal(matching.length, 1,
           `${harness} should install exactly one implement binding for ${workerName}`);
         assert.match(fs.readFileSync(path.join(bindingsDir, matching[0]), 'utf8'),
-          harness === 'claude' ? /Agent\s*\(/ : /task\s*\(/,
+          harness === 'claude' ? /Agent\s*\(/ : /subagent\s*\(/,
           `${harness} ${workerName} binding should preserve its harness dispatch primitive`);
       }
       const redFile = fs.readdirSync(bindingsDir)
@@ -430,6 +430,7 @@ test('install, doctor, and uninstall enumerate the same matrix-derived inventori
       claudeBase,
       opencodeBase,
       execOpenspec: execOk,
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       out: capture.stream,
     });
     assert.equal(code, 0, 'doctor should run cleanly on the parity fixture');
@@ -626,6 +627,7 @@ test('install, doctor, and uninstall derive the thirteen-worker roster and retir
       claudeBase,
       opencodeBase,
       execOpenspec: execOk,
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       out: capture.stream,
     });
     assert.equal(code, 0, 'doctor should run cleanly on the thirteen-worker fixture');

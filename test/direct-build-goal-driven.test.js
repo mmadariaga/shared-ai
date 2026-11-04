@@ -101,7 +101,7 @@ test('I8: sai-direct-build-worker renders from the standalone template on both h
     assert.match(binding.text, /Create the worker with the ready prompt alone/);
     assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
     assert.match(binding.text, /Fetch `@sai\/commands\/explore\/direct-build-worker\.md` and follow it exactly/);
-    assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+    assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
   }
 });
 

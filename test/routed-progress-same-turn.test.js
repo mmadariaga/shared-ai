@@ -8,7 +8,7 @@ const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
 for (const [harness, panel, continuation] of [
   ['claude', 'TaskUpdate', 'SendMessage'],
-  ['opencode', 'todowrite', 'task'],
+  ['opencode', 'todowrite', 'subagent'],
 ]) {
   test(`${harness} batches only progress continuation and preserves panel degradation`, () => {
     const binding = read(`sai/adapters/${harness}/panel-render.md`);

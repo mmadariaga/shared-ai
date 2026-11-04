@@ -7,7 +7,7 @@ TBD
 
 ### Requirement: Claude Code and opencode bindings route the accessibility worker
 
-The Claude Code and opencode accessibility-worker bindings SHALL render from the standalone worker template and carry only the create and continue calls for `sai-7-accessibility-worker`: Claude Code creates it with `Agent` and continues it with `SendMessage` to the captured agent ID, and opencode creates it with `task` and continues it with the captured `task_id`. The creation dispatch SHALL carry only the ready prompt. The shared audit coordinator that fetches the binding SHALL own the lifecycle, including replacement under its obstacle budget, and a replacement SHALL receive only the coordinator's hand-over note and no prior worker history or artifact contents.
+The Claude Code and opencode accessibility-worker bindings SHALL render from the standalone worker template and carry only the create and continue calls for `sai-7-accessibility-worker`: Claude Code creates it with `Agent` and continues it with `SendMessage` to the captured agent ID, and opencode creates it with a background `subagent` call (`background: true`) and continues it with `subagent` carrying the same `agent` and the captured `sessionID`. The creation dispatch SHALL carry only the ready prompt. The shared audit coordinator that fetches the binding SHALL own the lifecycle, including replacement under its obstacle budget, and a replacement SHALL receive only the coordinator's hand-over note and no prior worker history or artifact contents.
 
 #### Scenario: Routed worker is dispatched
 - **WHEN** the audit coordinator starts an accessibility run on Claude Code or opencode
