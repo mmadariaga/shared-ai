@@ -55,7 +55,7 @@ Claude Code and opencode SHALL continue to receive their canonical worker contra
 
 ### Requirement: Grouped routed command surfaces
 
-Routed coordinator and worker cards SHALL be grouped under `sai/commands/{name}/`, and a retained invocation body SHALL be present only when that routed phase uses a separate invocation card. The implementation phase SHALL use its coordinator-worker-step route without `sai/commands/implement/invocation.md`.
+Routed coordinator and worker cards SHALL be grouped under `sai/commands/{name}/`, and no command folder SHALL contain an invocation body: every wrapper fetches its `coordinator.md` or `body.md` directly. The implementation phase SHALL use its coordinator-worker-step route without `sai/commands/implement/invocation.md`.
 
 #### Scenario: Harness projections retain the active implementation boundary
 

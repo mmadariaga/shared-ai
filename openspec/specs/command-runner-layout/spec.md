@@ -29,7 +29,7 @@ Each utility `/sai-*` command that is not routed through a coordinator and worke
 
 #### Scenario: Routed and utility classes remain distinct
 - **WHEN** the command-card inventory is audited
-- **THEN** routed cards SHALL map to `coordinator.md` plus `worker.md`, with retained `invocation.md` when that routed phase uses a separate invocation card
+- **THEN** goal-driven cards SHALL map to a `coordinator.md` plus the worker cards it dispatches, if any (for example `worker.md`, or `red-worker.md` and `green-worker.md` for implement; the three audits share `sai/commands/audit/coordinator.md` and keep only their `worker.md` in their own folders), and no command folder SHALL contain an `invocation.md`
 - **AND** utility cards SHALL map to `body.md`
 - **AND** neither class SHALL be treated as requiring the other class's surfaces
 
