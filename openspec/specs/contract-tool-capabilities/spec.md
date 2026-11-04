@@ -230,3 +230,23 @@ The capability translation in `bin/capabilities.js` SHALL emit every `{sai}` or 
 #### Scenario: Foreign home is drift
 - **WHEN** an installed permission-carrying projection holds the absolute root of a different home
 - **THEN** `doctor` reports it as differing, and a reinstall regenerates it
+
+### Requirement: Every capability profile may run the fetch tool
+
+`sai/install-manifest.json` SHALL declare `capabilities.universal.shell` as `["node {skills}/fetch/fetch.js *"]`. `bin/capabilities.js` SHALL add every universal shell pattern to the shell grants of every capability profile on Claude Code and opencode, in the same project-local, `~`, and absolute install-root forms as other `{skills}` patterns. A profile whose shell grant already holds `*` SHALL keep it unchanged. A profile with no shell grant of its own SHALL gain the shell tools and the shell tool requirement for the universal patterns only. A `universal.shell` value that is not an array of non-empty strings SHALL fail registry validation. The universal grant SHALL NOT add any write, delegate, message, or other non-shell grant, and a shell limit stated for an individual profile SHALL be read as a limit on that profile's own grants, to which the universal patterns are added.
+
+#### Scenario: research profile gains the fetch tool
+- **WHEN** the `research` profile is translated for Claude Code with install root `/home/u/.claude`
+- **THEN** its allowed tools include `Bash(...)` and `PowerShell(...)` entries for `node ~/.claude/skills/fetch/fetch.js` and for `node "/home/u/.claude/skills/fetch/fetch.js`, beside its own `git grep`, `codegraph explore`, and `wait.js` grants
+
+#### Scenario: profile without shell gains only the fetch tool
+- **WHEN** a profile that declares no shell grant, such as `boot`, is translated for opencode
+- **THEN** its permissions allow the shell action only for the fetch tool patterns, and its tool requirements include the shell capability
+
+#### Scenario: wildcard shell is unchanged
+- **WHEN** a profile whose shell grant is `["*"]` is translated
+- **THEN** its shell grant stays `*` with no fetch tool pattern added
+
+#### Scenario: invalid universal shell fails validation
+- **WHEN** `capabilities.universal.shell` is a string or holds an empty string
+- **THEN** registry validation throws `Capability universal.shell must be a string array`

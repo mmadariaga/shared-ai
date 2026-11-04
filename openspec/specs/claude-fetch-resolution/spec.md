@@ -4,44 +4,6 @@ Define how Claude Code resolves `Fetch @<path>` instructions to the correct file
 
 ## Requirements
 
-### Requirement: Resolve Fetch @subpath to Claude config directories
-When an instruction contains `Fetch @<subpath>` (where `<subpath>` does not start with `skills/`), Claude SHALL resolve the path against the two fixed paths `.claude/<subpath>` (project-level config) and `~/.claude/<subpath>` (global user config). A once-per-session probe of the project-local `sai/` root gates this resolution:
-
-1. The probe SHALL run exactly once per session, on the first `Fetch @<subpath>` directive whose path begins with `sai/`. It checks the project-local `sai/` root through that directive's own Read of `.claude/<subpath>`, never through the harness root `.claude/` itself. A project without a local SAI copy can still have `.claude/skills/` from `openspec init`. A successful Read records the project-local `sai/` root as present. A failed Read records it as absent.
-2. While the probe has not run, or after it recorded the project-local `sai/` root as present, Claude SHALL Read `.claude/<subpath>`. If that file is not found, Claude SHALL Read `~/.claude/<subpath>` directly. If neither exists, Claude SHALL report the missing file and stop.
-3. After the probe recorded the project-local `sai/` root as absent, Claude SHALL resolve every later `Fetch @<subpath>` directive whose path begins with `sai/` by reading `~/.claude/<subpath>` directly with no project-local Read attempt; other prefixes keep the local-first read of item 2. If that Read fails, Claude SHALL report the missing file and stop.
-
-The probe result is session-scoped: a project-local `sai/` root created after the probe is not seen until the next session.
-
-Claude MUST NOT search the project filesystem broadly (glob/grep) for the file. It MUST use the two fixed paths above, and the probe MUST stay Read-based, with no Glob or LS.
-
-#### Scenario: path found in project config
-- **WHEN** instruction says `Fetch @sai/policies/prereqs.md` and the project-local `sai/` root has not been probed yet or was found present
-- **THEN** Claude reads `.claude/sai/policies/prereqs.md`; if that file exists, uses its content without checking global config
-
-#### Scenario: path not in project, found in global config
-- **WHEN** instruction says `Fetch @sai/policies/prereqs.md` and `.claude/sai/policies/prereqs.md` does not exist
-- **THEN** Claude reads `~/.claude/sai/policies/prereqs.md` and uses its content
-- **AND** when this was the first `sai/`-prefixed directive of the session, Claude records the project-local `sai/` root as absent for the rest of the session
-
-#### Scenario: path missing in both locations
-- **WHEN** instruction says `Fetch @sai/policies/prereqs.md` and neither `.claude/` nor `~/.claude/` path exists
-- **THEN** Claude stops and reports: "File not found: sai/policies/prereqs.md (checked .claude/ and ~/.claude/)"
-
-#### Scenario: project-local sai root found absent skips the local Read
-- **WHEN** the session probe has recorded the project-local `sai/` root as absent and a later instruction says `Fetch @sai/orchestration/worker-core.md` or `Fetch @commands/X.md`
-- **THEN** Claude reads `~/.claude/<subpath>` directly with no Read of `.claude/<subpath>`
-- **AND** if that Read fails, Claude stops and reports: "File not found: <subpath> (checked .claude/ and ~/.claude/)"
-
-#### Scenario: probe targets the sai directory, not the harness root
-- **WHEN** a project has `.claude/skills/` from `openspec init` but no `.claude/sai/` copy
-- **THEN** the probe runs on the first `sai/`-prefixed directive's Read under `.claude/sai/`, and records the project-local `sai/` root as absent
-- **AND** neither `.claude/` nor `.claude/sai/` is listed or globbed
-
-#### Scenario: local sai root created mid-session
-- **WHEN** a project-local `sai/` root is created after the session probe recorded it as absent
-- **THEN** Claude keeps resolving directly against `~/.claude/` for the rest of the session, and the new root is seen only in the next session
-
 ### Requirement: Resolve Fetch @skills to Skill tool
 When an instruction contains `Fetch @skills/<name>/SKILL.md`, Claude SHALL invoke the `Skill` tool with skill name `<name>` instead of reading a file.
 
@@ -60,11 +22,12 @@ If the instruction also says "and follow those instructions exactly", Claude MUS
 - **THEN** its first post-frontmatter directive is `Fetch @skills/fetch/SKILL.md` before the canonical policy or worker-contract Fetch
 
 ### Requirement: Recursive resolution
-The fetch resolution rules SHALL apply recursively. If a loaded skill or fetched file itself contains `Fetch @` directives, Claude MUST resolve them using the same rules, including the session's project-local `sai/` root probe state.
+The fetch resolution rules SHALL apply recursively. If a loaded skill or fetched file itself contains `Fetch @` directives, Claude MUST resolve each one whose condition holds with the same rules, one fetch tool call per directive. The fetch tool SHALL NOT follow `Fetch @` directives inside the content it returns.
 
 #### Scenario: nested fetch in loaded file
 - **WHEN** a fetched file contains `Fetch @sai/policies/glossary-format.md`
-- **THEN** Claude resolves it the same way: project `.claude/` first with global `~/.claude/` fallback, or global `~/.claude/` directly once the session probe has recorded the project-local `sai/` root as absent
+- **THEN** Claude resolves it with its own fetch tool call, which checks project `.claude/` first and global `~/.claude/` second
+- **AND** the output that delivered the outer file does not contain the nested file's content
 
 ### Requirement: Skill frontmatter declares Claude compatibility
 The SKILL.md file MUST include frontmatter with `compatibility: claude` so it is recognized as a Claude Code skill.
@@ -75,8 +38,46 @@ The SKILL.md file MUST include frontmatter with `compatibility: claude` so it is
 
 ### Requirement: The fetch skill SHALL include a file disambiguation section that prevents confusion between `@sai/commands/` and `@commands/` namespaces
 
-The disambiguation table MUST document that these two patterns resolve to different directories and instruct the agent to always read the full resolved path.
+The disambiguation table MUST document that these two patterns resolve to different directories and instruct the agent to treat two references as the same file only when their full resolved paths match.
 
 #### Scenario: Agent encounters both @sai/commands/ and @commands/ references
 - **WHEN** an instruction contains `@sai/commands/X.md` and `@commands/X.md`
 - **THEN** the agent SHALL resolve them to `~/.claude/sai/commands/X.md` and `~/.claude/commands/X.md` respectively, treating them as distinct files
+
+### Requirement: Resolve Fetch @subpath through one deterministic tool
+When an instruction contains `Fetch @<subpath>` that does not have the form `skills/<name>/SKILL.md`, Claude SHALL resolve it by running the fetch tool `fetch.js`, which the installer places beside the fetch skill's `SKILL.md` for Claude Code and opencode alike, once per directive with `--harness claude` and the subpath. When the skill's base directory is the project-local copy `.claude/skills/fetch` under the working directory, Claude SHALL run `node .claude/skills/fetch/fetch.js --harness claude <subpath>` relative to the working directory as written. Otherwise Claude SHALL run `node "<base directory>/fetch.js" --harness claude <subpath>`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted, so the command matches the generated shell permission rules.
+
+The tool SHALL check `.claude/<subpath>` under the working directory, a worktree included, and then `~/.claude/<subpath>`, on every call and with no session memory, and SHALL use the first file that exists. On success it SHALL print `path: <absolute resolved path>` with `/` separators, `root: project` or `root: global`, one blank line, and the unchanged file content. When the header and the content together exceed the 30000-character output cap, it SHALL print the header and a `too-large` line instead of the content, and Claude SHALL Read the exact header path. Claude SHALL use the header path as given and SHALL NOT compose a path itself. When no root has the file, the tool SHALL exit with code 1 and the message `File not found: <subpath> (tried <paths>)`, naming every path it tried.
+
+When the tool exits with an error, Claude SHALL stop the directive and report the tool's message. When the tool cannot run (the permission is rejected, `node` is absent, or the install has no `fetch.js`), Claude SHALL stop the directive and report the failure with the action that fixes it: reinstall shared-ai, or review the shell permission for the fetch tool. Claude SHALL NOT fall back to resolving the path itself, and MUST NOT search the project filesystem broadly (glob/grep) for the file.
+
+#### Scenario: project-local file wins
+- **WHEN** an instruction says `Fetch @sai/policies/prereqs.md` and `.claude/sai/policies/prereqs.md` exists under the working directory
+- **THEN** the fetch tool prints that file's absolute path with `root: project`, one blank line, and its content, and Claude uses that content without a read of `~/.claude/sai/policies/prereqs.md`
+
+#### Scenario: global file used when the project has none
+- **WHEN** an instruction says `Fetch @sai/policies/prereqs.md`, `.claude/sai/policies/prereqs.md` does not exist, and `~/.claude/sai/policies/prereqs.md` exists
+- **THEN** the fetch tool prints the global file's absolute path with `root: global` and its content
+
+#### Scenario: file missing in both roots
+- **WHEN** an instruction says `Fetch @sai/policies/prereqs.md` and neither root holds the file
+- **THEN** the fetch tool exits with code 1 and `File not found: sai/policies/prereqs.md (tried <project path>, <global path>)`
+- **AND** Claude stops the directive and reports that message
+
+#### Scenario: local root created mid-session is seen on the next call
+- **WHEN** a project-local `.claude/sai/` copy is created after an earlier directive of the same session resolved to the global root
+- **THEN** the next `Fetch @sai/<subpath>` call finds the project-local file, because the tool keeps no session memory
+
+#### Scenario: file above the output cap
+- **WHEN** the resolved file and its header exceed 30000 characters
+- **THEN** the fetch tool prints the header and a `too-large` line and no content
+- **AND** Claude Reads the exact path from the header
+
+#### Scenario: Windows base directory runs with forward slashes
+- **WHEN** the harness reports the global fetch skill's base directory as `C:\Users\u\.claude\skills\fetch`
+- **THEN** Claude runs `node "C:/Users/u/.claude/skills/fetch/fetch.js" --harness claude <subpath>`
+
+#### Scenario: tool cannot run
+- **WHEN** the fetch tool command is rejected by the shell permission, `node` is absent, or the install has no `fetch.js`
+- **THEN** Claude stops the directive and reports the failure with the reinstall or permission-review action
+- **AND** Claude does not read `.claude/<subpath>` or `~/.claude/<subpath>` by itself as a fallback
