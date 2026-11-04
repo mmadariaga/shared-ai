@@ -17,7 +17,7 @@ Manifest expansion, installation, uninstall enumeration, deletion planning, and 
 - **THEN** `orchestration/workers/bindings/claude/<worker-filename>.md` and `orchestration/workers/bindings/opencode/<worker-filename>.md` SHALL not be enumerated as current projection destinations; they SHALL be handled only through the retirement inventory
 
 ### Requirement: Neutral projections preserve installer safety properties
-Neutral worker-binding projections SHALL preserve deterministic ordering, collision detection, source-content hashing, foreign-binding exclusion, and the existing Copilot absence of routed worker projections.
+Neutral worker-binding projections SHALL preserve deterministic ordering, collision detection, source-content hashing, and foreign-binding exclusion, for Claude Code and opencode only.
 
 #### Scenario: Repeated expansion is deterministic
 - **WHEN** the same harness manifest is expanded more than once
