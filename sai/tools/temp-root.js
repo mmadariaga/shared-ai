@@ -25,6 +25,8 @@
  *   node temp-root.js resolve --harness claude|opencode
  *   node temp-root.js mkdtemp --harness claude|opencode [--prefix <prefix>]
  *   node temp-root.js remove  --harness claude|opencode --dir <path>
+ *   node temp-root.js --help
+ * `--help` (with or without a subcommand) prints the usage and exits 0.
  * `mkdtemp` creates a private (0700) child of the SAI temp root. `remove`
  * deletes a directory strictly inside the SAI temp root and rejects any other
  * path. The CLI accepts no root override.
@@ -38,6 +40,7 @@ const HARNESSES = ['claude', 'opencode'];
 const SAI_DIR = 'sai';
 const DEFAULT_PREFIX = 'sai-';
 const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const USAGE = 'Usage: temp-root.js resolve|mkdtemp|remove --harness claude|opencode [--prefix <prefix>] [--dir <path>]';
 
 /** Blocker raised when a root is missing or unsafe. Never repaired here. */
 class TempRootError extends Error {
@@ -277,6 +280,7 @@ function parseOptions(argv) {
 }
 
 function main(argv) {
+  if (argv.includes('--help')) return { ok: true, usage: USAGE };
   const [command, ...rest] = argv;
   const options = parseOptions(rest);
   assertHarness(options.harness);
@@ -287,7 +291,7 @@ function main(argv) {
       if (!options.dir) throw new TempRootError('remove requires --dir', 'USAGE');
       return { ok: true, removed: removeInside(options.harness, options.dir) };
     default:
-      throw new TempRootError('Usage: temp-root.js resolve|mkdtemp|remove --harness claude|opencode [--prefix <prefix>] [--dir <path>]', 'USAGE');
+      throw new TempRootError(USAGE, 'USAGE');
   }
 }
 

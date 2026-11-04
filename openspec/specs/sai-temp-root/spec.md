@@ -66,6 +66,8 @@ The harness root and `sai/` SHALL each be a directory that is not a symbolic lin
 
 `temp-root.js` SHALL expose `resolve`, `mkdtemp`, and `remove` sub-commands, each taking `--harness claude|opencode` and printing one JSON object: exit 0 on success, 1 on a blocker or rejected path with `ok: false`, `code`, and `error`, and 2 on a usage error. `mkdtemp` SHALL create a private child of the SAI temp root (mode 0700 outside Windows) whose optional `--prefix` starts with a letter or digit and uses only letters, digits, `.`, `_`, and `-`, at most 64 characters, and SHALL return its real path as `dir`. `remove --dir <path>` SHALL delete only a directory strictly inside the SAI temp root that is not a symbolic link, SHALL reject every other path without deleting anything, and SHALL report whether a directory was removed. The CLI SHALL accept no root override.
 
+When `--help` appears anywhere in the arguments, with or without a sub-command, `temp-root.js` SHALL print `ok: true` and a `usage` string and exit 0, before it validates `--harness` or the sub-command. The `--help` output and the usage error for an unknown sub-command SHALL use the same usage text. Any other unknown argument, such as `--cwd`, SHALL remain a usage error that exits 2 with code `USAGE`.
+
 #### Scenario: mkdtemp returns a private child
 
 - **WHEN** `mkdtemp --harness claude --prefix implement-demo-` runs with a usable root
@@ -80,6 +82,16 @@ The harness root and `sai/` SHALL each be a directory that is not a symbolic lin
 
 - **WHEN** `mkdtemp` receives a prefix containing a path separator
 - **THEN** it prints `ok: false` and exits 2 without creating a directory
+
+#### Scenario: --help prints the usage without a harness
+
+- **WHEN** `temp-root.js` runs with `--help`, `mkdtemp --help`, or `bogus --help` and no `--harness`
+- **THEN** it prints `ok: true` with a `usage` string that starts with `Usage: temp-root.js ` and exits 0
+
+#### Scenario: An unknown argument is still rejected
+
+- **WHEN** `mkdtemp --harness claude --cwd /project` runs
+- **THEN** it exits 2 with code `USAGE`
 
 ### Requirement: Harness derivation from the installed path
 
