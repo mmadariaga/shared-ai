@@ -145,6 +145,7 @@ for (const harness of ['claude', 'opencode']) {
       claudeBase: harness === 'claude' ? global : path.join(root, 'no-claude'),
       opencodeBase: harness === 'opencode' ? global : path.join(root, 'no-opencode'),
       execOpenspec: () => ({ status: 0, stdout: '1.0.0' }),
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     };
     const run = async () => {
       let text = '';

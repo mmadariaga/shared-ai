@@ -39,7 +39,7 @@ test('the deep-review coordinator runs the segments in the shape of /sai-build, 
   assert.match(coordinator, /[Ff]ollow `sai\/commands\/implement\/coordinator\.md` exactly as segment 5/);
   assert.match(coordinator, /Composition reports/);
   assert.match(coordinator, /Fetch `@sai\/commands\/audit\/coordinator\.md`/);
-  assert.match(coordinator, /several `Agent` calls in one turn on Claude Code, several `task` calls on opencode/);
+  assert.match(coordinator, /several `Agent` calls in one turn on Claude Code, several `subagent` calls with `background: true` on opencode/);
   assert.match(coordinator, /in the fixed order security, performance, accessibility/);
   assert.match(coordinator, /Only the `\/sai-3-implement` fix segment changes code/);
   assert.doesNotMatch(coordinator, /^\|.*\|$/m, 'no table rows');

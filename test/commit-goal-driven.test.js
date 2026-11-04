@@ -54,7 +54,7 @@ test('the commit worker runs on a standalone binding and no longer loads the leg
       .find(item => item.kind === 'binding' && item.phase === 'commit');
     assert.ok(binding, `${harness} commit binding`);
     assert.doesNotMatch(binding.text, /command-runner|replacement_reconstruction_fields|continue_after_|panel-render/);
-    assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+    assert.match(binding.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /subagent\(agent: "[^"]+", description: "[^"]+", sessionID: "<captured sessionID>"/);
     assert.match(binding.text, /Fetch `@sai\/commands\/commit\/worker\.md`/);
   }
 });

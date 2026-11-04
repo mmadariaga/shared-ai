@@ -86,6 +86,7 @@ async function runJson(projectRoot, claudeBase, opencodeBase = path.join(project
     claudeBase,
     opencodeBase,
     execOpenspec: execOk,
+    execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
     out: capture.out,
   });
   return { code, report: JSON.parse(capture.text()) };
@@ -232,6 +233,7 @@ test('human doctor output identifies retired-copy cleanup and remains successful
       claudeBase,
       opencodeBase: path.join(projectRoot, 'missing-opencode'),
       execOpenspec: execOk,
+      execOpencode: () => ({ status: 0, stdout: '2.2.5\n', stderr: '', error: null }),
       out: capture.out,
     });
 

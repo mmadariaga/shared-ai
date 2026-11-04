@@ -203,7 +203,7 @@ test('Step 4 wrapper echo fields are rejected before Opencode destination mutati
         // For binding files that don't exist on disk (generated bindings), provide synthetic content
         // so injection can reach the text the validator uses
         if (isBinding && error.code === 'ENOENT') {
-          value = '# Binding\\n\\ntask({\\n  subagent_type: "test",\\n  prompt: "test",\\n})\\n';
+          value = '# Binding\\n\\nsubagent({\\n  agent: "test",\\n  prompt: "test",\\n})\\n';
         } else {
           throw error;
         }
@@ -211,7 +211,7 @@ test('Step 4 wrapper echo fields are rejected before Opencode destination mutati
       if (!isBinding || poisoned) return value;
       poisoned = true;
       const text = Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
-      const injected = text.replace(/\\btask\\s*\\(\\s*\\{/,
+      const injected = text.replace(/\\bsubagent\\s*\\(\\s*\\{/,
         match => match + '\\n  wrapper_echo_value: "",');
       return injected === text ? text + '\\nwrapper_echo_value: ""\\n' : injected;
     };
@@ -254,11 +254,11 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     for (const workerName of CURRENT_CENSUS.filter(name => !STANDALONE_WORKERS.includes(name))) {
       const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
-      const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'task');
-      const initial = calls.filter(call => !/\btask_id\s*[:=]/.test(call));
-      const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
+      const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'subagent');
+      const initial = calls.filter(call => !/\bsessionID\s*[:=]/.test(call));
+      const continuations = calls.filter(call => /\bsessionID\s*[:=]/.test(call));
 
-      assert.equal(initial.length, 1, `${workerName} should have one initial task dispatch`);
+      assert.equal(initial.length, 1, `${workerName} should have one initial subagent dispatch`);
        const prompt = decodePrompt(initial[0]);
        assert.equal(prompt, expectedWorkerPrompt(phase),
          `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
@@ -423,7 +423,7 @@ test('installOpencode projects every routed binding into neutral destinations', 
         1,
         `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
       );
-      assert.match(text, /task\s*\(/, `${workerName} (${phase}) binding should preserve the task dispatch primitive`);
+      assert.match(text, /subagent\s*\(/, `${workerName} (${phase}) binding should preserve the subagent dispatch primitive`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1346,10 +1346,10 @@ test('Step 3 binding files declare exactly the thirteen initial worker dispatche
     const declared = [];
     for (const file of fs.readdirSync(bindingsDir)) {
       const source = fs.readFileSync(path.join(bindingsDir, file), 'utf8');
-      for (const call of extractDispatchCalls(source, 'task')) {
-        if (/\btask_id\s*[:=]/.test(call)) continue;
-        const match = call.match(/\bsubagent_type\s*[:=]\s*"([^"]+)"/);
-        assert.ok(match, `${file} should carry a quoted subagent_type in its initial dispatch`);
+      for (const call of extractDispatchCalls(source, 'subagent')) {
+        if (/\bsessionID\s*[:=]/.test(call)) continue;
+        const match = call.match(/\bagent\s*[:=]\s*"([^"]+)"/);
+        assert.ok(match, `${file} should carry a quoted agent in its initial dispatch`);
         declared.push(match[1]);
       }
     }

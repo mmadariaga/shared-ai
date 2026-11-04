@@ -31,11 +31,11 @@ A late or duplicate handshake is any subagent dispatch, resolution-excess read, 
 
 Each harness binding SHALL capture and retain its native handle immediately at dispatch return before any guard snapshot or continuation, with no common syntax shared between harnesses. Handle, then guard snapshot when no guard window is running, then task applies with no guard window opening without a captured handle.
 
-The Claude binding SHALL retain the agent ID returned immediately by the Agent dispatch with run_in_background true before any guard snapshot or continuation. The opencode binding SHALL retain the task ID returned immediately by the task dispatch before any guard snapshot or continuation. A dispatch cancelled before the native ID returns leaves no handle, opens no guard window, and its retry starts from zero, with a deferred snapshot when no guard window is running. Worker-matrix expansion propagates this mirrored behavior to all generated bindings with no per-phase edits.
+The Claude binding SHALL retain the agent ID returned immediately by the Agent dispatch with run_in_background true before any guard snapshot or continuation. The opencode binding SHALL retain the `sessionID` returned immediately by the background `subagent` dispatch before any guard snapshot or continuation. A dispatch cancelled before the native ID returns leaves no handle, opens no guard window, and its retry starts from zero, with a deferred snapshot when no guard window is running. Worker-matrix expansion propagates this mirrored behavior to all generated bindings with no per-phase edits.
 
 #### Scenario: Cancelled before handle costs no window
 
-- **WHEN** a dispatch is cancelled before its agent ID or task ID returns and no guard window is running
+- **WHEN** a dispatch is cancelled before its agent ID or `sessionID` returns and no guard window is running
 - **THEN** the coordinator SHALL retain no handle, open no guard window, run no snapshot, and retry from zero with a deferred snapshot
 
 ### Requirement: Deferred Guard Snapshot With Unchanged Verify

@@ -461,7 +461,7 @@ test('overview dispatch transports the contract by Fetch and names both harness 
     'worker.md should instruct the subagent to follow the fetched contract exactly');
   assert.match(worker, /Agent\(subagent_type: budget-subagent\)/,
     'worker.md should name the Claude Code budget-subagent binding');
-  assert.match(worker, /task\(subagent_type: budget-subagent\)/,
+  assert.match(worker, /subagent\(agent: budget-subagent, /,
     'worker.md should name the opencode budget binding');
 });
 

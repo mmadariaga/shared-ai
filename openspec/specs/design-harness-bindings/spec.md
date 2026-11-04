@@ -25,7 +25,7 @@ Claude and opencode SHALL acknowledge notices through the captured continuation 
 
 #### Scenario: opencode acknowledges via task
 - **WHEN** opencode receives a DesignNotice payload
-- **THEN** it SHALL continue with `task(task_id: "<captured task ID>", prompt: "continue_after_notice")`
+- **THEN** it SHALL continue with `subagent(agent: "<agent used at creation>", description: "<phase> worker", sessionID: "<captured sessionID>", prompt: "continue_after_notice", background: true)`
 - **AND** the prompt SHALL be exactly `"continue_after_notice"` and no other value
 
 ### Requirement: acknowledgement-excluded-from-artifacts
@@ -67,11 +67,11 @@ The Claude Code design coordinator SHALL use the `model` and `effort` frontmatte
 - **THEN** the wrapper's staged coordinator model and effort are preserved separately from the worker's technical I/O and continuation contract.
 
 ### Requirement: opencode uses separate wrapper and worker declarations
-The opencode design wrapper and worker projection SHALL use the staged opencode coordinator and worker declarations, with the wrapper's declared model and variant remaining the source of coordinator routing and the projected worker retaining its binding-owned task continuation. The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent with technical I/O permissions and `permission.task` denying all targets before allowing `budget-explorer` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
+The opencode design wrapper and worker projection SHALL use the staged opencode coordinator and worker declarations, with the wrapper's declared model and variant remaining the source of coordinator routing and the projected worker retaining its binding-owned `subagent` continuation. The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent with technical I/O permissions and `permission.task` denying all targets before allowing `budget-explorer` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness `sessionID` outside the worker-authored payload.
 
 #### Scenario: opencode dispatches and resumes design work
 - **WHEN** `/sai-2-design` starts in opencode and the worker later requests input
-- **THEN** the wrapper-run coordinator SHALL dispatch the numbered design worker, retain the task ID in invocation-scoped coordinator state, and continue that task after presenting the native question
+- **THEN** the wrapper-run coordinator SHALL dispatch the numbered design worker, retain the `sessionID` in invocation-scoped coordinator state, and continue that subagent, after its completion notification has arrived, after presenting the native question
 
 #### Scenario: opencode wrapper declares its coordinator runtime
 - **WHEN** `commands/opencode/sai-2-design.md` activates routed design
@@ -86,8 +86,8 @@ The opencode design wrapper and worker projection SHALL use the staged opencode 
 - **THEN** the coordinator SHALL call `SendMessage(to: "<captured agent ID>", message: "continue_after_notice")` and await the same worker's next result
 
 #### Scenario: opencode acknowledges a design notice
-- **WHEN** a design worker notice is returned with a binding-captured task ID
-- **THEN** the coordinator SHALL call `task(task_id: "<captured task ID>", prompt: "continue_after_notice")` and await the same worker's next result
+- **WHEN** a design worker notice is returned with a binding-captured `sessionID`
+- **THEN** the coordinator SHALL call `subagent(agent: "<agent used at creation>", description: "<phase> worker", sessionID: "<captured sessionID>", prompt: "continue_after_notice", background: true)` and await the same worker's next result
 
 #### Scenario: opencode-routed-model-is-declared
 - **WHEN** the opencode design wrapper and projected worker are inspected

@@ -166,6 +166,8 @@ Continue specification unless an existing conflict gate or user decision aborts 
 
 Delegate spec scanning to a **`budget-explorer`** subagent (lookup task, ≤10 tool calls).
 
+The helper runs in the background on both harnesses: wait for its completion notification within your own turn (never sleep, poll, or return before it arrives), and use its result only after it has arrived.
+
 When there is no usable intent context, use this existing diff-only prompt unchanged:
 
 > You have the following diff in context:

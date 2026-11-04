@@ -28,23 +28,6 @@ A binding that declares background dispatch — directly via `run_in_background:
 - **THEN** no harness-level error, log line, or timeout surfaces the loss
 - **AND** this silent-loss property is the reason the dispatch-safety invariant exists
 
-### Requirement: Dispatch-mode declaration is a binding property, not a call-site property
-
-The dispatch mode of a `budget-*` subagent binding SHALL be declared in the binding's skill file (`skills/claude/budget-*/SKILL.md` or `skills/opencode/budget-*/SKILL.md`), not chosen ad hoc by the call site. The declaration SHALL specify the value (for example, `run_in_background: true` on Claude Code, or "synchronous by default" on opencode) and SHALL identify the class of dispatcher that may invoke the binding safely.
-
-#### Scenario: Claude Code binding declares an explicit run_in_background
-
-- **WHEN** a Claude Code `budget-*` skill file is read by a dispatcher
-- **THEN** the file SHALL include a `## Dispatch mode` section that states `run_in_background: true`
-- **AND** SHALL name the dispatcher class (main coordinator, routed worker) that satisfies the outlives-child requirement
-
-#### Scenario: opencode binding declares its synchronous default
-
-- **WHEN** an opencode `budget-*` skill file is read by a dispatcher
-- **THEN** the file SHALL include a `## Dispatch mode` section that states the opencode `task` tool has no `run_in_background` parameter
-- **AND** SHALL state that the binding runs synchronously by default
-- **AND** SHALL name the dispatch-safety invariant as the containing rule for that case
-
 ### Requirement: Permitted dispatcher call sites are enumerated and checkable
 
 A binding that declares background dispatch SHALL name the class of dispatcher that may invoke it. The following dispatcher classes are the only call sites permitted to invoke a background `budget-*` binding:
@@ -61,3 +44,20 @@ A binding that does not name one of these three dispatcher classes SHALL NOT be 
 - **THEN** the check SHALL verify the file's `## Dispatch mode` section names one of the three permitted dispatcher classes (main agent, routed SAI coordinator, or routed SAI worker)
 - **AND** SHALL flag any file whose section is missing or names an unpermitted class
 - **AND** a follow-up change may automate the check via a dedicated doctor capability; this change does not introduce one
+
+### Requirement: Dispatch-mode declaration is a binding property on both harnesses
+
+The dispatch mode of a `budget-*` subagent binding SHALL be declared in the binding's skill file (`skills/claude/budget-*/SKILL.md` or `skills/opencode/budget-*/SKILL.md`), not chosen ad hoc by the call site. Both harnesses SHALL declare background dispatch: `run_in_background: true` on Claude Code, and the v2 `subagent` tool with `background: true` on opencode. The declaration SHALL identify the class of dispatcher that may invoke the binding safely: a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child and that awaits the child's completion notification on its own turn without polling.
+
+#### Scenario: Claude Code binding declares an explicit run_in_background
+
+- **WHEN** a Claude Code `budget-*` skill file is read by a dispatcher
+- **THEN** the file SHALL include a `## Dispatch mode` section that states `run_in_background: true`
+- **AND** SHALL name the dispatcher class (main coordinator, routed worker) that satisfies the outlives-child requirement
+
+#### Scenario: opencode binding declares background dispatch
+
+- **WHEN** an opencode `budget-*` skill file is read by a dispatcher
+- **THEN** the file SHALL include a `## Dispatch mode` section that names `subagent(agent: "<agent name>", description: "<agent name>", prompt: <prompt>, background: true)`
+- **AND** SHALL name the dispatcher class (main agent, routed SAI coordinator, routed SAI worker) whose lifetime outlives the child
+- **AND** SHALL state that the dispatcher captures the returned `sessionID` and awaits the completion notification on its own turn without sleeping or polling

@@ -147,7 +147,7 @@ const CLAUDE_BINDING_TEMPLATE = [
 
 const OPENCODE_BINDING_TEMPLATE = [
   'Bind the {{phase}} worker for harness {{harness}}.',
-  'Dispatch task("{{workerName}}", { prompt: "Execute the {{phase}} worker." })',
+  'Dispatch subagent(agent: "{{workerName}}", { prompt: "Execute the {{phase}} worker." })',
   'Fetch `@{{workerContract}}` and follow it exactly.',
 ].join('\n');
 
@@ -358,11 +358,11 @@ test('renderWorkerTemplate preserves Claude Agent(...) dispatch syntax', () => {
     'Claude rendering should leave no template token');
 });
 
-test('renderWorkerTemplate preserves opencode task(...) dispatch syntax', () => {
+test('renderWorkerTemplate preserves opencode subagent(...) dispatch syntax', () => {
   const rendered = renderWorkerTemplate(OPENCODE_BINDING_TEMPLATE, bindingParameters('security', 'opencode'));
-  assert.match(rendered, /task\s*\(/,
-    'opencode rendering should preserve the task(...) dispatch form');
-  assert.ok(rendered.includes('task("sai-5-security-worker"'),
+  assert.match(rendered, /subagent\s*\(/,
+    'opencode rendering should preserve the subagent(...) dispatch form');
+  assert.ok(rendered.includes('subagent(agent: "sai-5-security-worker"'),
     'the substituted worker identity should be preserved inside the opencode dispatch');
   assert.ok(rendered.includes('harness opencode'),
     'the injected opencode harness label should be substituted');
@@ -498,8 +498,8 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
     'the Claude design binding should preserve Agent(...) dispatch syntax');
   const securityOpencode = projections.find(item =>
     item.kind === 'binding' && item.harness === 'opencode' && item.phase === 'security');
-  assert.match(securityOpencode.text, /task\s*\(/,
-    'the opencode security binding should preserve task(...) dispatch syntax');
+  assert.match(securityOpencode.text, /subagent\s*\(/,
+    'the opencode security binding should preserve subagent(...) dispatch syntax');
 });
 
 test('the RED and GREEN bindings fetch their own contracts and never resolve through the sibling entry', () => {
