@@ -7,7 +7,7 @@ Defines the canonical template paths from which a missing ADR or DDR index is bu
 
 ### Requirement: A missing index SHALL be built from the templates in the implement command directory
 
-The folder-and-index step of `sai/policies/decision-record-creation.md` MUST read the ADR template from `sai/commands/implement/adr-index.template.md` and the DDR template from `sai/commands/implement/ddr-index.template.md` by exact path, without inlining their boilerplate.
+The folder-and-index step of `sai/policies/decision-record-creation.md` MUST read the ADR template from `sai/commands/implement/adr-index.template.md` and the DDR template from its sibling `sai/commands/implement/ddr-index.template.md` (the policy names it as `ddr-index.template.md` beside the ADR template's full path), without inlining their boilerplate.
 
 #### Scenario: Build a missing decision-record index
 

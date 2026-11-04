@@ -118,10 +118,10 @@ Compatibility loaders and compatibility-only path-sensitive assets SHALL live un
 #### Scenario: Shared ADR template has no compatibility duplicate
 
 - **WHEN** the ADR index template is relocated from `sai/compat/_templates/adr-index.md`
-- **THEN** every caller SHALL use `sai/instructions/_templates/adr-index.md`, the former compatibility source SHALL be absent, and no compatibility copy or shim SHALL remain
+- **THEN** every caller SHALL use `sai/commands/implement/adr-index.template.md`, the former compatibility source SHALL be absent, and no compatibility copy or shim SHALL remain
 
 ### Requirement: Managed source-to-runtime projection
-The installer SHALL project the folded command-local and root canonical source surfaces for Claude Code and opencode as described by `sai/install-manifest.json`. Doctor and uninstall SHALL consume the same folded inventory, and no active projection SHALL create the removed `sai/instructions/` tree or a compatibility duplicate.
+The installer SHALL project the folded command-local source surfaces, including the command-owned shared files, for Claude Code and opencode as described by `sai/install-manifest.json`. Doctor and uninstall SHALL consume the same folded inventory, and no active projection SHALL create the removed `sai/instructions/` tree or a compatibility duplicate.
 
 #### Scenario: fresh projection contains only folded paths
 

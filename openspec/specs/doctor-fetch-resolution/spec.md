@@ -19,15 +19,15 @@ For each installed wrapper in a detected harness, the doctor SHALL parse every `
 
 ### Requirement: harness-specific resolution order
 
-The doctor SHALL resolve each `Fetch @` reference using the resolution order of the harness that owns the wrapper, not a single universal rule. For Claude Code it SHALL check the project-local `.claude/<subpath>` first, then the user-global `~/.claude/<subpath>` fallback. For Copilot it SHALL check the project-local `.github/sai/<subpath>` first, then the SAI-folder fallback. A reference SHALL be considered resolved when it exists at any position in that harness's order.
+The doctor SHALL resolve each `Fetch @` reference using the resolution order of the harness that owns the wrapper, not a single universal rule. For Claude Code it SHALL check the project-local `.claude/<subpath>` first, then the user-global `~/.claude/<subpath>` fallback. For opencode it SHALL check the project-local `.opencode/<subpath>` first, then the user-global `~/.config/opencode/<subpath>` fallback. A reference SHALL be considered resolved when it exists at any position in that harness's order.
 
 #### Scenario: user-global fallback resolves a Claude reference
 - **WHEN** a Claude wrapper's `Fetch @` target is absent project-locally but present at the `~/.claude` fallback
 - **THEN** the doctor resolves the reference via the fallback and does not flag it as dangling
 
-#### Scenario: Copilot uses its own resolution order
-- **WHEN** a Copilot wrapper's `Fetch @` target is resolved
-- **THEN** the doctor applies the Copilot `.github/sai/<subpath>`-then-SAI-folder order rather than the Claude order
+#### Scenario: opencode uses its own resolution order
+- **WHEN** an opencode wrapper's `Fetch @` target is resolved
+- **THEN** the doctor applies the `.opencode/<subpath>`-then-`~/.config/opencode/<subpath>` order rather than the Claude order
 
 #### Scenario: skill-tool reference is not treated as a dangling file
 - **WHEN** a `Fetch @skills/<name>/SKILL.md` reference maps to a harness skill-tool invocation rather than a plain file read

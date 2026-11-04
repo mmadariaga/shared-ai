@@ -125,7 +125,7 @@ Command-owned templates SHALL remain write-time authority. Matching schema scaff
 
 ### Requirement: The DDR index template instance mirrors the ADR index template
 
-The instruction library SHALL contain a DDR index template at `sai/commands/implement/ddr-index.template.md` — the project-agnostic cold-build skeleton for the DDR family, mirroring `sai/commands/implement/adr-index.template.md` instance for instance. The template SHALL carry the canonical section skeleton with the DDR per-index bindings: H1 `# DDR Index`, then the five `## ` sections in canonical order — `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## DDRs that extend or correct prior ones`, `## Superseded DDRs (historical)`. The `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>` (never a concrete noun), and the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL carry only empty placeholder skeletons with cold-build markers naming the DDR family. The template SHALL be referenced by `sai/commands/implement/steps/decision-record-index.md` by exact path as the DDR cold-build source, exactly as `sai/commands/implement/adr-index.template.md` is for the ADR family.
+The instruction library SHALL contain a DDR index template at `sai/commands/implement/ddr-index.template.md` — the project-agnostic cold-build skeleton for the DDR family, mirroring `sai/commands/implement/adr-index.template.md` instance for instance. The template SHALL carry the canonical section skeleton with the DDR per-index bindings: H1 `# DDR Index`, then the five `## ` sections in canonical order — `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## DDRs that extend or correct prior ones`, `## Superseded DDRs (historical)`. The `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>` (never a concrete noun), and the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL carry only empty placeholder skeletons with cold-build markers naming the DDR family. The folder-and-index step of `sai/policies/decision-record-creation.md` SHALL name it as the source of a missing DDR index, exactly as it names `sai/commands/implement/adr-index.template.md` for the ADR family.
 
 #### Scenario: DDR template structure matches the canonical section skeleton
 
@@ -139,10 +139,10 @@ The instruction library SHALL contain a DDR index template at `sai/commands/impl
 - **THEN** the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons with cold-build markers naming the DDR family
 - **THEN** the template SHALL NOT list any specific `### /sai-N-*` subsection, any specific cross-cutting category name, or any DDR entry
 
-#### Scenario: The creation policy references the DDR template by exact path
+#### Scenario: The creation policy references the DDR template
 
 - **WHEN** a maintainer reads the folder-and-index step of `sai/policies/decision-record-creation.md`
-- **THEN** it SHALL name `sai/commands/implement/ddr-index.template.md` by exact path as the source of a missing DDR index rather than reproducing the index structure inline
+- **THEN** it SHALL name the DDR template in the implement command folder (`@sai/commands/implement/adr-index.template.md` or `ddr-index.template.md`) as the source of a missing DDR index rather than reproducing the index structure inline
 
 ### Requirement: The two index template instances stay in parity
 
