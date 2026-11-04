@@ -10,10 +10,13 @@ const save = (file, receipt) => require('./to-backlog-github').save(file, receip
 // Only the single-issue content adapters can write in this lane. No creation or relation operation is reachable.
 function bind(provider, adapter, same = (a, b) => a === b) {
   const correspondence = value => digest({ ...value, slices: [...value.slices].map(slice => ({ ...slice, depends_on: [...slice.depends_on].sort() })).sort((a, b) => a.change_name.localeCompare(b.change_name)) });
-  function render(description, value) {
+  // Each Azure work item is published in its own description format: a Markdown one in Markdown, any other in HTML.
+  const markdownItem = current => provider === 'azuredevops' && current.format === 'markdown';
+  function render(description, value, markdown) {
     const own = value.role === 'child' && value.slices.find(slice => slice.change_name === value.change_name);
     const links = own ? [`Parent: ${value.parent}`, ...own.depends_on.map(name => `Depends on: ${value.slices.find(slice => slice.change_name === name).issue}`)]
       : [...value.slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`), ...(value.child_of ? require('./backlog-set-origin').upperLinks(value.child_of) : [])];
+    if (markdown) return `${description}\n\n${links.join('\n')}\n${identity.encodeMarkdown(value)}`;
     return provider === 'azuredevops' ? `${description}\n<p>${links.map(identity.escape).join('<br>')}</p>\n${identity.encodeHtml(value)}`
       : `${description}\n\n${links.join('\n')}\n${identity.encode(value)}`;
   }
@@ -30,7 +33,8 @@ function bind(provider, adapter, same = (a, b) => a === b) {
     if (added.length || removed.length || dependencies.length) return { status: 'blocked', reason: 'composition-changed', added, removed, dependencies };
     if (typeof request.title !== 'string' || !request.title.trim() || typeof request.description !== 'string') throw new Error('Complete parent title and description required');
     const texts = blocks.extractBlockTexts(request.blocks), items = [];
-    const inputs = [{ current: parent, title: request.title, description: provider === 'azuredevops' ? require('./azure-markdown').convert(request.description) : request.description, marker }];
+    const parentDescription = provider !== 'azuredevops' || markdownItem(parent) ? request.description : require('./azure-markdown').convert(request.description);
+    const inputs = [{ current: parent, title: request.title, description: parentDescription, marker }];
     // Resolve the complete correspondence before preparing any write, independent of block order.
     for (const slice of marker.slices) {
       const current = api['read-update']({ reference: slice.issue }, io);
@@ -42,12 +46,12 @@ function bind(provider, adapter, same = (a, b) => a === b) {
       const index = validation.blocks.findIndex(row => row.name === slice.change_name);
       if (validation.blocks[index].backlog_origin && validation.blocks[index].backlog_origin !== slice.issue) throw new Error('Block origin conflicts with the published child correspondence; no updates were written');
       const text = texts[index];
-      const description = provider === 'azuredevops' ? `<pre>${identity.escape(text)}</pre>` : text;
+      const description = provider !== 'azuredevops' ? text : markdownItem(current) ? identity.fenced(text) : `<pre>${identity.escape(text)}</pre>`;
       // An adopted parent keeps its own descendants and child_of; upper verifies only its place in this set.
       inputs.push({ current, title: slice.change_name, description, marker: child });
     }
     for (const input of inputs) {
-      const content = { reference: input.current.issue.url, baseline: input.current.baseline, title: input.title, description: render(input.description, input.marker) };
+      const content = { reference: input.current.issue.url, baseline: input.current.baseline, title: input.title, description: render(input.description, input.marker, markdownItem(input.current)) };
       const ready = api['query-update'](content, io);
       if (!['ready', 'no_changes'].includes(ready.status)) return ready;
       items.push({ issue: input.current.issue, current: input.current, request: content, changed: ready.status === 'ready', state: ready.status === 'ready' ? 'pending' : 'complete', ...(ready.status === 'ready' ? { proposal: ready.proposal, confirmation: ready.confirmation } : {}) });
@@ -75,7 +79,7 @@ function bind(provider, adapter, same = (a, b) => a === b) {
         const current = adapter()['read-update']({ reference: item.issue.url }, io);
         const fixed = value => { const { baseline, ...rest } = value; return rest; };
         if (digest(fixed(current)) !== digest(fixed(item.current))) throw new Error('Issue identity, destination, visibility or actor changed; renew comparison and confirmation');
-        if (current.baseline.title === item.request.title && same(item.request.description, current.baseline.description)) item.state = 'complete';
+        if (current.baseline.title === item.request.title && same(item.request.description, current.baseline.description, current.format)) item.state = 'complete';
         else if (digest(current.baseline) === digest(item.request.baseline)) item.state = 'pending';
         else { item.state = 'divergent'; throw new Error('Remote content changed; renew comparison and confirmation before pending writes'); }
       } catch (error) { if (item.state !== 'divergent') item.state = 'unverified'; errors.push(error.message); }

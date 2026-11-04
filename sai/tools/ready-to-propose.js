@@ -784,9 +784,22 @@ function htmlToMarkdown(text) {
  */
 function issueToMarkdown(text) {
   const withoutComments = normalize(text).replace(/<!--[\s\S]*?-->/g, '');
+  return looksLikeHtml(withoutComments) ? htmlToMarkdown(withoutComments) : withoutComments;
+}
+
+/**
+ * Structural HTML tags decide, but only outside backtick code spans and fenced code blocks, where tags are literal
+ * text. An opening Markdown heading means Markdown, and so does any doubt.
+ */
+function looksLikeHtml(withoutComments) {
   const hasMarkdownHeading = /^#{1,6}[ \t]+\S/m.test(withoutComments);
-  const hasHtmlStructure = /<(?:h[1-6]|p|div|ul|ol|li|br)\b/i.test(withoutComments);
-  return hasHtmlStructure && !hasMarkdownHeading ? htmlToMarkdown(withoutComments) : withoutComments;
+  const hasHtmlStructure = /<(?:h[1-6]|p|div|ul|ol|li|br)\b/i.test(require('./azure-markdown').setAsideCode(withoutComments, false));
+  return hasHtmlStructure && !hasMarkdownHeading;
+}
+
+/** Whether an issue description is HTML rather than Markdown; text without structural HTML outside code is Markdown. */
+function isHtmlDescription(text) {
+  return looksLikeHtml(normalize(text).replace(/<!--[\s\S]*?-->/g, ''));
 }
 
 /** Split Markdown into `{ name -> body lines }` keyed by the lowercase heading text. */
@@ -1134,6 +1147,7 @@ module.exports = {
   MATURITY_VALUES,
   DECLARED_CLEAN_NOTE,
   issueToMarkdown,
+  isHtmlDescription,
   convertIssue,
   detect,
   main,

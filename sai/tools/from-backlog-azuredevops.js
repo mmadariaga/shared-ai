@@ -1,5 +1,7 @@
 'use strict';
 
+const { decodeEntities } = require('./azure-markdown');
+
 function fault(reason, message) { return Object.assign(new Error(message), { reason }); }
 const positive = value => /^[1-9][0-9]*$/.test(String(value)) && Number.isSafeInteger(Number(value));
 const segment = value => typeof value === 'string' && !!value.trim() && !/[\x00-\x1f\x7f/\\]/.test(value) && !['.', '..'].includes(value);
@@ -83,6 +85,13 @@ function resolve(value, io) {
   return { status: 'resolved', organization: parsed.organization, project, number, url: `${parsed.organization}/${encodeURIComponent(project)}/_workitems/edit/${number}` };
 }
 
+// The work item's own `multilineFieldsFormat` decides when the response carries it. Without that key the
+// deterministic HTML detector decides, and Markdown is the answer when it is in doubt.
+function descriptionFormat(multiline, description) {
+  if (multiline && typeof multiline === 'object') return String(multiline['System.Description']).toLowerCase() === 'markdown' ? 'markdown' : 'html';
+  return require('./ready-to-propose').isHtmlDescription(description) ? 'html' : 'markdown';
+}
+
 function read(reference, io) {
   let item;
   const comments = [];
@@ -92,8 +101,9 @@ function read(reference, io) {
     if (data.id !== reference.number || !fields || !segment(fields['System.TeamProject']) || ['System.Title', 'System.State', 'System.WorkItemType'].some(key => typeof fields[key] !== 'string') || (fields['System.Description'] != null && typeof fields['System.Description'] !== 'string')) throw fault('retrieval-failed', 'Incomplete Azure DevOps work-item response');
     const project = fields['System.TeamProject'];
     if (reference.project && reference.project.toLowerCase() !== project.toLowerCase()) throw fault('retrieval-failed', 'Work-item project does not match the resolved project');
-    const description = fields['System.Description'] ?? '';
-    item = { provider: 'azuredevops', organization: reference.organization, project, number: data.id, url: `${reference.organization}/${encodeURIComponent(project)}/_workitems/edit/${data.id}`, title: fields['System.Title'], state: fields['System.State'], type: fields['System.WorkItemType'], description, description_format: 'html', description_missing: !description.trim() };
+    const stored = fields['System.Description'] ?? '';
+    const format = descriptionFormat(data.multilineFieldsFormat, stored), description = format === 'markdown' ? decodeEntities(stored) : stored;
+    item = { provider: 'azuredevops', organization: reference.organization, project, number: data.id, url: `${reference.organization}/${encodeURIComponent(project)}/_workitems/edit/${data.id}`, title: fields['System.Title'], state: fields['System.State'], type: fields['System.WorkItemType'], description, description_format: format, description_missing: !description.trim() };
     Object.assign(item, planningFields(data, reference));
     const seenTokens = new Set(), seenComments = new Set();
     let token, total;

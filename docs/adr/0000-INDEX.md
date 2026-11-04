@@ -592,6 +592,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
+- [0204 — Azure Markdown work items carry the slice marker as a fenced code block](./0204-azure-markdown-slice-marker-as-fenced-code-block.md)
 
 ### Installer dependency policy & external tooling
 
