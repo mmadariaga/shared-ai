@@ -55,6 +55,10 @@ function targetName(target, harness) {
 
 function validateRegistry(registry) {
   if (!registry || !registry.profiles || !registry.assignments) throw new Error('Capability registry requires profiles and assignments');
+  const universalShell = registry.universal?.shell;
+  if (universalShell !== undefined && (!Array.isArray(universalShell) || universalShell.some(value => typeof value !== 'string' || !value))) {
+    throw new Error('Capability universal.shell must be a string array');
+  }
   for (const name of Object.keys(registry.profiles)) {
     const profile = resolveProfile(registry, name);
     for (const target of profile.delegate || []) targetName(target, 'opencode');
@@ -94,6 +98,9 @@ function shellPatterns(patterns, harness, installRoot) {
 function translate(registry, name, harness, installRoot) {
   if (!['claude', 'opencode'].includes(harness)) throw new Error(`Unsupported capability harness: ${harness}`);
   const profile = resolveProfile(registry, name);
+  // The registry's universal grants reach every profile; a wildcard shell already covers them.
+  const universalShell = registry.universal?.shell || [];
+  const shell = profile.shell?.includes('*') ? profile.shell : [...new Set([...(profile.shell || []), ...universalShell])];
   const tools = [];
   const rules = [{ action: '*', resource: '*', effect: 'deny' }];
   const grant = (action, resource = '*', effect = 'allow') => rules.push({ action, resource, effect });
@@ -112,9 +119,9 @@ function translate(registry, name, harness, installRoot) {
     tools.push('Skill');
     for (const skill of profile.skills) grant('skill', skill);
   }
-  if (profile.shell?.length) {
+  if (shell.length) {
     tools.push('Bash', 'PowerShell');
-    for (const resource of shellPatterns(profile.shell, harness, installRoot)) grant('shell', resource);
+    for (const resource of shellPatterns(shell, harness, installRoot)) grant('shell', resource);
   }
   if (profile.delegate?.length) {
     tools.push('Agent');
@@ -126,7 +133,7 @@ function translate(registry, name, harness, installRoot) {
   if (profile.stopTask) tools.push('TaskStop');
   // V2 has no built-in todo action; its panel adapter owns absence handling.
   if (profile.panel) tools.push('TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList');
-  if (profile.read || profile.shell?.length) {
+  if (profile.read || shell.length) {
     grant('external_directory', '*', 'ask');
     grant('external_directory', '~/.config/opencode/*');
     grant('external_directory', '/tmp/opencode/*');
@@ -143,12 +150,12 @@ function translate(registry, name, harness, installRoot) {
     grant('read', '*.env.example');
   }
   const allowed = tools.filter(tool => !['Bash', 'PowerShell'].includes(tool));
-  allowed.push(...shellPatterns(profile.shell, 'claude', harness === 'claude' ? installRoot : undefined).flatMap(pattern => ['Bash', 'PowerShell'].map(tool => pattern === '*' ? tool : `${tool}(${pattern.replace(/ \*$/, ':*')})`)));
+  allowed.push(...shellPatterns(shell, 'claude', harness === 'claude' ? installRoot : undefined).flatMap(pattern => ['Bash', 'PowerShell'].map(tool => pattern === '*' ? tool : `${tool}(${pattern.replace(/ \*$/, ':*')})`)));
   const nativeTools = harness === 'claude' ? [...new Set(tools)]
     : [...new Set(rules.filter(rule => rule.effect === 'allow' && rule.action !== 'external_directory').map(rule => rule.action))];
   const toolRequirements = [];
   if (profile.write) toolRequirements.push({ capability: 'write', anyOf: harness === 'claude' ? [['Edit', 'Write']] : [['patch'], ['edit', 'write']] });
-  if (profile.shell?.length) toolRequirements.push({ capability: 'shell', anyOf: harness === 'claude' ? [['Bash'], ['PowerShell']] : [['shell']] });
+  if (shell.length) toolRequirements.push({ capability: 'shell', anyOf: harness === 'claude' ? [['Bash'], ['PowerShell']] : [['shell']] });
   return { profile, toolRequirements,
     ...(harness === 'claude' ? { nativeTools, tools: [...new Set(tools)].join(', '), allowedTools: [...new Set(allowed)].join(', ') }
       : { nativeActions: nativeTools, permissions: rules }),

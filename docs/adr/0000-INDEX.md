@@ -438,6 +438,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0155a — Schema change-overview instruction is an informative reference only](./0155a-schema-change-overview-instruction-is-an-informative-reference-only.md) — Refs 0146b
 - [0166a — Schema design/tasks/interfaces instructions are authority pointers](./0166a-schema-design-tasks-interfaces-instructions-are-authority-pointers.md) — Pair with 0167a, Refs 0155a, Refs 0162b
 - [0167a — Design/tasks/interfaces templates are structural skeletons](./0167a-design-tasks-interfaces-templates-are-structural-skeletons.md) — Pair with 0166a, Refs 0162b
+- [0203 — Fetch resolution runs through a deterministic tool granted to every profile](./0203-fetch-resolution-runs-through-a-deterministic-tool.md) — Refs 0009
 
 ### Harness portability & mirror discipline
 

@@ -1,6 +1,7 @@
 {
   "version": 1,
   "capabilities": {
+    "universal": { "shell": ["node {skills}/fetch/fetch.js *"] },
     "profiles": {
       "boot": { "read": true, "skills": ["*"] },
       "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["git grep *", "codegraph explore *", "node {skills}/sai-cache-warmer/wait.js *"] },
@@ -573,6 +574,17 @@
       "include": [
         "**/SKILL.md"
       ],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "fetch-tool",
+      "source": "skills/universal/fetch",
+      "destination": { "class": "skills", "path": "fetch" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["fetch.js"],
       "ownership": "managed",
       "drift": "content"
     },
