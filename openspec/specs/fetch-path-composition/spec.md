@@ -5,42 +5,26 @@ Define how agents that load a fetch skill write paths inside and outside the pro
 
 ## Requirements
 
-### Requirement: Fetch skills write in-project paths relative to the working directory and use out-of-project paths exactly as supplied
+### Requirement: Tool resolution states the path-composition rule and fetch skills use the tool's path
 
-Both the Claude Code and opencode fetch skills SHALL encode the path-composition rule in the existing `## Active harness and roots` section as prompt hygiene. The rule SHALL be inherited by every agent that loads fetch on both harnesses. It SHALL govern how a path is written and SHALL NOT govern where an agent may go.
+`sai/policies/tool-resolution.md` SHALL state the path-composition rule for Claude Code and opencode alike: inside the project, write paths relative to the working directory; outside it, use a path exactly as a tool returned it, with backslashes turned into forward slashes and nothing else. It SHALL carry the supporting observation as an observation, not a proven mechanism: a worker in a worktree produced a path without its repository folder, while relative paths and paths a tool returned resolved correctly. The rule SHALL govern how a path is written and SHALL NOT govern where an agent may go; filesystem-scope ownership remains with `sai/policies/explore-agent.md`.
 
-Inside the project, agents SHALL write paths relative to the working directory and SHALL NOT compose an absolute path from the project-root string. Outside the project, agents SHALL use the path exactly as supplied and SHALL NOT derive it by string manipulation, with one permitted change: a path a tool returned MAY have its backslashes turned into forward slashes, and nothing else.
+Neither fetch skill SHALL carry a `### Path composition` section. Both SHALL use the fetch tool's header path as given and SHALL NOT compose a path themselves, and both SHALL run the global fetch tool with the reported base directory's backslashes turned into forward slashes and nothing else. Neither SHALL carry the #13715 hang note or issue link.
 
-The rule SHALL carry the supporting observation inline, stated as an observation rather than a proven mechanism: composed absolute paths have dropped a path segment, while relative paths and literal absolute paths resolved correctly in every observed run. The rule SHALL NOT include an expiry or removal condition and SHALL NOT be framed as a workaround.
+#### Scenario: the policy states the rule
+- **WHEN** `sai/policies/tool-resolution.md` is read
+- **THEN** it states the in-project relative case and the out-of-project tool-returned case with the slash-conversion exception, and the dropped-segment observation
 
-The opencode fetch skill SHALL NOT carry a severity note framing a mis-composed path as a permission prompt that never renders at subagent depth >= 2 and hangs the session, and SHALL NOT link https://github.com/anomalyco/opencode/issues/13715 as load-bearing justification. The Claude Code fetch skill SHALL NOT carry that note. The #13715 history MAY survive only as a v1 compatibility note outside this requirement, never as the justification for the rule's existence.
-
-#### Scenario: in-project path is relative
-- **WHEN** an agent that loaded fetch targets a file or directory inside the project
-- **THEN** the path is written relative to the working directory
-- **AND** no absolute path is composed from the project-root string
-
-#### Scenario: out-of-project path is used literally
-- **WHEN** an agent that loaded fetch is given a concrete path outside the project
-- **THEN** that path is used exactly as supplied
-- **AND** the path is not derived by string manipulation beyond the permitted slash conversion of a tool-returned path
-
-#### Scenario: tool-returned path may use forward slashes
-- **WHEN** an agent that loaded fetch runs an out-of-project path that a tool returned with backslashes
-- **THEN** it may turn those backslashes into forward slashes
-- **AND** it changes nothing else in the path
-
-#### Scenario: both harness skills state the same composition rule
+#### Scenario: fetch skills carry no composition section
 - **WHEN** `skills/claude/fetch/SKILL.md` and `skills/opencode/fetch/SKILL.md` are read
-- **THEN** both state the in-project relative and out-of-project literal cases, including the same slash-conversion exception, in `## Active harness and roots`
-- **AND** both state that every agent that loads fetch inherits the rule on both harnesses
-- **AND** neither skill carries the #13715 load-bearing hang note or issue link; the rule stands as prompt hygiene with the dropped-segment observation
+- **THEN** neither has a `### Path composition` section
+- **AND** both tell the agent to use the fetch tool's header path as given and never compose a path
 
-#### Scenario: hygiene observation is kept on both skills
-- **WHEN** `skills/claude/fetch/SKILL.md` and `skills/opencode/fetch/SKILL.md` are read
-- **THEN** both carry the dropped-segment observation as the hygiene evidence for the rule
+#### Scenario: tool-returned path keeps only the slash conversion
+- **WHEN** an agent runs an out-of-project path that a tool or the harness returned with backslashes
+- **THEN** it may turn those backslashes into forward slashes and changes nothing else in the path
 
-#### Scenario: composition does not change filesystem scope
+#### Scenario: composition stays out of filesystem scope
 - **WHEN** the path-composition rule is applied
 - **THEN** it does not authorize, deny, or otherwise change where an agent may go
 - **AND** filesystem-scope ownership remains with `sai/policies/explore-agent.md`

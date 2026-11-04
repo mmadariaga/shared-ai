@@ -75,7 +75,7 @@ The `warm` subcommand of `wait.js` SHALL take `interval` and `max` in minutes wi
 
 ### Requirement: Explorer shell grant for the wait
 
-The explorer's shell restriction SHALL allow, besides `git grep` and `codegraph explore`, only the background wait that `cache-warming.md` defines, and the installed `research` and `coordinator` capability profiles SHALL grant `node {skills}/sai-cache-warmer/wait.js *`.
+The explorer's shell restriction SHALL allow, besides `git grep`, `codegraph explore`, and the fetch tool of the fetch skill run in the form its `SKILL.md` gives, only the background wait that `cache-warming.md` defines, and the installed `research` and `coordinator` capability profiles SHALL grant `node {skills}/sai-cache-warmer/wait.js *`.
 
 #### Scenario: Explorer arms its wait
 - **WHEN** an explorer whose task message carries a warming line ends its response

@@ -33,8 +33,8 @@ test('no-op events render nothing and milestone stamps retain their validator so
 test('existing dependency work remains installed without expanding review/audit consumers', () => {
   for (const harness of ['claude', 'opencode']) {
     const fetch = read(`skills/${harness}/fetch/SKILL.md`);
-    assert.match(fetch, /probes the project-local `sai\/` root exactly once/);
-    assert.match(fetch, /Probed and found absent/);
+    assert.match(fetch, new RegExp(`node "<base directory>/fetch\\.js" --harness ${harness} <subpath>`));
+    assert.match(fetch, /checks each subpath on every call/);
   }
   for (const phase of ['review', 'security', 'performance', 'accessibility']) {
     assert.match(read(`sai/commands/${phase}/steps/common.md`), /Fetch @skills\/budget-ro\/SKILL\.md/);

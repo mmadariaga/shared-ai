@@ -442,15 +442,15 @@ test('Step 3 Claude Code and opencode use ordinary neutral local and global reso
   for (const skill of [
     {
       path: 'skills/claude/fetch/SKILL.md',
-      local: /\.claude[\\/]\/.*exists|\.claude[\\/].*exists/i,
-      global: /~[\\/]\.claude[\\/].*directly/i,
-      missing: /File not found: <subpath> \(checked \.claude\//i,
+      local: /\.claude[\\/].*first file that exists/i,
+      global: /~[\\/]\.claude[\\/]/i,
+      missing: /node "<base directory>\/fetch\.js" --harness claude <subpath>/,
     },
     {
       path: 'skills/opencode/fetch/SKILL.md',
-      local: /\.opencode[\\/]\/.*exists|\.opencode[\\/].*exists/i,
-      global: /~[\\/]\.config[\\/]opencode[\\/].*directly/i,
-      missing: /File not found: <subpath> \(checked \.opencode\//i,
+      local: /\.opencode[\\/].*first file that exists/i,
+      global: /~[\\/]\.config[\\/]opencode[\\/]/i,
+      missing: /node "<base directory>\/fetch\.js" --harness opencode <subpath>/,
     },
   ]) {
     const source = sourceArtifact(skill.path);
@@ -486,39 +486,14 @@ test('Step 3 stale identity-bearing references receive no special guard', () => 
 
 // Retired Copilot fetch contract intentionally has no test.
 
-test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch resolvers use Read-then-Read without Glob or LS', () => {
+test('Claude and opencode fetch resolvers resolve through the deterministic tool without Glob or LS', () => {
   for (const relativePath of ['skills/claude/fetch/SKILL.md', 'skills/opencode/fetch/SKILL.md']) {
     const source = sourceArtifact(relativePath);
-    assert.match(source, /\bRead\b/, `${relativePath} should name Read for non-skill resolution`);
+    assert.match(source, /fetch\.js/, `${relativePath} should resolve non-skill directives with the fetch tool`);
     assert.doesNotMatch(source, /\bGlob\b/, `${relativePath} must not require Glob for non-skill resolution`);
     assert.doesNotMatch(source, /\bLS\b/, `${relativePath} must not require LS for non-skill resolution`);
-  }
-  // The opencode Fetch @<subpath> row marks the project-local branch by Read
-  // existence and the user-global branch as a direct Read — no Glob/LS-based
-  // directory probe is performed in either branch (the session-scoped sai/
-  // root probe below is itself Read-based, not a directory listing).
-  const opencode = sourceArtifact('skills/opencode/fetch/SKILL.md');
-  assert.match(opencode, /\bexists\b/, 'opencode Fetch @<subpath> row should mark the project-local branch by existence');
-  assert.match(opencode, /\bdirectly\b/, 'opencode Fetch @<subpath> row should Read the user-global branch directly');
-});
-
-test('fetch-root-once: both fetch skills probe the project-local sai/ root once per session and resolve directly against the global root once it is found absent', () => {
-  for (const skill of [
-    { path: 'skills/claude/fetch/SKILL.md', local: '.claude', global: '~/.claude' },
-    { path: 'skills/opencode/fetch/SKILL.md', local: '.opencode', global: '~/.config/opencode' },
-  ]) {
-    const source = sourceArtifact(skill.path);
-    assert.match(source, /once per session|probes the project-local `?sai\/`? root exactly once/i,
-      `${skill.path} should state the sai/ root is probed once per session`);
-    assert.match(source, /Fetch @<subpath>` directive whose path begins with `sai\/`/,
-      `${skill.path} should scope the probe to a sai/-prefixed directive, not the harness root itself`);
-    assert.match(source, /probed and found absent/i,
-      `${skill.path} should define the probed-absent branch`);
-    assert.match(source, /no local Read attempt/i,
-      `${skill.path} should skip the local Read once the sai/ root is known absent`);
-    assert.match(source, /not seen until the next session/i,
-      `${skill.path} should accept the mid-session-creation trade-off`);
-    assert.doesNotMatch(source, /\bGlob\b|\bLS\b/, `${skill.path} probe must stay Read-based, no Glob/LS`);
+    assert.match(source, /checks each subpath on every call/i, `${relativePath} should state the tool keeps no session memory`);
+    assert.match(source, /Do not fall back to resolving the path yourself/);
   }
 });
 
