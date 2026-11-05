@@ -442,6 +442,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0167a — Design/tasks/interfaces templates are structural skeletons](./0167a-design-tasks-interfaces-templates-are-structural-skeletons.md) — Pair with 0166a, Refs 0162b
 - [0203 — Fetch resolution runs through a deterministic tool granted to every profile](./0203-fetch-resolution-runs-through-a-deterministic-tool.md) — Refs 0009
 - [0205 — Instruction references are written inside inline code spans](./0205-instruction-references-are-written-in-inline-code-spans.md) — Refs 0203, Refs 0146b
+- [0208 — Fetch resolves several subpaths in path mode](./0208-fetch-resolves-several-subpaths-in-path-mode.md) — **Amends** 0203
 
 ### Harness portability & mirror discipline
 
