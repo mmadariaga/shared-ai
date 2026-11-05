@@ -8,7 +8,7 @@ These are the numbered phase commands (continuous sequence 1–7). [`/sai-plan`]
 |---------|-------|--------|---------|
 | [`/sai-1-spec`](commands/sai-1-spec.md) | `Ready to Propose` block, or change name + feedback | `{c}/proposal.md`, `specs/**` | Paste the `Ready to Propose` block from `/sai-explore` to create the change, or name an existing change to refine it. The AI writes a proposal and acceptance criteria unattended, checks and reviews them, and commits them locally; running `/sai-2-design` approves them. Creates only proposal/spec artifacts plus permitted glossary updates. |
 | [`/sai-2-design`](commands/sai-2-design.md) | {change-name} (+ feedback), `--overview-lang <language>` | `{c}/design.md`, `tasks.md`, `interfaces.md`; optional `change-overview.md` | Invoking the command approves the specs. Runs unattended: produces decisions, ordered tasks, public signatures, and exact test assertions, checks and reviews them, and commits them locally. Ends at design completion; request detailed implementation separately. |
-| [`/sai-3-implement`](commands/sai-3-implement.md) | {change-name}, `--fast-track` (accepted and ignored) | Tests, code, one local commit per step | Implements the change's `tasks.md` end to end with no human in the loop: a RED worker writes each step's failing tests, a GREEN worker writes the production code, the run reviews each step adversarially and commits it, then applies the open fixable findings of the review and audit reports and runs the suites against a failure baseline. |
+| [`/sai-3-implement`](commands/sai-3-implement.md) | {change-name} | Tests, code, one local commit per step | Implements the change's `tasks.md` end to end with no human in the loop: a RED worker writes each step's failing tests, a GREEN worker writes the production code, the run reviews each step adversarially and commits it, then applies the open fixable findings of the review and audit reports and runs the suites against a failure baseline. |
 | [`/sai-4-review`](commands/sai-4-review.md) | {change-name} + diff, `--parent-branch` | `{c}/review.md` | Reviews the diff in a fresh worker with 11 read-only analysis passes and an adversary challenge, commits `review.md`, and recommends specialized audits based on what changed. Fixes nothing. |
 | [`/sai-5-security`](commands/sai-5-security.md) | {change-name} + diff, `--full`, `--path`, `--parent-branch` | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | [`/sai-6-performance`](commands/sai-6-performance.md) | {change-name} + diff, `--full`, `--path`, `--tier`, `--runtime`, `--parent-branch` | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
@@ -16,26 +16,27 @@ These are the numbered phase commands (continuous sequence 1–7). [`/sai-plan`]
 
 ### How commands are routed
 
-Every numbered phase runs the same shape: a **coordinator** in your main session and a **worker** dispatched as a subagent. `/sai-1-spec` and `/sai-2-design` run outside the shared orchestration, like `/sai-3-implement`: their coordinators decide, answer worker questions, check, review, and commit, and the workers only write the artifacts. The coordinator owns dispatch, gates, and any git mutation; the worker owns the technical work and returns metadata only — artifact contents never travel in the payload. The two have independent model roles, so a phase can think expensively and execute cheaply.
+Commands use a **coordinator** in your main session to direct the run and
+**workers** for technical work. Their models can be configured separately through
+project `setup`; see [model customization](models.md). This lets you balance
+reasoning quality and cost by role.
 
-Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
-
-- `/sai-1-spec`, `/sai-2-design`, and `/sai-plan` — their coordinators run in your main session outside the shared orchestration and take their model from the wrapper frontmatter; the spec worker (`sai-1-spec-proposal-worker`) and the design worker (`sai-2-design-worker`) take their models from their installed agent files, seeded from the manifest's `worker-matrix`. Each worker lives for its segment and returns the path of a report file. The coordinator answers worker questions from the block, the artifacts, and the repository, escalates only what none of them settles, and commits locally per segment. Design ends at design completion — run `/sai-3-implement {name}` or `/sai-build {name}` in a new chat.
-- `/sai-3-implement` and `/sai-4-review` — their coordinators run in your main session outside the shared orchestration; separate live workers own tests, production changes, and the review. The coordinator commits locally per step and stops only for force majeure. Running `/sai-3-implement` again for a change whose run was interrupted resumes that run.
-- `/sai-commit` — its coordinator runs in your main session outside the shared orchestration, without any openspec dependency. The worker drafts the message and returns the questions the coordinator asks you; the coordinator alone runs git, and only after you authorize the drafted message.
-- `/sai-archive` and `/sai-backfill` — their coordinators run in your main session outside the shared orchestration and take their model from the wrapper frontmatter. The archive worker reads and reports; the archive coordinator alone moves the change and commits, after the gates you answer. The backfill worker interviews you (the questions stay user questions) and returns draft references; the backfill coordinator validates and writes them. Inside Direct Build both workers run unattended.
-- `/sai-merge` — its coordinator runs in your main session outside the shared orchestration, without any openspec dependency, and takes its model from the wrapper frontmatter; the merge worker (`sai-merge-worker`) takes its model from its installed agent file. The worker lives for the whole run and returns the path of a report file; the coordinator alone runs git, resolves conflicts by commit intent, and finalizes locally.
-
-> Full routing internals — envelopes, bindings, worker matrix, per-phase ownership boundaries — live in [AGENTS.md](../AGENTS.md), not here.
+Claude Code and opencode offer the same workflow and artifacts. Each command's
+usage page explains its approvals, local commits, and recovery behavior. For
+implementation details about routing and worker ownership, see
+[AGENTS.md](../AGENTS.md#repository-structure).
 
 ## Fast-track mode (`--fast-track`)
 
-For low-risk or high-trust runs, two commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-1-spec`, `/sai-2-design`, `/sai-plan`, `/sai-3-implement`, `/sai-4-review`, `/sai-build`, `/sai-deep-review`, `/sai-merge`, and `/sai-explore` are not members: each accepts and ignores an explicit `--fast-track` token, because invoking them already authorizes their local commits and they ask nothing mid-run (`/sai-deep-review` asks only for the accessibility dev-server URL, when `--runtime` comes without `--url`; `/sai-merge` asks only when commit intent cannot decide a conflict, or for a branch it was not given).
+Only two commands accept a `--fast-track` argument that activates fast-track
+mode: `/sai-backfill` and `/sai-archive`.
 
-The on-demand members are also listed in [On-demand commands](on-demand-commands.md#fast-track-mode---fast-track).
+See [On-demand commands](on-demand-commands.md#fast-track-mode---fast-track) for
+banner behavior and the full fast-track contract.
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
 | `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
+| `/sai-archive` | Skips the commit selector after the archive and creates the local commit directly. Other safety confirmations remain. |
 
-Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, and never skips an input question (a missing diff-source token still asks). `/sai-explore` strips the token silently and behaves the same with and without it.
+Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, and never skips an input question (a missing diff-source token still asks).

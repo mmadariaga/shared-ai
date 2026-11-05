@@ -25,18 +25,21 @@ delegated tasks.
 - **DIFFICULTY:** reasoning demand, from `↑` to `↑↑↑`.
 - **SETTING:** provider/model and reasoning variant.
 
-Keep design at least as capable as the implement coordinator, and the
-coordinator at least as capable as the GREEN worker. The earlier phases make decisions
-that the later implementer should be able to follow without redesigning them.
+Choose design models for planning quality and the implement coordinator for
+orchestration, test arbitration, and evidence-based corrections to the plan.
+GREEN needs to follow the resulting contracts. These roles do not imply a strict
+capability ranking: Claude Code's defaults use Sonnet/high for design and
+Opus/medium for the implement coordinator. Validate a model mix on your project
+rather than treating model families and effort levels as one ordered scale.
 
 ## Full opencode defaults
 
 ```text
       TYPE          TARGET                       CONTEXT  DIFFICULTY  SETTING
       ────────────  ───────────────────────────  ───────  ──────────  ─────────────────────────────────────────────────
-      AGENT         budget                       Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
-      AGENT         executor                     Small    ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
-      AGENT         explore                      Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
+      AGENT         budget-subagent              Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
+      AGENT         budget-executor              Small    ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
+      AGENT         budget-explorer              Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
 
       ORCHESTRATOR  sai-explore                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-direct-build-worker      Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
@@ -44,6 +47,7 @@ that the later implementer should be able to follow without redesigning them.
       WORKER        sai-1-spec-proposal-worker   Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
       ORCHESTRATOR  sai-2-design                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-2-design-worker          Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-plan                     Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
 
       ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
       ORCHESTRATOR  sai-3-implement              Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
@@ -75,9 +79,10 @@ that the later implementer should be able to follow without redesigning them.
       UTILITY       sai-worktree                 Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 ```
 
-Claude Code's shipped defaults match the OPUS preset: Opus for demanding roles,
-Sonnet for the spec, design, and audit phases, and Haiku for the executor and the
-RED and GREEN implementation workers.
+Claude Code's shipped defaults match the OPUS preset: Sonnet for spec and design
+roles and audit coordinators; Opus for demanding coordination and review roles,
+including the technical audit workers; and Haiku for the generic helpers, RED
+and GREEN workers, commit and archive workers, and status and worktree utilities.
 These are starting points, not a guarantee for every project; test alternatives
 on your own work before switching the whole pipeline.
 

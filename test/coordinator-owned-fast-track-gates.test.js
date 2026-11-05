@@ -36,3 +36,17 @@ test('explore strips the fast-track token silently and keeps no fast-track state
   }
   assert.doesNotMatch(read('AGENTS.md'), /sai-explore`, `sai-archive`, and `sai-backfill`/, 'AGENTS.md lists no explore fast-track parse');
 });
+
+test('user guides advertise fast-track only for commands where it changes behavior', () => {
+  for (const command of ['sai-explore', 'sai-plan', 'sai-build', 'sai-deep-review', 'sai-merge',
+    'sai-1-spec', 'sai-2-design', 'sai-3-implement', 'sai-4-review',
+    'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    assert.doesNotMatch(read(`docs/commands/${command}.md`), /--fast-track|--supervised/, command);
+  }
+  for (const file of ['docs/on-demand-commands.md', 'docs/sequential-pipeline.md', 'docs/review-triage.md']) {
+    assert.doesNotMatch(read(file), /accept(?:ed|s)? and ignor|no-op|strips the token silently/, file);
+  }
+  for (const command of ['sai-archive', 'sai-backfill']) {
+    assert.match(read(`docs/commands/${command}.md`), /--fast-track/, command);
+  }
+});
