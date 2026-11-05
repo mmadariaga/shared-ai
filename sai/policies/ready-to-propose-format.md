@@ -1,4 +1,4 @@
-<!-- Format validator: node sai/tools/ready-to-propose.js check --profile dispatchable < text (dispatchable profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
+<!-- Format validator: node sai/tools/ready-to-propose.js check --profile dispatchable --block-file <path> (dispatchable profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
 
 # Ready to Propose Block Format
 
@@ -80,7 +80,16 @@ Export anew after every amendment and before every fresh dispatch or replacement
 
 ### Block and verdict delivery
 
-For both registration and amendment, author or update block content in a UTF-8 file and keep judgment verdicts in a separate JSON-array file. Run `sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>`. It calls the shared `ready-to-propose.js` composer internally, avoiding shell text re-encoding in both Bash and PowerShell. Composition failure returns `BLOCK_COMPOSITION_FAILED` without a store mutation. The composer inserts the newline before `<<<VERDICTS>>>` mechanically, outside the hashed block, and rejects incomplete blocks and invalid or incomplete verdicts; the parser still requires a separate marker line. Use `[]` when no line needs judgment. Never concatenate a marker onto a stored separator or transcribe a stored block to attach verdicts. The same composer is available as `node <tool-path> compose --block-file <path> --verdicts-file <path>` when a caller needs its composed stdout.
+For registration, amendment, and every `check` call, the block and its verdicts travel as files. No block content passes through a shell command: no stdin pipe, heredoc, or here-string. Prepare them in this order, on both Claude Code and opencode. In each step `<tool-path>` is the path of the tool that step names, resolved per `@sai/policies/tool-resolution.md`:
+
+1. Run `transfer.js` as `node <tool-path> open --harness <claude|opencode>`. It creates one private directory under the SAI temp root and returns its absolute `dir`. `transfer.js put` is not used here: it reads its content on stdin and would bring the block back into a shell command.
+2. Write the block set as UTF-8 to `<dir>/blocks.md`, exactly as it will be displayed, with the harness-native file-write tool (`Write` on Claude Code, `write` on opencode). Pass absolute paths only. This write goes to the transfer directory outside the repository; a `/sai-explore` session writes no repository file.
+3. Run `node <tool-path> check --profile dispatchable --block-file <dir>/blocks.md` (`ready-to-propose.js`) to read the structural violations and the flagged lines. Judge each flagged line per `@sai/policies/block-hygiene-judgment.md`.
+4. Write the verdicts as one JSON array to `<dir>/verdicts.json` with the same tool: `[]` when no line is flagged. When verdicts exist, run `check` again with `--verdicts-file <dir>/verdicts.json` to confirm `dispatchable: true`.
+5. Run `sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <dir>/blocks.md --verdicts-file <dir>/verdicts.json`. It calls the shared `ready-to-propose.js` composer internally. Composition failure returns `BLOCK_COMPOSITION_FAILED` without a store mutation. The composer inserts the newline before `<<<VERDICTS>>>` mechanically, outside the hashed block, and rejects incomplete blocks and invalid or incomplete verdicts. Never concatenate a marker onto a stored separator or transcribe a stored block to attach verdicts. The same composer is available as `node <tool-path> compose --block-file <path> --verdicts-file <path>` when a caller needs its composed stdout.
+6. Once the registration or amendment is recorded, run `transfer.js` as `node <tool-path> close --dir <dir>`. A rewritten block or verdict after a failed check overwrites the same file in the same directory.
+
+When the directory cannot be opened or a file cannot be written, the emit or check stops and reports the error. There is no stdin fallback.
 
 The Manual route has no store and no hash.
 

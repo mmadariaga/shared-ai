@@ -581,7 +581,7 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
       `sai-explore should retain ${required}`);
   }
   assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)Bash(?:,|$)/);
-  assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
+  assert.ok(exploreToolNames.includes('Write'), 'sai-explore writes its block and verdicts files with the native file-write tool; repository files stay read-only by contract');
 
   const status = artifact('commands/claude/sai-status.md');
   assert.equal(status.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-status'));

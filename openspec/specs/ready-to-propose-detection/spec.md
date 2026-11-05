@@ -51,11 +51,11 @@ Every text that passes the `strict` profile SHALL also pass the `loose` profile.
 
 ### Requirement: Detector is documented and distributed without a manifest change
 
-`sai/policies/tool-resolution.md` SHALL document the invocation shape `node <tool-path> check --profile loose|strict` with the text on stdin. `AGENTS.md` SHALL register `ready-to-propose.js` in its `sai/tools/` registry row. The tool SHALL reach both Claude Code and opencode through the existing `sai-tools` projection with no `sai/install-manifest.json` edit.
+`sai/policies/tool-resolution.md` SHALL document the invocation shape `node <tool-path> check --profile loose|strict|dispatchable --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist, with the tool composing the `<<<VERDICTS>>>` line itself. `AGENTS.md` SHALL register `ready-to-propose.js` in its `sai/tools/` registry row. The tool SHALL reach both Claude Code and opencode through the existing `sai-tools` projection with no `sai/install-manifest.json` edit.
 
 #### Scenario: The detector is registered and projected
 - **WHEN** `AGENTS.md`, `sai/policies/tool-resolution.md`, and `sai/install-manifest.json` are read
-- **THEN** the registry row and the invocation shape name `ready-to-propose.js`, and the manifest carries no detector-specific entry
+- **THEN** the registry row and the `--block-file` invocation shape name `ready-to-propose.js`, and the manifest carries no detector-specific entry
 
 ### Requirement: Deterministic stdin detector with loose, strict, and dispatchable profiles
 

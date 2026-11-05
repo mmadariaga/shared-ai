@@ -54,11 +54,12 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   validator exits 2 on every verb. Every stdout JSON response, machine errors
   (exit 1) included, carries `received_at` as its first key; stderr carries no
   time.
-- **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
-  reads the complete `Ready to Propose` block set as text from stdin instead of
-  a hand-composed event, in the style of the progress emit. The stdin may end
-  with a line equal to `<<<VERDICTS>>>` followed by the bounded-judgment
-  verdicts as a JSON array (`@sai/policies/block-hygiene-judgment.md`). It
+- **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>`
+  reads the complete `Ready to Propose` block set as text from the block file
+  instead of a hand-composed event, and the bounded-judgment verdicts
+  (`@sai/policies/block-hygiene-judgment.md`) as a JSON array from the
+  verdicts file (`[]` when no line is flagged). Both files are prepared per
+  `@sai/policies/ready-to-propose-format.md` § Block and verdict delivery. It
   validates the set with the `dispatchable` profile of
   `sai/tools/ready-to-propose.js` before any session, machine, or registry
   read; the set is dispatchable when it is structurally valid and every line
@@ -78,9 +79,11 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   pending, violations, unknown, invalid}}` (change names stay off the wire;
   `ok` is true only for a dispatchable set), plus the ordinary emit fields on a
   dispatchable verdict. A non-dispatchable verdict exits 1; `judgment.pending`
-  lists the lines awaiting a verdict. Empty stdin, stdin with no block heading,
-  or a final block cut off before its `---` line is a delivery failure instead
-  (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`, exit 1). A dispatchable
+  lists the lines awaiting a verdict. An empty block file, a block file with no
+  block heading, a final block cut off before its `---` line, or verdicts that
+  leave a flagged line without a `context` verdict is a delivery failure
+  instead (`INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"`, exit 1).
+  A dispatchable
   set is accepted only while `explore-idea@1` in the same session is at its
   `crystallize` stage (an absent state counts as `explore-change`); at any
   other stage nothing is recorded and the response is `INVALID_EVENT` with
@@ -89,13 +92,13 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   machine, or combined with `--progress`, the option is a
   usage error (exit 2). A detector module found in neither location relative to
   the CLI exits 2 naming the tried paths.
-- **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -`
-  reads exactly one `Ready to Propose` block as text from stdin, in the block
-  emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix. It
+- **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --block-file <path> --verdicts-file <path>`
+  reads exactly one `Ready to Propose` block as text from the block file, in the
+  block emit's delivery form and with the same verdicts file. It
   validates the block with the `dispatchable` profile exactly as the block emit
   does, then requires the block's `**Change name**` to equal `<change-name>`
-  (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the stdin
-  to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
+  (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the block
+  file to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
   then accepts the amendment for a pending or stopped slice only: a slice that
   is completed (`rejected: "SLICE_COMPLETED"`), running
   (`rejected: "SLICE_RUNNING"`), or not in the recorded inventory
@@ -109,7 +112,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `validation` alone, exits 1, and replaces nothing. The option is accepted
   only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
   error (exit 2).
-  Both registration and amendment also accept `--block-file <path> --verdicts-file <path>` instead of stdin and the `-` positional marker. This invokes `ready-to-propose.js`'s shared composer before validation or state reads, inserting the required newline boundary without changing the hashed block. Invalid/missing files, incomplete blocks, or invalid verdicts return `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"` (exit 1), with no transition or write. Use this file form for stored-block amendments and registration with verdicts in both harnesses.
+  Both registration and amendment use the `--block-file <path> --verdicts-file <path>` form on both harnesses. It invokes `ready-to-propose.js`'s shared composer before validation or state reads, inserting the required newline boundary without changing the hashed block. Invalid/missing files, incomplete or non-dispatchable blocks, or invalid or incomplete verdicts return `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"` and a `detail` (exit 1), with no transition or write; the per-line `validation` of such a block comes from `ready-to-propose.js check --profile dispatchable --block-file <path>` (`@sai/policies/ready-to-propose-format.md` § Block and verdict delivery).
 - **Block**: `sai-state block <id> <change-name>` returns
   `{received_at, hash, text}` for one recorded slice: the exact validated block
   text and its sha256 hash as the block emit (or the latest amendment) stored
@@ -166,7 +169,7 @@ authoritative and surface the regression against the presentation hint.
 
 ## Event delivery
 
-The event travels on stdin, never as an argument. The canonical example's
+A non-block event travels on stdin, never as an argument. The canonical example's
 emit line is the full invocation, identical in Bash and PowerShell 7 (the
 shells `@sai/policies/command-execution.md` supports) on both Claude Code and
 opencode: the JSON in single quotes
@@ -185,36 +188,34 @@ slice name; the machine always chooses the first pending entry in that ordered
 inventory.
 
 **Block emits are the one exception.** The block emit carries the free-text
-block set, so it travels as literal text, not as single-quoted JSON: a quoted
-heredoc in Bash, a single-quoted here-string in PowerShell, on both Claude Code
-and opencode. Nothing inside is expanded or escaped. Send the set exactly as it
-will be displayed:
+block set, so it travels as files, never as single-quoted JSON and never
+through a shell command: the block set in a block file and its verdicts in a
+verdicts file, both written with the harness-native file-write tool per
+`@sai/policies/ready-to-propose-format.md` § Block and verdict delivery, then
+passed as absolute paths. The invocation is identical in Bash and PowerShell 7
+on both Claude Code and opencode. Write the set exactly as it will be
+displayed:
 
 ```text
-node <tool-path> emit <id> explore-slice@1 --ready-to-propose - <<'SAI_BLOCKS'
-<block set>
-SAI_BLOCKS
+node <tool-path> emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>
 ```
 
-```text
-@'
-<block set>
-'@ | node <tool-path> emit <id> explore-slice@1 --ready-to-propose -
-```
-
-When the hygiene judgment supplies verdicts, they follow the block set inside the same text, after a `<<<VERDICTS>>>` line, as one JSON array (the here-string and heredoc carry the quotes unchanged). The displayed set excludes that line and everything after it.
-
-The PowerShell closing `'@` starts its own line. A re-encoded non-ASCII
-character in the prose does not change the verdict: the labels are English and
-the change names are kebab-case ASCII. An empty or cut-off delivery returns
-`EVENT_UNPARSEABLE` and falls under § Corrective retry; a validation failure
-does not, and follows the retry rule of the command that sends the block set.
+The verdicts file holds one JSON array: the verdicts the hygiene judgment
+supplies, or `[]` when no line is flagged. The composer adds the
+`<<<VERDICTS>>>` line mechanically, so the displayed set never contains it. A
+file write keeps non-ASCII characters byte for byte; the labels are English and
+the change names are kebab-case ASCII. A block emit that cannot be delivered
+returns `BLOCK_COMPOSITION_FAILED` and falls under § Corrective retry; a
+validation failure does not, and follows the retry rule of the command that
+sends the block set. When the files cannot be prepared, the emit stops and
+reports the error: there is no stdin fallback.
 
 ## Corrective retry
 
-A delivery failure — `reason: "EVENT_UNPARSEABLE"` or an `emit` usage error
-(exit 2) — gets up to 2 retries of that same emit without asking the user,
-before any store failure is declared. Each retry corrects the delivery form to
+A delivery failure — `reason: "EVENT_UNPARSEABLE"`,
+`reason: "BLOCK_COMPOSITION_FAILED"`, or an `emit` usage error (exit 2) — gets
+up to 2 retries of that same emit without asking the user, before any store
+failure is declared. Each retry corrects the delivery form to
 the canonical example; repeating the same command is not a retry. When both
 retries fail, stop and show the error per § next.follow. The counter belongs
 to that one emit, not to the session, and the rule binds every emitter,

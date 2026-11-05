@@ -54,11 +54,11 @@ After a successful emit the command SHALL confirm that the stored blocks match t
 
 ### Requirement: Crystallization close runs the hygiene judgment
 
-When the block emit reports pending flagged lines, the crystallization close SHALL fetch `sai/policies/block-hygiene-judgment.md`, judge each pending line, and send the same set again with the verdicts after the `<<<VERDICTS>>>` line. On a confirmed violation it SHALL record nothing, show each violation's clause, line number, and evidence, recompose the set so the line no longer requests the forbidden action, and judge again within the validation retry limit; it SHALL ask the user only when the correction would change an agreed `E` or `I` item or the scope.
+When the validation of the block file reports pending flagged lines, the crystallization close SHALL fetch `sai/policies/block-hygiene-judgment.md`, judge each pending line, write the verdicts as one JSON array to the verdicts file beside the unchanged block file, and emit the same set through `--block-file <path> --verdicts-file <path>`, letting the composer add the `<<<VERDICTS>>>` line. On a confirmed violation it SHALL record nothing, show each violation's clause, line number, and evidence, recompose the set so the line no longer requests the forbidden action, and judge again within the validation retry limit; it SHALL ask the user only when the correction would change an agreed `E` or `I` item or the scope.
 
 #### Scenario: Judged set is recorded
 
-- **WHEN** the first emit reports pending flagged lines and the resend carries `context` verdicts for all of them
+- **WHEN** the first validation reports pending flagged lines and the emit carries a verdicts file with `context` verdicts for all of them
 - **THEN** the set is recorded and the close continues to block display
 
 #### Scenario: Correction that changes agreed scope asks the user

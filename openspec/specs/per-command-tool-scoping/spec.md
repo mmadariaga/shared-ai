@@ -23,13 +23,21 @@ The seven routed planning, implementation, review, and audit command wrappers (S
 - **WHEN** capability projection is applied
 - **THEN** Explore and Status preserve their existing command operations with generated pre-approvals and opencode still declares no command permission field
 
-### Requirement: Claude Code sai-explore is scoped read-only via allowed-tools
+### Requirement: Read-only scoping preserves sai-explore's non-writing operations
 
-The Claude Explore wrapper SHALL project canonical pre-approvals covering reading, searching, interaction, skills, web research, CodeGraph, delegation, and scoped shell operations for openspec, git, and Node tools under both installed SAI roots. It SHALL exclude Edit, Write, and bare unrestricted shell pre-approvals. Its non-writing boundary SHALL remain contract-owned: allowed-tools pre-approves selected operations but does not deny all unlisted tools or override inherited native permission restrictions.
+Required access SHALL preserve delegation, artifact and instruction reads, OpenSpec CLI reads, option-pickers, skills, and research-subagent dispatch on Claude Code and opencode. Discovery SHALL remain delegated to the explorer; granting direct CodeGraph access SHALL NOT itself assign principal discovery or availability-probe duties. Profile grant scope SHALL remain distinct from operation authorization, and broader wildcard coverage SHALL NOT authorize off-contract operations. The interactive command SHALL NOT be replaced with a read-only child to obtain apparent enforcement.
 
-#### Scenario: Write tools are absent from the allowed-tools list
+#### Scenario: Non-writing paths survive the restriction
+- **WHEN** Explore runs with its required effective access on a supported harness
+- **THEN** it can delegate discovery, read instructions and artifacts, run OpenSpec reads, and present pickers while retaining its contract-owned non-writing boundary without claiming unlisted tools are unavailable
+
+### Requirement: Claude Code sai-explore is scoped via allowed-tools with a transfer-directory write
+
+The Claude Explore wrapper SHALL project canonical pre-approvals covering reading, searching, interaction, skills, web research, CodeGraph, delegation, scoped shell operations for openspec, git, and Node tools under both installed SAI roots, and the native file-write tools that the `explore-command` profile's write grant projects for the block and verdicts files of a `Ready to Propose` registration, amendment, or check. It SHALL exclude bare unrestricted shell pre-approvals. Its non-writing boundary for repository files SHALL remain contract-owned: the write grant serves only the private `transfer.js` directory under the SAI temp root, and allowed-tools pre-approves selected operations but does not deny all unlisted tools or override inherited native permission restrictions.
+
+#### Scenario: Write is limited to the transfer-directory block write
 - **WHEN** projected Explore frontmatter is inspected
-- **THEN** allowed-tools is present without Edit, Write, or bare unrestricted shell entries, while contracted CodeGraph access is included
+- **THEN** allowed-tools is present with `Write` for the transfer-directory block write and without bare unrestricted shell entries, contracted CodeGraph access is included, and the Explore instructions confine every write to the private transfer directory outside the repository
 
 #### Scenario: openspec CLI reads keep working under the scoped shell
 - **WHEN** Explore through its OpenSpec skill runs openspec list --json with effective native access
@@ -38,11 +46,3 @@ The Claude Explore wrapper SHALL project canonical pre-approvals covering readin
 #### Scenario: Required read tools are positively present
 - **WHEN** projected Explore frontmatter is inspected
 - **THEN** its pre-approvals include Read, Glob, Grep, and scoped openspec and git shell access
-
-### Requirement: Read-only scoping preserves sai-explore's non-writing operations
-
-Required access SHALL preserve delegation, artifact and instruction reads, OpenSpec CLI reads, option-pickers, skills, and research-subagent dispatch on Claude Code and opencode. Discovery SHALL remain delegated to the explorer; granting direct CodeGraph access SHALL NOT itself assign principal discovery or availability-probe duties. Profile grant scope SHALL remain distinct from operation authorization, and broader wildcard coverage SHALL NOT authorize off-contract operations. The interactive command SHALL NOT be replaced with a read-only child to obtain apparent enforcement.
-
-#### Scenario: Non-writing paths survive the restriction
-- **WHEN** Explore runs with its required effective access on a supported harness
-- **THEN** it can delegate discovery, read instructions and artifacts, run OpenSpec reads, and present pickers while retaining its contract-owned non-writing boundary without claiming unlisted tools are unavailable

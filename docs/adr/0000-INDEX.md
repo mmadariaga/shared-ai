@@ -219,6 +219,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
 - [0202 — One live explorer per coordinator, and agents keep their own prompt cache warm](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) — **Amends** 0188, Refs 0194, Refs 0199
 - [0206 — opencode dispatches subagents in the background through the v2 `subagent` tool](./0206-opencode-dispatches-subagents-in-the-background-through-the-v2-tool.md) — **Amends** 0185
+- [0207 — Explore writes `Ready to Propose` block files with the native write tool into a private transfer directory](./0207-explore-writes-block-files-with-the-native-write-tool.md)
 
 ### `/sai-backfill`
 
@@ -587,6 +588,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0161b — Capability deltas stay change-local until archive sync](./0161b-capability-deltas-stay-change-local-until-archive.md) — Refs 0158c
 - [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
 - [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
+- [0207 — Explore writes `Ready to Propose` block files with the native write tool into a private transfer directory](./0207-explore-writes-block-files-with-the-native-write-tool.md)
 
 ### Artifact metadata & routing tokens
 
