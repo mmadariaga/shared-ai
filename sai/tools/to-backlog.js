@@ -2,14 +2,14 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { runProcess, stepLabel } = require('./backlog-process');
 const projectSettings = require('./project-settings');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
 function run(command, args, cwd, input) {
   if (command === 'azure-sdk') return require('./from-backlog').runAzureSdk(input);
   if (command === 'az') return require('./from-backlog').run(command, args, input);
-  const result = spawnSync(command, args, { cwd, input, encoding: 'utf8', shell: false, maxBuffer: 32 * 1024 * 1024 });
+  const result = runProcess(command, args, { step: stepLabel(command, args), cwd, input, encoding: 'utf8', shell: false, maxBuffer: 32 * 1024 * 1024 });
   if (result.error || result.status !== 0) throw new Error(`${command}: ${result.error?.message || result.stderr || `exit ${result.status}`}`);
   return result.stdout;
 }
@@ -148,7 +148,7 @@ function main(argv) {
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
   } catch (error) {
-    process.stdout.write(JSON.stringify(projectSettings.report({ status: 'failure_before_publication', message: error.message }, { warnings })) + '\n');
+    process.stdout.write(JSON.stringify(projectSettings.report({ status: 'failure_before_publication', ...(error.reason ? { reason: error.reason } : {}), message: error.message }, { warnings })) + '\n');
     return 2;
   }
 }

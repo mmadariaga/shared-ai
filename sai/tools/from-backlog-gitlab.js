@@ -112,7 +112,7 @@ const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) =>
   try {
   const row = issue(ref.target, ref.number, io);
   if (!Array.isArray(row.assignees) || row.assignees.some(actor => !Number.isSafeInteger(actor.id) || actor.id < 1)) throw fault('Incomplete GitLab assignees');
-  const identity = require('./backlog-slice-identity'), written = identity.decode(result.item.description);
+  const identity = require('./backlog-slice-identity'), written = identity.decode(result.item.description, ref.url);
   // Native blockers belong to the set the issue is a child of.
   const correspondence = identity.upper(written) ?? written;
   let blockers, limitation;
@@ -131,8 +131,8 @@ const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) =>
 /** Children of an issue with their state, from the written slice correspondence. No comments or assignees. */
 function readChildren(reference, io) {
   try {
-    const written = require('./backlog-slice-identity').decode(readIssue(reference, io).description);
-    const children = (written?.role === 'parent' ? [...new Set(written.slices.map(slice => slice.issue))] : [])
+    const identity = require('./backlog-slice-identity'), written = identity.decode(readIssue(reference, io).description, reference.url);
+    const children = (written?.role === 'parent' ? [...new Set(identity.slicesOf(written, reference.url).map(slice => slice.issue))] : [])
       .map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; });
     return { status: 'complete', children };
   } catch (error) {

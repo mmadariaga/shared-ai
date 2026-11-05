@@ -9,11 +9,11 @@ const save = (file, receipt) => require('./to-backlog-github').save(file, receip
 
 // Only the single-issue content adapters can write in this lane. No creation or relation operation is reachable.
 function bind(provider, adapter, same = (a, b) => a === b) {
-  const correspondence = value => digest({ ...value, slices: [...value.slices].map(slice => ({ ...slice, depends_on: [...slice.depends_on].sort() })).sort((a, b) => a.change_name.localeCompare(b.change_name)) });
+  const correspondence = value => digest({ ...value, slices: [...identity.slicesOf(value, value.parent)].map(slice => ({ ...slice, depends_on: [...slice.depends_on].sort() })).sort((a, b) => a.change_name.localeCompare(b.change_name)) });
   // Each Azure work item is published in its own description format: a Markdown one in Markdown, any other in HTML.
   const markdownItem = current => provider === 'azuredevops' && current.format === 'markdown';
   function render(description, value, markdown) {
-    const own = value.role === 'child' && value.slices.find(slice => slice.change_name === value.change_name);
+    const own = value.role === 'child' && identity.slicesOf(value, value.parent).find(slice => slice.change_name === value.change_name);
     const links = own ? [`Parent: ${value.parent}`, ...own.depends_on.map(name => `Depends on: ${value.slices.find(slice => slice.change_name === name).issue}`)]
       : [...value.slices.map(slice => `Child: ${slice.change_name} — ${slice.issue}`), ...(value.child_of ? require('./backlog-set-origin').upperLinks(value.child_of) : [])];
     if (markdown) return `${description}\n\n${links.join('\n')}\n${identity.encodeMarkdown(value)}`;
@@ -25,9 +25,9 @@ function bind(provider, adapter, same = (a, b) => a === b) {
     if (!validation.ok) return { status: 'blocked', reason: 'invalid-dependencies', validation };
     const api = adapter();
     const parent = api['read-update']({ reference: request.origin }, io);
-    const marker = identity.decode(parent.baseline.description);
+    const marker = identity.decode(parent.baseline.description, parent.issue.url);
     if (!marker || marker.role !== 'parent' || marker.platform !== provider || marker.parent !== parent.issue.url) return { status: 'blocked', reason: 'unverifiable-correspondence' };
-    const names = validation.blocks.map(row => row.name), previous = marker.slices.map(slice => slice.change_name);
+    const names = validation.blocks.map(row => row.name), previous = identity.slicesOf(marker, parent.issue.url).map(slice => slice.change_name);
     const added = names.filter(name => !previous.includes(name)), removed = previous.filter(name => !names.includes(name));
     const dependencies = validation.blocks.filter(row => digest([...row.dependencies].sort()) !== digest([...(marker.slices.find(slice => slice.change_name === row.name)?.depends_on || [])].sort())).map(row => row.name);
     if (added.length || removed.length || dependencies.length) return { status: 'blocked', reason: 'composition-changed', added, removed, dependencies };
@@ -36,9 +36,9 @@ function bind(provider, adapter, same = (a, b) => a === b) {
     const parentDescription = provider !== 'azuredevops' || markdownItem(parent) ? request.description : require('./azure-markdown').convert(request.description);
     const inputs = [{ current: parent, title: request.title, description: parentDescription, marker }];
     // Resolve the complete correspondence before preparing any write, independent of block order.
-    for (const slice of marker.slices) {
+    for (const slice of identity.slicesOf(marker, parent.issue.url)) {
       const current = api['read-update']({ reference: slice.issue }, io);
-      const child = identity.decode(current.baseline.description), upper = identity.upper(child);
+      const child = identity.decode(current.baseline.description, slice.issue), upper = identity.upper(child);
       const expected = { ...marker, role: 'child', change_name: slice.change_name };
       delete expected.child_of;
       if (current.issue.url !== slice.issue || !upper || correspondence(upper) !== correspondence(expected)) throw new Error('Child correspondence is missing, ambiguous, or incompatible; no updates were written');
