@@ -158,7 +158,7 @@ The session-scoped commit authorization referenced by the commit rules SHALL be 
 
 ### Requirement: Closing lines come only from the archived change's backlog origin
 
-Archive commits SHALL be the only commits that carry a closing line. An archive commit SHALL carry one footer line per archived change, built from the `backlog_origin` key of `openspec/changes/archive/<date>-<name>/.openspec.yaml`. A GitHub `https://github.com/owner/repo/issues/N` SHALL become `Closes owner/repo#N`, and a GitLab `https://host/group/project/-/issues/N` SHALL become `Closes group/project#N`. Every closing line SHALL use the fully qualified form. A change without a `backlog_origin`, or with an Azure DevOps origin, SHALL get no closing line. The `.openspec.yaml` reader SHALL return `backlog_origin`, quoted or unquoted, and `null` when the key is absent.
+Archive commits SHALL be the only commits that carry a closing line. An archive commit SHALL carry one footer line per archived change, built from the `backlog_origin` key of `openspec/changes/archive/<date>-<name>/.openspec.yaml`. A GitHub `https://github.com/owner/repo/issues/N` SHALL become `Closes owner/repo#N`, and a GitLab `https://host/group/project/-/issues/N` or `https://host/group/project/-/work_items/N` SHALL become `Closes group/project#N`. The closing line SHALL be derived from the URL shape alone, with no API call. Every closing line SHALL use the fully qualified form. A change without a `backlog_origin`, or with an Azure DevOps origin, SHALL get no closing line. The `.openspec.yaml` reader SHALL return `backlog_origin`, quoted or unquoted, and `null` when the key is absent.
 
 #### Scenario: GitHub origin becomes a qualified closing line
 - **WHEN** the archived change's `backlog_origin` is `https://github.com/mmadariaga/shared-ai/issues/120`
@@ -167,6 +167,18 @@ Archive commits SHALL be the only commits that carry a closing line. An archive 
 #### Scenario: No origin produces no closing line
 - **WHEN** the archived change's `.openspec.yaml` has no `backlog_origin`
 - **THEN** the archive commit carries no closing line
+
+#### Scenario: GitLab work-item origin becomes a qualified closing line
+- **WHEN** the archived change's `backlog_origin` is `https://gitlab.example.com/team/repo/-/work_items/7`
+- **THEN** the archive commit carries the footer line `Closes team/repo#7`
+
+#### Scenario: GitLab issue origin keeps its closing line
+- **WHEN** the archived change's `backlog_origin` is `https://gitlab.example.com/team/repo/-/issues/7`
+- **THEN** the archive commit carries the footer line `Closes team/repo#7`, the same as before work-item origins were supported
+
+#### Scenario: Work-item closing line needs no API call
+- **WHEN** the archived change's `backlog_origin` is a GitLab `/-/work_items/N` URL
+- **THEN** the archive step derives the closing line from the URL shape alone, without a GitLab API call or a work-item type check
 
 ### Requirement: Attribution exception is limited to its validation
 
