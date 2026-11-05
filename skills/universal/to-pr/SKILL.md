@@ -1,7 +1,6 @@
 ---
 name: to-pr
-description: Prepare, create or update a registered provider's pull or merge request from committed Git changes, after explicit approval.
-disable-model-invocation: true
+description: Use when the user requests PR/MR publication or accepts the completed sai-plan draft-publication offer. Prepare, create or update a registered provider's request from committed Git changes, with explicit approval before remote operations.
 ---
 
 # Publish a PR/MR
@@ -69,13 +68,15 @@ or use that file's overflow-only managed-comment option on any supported provide
 **Complete when:** the selected location carries one ratings block, stored when `fresh` and otherwise
 computed with its four levels each at or above the tool's floor.
 
-For an explicit Azure DevOps request to create a draft or convert an existing PR
+For an explicit request on GitHub, GitLab or Azure DevOps to create a draft or convert an existing PR/MR
 to draft, include `draft:true` in both `query` and `publish`. Omit it otherwise:
 creation keeps current behavior, and updates preserve the current draft state.
-This adds no GitHub or GitLab draft operation.
+On GitLab, supply the Conventional Commits title without a `Draft:` prefix: the tool
+adds that prefix to the approved wire title. The current draft state and conversion
+of any ready request are part of the exact publication approval, never implicit consent.
 
 Run `query` with `{provider,repository,remote,base,title,description}` plus the
-risk allocation fields from `description-format.md`, any explicit Azure `draft:true`, and the
+risk allocation fields from `description-format.md`, any explicit `draft:true`, and the
 `allow_attribution` exception only as `description-format.md` authorizes. It validates
 the title and final description and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
@@ -86,7 +87,7 @@ existing description with the block just computed, or insert it at its fixed pos
 the existing description has none, without asking for approval of that replacement; the
 rest of the description follows the retention rule above, and the full result is still
 presented for the publication approval in step 3. Updates write title and description,
-the selected managed risk comment, and an explicitly requested Azure draft state.
+the selected managed risk comment, and an explicitly requested draft state.
 Reviewers and all other fields stay unchanged.
 `no_changes` ends without mutation.
 

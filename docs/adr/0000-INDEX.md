@@ -260,6 +260,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-plan`, `/sai-1-spec`, and `/sai-2-design`
 
 - [0199 — `/sai-1-spec` and `/sai-2-design` leave the shared orchestration and compose into `/sai-plan`](./0199-spec-and-design-leave-the-shared-orchestration.md) — **Amends** 0194, Refs 0187, Refs 0188, Refs 0189
+- [0209 — Publish complete plans on the change branch](./0209-publish-complete-plans-on-the-change-branch.md) — Refs 0199, Refs 0040, Refs 0044, Refs 0045, Refs 0146b
 
 ### `/sai-deep-review`, `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`
 

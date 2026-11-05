@@ -11,6 +11,7 @@ const { checkPrTitleRules, checkAiAttribution } = require('./lint');
 const projectSettings = require('./project-settings');
 const riskSignals = require('./risk-signals');
 const riskComments = require('./to-pr-comments');
+const planPublication = require('./plan-publication');
 const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, options = {}) {
@@ -218,7 +219,7 @@ function validateDescription(provider, description, overflowLimit) {
 // `build` rebuilds the proposal around a given assignee and labels, for publish's fallback.
 function prepareQuery(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
-  const violations = checkPrTitleRules(request.title);
+  const violations = checkPrTitleRules(request.provider === 'gitlab' ? request.title.replace(/^Draft:\s*/i, '') : request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
   const selected = destination(request, io);
   const provider = adapter(request.provider, io);
@@ -227,7 +228,13 @@ function prepareQuery(request, io) {
   const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = withClosingBlock(request, selected, io);
   validateDescription(request.provider, description, request.risk_placement === 'comment' ? request.description_overflow?.limit : undefined);
-  if (request.draft !== undefined && (request.provider !== 'azuredevops' || request.draft !== true)) throw new Error('Only an explicit Azure draft:true request is supported');
+  if (request.draft !== undefined && request.draft !== true) throw new Error('Only an explicit draft:true request is supported');
+  // GitLab's supported draft write is its title prefix; bind the actual wire title.
+  if (request.provider === 'gitlab') {
+    const draft = request.draft === true || rows[0]?.isDraft === true;
+    if (/^Draft:\s*/i.test(request.title) && !draft) throw new Error('Draft title requires an explicit draft request');
+    if (draft) request = { ...request, title: `Draft: ${request.title.replace(/^Draft:\s*/i, '')}` };
+  }
   const inherent_risk = riskComments.plan(request, description, provider, selected.target, rows[0], io);
   const attribution = request.allow_attribution === true ? [] : checkAiAttribution(description, 'request description');
   if (attribution.length) throw new Error(`Invalid request description: ${JSON.stringify(attribution)}`);
@@ -312,7 +319,8 @@ function recover(request, io) {
     if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
     const rows = provider.list(target, proposal.source, proposal.base, io);
     const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
-    result = candidates.length === 1 ? { status: 'complete', request: candidates[0] } : { status: 'uncertain', candidates: rows, message: 'Read-only recovery cannot verify the approved content; do not repeat creation' };
+    const draftVerified = proposal.draft !== true || candidates[0]?.isDraft === true;
+    result = candidates.length === 1 && draftVerified ? { status: 'complete', request: candidates[0], ...(proposal.draft === true ? { draft: { requested: true, status: 'complete' } } : {}) } : { status: 'uncertain', candidates: rows, ...(proposal.draft === true ? { draft: { requested: true, status: 'pending' } } : {}), message: 'Read-only recovery cannot verify the approved content and draft state; do not repeat creation' };
   }
   if (!proposal.inherent_risk?.required) return { ...result, receipt: request.receipt, pr: { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) }, comment: { status: 'not_required' } };
   receipt.pr = { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) };
@@ -358,8 +366,8 @@ function main(rawArgv) {
   try {
     const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
-    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume };
-    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume <registry.json>; JSON in --input-file <path> (stdin also accepted)');
+    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume, 'plan-query': planPublication.query, 'plan-commit': planPublication.commit };
+    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit <registry.json>; JSON in --input-file <path> (stdin also accepted)');
     request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };

@@ -172,6 +172,22 @@ presentation. Panel absence remains adapter-owned.
 
 Two additional step libraries are not worker-instruction delivery: `/sai-explore` loads `sai/commands/explore/steps/common.md` at start and fetches later files only when `next.follow` names them (`explore-idea@1` then `explore-slice@1` per `@sai/policies/stage-machine.md`). `/sai-3-implement`, `/sai-4-review`, `/sai-1-spec`, and `/sai-2-design` deliver their RED, GREEN, review, spec, and design step files by pointer from their own coordinators through `red-steps@1`, `green-steps@1`, `review-steps@1`, `spec-steps@1`, and `design-steps@1` (outside the shared orchestration).
 
+### Optional plan publication
+
+After a successful `/sai-plan`, its coordinator owns one optional draft PR/MR
+offer, including when Explore follows it. Only acceptance loads
+`sai/commands/plan/publication.md`, which reuses `/to-pr` on the same change branch.
+Standalone spec/design gain no offer. Planning is complete before publication;
+declining, cancelling or unavailable publication preserves that state.
+`to-pr.js plan-query` and `plan-commit` bind exact current-change document content,
+including control files and an optional overview. Explicit local inclusion approval
+alone permits force-adding the listed ignored paths through a private index;
+unrelated staging and working files stay untouched. Ordinary segment ignore rules
+remain unchanged. Separate exact remote approval includes any conversion to draft.
+GitHub (REST creation, GraphQL conversion), GitLab (Draft title write) and Azure
+DevOps (isDraft write) require verified draft readback. Claude Code and opencode
+share the manifest capability profiles and installed tool/skill contracts.
+
 ### Audit coordinators and workers
 `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility` run outside the shared orchestration, in the shape of `/sai-4-review`: one goal-driven, unattended coordinator, `sai/commands/audit/coordinator.md`, serves the three audits. The wrappers load the harness fetch skill and that coordinator, with the audit in `command_name`. The coordinator loads only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `obstacle-escalation`, `finding-state`, and `cache-warming` (never `no-commit-guard`, `bounded-dispatch-retry`, or `composition.md`), reads `sai/commands/{audit}/options.md`, and runs under the `audit-command` capability profile (coordinator plus write, shell, and `safe-operations`, so it can verify and commit). These boundaries apply equally to Claude Code and opencode.
 

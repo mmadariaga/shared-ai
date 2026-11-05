@@ -119,6 +119,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     'sai/commands/plan/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md',
       '@sai/commands/spec/coordinator.md', '@sai/commands/design/coordinator.md', '@sai/policies/cache-warming.md',
+      '@sai/commands/plan/publication.md',
     ],
     'sai/commands/plan/cycle.md': [
       '@sai/commands/plan/worker-common.md', '@sai/policies/incremental-review.md', '@sai/policies/artifact-review-contract.md',
