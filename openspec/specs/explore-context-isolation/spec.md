@@ -9,7 +9,7 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 
 Explore SHALL remain directly read-only. The explicit Plan (unattended) route MAY dispatch only its existing supervised workers, and the explicit Direct Build (unattended) route MAY dispatch only its existing fast-lane workers under their closed ownership contracts.
 
-The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user explicitly selects `Yes, run a POC before continuing` at the close of the `Explore change` stage and the `C1..Cn` candidate list has been agreed. That POC is a bounded exception to ordinary explore read-only behavior: only the implementer may write code, tests, or required project configuration outside `openspec/`, and only inside the lane's own branch or worktree; it may not write OpenSpec artifacts, create planning artifacts, or run mutating Git commands beyond the creation and abandonment of that isolation. The POC does not authorize backfill, spec, archive, or commit work.
+The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user explicitly selects `Yes, run a POC before continuing` at the close of the `Explore change` stage and the `C1..Cn` candidate list has been agreed. That POC is a bounded exception to ordinary explore read-only behavior: only the implementer may write code, tests, or required project configuration outside `openspec/`, and only inside the lane's own POC isolation worktree; it may not write OpenSpec artifacts, create planning artifacts, or run mutating Git commands. The only Git mutations the POC lane permits are the coordinator-owned creation of its sibling worktree and exclusive branch through `worktree.js create`, and, after the user answers the destroy question with `Destroy the POC`, their forced removal through `worktree.js remove --force` and `delete-branch --force`, on the path and branch recorded at creation alone. The POC does not authorize backfill, spec, archive, or commit work.
 
 #### Scenario: route authorization is explicit
 
@@ -20,7 +20,7 @@ The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user 
 #### Scenario: the accepted POC has narrowed authority
 
 - **WHEN** the user selects `Yes, run a POC before continuing` and the candidate list is agreed
-- **THEN** only the implementer-only `--no-specs` profile may run, inside the lane's isolation, and it cannot write under `openspec/` or mutate Git state beyond that isolation
+- **THEN** only the implementer-only `--no-specs` profile may run, inside the lane's isolation, and it cannot write under `openspec/` or mutate Git state; only the lane itself creates the isolation and, on a confirmed `Destroy the POC`, removes the recorded worktree and branch
 
 ### Requirement: explore-no-inline-proposal
 
@@ -39,9 +39,9 @@ The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user 
 
 ### Requirement: explore-context-preserved
 
-The explore agent MUST remain a read-and-discuss coordinator and MUST NOT create, modify, or delete files directly. It MAY dispatch workers whose explicit phase contracts authorize writes, provided each worker writes only within the scope it owns. Outside an explicitly user-triggered supervised pipeline or an accepted POC, explore SHALL NOT invoke a write-producing phase.
+The explore agent MUST remain a read-and-discuss coordinator and MUST NOT create, modify, or delete files directly, except for the POC isolation exception: creating the POC lane's sibling worktree and exclusive branch, and removing exactly the recorded worktree and branch after the user confirms `Destroy the POC`. That exception MUST NOT modify the user's checkout, edit production code, or touch any other path or branch. It MAY dispatch workers whose explicit phase contracts authorize writes, provided each worker writes only within the scope it owns. Outside an explicitly user-triggered supervised pipeline or an accepted POC, explore SHALL NOT invoke a write-producing phase.
 
-During a POC, only the Direct Build `--no-specs` implementer may write code, tests, or required project configuration outside `openspec/`, and only within the branch or worktree the lane created for it. The POC SHALL NOT write proposal, spec, change metadata, planning artifacts, or any other file under `openspec/`. Explore itself remains read-only throughout the POC, and the isolation is abandoned rather than destructively deleted when the lane closes.
+During a POC, only the Direct Build `--no-specs` implementer may write code, tests, or required project configuration outside `openspec/`, and only within the POC isolation worktree the lane created for it. The POC SHALL NOT write proposal, spec, change metadata, planning artifacts, or any other file under `openspec/`. Explore itself writes no file throughout the POC beyond the isolation exception, and when the lane exits the isolation SHALL be removed only on the user's `Destroy the POC` answer and otherwise kept and reported, never discarded by deleting the user's working tree.
 
 #### Scenario: explore performs ordinary discussion or review
 
@@ -56,10 +56,15 @@ During a POC, only the Direct Build `--no-specs` implementer may write code, tes
 #### Scenario: viability POC writes only implementation scope
 
 - **WHEN** the POC lane authorizes a Direct Build `--no-specs` POC
-- **THEN** only the implementer writes authorized code, tests, or required project configuration outside `openspec/`, inside the branch or worktree the lane created for it
+- **THEN** only the implementer writes authorized code, tests, or required project configuration outside `openspec/`, inside the POC isolation worktree the lane created for it
 
 #### Scenario: write would escape the owned change directory
 
 - **WHEN** a supervised operation would write outside its authorized scope
 - **THEN** the pipeline refuses that write
 - **AND** explore does not perform or delegate the out-of-scope write
+
+#### Scenario: the isolation exception reaches only the recorded targets
+
+- **WHEN** the user answers the POC lane's destroy question with `Destroy the POC`
+- **THEN** explore removes only the worktree and branch recorded at creation and leaves the user's checkout and every other path and branch untouched
