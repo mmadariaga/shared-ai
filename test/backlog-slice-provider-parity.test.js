@@ -426,7 +426,7 @@ test('provider registry and both managed projections share operations; import ac
     }
   }
   const manifest = require('../sai/install-manifest.json');
-  assert.deepEqual(manifest.capabilities.profiles['from-backlog-command'].shell, ['node {sai}/tools/from-backlog.js *']);
+  assert.deepEqual(manifest.capabilities.profiles['from-backlog-command'].shell, ['node {sai}/tools/from-backlog.js *', 'node {sai}/tools/transfer.js open *']);
   const { expandInstallManifest } = require('../bin/install-manifest');
   for (const harness of ['claude', 'opencode']) {
     const repoRoot = path.resolve(__dirname, '..');

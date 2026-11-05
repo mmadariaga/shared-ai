@@ -130,28 +130,32 @@ The store SHALL operate as a local-only service with no HTTP server, no listenin
 - **THEN** the session file is deleted immediately with no tombstone delay, graceful shutdown period, or lingering liveness window
 
 ### Requirement: Event delivery on stdin
-Except for the Ready to Propose block file form, the `emit` verb SHALL read its event JSON only from stdin, marked by `-` as the third and last positional argument, and SHALL read all of stdin as UTF-8. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized stdin text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
+Except for the Ready to Propose block file form, the `emit` verb SHALL read its event JSON from the file named by `--input-file <path>` when that option is given, and otherwise only from stdin, marked by `-` as the third and last positional argument; with `--input-file`, the third positional argument SHALL be absent or `-`, and the input file SHALL win over stdin. It SHALL read the input as UTF-8 through the shared input reader `sai/tools/input-reader.js`. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized input text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
 - the id or machine id is missing;
-- the third positional argument is not `-`;
+- without `--input-file`, the third positional argument is not `-`;
 - any positional argument follows `-`;
-- stdin is an interactive terminal.
-The usage-error stderr message SHALL show the canonical form `echo '<json>' | node <tool-path> emit <id> <machineId> -`, or in progress mode the progress form `echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress -`. Characters degraded to `?` by the sending shell SHALL be accepted as received, without error. The `spawn`, `reset`, and `close` verbs SHALL be unchanged.
+- without `--input-file`, stdin is an interactive terminal.
+A missing, unreadable, or empty input file SHALL exit 2 with a stderr message that names the path and states that no transition occurred. The usage-error stderr message SHALL show the canonical form `node <tool-path> emit <id> <machineId> --input-file <path>` and state that stdin `-` is still accepted, or in progress mode the progress form `node <tool-path> emit <id> <machineId> --progress --input-file <path>`. Characters degraded to `?` by the sending shell SHALL be accepted as received, without error. The `spawn`, `reset`, and `close` verbs SHALL be unchanged.
 
 #### Scenario: BOM and CRLF around a valid event are accepted
-- **WHEN** the caller pipes `﻿{"intent":"next-step"}\r\n` to `emit <id> explore-idea@1 -`
+- **WHEN** the caller pipes `﻿{"intent":"next-step"}\r\n` to `emit <id> explore-idea@1 -`, or writes the same bytes to an input file passed with `--input-file`
 - **THEN** the process exits 0 with a `stage` in the response, no `reason`, and nothing written to stderr
 
 #### Scenario: Event JSON passed as an argument is a usage error
 - **WHEN** the caller invokes `emit <id> explore-idea@1 '{"intent":"next-step"}'`
-- **THEN** the process exits 2 without reading stdin, writes no JSON payload to stdout, and writes a stderr message showing the `emit <id> <machineId> -` stdin form
+- **THEN** the process exits 2 without reading stdin, writes no JSON payload to stdout, and writes a stderr message showing the `--input-file <path>` form
 
 #### Scenario: Missing marker or extra arguments is a usage error
-- **WHEN** the caller invokes `emit <id> <machineId>` without `-`, or `emit <id> <machineId> - extra`
+- **WHEN** the caller invokes `emit <id> <machineId>` without `-` and without `--input-file`, or `emit <id> <machineId> - extra`
 - **THEN** the process exits 2
 
 #### Scenario: Payload with spaces and degraded characters is accepted
 - **WHEN** the caller pipes `{"recordedList":["E1","a b ?"]}` to `emit <id> explore-idea@1 -`
 - **THEN** the process exits 0 and the event is applied as received
+
+#### Scenario: Missing input file changes no state
+- **WHEN** the caller invokes `emit <id> <machineId> --input-file <path>` with a path that does not exist
+- **THEN** the process exits 2, the stderr message names the path and states that no transition occurred, and the session is unchanged
 
 ### Requirement: Delivery failure reason on unparseable events
 When the normalized stdin text fails `JSON.parse`, `emit` SHALL answer `{error: "INVALID_EVENT", reason: "EVENT_UNPARSEABLE", next: {follow, hint}}` with exit code 1 and no transition. This SHALL apply to every parse failure of an event emit, including empty stdin, truncated JSON, trailing text, and broken or escaped quotes. `emit` SHALL write one stderr line showing the canonical stdin form. For ordinary JSON events the `reason` field SHALL appear only on these delivery failures; Ready to Propose file composition separately permits `BLOCK_COMPOSITION_FAILED` before any state read or write. An `INVALID_EVENT` for a valid event that the machine rejects, or for a malformed machine id, SHALL carry no `reason`, and neither SHALL `UNKNOWN_MACHINE` or `VERSION_MISMATCH`. In progress mode, a parse failure SHALL instead be an invalid `validation` verdict carrying the validator's invalid-JSON error, with no `reason` and no machine read. The store SHALL NOT detect quote-stripping or escaped-quote signatures and SHALL NOT write a hint pointing to a quoting section.

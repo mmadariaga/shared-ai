@@ -1,6 +1,6 @@
 # GitLab issue creation
 
-Use the common helper with this registry and JSON requests on stdin:
+Use the common helper with this registry and JSON requests in `--input-file <path>`:
 `node <tool> query|publish|recover <registry>`. Each request carries
 `"provider":"gitlab"`. `repository` is the project address accepted by `glab`;
 resolution delegates to `glab repo view --output json` using existing
@@ -16,7 +16,7 @@ rules. GitLab creation has no board/Project insertion, labels or assignments.
 After confirmation and common temporary-directory preparation, `publish` receives
 the same fields plus the unchanged `confirmation` token and absolute private
 `receipt` path. It rereads the destination, writes a durable receipt before the
-POST, and verifies the result. Content is a JSON body on stdin, never a command.
+POST, and verifies the result. Content is a JSON body in the input file, never a command.
 
 For an uncertain response, follow `../publication-recovery.md` and run `recover`
 directly with `provider` and the saved `receipt`, without a verification question.

@@ -19,7 +19,7 @@ common tool. Project input is its full URL:
 `https://github.com/orgs/OWNER/projects/N`. The Project owner is independent
 of the repository owner. Other GitHub hosts are not implemented.
 
-Run `node <tool> query <registry>`; stdin is JSON with `provider: "github"`,
+Run `node <tool> query <registry>`; the input file is JSON with `provider: "github"`,
 `repository`, optional `project`, `title`, and `description`. This checks gh
 availability and authentication, reads repository visibility and issue support,
 and resolves the selected Project. Without a selected Project it exhausts all

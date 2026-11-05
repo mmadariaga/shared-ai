@@ -40,7 +40,7 @@ The blocks are composed inside the block emit, never printed first. The machine 
 Place `**Depends on**: <comma-separated immediate change names or None>` inside
 each new slice block immediately after Change name, never in an external
 annotation. Before the block emit, run `ready-to-propose.js dependencies` with
-the complete set on stdin. Require `ok: true`; arrange unchanged block texts by
+the complete set in `--input-file <path>`. Require `ok: true`; arrange unchanged block texts by
 returned `order` before storage and display. This is stable blocker-first order
 and adds no dependencies from branch ancestry. Correct syntax without changing
 agreements; contradictory agreed dependencies require a user decision before

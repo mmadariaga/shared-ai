@@ -105,8 +105,8 @@ test('both harnesses project the adapter and provider without write or direct az
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
     for (const suffix of ['sai/tools/from-backlog-azuredevops.js', 'skills/from-backlog/providers/azuredevops.md', 'skills/from-backlog/providers/registry.json']) assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     const profile = translate(manifest.capabilities, 'from-backlog-command', harness).profile;
-    assert.ok(!profile.write);
-    assert.deepEqual(profile.shell, ['node {sai}/tools/from-backlog.js *']);
+    assert.equal(profile.write, 'temp');
+    assert.deepEqual(profile.shell, ['node {sai}/tools/from-backlog.js *', 'node {sai}/tools/transfer.js open *']);
   }
 });
 

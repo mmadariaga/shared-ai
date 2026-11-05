@@ -27,6 +27,17 @@ governs how to invoke a resolved path and deliver its input.
 
 ## Deliver literal commit messages
 
+`commit.js apply` takes the message as an input file. Open a private directory
+with `transfer.js open --harness <claude|opencode>` (`<tool-path>` per
+`@sai/policies/tool-resolution.md`), write the complete message as UTF-8 to a
+unique file in the returned `dir` with the harness-native file-write tool
+(`Write` on Claude Code, `write` on opencode), and run `commit.js apply
+--input-file <dir>/<file>` with the other arguments. The file keeps every
+character and the exact final-LF state; no message text passes through a shell
+command, so no quoting or shell form applies. Use its own file per call; close
+the directory with `transfer.js close --dir <dir>` once the commit has run.
+
+A direct Git commit (`git commit -F -`) has no input-file form.
 Pass the complete message on standard input. Do not put message text in a
 command string or a `git commit -m` argument.
 
@@ -45,15 +56,13 @@ state.
 set -e -o pipefail
 message='first line
 second line'
-printf '%s' "$message" | node "$tool_path" apply [options]
+printf '%s' "$message" | git commit -F -
 ```
 
 The fixed `printf` format does not interpret message characters or append a
 newline. `pipefail` exposes a failed process, and `-e` stops dependent shell
 commands. The example message has no final LF; when it has a final LF, put the
-closing quote after that LF. For a direct Git commit, use `git commit -F -`
-instead of the `node` invocation in the same `printf` pipeline and keep the
-route's authorization.
+closing quote after that LF. Keep the route's authorization.
 
 ### PowerShell 7
 
@@ -72,13 +81,14 @@ $message = [string]::Join("`n", [string[]]@(
   'second line'
 ))
 # If the message ends in LF, add a final empty item after 'second line'.
-$psi = [System.Diagnostics.ProcessStartInfo]::new('node')
+$psi = [System.Diagnostics.ProcessStartInfo]::new('git')
 $psi.UseShellExecute = $false
 $psi.WorkingDirectory = (Get-Location).Path
 $psi.RedirectStandardInput = $true
 $psi.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
-$psi.ArgumentList.Add('<tool-path>')
-$psi.ArgumentList.Add('apply')
+$psi.ArgumentList.Add('commit')
+$psi.ArgumentList.Add('-F')
+$psi.ArgumentList.Add('-')
 # Add the applicable flags as separate ArgumentList entries.
 $process = [System.Diagnostics.Process]::Start($psi)
 $process.StandardInput.Write($message)
@@ -89,11 +99,8 @@ if ($process.ExitCode -ne 0) { exit $process.ExitCode }
 
 Do not pipe a PowerShell string to a native process for this use: that pipeline
 can change line endings and add a final newline. Keep standard output and error
-visible to the command-execution tool. For `/sai-commit`, start `node`, add the
-resolved `commit.js` path, `apply`, the applicable optional flags, `--json`, and
-`--cwd` plus the repository path as separate arguments. For a direct Git commit,
-start `git` with `commit`, `-F`, and `-` as separate arguments. Set the process
-working directory to the repository when the invocation requires it.
+visible to the command-execution tool. Set the process working directory to the
+repository when the invocation requires it.
 
 `commit.js apply` remains the `/sai-commit` execution path because it validates
 that route's message and sensitive-file authorization.

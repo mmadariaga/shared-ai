@@ -5,28 +5,35 @@ const assert = require('node:assert/strict');
 const os = require('node:os');
 const path = require('node:path');
 const { translate, normalizeInstallRoot } = require('../bin/capabilities');
+const { harnessRoot } = require('../sai/tools/temp-root');
 const registry = require('../sai/install-manifest.json').capabilities;
 
 // Every shell command the instructions of each read-only profile prescribe, as `{root}`-relative tool paths.
 const T = tool => `sai/tools/${tool}`;
 const S = skill => `skills/${skill}`;
+const OPEN = { node: T('transfer.js'), args: 'open --harness {harness}' };
+const INPUT = '--input-file /tmp/sai/sai-transfer-abc123/input.json';
 const FETCH = { node: S('fetch/fetch.js'), args: '--harness {harness} sai/policies/tool-resolution.md' };
 const PLAIN = [
   'git grep -l pattern', 'git grep -c pattern -- src', 'git grep --max-count 5 pattern',
   'codegraph explore "how does x work"', 'opencode debug paths',
 ];
 const TABLE = {
-  research: { plain: PLAIN, nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'wait' }] },
+  coordinator: { plain: PLAIN.slice(4), nodes: [FETCH, OPEN,
+    { node: T('worker-report-validator.js'), args: `validate --kind progress --json ${INPUT}` },
+    { node: 'sai/bin/sai-state.js', args: `emit id explore-idea@1 ${INPUT}` }, { node: 'sai/bin/sai-state.js', args: `emit id machine --progress ${INPUT}` },
+    { node: S('sai-cache-warmer/wait.js'), args: `wait ${INPUT}` }] },
+  research: { plain: PLAIN, nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'warm --interval 5 --max 60 --chain abc123' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --state eyJhIjoxfQ' }] },
   'explore-command': { plain: ['openspec list --json', 'git status --short', ...PLAIN.slice(4)], nodes: [FETCH,
     { node: T('to-backlog.js'), args: 'create' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness}' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness} --dir x' },
-    { node: S('sai-cache-warmer/wait.js'), args: 'wait' }, { node: T('ready-to-propose.js'), args: 'check --profile strict' }] },
+    { node: S('sai-cache-warmer/wait.js'), args: 'wait' }, { node: T('ready-to-propose.js'), args: `check --profile strict ${INPUT}` }, OPEN] },
   'status-command': { plain: ['openspec status --change x --json', ...PLAIN.slice(4)], nodes: [FETCH,
     { node: T('status.js'), args: 'panel my-change --json --cwd .' }, { node: T('change-picker.js'), args: '--json' }] },
   'retrospective-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: T('retrospective.js'), args: 'index target --limit 5' }] },
-  'from-backlog-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: T('from-backlog.js'), args: 'resolve registry' }] },
+  'from-backlog-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: T('from-backlog.js'), args: `resolve registry ${INPUT}` }, OPEN] },
   'from-next-backlog-item-command': { plain: PLAIN.slice(4), nodes: [FETCH,
-    { node: T('from-next-backlog-item.js'), args: 'select' }, { node: T('from-backlog.js'), args: 'resolve registry' }] },
-  'cache-warmer-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'prepare' }] },
+    { node: T('from-next-backlog-item.js'), args: `select ${INPUT}` }, { node: T('from-backlog.js'), args: `resolve registry ${INPUT}` }, OPEN] },
+  'cache-warmer-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: `prepare ${INPUT}` }, OPEN] },
   'context-cache-benchmark-command': { plain: PLAIN.slice(4), nodes: [FETCH,
     { node: S('sai-context-cache-ttl-benchmark/cache_ttl.js'), args: 'run' },
     { node: S('sai-context-cache-ttl-benchmark/warming_override.js'), args: 'status' }] },
@@ -89,4 +96,40 @@ test('the four mutating utility commands run any shell command and every skills 
   }
   assert.ok(registry.universal.shell.includes('opencode debug paths'));
   assert.deepEqual(registry.profiles.research.shell.filter(rule => rule === '*'), [], 'the research profile keeps pattern-list shell');
+});
+
+test('scoped write grants native writes inside the SAI temp root only, on both harnesses', () => {
+  for (const name of ['coordinator', 'from-backlog-command', 'cache-warmer-command', 'commit-command', 'to-pr-command']) {
+    assert.equal(registry.profiles[name].write, 'temp', name);
+  }
+  const claude = translate(registry, 'from-backlog-command', 'claude');
+  const allowed = claude.allowedTools.split(', ');
+  assert.ok(claude.tools.split(', ').includes('Write'));
+  assert.ok(!allowed.includes('Write') && !allowed.includes('Edit') && !claude.tools.split(', ').includes('Edit'), 'no unscoped write and no Edit tool');
+  // The SAI temp root is platform-resolved: `/tmp/claude-<uid>` on Linux, `<tmpdir>/claude` elsewhere.
+  const saiRoot = harness => path.join(harnessRoot(harness), 'sai').split(path.sep).join('/');
+  const claudeRoot = saiRoot('claude');
+  const drive = /^([A-Za-z]):\/(.*)$/.exec(claudeRoot);
+  // Claude Code honors write path rules only under the `Edit` rule name; `Write(<path>)` is ignored.
+  const claudeRule = `Edit(${drive ? `//${drive[1].toLowerCase()}/${drive[2]}` : `/${claudeRoot}`}/**)`;
+  const scoped = allowed.filter(entry => entry === claudeRule);
+  assert.equal(scoped.length, 1, `expected ${claudeRule}`);
+  const opencode = translate(registry, 'from-backlog-command', 'opencode');
+  const edits = opencode.permissions.filter(rule => rule.action === 'edit' && rule.effect === 'allow');
+  assert.deepEqual(edits.map(rule => rule.resource), [`${saiRoot('opencode')}/*`]);
+  assert.ok(opencode.toolRequirements.some(entry => entry.capability === 'write'));
+});
+
+test('the research profile (the explorer) has no write grant and no Write tool on either harness', () => {
+  assert.equal(registry.profiles.research.write, undefined);
+  const claude = translate(registry, 'research', 'claude');
+  assert.ok(!claude.tools.split(', ').some(tool => ['Write', 'Edit'].includes(tool)));
+  assert.ok(!claude.allowedTools.split(', ').some(entry => /^(Write|Edit)\b/.test(entry)));
+  assert.ok(!translate(registry, 'research', 'opencode').permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'));
+  assert.ok(!registry.profiles.research.shell.some(rule => /transfer\.js/.test(rule)));
+});
+
+test('full write stays unscoped and an unknown write value fails closed', () => {
+  assert.ok(translate(registry, 'implement-command', 'opencode').permissions.some(rule => rule.action === 'edit' && rule.resource === '*'));
+  assert.throws(() => translate({ ...registry, profiles: { ...registry.profiles, bad: { extends: 'boot', write: 'anywhere' } } }, 'bad', 'claude'), /write must be boolean or "temp"/);
 });

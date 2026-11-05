@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { extractInputFile, readInput } = require('./input-reader');
 
 function git(cwd, args) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
@@ -96,8 +97,9 @@ function execute(operation, input = {}, cwd = process.cwd()) {
 
 if (require.main === module) {
   try {
-    const text = fs.readFileSync(0, 'utf8');
-    const result = execute(process.argv[2], text.trim() ? JSON.parse(text) : {});
+    const { argv, inputFile } = extractInputFile(process.argv.slice(2));
+    const text = inputFile ? readInput(inputFile) : fs.readFileSync(0, 'utf8');
+    const result = execute(argv[0], text.trim() ? JSON.parse(text) : {});
     console.log(JSON.stringify(result));
     if (result.status === 'failed') process.exitCode = 1;
   } catch (error) {

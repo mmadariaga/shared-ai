@@ -51,7 +51,7 @@ test('merge collision pass is incremental, family-aware, and runs on the final i
   assert.match(plan, /applicability: not-applicable \| no-collision \| repair-required \| escalation-required/);
   assert.match(plan, /claims no repository-wide scan/);
   const coordinator = read('sai/commands/merge/coordinator.md');
-  assert.match(coordinator, /`merge\.js collision --record <run>\/collision-\{k\}\.json` with the provenance on standard input/);
+  assert.match(coordinator, /`merge\.js collision --record <run>\/collision-\{k\}\.json` with the provenance in `--input-file <path>`/);
   assert.match(coordinator, /`needs-judgment` is a judgment point/);
 });
 

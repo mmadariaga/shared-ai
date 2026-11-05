@@ -7,7 +7,7 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-six shipped command-requirement assignments SHALL include to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only new-change-branch workflow with their own resolvable profiles, alongside the twenty-one SAI commands, including sai-3-implement, sai-build, and sai-cache-warmer. The new-change-branch assignment SHALL NOT require a command wrapper. The sai-cache-warmer assignment SHALL be backed by a `sai-cache-warmer.md` command wrapper on both harnesses and SHALL resolve to cache-warmer-command, inheriting boot access and granting questions, its skill, the `fetch` skill, and invocation of its bundled Node wait.js helper for both harnesses. The `worktree-command`, `new-change-branch-command`, `to-pr-command`, and `to-backlog-command` profiles SHALL grant shell `*`; this grant SHALL NOT change their contracts' confirmation requirements before deleting, publishing, or pushing. The retired sai-pr command SHALL have no current assignment.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-six shipped command-requirement assignments SHALL include to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only new-change-branch workflow with their own resolvable profiles, alongside the twenty-one SAI commands, including sai-3-implement, sai-build, and sai-cache-warmer. The new-change-branch assignment SHALL NOT require a command wrapper. The sai-cache-warmer assignment SHALL be backed by a `sai-cache-warmer.md` command wrapper on both harnesses and SHALL resolve to cache-warmer-command, inheriting boot access and granting questions, its skill, the `fetch` skill, native writes scoped to the SAI temp root, and invocation of its bundled Node wait.js helper and of `transfer.js open` for both harnesses. The `worktree-command`, `new-change-branch-command`, `to-pr-command`, and `to-backlog-command` profiles SHALL grant shell `*`; this grant SHALL NOT change their contracts' confirmation requirements before deleting, publishing, or pushing. The `coordinator`, `from-backlog-command`, and `from-next-backlog-item-command` profiles SHALL grant shell invocation of `transfer.js open`, so they can open the directory for their input files. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
 
@@ -22,27 +22,27 @@ The system SHALL declare abstract capability profiles and agent and command assi
 #### Scenario: Backlog invocation capabilities
 
 - **WHEN** the to-backlog command profile is resolved for either harness
-- **THEN** it grants reading, search, questions, the to-backlog, safe-operations, and fetch skills, and shell `*`, without changing publication confirmation requirements.
+- **THEN** it grants reading, search, questions, native writes scoped to the SAI temp root, the to-backlog, safe-operations, and fetch skills, and shell `*`, without changing publication confirmation requirements.
 
 #### Scenario: Backlog import capabilities
 
 - **WHEN** the from-backlog command profile is resolved for either harness
-- **THEN** it grants reading, search, questions, the from-backlog and fetch skills, and shell invocation of the common from-backlog Node tool, without granting file writes or the publication helper.
+- **THEN** it grants reading, search, questions, native writes scoped to the SAI temp root, the from-backlog and fetch skills, and shell invocation of the common from-backlog Node tool and of `transfer.js open`, without granting repository file writes or the publication helper.
 
 #### Scenario: Next backlog-item selection capabilities
 
 - **WHEN** the from-next-backlog-item command profile is resolved for either harness
-- **THEN** it inherits the read-only import profile, includes the selector, importer, and fetch skills, and limits shell grants to the selector Node helper select invocation, with and without further arguments, and the existing import Node helper without adding file writes or direct provider-CLI grants.
+- **THEN** it inherits the import profile with its temp-root-scoped writes, includes the selector, importer, and fetch skills, and limits shell grants to the selector Node helper select invocation, with and without further arguments, the existing import Node helper, and `transfer.js open`, without adding repository file writes or direct provider-CLI grants.
 
 #### Scenario: PR/MR invocation capabilities
 
 - **WHEN** the to-pr command profile is resolved for either harness
-- **THEN** it grants reading, search, questions, the to-pr, safe-operations, and fetch skills, and shell `*`, without authorizing publication or push.
+- **THEN** it grants reading, search, questions, native writes scoped to the SAI temp root, the to-pr, safe-operations, and fetch skills, and shell `*`, without authorizing publication or push.
 
 #### Scenario: Change-branch skill capabilities
 
 - **WHEN** the new-change-branch-command profile is resolved for either harness
-- **THEN** it inherits boot access, grants search and questions, includes the new-change-branch, safe-operations, and fetch skills, and grants shell `*` without authorizing any operation beyond the workflow requested local creation and switch.
+- **THEN** it inherits boot access, grants search, questions, and native writes scoped to the SAI temp root, includes the new-change-branch, safe-operations, and fetch skills, and grants shell `*` without authorizing any operation beyond the workflow requested local creation and switch.
 
 #### Scenario: Skill-only command requirements
 
@@ -52,7 +52,7 @@ The system SHALL declare abstract capability profiles and agent and command assi
 #### Scenario: Cache-warmer skill capabilities
 
 - **WHEN** capability requirements and installation projections are generated for sai-cache-warmer under either harness
-- **THEN** the requirements registry identifies cache-warmer-command with questions, the sai-cache-warmer and fetch skills, and its bundled Node wait.js invocation grant, and installs SKILL.md, wait.js, and the `sai-cache-warmer.md` command wrapper.
+- **THEN** the requirements registry identifies cache-warmer-command with questions, native writes scoped to the SAI temp root, the sai-cache-warmer and fetch skills, and its bundled Node wait.js and `transfer.js open` invocation grants, and installs SKILL.md, wait.js, and the `sai-cache-warmer.md` command wrapper.
 
 #### Scenario: Worktree command runs any shell command
 
@@ -307,3 +307,23 @@ The universal `new-change-branch` skill, which has no command wrapper, SHALL car
 #### Scenario: opencode skill drops the grants line
 - **WHEN** the install manifest is expanded for opencode
 - **THEN** the projected `skills/new-change-branch/SKILL.md` has no `allowed-tools` line and no capability placeholder
+
+### Requirement: Scoped temp write grant
+
+A capability profile's `write` value SHALL be `true`, `false`, or the scoped value `"temp"`; any other value SHALL fail profile resolution with an error naming the allowed values. `"temp"` SHALL grant native file writes only inside the SAI temp root, so a profile that hands structured input to a tool can write its input file while keeping its read-only guarantee over the repository. `bin/capabilities.js` SHALL compile it on Claude Code to the `Write` tool without `Edit`, with no unscoped `Write` or `Edit` entry in `allowed-tools` and one `Edit(//<SAI temp root>/**)` path-rule entry (a Windows drive written as `//<drive>/...`; Claude Code applies write path rules only under the `Edit` rule name, which also covers the `Write` tool), and SHALL require only `Write` for the write capability; on opencode it SHALL compile to one `edit` allow rule whose resource is `<SAI temp root>/*` plus the external-directory rules. `write: true` SHALL keep its unscoped grant. The `coordinator`, `worker-read`, `commit-command`, `to-backlog-command`, `from-backlog-command` (and through inheritance `from-next-backlog-item-command`), `to-pr-command`, `new-change-branch-command`, and `cache-warmer-command` profiles SHALL declare `write: "temp"`. The `research` profile assigned to the budget-explorer SHALL declare no write grant and no `transfer.js` shell rule.
+
+#### Scenario: Scoped write compiles to the SAI temp root on both harnesses
+- **WHEN** `from-backlog-command` is translated for Claude Code and for opencode
+- **THEN** Claude Code receives the `Write` tool, no `Edit` tool, and exactly one `Edit(//<SAI temp root>/**)` allowed entry, and opencode receives exactly one `edit` allow rule for `<SAI temp root>/*`
+
+#### Scenario: Explorer keeps no write grant
+- **WHEN** the `research` profile is translated for either harness
+- **THEN** it carries no `Write` or `Edit` tool, no write allowed entry, no `edit` allow rule, and no `transfer.js` shell rule
+
+#### Scenario: Unknown write value fails closed
+- **WHEN** a profile declares a `write` value other than `true`, `false`, or `"temp"`
+- **THEN** resolution fails with an error naming the allowed values
+
+#### Scenario: Full write stays unscoped
+- **WHEN** a profile with `write: true` is translated for opencode
+- **THEN** it keeps an `edit` allow rule for `*`

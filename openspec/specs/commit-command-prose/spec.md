@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change commit-deterministic-extraction. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: coordinator and worker prose reduced to routing and JSON handling
 
 The `sai/commands/commit/coordinator.md` and `sai/commands/commit/worker.md` SHALL be refactored to separate work by mutation boundary: deterministic mechanics moved to tools, lifecycle routing and authorization handling retained in prose.
@@ -45,7 +47,7 @@ Validation rules (subject length, type format, body wrapping, sensitive-file pat
 
 ### Requirement: Authorization transport unchanged
 
-The authorization ask, options, and answer forwarding SHALL remain exactly as before; only the execution mechanism moves from prose invocation to tool invocation.
+The authorization ask, options, and answer forwarding SHALL remain exactly as before; only the execution mechanism moves from prose invocation to tool invocation, with the authorized message delivered to the tool as an input file.
 
 #### Scenario: authorization options are unchanged
 - **WHEN** the coordinator presents the authorization question
@@ -53,5 +55,4 @@ The authorization ask, options, and answer forwarding SHALL remain exactly as be
 
 #### Scenario: coordinator uses answer to invoke apply
 - **WHEN** the user selects `yes` or `Allow on this session`
-- **THEN** the coordinator forwards the message to apply via stdin and invokes the commit tool
-
+- **THEN** the coordinator writes the message to an input file with the native file-write tool and invokes the commit tool with `--input-file <path>`

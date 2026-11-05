@@ -228,14 +228,47 @@ async function waitWith(state, io) {
   return { ...result, state };
 }
 
+const ARGV_FLAGS = ['--interval', '--max', '--chain', '--state'];
+
+/**
+ * The argv form of `warm`: `--interval <n> --max <n> [--chain <id>]` arms a wait, and `--state <token> [--interval <n>]`
+ * re-arms it. The token is the base64url `state_token` a previous wake returned, so no JSON, brace, or quote is typed.
+ */
+function inputFromArgv(args) {
+  const values = {};
+  for (let i = 0; i < args.length; i += 2) {
+    if (!ARGV_FLAGS.includes(args[i]) || i + 1 >= args.length) throw new Error(`warm takes ${ARGV_FLAGS.join(', ')} each with a value`);
+    values[args[i].slice(2)] = args[i + 1];
+  }
+  const number = (name, text) => { const value = Number(text); if (!Number.isFinite(value) || value <= 0) throw new Error(`--${name} needs a positive number of minutes`); return value; };
+  if (values.state !== undefined) {
+    let state;
+    try { state = JSON.parse(Buffer.from(values.state, 'base64url').toString('utf8')); } catch { state = null; }
+    if (!state || typeof state !== 'object') throw new Error('--state is not a state token');
+    return values.interval === undefined ? { state } : { state, interval: number('interval', values.interval) };
+  }
+  if (values.interval === undefined || values.max === undefined) throw new Error('warm needs --interval and --max, or --state');
+  return { interval: number('interval', values.interval), max: number('max', values.max), ...(values.chain === undefined ? {} : { chain: values.chain }) };
+}
+
+const stateToken = state => Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
+
 if (require.main === module) {
   (async () => {
     const command = process.argv[2];
     if (command === 'chain') return console.log(JSON.stringify({ chain: newChainId() }));
+    if (command === 'warm' && process.argv.slice(3).some(arg => ARGV_FLAGS.includes(arg))) {
+      const result = await warmOnce(inputFromArgv(process.argv.slice(3)));
+      return console.log(JSON.stringify({ ...result, state_token: stateToken(result.state) }));
+    }
     let text = '';
-    for await (const chunk of process.stdin) text += chunk;
+    if (process.argv.slice(3).some(arg => arg === '--input-file' || arg.startsWith('--input-file='))) {
+      // The shared reader sits at `sai/tools` of the install root, or of the source checkout.
+      const reader = require(['../../sai/tools', '../../../sai/tools'].map(dir => path.resolve(__dirname, dir, 'input-reader.js')).find(file => fs.existsSync(file)));
+      text = reader.readInputFile(reader.extractInputFile(process.argv.slice(3)).inputFile);
+    } else for await (const chunk of process.stdin) text += chunk;
     const input = JSON.parse(text);
-    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON on stdin, or chain.');
+    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON in --input-file <path> (stdin also accepted), or chain.');
     const run = { prepare: () => prepare(input), wait: () => waitOnce(input), warm: () => warmOnce(input) }[command];
     console.log(JSON.stringify(await run()));
   })().catch(error => {
@@ -244,4 +277,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { CUTOFF_FILE, newChainId, intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };
+module.exports = { inputFromArgv, stateToken, CUTOFF_FILE, newChainId, intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };

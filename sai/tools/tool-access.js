@@ -33,10 +33,12 @@ module.exports = { verifyAccess, missingNotices };
 
 if (require.main === module) {
   try {
-    const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-    const report = process.argv[2] === 'notices' ? { notices: missingNotices(input.ladder_discards) }
-      : process.argv[2] === 'verify' ? verifyAccess(input.required, input.evidence)
-        : (() => { throw new Error('Usage: tool-access.js verify|notices (JSON on stdin)'); })();
+    const { extractInputFile, readInput } = require('./input-reader');
+    const { argv, inputFile } = extractInputFile(process.argv.slice(2));
+    const input = JSON.parse(readInput(inputFile));
+    const report = argv[0] === 'notices' ? { notices: missingNotices(input.ladder_discards) }
+      : argv[0] === 'verify' ? verifyAccess(input.required, input.evidence)
+        : (() => { throw new Error('Usage: tool-access.js verify|notices --input-file <path> (JSON in the input file; stdin also accepted)'); })();
     process.stdout.write(JSON.stringify(report) + '\n');
     if (report.verdict === 'incomplete') process.exitCode = 1;
   } catch (error) {

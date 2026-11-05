@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { runProcess, stepLabel } = require('./backlog-process');
+const { extractInputFile, readInput } = require('./input-reader');
 const projectSettings = require('./project-settings');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
@@ -105,15 +106,16 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
   return { status: 'resolved', provider, repository, project: selected.project, instructions: entry.instructions, adapter: entry.adapter };
 }
 
-function main(argv) {
+function main(rawArgv) {
   // Settings warnings stay visible when resolution fails after the read.
   let warnings = [];
   try {
+    const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
     if (!OPERATIONS.includes(operation) || !registryPath || argv.length !== 2) {
-      throw new Error(`Usage: node to-backlog.js ${OPERATIONS.join('|')} <registry.json>; JSON request on stdin; JSON result on stdout`);
+      throw new Error(`Usage: node to-backlog.js ${OPERATIONS.join('|')} <registry.json>; JSON request in --input-file <path> (stdin also accepted); JSON result on stdout`);
     }
-    const request = JSON.parse(fs.readFileSync(0, 'utf8'));
+    const request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const cwd = process.cwd();
     const io = { run: (command, args, input) => run(command, args, cwd, input) };

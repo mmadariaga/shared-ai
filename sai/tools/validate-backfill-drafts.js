@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 'use strict';
 
-// stdin: {change_name, transfer_dir, draft_references}; stdout: JSON evidence.
+// input file (or stdin): {change_name, transfer_dir, draft_references}; stdout: JSON evidence.
+// Input: --input-file <path>; without it the input is read from stdin.
 // validate --harness claude|opencode [--cwd root]
 // check --fingerprint <successful validation fingerprint> [--cwd root]
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { readInput } = require('./input-reader');
 const { verify } = require('./transfer');
 const { makeTempDir, harnessFromInstalledPath } = require('./temp-root');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -94,10 +96,10 @@ function main(argv) {
   const [command, ...args] = argv;
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--cwd', '--harness', '--fingerprint'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Expected validate|check [--cwd root] [--harness claude|opencode] [--fingerprint hash]');
+    if (!['--cwd', '--harness', '--fingerprint', '--input-file'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Expected validate|check [--cwd root] [--harness claude|opencode] [--fingerprint hash] [--input-file path]');
     options[args[i].slice(2)] = args[i + 1];
   }
-  const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+  const input = JSON.parse(readInput(options['input-file']));
   if (command === 'validate') return validate(input, options);
   if (command === 'check' && /^[a-f0-9]{64}$/.test(options.fingerprint || '')) {
     const current = collect(input, options.cwd || process.cwd()).fingerprint;

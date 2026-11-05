@@ -5,6 +5,7 @@ const path = require('node:path');
 const { run } = require('./from-backlog');
 const destination = require('./to-backlog');
 const projectSettings = require('./project-settings');
+const { extractInputFile, readInput } = require('./input-reader');
 const adapters = {
   github: require('./from-next-backlog-item-github'),
   gitlab: require('./from-next-backlog-item-gitlab'),
@@ -81,13 +82,16 @@ function select(request, io = { run }) {
     return projectSettings.report(pending(error.reason || 'retrieval-failed', error.message), { warnings: report.warnings });
   }
 }
-function main(argv) {
+function main(rawArgv) {
+  let argv = rawArgv;
+  let inputFile = null;
+  try { ({ argv, inputFile } = extractInputFile(rawArgv)); } catch (error) { argv = []; }
   if (argv.length !== 1 || argv[0] !== 'select') {
-    process.stdout.write(JSON.stringify(pending('usage', 'Usage: node from-next-backlog-item.js select; selection JSON on stdin')) + '\n');
+    process.stdout.write(JSON.stringify(pending('usage', 'Usage: node from-next-backlog-item.js select --input-file <path>; selection JSON in the input file (stdin also accepted)')) + '\n');
     return 2;
   }
   let result;
-  try { result = select(JSON.parse(fs.readFileSync(0, 'utf8'))); }
+  try { result = select(JSON.parse(readInput(inputFile))); }
   catch (error) { result = pending('invalid-request', error.message); }
   process.stdout.write(JSON.stringify(result) + '\n');
   return ['selected', 'candidates', 'empty', 'cancelled'].includes(result.status) ? 0 : 1;
