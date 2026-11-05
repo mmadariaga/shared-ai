@@ -31,7 +31,7 @@ The default-alignment regression test SHALL verify that the raw reference preset
 
 ### Requirement: Regression coverage protects generated opencode output
 
-The default-alignment regression test SHALL collect generated opencode agent, command wrapper, and configuration entries, normalize destination paths to relative forward-slash paths, sort entries by path, and fingerprint their paths and complete contents. It SHALL require exactly 42 entries, including the `sai-retrospective` and `sai-cache-warmer` command wrappers, and SHA-256 `834ee453589108a4adc4d4524302ec94bf7f8d14a99c539a20d5320c2e20f2c6` for the JSON-serialized entry array.
+The default-alignment regression test SHALL collect generated opencode agent, command wrapper, and configuration entries, normalize destination paths to relative forward-slash paths, sort entries by path, and fingerprint their paths and complete contents. It SHALL require exactly 42 entries, including the `sai-retrospective` and `sai-cache-warmer` command wrappers, and SHA-256 `a871842b959854bf1d3049bb559b5b70c9c28ead1c1ebec27ea0afed16bacb0f` for the JSON-serialized entry array.
 
 #### Scenario: Claude Code defaults change without changing opencode output
 - **WHEN** the regression test generates opencode agents, command wrappers, and configuration

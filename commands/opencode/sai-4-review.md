@@ -1,6 +1,6 @@
 ---
 description: Review a change's diff in a fresh worker and write review.md, with no fixes and no human in the loop; /sai-3-implement applies the findings you keep. Accepts --parent-branch <branch>.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#high
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

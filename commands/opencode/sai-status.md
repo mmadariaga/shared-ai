@@ -1,6 +1,6 @@
 ---
 description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, task progress, and a next-command hint. Writes nothing.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.

@@ -291,7 +291,7 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-   assert.match(design, /^model: opencode-go\/muse-spark-1\.3-contributor#xhigh$/m);
+   assert.match(design, /^model: opencode-go\/deepseek-v4\.1-flash#max$/m);
    assert.doesNotMatch(design, /^variant:/m);
    assert.match(design, /^subtask: false$/m);
    assert.doesNotMatch(design, /^agent:/m);
@@ -1848,9 +1848,9 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
      assert.deepEqual(opencodeOnly, [
        'sai/adapters/opencode/idea-list-render.md',
        'sai/adapters/opencode/panel-render.md',
-        'sai/presets/opencode/[sai-default]-Go.json',
         'sai/presets/opencode/[sai-default]-oAI-LUNA.json',
         'sai/presets/opencode/[sai-default]-oAI-SOL.json',
+        'sai/presets/opencode/[sai-default]-oGo-Deepseek.json',
      ], 'opencode-specific SAI sources should be its panel and idea-list runtime glue plus its presets');
      assert.deepEqual(claudeOnly, [
        'sai/adapters/claude/idea-list-render.md',
