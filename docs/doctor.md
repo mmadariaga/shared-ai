@@ -3,7 +3,7 @@
 Run a read-only health check of your shared-ai install across Claude Code and opencode plus the project's OpenSpec state:
 
 ```bash
-npx github:mmadariaga/shared-ai doctor
+npx --allow-git=all github:mmadariaga/shared-ai doctor
 ```
 
 It reports, per installed harness (Claude Code, opencode): missing expected files, unexpected files, dangling `Fetch @` references, managed worker/agent files that are missing or no longer match the shipped definition, leftover retired files, and version skew against `main` (or a file-diff against the bundled source when there is no `.version` marker). Opencode also checks that `experimental.subagent_depth` is at least 2 (a top-level `subagent_depth` is not read by opencode v2 and never satisfies the check) and runs `opencode --version`: an installed version below 2.2.0 is an error that names the installed and the minimum version, and an absent `opencode` binary or an unparseable version output is a warning that the version is unverified. The version check runs only when the opencode harness is checked; opencode minimum 2.2.0, tested 2.2.5. A harness whose user-global directory is absent is reported as not installed, not as a pile of missing files.
@@ -29,3 +29,30 @@ presence or version, and uninstall does not remove it. Missing provider CLIs or
 credentials for backlog and PR workflows are reported by those workflows, not
 provisioned by doctor. After reinstalling managed definitions, restart Claude
 Code or opencode; refresh project schema templates with `setup` when needed.
+
+## Interrupted implementation runs
+
+These are recovery notes for `/sai-3-implement`, not additional `doctor` checks.
+Invoke `/sai-3-implement <change-name>` again to resume an interrupted run on the
+same machine. Run one build per change at a time. When saved state is unavailable,
+the command reconstructs progress from local commits and checked tasks; the
+unfinished step restarts.
+
+Working reports and saved state use private temporary storage outside the
+repository. A completed run removes its working reports; stopped, blocked, or
+unanswered runs retain them. Keep that evidence while recovery is pending.
+
+| Platform | Claude Code SAI temp root | opencode SAI temp root |
+|----------|--------------------------|-----------------------|
+| Linux | `/tmp/claude-{uid}/sai/` | `/tmp/opencode/sai/` |
+| Windows/macOS | `<os.tmpdir()>/claude/sai/` | `<os.tmpdir()>/opencode/sai/` |
+
+On Linux, the harness folder must already exist. A missing or unsafe root stops
+the command and names the path. Check the active harness's temporary-directory
+setup and permissions before retrying. An access prompt for writes outside the
+project can also block a worker; resolve that permission before continuing through
+the command's recovery options.
+
+For store identifiers, report transport, and temporary-root safety checks, see
+[implementation internals](../AGENTS.md#implement-review-build-and-deep-review-commands)
+and the [temp-root tool](../sai/tools/temp-root.js).

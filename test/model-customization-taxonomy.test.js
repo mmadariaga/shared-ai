@@ -86,6 +86,15 @@ test('context estimates distinguish fresh Step workers from cumulative orchestra
   assert.equal(customization.taskContextFor({ value: 'utility:sai-status' }), 'Small');
 });
 
+test('the full documented model table covers current targets with their context and difficulty', () => {
+  const document = fs.readFileSync(path.join(__dirname, '../docs/models.md'), 'utf8');
+  const familyByType = { AGENT: 'agent', ORCHESTRATOR: 'command', WORKER: 'worker', UTILITY: 'utility' };
+  const documented = [...document.matchAll(/^\s+(AGENT|ORCHESTRATOR|WORKER|UTILITY)\s+(\S+)\s+(Small|Medium|Large)\s+(↑+)\s+/gm)]
+    .map(([, type, name, context, difficulty]) => [`${familyByType[type]}:${name}`, { context, difficulty }]);
+  assert.equal(new Set(documented.map(([target]) => target)).size, documented.length, 'no duplicate targets');
+  assert.deepEqual(Object.fromEntries(documented), customization.TARGET_PROFILE);
+});
+
 test('difficulty is keyed by complete family-qualified target identity', () => {
   assert.equal(customization.taskDifficultyFor({ value: 'worker:sai-2-design-worker' }), '↑↑↑');
   assert.equal(customization.taskDifficultyFor({ value: 'agent:budget-subagent' }), '↑');

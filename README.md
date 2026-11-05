@@ -20,7 +20,7 @@ Install the commands globally, then set up each project:
 # 1. Install shared-AI commands globally
 npx --allow-git=all github:mmadariaga/shared-ai
 # 2. In each project where you want to use shared-AI:
-npx github:mmadariaga/shared-ai setup /path/to/your/project
+npx --allow-git=all github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
 In the configured project, start with `/sai-explore`. See [Installation](#installation) for details.
@@ -93,10 +93,11 @@ Use `--runtime` to run performance diagnostics and browser checks (the flag is t
 authorization; add `--url <url>` for the accessibility dev server), or `--parent-branch <branch>` to choose the comparison branch.
 See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
-If you choose to fix findings at the end of the deep review, the fixes run through
+Deep review selects and applies fixes automatically. The fixes run through
 RED → GREEN with one local commit per fix step, and the suites run against the
-baseline recorded before the first fix. To fix findings later, leave them open and
-run `/sai-3-implement`, then review again.
+baseline recorded before the first fix. To apply open findings from a standalone
+review later, run `/sai-3-implement`, then review again. See
+[findings and exclusions](docs/review-triage.md#findings-the-run-fixes).
 
 ### Divide and conquer
 
@@ -108,7 +109,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks in three conditional rounds (backlog, branch and assignment; publication approval and branch base; route and Direct Build continuation) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route. See the [Explore usage page](docs/commands/sai-explore.md).
+Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks in three conditional rounds (backlog, branch and assignment; publication approval and branch base; route, Direct Build continuation and change overview) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The continuation answer applies only to Direct Build; the overview answer applies only to Plan and is asked only when its creation/language choice is unresolved. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route. See the [Explore usage page](docs/commands/sai-explore.md).
 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
@@ -217,10 +218,10 @@ Alongside code and tests, SAI records each change's purpose and acceptance crite
 SAI follows existing project conventions and favors focused changes over speculative abstractions, so the result stays easier to maintain.
 
 ### Multi-Pass Review
-Review looks for bugs, weak tests, maintainability issues, and missed requirements. You choose which findings to fix; resolved findings stay visible with a ` (FIXED)` mark so you can distinguish them from open work.
+Review looks for bugs, weak tests, maintainability issues, and missed requirements. Standalone review reports findings without fixing them; `/sai-build` and `/sai-deep-review` select and apply the fixes they judge justified. Resolved findings stay visible with a ` (FIXED)` mark so you can distinguish them from open work. See [findings and exclusions](docs/review-triage.md#findings-the-run-fixes) to control what a later implement run applies.
 
 ### RED → GREEN
-Tests first demonstrate the missing behavior (RED), then a separate agent implements it (GREEN) without changing the tests. If the tests already pass, you decide whether the behavior exists or the test needs stronger assertions.
+Tests first demonstrate the missing behavior (RED), then a separate agent implements it (GREEN) without changing the tests. If the tests already pass, the coordinator checks whether the behavior already exists: when it does, it commits the tests, skips GREEN, and records a deviation; otherwise it sends the tests back to RED for correction.
 
 ### Record important decisions
 Architecture and domain decision records (ADRs/DDRs) explain choices that future
@@ -238,6 +239,8 @@ Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review c
 
 Requires **Node.js 22 or newer**. On opencode it requires version **2.2.0 or later** (tested on 2.2.5) with `experimental.subagent_depth` set to 2 or higher; `doctor` checks both. Provider workflows additionally need their own authenticated CLIs; SAI does not install or authenticate them.
 
+Reading opencode history with `/sai-retrospective` additionally needs Node **22.13 or newer** for `node:sqlite`; otherwise that optional data source is reported as not analyzed.
+
 Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 
 ### npx installer
@@ -247,12 +250,14 @@ Install the commands once for Claude Code, opencode, or both; then run setup in 
 npx --allow-git=all github:mmadariaga/shared-ai
 ```
 
+Repeat `--allow-git=all` for each GitHub-source `npx` invocation below; npm 12 blocks Git references by default.
+
 Choose Claude Code, opencode, or both. The installer offers missing opencode
 and the recommended [third-party tools](#third-party-tools).
 
 ```bash
 # 2. In each project where you want to use shared-AI:
-npx github:mmadariaga/shared-ai setup /path/to/your/project
+npx --allow-git=all github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
 - Installs OpenSpec with your approval if missing and configures the project workflow.
@@ -263,7 +268,7 @@ Restart Claude Code or opencode after installation to load the commands and agen
 If something looks wrong, run the read-only health check:
 
 ```bash
-npx github:mmadariaga/shared-ai doctor
+npx --allow-git=all github:mmadariaga/shared-ai doctor
 ```
 
 See [doctor options](docs/doctor.md) for offline and machine-readable checks.
@@ -279,9 +284,10 @@ Use the menu's estimates to choose:
 - `CONTEXT` — how much material the task needs to handle, from Small to Large.
 - `DIFFICULTY` — reasoning demand, from `↑` to `↑↑↑`; use stronger models for harder work.
 
-Keep design at least as capable as the implement coordinator, and the
-coordinator at least as capable as GREEN (`sai-2` >= `sai-3`). Decisions belong in
-the earlier phases; cheaper implementers should execute them, not redesign them.
+Choose models by role: design needs sound planning, the implement coordinator
+needs orchestration and evidence-based arbitration, and GREEN follows the plan.
+The defaults do not impose a strict capability ranking between phases. See
+[model defaults and customization](docs/models.md).
 
 ### Per project installation / override
 
@@ -347,7 +353,7 @@ presets but keeps personal presets and does not change your project's selections
 | `[sai-default]-oAI-SOL.json` | OpenAI Sol for the more demanding planning/build work, Luna for lighter tasks. |
 | `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |
 
-Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
+Load a preset with `npx --allow-git=all github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 
 ### Choosing your models
 
@@ -380,7 +386,7 @@ Run the installation script again.
 ## Uninstall
 
 ```bash
-npx github:mmadariaga/shared-ai uninstall
+npx --allow-git=all github:mmadariaga/shared-ai uninstall
 ```
 
 Shows what will be removed and asks for confirmation.

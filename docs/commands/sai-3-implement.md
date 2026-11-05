@@ -4,13 +4,9 @@
 
 Implements a change's planning artifacts (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`) from start to finish with no human in the loop. It writes the tests, writes the code, runs the checks, and makes one local commit per step. It works on Claude Code and opencode.
 
-## Flags and behavior modifiers
-
-- `--fast-track`: accepted and ignored. The command already commits locally without asking.
-
 ## In detail
 
-Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and at least one file under `specs/`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it does no new work, runs the suites, and closes.
+Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and either at least one file under `specs/` or `.openspec.yaml` with `skip_specs: true`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it does no new work, runs the suites, and closes.
 
 Before the first step, the command records which unit and integration tests already fail, using the `Test Command` field of `tasks.md` (or, when it is missing, `SAI_LEARNINGS.md`, `design.md`, or the project's build files). Those failures are not obstacles. At the end it runs every unit and integration suite and compares the result with that record. End-to-end suites never run inside the command; leave them to your CI.
 
@@ -31,7 +27,12 @@ When something blocks a step or the final suite run, the command treats it as an
 
 When the 3 attempts are spent, the command stops at once and asks you, without moving on to later tasks first: a step cannot skip its failing test and still keep the test-first order. It tells you what happened, what is done and committed, and what it tried, then offers options it writes itself. One option always stops the run. If you choose a way to continue, that obstacle's counter starts again at zero. A decision only you can make (a change to the proposal's intent, a push, a deletion, a missing credential) asks you at once without spending an attempt.
 
-The command keeps its run state in the `sai-state` store, as identifiers and file paths only. The free text of the run (deviations, overrides, worker reports, baselines) lives in files in a run directory outside the repository, a private folder under the SAI temp root (Linux: `/tmp/claude-{uid}/sai/` for Claude Code and `/tmp/opencode/sai/` for opencode; Windows and macOS: your temp folder plus `<harness>/sai/`), and workers return only the path of their report. A run that completes removes its run directory; a stopped or blocked run keeps it. On Linux the harness folder must already exist: the command stops and names it when it is missing. Under a permission mode that prompts for writes outside the project, a worker write into the run directory can be blocked, which counts as an ordinary obstacle. After a context compaction, the command reads the store and the files it points to and carries on. The store is keyed by the change, so a later session on the same machine finds an interrupted run and resumes it; run one build per change at a time. The store and the run directory share one lifetime. When the store is gone (another machine, or a cleared temporary directory), it rebuilds progress from `git log` and the `tasks.md` checkboxes and continues at the first pending step; the step that was in progress restarts with its counters at zero.
+After a context compaction, the command continues from its saved progress. To
+resume an interrupted run, invoke `/sai-3-implement <change-name>` again on the
+same machine; run only one build per change at a time. If the saved state is
+unavailable, it reconstructs progress from local commits and checked tasks and
+restarts the unfinished step. For temporary-storage or permission errors, see
+[implementation recovery](../doctor.md#interrupted-implementation-runs).
 
 When the run ends, whether it completed, you stopped it, or the question went unanswered, the command prints a closing report: the work done, the deviations with their reasons, the suite result against the baseline, the pending findings left after the third fix round of the step reviews, the audit findings fixed and those left open, and the blocker with the options offered. Deviations and pending findings are always listed, or reported as none. Nothing is persisted: the report is the only record, and a `build-log.md` that already exists in a change is left untouched.
 
@@ -39,7 +40,19 @@ The root `SAI_LEARNINGS.md`, when it exists, is read directly by design, RED, GR
 
 When a deviation is a project fact, such as a package, command, or configuration rule, the command also records it in the root `SAI_LEARNINGS.md`. That file stays uncommitted, and the command creates no file when no deviation qualifies and no entry is stale.
 
-When the run completes and fixed at least one finding of an audit report, and the change has a `review.md`, the command ends by storing the inherent-risk ratings in `review.md`. It computes the four ratings (security, reversibility, critical sections, blast radius) with `sai/policies/inherent-risk.md` and `sai/tools/risk-signals.js` against the parent branch that the `**Reviewed:**` line of `review.md` names, so they describe the diff that was reviewed, and writes the block (`<!-- sai-inherent-risk:start -->` … `<!-- sai-inherent-risk:end -->`) right after the report's title lines, replacing any earlier block. The block records the merge-base and a fingerprint of the code, and the tool checks it before the command moves on. It goes into its own local commit with a message such as `docs(review): add inherent-risk ratings`, which is the one commit after the step commits and is covered by the commit authorization the run already holds. In a project that ignores `review.md`, the block stays uncommitted in the working tree. A stopped or blocked run, a run that fixed no finding, and a change without `review.md` store nothing, and the command creates no `review.md` for it. A `review.md` without a `**Reviewed:**` line that names a parent branch that still resolves gets no block, and the closing report says why. A review that runs again regenerates `review.md` without a block, and each later completed fix round computes all four ratings again and replaces the block. [`/to-pr`](to-pr.md) publishes this block while it still matches the code.
+When a completed run fixed at least one audit-report finding and has a
+`review.md`, it stores four inherent-risk ratings there: security, reversibility,
+critical sections, and blast radius. They describe the nature of the reviewed
+change, not how many defects remain. The ratings receive their own local commit
+under the invocation's existing authorization; an ignored `review.md` stays
+uncommitted. A stopped or blocked run, a run with no finding fixed, or a change
+without `review.md` stores no ratings. If the comparison branch cannot be
+determined or the ratings cannot be validated, the closing report explains why
+they were not stored. Running review again regenerates `review.md` without
+stored ratings; a later completed fix run can add them again.
+[`/to-pr`](to-pr.md) reuses current ratings or recomputes them when needed.
+For the storage format and freshness checks, see the
+[technical risk contract](../../sai/policies/inherent-risk.md#stored-block).
 
 When the run completes and the design has decisions that carry a `**Record family**` marker, the command creates one ADR or DDR per decision and updates the family's index, in its own local commit before the closing report, describing what was implemented and citing the deviation when the run departed from the decision. A stopped or blocked run creates none. A change receives its records once: a later run on the same change does not create a record that already cites it. Inside [`/sai-build`](sai-build.md) the build creates the records at its own close, and inside [`/sai-deep-review`](sai-deep-review.md) the completed fix segment creates them. Without a `docs/adr/` or `docs/ddr/` folder or its `0000-INDEX.md`, the first record creates it from the index template. A path the project's ignore rules cover stays on disk uncommitted, and the closing report says so.
 

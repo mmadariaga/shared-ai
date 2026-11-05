@@ -108,7 +108,7 @@ After the last segment that ran ends, print the report of each segment. A segmen
 - **Segment 1 failed, was stopped, or could not start**: print its report and end the run without a closing line.
 - **Error close**: it ended the run already, without a closing line.
 
-The run commits `review.md` once through segment 1, then each verified audit report once, then each report in which the Assessment pass wrote marks once, then once per fix step through segment 5, then once more for the inherent-risk ratings block that segment 5 stores in `review.md` when it fixed a finding. It adds no other commit. A report the project ignores stays on disk uncommitted.
+The run commits `review.md` once through segment 1, then each verified audit report once, then each report in which the Assessment pass wrote marks once, then once per fix step through segment 5, then once more for the inherent-risk ratings block that segment 5 stores in `review.md` when it fixed a finding. At its completed close, segment 5 also creates the design's qualifying decision records in one local commit under `@sai/policies/decision-record-creation.md`, when any are needed. It adds no other commit. A report the project ignores stays on disk uncommitted.
 
 ## Re-entry
 

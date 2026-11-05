@@ -11,7 +11,6 @@ Detects performance problems introduced by the changes. It looks for operations 
 - `--tier backend|frontend|db|queue`: audits a single tier. By default every detected tier is audited.
 - `--runtime`: runs read-only diagnostics that firm up the numbers in the findings. The flag is the whole authorization: no question is asked. A diagnostic whose tool or target is not available is marked unavailable in the report, and the static analysis goes on.
 - `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
-- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 
 Without a change name, the command takes the only active change that has a `proposal.md`; with none or several it prints the candidates and stops. It asks nothing between resolving the change and finishing. Without `--runtime` it takes no new runtime measurements; unmeasured numbers are explicitly marked as estimates.
 

@@ -18,8 +18,10 @@ options and the same unattended run work in Claude Code and opencode.
 The default scope is the committed branch diff against the parent branch. If
 you omit `--parent-branch`, the commands use the repository's default branch
 when available, otherwise try `master`, then `main`. Write the branch with the
-flag, not as a second positional argument. Omit the change name to use the
-change picker; scope options do not remove the need for a change and its proposal.
+flag, not as a second positional argument. Without a change name, the commands
+use the only active change that has a `proposal.md`; with none or several, they
+print the candidates and stop so you can name one. Scope options do not remove
+the need for a change and its proposal.
 
 ```text
 /sai-deep-review my-change --parent-branch main
@@ -35,8 +37,7 @@ report and the static audit goes on. The dev-server URL is an input, so with
 `/sai-deep-review` asks for it once, before the audits start, so no question pauses
 the parallel audits.
 Each audit commits its own report locally (when the project does not ignore it) and
-never fixes a finding. Security has no runtime option. An explicit `--fast-track` on
-the audits and on `/sai-deep-review` is accepted and ignored.
+never fixes a finding. Security has no runtime option.
 
 ## Which audits run
 
@@ -85,9 +86,10 @@ cutoff applies, so a High finding may be excluded and a Low one fixed. Questions
 stay open for you and never carry the mark. Each report that received a mark is
 committed alone. Reports of audits that did not run, or failed, stay untouched.
 
-When the change has no `proposal.md`, `tasks.md`, or spec file, the pass does not
-run: the command prints which items `/sai-3-implement` is missing and stops after the
-review and audits. When every fixable finding is excluded, no fix runs.
+The pass requires `proposal.md`, `tasks.md`, and either at least one file under
+`specs/` or `.openspec.yaml` with `skip_specs: true`. Otherwise the command prints
+which items `/sai-3-implement` is missing and stops after the review and audits.
+When every fixable finding is excluded, no fix runs.
 
 Otherwise a `/sai-3-implement` segment fixes the findings left to fix through
 RED → GREEN, reviews each step, commits each step locally (never a push), appends
@@ -101,9 +103,12 @@ To apply a finding the pass excluded, remove its ` (EXCLUDED: …)` mark from th
 report and run `/sai-3-implement <change-name>`. A Question needs your answer; it is
 not sent to another command, and the fix segment applies only fixable findings.
 
-The run commits `review.md` (through `/sai-4-review`), each verified audit report, each
-report the Assessment pass marked, then one commit per fix step; it makes no other
-commit. A report your project ignores stays on disk uncommitted. A rerun of an
+The run commits `review.md` (through `/sai-4-review`), each verified audit report,
+each report the Assessment pass marked, and each fix step. When the completed fix
+segment fixed a finding, it also commits the inherent-risk ratings in `review.md`.
+A completed fix segment also creates the design's qualifying ADR/DDR records in one
+additional local commit, when any are needed. A report your project ignores stays
+on disk uncommitted. A rerun of an
 interrupted run regenerates `review.md` and the activated audit reports and judges
 every finding again; only the fix segment resumes. To fix findings later, leave them
 open and run `/sai-3-implement`, or run `/sai-build` to implement, review, and fix
