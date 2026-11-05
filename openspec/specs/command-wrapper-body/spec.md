@@ -46,9 +46,9 @@ The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai
 
 ### Requirement: wrapper-directory-shape-unchanged
 
-The source wrapper directories SHALL each contain exactly the eighteen active
+The source wrapper directories SHALL each contain exactly the twenty-one active
 `sai-*.md` files, one `to-backlog.md`, one `from-backlog.md`, one
-`from-next-backlog-item.md`, and one `to-pr.md`, for twenty-two wrapper files per
+`from-next-backlog-item.md`, and one `to-pr.md`, for twenty-five wrapper files per
 harness. Neither directory SHALL contain `budget.md` or a command bootstrap
 card. The active SAI wrapper set and its harness parity SHALL remain intact.
 The three backlog commands SHALL remain separate conversation-preserving
@@ -57,7 +57,7 @@ invocations.
 #### Scenario: Source wrapper directories exclude budget
 
 - **WHEN** `commands/claude/` and `commands/opencode/` are listed
-- **THEN** each directory contains eighteen `sai-*.md` files and the four named non-SAI entries, for twenty-two files, with no `budget.md` or command bootstrap card.
+- **THEN** each directory contains twenty-one `sai-*.md` files and the four named non-SAI entries, for twenty-five files, with no `budget.md` or command bootstrap card.
 
 ### Requirement: Envelope lives in the wrapper
 

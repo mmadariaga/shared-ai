@@ -47,7 +47,7 @@ function activeWrapperCommands(harness) {
     .map(file => [file, foldersByFile.get(file)]);
 }
 
-const CONTEXT_PRESERVING = new Set(['sai-context-cache-ttl-benchmark.md']);
+const CONTEXT_PRESERVING = new Set(['sai-cache-warmer.md', 'sai-context-cache-ttl-benchmark.md']);
 const wrapperCommands = activeWrapperCommands('claude').filter(([file]) => !CONTEXT_PRESERVING.has(file));
 
 function read(relativePath) {
@@ -370,12 +370,12 @@ test('final wrappers: all known labelled argument lines are absent after the env
   }
 });
 
-test('final wrappers: source wrapper directories contain 20 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 21 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 20, `${harness} should retain exactly 20 sai wrappers`);
-    assert.equal(files.length, 24, `${harness} wrapper directory should contain 24 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 21, `${harness} should retain exactly 21 sai wrappers`);
+    assert.equal(files.length, 25, `${harness} wrapper directory should contain 25 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);
