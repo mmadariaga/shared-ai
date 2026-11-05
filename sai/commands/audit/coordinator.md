@@ -60,7 +60,7 @@ changed_files: string[]
 
 `counts` has no `informational` key for the security audit.
 
-After a `step-done`, emit its `step_ids` to the machine as `{"step_ids": [...]}` through `emit <id> {audit}-steps@1 -`, then send the worker `Active step: <stage> — follow <next.follow>` from the response. A batch that carries several ids, which is how the worker reports a stage it skipped, advances the machine past all of them. The store never gates the run: when an emit fails, send the next pointer from the static order.
+After a `step-done`, emit its `step_ids` to the machine as `{"step_ids": [...]}` through `emit <id> {audit}-steps@1 --input-file <path>` per `@sai/policies/stage-machine.md` § Event delivery, then send the worker `Active step: <stage> — follow <next.follow>` from the response. A batch that carries several ids, which is how the worker reports a stage it skipped, advances the machine past all of them. The store never gates the run: when an emit fails, send the next pointer from the static order.
 
 A `question` is answered by you when the change, its artifacts, or the repository answer it: send the answer back to the same worker and keep it as an assumption for the closing report. When nothing answers it and the answer would change the report, treat it as the escalation of an obstacle and put it to the user through the native picker, with options you write that each name a different way forward. A question whose answer would not change the report is answered with your best reading and kept as an assumption.
 

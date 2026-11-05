@@ -35,11 +35,11 @@ At every dispatch and every continuation of a worker, the dispatcher SHALL resol
 
 ### Requirement: Arm after each response
 
-An agent that holds timings (a subagent whose latest real message carries the warming line, either a worker message or a `warm-up`, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm` with `{"interval", "max"}` on stdin, through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. It SHALL arm after every response except its final response: a question (`needs_input`) and an intermediate step report SHALL keep arming, and after a final response (a coordinator's closing report, or a worker's terminal result `completed`, `failed`, or `cancelled`) it SHALL arm nothing, so a finished session never wakes again. A subagent SHALL report the outcome in the warming field of its message. When arming fails, the agent SHALL stop warming without retrying, a subagent SHALL declare `warming: false` in that same message, and its task outcome and report SHALL NOT otherwise change. The same rule SHALL apply on Claude Code and opencode. A hand-off wait (see the requirement "Hand-off wait with a fixed deadline") is the exception for a main session: it arms on the user's answers when no `warming` entry applies to the `agent` role (resolution `off` with `origin: none`), and it arms only at the end of the hand-off close, not after later responses.
+An agent that holds timings (a subagent whose latest real message carries the warming line, either a worker message or a `warm-up`, or a main session whose `agent`-role resolution is not `off`) SHALL, before ending each turn with its response, launch one background wait without awaiting it: `node <wait-path> warm --interval {interval} --max {max}` (the argv form, with no JSON, no input file, and nothing to write, so a read-only helper can arm it), through Claude Code `Bash` with `run_in_background: true` or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. The JSON forms of `warm` (`--input-file <path>` or stdin) SHALL stay accepted but SHALL NOT be prescribed. It SHALL arm after every response except its final response: a question (`needs_input`) and an intermediate step report SHALL keep arming, and after a final response (a coordinator's closing report, or a worker's terminal result `completed`, `failed`, or `cancelled`) it SHALL arm nothing, so a finished session never wakes again. A subagent SHALL report the outcome in the warming field of its message. When arming fails, the agent SHALL stop warming without retrying, a subagent SHALL declare `warming: false` in that same message, and its task outcome and report SHALL NOT otherwise change. The same rule SHALL apply on Claude Code and opencode. A completed wait SHALL return `state_token`, the returned state encoded as one base64url token with no brace or quote, beside `status`, `waited_ms`, and `state`, and a re-arm SHALL pass it unchanged as `--state <state_token>`, adding `--interval <n>` only when the re-arm rule resolves a new interval. A hand-off wait (see the requirement "Hand-off wait with a fixed deadline") is the exception for a main session: it arms on the user's answers when no `warming` entry applies to the `agent` role (resolution `off` with `origin: none`), and it arms only at the end of the hand-off close, not after later responses.
 
 #### Scenario: Worker arms after its report
 - **WHEN** a worker holding timings returns an intermediate step report or a `needs_input` question
-- **THEN** it launches one background `warm` wait and ends the turn with the report unchanged except for its `warming: true` declaration
+- **THEN** it launches one background `warm --interval {interval} --max {max}` wait and ends the turn with the report unchanged except for its `warming: true` declaration
 
 #### Scenario: No arm after a final response
 - **WHEN** a worker holding timings returns a terminal result, or a coordinator holding timings prints its closing report
@@ -48,6 +48,14 @@ An agent that holds timings (a subagent whose latest real message carries the wa
 #### Scenario: Arming fails
 - **WHEN** the background wait cannot be launched because of a missing script or a permission refusal
 - **THEN** the agent stops warming without retrying, declares `warming: false` in that message, and its report is otherwise unchanged
+
+#### Scenario: Re-arm with the state token
+- **WHEN** a wait completes with `continue` and returns a `state_token`
+- **THEN** the agent re-arms with `warm --state <state_token>` unchanged, typing no JSON, brace, or quote
+
+#### Scenario: Malformed state token is rejected
+- **WHEN** `warm --state` receives a value that does not decode to a state object
+- **THEN** `wait.js` fails with an error that names `--state` and arms no wait
 
 ### Requirement: Wake performs no work
 
@@ -123,11 +131,11 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 
 ### Requirement: Hand-off wait with a fixed deadline
 
-`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: the same `wait.js warm` wait and chain, with a fixed deadline `max` minutes after the arm that opened it, armed only at the end of the hand-off close. A real message SHALL neither re-arm the hand-off wait nor move its deadline, overriding the window and arm rules for real messages; only a wake SHALL re-arm it, with the returned `state` unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. When the interval came from the user's answers, the wake SHALL add no `interval` and resolve no setting; when it came from the `warming` setting, the ordinary wake rule SHALL apply. At the deadline the wait SHALL return `finished` and nothing SHALL be armed. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
+`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: the same `wait.js warm` wait and chain, with a fixed deadline `max` minutes after the arm that opened it, armed only at the end of the hand-off close. A real message SHALL neither re-arm the hand-off wait nor move its deadline, overriding the window and arm rules for real messages; only a wake SHALL re-arm it, with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. When the interval came from the user's answers, the wake SHALL add no `--interval` and resolve no setting; when it came from the `warming` setting, the ordinary wake rule SHALL apply. At the deadline the wait SHALL return `finished` and nothing SHALL be armed. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
 
 #### Scenario: Wake with user-supplied timings
 - **WHEN** a hand-off wait whose interval came from the user's answers wakes
-- **THEN** the command re-arms with the returned state, adds no interval, resolves no setting, and records the new task id
+- **THEN** the command re-arms with `--state <state_token>` unchanged, adds no interval, resolves no setting, and records the new task id
 
 #### Scenario: Deadline reached
 - **WHEN** the hand-off wait reaches its deadline

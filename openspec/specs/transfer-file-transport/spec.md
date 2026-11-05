@@ -49,11 +49,11 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: Put writes standard input inside the transfer directory
 
-`transfer.js put --dir <dir> --path <relative>` SHALL write the bytes read from standard input to the forward-slash relative path inside the transfer directory, creating intermediate plain directories, and SHALL return the absolute `path` and the `sha256` of the written bytes. Writing the same path again SHALL replace the file. An absolute path, a path with an empty, `.`, or `..` segment, a backslash or colon, or the reserved marker name SHALL be rejected, and an existing intermediate entry that is not a plain directory, or a target that is not a regular file, SHALL fail the check.
+`transfer.js put --dir <dir> --path <relative> [--input-file <path>]` SHALL write the bytes read from the input file, or from standard input when no input file is given, to the forward-slash relative path inside the transfer directory, creating intermediate plain directories, and SHALL return the absolute `path` and the `sha256` of the written bytes. The input file SHALL be read through the shared input reader, so a missing, unreadable, or empty input file fails naming the path and writes nothing. Writing the same path again SHALL replace the file. An absolute path, a path with an empty, `.`, or `..` segment, a backslash or colon, or the reserved marker name SHALL be rejected, and an existing intermediate entry that is not a plain directory, or a target that is not a regular file, SHALL fail the check.
 
 #### Scenario: Put returns path and hash
 
-- **WHEN** a worker pipes content to `put` with a valid relative path
+- **WHEN** a worker passes content to `put` with a valid relative path, as an input file or on standard input
 - **THEN** the file holds exactly those bytes and the result carries its absolute path and sha256
 
 #### Scenario: An escaping path is rejected

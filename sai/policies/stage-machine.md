@@ -30,14 +30,19 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
   session for that key and returns `{received_at, id}`. Derive the key from the harness
   session identifier; the same key always yields the same id.
-- **Emit**: `sai-state emit <id> <machineId> -` reads one event as JSON from
-  stdin, sends it to one machine, and returns
-  `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The `-` marker is the
-  last argument; event JSON passed as an argument is a usage error (exit 2).
-- **Progress emit**: `sai-state emit <id> <machineId> --progress -`
+- **Emit**: `sai-state emit <id> <machineId> --input-file <path>` reads one
+  event as JSON from the input file (§ Event delivery), sends it to one machine,
+  and returns
+  `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The stdin
+  form `emit <id> <machineId> -` stays accepted, so older instructions keep
+  working; event JSON passed as an argument is a usage error (exit 2). A
+  missing, unreadable, or empty input file exits 2 naming the path and changes
+  no state.
+- **Progress emit**: `sai-state emit <id> <machineId> --progress --input-file <path>`
   reads one worker progress payload
-  (`{event: "progress", step_ids, changed_files}`) as JSON from stdin instead
-  of a hand-composed event. It validates the raw stdin text, unnormalized,
+  (`{event: "progress", step_ids, changed_files}`) as JSON from the input file
+  (or from stdin with `-`) instead
+  of a hand-composed event. It validates the raw input text, unnormalized,
   through the worker-report validator module before any session, machine, or
   registry read,
   then derives the machine event `{"step_ids": [...]}` from the valid payload
@@ -46,7 +51,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   timeless verdict `worker-report-validator.js validate --kind progress` prints
   without its `received_at` — and, only on a
   valid verdict, the ordinary emit fields above. An invalid verdict never
-  reaches the machine; non-JSON stdin is an invalid verdict, not
+  reaches the machine; non-JSON input is an invalid verdict, not
   `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
   error: discriminate by `validation.ok`. A validator module found in
   neither location relative to the CLI exits 2 naming the tried paths and
@@ -140,7 +145,7 @@ without re-spelling the verbs):
 ```text
 sai-state spawn --key <stable-key>
 sai-state reset <id> security-steps@1
-echo '{"intent":"next-step"}' | node <tool-path> emit <id> explore-idea@1 -
+node <tool-path> emit <id> explore-idea@1 --input-file <dir>/event-1.json
 sai-state close <id>
 ```
 
@@ -150,7 +155,7 @@ A machine error exits 1 with `{error, next}` and one closed literal:
 
 - `INVALID_EVENT`: a missing `@version` or a transition the machine rejects as
   non-conforming (a logic failure, no `reason`). When the event JSON read from
-  stdin cannot be parsed (empty, truncated, trailing text, broken quotes), the
+  the input cannot be parsed (empty, truncated, trailing text, broken quotes), the
   response also carries `reason: "EVENT_UNPARSEABLE"` (a delivery failure) and
   no transition occurs.
 - `UNKNOWN_MACHINE`: an unknown base name.
@@ -169,12 +174,24 @@ authoritative and surface the regression against the presentation hint.
 
 ## Event delivery
 
-A non-block event travels on stdin, never as an argument. The canonical example's
-emit line is the full invocation, identical in Bash and PowerShell 7 (the
-shells `@sai/policies/command-execution.md` supports) on both Claude Code and
-opencode: the JSON in single quotes
-with plain double quotes, echoed and piped to `emit <id> <machineId> -`.
-Nothing is escaped.
+A non-block event travels as an input file, never as an argument, a stdin pipe,
+or a heredoc. Prepare it in this order on both Claude Code and opencode:
+
+1. Run `transfer.js` as `node <tool-path> open --harness <claude|opencode>` once
+   per session. It creates one private directory under the SAI temp root and
+   returns its absolute `dir`; reuse it for every later event.
+2. Write the event JSON as UTF-8 to a unique file in `<dir>` (for example
+   `event-<n>.json`) with the harness-native file-write tool (`Write` on Claude
+   Code, `write` on opencode). Each call uses its own file, so parallel calls
+   never share one. The write goes outside the repository.
+3. Run the canonical example's emit line with `--input-file <dir>/<file>`. The
+   line is identical in Bash and PowerShell 7 (the shells
+   `@sai/policies/command-execution.md` supports); nothing is quoted or escaped
+   and the tool receives the bytes exactly.
+
+`--input-file` wins over stdin. The `-` stdin form stays accepted only so
+instructions installed before the input file keep working. The same procedure
+delivers the progress emit payload (`--progress --input-file <path>`).
 
 The store strips a leading BOM and surrounding whitespace or line breaks
 before parsing. A shell pipe may re-encode non-ASCII characters and the store

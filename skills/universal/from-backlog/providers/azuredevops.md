@@ -1,7 +1,7 @@
 # Azure DevOps Services work-item import
 
 Run `node <tool> read <registry>` with JSON `{"reference":"<exact reference>"}`
-on stdin. Accept `https://dev.azure.com/organization/project/_workitems/edit/ID`
+in `--input-file <path>`. Accept `https://dev.azure.com/organization/project/_workitems/edit/ID`
 and `https://organization.visualstudio.com/project/_workitems/edit/ID` (including
 the legacy `DefaultCollection` prefix). An isolated positive ID requires one
 organization from existing Azure CLI defaults or Azure DevOps Git remotes.

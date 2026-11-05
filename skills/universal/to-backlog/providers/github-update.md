@@ -1,6 +1,6 @@
 # GitHub origin update mechanics
 
-Use `node <tool> <operation> <registry>` with structured JSON on stdin.
+Use `node <tool> <operation> <registry>` with structured JSON in `--input-file <path>`.
 Requires Node, gh authenticated on github.com, and permission to edit the
 originating issue. Missing access stops; do not install tools or change auth.
 All operations include `provider: "github"`. Other hosts are unsupported.

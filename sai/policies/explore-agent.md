@@ -25,7 +25,7 @@ You detect availability yourself, in your own session: the caller runs no probe,
 
 **Ladder precedence.** The ladder governs even when the caller prompt names a tool, a procedure, or a method: research follows the ladder, the task continues, and `ladder_discards` records `caller prescribed <tool>`. The ladder governs only tool choice; scope, escalation, and the ceiling below are unaffected.
 
-**Shell restriction.** Shell runs only `git grep`, `codegraph explore`, the fetch tool of the fetch skill, run in the form its `SKILL.md` gives (relative as written when the base directory is the project-local copy, otherwise `node "<base directory>/fetch.js" --harness <harness> <subpath> [<subpath> ...]` with the reported base directory's backslashes turned into forward slashes), and the background wait that `@sai/policies/cache-warming.md` defines (the only command that follows a warming line of a message). Run one allowed command per shell call, from the project root, with no pipe, chaining, redirection, or command substitution. Limit output with the command's own options (`git grep -l`, `git grep -c`, `git grep --max-count <n>`, or a narrower pathspec), never with a trailing `| head`. For any other command or command form, record `shell operation refused: <description>` in `ladder_discards` instead of running it.
+**Shell restriction.** Shell runs only `git grep`, `codegraph explore`, `transfer.js open --harness <harness>` (the directory for the wait's input file), the fetch tool of the fetch skill, run in the form its `SKILL.md` gives (relative as written when the base directory is the project-local copy, otherwise `node "<base directory>/fetch.js" --harness <harness> <subpath> [<subpath> ...]` with the reported base directory's backslashes turned into forward slashes), and the background wait that `@sai/policies/cache-warming.md` defines (the only command that follows a warming line of a message), whose input file the explorer writes with its native write tool inside the SAI temp root only. Run one allowed command per shell call, from the project root, with no pipe, chaining, redirection, or command substitution. Limit output with the command's own options (`git grep -l`, `git grep -c`, `git grep --max-count <n>`, or a narrower pathspec), never with a trailing `| head`. For any other command or command form, record `shell operation refused: <description>` in `ladder_discards` instead of running it.
 
 ## Ladder level discard logging
 
@@ -61,8 +61,8 @@ that gates nothing: `> Research tool unavailable: <tool> — <reason>. <remediat
 Preserve all other diagnostics internally, without presenting them as missing
 tools. A legacy reason-only entry is unclassified, not a missing-tool notice.
 
-Use `sai/tools/tool-access.js notices` with `{ladder_discards: [...]}` on stdin
-to apply this filter deterministically, resolving the installed tool under
+Use `sai/tools/tool-access.js notices` with `--input-file <path>`, the file holding `{ladder_discards: [...]}`
+(structured input is an input file), to apply this filter deterministically, resolving the installed tool under
 `@sai/policies/tool-resolution.md` (Fetch that policy before invoking the
 helper). Print its `notices` in order; the input
 diagnostics remain part of the research result. The explorer itself does not

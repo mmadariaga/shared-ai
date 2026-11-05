@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { extractInputFile, readInput } = require('./input-reader');
 const backlog = require('./to-backlog');
 const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
@@ -352,13 +353,14 @@ function resume(request, io) {
   if (request.approved !== true || !result.continuation || request.confirmation !== result.continuation) throw new Error('Exact pending-comment approval required after read-only recovery');
   return writeComment(receiptPath(request.receipt), io);
 }
-function main(argv) {
+function main(rawArgv) {
   let request;
   try {
+    const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
     const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume };
-    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume <registry.json>; JSON on stdin');
-    request = JSON.parse(fs.readFileSync(0, 'utf8'));
+    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume <registry.json>; JSON in --input-file <path> (stdin also accepted)');
+    request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
     let result;

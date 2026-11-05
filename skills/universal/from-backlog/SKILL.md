@@ -29,8 +29,7 @@ Resolution selects a registered provider; that provider may resolve the exact
 reference through its read-only CLI. Load only the returned provider's
 instructions. Read `providers/resolution.md` when adding or changing a provider.
 
-Run `node <tool> resolve <registry>` with JSON on stdin:
-`{"reference":"<exact invocation reference>"}`. With no reference, ask for a
+Run `node <tool> resolve <registry> --input-file <path>` with JSON in the input file: `{"reference":"<exact invocation reference>"}`. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. With no reference, ask for a
 concrete PBI / Issue / Ticket reference and wait. On rejection, explain the
 helper's specific failed check. Ask only for components it identifies as missing;
 present a complete incompatible reference as a provider limitation. When the

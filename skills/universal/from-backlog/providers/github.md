@@ -9,7 +9,7 @@ Accepted references are `https://github.com/owner/repo/issues/123` and
 Other hosts (including GitHub Enterprise), pull requests, and incomplete paths
 are rejected by the helper.
 
-Run `node <tool> read <registry>` with JSON on stdin:
+Run `node <tool> read <registry>` with JSON in `--input-file <path>`:
 `{"reference":"<resolved canonical URL>"}`.
 The helper validates the reference again, uses structured `gh api graphql`
 queries on github.com, checks `issueOrPullRequest`'s type, and follows every

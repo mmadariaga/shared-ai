@@ -25,7 +25,7 @@ when the provider is known; it defines that provider's selection fields and prio
 Locate `sai/tools/from-next-backlog-item.js` using the installed harness root's
 `sai/policies/tool-resolution.md` section for tool copies.
 
-Run `node <tool> select` with selection JSON on stdin **before asking**. The helper
+Run `node <tool> select --input-file <path>` with the selection JSON in the input file **before asking**. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. The helper
 uses the existing Git destination resolver, the `backlog.*` settings, and remotes
 to complete missing provider and project information. Preserve explicit destinations
 and filters. Print the helper's `warnings` and `notices` verbatim, one line each. On `pending`,

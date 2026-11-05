@@ -56,7 +56,7 @@ summary: string
 changed_files: string[]
 ```
 
-After a `step-done`, emit the step's id to the machine as `{"step_ids": [...]}` through `emit <id> review-steps@1 -` (the first `step-done` carries `review-intake` and `establish-diff-scope`), then send the worker `Active step: <stage> — follow <next.follow>` from the response. The store never gates the run: when an emit fails, send the next pointer from the static order.
+After a `step-done`, emit the step's id to the machine as `{"step_ids": [...]}` through `emit <id> review-steps@1 --input-file <path>` per `@sai/policies/stage-machine.md` § Event delivery (the first `step-done` carries `review-intake` and `establish-diff-scope`), then send the worker `Active step: <stage> — follow <next.follow>` from the response. The store never gates the run: when an emit fails, send the next pointer from the static order.
 
 ## Close
 

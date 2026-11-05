@@ -15,8 +15,8 @@
  *   open --harness <claude|opencode>
  *       Create one unique private directory (mode 0700 on POSIX) under the SAI
  *       temp root and return its absolute path as `dir`.
- *   put --dir <dir> --path <relative>            (content on stdin)
- *       Write stdin to `<relative>` inside `<dir>`; return {path, sha256} with
+ *   put --dir <dir> --path <relative> [--input-file <path>]   (content in the input file, else on stdin)
+ *       Write the input file's bytes (else stdin) to `<relative>` inside `<dir>`; return {path, sha256} with
  *       the absolute path. Writing the same path again replaces the file.
  *   verify --dir <dir> --path <absolute> --sha256 <hex>
  *       Confirm the path lies inside `<dir>`, is a regular file reached
@@ -43,6 +43,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { makeTempDir, TempRootError } = require('./temp-root');
+const { readInputBytes } = require('./input-reader');
 
 const MARKER = '.sai-transfer';
 const DIR_PREFIX = 'sai-transfer-';
@@ -193,7 +194,7 @@ function usage() {
   return [
     'Usage:',
     '  node transfer.js open --harness <claude|opencode>',
-    '  node transfer.js put --dir <dir> --path <relative>      (content on stdin)',
+    '  node transfer.js put --dir <dir> --path <relative> [--input-file <path>]   (content in the input file, else on stdin)',
     '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
     '  node transfer.js close --dir <dir>',
@@ -202,7 +203,7 @@ function usage() {
   ].join('\n');
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -239,7 +240,7 @@ function execute(opts) {
       return open(opts.harness);
     case 'put':
       require_(opts, ['dir', 'path']);
-      return put(opts.dir, opts.path, readStdin());
+      return put(opts.dir, opts.path, opts.inputFile ? readInputBytes(opts.inputFile) : readStdin());
     case 'verify': {
       require_(opts, ['dir', 'path', 'sha256']);
       const { path: verified, sha256 } = verify(opts.dir, { path: opts.path, sha256: opts.sha256 });

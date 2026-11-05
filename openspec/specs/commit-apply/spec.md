@@ -31,22 +31,32 @@ The `sai/tools/commit.js apply` subcommand SHALL read a commit message from stdi
 
 ### Requirement: apply reads message from stdin
 
-The commit message SHALL be passed to `sai/tools/commit.js apply` over standard input using the literal-message procedure in `sai/policies/command-execution.md`, never through a temporary file, command-line argument, command string, or mandatory Bash heredoc. The procedure SHALL support Bash and PowerShell 7, preserve multiline and shell-sensitive content byte-for-byte including the final-LF state, and keep validation, sensitive-file handling, and commit authorization unchanged.
+The commit message SHALL be passed to `sai/tools/commit.js apply` as an input file using the procedure in `sai/policies/command-execution.md` § Deliver literal commit messages: the complete message written as UTF-8 with the harness-native file-write tool to a unique file in a directory returned by `transfer.js open --harness <claude|opencode>`, outside the repository, and passed as `--input-file <path>`; the directory SHALL be closed with `transfer.js close` once the commit has run. The message SHALL never pass through a command-line argument, a command string, a stdin pipe, or a heredoc in the prescribed procedure. `apply` SHALL still read the message from standard input when no `--input-file` is given, so earlier instructions keep working. Both channels SHALL preserve multiline and shell-sensitive content byte-for-byte including the final-LF state, and SHALL keep validation, sensitive-file handling, and commit authorization unchanged. A missing, unreadable, or empty input file SHALL fail with an error naming the path and SHALL create no commit.
 
 #### Scenario: apply consumes stdin message
 
-- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` receives a valid message on standard input through a supported shell's literal-message transport
+- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` runs without `--input-file` and receives a valid message on standard input
 - **THEN** apply reads the message from standard input, validates it, and uses it for the commit
 
 #### Scenario: apply consumes a PowerShell 7-transported stdin message
 
-- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` receives a valid message through the supported PowerShell 7 literal-message transport
-- **THEN** apply reads the message from standard input without pipeline-added line endings, validates it, and uses it for the commit
+- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` runs from PowerShell 7 without `--input-file` and receives a valid message on standard input
+- **THEN** apply still accepts the stdin message, validates it, and uses it for the commit, while the prescribed PowerShell 7 delivery is the same `--input-file <path>` invocation as in Bash
 
 #### Scenario: stdin message is not written to a temporary file
 
 - **WHEN** apply executes
-- **THEN** no temporary message file is created and no orphaned file exists on failure
+- **THEN** apply itself creates no temporary message file; the only message file is the caller's input file inside the SAI temp root, outside the repository
+
+#### Scenario: apply consumes an input-file message
+
+- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo> --input-file <path>` names a file holding a valid message
+- **THEN** apply reads the message from that file byte-for-byte, validates it, and uses it for the commit
+
+#### Scenario: Missing message file creates no commit
+
+- **WHEN** `--input-file` names a missing or empty file
+- **THEN** apply fails with an error naming the path and no commit is created
 
 ### Requirement: apply validates by importing lint functions
 

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { runProcess, stepLabel } = require('./backlog-process');
 const projectSettings = require('./project-settings');
+const { extractInputFile, readInput } = require('./input-reader');
 
 function fault(reason, message) {
   return Object.assign(new Error(message), { reason });
@@ -215,11 +216,12 @@ function runAzureSdk(input) {
   return result.stdout;
 }
 
-function main(argv) {
+function main(rawArgv) {
   try {
+    const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
-    if (!['resolve', 'read'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read <registry.json>; JSON {reference} on stdin');
-    const request = JSON.parse(fs.readFileSync(0, 'utf8'));
+    if (!['resolve', 'read'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read <registry.json>; JSON {reference} in the input file: --input-file <path> (stdin also accepted)');
+    const request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const settings = projectSettings.readBacklog({ cwd: process.cwd(), providerIds: registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => entry.id) });
     const { settingApplied, settingOverridden, ...resolved } = resolve(request.reference, registry, { run, configuredProvider: settings.config.provider, configuredDestination: settings.config });

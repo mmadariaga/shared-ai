@@ -98,7 +98,7 @@ from parent context. Resolve the provider through `resolve-origin`, retaining th
 identity for every assignment operation; GitLab may use an authenticated custom host.
 
 Locate `to-backlog.js` per `tool-resolution.md` and use the installed
-`to-backlog/providers/registry.json`. Each operation receives JSON on stdin
+`to-backlog/providers/registry.json`. Each operation receives JSON in `--input-file <path>` (per `@sai/policies/tool-resolution.md` § Invocation (structured input is an input file))
 with the resolved `provider` and `reference` (the selected child URL). For lost
 correspondence, pass the known destination and explicit change name to
 `lookup-slice`; Azure also requires the invocation's known work-item type.

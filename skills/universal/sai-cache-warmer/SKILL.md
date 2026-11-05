@@ -16,10 +16,10 @@ configuration stay unchanged; no subagent or session API is involved.
 
 ## Resolve values
 
-Use `wait.js` beside this installed skill. Run `node "<script-path>" prepare`
-with a JSON object on stdin: `{"arguments":"30 min 18:00"}`. Pass the user's
-arguments unchanged through a quoted heredoc or safe stdin writer, never shell
-interpolation. Empty arguments are allowed. The script accepts a positive
+Use `wait.js` beside this installed skill. Run `node "<script-path>" prepare --input-file <path>`
+with a JSON object in the input file: `{"arguments":"30 min 18:00"}`. Pass the user's
+arguments unchanged through the file written with the native file-write tool, never shell
+interpolation. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. Empty arguments are allowed. The script accepts a positive
 interval (seconds, minutes or hours; a bare number means minutes), a local
 `HH:mm` target, `YYYY-MM-DD HH:mm`, or `now + 1h` (also 2h and 3h).
 Named `interval` and `target` JSON fields override their respective arguments.
@@ -53,7 +53,7 @@ No additional approval question is required.
 
 ## Wait and continue
 
-Run `node "<script-path>" wait` with `state` as JSON on stdin. Each call waits
+Run `node "<script-path>" wait --input-file <path>` with `state` as JSON in the input file. Each call waits
 once, at most the interval or time remaining until the fixed closing time.
 Launch it as a native background shell task: Claude Code Bash
 `run_in_background: true`; OpenCode shell `background: true`. Use the actual

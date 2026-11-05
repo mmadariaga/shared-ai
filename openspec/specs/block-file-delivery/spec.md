@@ -39,9 +39,9 @@ Every `ready-to-propose.js check` call that the instructions prescribe for a blo
 
 ### Requirement: Non-block deliveries keep stdin
 
-Events that are not blocks, such as intents, `step_ids`, and progress payloads, SHALL keep the single-quoted JSON delivery on stdin documented in `sai/policies/stage-machine.md` § Event delivery. `sai/commands/explore/steps/issue-intake.md` § Conversion SHALL describe the `ready-to-propose.js convert` input delivery itself: the issue text on stdin, as literal text through a quoted heredoc in Bash or a single-quoted here-string in PowerShell 7, with nothing expanded or escaped.
+Events that are not blocks, such as intents, `step_ids`, and progress payloads, SHALL travel as input files per `sai/policies/stage-machine.md` § Event delivery: the JSON written with the harness-native file-write tool to a unique file in a `transfer.js open` directory and passed with `--input-file <path>`, with the stdin `-` form still accepted by the tool but not prescribed. `sai/commands/explore/steps/issue-intake.md` § Conversion SHALL describe the `ready-to-propose.js convert` input delivery itself: the issue text exactly as it entered the conversation, written as literal text with the harness-native file-write tool in a directory from `transfer.js open` and passed with `--input-file <path>`, with no heredoc, here-string, or stdin pipe.
 
 #### Scenario: Conversion keeps its stdin delivery
 
 - **WHEN** Explore runs `ready-to-propose.js convert` on an imported issue
-- **THEN** it passes the issue text on stdin as `issue-intake.md` § Conversion describes, without citing the block emit delivery of `stage-machine.md`
+- **THEN** it passes the issue text in an input file as `issue-intake.md` § Conversion describes, without citing the block emit delivery of `stage-machine.md`
