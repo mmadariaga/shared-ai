@@ -85,3 +85,19 @@ A caller's tool name, procedure, or method SHALL NOT override the profile grants
 #### Scenario: Fetch tool is permitted
 - **WHEN** the explorer resolves a `Fetch @<subpath>` directive
 - **THEN** it runs the fetch tool in the form its fetch `SKILL.md` gives without a refusal entry
+
+### Requirement: Explorer runs one allowed shell command per call
+
+`sai/policies/explore-agent.md` § Shell restriction SHALL require the budget-explorer to run one allowed command per shell call, from the project root, with no pipe, chaining, redirection, or command substitution. The explorer SHALL limit output with the command's own options (`git grep -l`, `git grep -c`, `git grep --max-count <n>`, or a narrower pathspec) and never with a trailing `| head`. For any other command or command form, the explorer SHALL record `shell operation refused: <description>` in `ladder_discards` instead of running it. A test SHALL assert this policy text.
+
+#### Scenario: Output limited with the command's own option
+- **WHEN** the explorer needs only the files that match a textual search
+- **THEN** it runs a single `git grep -l` call from the project root with no pipe
+
+#### Scenario: Piped command form is refused
+- **WHEN** the explorer would need `git grep <pattern> | head` or any other chained, redirected, or substituted form
+- **THEN** it does not run that form and records `shell operation refused: <description>` in `ladder_discards`
+
+#### Scenario: Policy text is guarded
+- **WHEN** the explorer tools test reads `sai/policies/explore-agent.md`
+- **THEN** it finds the single-command rule, the four output-limiting options, the trailing-`| head` prohibition, and the refusal record

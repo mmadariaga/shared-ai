@@ -196,7 +196,7 @@ test('both harnesses install every branch and update provider through existing c
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(directory, key)]));
     const projection = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
     for (const suffix of ['skills/to-backlog/create.md', 'skills/to-backlog/update.md', 'skills/to-backlog/providers/github-update.md', 'sai/tools/from-backlog-github.js']) assert.ok(projection.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
-    assert.ok(translate(manifest.capabilities, 'to-backlog-command', harness).profile.shell.includes('node {sai}/tools/to-backlog.js *'));
+    assert.deepEqual(translate(manifest.capabilities, 'to-backlog-command', harness).profile.shell, ['*']);
   }
 });
 
