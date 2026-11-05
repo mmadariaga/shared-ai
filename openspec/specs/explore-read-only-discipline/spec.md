@@ -7,12 +7,12 @@ Keeps `/sai-explore` read-only across its step library: exploration writes nothi
 
 ### Requirement: Shared exploration stages carry a read-only reminder
 
-The common exploration guidance SHALL include a read-only reminder near the beginning of `sai/commands/explore/steps/common.md` beginning with `Exploration is read-only:` and stating that sai-explore must not create, modify, or delete repository files or implement code. It SHALL identify `sai/commands/explore/instructions.md` as the normative no-file-writes rule and preserve its separate user-invoked to-backlog exception: only temporary preparation, receipt, and publication operations after explicit publication confirmation, with temporary preparation and receipts outside the repository. This exception SHALL NOT permit repository writes or bypass publication confirmation.
+The common exploration guidance SHALL include a read-only reminder near the beginning of `sai/commands/explore/steps/common.md` beginning with `Exploration is read-only:` and stating that sai-explore must not create, modify, or delete repository files or implement code. It SHALL identify `sai/commands/explore/instructions.md` as the normative no-file-writes rule and preserve its separate user-invoked to-backlog exception: only temporary preparation, receipt, and publication operations after explicit publication confirmation, with temporary preparation and receipts outside the repository. This exception SHALL NOT permit repository writes or bypass publication confirmation. The reminder SHALL also state that the block and verdicts files that the block registration writes into its `transfer.js` directory remain outside the repository.
 
 #### Scenario: Reminder present during exploration
 
 - **WHEN** an agent reads the shared exploration-stage guidance
-- **THEN** the guidance states that exploration creates, modifies, or deletes no repository files and implements no code, while identifying the separately invoked explicitly publication-confirmed outside-repository to-backlog exception.
+- **THEN** the guidance states that exploration creates, modifies, or deletes no repository files and implements no code, while identifying the separately invoked explicitly publication-confirmed outside-repository to-backlog exception and the outside-repository block and verdicts files.
 
 ### Requirement: Crystallization emission does not authorize writes
 

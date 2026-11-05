@@ -7,12 +7,12 @@ TBD - created by archiving change fix-crystallization-close-selector. Update Pur
 
 ### Requirement: Crystallization-close emission guarantee on every crystallization path
 
-The crystallization-close SHALL invoke the shared close exactly once for the complete block set of a single-change turn or a sliced-feature turn. The close SHALL handle the stage panel. It SHALL then send the complete composed block set, in display order, through exactly one block emit (`sai-state emit <id> explore-slice@1 --ready-to-propose -`), which validates the set, extracts each `**Change name**` in display order, and records the ordered inventory before any block is displayed. The close SHALL complete only when that emit succeeds in the `waiting` state and every block has then been printed exactly as sent. When no slice is active, the successful emit SHALL return the route-selector pointer, which SHALL present the native picker after the printed blocks in the same assistant turn. The close SHALL not emit a route intent, create a route entry, or dispatch a worker until a valid picker answer arrives in a later turn. No inline-refusal path exists outside this close: every `Ready to Propose` block is printed through it.
+The crystallization-close SHALL invoke the shared close exactly once for the complete block set of a single-change turn or a sliced-feature turn. The close SHALL handle the stage panel. It SHALL then write the complete composed block set, in display order, to a block file, run `ready-to-propose.js check --profile dispatchable --block-file <path>` on it, write the verdicts file (`[]` when no line is flagged), and send the set through exactly one block emit (`sai-state emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>`), preparing the files with the harness-native file-write tool per `sai/policies/ready-to-propose-format.md` § Block and verdict delivery so that no block content passes through a shell command. The emit validates the set, extracts each `**Change name**` in display order, and records the ordered inventory before any block is displayed. The close SHALL complete only when that emit succeeds in the `waiting` state and every block has then been printed exactly as sent. When no slice is active, the successful emit SHALL return the route-selector pointer, which SHALL present the native picker after the printed blocks in the same assistant turn. The close SHALL not emit a route intent, create a route entry, or dispatch a worker until a valid picker answer arrives in a later turn. No inline-refusal path exists outside this close: every `Ready to Propose` block is printed through it.
 
 #### Scenario: Single crystallization emits selector after recommendation
 
 - **WHEN** a single-change crystallization turn composes its complete `Ready to Propose` block ending at `---`
-- **THEN** it invokes one shared close, records the extracted name through the block emit before printing the block, presents the picker after the printed block, and presents no route work before a later valid picker answer
+- **THEN** it invokes one shared close, records the extracted name through the file-form block emit before printing the block, presents the picker after the printed block, and presents no route work before a later valid picker answer
 
 ### Requirement: Only native-picker selector counts with fixed English titles
 
@@ -143,21 +143,21 @@ No inline-refusal path bypasses the checkpoint with an immediate handoff. When t
 
 ### Requirement: Block validation failures retry within a bounded limit and show only confirmed hygiene violations
 
-When the block emit returns `validation.ok` false, the machine SHALL stay untouched. For a structural failure the close SHALL correct the cited blocks and resend the whole set without showing anything to the user, with at most two retries. For pending flagged lines the close SHALL judge them per `sai/policies/block-hygiene-judgment.md` and resend the set with the verdicts. For a confirmed hygiene violation the close SHALL show each violation's clause, line number, and evidence, recompose the set, and resend it within the same retry limit, asking the user only when the correction would change an agreed `E` or `I` item or the scope. When the retries are exhausted, the close SHALL show each violation with its block index, line, and problem, print no block, open no picker, and wait for instructions. A delivery failure (`reason: "EVENT_UNPARSEABLE"` or an emit usage error) SHALL use the stage-machine corrective retry, whose counter of two is separate from the validation counter, and SHALL stop the same way when it is exhausted. Any other emit error or rejection SHALL follow the stage-machine error or acknowledgement path: print the block set, stop the close, and open no picker.
+When the `check` on the block file returns `ok` false, or `dispatchable` false for a structural or hygiene reason, the machine SHALL stay untouched. For a structural failure the close SHALL correct the cited blocks, rewrite the block file, and resend the whole set without showing anything to the user, with at most two retries. For pending flagged lines (`judgment.pending` in the `check` output) the close SHALL judge them per `sai/policies/block-hygiene-judgment.md`, write the verdicts file, and emit through the same `--block-file <path> --verdicts-file <path>` form. For a confirmed hygiene violation the close SHALL show each violation's clause, line number, and evidence, recompose the set, and resend it within the same retry limit, asking the user only when the correction would change an agreed `E` or `I` item or the scope. When the retries are exhausted, the close SHALL show each violation with its block index, line, and problem, print no block, open no picker, and wait for instructions. A delivery failure (`reason: "BLOCK_COMPOSITION_FAILED"` or an emit usage error) SHALL use the stage-machine corrective retry, whose counter of two is separate from the validation counter, rewriting the files when needed, and SHALL stop the same way when it is exhausted. When the transfer directory cannot be opened or a file cannot be written, the close SHALL stop at once and show the error, with no stdin fallback. Any other emit error or rejection SHALL follow the stage-machine error or acknowledgement path: print the block set, stop the close, and open no picker.
 
 #### Scenario: Invalid set is corrected silently
 
-- **WHEN** the block emit rejects a block set and a corrected resend within two retries validates
+- **WHEN** the block validation rejects a block set and a corrected resend within two retries validates
 - **THEN** the user sees only the final printed blocks and the picker, and the inventory records the names from the corrected set
 
 #### Scenario: Exhausted validation retries stop without blocks
 
-- **WHEN** the third block emit of a set still returns `validation.ok` false
+- **WHEN** the third validation of a set still reports it not dispatchable
 - **THEN** the close shows the violations by block index, line, and problem, prints no block, and opens no picker
 
 #### Scenario: Delivery failure keeps its own counter
 
-- **WHEN** a block emit returns `reason: "EVENT_UNPARSEABLE"` after a validation retry was already used
+- **WHEN** a block emit returns `reason: "BLOCK_COMPOSITION_FAILED"` after a validation retry was already used
 - **THEN** the corrective retry runs with its own counter of two, independent of the validation retries
 
 #### Scenario: Confirmed hygiene violation is shown
