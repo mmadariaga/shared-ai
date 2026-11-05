@@ -6,7 +6,11 @@ unclear. Follow the backlog convention: `glab repo view --output json -- <reposi
 resolves the canonical project identity; `glab api --hostname` uses that exact host.
 Issue enablement is irrelevant to merge requests. Query open MRs with exact source
 and target project ids and branch names. Creation writes source_branch,
-target_branch, title and description; update PUT writes only title and description.
+target_branch, title and description; update PUT writes title and description.
+An explicit draft request uses GitLab's supported `Draft: ` title prefix for both
+creation and conversion, bound to the publication approval. Read-back must confirm
+`draft` (or the older `work_in_progress`) is true; a title alone is not verification.
+Omitting the draft request preserves existing draft behavior.
 For assignment on creation only, the authenticated user (`GET user`) and every page of project labels
 are read; the same `POST merge_requests` carries `assignee_ids` and the chosen existing
 labels as a comma-separated `labels` value. No label is ever created.

@@ -49,12 +49,11 @@ When the spec segment fails, is stopped, or ends on an escalation the user did n
 
 ### Requirement: /sai-plan closes with its own line
 
-When both segments completed, or the spec segment counted as done and the design segment completed, `/sai-plan` SHALL replace each segment's closing line with its own, say which artifacts were created, and end with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` The command SHALL stop before implementation.
+When both segments completed, or the spec segment counted as done and the design segment completed, `/sai-plan` SHALL replace each segment's closing line with its own, say which artifacts were created, and close the planning report with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` This literal SHALL close the planning report, not the command interaction. Planning and its run SHALL close before the optional publication offer. The command SHALL stop before implementation.
 
 #### Scenario: a completed plan prints the plan closing line
-
 - **WHEN** both segments of a `/sai-plan` run complete
-- **THEN** the run ends with the `Plan done in openspec/changes/{name}/.` closing line naming `/sai-build {name}` and dispatches no implementation
+- **THEN** the planning report closes with the `Plan done in openspec/changes/{name}/.` line naming `/sai-build {name}`, the planning run closes, and the optional offer can follow without dispatching implementation.
 
 ### Requirement: Plan commands accept and ignore fast-track and supervised
 
@@ -64,3 +63,27 @@ When both segments completed, or the spec segment counted as done and the design
 
 - **WHEN** `/sai-2-design {name} --fast-track` is invoked
 - **THEN** the token is dropped, no `> FAST-TRACK MODE ACTIVE` banner is printed, and the run behaves as without the token
+
+### Requirement: One optional completed-plan draft publication offer
+
+After successful planning, `/sai-plan` SHALL offer once to create or update a draft PR/MR with the complete plan. The plan coordinator SHALL own this offer for direct and Explore invocation. Publication instructions SHALL load only after acceptance. Failure, interruption or unresolved escalation SHALL offer no publication. Standalone spec and design SHALL offer none.
+
+#### Scenario: Successful planning offers publication once
+- **WHEN** direct `/sai-plan` or the Explore Plan route finishes planning successfully
+- **THEN** the coordinator asks `Create or update a draft PR/MR with the complete plan for {name}?` with `Publish draft plan` and `Not now`, and Explore asks no duplicate question.
+
+#### Scenario: Offer is declined or cancelled
+- **WHEN** the user selects `Not now` or cancels the offer
+- **THEN** planning stays completed with its existing commits and no publication preparation, inclusion commit, push or request mutation follows that answer.
+
+#### Scenario: Offer is accepted
+- **WHEN** the user selects `Publish draft plan`
+- **THEN** the coordinator loads the publication continuation and reuses `/to-pr` on the same change branch with an explicit draft request, without treating acceptance as local inclusion or remote-operation approval.
+
+#### Scenario: Planning does not complete
+- **WHEN** planning fails, stops or ends on an unanswered escalation
+- **THEN** the run closes with its existing reports and no publication offer or continuation runs.
+
+#### Scenario: Publication cannot complete
+- **WHEN** an accepted publication action is cancelled, unavailable, fails or remains uncertain
+- **THEN** the completed plan and confirmed local or remote effects remain intact, only publication stops, and the caller continues its normal close without another offer.

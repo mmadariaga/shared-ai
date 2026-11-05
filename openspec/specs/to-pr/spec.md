@@ -7,7 +7,7 @@ Prepare, review, create, and update GitHub pull requests and GitLab merge reques
 
 ### Requirement: Committed Git preparation with optional OpenSpec context
 
-The to-pr skill SHALL prepare titles and descriptions primarily from committed branch history and diff against a verified target ref. It SHALL distinguish pending staged, unstaged, and untracked files, SHALL NOT create commits or automatically include pending files, and SHALL NOT require OpenSpec or generate pr.md. Relevant OpenSpec documents MAY supply supporting context but MUST NOT override Git evidence. Existing user documents SHALL be preserved.
+The to-pr skill SHALL prepare titles and descriptions primarily from committed branch history and diff against a verified target ref. It SHALL distinguish pending staged, unstaged, and untracked files, SHALL NOT automatically include or commit pending files, and SHALL NOT require OpenSpec or generate pr.md. The accepted completed-plan continuation MAY create one exact authorized current-change plan commit before fresh collection. Relevant OpenSpec documents MAY supply supporting context but MUST NOT override Git evidence. Existing user documents SHALL be preserved.
 
 #### Scenario: Prepare without OpenSpec
 - **WHEN** a Git repository has committed branch changes but no relevant OpenSpec documents
@@ -21,13 +21,17 @@ The to-pr skill SHALL prepare titles and descriptions primarily from committed b
 - **WHEN** the selected target has no usable local or remote-tracking ref for collection
 - **THEN** preparation stops or asks how to obtain the ref rather than inventing a diff.
 
+#### Scenario: Authorized completed-plan inclusion precedes collection
+- **WHEN** the user accepts the completed-plan action and approves the exact current-change documents and content for local inclusion
+- **THEN** only those documents can enter the inclusion commit, after which publication recollects the committed branch against the same destination.
+
 ### Requirement: Create or update the exact matching request
 
-The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write title and description, any separately approved managed risk comment, and only an explicitly requested Azure draft state. Reviewers, assignees, labels and unrelated fields SHALL remain unchanged. Identical content SHALL end without mutation only when the title, computed description including any tool-owned closing block, requested Azure draft state and required managed comment already match. Titles SHALL use the existing shared title validator.
+The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write title and description, any separately approved managed risk comment, and only an explicitly requested draft conversion on GitHub, GitLab or Azure DevOps. Reviewers, assignees, labels and unrelated fields SHALL remain unchanged. Identical content SHALL end without mutation only when the title, computed description including any tool-owned closing block, requested draft state and required managed comment already match. Titles SHALL use the existing shared title validator, excluding GitLab's supported draft prefix from Conventional Commits validation.
 
 #### Scenario: Existing request receives a content update
 - **WHEN** exactly one open request matches the selected source and destination
-- **THEN** the proposed operation updates its title and description, any approved managed risk comment and explicitly requested Azure draft state, preserves unrelated fields, and does not create another request.
+- **THEN** the proposed operation updates its title and description, any approved managed risk comment and explicitly requested draft conversion, preserves unrelated fields, and does not create another request.
 
 #### Scenario: Matching requests are ambiguous
 - **WHEN** more than one open request matches
@@ -377,11 +381,11 @@ When `query` prepares the creation of a GitHub pull request or GitLab merge requ
 
 ### Requirement: Updates and Azure Repos requests receive no assignee or labels
 
-The system SHALL read, propose, and write no assignee or labels for assignment when it updates an existing request. The PR update call SHALL send title and description and only an explicitly requested Azure isDraft:true; managed risk-comment writes SHALL be separate. On GitHub and GitLab, managed-comment planning SHALL read the authenticated current user even on update to establish comment ownership, not assignment. For Azure Repos, `query` SHALL read no user for assignment and no labels and SHALL return the warning `no assignee or labels: the provider does not support them`.
+The system SHALL read, propose, and write no assignee or labels for assignment when it updates an existing request. Updates SHALL send title and description and only explicitly requested draft-state operations; managed risk-comment writes SHALL be separate. On GitHub and GitLab, managed-comment planning SHALL read the authenticated current user even on update to establish comment ownership, not assignment. For Azure Repos, `query` SHALL read no user for assignment and no labels and SHALL return the warning `no assignee or labels: the provider does not support them`.
 
 #### Scenario: An update leaves assignee and labels untouched
 - **WHEN** `query` and `publish` select an existing open request for update
-- **THEN** no assignment or label read or write occurs, the PR update carries title and description and only an explicit Azure draft request, and any authenticated-user read serves managed-comment ownership only.
+- **THEN** no assignment or label read or write occurs, the update carries title and description and only explicitly requested draft-state operations, and any authenticated-user read serves managed-comment ownership only.
 
 #### Scenario: Azure Repos creation states the limitation
 - **WHEN** `query` prepares an Azure Repos pull request creation
@@ -559,7 +563,7 @@ Across GitHub, GitLab and Azure DevOps, the tool SHALL identify managed comments
 
 ### Requirement: Explicit Azure draft-state scope
 
-The tool SHALL accept draft:true only for an explicit Azure DevOps draft request, bind it to the approved proposal and send isDraft:true on creation or update. It SHALL reject draft:false and draft requests for GitHub or GitLab under this enhancement. Without a draft request it SHALL omit the field, preserving previous creation behavior and an existing state. Readback SHALL separately confirm requested draft state; verified content alone SHALL NOT establish draft completion.
+The tool SHALL accept draft:true for explicit draft requests on GitHub, GitLab and Azure DevOps and bind the requested state to the approved proposal. For Azure DevOps it SHALL send isDraft:true on creation or update. It SHALL reject draft:false. Without a draft request, Azure payloads SHALL omit isDraft, preserving previous creation behavior and existing state. Readback SHALL separately confirm requested draft state; verified content alone SHALL NOT establish draft completion.
 
 #### Scenario: Draft creation or conversion is approved
 - **WHEN** an Azure creation or existing-request update is approved with draft:true
@@ -576,3 +580,43 @@ The tool SHALL accept draft:true only for an explicit Azure DevOps draft request
 #### Scenario: Draft readback is incomplete
 - **WHEN** Azure content matches the approved proposal but isDraft:true cannot be confirmed
 - **THEN** recovery reports content verified and draft pending, not full success, without repeating creation.
+
+### Requirement: Explicit three-provider draft publication
+
+The shared publisher SHALL support explicit `draft:true` creation and conversion on GitHub, GitLab and Azure DevOps. Complete presentation and exact publication approval SHALL bind the requested state and any conversion of an existing ready request. Without an explicit request, ordinary creation behavior and existing draft state SHALL be preserved. False or other unsupported draft values SHALL be rejected.
+
+#### Scenario: GitHub draft creation
+- **WHEN** an approved explicit draft request has no matching GitHub PR
+- **THEN** creation uses REST with `draft:true` and the same selected source and target branches.
+
+#### Scenario: GitHub ready request converts to draft
+- **WHEN** an approved explicit draft request matches one ready GitHub PR
+- **THEN** the adapter converts that PR through GraphQL using its verified node ID and updates the same PR rather than creating a duplicate.
+
+#### Scenario: GitLab draft creation or conversion
+- **WHEN** an explicit draft request creates or updates a GitLab MR
+- **THEN** the approved wire title has one supported `Draft: ` prefix and the same MR is reused for conversion.
+
+#### Scenario: Azure draft behavior is retained
+- **WHEN** an explicit draft request creates or updates an Azure DevOps PR
+- **THEN** the existing adapter writes `isDraft:true` and verifies the requested state.
+
+#### Scenario: Existing draft is reused
+- **WHEN** the selected request is already a draft and its content needs updating
+- **THEN** the publisher updates that request while preserving draft state and performs no redundant GitHub conversion.
+
+#### Scenario: Draft approval changes
+- **WHEN** publication's requested draft state or conversion differs from the exact approved proposal
+- **THEN** the prior confirmation is rejected before mutation and complete renewed approval is required.
+
+### Requirement: Verify draft state independently of request content
+
+For an explicit draft request, publication and recovery SHALL require readback confirming draft state as well as approved content before reporting success. GitHub SHALL use the returned draft flag, GitLab SHALL use draft or work_in_progress rather than its title alone, and Azure DevOps SHALL retain its isDraft check. Unverified state SHALL remain uncertain and SHALL NOT authorize another creation or completed push.
+
+#### Scenario: Content matches but draft state does not
+- **WHEN** the approved title and description are present but requested draft state cannot be confirmed
+- **THEN** publication remains uncertain and reports the unresolved draft state rather than accepting a normal request as success.
+
+#### Scenario: Lost response is recovered read-only
+- **WHEN** draft publication may have succeeded but its response was lost
+- **THEN** recovery reads the selected request and reports completion only when exact content and draft state match, without repeating creation, conversion or push.

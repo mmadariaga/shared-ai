@@ -12,6 +12,14 @@
   --overview-lang <overview_language>
   ```
 
+  **Optional publication.** The plan coordinator owns its one successful-close
+  draft PR/MR offer, including this route. Let it finish that optional action before
+  the handoff; Explore asks no second publication question. Planning completion and
+  the slice transition remain successful if publication is declined, cancelled or
+  unavailable. Only the accepted publication action may include the exact authorized
+  current-change plan paths through `to-pr.js plan-commit`; this gives Explore no
+  direct repository write authority and changes no ordinary segment ignore rule.
+
   The last line is present only when `overview_language` is not the literal `None`. The plan coordinator verifies the block file and ends with its own errors when the block does not verify. The exported file stays in place for the whole run, including for a replacement spec worker; export anew only for a fresh Plan selection or after an amendment, per `@sai/policies/ready-to-propose-format.md` § Stored block transport. It treats a slice whose proposal and specs already exist on disk as a spec segment already done, so a slice parked at `sai-2` resumes at design.
 
   **Slice machine.** On a **Plan - Unattended** selection the selector already emitted `{intent: plan}` to `explore-slice@1` per `@sai/policies/stage-machine.md`; a response that carries `rejected: ALREADY_RUNNING` is acknowledged as already running with nothing dispatched. When the spec segment completes, or counted as done, emit `{intent: complete}` (`sai-1` → `sai-2`) before the design segment starts, and consume the returned stage. When the design segment completes, emit `{intent: complete}` (`sai-2` → `implement`). When a segment fails, is stopped, or ends on an unanswered escalation, emit `{intent: fail}` after its report, parking the slice on its current stage per `slice.md`; a later **Plan - Unattended** choice with a fresh picker answer retries it, and the plan coordinator resumes from the artifacts on disk. On store failure, a `rejected` emit, or a degraded store, hold the stage, present no next-slice selector, close nothing as complete, report the degradation, and wait for instruction without deriving the transition in prose.
