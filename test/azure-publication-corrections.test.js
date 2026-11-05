@@ -31,6 +31,7 @@ test('H1: actual shared spawn boundary overrides inherited dynamic installation 
     shared.run('az',['devops','invoke'],process.cwd());
     shared.run('azure-sdk',[],process.cwd(),JSON.stringify({organization:'https://dev.azure.com/org'}));
     const sdkCalls=calls.filter(c=>c.args[0]==='-IBc').length;assert.equal(sdkCalls,1);
+    reader.resetAzureMemory();
     absent=true;
     assert.throws(()=>shared.run('azure-sdk',[],process.cwd(),'{}'),/extension not installed/);
     assert.equal(calls.filter(c=>c.args[0]==='-IBc').length,1);

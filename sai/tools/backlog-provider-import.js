@@ -12,13 +12,16 @@ function bind(platform, load) {
           failedSource = { url, result };
           throw new Error(result.message || 'Source content is incomplete');
         }
-        const item = result.item, value = identity.decode(item.description);
-        if (value && (value.platform !== platform || (value.role === 'parent' ? value.parent : value.slices.find(slice => slice.change_name === value.change_name)?.issue) !== item.url)) throw new Error('Correspondence does not identify its containing issue');
+        const item = result.item;
+        let value;
+        // A marker that cannot be read leaves this source incomplete, never complete.
+        try { value = identity.decode(item.description, item.url); } catch (error) { failedSource = { url, result }; throw error; }
+        if (value && (value.platform !== platform || (value.role === 'parent' ? value.parent : identity.slicesOf(value, item.url).find(slice => slice.change_name === value.change_name)?.issue) !== item.url)) throw new Error('Correspondence does not identify its containing issue');
         const upper = identity.upper(value);
         const parent = upper ? upper.parent : null;
         if (parent && item.parent && parent !== item.parent) throw new Error('Native parent conflicts with correspondence');
-        const dependencies = upper ? upper.slices.find(slice => slice.change_name === upper.change_name).depends_on.map(name => upper.slices.find(slice => slice.change_name === name).issue) : [];
-        return { ...result, item: { ...item, parent: item.parent || parent, children: [...new Set([...(item.children || []), ...(value?.role === 'parent' ? value.slices.map(slice => slice.issue) : [])])], dependencies: [...new Set([...(item.dependencies || []), ...dependencies])], correspondence: value } };
+        const dependencies = upper ? identity.slicesOf(upper, item.url).find(slice => slice.change_name === upper.change_name).depends_on.map(name => identity.slicesOf(upper, item.url).find(slice => slice.change_name === name).issue) : [];
+        return { ...result, item: { ...item, parent: item.parent || parent, children: [...new Set([...(item.children || []), ...(value?.role === 'parent' ? identity.slicesOf(value, item.url).map(slice => slice.issue) : [])])], dependencies: [...new Set([...(item.dependencies || []), ...dependencies])], correspondence: value } };
       }
       selected = full(reference.url); sources.push({ role: 'selected', ...selected });
       function confirm(parent, child) {

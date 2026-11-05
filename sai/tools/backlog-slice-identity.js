@@ -22,12 +22,23 @@ function normalize(value, platform) {
   return ref.url;
 }
 
+/**
+ * The shared shape check of a decoded SAI marker: its `slices` array, or a readable failure that names the issue
+ * or work item the marker was read from. Every reader of `slices` calls it before using the array.
+ */
+function slicesOf(value, subject) {
+  if (!value || !Array.isArray(value.slices) || value.slices.some(slice => !slice || typeof slice !== 'object')) {
+    throw new Error(`The SAI marker of ${subject || 'an issue'} has no usable slices array`);
+  }
+  return value.slices;
+}
+
 function checkIdentity(value) {
   if (!value || value.version !== 1 || !['github', 'gitlab', 'azuredevops'].includes(value.platform) || !['parent', 'child'].includes(value.role)) throw new Error('Invalid slice identity');
   const parent = normalize(value.parent, value.platform);
   if (!Array.isArray(value.slices) || !value.slices.length) throw new Error('Missing slice correspondence');
   const names = new Set(), issues = new Set();
-  const slices = value.slices.map(slice => {
+  const slices = slicesOf(value).map(slice => {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slice.change_name) || names.has(slice.change_name) || !Array.isArray(slice.depends_on)) throw new Error('Invalid slice correspondence');
     const issue = normalize(slice.issue, value.platform);
     if (issue === parent || issues.has(issue)) throw new Error('Duplicate issue correspondence');
@@ -50,7 +61,7 @@ function checkIdentity(value) {
   if (value.child_of !== undefined) {
     if (value.role !== 'parent') throw new Error('Only a parent marker can carry child_of');
     const upper = checkIdentity(value.child_of);
-    if (upper.role !== 'child' || upper.platform !== value.platform || upper.child_of || upper.slices.find(slice => slice.change_name === upper.change_name).issue !== parent) throw new Error('child_of must be the earlier child correspondence of this issue');
+    if (upper.role !== 'child' || upper.platform !== value.platform || upper.child_of || slicesOf(upper, parent).find(slice => slice.change_name === upper.change_name).issue !== parent) throw new Error('child_of must be the earlier child correspondence of this issue');
   }
   return { version: 1, platform: value.platform, role: value.role, parent, slices, ...(value.hierarchy ? { hierarchy: value.hierarchy } : {}), ...(value.dependency_representation ? { dependency_representation: value.dependency_representation } : {}), ...(value.role === 'child' ? { change_name: value.change_name } : {}), ...(value.child_of ? { child_of: checkIdentity(value.child_of) } : {}) };
 }
@@ -59,7 +70,13 @@ function checkIdentity(value) {
 function upper(value) { return value?.role === 'child' ? value : value?.child_of ?? null; }
 
 function encode(value) { return `${PREFIX}${JSON.stringify(checkIdentity(value))} -->`; }
-function decode(body) {
+function decode(body, subject) {
+  try { return decodeBody(body); } catch (error) {
+    // A marker that cannot be read is reported with the issue or work item it was read from.
+    throw subject ? Object.assign(new Error(`The SAI marker of ${subject} is unusable: ${error.message}`), { cause: error }) : error;
+  }
+}
+function decodeBody(body) {
   // Boards stores HTML. A visible escaped pre block survives HTML sanitizers.
   const html = String(body).match(/<pre>sai-backlog-slices@1 ([\s\S]*?)<\/pre>/g) || [];
   if (html.length) {
@@ -87,4 +104,4 @@ function fenced(text) {
   return `${fence}\n${text}\n${fence}`;
 }
 function encodeMarkdown(value) { return fenced(`sai-backlog-slices@1 ${JSON.stringify(checkIdentity(value))}`); }
-module.exports = { upper, encode, encodeHtml, encodeMarkdown, fenced, decode, checkIdentity, normalize, platformFor, escape };
+module.exports = { slicesOf, upper, encode, encodeHtml, encodeMarkdown, fenced, decode, checkIdentity, normalize, platformFor, escape };

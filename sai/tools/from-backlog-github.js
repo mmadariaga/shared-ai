@@ -103,11 +103,11 @@ function readSet(reference, io) {
         if (!cursor || seen.has(cursor)) throw fault('incomplete-response', 'Invalid assignee pagination');
         seen.add(cursor);
       } while (true);
-      const correspondence = identity.decode(result.item.description);
-      if (correspondence && (correspondence.role === 'parent' ? correspondence.parent !== ref.url : correspondence.slices.find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw fault('incomplete-response', 'Slice correspondence does not identify its containing issue');
+      const correspondence = identity.decode(result.item.description, ref.url);
+      if (correspondence && (correspondence.role === 'parent' ? correspondence.parent !== ref.url : identity.slicesOf(correspondence, ref.url).find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw fault('incomplete-response', 'Slice correspondence does not identify its containing issue');
       const upper = identity.upper(correspondence);
       let parent = upper ? upper.parent : null;
-      let children = correspondence?.role === 'parent' ? correspondence.slices.map(slice => slice.issue) : [];
+      let children = correspondence?.role === 'parent' ? identity.slicesOf(correspondence, ref.url).map(slice => slice.issue) : [];
       if (native) {
         const issue = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url}}}}', { owner, name, number: ref.number }).repository?.issue;
         if (!issue || !Object.prototype.hasOwnProperty.call(issue, 'parent')) throw fault('incomplete-response', 'Parent relationship read is incomplete');
@@ -116,7 +116,7 @@ function readSet(reference, io) {
         parent = nativeParent || parent;
         children = [...new Set([...children, ...connection(io, ref, 'subIssues')])];
       }
-      const dependencies = upper ? upper.slices.find(slice => slice.change_name === upper.change_name).depends_on.map(name => upper.slices.find(slice => slice.change_name === name).issue) : [];
+      const dependencies = upper ? identity.slicesOf(upper, ref.url).find(slice => slice.change_name === upper.change_name).depends_on.map(name => identity.slicesOf(upper, ref.url).find(slice => slice.change_name === name).issue) : [];
       if (fields.some(field => field.name === 'blockedBy')) dependencies.push(...connection(io, ref, 'blockedBy'));
       return { ...result, item: { ...result.item, assignees, parent, children, dependencies: [...new Set(dependencies)], correspondence } };
     };
@@ -147,11 +147,11 @@ function readSet(reference, io) {
 function readChildren(reference, io) {
   try {
     const checked = normalize(reference.url);
-    const written = require('./backlog-slice-identity').decode(readIssue(checked, io).description);
+    const identity = require('./backlog-slice-identity'), written = identity.decode(readIssue(checked, io).description, reference.url);
     const fields = api(io, 'query{__type(name:"Issue"){fields{name}}}', {}).__type?.fields;
     if (!Array.isArray(fields)) throw fault('incomplete-response', 'Hierarchy capability read is incomplete');
     const urls = [...new Set([
-      ...(written?.role === 'parent' ? written.slices.map(slice => slice.issue) : []),
+      ...(written?.role === 'parent' ? identity.slicesOf(written, reference.url).map(slice => slice.issue) : []),
       ...(fields.some(field => field.name === 'subIssues') ? connection(io, checked, 'subIssues') : []),
     ])];
     return { status: 'complete', children: urls.map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; }) };

@@ -580,3 +580,17 @@ An Azure DevOps published set content update SHALL choose the description format
 
 - **WHEN** a set content update covers a Markdown parent and HTML children, or an HTML parent and Markdown children
 - **THEN** each work item is written in its own format and no work item receives content in the other format.
+
+### Requirement: Unusable SAI markers fail readably and name their issue
+
+Every reader of a SAI marker's `slices` array SHALL check its shape through one shared check before using it. A marker whose `slices` is missing, is not an array, or holds an entry that is not an object SHALL produce a readable failure that names the issue or work item the marker was read from, never a `TypeError`. A marker that cannot be decoded SHALL be reported with the issue or work item it was read from. An import that meets such a marker SHALL report the source as incomplete, never as complete.
+
+#### Scenario: A marker has no usable slices array
+
+- **WHEN** a SAI marker read from an issue has no `slices`, a non-array `slices`, or a `null` slice entry
+- **THEN** reading it fails with a message that names that issue, and no `TypeError` is raised.
+
+#### Scenario: An import meets an unusable marker
+
+- **WHEN** a hierarchical import reads an issue whose SAI marker has no usable `slices` array
+- **THEN** the import returns status `incomplete` with a message naming that issue.

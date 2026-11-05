@@ -19,8 +19,8 @@ function inspect(request, io) {
   const issue = rest(io, `repos/${ref.repository}/issues/${ref.number}`);
   const actor = rest(io, 'user');
   if (issue.pull_request || issue.html_url !== ref.url || !Array.isArray(issue.assignees) || issue.assignees.some(item => typeof item.login !== 'string') || typeof actor.login !== 'string' || typeof issue.body !== 'string') throw new Error('Incomplete assignment inspection');
-  const correspondence = identity.decode(issue.body);
-  if (correspondence && (correspondence.role !== 'child' || correspondence.slices.find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw new Error('Assignment requires verified child correspondence; parent responsibility is preserved');
+  const correspondence = identity.decode(issue.body, ref.url);
+  if (correspondence && (correspondence.role !== 'child' || identity.slicesOf(correspondence, ref.url).find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw new Error('Assignment requires verified child correspondence; parent responsibility is preserved');
   let nativeParent;
   if (!correspondence || correspondence.hierarchy === 'native') {
     const hierarchy = readHierarchy(io, ref);
@@ -36,7 +36,7 @@ function inspect(request, io) {
     const parentIssue = rest(io, `repos/${parentRef.repository}/issues/${parentRef.number}`);
     if (parentIssue.pull_request || parentIssue.html_url !== parentRef.url || typeof parentIssue.body !== 'string') throw new Error('Parent issue identity could not be verified');
     if (correspondence) {
-      const parent = identity.decode(parentIssue.body);
+      const parent = identity.decode(parentIssue.body, parentRef.url);
       if (!parent || parent.role !== 'parent' || parent.parent !== parentRef.url || digest(parent.slices) !== digest(correspondence.slices)) throw new Error('Parent does not confirm the selected child correspondence');
     }
     if (nativeParent && nativeParent !== parentRef.url) throw new Error('Native parent does not match the selected child correspondence');
