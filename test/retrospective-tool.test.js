@@ -315,7 +315,7 @@ function openCodeSessions() {
 const SESSION_COLUMNS = 'id text primary key, project_id text, parent_id text, agent text, title text, directory text NOT NULL, time_created integer NOT NULL';
 const MESSAGE_COLUMNS = 'id text primary key, session_id text NOT NULL, type text NOT NULL, seq integer NOT NULL, time_created integer NOT NULL, data text NOT NULL';
 
-function makeOpencodeDb(config, { sessionColumns = SESSION_COLUMNS } = {}) {
+function makeOpencodeDb(config, { sessionColumns = SESSION_COLUMNS, sessions = openCodeSessions(), rows = openCodeRows() } = {}) {
   const directory = path.join(config, 'data', 'opencode');
   fs.mkdirSync(directory, { recursive: true });
   const file = path.join(directory, 'opencode.db');
@@ -323,9 +323,9 @@ function makeOpencodeDb(config, { sessionColumns = SESSION_COLUMNS } = {}) {
   db.exec(`CREATE TABLE session_v2 (${sessionColumns}); CREATE TABLE session_message (${MESSAGE_COLUMNS});`);
   if (sessionColumns === SESSION_COLUMNS) {
     const insertSession = db.prepare('INSERT INTO session_v2 (id, parent_id, agent, title, directory, time_created) VALUES (?, ?, ?, ?, ?, ?)');
-    for (const [id, parent, agent, dir, clock] of openCodeSessions()) insertSession.run(id, parent, agent, `title ${id}`, dir, at(clock));
+    for (const [id, parent, agent, dir, clock] of sessions) insertSession.run(id, parent, agent, `title ${id}`, dir, at(clock));
     const insertMessage = db.prepare('INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)');
-    for (const { id, session, seq, type, time, data } of openCodeRows()) insertMessage.run(id, session, type, seq, time, data);
+    for (const { id, session, seq, type, time, data } of rows) insertMessage.run(id, session, type, seq, time, data);
   }
   db.close();
   return file;
@@ -404,7 +404,7 @@ opencodeTest('opencode: a session target reads that harness only; a child sessio
     assert.deepEqual(lateChild.executions.map(e => e.invocation.record), [`msg_${OC.root}_08`]);
     const wrongProject = run(config, ['index', OC.root, '--paths', OTHER_PROJECT]).payload;
     assert.deepEqual(wrongProject.executions, []);
-    assert.match(wrongProject.notes[0], /No opencode session ses_root0001 was found/);
+    assert.match(wrongProject.notes[0], /No opencode session ses_root0001 was found.*--paths excluded it/);
     const missing = run(config, ['index', 'ses_nothere', '--paths', PROJECT]).payload;
     assert.deepEqual(missing.executions, []);
     assert.deepEqual(missing.projects.map(p => [p.harness, p.status]), [['opencode', 'inaccessible']]);
@@ -483,6 +483,186 @@ opencodeTest('opencode excerpt: pages records by ID for a session and for a chil
     assert.equal(code(['--agent', OC.other]), 'NOT_FOUND', 'a session of another tree is not an agent of this one');
     assert.equal(code(['--agent', 'a0123456789abcdef']), 'USAGE');
     assert.equal(run(config, ['excerpt', '--project', OTHER_PROJECT, '--session', OC.root]).payload.error.code, 'NOT_FOUND');
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+
+// ---------------------------------------------------------------------------
+// instruction loads from backslash paths and `fetch.js`, and shell timeouts
+// ---------------------------------------------------------------------------
+
+function makeConfigWithLines(lines) {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'sai-retro-'));
+  const folder = projectFolder(path.join(config, 'projects'), PROJECT);
+  fs.mkdirSync(folder, { recursive: true });
+  fs.writeFileSync(path.join(folder, `${SESSION}.jsonl`), `${lines.join('\n')}\n`);
+  return config;
+}
+
+const FETCH_GLOBAL = 'node "/home/u/.claude/skills/fetch/fetch.js" --harness claude';
+const FETCH_WINDOWS = 'node "C:\\Users\\u\\.claude\\skills\\fetch\\fetch.js" --harness claude';
+const fetched = (file, text) => `path: ${file}\nroot: global\n\n${text}`;
+// Commands that mention the fetch tool's path without running it as node's script, and one that runs it under the other accepted shapes.
+const MENTIONS = {
+  eval: 'node -e "console.log(\'.claude/skills/fetch/fetch.js\')"',
+  heredoc: `python3 - <<'EOF'\nnode "/home/u/.claude/skills/fetch/fetch.js" --harness claude sai/a.md\nprint('node "C:\\x\\skills\\fetch\\fetch.js" b')\nEOF`,
+  grep: 'grep -n "node skills/fetch/fetch.js" notes.md',
+  quoted: 'echo "done; node .claude/skills/fetch/fetch.js sai/a.md"',
+};
+// A run whose stdout is piped on shows no header, so it is neither a load nor a failure; one followed by `;` or `&&` is an ordinary run.
+const PIPED = 'node "/home/u/.claude/skills/fetch/fetch.js" --harness claude sai/policies/cache-warming.md | grep -n -i "Warming"; git status --short';
+const THEN_SEMICOLON = 'node "/home/u/.claude/skills/fetch/fetch.js" --harness claude sai/policies/semi.md; git status --short';
+const THEN_AND = 'node "/home/u/.claude/skills/fetch/fetch.js" --harness claude sai/policies/and.md && echo ok';
+const MENTION_OUTPUT = 'path: /x/sai/spurious.md\nroot: global\n\nnot a load';
+const RUNS_LOCAL = 'cd /repo && node .claude/skills/fetch/fetch.js --harness claude sai/policies/local.md';
+const RUNS_POWERSHELL = '& node "C:\\Users\\u\\.claude\\skills\\fetch\\fetch.js" --harness claude sai/policies/ps.md';
+const TIMEOUT_TEXT = 'Command did not complete within its 1s timeout and was moved to the background';
+
+test('index: Claude Code loads from backslash paths and single-subpath fetch calls are normalized and counted', () => {
+  const stamp = (n) => `2026-01-01T10:00:${String(n).padStart(2, '0')}.000Z`;
+  const config = makeConfigWithLines([
+    invocation('u-inv', stamp(0), 'sai-status'),
+    assistant('a-1', stamp(1), [
+      toolUse('f-one', 'Bash', { command: `${FETCH_GLOBAL} sai/policies/remember.md` }),
+      toolUse('f-win', 'PowerShell', { command: `${FETCH_WINDOWS} sai/commands/x.md` }),
+      toolUse('f-multi', 'Bash', { command: `${FETCH_GLOBAL} sai/a.md sai/b.md` }),
+      toolUse('f-big', 'Bash', { command: `${FETCH_GLOBAL} sai/big.md` }),
+      toolUse('f-fail', 'Bash', { command: `${FETCH_GLOBAL} sai/missing.md` }),
+      toolUse('f-bare', 'Bash', { command: `${FETCH_GLOBAL} sai/odd.md` }),
+      toolUse('ls-fetch', 'Bash', { command: 'ls .claude/skills/fetch/fetch.js' }),
+      toolUse('t-1', 'Bash', { command: 'sleep 5', timeout: 1000 }),
+      toolUse('t-2', 'Bash', { command: 'sleep 6', timeout: 1000 }),
+    ]),
+    assistant('a-4', stamp(16), [
+      ...Object.entries(MENTIONS).map(([key, command]) => toolUse(`m-${key}`, 'Bash', { command })),
+      toolUse('n-local', 'Bash', { command: RUNS_LOCAL }),
+      toolUse('n-ps', 'PowerShell', { command: RUNS_POWERSHELL }),
+      toolUse('n-piped', 'Bash', { command: PIPED }),
+      toolUse('n-semi', 'Bash', { command: THEN_SEMICOLON }),
+      toolUse('n-and', 'Bash', { command: THEN_AND }),
+    ]),
+    ...Object.keys(MENTIONS).map((key, i) => toolResult(`r-m-${key}`, stamp(17 + i), `m-${key}`, MENTION_OUTPUT)),
+    toolResult('r-n-local', stamp(21), 'n-local', fetched('/repo/.claude/sai/policies/local.md', 'local text')),
+    toolResult('r-n-ps', stamp(22), 'n-ps', fetched('C:/Users/u/.claude/sai/policies/ps.md', 'ps text')),
+    toolResult('r-n-piped', stamp(23), 'n-piped', '12:Warming declaration\n M file.js'),
+    toolResult('r-n-semi', stamp(24), 'n-semi', `${fetched('/home/u/.claude/sai/policies/semi.md', 'semi text')}\n M file.js`),
+    toolResult('r-n-and', stamp(25), 'n-and', `${fetched('/home/u/.claude/sai/policies/and.md', 'and text')}\nok`),
+    toolResult('r-f-one', stamp(2), 'f-one', fetched('/home/u/.claude/sai/policies/remember.md', 'remember text')),
+    toolResult('r-f-win', stamp(3), 'f-win', fetched('C:\\Users\\u\\.claude\\sai\\commands\\x.md', 'x text')),
+    toolResult('r-f-multi', stamp(4), 'f-multi', 'subpath: sai/a.md\npath: /home/u/.claude/sai/a.md\nroot: global\n\nsubpath: sai/b.md\nerror: File not found: sai/b.md\n'),
+    toolResult('r-f-big', stamp(5), 'f-big', 'path: /home/u/.claude/sai/big.md\nroot: global\ntoo-large: the file has 90000 characters; read the path above with Read.\n'),
+    toolResult('r-f-fail', stamp(6), 'f-fail', 'Exit code 1\nerror: File not found: sai/missing.md', { is_error: true }),
+    toolResult('r-f-bare', stamp(7), 'f-bare', 'something else entirely'),
+    toolResult('r-ls', stamp(8), 'ls-fetch', 'ls: cannot access .claude/skills/fetch/fetch.js'),
+    toolResult('r-t-1', stamp(9), 't-1', TIMEOUT_TEXT, { toolUseResult: { interrupted: false, timedOutAfterMs: 1000, backgroundTaskId: 'b1' } }),
+    toolResult('r-t-2', stamp(10), 't-2', TIMEOUT_TEXT, { is_error: true, toolUseResult: { timedOutAfterMs: 1000 } }),
+    toolResult('r-win-read', stamp(11), 'win-read', '1\twin', { toolUseResult: { type: 'text', file: { filePath: 'C:\\repo\\sai\\policies\\win.md', content: 'win text' } } }),
+    line({ type: 'attachment', uuid: 'a-win', timestamp: stamp(12), attachment: { type: 'file', filename: 'C:\\repo\\.claude\\commands\\a.md', content: { type: 'text', file: { filePath: 'C:\\repo\\.claude\\commands\\a.md', content: 'attached' } } } }),
+    assistant('a-2', stamp(13), [toolUse('tu-skill', 'Skill', { skill: 'safe' })]),
+    line({ type: 'user', uuid: 'm-skill', timestamp: stamp(14), isMeta: true, sourceToolUseID: 'tu-skill', message: { role: 'user', content: [{ type: 'text', text: 'Base directory for this skill: C:\\Users\\u\\.claude\\skills\\safe\n\n# Safe' }] } }),
+    assistant('a-3', stamp(30), 'done', 'end_turn'),
+  ]);
+  try {
+    const [execution] = run(config, ['index', SESSION, '--paths', PROJECT]).payload.executions;
+    assert.deepEqual(execution.loaded_instructions.map(l => [l.path, l.source, l.text_available]), [
+      ['/home/u/.claude/sai/policies/remember.md', 'fetch', true],
+      ['C:/Users/u/.claude/sai/commands/x.md', 'fetch', true],
+      ['C:/repo/sai/policies/win.md', 'Read', true],
+      ['C:/repo/.claude/commands/a.md', 'attachment', true],
+      ['C:/Users/u/.claude/skills/safe/SKILL.md', 'Skill', true],
+      ['/repo/.claude/sai/policies/local.md', 'fetch', true],
+      ['C:/Users/u/.claude/sai/policies/ps.md', 'fetch', true],
+      ['/home/u/.claude/sai/policies/semi.md', 'fetch', true],
+      ['/home/u/.claude/sai/policies/and.md', 'fetch', true],
+    ]);
+    assert.deepEqual(execution.tool_errors.map(e => [e.record, e.tool_use_id, e.class]), [
+      ['r-f-multi', 'f-multi', 'error'],
+      ['r-f-fail', 'f-fail', 'error'],
+      ['r-f-bare', 'f-bare', 'error'],
+      ['r-t-1', 't-1', 'timeout'],
+      ['r-t-2', 't-2', 'timeout'],
+    ]);
+    assert.equal(execution.tool_errors.filter(e => e.tool_use_id === 't-2').length, 1, 'a timeout the harness also flags counts once');
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+const ocRow = (session, seq, type, clock, data) => ({ id: `msg_${session}_${String(seq).padStart(2, '0')}`, session, seq, type, time: at(clock), data: JSON.stringify(data) });
+const TIMEOUT_NOTICE = '(no output)\n\n<bash_metadata>\nbash tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</bash_metadata>';
+const shellCall = (id, name, command, text, status = 'completed') => tool(id, name, status === 'error'
+  ? { status, input: { command }, error: { type: 'tool.execution', message: text } }
+  : { status, input: { command }, content: [{ type: 'text', text }] });
+
+opencodeTest('opencode: backslash loads and single-subpath fetch calls are counted, and shell timeouts are tool errors', () => {
+  const config = makeConfig();
+  try {
+    makeOpencodeDb(config, {
+      sessions: [[OC.root, null, 'build', PROJECT, '12:59:00.000']],
+      rows: [
+        ocRow(OC.root, 1, 'user', '13:00:10.000', { time: { created: at('13:00:10.000') }, text: envelope('status') }),
+        ocRow(OC.root, 2, 'synthetic', '13:00:11.000', { time: { created: at('13:00:11.000') }, text: 'Called the Read tool with the following input: {}\n\n<path>C:\\repo\\sai\\commands\\status\\body.md</path>\n<type>file</type>\n<content>\n1: body\n</content>' }),
+        ocRow(OC.root, 3, 'assistant', '13:00:12.000', { time: doneTime('13:00:12.000'), agent: 'build', content: [
+          reading('win-read', 'C:\\repo\\sai\\policies\\win.md', 'win text'),
+          reading('win-dir', 'C:\\repo\\sai\\commands\\', 'a directory listing'),
+          tool('win-skill', 'skill', { status: 'completed', input: { id: 'safe' }, content: [{ type: 'text', text: 'Base directory for this skill: C:\\Users\\u\\.config\\opencode\\skills\\safe' }] }),
+          shellCall('f-one', 'bash', 'node "/home/u/.config/opencode/skills/fetch/fetch.js" --harness opencode sai/policies/remember.md', fetched('/home/u/.config/opencode/sai/policies/remember.md', 'remember text')),
+          shellCall('f-win', 'shell', 'node "C:\\Users\\u\\.config\\opencode\\skills\\fetch\\fetch.js" --harness opencode sai/commands/x.md', fetched('C:\\Users\\u\\.config\\opencode\\sai\\commands\\x.md', 'x text')),
+          shellCall('f-multi', 'bash', 'node ".opencode/skills/fetch/fetch.js" --harness opencode sai/a.md sai/b.md', 'subpath: sai/a.md\npath: /p/sai/a.md\nroot: project\n\nsubpath: sai/b.md\nerror: File not found: sai/b.md\n'),
+          shellCall('f-big', 'bash', 'node ".opencode/skills/fetch/fetch.js" --harness opencode sai/big.md', 'path: /p/sai/big.md\nroot: project\ntoo-large: the file has 90000 characters; read the path above with Read.\n'),
+          shellCall('f-bare', 'bash', 'node ".opencode/skills/fetch/fetch.js" --harness opencode sai/odd.md', 'Error: something unexpected'),
+          shellCall('ls-fetch', 'bash', 'ls .opencode/skills/fetch/fetch.js', 'ls: cannot access .opencode/skills/fetch/fetch.js'),
+          shellCall('t-1', 'bash', 'sleep 999', TIMEOUT_NOTICE),
+          shellCall('t-2', 'shell', 'sleep 998', TIMEOUT_NOTICE, 'error'),
+          ...Object.entries(MENTIONS).map(([key, command]) => shellCall(`m-${key}`, 'bash', command, MENTION_OUTPUT)),
+          shellCall('n-local', 'bash', RUNS_LOCAL, fetched('/repo/.claude/sai/policies/local.md', 'local text')),
+          shellCall('n-ps', 'shell', RUNS_POWERSHELL, fetched('C:/Users/u/.claude/sai/policies/ps.md', 'ps text')),
+          shellCall('n-piped', 'bash', PIPED, '12:Warming declaration\n M file.js'),
+          shellCall('n-semi', 'bash', THEN_SEMICOLON, `${fetched('/home/u/.claude/sai/policies/semi.md', 'semi text')}\n M file.js`),
+          shellCall('n-and', 'shell', THEN_AND, `${fetched('/home/u/.claude/sai/policies/and.md', 'and text')}\nok`),
+        ] }),
+      ],
+    });
+    const [execution] = run(config, ['index', 'sai-status', '--paths', PROJECT]).payload.executions.filter(e => e.harness === 'opencode');
+    assert.deepEqual(execution.loaded_instructions.map(l => [l.path, l.source, l.text_available]), [
+      ['C:/repo/sai/commands/status/body.md', 'synthetic-read', true],
+      ['C:/repo/sai/policies/win.md', 'Read', true],
+      ['C:/Users/u/.config/opencode/skills/safe/SKILL.md', 'Skill', true],
+      ['/home/u/.config/opencode/sai/policies/remember.md', 'fetch', true],
+      ['C:/Users/u/.config/opencode/sai/commands/x.md', 'fetch', true],
+      ['/repo/.claude/sai/policies/local.md', 'fetch', true],
+      ['C:/Users/u/.claude/sai/policies/ps.md', 'fetch', true],
+      ['/home/u/.claude/sai/policies/semi.md', 'fetch', true],
+      ['/home/u/.claude/sai/policies/and.md', 'fetch', true],
+    ]);
+    assert.equal(execution.non_instruction_reads, 0, 'a backslash directory read is not a load');
+    assert.deepEqual(execution.tool_errors.map(e => [e.tool_use_id, e.tool, e.class]), [
+      ['f-multi', 'bash', 'error'],
+      ['f-bare', 'bash', 'error'],
+      ['t-1', 'bash', 'timeout'],
+      ['t-2', 'shell', 'timeout'],
+    ]);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('opencode: an explicit ses_ target is found whatever directory it recorded unless --paths excludes it', () => {
+  const config = makeConfig();
+  try {
+    makeOpencodeDb(config);
+    // The tool runs from the temp directory, which is neither project.
+    const elsewhere = run(config, ['index', OC.other]).payload;
+    assert.deepEqual(elsewhere.executions.map(e => [e.harness, e.project, e.session]), [['opencode', OTHER_PROJECT, OC.other]]);
+    assert.deepEqual(elsewhere.projects.map(p => [p.harness, p.project, p.status, p.sessions_read]), [['opencode', OTHER_PROJECT, 'analyzed', 1]]);
+    const child = run(config, ['index', OC.grand]).payload;
+    assert.deepEqual(child.executions.map(e => [e.project, e.session]), [[PROJECT, OC.root]]);
+    assert.match(child.notes[0], /child session of ses_root0001/);
+    const excluded = run(config, ['index', OC.other, '--paths', PROJECT]).payload;
+    assert.deepEqual(excluded.executions, []);
+    assert.match(excluded.notes[0], /No opencode session ses_other001 was found under the supplied --paths.*--paths excluded it/);
+    const included = run(config, ['index', OC.other, '--paths', `${PROJECT},${OTHER_PROJECT}`]).payload;
+    assert.deepEqual(included.executions.map(e => e.session), [OC.other]);
+    const absent = run(config, ['index', 'ses_nothere']).payload;
+    assert.deepEqual(absent.executions, []);
+    assert.match(absent.notes[0], /No opencode session ses_nothere was found in the opencode database/);
+    assert.doesNotMatch(absent.notes[0], /--paths/);
   } finally { fs.rmSync(config, { recursive: true, force: true }); }
 });
 

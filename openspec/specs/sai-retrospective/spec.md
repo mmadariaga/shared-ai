@@ -119,7 +119,11 @@ For each execution the index SHALL report the harness, project, session, invocat
 
 ### Requirement: Loaded instruction and tool error capture
 
-The collector SHALL record as loaded instructions every load of an instruction path (under `.claude/`, `.opencode/`, `sai/`, `skills/`, `agents/`, or `commands/`, or a `CLAUDE.md` / `AGENTS.md` file) from Claude Code `Read` results (`toolUseResult.file`), `file` attachments, `already_read_file` attachments, and `Skill` body records, and from opencode `read` tool results, synthetic read records, and `skill` tool results (recorded as the `SKILL.md` under the skill's base directory), each with its record, timestamp, agent, and whether its text is available. An `already_read_file` load SHALL report its text as unavailable. Other file reads SHALL be counted, not listed. The collector SHALL record every Claude Code `tool_result` with `is_error` and every opencode tool call whose state is `error` as a tool error with its tool name and a clipped message. opencode records whose data is not valid JSON SHALL be listed as an unread `unparseable-records` portion.
+The collector SHALL record as loaded instructions every load of an instruction path (under `.claude/`, `.opencode/`, `sai/`, `skills/`, `agents/`, or `commands/`, or a `CLAUDE.md` / `AGENTS.md` file) from Claude Code `Read` results (`toolUseResult.file`), `file` attachments, `already_read_file` attachments, and `Skill` body records, and from opencode `read` tool results, synthetic read records, and `skill` tool results (recorded as the `SKILL.md` under the skill's base directory), each with its record, timestamp, agent, and whether its text is available. Every load path SHALL be converted from `\` to `/` before it is matched against the instruction paths, and the index SHALL report the converted path. An `already_read_file` load SHALL report its text as unavailable. Other file reads SHALL be counted, not listed.
+
+On both harnesses, a shell tool call (Claude Code `Bash` or `PowerShell`, opencode `bash` or `shell`) with a command segment that runs `node` on `skills/fetch/fetch.js` as its script, with either path separator, SHALL be read together with its output. When the output is the single-subpath form (a `path:` line, a `root:` line, a blank line, then the file content), the collector SHALL record one loaded instruction with source `fetch`, the path of the `path:` header, and the content after the header as its text. A multi-subpath output (`subpath:` blocks) or a `too-large` output SHALL record no load of its own. A command that only mentions the `fetch.js` path (in a heredoc body, a `node -e` or `node -p` script, or another argument) SHALL NOT be read as a `fetch.js` call, and a `fetch.js` run whose standard output is piped into a later command SHALL record neither a load nor an output-based tool error.
+
+The collector SHALL record as a tool error, with its tool name, a clipped message, and a `class`, every Claude Code `tool_result` with `is_error`, every opencode tool call whose state is `error`, every `fetch.js` call whose output has an `error:` line or no `path:` header, and every shell call that hit the harness timeout. A timed-out shell call SHALL have class `timeout`: on Claude Code when its result carries `toolUseResult.timedOutAfterMs`, and on opencode when its output contains `bash tool terminated command after exceeding timeout`, even when the harness does not mark the call as an error. Every other tool error SHALL have class `error`. Each tool call SHALL yield at most one tool error, and a timed-out call that the harness also marks as an error SHALL appear once, with class `timeout`. opencode records whose data is not valid JSON SHALL be listed as an unread `unparseable-records` portion.
 
 #### Scenario: Instruction re-read without content
 - **WHEN** an instruction file appears as an `already_read_file` attachment
@@ -132,6 +136,42 @@ The collector SHALL record as loaded instructions every load of an instruction p
 #### Scenario: opencode reads, skills, and failed tools
 - **WHEN** an opencode execution reads an instruction file, loads a skill, and has a tool call in `error` state
 - **THEN** the index lists the file and the skill's `SKILL.md` under `loaded_instructions` and the failed call under `tool_errors` with its tool name
+
+#### Scenario: Instruction loaded from a backslash path
+- **WHEN** a Claude Code or opencode execution reads an instruction file whose recorded path uses `\` separators
+- **THEN** the index lists that load under `loaded_instructions` with the path written with `/` separators
+
+#### Scenario: Single-subpath fetch call
+- **WHEN** a shell call runs `skills/fetch/fetch.js` with one subpath and its output holds the `path:` header, the `root:` line, a blank line, and the file content
+- **THEN** the index lists one load with source `fetch`, the header's path, and `text_available: true`
+
+#### Scenario: Multi-subpath fetch call
+- **WHEN** a shell call runs `skills/fetch/fetch.js` with several subpaths and its output holds `subpath:` blocks
+- **THEN** the index records no load for that call itself
+
+#### Scenario: Failed fetch call
+- **WHEN** a `fetch.js` call's output holds an `error:` line or no `path:` header
+- **THEN** the index records no load for the failed subpath and lists the call under `tool_errors` with class `error`
+
+#### Scenario: Fetch path only mentioned in a command
+- **WHEN** a shell command mentions the `skills/fetch/fetch.js` path only inside a heredoc body, a `node -e` script, or another command's argument
+- **THEN** the index records neither a `fetch` load nor a `fetch.js` tool error for that call
+
+#### Scenario: Piped fetch call
+- **WHEN** a shell command runs `skills/fetch/fetch.js` and pipes its standard output into a later command
+- **THEN** the index records neither a `fetch` load nor an output-based tool error for that call
+
+#### Scenario: Shell timeout on Claude Code
+- **WHEN** a Claude Code shell tool result carries `toolUseResult.timedOutAfterMs` and `is_error: false`
+- **THEN** the index lists the call under `tool_errors` with class `timeout`
+
+#### Scenario: Shell timeout on opencode
+- **WHEN** an opencode shell call in `completed` state has output containing `bash tool terminated command after exceeding timeout`
+- **THEN** the index lists the call under `tool_errors` with class `timeout`
+
+#### Scenario: Timeout also flagged as an error
+- **WHEN** a timed-out shell call is also marked as an error by its harness
+- **THEN** the index lists that call once under `tool_errors`, with class `timeout`
 
 ### Requirement: Claude Code transcript source
 
@@ -280,3 +320,19 @@ With `--with-worktrees`, the `index` and `cost` modes SHALL measure each supplie
 #### Scenario: Sibling repository with a shared prefix
 - **WHEN** a sibling directory `<project>.MobileApps` holds its own repository and is not a worktree of the project
 - **THEN** its sessions are not grouped into the project
+
+### Requirement: opencode session target lookup
+
+The collector SHALL look up an explicit opencode `ses_` target in `session_v2` by its ID, with no directory filter, and SHALL resolve a child session to its root session through `parent_id`. Without `--paths`, a root session recorded in a directory other than the current project SHALL be read from its recorded directory and reported under that directory as an opencode project entry; for this target the default of `--paths` to the current project does not narrow the lookup. When `session_v2` holds no session with the target ID, the index SHALL list no execution and SHALL carry a note stating that the session was not found in the opencode database. With `--paths`, when the root session's recorded directory is outside the supplied projects, the index SHALL list no execution and SHALL carry a note stating that the session was not found under the supplied `--paths` and that `--paths` excluded it.
+
+#### Scenario: Session recorded outside the current project
+- **WHEN** the target is the `ses_` ID of an opencode root session whose recorded directory is not the current project and the invocation carries no `--paths`
+- **THEN** the index lists that session's execution with harness `opencode` and reports its recorded directory as an analyzed opencode project
+
+#### Scenario: Session ID absent from the database
+- **WHEN** the target is a `ses_` ID that `session_v2` does not hold
+- **THEN** the index lists no execution and carries a note that no opencode session with that ID was found in the opencode database
+
+#### Scenario: Session excluded by paths
+- **WHEN** the target is the `ses_` ID of an opencode session whose recorded directory is outside the projects supplied with `--paths`
+- **THEN** the index lists no execution and carries a note that the session was not found under the supplied `--paths` because `--paths` excluded it
