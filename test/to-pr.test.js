@@ -16,8 +16,8 @@ function fixture(provider, existing = false) {
   const url = `https://${host}/team/repo`;
   const state = { head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rows: [], mutations: [], calls: [], labels: ['bug', 'enhancement', 'performance', 'wontfix'] };
   const row = (title = 'feat: old content', description = 'Old description') => provider === 'github'
-    ? { number: 7, html_url: `${url}/pull/7`, title, body: description, updated_at: 'version', head: { ref: 'feature', repo: { id: 9 } }, base: { ref: 'main' } }
-    : { iid: 7, web_url: `${url}/-/merge_requests/7`, title, description, updated_at: 'version', source_project_id: 9, target_project_id: 9, source_branch: 'feature', target_branch: 'main' };
+    ? { number: 7, node_id: 'PR_7', draft: false, html_url: `${url}/pull/7`, title, body: description, updated_at: 'version', head: { ref: 'feature', repo: { id: 9 } }, base: { ref: 'main' } }
+    : { iid: 7, draft: false, web_url: `${url}/-/merge_requests/7`, title, description, updated_at: 'version', source_project_id: 9, target_project_id: 9, source_branch: 'feature', target_branch: 'main' };
   if (existing) state.rows = [row()];
   const io = { registry, run(command, args, input) {
     state.calls.push({ command, args, input });
@@ -41,13 +41,20 @@ function fixture(provider, existing = false) {
     if (method === 'GET') return JSON.stringify(state.rows);
     const body = JSON.parse(input);
     state.mutations.push({ command, method, endpoint, body });
+    if (endpoint === 'graphql') {
+      assert.equal(body.variables.id, 'PR_7');
+      state.rows[0].draft = true;
+      return JSON.stringify({ data: { convertPullRequestToDraft: { pullRequest: { id: 'PR_7', isDraft: true } } } });
+    }
     if (provider === 'github' && /\/issues\/\d+$/.test(endpoint)) {
       // Second call after creation: the assignee and labels of the created pull request.
       if (state.labelCallFails) throw new Error('Labelling refused');
       Object.assign(state.rows[0], { assignees: (body.assignees || []).map(login => ({ login })), labels: (body.labels || []).map(name => ({ name })) });
       return '{}';
     }
+    const wasDraft = state.rows[0]?.draft;
     state.rows = [row(body.title, body.body ?? body.description)];
+    state.rows[0].draft = state.dropDraft ? false : provider === 'github' ? (body.draft ?? wasDraft ?? false) : /^Draft: /.test(body.title);
     if (provider === 'gitlab' && !state.dropLabels) Object.assign(state.rows[0], { assignees: (body.assignee_ids || []).map(() => ({ id: 5, username: 'octo' })), labels: body.labels ? body.labels.split(',') : [] });
     if (state.loseResponse) throw new Error('Lost response');
     return JSON.stringify(state.rows[0]);
@@ -62,6 +69,66 @@ function temporaryDirectory(t, prefix) {
 function receipt(t) {
   const directory = temporaryDirectory(t, 'to-pr-test-');
   return path.join(directory, 'receipt.json');
+}
+
+for (const provider of ['github', 'gitlab']) {
+  for (const existing of [false, true]) {
+    test(`${provider} explicitly approved draft ${existing ? 'conversion reuses ready request' : 'creation'} and verifies state`, t => {
+      const { io, request, state } = fixture(provider, existing);
+      const input = { ...request, draft: true };
+      const ready = tool.query(input, io);
+      assert.throws(() => tool.publish({ ...input, approved: true, confirmation: tool.query(request, io).confirmation, receipt: receipt(t) }, io), /approval/);
+      assert.equal(state.mutations.length, 0);
+      const result = tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+      assert.equal(result.status, 'complete');
+      assert.equal(result.request.isDraft, true);
+      assert.equal(state.rows.length, 1);
+      assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), provider === 'github' && existing);
+      if (provider === 'github' && !existing) assert.equal(state.mutations[0].body.draft, true);
+      if (provider === 'gitlab') assert.equal(state.mutations[0].body.title, 'Draft: feat: add feature');
+      assert.equal(tool.query(input, io).status, 'no_changes');
+    });
+  }
+  test(`${provider} an unverified draft recovers read-only, never creates twice`, t => {
+    const { io, request, state } = fixture(provider);
+    const input = { ...request, draft: true }, ready = tool.query(input, io), file = receipt(t);
+    state.dropDraft = true;
+    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    const count = state.mutations.length;
+    assert.equal(tool.recover({ receipt: file }, io).status, 'uncertain');
+    assert.equal(state.mutations.length, count);
+    state.rows[0].draft = true;
+    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal(state.mutations.length, count);
+  });
+  test(`${provider} lost draft response recovers the published request without another mutation`, t => {
+    const { io, request, state } = fixture(provider);
+    const input = { ...request, draft: true }, ready = tool.query(input, io), file = receipt(t);
+    state.loseResponse = true;
+    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    const count = state.mutations.length;
+    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal(state.mutations.length, count);
+  });
+  test(`${provider} existing draft with content edit preserves draft without conversion; ambiguity and cancellation mutate nothing`, t => {
+    const { io, request, state } = fixture(provider, true);
+    state.rows[0].draft = true;
+    const input = { ...request, draft: true }, ready = tool.query(input, io);
+    assert.throws(() => tool.publish({ ...input, approved: false, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    assert.equal(state.mutations.length, 0);
+    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
+    state.rows.push({ ...state.rows[0], number: 8, iid: 8 });
+    assert.throws(() => tool.query(input, io), /Multiple matching/);
+  });
+  test(`${provider} ordinary updates preserve an existing draft without requesting conversion`, t => {
+    const { io, request, state } = fixture(provider, true);
+    state.rows[0].draft = true;
+    const ready = tool.query(request, io);
+    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.rows[0].draft, true);
+    assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
+  });
 }
 
 // Risk allocation is author-authenticated, approval-bound, and recovered per operation.
@@ -188,11 +255,11 @@ for (const provider of ['github', 'gitlab']) {
     assert.throws(() => tool.query(request, io), /Ambiguous/);
     assert.equal(tool.recover({ receipt: file }, io).comment.status, 'uncertain');
   });
-  test(`${provider} comment choice requires overflow and complete block, adds no Azure limit or draft support`, () => {
+  test(`${provider} comment choice requires overflow and complete block, supports explicit draft`, () => {
     const { io, request } = commentFixture(provider);
     assert.throws(() => tool.query({ ...request, description_overflow: undefined }, io), /overflow/);
     assert.throws(() => tool.query({ ...request, risk_block: 'summary' }, io), /complete/);
-    assert.throws(() => tool.query({ ...request, draft: true }, io), /Azure/);
+    assert.equal(tool.query({ ...request, draft: true }, io).proposal.draft, true);
     assert.equal(tool.query({ ...request, risk_placement: undefined, risk_block: undefined, description: 'x'.repeat(4001) }, io).status, 'ready');
   });
   test(`${provider} an unconfirmed absent comment cannot be blindly retried and baseline edits invalidate approval`, t => {
@@ -528,7 +595,8 @@ test('I2 / I10: skill presents full content before one combined approval, covers
   assert.match(text, /load\s+only the returned/);
   assert.match(text, /returned `instructions` reference/);
   assert.doesNotMatch(text, /providers\/(?:github|gitlab|azuredevops)\.md/);
-  assert.match(text, /disable-model-invocation: true/);
+  assert.doesNotMatch(text, /disable-model-invocation: true/);
+  assert.match(text, /user requests PR\/MR publication or accepts the completed sai-plan draft-publication offer/);
   assert.ok(text.replace(/\s+/g, ' ').includes('Push this commit to this remote branch without force and publish the title and description above?'));
   assert.match(text, /"Approve PR message and push branch", "Edit", "Cancel"/);
   assert.match(text, /"Approve PR message", "Edit", "Cancel"/);

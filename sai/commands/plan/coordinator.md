@@ -36,7 +36,20 @@ A segment starts only when the previous one completed, including a spec segment 
 
 After the last segment that ran ends, the reports it printed stand as the reports of the run. Each segment's own closing line is replaced by this command's.
 
-- **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created, and end with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.``
+- **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created, and close the planning report with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` This literal closes the planning report, not the command interaction.
 - **A segment failed, was stopped, or ended on an unanswered escalation**: end the run with the reports printed so far and no closing line.
 
-Close the run per the cycle's Closing the run.
+Close the run per the cycle's Closing the run. On success, planning is now complete
+and its run is closed; continue to the sole optional offer below and any accepted
+publication continuation before ending the command interaction. On failure, stop
+after closing the run: no publication offer or continuation runs.
+
+After successful completion only, offer once through Claude Code's `AskUserQuestion`
+or opencode's `question`: `Create or update a draft PR/MR with the complete plan for {name}?`
+Options: `Publish draft plan`, `Not now`. Cancellation is `Not now`: keep the plan
+and its commits, and perform no publication work. This is a post-completion offer,
+not planning approval. Standalone spec and design segments never make this offer.
+When Explore follows this coordinator, this is still the only owner of the question.
+Only after `Publish draft plan`, Fetch `@sai/commands/plan/publication.md` and follow
+it with the completed change name. Publication failure or cancellation leaves the
+plan completed; resume the caller's normal close without asking again.

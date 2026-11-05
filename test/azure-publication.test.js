@@ -604,7 +604,9 @@ test('E1 I1 I2 I4: origin references select one registry reference without comma
 test('I2 I10: references are branch-specific, approval limitations precede approval and both harnesses install the same tools', () => {
   const skill = fs.readFileSync('skills/universal/to-pr/SKILL.md', 'utf8');
   assert.ok(skill.indexOf('proposal.concurrency_warning') < skill.indexOf('Then ask:'));
-  for (const name of ['to-pr', 'to-backlog']) assert.match(fs.readFileSync(`skills/universal/${name}/SKILL.md`, 'utf8'), /disable-model-invocation: true/);
+  assert.match(fs.readFileSync('skills/universal/to-backlog/SKILL.md', 'utf8'), /disable-model-invocation: true/);
+  assert.doesNotMatch(skill, /disable-model-invocation: true/);
+  assert.match(skill, /accepts the completed sai-plan draft-publication offer/);
   const { expandInstallManifest, loadInstallManifest } = require('../bin/install-manifest');
   const manifest = loadInstallManifest(process.cwd());
   for (const harness of ['claude', 'opencode']) {
