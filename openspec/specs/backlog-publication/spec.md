@@ -88,3 +88,32 @@ The covered retry SHALL preserve approved content, destination, visibility and r
 
 - **WHEN** publication was an edit to existing issue content rather than a new-issue publication
 - **THEN** verification remains read-only and the shared creation retry allowance does not authorize another update mutation.
+
+### Requirement: Backlog tool external processes are bounded per process
+
+Every external process the backlog tools start (`gh`, `glab`, `git`, `az`, `where.exe`, and the Azure SDK Python process) SHALL run through one shared helper with a fixed limit of 120 s per process. The limit SHALL bound each process, never a whole tool invocation. A process that exceeds the limit SHALL be stopped, and the tool SHALL fail with reason `process-timeout` and a message that names the stalled step and the limit and states that nothing is reported as loaded or written by that step. The step name SHALL be the program and its first subcommand words, never the interpreter path or data arguments. A descendant that holds a process's output pipe open SHALL NOT extend the wait past the limit: when the process itself has already exited with a status, the call SHALL return no later than the limit with that process's own exit status and SHALL NOT report `process-timeout`. Every other process outcome SHALL keep its existing handling, so a run whose processes all finish within the limit keeps its current outputs, statuses, and receipts.
+
+#### Scenario: A process exceeds the limit
+
+- **WHEN** a `gh`, `glab`, `git`, or `az` process started by a backlog tool runs longer than 120 s
+- **THEN** the tool fails with reason `process-timeout` and a message naming the step, such as `gh issue create`, and the 120 s limit.
+
+#### Scenario: Many short processes in one invocation
+
+- **WHEN** a `publish-set` or a paginated read starts many processes whose total time exceeds 120 s while each process finishes within the limit
+- **THEN** the invocation continues and completes without a `process-timeout` failure.
+
+#### Scenario: A descendant holds the output pipe open
+
+- **WHEN** a started process exits while a detached descendant keeps its standard output open
+- **THEN** the call returns no later than the 120 s limit with the exited process's own exit status, and it is not reported as `process-timeout`.
+
+#### Scenario: A timeout before the first write
+
+- **WHEN** a `to-backlog` operation fails with `process-timeout` before publication
+- **THEN** its `failure_before_publication` output carries `reason: process-timeout` and the step message, and no issue or work item is created.
+
+#### Scenario: Processes finish within the limit
+
+- **WHEN** every external process of a backlog operation finishes within 120 s
+- **THEN** the operation returns the same output, status, and receipt it returned before the limit existed.

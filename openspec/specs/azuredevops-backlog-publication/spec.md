@@ -313,3 +313,32 @@ Ordinary Azure Boards creation and updates SHALL complete approved title and des
 #### Scenario: Invalid planning reference
 - **WHEN** a parent, iteration, current sprint or authenticated identity cannot be validated
 - **THEN** preparation fails before publication rather than guessing a reference or expanding scope.
+
+### Requirement: Bounded Azure publication processes with local telemetry opt-out
+
+Azure CLI and Azure SDK processes used by publication SHALL be bounded by the shared 120 s per-process limit, and a stalled process SHALL fail with reason `process-timeout` naming its step, such as `az extension show` or `Azure SDK <client> <method>`. Those child processes SHALL receive `AZURE_CORE_COLLECT_TELEMETRY` set to `no` beside the disabled dynamic extension installation, in their own environment only, leaving the parent environment and the user's Azure CLI configuration unchanged. The Azure CLI runtime and the installed `azure-devops` extension SHALL be resolved at most once per tool process after a successful lookup and kept in memory only; a failed lookup SHALL NOT be kept. A missing or unsupported CLI or extension SHALL still fail with `tool-unavailable` or `extension-unavailable` before any write, and a timeout during the extension lookup SHALL be reported as `process-timeout`, not as a missing extension.
+
+#### Scenario: An Azure SDK write stalls
+
+- **WHEN** the Azure SDK Python process of a publication request runs longer than 120 s
+- **THEN** publication fails with reason `process-timeout` and a message naming `Azure SDK` with the request's client and method.
+
+#### Scenario: Telemetry is enabled in the inherited environment
+
+- **WHEN** the parent environment sets `AZURE_CORE_COLLECT_TELEMETRY` to another value
+- **THEN** each Azure CLI and Azure SDK child process runs with `AZURE_CORE_COLLECT_TELEMETRY=no`, and the parent environment keeps its original value.
+
+#### Scenario: Several Azure requests in one invocation
+
+- **WHEN** one tool invocation sends several Azure CLI and Azure SDK requests
+- **THEN** the Azure CLI runtime lookup and the `az extension show` lookup each run once.
+
+#### Scenario: The extension lookup fails and is retried
+
+- **WHEN** the `az extension show` lookup fails because the extension is not installed
+- **THEN** the request fails with `extension-unavailable` before any write, and a later request in the same invocation looks the extension up again.
+
+#### Scenario: The extension lookup times out
+
+- **WHEN** the `az extension show` process runs longer than 120 s
+- **THEN** the request fails with reason `process-timeout` naming `az extension show`, not with `extension-unavailable`.

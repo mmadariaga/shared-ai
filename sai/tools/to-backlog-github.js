@@ -361,8 +361,8 @@ function lookupSlice(request, io) {
   const state = inspect(request, io);
   const identity = require('./backlog-slice-identity');
   const candidates = issues({ proposal: { repository: state.repo.nameWithOwner } }, io).flatMap(issue => {
-    const value = identity.upper(identity.decode(issue.body));
-    return value && value.change_name === request.change_name && value.slices.find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
+    const value = identity.upper(identity.decode(issue.body, issue.url));
+    return value && value.change_name === request.change_name && identity.slicesOf(value, issue.url).find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
   });
   return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
 }

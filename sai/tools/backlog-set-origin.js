@@ -23,9 +23,9 @@ function prepare(platform, request, io, provider) {
   const { issue } = current;
   if (current.closed) return blocked('origin-closed', 'The originating issue is closed; it is not reopened and nothing was written', { issue });
   let marker;
-  try { marker = identity.decode(current.baseline.description); } catch (error) { return blocked('origin-already-published', error.message, { issue }); }
+  try { marker = identity.decode(current.baseline.description, issue.url); } catch (error) { return blocked('origin-already-published', error.message, { issue }); }
   // Only a parent marker means a set exists; a child marker keeps its earlier correspondence beside the new set (child_of).
-  if (marker?.role === 'parent') return blocked('origin-already-published', 'The originating issue already carries a sai-backlog-slices@1 parent marker; no second set is written', { issue, children: marker.slices.map(slice => slice.issue) });
+  if (marker?.role === 'parent') return blocked('origin-already-published', 'The originating issue already carries a sai-backlog-slices@1 parent marker; no second set is written', { issue, children: identity.slicesOf(marker, issue.url).map(slice => slice.issue) });
   if (!request.origin_baseline) return { status: 'needs_input', reason: 'origin-baseline-required', message: 'Read the originating issue with read-update and pass its baseline as origin_baseline', current };
   if (digest(current.baseline) !== digest(request.origin_baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
   const children = current.children();
@@ -47,7 +47,7 @@ function item(proposal) {
 
 // The origin keeps its earlier link to the set it belongs to, in the marker and as readable lines.
 function upperLinks(upper) {
-  const own = upper.slices.find(slice => slice.change_name === upper.change_name);
+  const own = identity.slicesOf(upper, upper.parent).find(slice => slice.change_name === upper.change_name);
   return [`Parent: ${upper.parent}`, ...own.depends_on.map(name => `Depends on: ${upper.slices.find(slice => slice.change_name === name).issue}`)];
 }
 

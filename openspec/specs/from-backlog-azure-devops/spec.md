@@ -139,3 +139,17 @@ Ordinary Azure Boards reads SHALL expand native relations and expose the parent 
 #### Scenario: Planning metadata is malformed
 - **WHEN** planning data has invalid relation shape, conflicting parents or incomplete assignment identity
 - **THEN** read reports a non-complete outcome rather than claiming verified planning metadata.
+
+### Requirement: Bounded Azure import processes
+
+Azure DevOps import SHALL run its Azure CLI processes, and on Windows the Azure CLI executable lookup, through the shared 120 s per-process limit. A read process that exceeds the limit SHALL fail with reason `process-timeout` and a message that names the stalled step, such as `locate Azure CLI` or the `az` subcommand, and SHALL NOT report content as loaded. The limit SHALL apply to each process, so a paginated read made of many processes that each finish within the limit SHALL complete.
+
+#### Scenario: An Azure read stalls
+
+- **WHEN** an `az` process started by an Azure DevOps import runs longer than 120 s
+- **THEN** the import fails with reason `process-timeout`, names the `az` step, and reports no content as loaded.
+
+#### Scenario: The Windows Azure CLI lookup stalls
+
+- **WHEN** the Windows lookup of the Azure CLI executable runs longer than 120 s
+- **THEN** the import fails with reason `process-timeout` naming `locate Azure CLI`.

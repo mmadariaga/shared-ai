@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { runProcess, stepLabel } = require('./backlog-process');
 const projectSettings = require('./project-settings');
 
 function fault(reason, message) {
@@ -112,11 +112,22 @@ function resolve(reference, registry, io = {}) {
   return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}), ...(settingOverridden ? { settingOverridden } : {}) };
 }
 
+// The Azure CLI runtime and the installed extension do not change during one invocation: resolve each once.
+// Only a successful lookup is kept, so a failure is looked up again.
+let runtimeMemory = null;
+let extensionMemory = null;
+function resetAzureMemory() { runtimeMemory = null; extensionMemory = null; }
+
 function azureRuntime() {
+  if (!runtimeMemory) runtimeMemory = locateAzureRuntime();
+  return runtimeMemory;
+}
+
+function locateAzureRuntime() {
   // Invoke the MSI launcher's Python directly, without cmd.exe interpreting
   // project names or continuation tokens as shell syntax.
   if (process.platform === 'win32') {
-    const located = spawnSync('where.exe', ['az'], { encoding: 'utf8', shell: false });
+    const located = runProcess('where.exe', ['az'], { step: 'locate Azure CLI', encoding: 'utf8', shell: false });
     const launcher = located.stdout?.trim().split(/\r?\n/).find(file => /\.(?:exe|cmd)$/i.test(file));
     if (!launcher) throw fault('tool-unavailable', 'Azure CLI executable not found');
     if (/\.cmd$/i.test(launcher)) {
@@ -129,14 +140,18 @@ function azureRuntime() {
   return { command: 'az', prefix: [] };
 }
 
+// Azure CLI telemetry is disabled only for the processes this tool starts; the user's Azure CLI configuration stays unchanged.
+const azureEnvironment = () => ({ ...process.env, AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no', AZURE_CORE_COLLECT_TELEMETRY: 'no' });
+
 function run(command, args, input) {
   const azure = command === 'az';
+  const step = stepLabel(command, args);
   if (azure) {
     const runtime = azureRuntime();
     command = runtime.command;
     args = [...runtime.prefix, ...args];
   }
-  const result = spawnSync(command, args, { input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024, ...(azure ? { env: { ...process.env, AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no' } } : {}) });
+  const result = runProcess(command, args, { step, input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024, ...(azure ? { env: azureEnvironment() } : {}) });
   if (result.error || result.status !== 0) throw fault('retrieval-failed', `${command}: ${result.error?.message || result.stderr || `exit ${result.status}`}. Content was not loaded completely.`);
   return result.stdout;
 }
@@ -173,13 +188,16 @@ except Exception as error:
 function runAzureSdk(input) {
   // Built-in extension show never installs. The installed extension is required
   // even under inherited yes_without_prompt configuration.
-  let extension;
-  try {
-    extension = JSON.parse(run('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json', '--only-show-errors']));
-    if (extension.name !== 'azure-devops' || typeof extension.path !== 'string' || !fs.statSync(extension.path).isDirectory()) throw new Error('Installed extension path is unavailable');
-  } catch (error) {
-    if (error.reason === 'tool-unavailable' || /ENOENT/.test(error.message)) throw error;
-    throw fault('extension-unavailable', `Installed azure-devops extension required; no installation is attempted. ${error.message}`);
+  let extension = extensionMemory;
+  if (!extension) {
+    try {
+      extension = JSON.parse(run('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json', '--only-show-errors']));
+      if (extension.name !== 'azure-devops' || typeof extension.path !== 'string' || !fs.statSync(extension.path).isDirectory()) throw new Error('Installed extension path is unavailable');
+      extensionMemory = extension;
+    } catch (error) {
+      if (['tool-unavailable', 'process-timeout'].includes(error.reason) || /ENOENT/.test(error.message)) throw error;
+      throw fault('extension-unavailable', `Installed azure-devops extension required; no installation is attempted. ${error.message}`);
+    }
   }
   let python = azureRuntime().python;
   if (!python && process.platform !== 'win32') {
@@ -191,8 +209,8 @@ function runAzureSdk(input) {
   }
   if (!python) throw fault('tool-unavailable', 'This publication path requires the existing Azure CLI Python launcher (standard Windows MSI or absolute Python shebang); no interpreter is installed or guessed');
   const request = { ...JSON.parse(input), extension: extension.path };
-  const result = spawnSync(python, ['-IBc', SDK_SCRIPT], { input: JSON.stringify(request), encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no' } });
+  const result = runProcess(python, ['-IBc', SDK_SCRIPT], { step: `Azure SDK ${request.client} ${request.method}`, input: JSON.stringify(request), encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024,
+    env: azureEnvironment() });
   if (result.error || result.status !== 0) throw fault('retrieval-failed', result.error?.message || result.stderr || `Azure SDK exit ${result.status}`);
   return result.stdout;
 }
@@ -218,4 +236,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { resolve, run, main, runAzureSdk, SDK_SCRIPT };
+module.exports = { resolve, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT };
