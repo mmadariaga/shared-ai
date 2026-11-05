@@ -21,7 +21,7 @@
       "implement-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations", "fetch"], "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker"] },
       "spec-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker"] },
       "design-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-2-design-worker"] },
-      "plan-command": { "extends": "implement-command", "skills": ["to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker", "sai-2-design-worker"] },
+      "plan-command": { "extends": "implement-command", "skills": ["fetch", "to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker", "sai-2-design-worker"] },
       "review-command": { "extends": "implement-command", "delegate": ["sai-4-review-worker"] },
       "build-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker"] },
       "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-5-security-worker", "sai-6-performance-worker", "sai-7-accessibility-worker"] },
