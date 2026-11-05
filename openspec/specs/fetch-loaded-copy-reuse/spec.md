@@ -7,7 +7,7 @@ TBD - created by archiving change fetch-loaded-copy-reuse. Update Purpose after 
 
 ### Requirement: Fetch directives follow an already-loaded fetched copy
 
-The Claude Code and opencode fetch skills SHALL instruct the agent to follow a `Fetch @<subpath>` directive from the copy it already loaded in the same conversation, with no fetch tool call, when the fetch tool already returned that subpath's complete content in this conversation and that content is still in the agent's context. A complete result SHALL be the full output of the fetch tool, or the full Read of the header `path` after a `too-large` result.
+The Claude Code and opencode fetch skills SHALL instruct the agent to follow a `Fetch @<subpath>` directive from the copy it already loaded in the same conversation, with no fetch tool call, when the fetch tool already returned that subpath's complete content in this conversation and that content is still in the agent's context. A complete result SHALL be the full output of a one-subpath call of the fetch tool, the full Read of the header `path` after a `too-large` result, or the full Read of a `path` that a multi-subpath call of the fetch tool returned.
 
 #### Scenario: Repeated directive with the content still in context
 
@@ -17,6 +17,11 @@ The Claude Code and opencode fetch skills SHALL instruct the agent to follow a `
 #### Scenario: Too-large result followed by a full Read
 
 - **WHEN** an earlier fetch tool call for a subpath returned a `too-large` line, the agent then read the full header `path`, and that content is still in its context
+- **THEN** a later directive for the same subpath is followed from that loaded copy with no tool call
+
+#### Scenario: Path-mode result followed by a full Read
+
+- **WHEN** an earlier multi-subpath fetch tool call returned a resolution block for a subpath, the agent then read the full returned `path`, and that content is still in its context
 - **THEN** a later directive for the same subpath is followed from that loaded copy with no tool call
 
 ### Requirement: Skill directives follow an already-loaded skill
