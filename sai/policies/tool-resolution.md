@@ -93,9 +93,9 @@ takes one — never substitute one for the other.
   <review.md> [--cwd <project-root>]`. It always prints one JSON object
   (`status: ok` with the merge-base, fingerprint, and floors, or with the stored
   block's `state`; or `status: blocked` with a `message`).
-- `ready-to-propose.js`: `node <tool-path> check --profile loose|strict|dispatchable`
-  with the text on stdin (the dispatchable profile reads its judgment verdicts
-  after a `<<<VERDICTS>>>` line). It always prints one JSON verdict; `--json` is
+- `ready-to-propose.js`: `node <tool-path> check --profile loose|strict|dispatchable
+  --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts
+  exist (the tool composes the `<<<VERDICTS>>>` line itself). It always prints one JSON verdict; `--json` is
   accepted and changes nothing, and it takes no `--cwd`. `convert [--change-name
   <name>] [--declared-clean]` reads an issue description (Markdown or HTML) on
   stdin and prints one JSON object: the Ready to Propose form check, the draft
