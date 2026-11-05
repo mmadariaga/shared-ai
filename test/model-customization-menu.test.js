@@ -141,6 +141,7 @@ const OPENCODE_COMMANDS = [
   'sai-archive',
   'sai-backfill',
   'sai-build',
+  'sai-cache-warmer',
   'sai-commit',
   'sai-context-cache-ttl-benchmark',
   'sai-deep-review',

@@ -74,6 +74,6 @@ test('generated opencode agents, command wrappers, and configuration match the c
     entry.sourceText ?? fs.readFileSync(entry.sourcePath, 'utf8'),
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  assert.equal(output.length, 41);
-  assert.equal(hash(JSON.stringify(output)), '53308d2e46225ae3a9b90aca93871658fe1eee388f44627b2f05089d4d288557');
+  assert.equal(output.length, 42);
+  assert.equal(hash(JSON.stringify(output)), '834ee453589108a4adc4d4524302ec94bf7f8d14a99c539a20d5320c2e20f2c6');
 });
