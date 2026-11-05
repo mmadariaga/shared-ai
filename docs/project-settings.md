@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx github:mmadariaga/shared-ai setup`, or by hand; the `warming` setting is edited by hand only. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx --allow-git=all github:mmadariaga/shared-ai setup`, or by hand; the `warming` setting is edited by hand only. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -80,7 +80,7 @@ It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or
 
 ### Editing `warming` by hand
 
-Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one default per role, then rules per role. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`, and neither does any other step of `npx github:mmadariaga/shared-ai setup`.
+Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one default per role, then rules per role. The [project behavior settings screen](#project-behavior-settings-screen) does not edit `warming`, and neither does any other step of `npx --allow-git=all github:mmadariaga/shared-ai setup`.
 
 - A new project has no `warming` key, so nothing warms until you add one.
 - Edit the `warming` key only; the other keys and comments of the file stay as they are, and a reinstall keeps the stored values.
@@ -125,7 +125,7 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 
 ## Project behavior settings screen
 
-Run `npx github:mmadariaga/shared-ai setup` and choose **Project behavior settings** in the post-setup menu. The screen lists five settings by label under the headers `Explore`, `Backlog`, and `Pull requests`, with their current values. A header is a text row that the cursor skips; it cannot be chosen.
+Run `npx --allow-git=all github:mmadariaga/shared-ai setup` and choose **Project behavior settings** in the post-setup menu. The screen lists five settings by label under the headers `Explore`, `Backlog`, and `Pull requests`, with their current values. A header is a text row that the cursor skips; it cannot be chosen.
 
 - **Ready to Propose language** (`explore.readyToProposeLanguage`): `ask`, `English`, or a language name you type.
 - **Change overview language** (`explore.overviewLanguage`): `ask`, `English`, `none`, or a language name you type.

@@ -6,7 +6,6 @@ Runs a general review and, based on what it finds, runs the relevant specialized
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 - `--parent-branch <branch>`: the branch the review and the audits compare the change against.
 - `--full`: audits the whole repository instead of only the diff.
 - `--path <dir>`: audits one path instead of only the diff.
@@ -26,7 +25,7 @@ The general review completes before the specialized audits begin. The activated 
 
 Each recommendation must read exactly `Yes` or `No`. Any other value is illegible: that audit does not run and the summary carries a warning. If the review report is missing, or none of the three recommendations is legible, the command reports the gap and ends without judging or fixing anything.
 
-The command then runs an **Assessment pass** over `review.md` and the reports of the audits that finished. It judges each fixable finding on its own and either leaves it to fix or appends ` (EXCLUDED: <reason>)` to its heading, with a concrete one-line reason. Impact, cost, and risk of the correction are things it may weigh; no severity cutoff applies. Questions stay open for you, and no mark is written on them. Each report that received a mark is committed alone. When the change has no `tasks.md`, no `proposal.md`, or no spec file, the command skips the Assessment pass and the fix, and prints `Cannot start /sai-3-implement for {name}: missing {items}.` after the summary. When every fixable finding is excluded, or none exists, no fix runs.
+The command then runs an **Assessment pass** over `review.md` and the reports of the audits that finished. It judges each fixable finding on its own and either leaves it to fix or appends ` (EXCLUDED: <reason>)` to its heading, with a concrete one-line reason. Impact, cost, and risk of the correction are things it may weigh; no severity cutoff applies. Questions stay open for you, and no mark is written on them. Each report that received a mark is committed alone. The pass requires `proposal.md`, `tasks.md`, and either at least one file under `specs/` or `.openspec.yaml` with `skip_specs: true`. Otherwise the command skips the Assessment pass and the fix, and prints `Cannot start /sai-3-implement for {name}: missing {items}.` after the summary. When every fixable finding is excluded, or none exists, no fix runs.
 
 Otherwise it runs a `/sai-3-implement` segment on the findings left to fix: RED → GREEN per step, an adversarial review of each step, one local commit per step, a ` (FIXED)` mark on each resolved finding, and the unit and integration suites against the baseline recorded before the first step.
 

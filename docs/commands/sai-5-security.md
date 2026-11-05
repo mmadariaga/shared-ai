@@ -10,7 +10,6 @@ Looks for vulnerabilities and security risks in the completed changes. It explai
 - `--path <dir>`: audits one path.
 - `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
 
-- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 
 Without a change name, the command takes the only active change that has a `proposal.md`; with none or several it prints the candidates and stops. It asks nothing between resolving the change and finishing, and it has no change picker.
 

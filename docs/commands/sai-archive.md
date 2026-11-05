@@ -2,12 +2,6 @@
 
 ## Command function
 
-Before syncing specifications, both Claude Code and opencode independently check
-that each MODIFIED requirement preserves its existing scenario names. An exact
-removal or rename is allowed only when the approved scope explicitly covers it.
-Temporary exception metadata is verified separately and never archived. A
-missing scenario or incomplete comparison must be corrected before sync.
-
 Checks that a change is ready and moves it from the active changes area to the archive of completed changes, keeping the active workspace clean.
 
 ## Flags and behavior modifiers
@@ -17,7 +11,14 @@ Checks that a change is ready and moves it from the active changes area to the a
 
 ## In detail
 
-The command reviews the state of the change before moving it. It checks which documents exist and whether another destination archive already has the same name. Proposal and specs are always required, and design and tasks are too unless the change was backfilled; a missing one blocks the archive. A missing review, security, performance, or accessibility report is only informational, unless its file contains a `## Not Applicable` section. It also reports any update that should be reflected in the general documentation.
+The command reviews the state of the change before moving it. It checks which documents exist and whether another destination archive already has the same name. Proposal and specs are required (specs are satisfied by `skip_specs: true`), and design and tasks are too unless the change was backfilled; a missing required artifact blocks the archive. A missing review, security, performance, or accessibility report produces only an informational notice. An existing report with a `## Not Applicable` heading counts as present and produces no missing-report notice. It also reports any update that should be reflected in the general documentation.
+
+Before syncing specifications, the coordinator independently checks scenario
+preservation on both Claude Code and opencode. A MODIFIED requirement must keep
+every existing scenario name, with no exceptions for approved removals or renames.
+Intentional replacement uses REMOVED for the old requirement and ADDED for its
+replacement under an explicitly chosen distinct name. Missing scenarios or an
+incomplete comparison must be corrected before sync.
 
 Once everything is authorized, the change is removed from the active changes area and moved to the archive with its documentation. On the normal route, the operation that moves the change belongs to the main run, and the commit control is then offered with three options: create a new commit (recommended), amend the latest commit, or do nothing. Amending a pushed commit asks for a second confirmation.
 

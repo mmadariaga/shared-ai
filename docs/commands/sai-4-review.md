@@ -7,7 +7,6 @@ Reviews a change's diff against its parent branch in a fresh worker and writes `
 ## Flags and behavior modifiers
 
 - `--parent-branch <branch>`: the branch the diff is taken against. Default: the repository default branch, else `master`, else `main`.
-- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 
 ## In detail
 
