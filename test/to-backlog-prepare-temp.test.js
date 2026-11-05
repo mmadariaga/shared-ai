@@ -143,19 +143,20 @@ test('both harnesses install the same skill-owned script and declare only its co
     assert.ok(installed);
     assert.equal(fs.readFileSync(installed.sourcePath, 'utf8'), fs.readFileSync(script, 'utf8'));
     assert.ok(projections.some(item => item.destinationPath === path.join(destinationRoot.skills, 'to-backlog/prepare-temp.md')));
-    for (const profile of ['to-backlog-command', 'explore-command']) {
+    for (const profile of ['explore-command']) {
       const grants = translate(manifest.capabilities, profile, harness);
       const root = harness === 'claude' ? '~/.claude' : '~/.config/opencode';
       const local = harness === 'claude' ? '.claude' : '.opencode';
       const expected = [root, local].map(location => `node ${location}/skills/to-backlog/scripts/prepare-temp.js ${harness}`);
       if (harness === 'opencode') {
-        for (const resource of expected) assert.ok(grants.permissions.some(rule => rule.action === 'shell' && rule.resource === resource && rule.effect === 'allow'));
+        for (const resource of expected) for (const exact of [resource, `${resource} *`]) assert.ok(grants.permissions.some(rule => rule.action === 'shell' && rule.resource === exact && rule.effect === 'allow'));
       } else {
-        for (const resource of expected) assert.ok(grants.allowedTools.includes(`Bash(${resource})`));
+        for (const resource of expected) for (const exact of [resource, `${resource}:*`]) assert.ok(grants.allowedTools.includes(`Bash(${exact})`));
       }
       assert.ok(!grants.profile.shell.includes('node *'));
       assert.ok(!grants.profile.shell.some(pattern => /^(mkdir|chmod) /.test(pattern)));
     }
+    assert.deepEqual(translate(manifest.capabilities, 'to-backlog-command', harness).profile.shell, ['*']);
   }
 });
 

@@ -49,9 +49,10 @@ test('a wildcard path keeps only the opening quote and the harness token still e
   const explore = opencodeShellRules('explore-command', '/home/u/.config/opencode');
   assert.ok(explore.includes('node ~/.config/opencode/sai/*'));
   assert.ok(explore.includes('node "/home/u/.config/opencode/sai/*'));
-  const backlog = opencodeShellRules('to-backlog-command', '/home/u/.config/opencode');
-  assert.ok(backlog.includes('node ~/.config/opencode/skills/to-backlog/scripts/prepare-temp.js opencode'));
-  assert.ok(backlog.includes('node "/home/u/.config/opencode/skills/to-backlog/scripts/prepare-temp.js" opencode'));
+  assert.ok(explore.includes('node ~/.config/opencode/skills/to-backlog/scripts/prepare-temp.js opencode *'));
+  assert.ok(explore.includes('node "/home/u/.config/opencode/skills/to-backlog/scripts/prepare-temp.js" opencode *'));
+  assert.ok(explore.includes('node ~/.config/opencode/skills/to-backlog/scripts/prepare-temp.js opencode'));
+  assert.ok(explore.includes('node "/home/u/.config/opencode/skills/to-backlog/scripts/prepare-temp.js" opencode'));
 });
 
 test('skills-rooted patterns gain the absolute form as well', () => {
@@ -60,9 +61,25 @@ test('skills-rooted patterns gain the absolute form as well', () => {
   assert.ok(allowed.includes('Bash(node "/Users/u/.claude/skills/sai-cache-warmer/wait.js":*)'));
 });
 
-test('without an install root only the home and project-local forms are generated', () => {
-  assert.ok(opencodeShellRules('status-command').every(rule => !rule.includes('"')));
-  assert.ok(claudeAllowed('status-command').every(entry => !entry.includes('"')));
+test('without an install root the installer resolves the roots itself and still emits the quoted absolute form', () => {
+  const claude = claudeAllowed('status-command');
+  const home = normalizeInstallRoot(path.join(os.homedir(), '.claude'));
+  assert.ok(claude.includes(`Bash(node "${home}/sai/tools/status.js":*)`));
+  assert.ok(opencodeShellRules('status-command').some(rule => /^node "\/?[^"]*\/sai\/tools\/status\.js" \*$/.test(rule)));
+});
+
+test('an XDG override moves the opencode config directory of the resolved absolute form', () => {
+  const key = process.env.XDG_CONFIG_HOME;
+  const result = require('node:child_process').spawnSync(process.execPath, ['-e', `
+    const { translate } = require(${JSON.stringify(path.join(repoRoot, 'bin/capabilities'))});
+    const registry = require(${JSON.stringify(path.join(repoRoot, 'sai/install-manifest.json'))}).capabilities;
+    const rules = translate(registry, 'status-command', 'opencode').permissions.filter(rule => rule.action === 'shell').map(rule => rule.resource);
+    process.stdout.write(JSON.stringify(rules));`], {
+    encoding: 'utf8', env: { ...process.env, XDG_CONFIG_HOME: '/xdg override', PATH: '/nonexistent' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(JSON.parse(result.stdout).includes('node "/xdg override/opencode/sai/tools/status.js" *'));
+  void key;
 });
 
 test('the install root is written with forward slashes and no trailing separator', () => {

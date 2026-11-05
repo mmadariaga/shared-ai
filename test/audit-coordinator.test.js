@@ -124,7 +124,7 @@ test('the audit step files report step-done and keep E2 to E5 in their own steps
 
 test('the audit commands run under a coordinator profile that can verify and commit', () => {
   const profiles = JSON.parse(read('sai/install-manifest.json')).capabilities.profiles;
-  assert.deepEqual(profiles['audit-command'], { extends: 'coordinator', write: true, shell: ['*'], skills: ['safe-operations'] });
+  assert.deepEqual(profiles['audit-command'], { extends: 'coordinator', write: true, shell: ['*'], skills: ['safe-operations', 'fetch'] });
   for (const audit of AUDITS) {
     assert.deepEqual(profiles[`${audit}-command`], { extends: 'audit-command', delegate: [WORKER[audit]] });
   }

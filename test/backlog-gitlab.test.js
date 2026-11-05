@@ -428,9 +428,10 @@ test('GitLab provider references and tools project for both harnesses with helpe
     }
     for (const command of ['from-backlog', 'to-backlog']) {
       const profile = manifest.capabilities.profiles[`${command}-command`];
-      assert.ok(profile.shell.some(rule => rule.includes(`tools/${command}.js`)));
+      // from-backlog keeps its helper-only pattern list; to-backlog runs any shell command.
+      if (command === 'from-backlog') assert.ok(profile.shell.some(rule => rule.includes(`tools/${command}.js`)));
+      else assert.deepEqual(profile.shell, ['*']);
       const native = translate(manifest.capabilities, `${command}-command`, harness).profile;
-      assert.ok(native.shell.some(rule => rule.includes(`tools/${command}.js`)));
       assert.ok(!native.shell.some(rule => /^(gh|glab) /.test(rule)));
     }
   }

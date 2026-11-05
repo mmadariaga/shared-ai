@@ -278,12 +278,18 @@ test('instruction checks cover context questions, native pickers, safety and bot
     const destinationRoot = Object.fromEntries(['agents', 'commands', 'config', 'sai', 'skills', 'root'].map(key => [key, path.join(os.tmpdir(), 'new-change-branch-projection', harness, key)]));
     const entries = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     for (const source of ['skills/universal/new-change-branch/SKILL.md', 'sai/tools/new-change-branch.js']) {
-      assert.ok(entries.some(e => e.sourcePath === path.join(repoRoot, source)), `${harness}: ${source}`);
+      const entry = entries.find(e => e.sourcePath === path.join(repoRoot, source)
+        || (source.endsWith('SKILL.md') && e.destinationPath === path.join(destinationRoot.skills, 'new-change-branch', 'SKILL.md')));
+      assert.ok(entry, `${harness}: ${source}`);
     }
+    const projected = entries.find(e => e.destinationPath === path.join(destinationRoot.skills, 'new-change-branch', 'SKILL.md')).sourceText;
+    if (harness === 'claude') assert.match(projected, /^allowed-tools: .*Bash\(\*\)|^allowed-tools: .*\bBash\b/m, 'the Claude Code skill carries its compiled grants');
+    else assert.doesNotMatch(projected, /allowed-tools/, 'opencode takes its rules from the primary agent');
+    assert.doesNotMatch(projected, /\{\{capability/);
   }
   assert.equal(manifest.capabilities.assignments.commands['new-change-branch'], 'new-change-branch-command');
   const profile = manifest.capabilities.profiles['new-change-branch-command'];
   assert.equal(profile.question, true);
   assert.ok(profile.skills.includes('safe-operations'));
-  assert.deepEqual(profile.shell, ['node {sai}/tools/new-change-branch.js *']);
+  assert.deepEqual(profile.shell, ['*']);
 });
