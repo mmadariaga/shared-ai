@@ -364,3 +364,19 @@ The `cost` report SHALL add `wakes` and `wake_usage` per agent and per segment r
 #### Scenario: Markdown baseline format
 - **WHEN** the cost report is printed with `--format markdown`
 - **THEN** it declares baseline format 2 and shows a cache-warming wakes table per run
+
+### Requirement: opencode session target lookup
+
+The collector SHALL look up an explicit opencode `ses_` target in `session_v2` by its ID, with no directory filter, and SHALL resolve a child session to its root session through `parent_id`. Without `--paths`, a root session recorded in a directory other than the current project SHALL be read from its recorded directory and reported under that directory as an opencode project entry; for this target the default of `--paths` to the current project does not narrow the lookup. When `session_v2` holds no session with the target ID, the index SHALL list no execution and SHALL carry a note stating that the session was not found in the opencode database. With `--paths`, when the root session's recorded directory is outside the supplied projects, the index SHALL list no execution and SHALL carry a note stating that the session was not found under the supplied `--paths` and that `--paths` excluded it.
+
+#### Scenario: Session recorded outside the current project
+- **WHEN** the target is the `ses_` ID of an opencode root session whose recorded directory is not the current project and the invocation carries no `--paths`
+- **THEN** the index lists that session's execution with harness `opencode` and reports its recorded directory as an analyzed opencode project
+
+#### Scenario: Session ID absent from the database
+- **WHEN** the target is a `ses_` ID that `session_v2` does not hold
+- **THEN** the index lists no execution and carries a note that no opencode session with that ID was found in the opencode database
+
+#### Scenario: Session excluded by paths
+- **WHEN** the target is the `ses_` ID of an opencode session whose recorded directory is outside the projects supplied with `--paths`
+- **THEN** the index lists no execution and carries a note that the session was not found under the supplied `--paths` because `--paths` excluded it
