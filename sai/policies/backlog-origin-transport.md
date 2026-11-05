@@ -15,7 +15,7 @@ Fetch `@sai/policies/block-hygiene-judgment.md` for amendment validation.
    every corresponding original block through `sai-state block <id> <name> --export --harness <claude|opencode>`;
    a missing block or conflicting origin stops transport before route dispatch.
 2. Call `ready-to-propose.js attach-origin --harness <claude|opencode>` with JSON
-   `{block_files: [{block_file, hash}], correspondence}` on stdin. Supply all
+   `{block_files: [{block_file, hash}], correspondence}` in `--input-file <path>` per `@sai/policies/tool-resolution.md` § Invocation (structured input is an input file). Supply all
    exported references, not block text. The tool verifies each file, reads and
    updates the set mechanically, and returns new private `block_file`/`hash`
    references with their `transfer_dir`, not amended text for model copying.

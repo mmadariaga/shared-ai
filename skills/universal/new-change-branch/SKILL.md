@@ -16,9 +16,9 @@ text for open clarification. No OpenSpec dependency is required.
 
 Locate `sai/tools/new-change-branch.js` through `sai/policies/tool-resolution.md`
 § `sai/tools/*.js` copies, read from the harness root holding this skill.
-Run `node <tool-path> <operation>` in the target repository, with one JSON object
-on stdin; it returns JSON. Quote the tool path separately and use a quoted
-heredoc or a safe stdin writer for JSON, never executable interpolation of input.
+Run `node <tool-path> <operation> --input-file <path>` in the target repository, with one JSON object
+in the input file; it returns JSON. Quote the tool path separately and write the JSON with the
+native file-write tool, never executable interpolation of input. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc.
 Run `inspect` with `{}`. Stop on a missing Git repository, missing HEAD commit,
 merge or rebase in progress, or unavailable tool; report the concrete reason.
 

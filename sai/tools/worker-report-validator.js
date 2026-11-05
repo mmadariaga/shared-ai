@@ -40,6 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Readable } = require('stream');
+const inputReader = require('./input-reader');
 
 /** Valid terminal statuses. */
 const VALID_STATUSES = ['completed', 'needs_input', 'failed', 'cancelled'];
@@ -654,9 +655,9 @@ function validateText(text, kind) {
   };
 }
 
-async function commandValidate(kind) {
-  const stdinData = await readStdin();
-  return validateText(stdinData, kind);
+async function commandValidate(kind, inputFile) {
+  const text = inputFile ? inputReader.readInputFile(inputFile) : await readStdin();
+  return validateText(text, kind);
 }
 
 /** Verify once and validate that exact buffer; never read the report again. */
@@ -683,9 +684,10 @@ function validateFile(dir, reference, kind, options = {}) {
 
 function usage() {
   return [
-    'Usage: cat payload.json | node sai/tools/worker-report-validator.js validate --kind <kind> [--json] [--cwd <dir>]',
+    'Usage: node sai/tools/worker-report-validator.js validate --kind <kind> --input-file <path> [--json] [--cwd <dir>]',
     '',
-    '  validate                 Read a closed payload from stdin and validate it.',
+    '  validate                 Read a closed payload from the input file (or stdin) and validate it.',
+    '  --input-file <path>      File holding the payload; without it the payload is read from stdin.',
     '  --report-dir <dir> --report-file <path> --report-hash <sha256>',
     '                           Instead verify a private transfer file and validate the same bytes.',
     '                           All three flags are required together; stdin is not read.',
@@ -712,6 +714,10 @@ function parseArgs(argv) {
     if (arg === '--json') opts.json = true;
     else if (arg === '--cwd') opts.cwd = argv[++i];
     else if (arg === '--kind') opts.kind = argv[++i];
+    else if (arg === '--input-file') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('--')) return { error: 'missing value for --input-file' };
+      opts.inputFile = argv[++i];
+    }
     else if (['--report-dir', '--report-file', '--report-hash'].includes(arg)) {
       if (!argv[i + 1] || argv[i + 1].startsWith('--')) return { error: `missing value for ${arg}` };
       const key = { '--report-dir': 'reportDir', '--report-file': 'reportFile', '--report-hash': 'reportHash' }[arg];
@@ -776,7 +782,7 @@ async function main(argv) {
     const receivedAt = generateReceivedAt();
     const verdict = fileMode
       ? validateFile(opts.reportDir, { path: opts.reportFile, sha256: opts.reportHash }, kind)
-      : await commandValidate(kind);
+      : await commandValidate(kind, opts.inputFile);
     const payload = Object.assign({ received_at: receivedAt }, verdict);
     render(payload, opts.json);
     return payload.ok ? 0 : 1;

@@ -20,8 +20,8 @@ This skill's directory is the one holding this `SKILL.md`. Locate
 copies, read from the harness root that holds this skill's `skills/` directory.
 Use `providers/registry.json` from this skill's directory; quote paths
 separately. Run the tool in the target Git repository.
-Every operation takes `<operation> <registry-path>` and one JSON object on stdin,
-and returns JSON. A `ready` result's `confirmation` field is a token: `query` yields
+Every operation takes `<operation> <registry-path>` and one JSON object in `--input-file <path>`,
+and returns JSON. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. A `ready` result's `confirmation` field is a token: `query` yields
 the `publish token`, `push-query` the `push token`. Never interpolate draft text
 into executable shell text.
 

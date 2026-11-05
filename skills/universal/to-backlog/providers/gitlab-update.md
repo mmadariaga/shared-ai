@@ -1,7 +1,7 @@
 # GitLab origin update
 
 Use `node <tool> read-update|query-update|update|recover-update <registry>`
-with JSON requests on stdin, always carrying `"provider":"gitlab"`.
+with JSON requests in `--input-file <path>`, always carrying `"provider":"gitlab"`.
 
 `read-update` takes the complete origin `reference` URL and returns canonical
 identity and a current `baseline`. Retain the entire baseline, including

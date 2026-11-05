@@ -95,7 +95,7 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   assert.doesNotMatch(retirement, /through Bash/);
 
   assert.match(commit, /commit\.js` path/);
-  assert.match(commit, /authorized\s+message on stdin using the literal-message procedure/);
+  assert.match(commit, /authorized message as `--input-file <path>` using the input-file procedure/);
   assert.doesNotMatch(commit, /<<'EOF'|quoted heredoc/);
   assert.ok(explore.includes('git commit -F -'));
   assert.ok(explore.includes('@sai/policies/command-execution.md'));

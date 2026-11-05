@@ -13,9 +13,11 @@ same-worker continuations. A full Direct Build task without this directory
 cannot proceed; report the missing transport to the coordinator without work.
 
 Compose the ordinary closed report of the worker's contract, including any
-role-specific fields and the failure fields below. Save its complete JSON or
-YAML unchanged with `transfer.js put --dir <report-dir> --path
-<unique-role-and-stretch-name>.json` (report on standard input), resolving the helper per `@sai/policies/tool-resolution.md`. Each
+role-specific fields and the failure fields below. Write its complete JSON or
+YAML unchanged with the native file-write tool to a unique file in the SAI temp
+root (for example `<report-dir>/<unique-role-and-stretch-name>.draft.json`),
+then save it with `transfer.js put --dir <report-dir> --path
+<unique-role-and-stretch-name>.json --input-file <that file>`, resolving the helper per `@sai/policies/tool-resolution.md`. Each
 response, including `needs_input` and failures, uses a new file; previous
 reports remain available. Return only `{path, sha256}`, exactly as printed by
 `put`, plus the `warming: true|false` line of `@sai/policies/cache-warming.md`

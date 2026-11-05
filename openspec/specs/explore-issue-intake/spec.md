@@ -98,7 +98,7 @@ Explore SHALL ask the drift check only for an issue with the Ready to Propose fo
 
 ### Requirement: The conversion tool owns the issue-to-block mapping in the intake
 
-Explore SHALL NOT write the block from the issue itself. It SHALL run `ready-to-propose.js convert` with the issue text exactly as it entered the conversation on stdin, without options when the issue arrives and again after the drift check with the confirmed `--change-name`, adding `--declared-clean` for the `declared-clean` outcome. A `converted: false` result with `rejections` SHALL be a conversion rejection: Explore SHALL show each reason in one line in the ambient conversation language, SHALL NOT ask the shortcut question, and SHALL continue with the planned Explore steps.
+Explore SHALL NOT write the block from the issue itself. It SHALL run `ready-to-propose.js convert` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation, written with the harness-native file-write tool in a directory from `transfer.js open`, without options when the issue arrives and again after the drift check with the confirmed `--change-name`, adding `--declared-clean` for the `declared-clean` outcome. A `converted: false` result with `rejections` SHALL be a conversion rejection: Explore SHALL show each reason in one line in the ambient conversation language, SHALL NOT ask the shortcut question, and SHALL continue with the planned Explore steps.
 
 #### Scenario: Conversion rejection continues with the planned steps
 

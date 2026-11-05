@@ -266,8 +266,8 @@ test('both harness projections install every import surface and grant only the r
     assert.match(fs.readFileSync(skill.sourcePath, 'utf8'), /## 4. Assess against the current project/);
     const profile = translate(manifest.capabilities, 'from-backlog-command', harness).profile;
     assert.ok(profile.read && profile.question);
-    assert.ok(!profile.write);
-    assert.deepEqual(profile.shell, ['node {sai}/tools/from-backlog.js *']);
+    assert.equal(profile.write, 'temp', 'writes only inside the SAI temp root');
+    assert.deepEqual(profile.shell, ['node {sai}/tools/from-backlog.js *', 'node {sai}/tools/transfer.js open *']);
   }
 });
 

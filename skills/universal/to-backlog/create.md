@@ -2,8 +2,7 @@
 
 ## Destination selection — before extraction
 
-Run `node <tool> resolve <registry>` with JSON on stdin:
-`{"explicit":{"provider":"...","repository":"...","project":"...","organization":"..."}}`.
+Run `node <tool> resolve <registry> --input-file <path>` with JSON in the input file: `{"explicit":{"provider":"...","repository":"...","project":"...","organization":"..."}}`. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc.
 Include only user-supplied fields. The tool reads the project's `backlog.*`
 settings (`provider`, `repository`, `project`, `organization`) from
 `.sai/settings.jsonc` in the working directory; the work-item type has no

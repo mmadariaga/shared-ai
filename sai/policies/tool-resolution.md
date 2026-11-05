@@ -63,6 +63,24 @@ On **opencode**, in this order:
 
 Apply's coordinator-only `checkpoint-plan` subcommand takes `--change <change-name> --baseline <ref> --cwd <project-root>`, optional retained `--settled <ref>`, and no stdin. Its returned reference is supplied as `--plan-checkpoint <ref>` to close after an authorized coordinator plan write. Cumulative verification and close otherwise compare the plan with the original baseline or settled receipt; this flag is not a worker-write exemption.
 
+**Structured input is an input file.** A tool that reads structured input (JSON,
+a message, a block, an issue description) takes it with `--input-file <path>`,
+never from a stdin pipe, heredoc, here-string, or command argument: those forms
+fail on at least one harness for JSON (Claude Code rejects a heredoc whose body
+has a brace beside a quote; opencode rejects the `echo` pipe and corrupts heredoc
+JSON). Open one private directory with `transfer.js` as `node <tool-path> open
+--harness <claude|opencode>`, write the input as UTF-8 to a unique file in the
+returned `dir` with the harness-native file-write tool (`Write` on Claude Code,
+`write` on opencode), and pass that absolute path. Each call uses its own file,
+so parallel calls never share one, and input files stay inside the SAI temp root,
+outside the repository. The tool receives the bytes exactly and exits 2 naming
+the path, changing no state, when the file is missing, unreadable, or empty.
+`--input-file` wins over stdin; the `-` stdin form stays accepted only so
+instructions installed before the input file keep working. Close the directory
+with `transfer.js close --dir <dir>` when the work no longer needs it. Every
+command profile that hands structured input to a tool can write there: its
+native write is limited to the SAI temp root.
+
 Whichever candidate wins, the invocation keeps one form within one harness, so
 the installed permission rules cover it: a rule per root exists for the
 project-local form, the `~` form, and the absolute form of this install. Keep each
@@ -72,7 +90,8 @@ lists; `<change-name>` is the separate CLI positional argument where a tool
 takes one — never substitute one for the other.
 
 - `commit.js`: `node <tool-path> <subcommand> --json --cwd <project-root>`
-  plus the sub-command's required flags.
+  plus the sub-command's required flags; `apply` takes the message as
+  `--input-file <path>`.
 - `to-pr.js`, `to-backlog.js`, `from-backlog.js`: the owning universal skill
   defines the invocation.
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
@@ -81,12 +100,12 @@ takes one — never substitute one for the other.
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no `--cwd`.
 - `validate-backfill-drafts.js`: `node <tool-path> validate --harness
   <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
-  <project-root> --fingerprint <hash>`, with the complete reference set on stdin,
-  per `@sai/policies/backfill-draft-validation.md`.
-- `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
-  with the payload on stdin (plus `--json --cwd` where the tool accepts
+  <project-root> --fingerprint <hash>`, with the complete reference set in
+  `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
+- `worker-report-validator.js`: `node <tool-path> validate --kind <kind>
+  --input-file <path>` with the payload in the input file (plus `--json --cwd` where the tool accepts
   them). Full Direct Build uses `--report-dir <authorized-dir> --report-file
-  <path> --report-hash <sha256> --json` instead of stdin, per
+  <path> --report-hash <sha256> --json` instead of the input file, per
   `@sai/policies/direct-build-report-transport.md`.
 - `risk-signals.js`: `node <tool-path> compute --parent <branch> [--cwd
   <project-root>]`, and `node <tool-path> validate --parent <branch> --file
@@ -97,20 +116,20 @@ takes one — never substitute one for the other.
   --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts
   exist (the tool composes the `<<<VERDICTS>>>` line itself). It always prints one JSON verdict; `--json` is
   accepted and changes nothing, and it takes no `--cwd`. `convert [--change-name
-  <name>] [--declared-clean]` reads an issue description (Markdown or HTML) on
-  stdin and prints one JSON object: the Ready to Propose form check, the draft
+  <name>] [--declared-clean] --input-file <path>` reads an issue description
+  (Markdown or HTML) from the input file and prints one JSON object: the Ready to Propose form check, the draft
   block, and the dispatchable validation or the rejection reasons.
 - `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
   --cwd <project-root>`. It always prints one JSON object with `index_exists`,
   `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and
   its `archive/` on disk.
-- `tool-access.js`: `node <tool-path> <verify|notices>` with JSON on stdin;
+- `tool-access.js`: `node <tool-path> <verify|notices> --input-file <path>` with the JSON in the input file;
   `verify` takes `{required, evidence}`, `notices` takes `{ladder_discards}`.
   It prints JSON and takes neither `--json` nor `--cwd`.
 - `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
   `--json` nor `--cwd`. The progress emit (`emit <id> <machineId> --progress
-  -`, payload on stdin) loads the validator module
+  --input-file <path>`) loads the validator module
   itself, relative to the resolved `sai-state.js`, so it needs no separate
   `worker-report-validator.js` resolution and stays byte-identical whichever
   `sai-state.js` candidate wins.

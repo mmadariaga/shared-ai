@@ -247,10 +247,9 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
     fs.mkdirSync(path.join(sai, 'tools'), { recursive: true });
     fs.copyFileSync(SAI_STATE_TOOL, path.join(sai, 'bin', 'sai-state.js'));
     copyTree(path.join(REPO_ROOT, 'sai-state'), path.join(sai, 'sai-state'));
-    fs.copyFileSync(
-      path.join(REPO_ROOT, 'sai', 'tools', 'worker-report-validator.js'),
-      path.join(sai, 'tools', 'worker-report-validator.js')
-    );
+    for (const file of ['worker-report-validator.js', 'input-reader.js']) {
+      fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', file), path.join(sai, 'tools', file));
+    }
     const tool = path.join(sai, 'bin', 'sai-state.js');
     const id = spawnSession('progress-installed');
     try {

@@ -9,7 +9,7 @@
  * importable tools. The workflow is split:
  *   1. collect: inspect staged state, infer scope, detect repo style, detect
  *      sensitive files; report as JSON for the model to draft the message
- *   2. apply: read message from stdin, validate, block on secrets, execute commit
+ *   2. apply: read message from the input file (or stdin), validate, block on secrets, execute commit
  *
  * The model sits between collect and apply: collect produces facts, the model
  * drafts a message, apply validates and executes.
@@ -17,7 +17,7 @@
  * Sub-commands:
  *   collect                    Report staged state, diff inventory, inferred
  *                              scope, detected style, and sensitive files.
- *   apply                      Read message from stdin, validate it, block on
+ *   apply                      Read message from --input-file (or stdin), validate it, block on
  *                              detected sensitive files, and execute the commit.
  *
  * Usage:
@@ -34,6 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { checkCommitRules, ToolError: LintToolError } = require('./lint');
+const { readInput } = require('./input-reader');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -433,16 +434,15 @@ function collectState(cwd, amend = false) {
 
 /**
  * Validate commit message and execute the commit.
- * Message is read from stdin.
+ * Message is read from the input file, or from stdin when none is given.
  * With --amend, uses git commit --amend instead of git commit.
  */
-function applyCommit(cwd, acknowledgeSecretsArg, amend = false, allowAttribution = false) {
-  // Read message from stdin
-  const inputBuffer = fs.readFileSync(0, 'utf8');
-  const message = inputBuffer;
+function applyCommit(cwd, acknowledgeSecretsArg, amend = false, allowAttribution = false, inputFile = null) {
+  // Read the message from the input file, or from stdin
+  const message = inputFile ? readInput(inputFile) : fs.readFileSync(0, 'utf8');
 
   if (!message || !message.trim()) {
-    throw new ToolError('no message provided on stdin');
+    throw new ToolError('no message provided');
   }
 
   // Validate message format
@@ -499,11 +499,12 @@ function usage() {
     '',
     '  Subcommands:',
     '    collect                    Report staged state, inferred scope, detected style, and amend target',
-    '    apply                      Read message from stdin, validate, and commit (or amend)',
+    '    apply                      Read message from --input-file (or stdin), validate, and commit (or amend)',
     '',
     '  Options:',
     '    --json                     Emit output as JSON',
     '    --cwd <dir>                Working directory (default: current directory)',
+    '    --input-file <path>        File holding the commit message for apply (default: stdin)',
     '    --amend                    Amend the previous commit instead of creating a new one',
     '    --allow-attribution        Allow AI credit explicitly requested by the user',
     '    --acknowledge-secrets <list>  Comma-separated list of sensitive files to allow',
@@ -511,8 +512,8 @@ function usage() {
     '  Examples:',
     '    node sai/tools/commit.js collect --json',
     '    node sai/tools/commit.js collect --amend --json',
-    '    cat message.txt | node sai/tools/commit.js apply --cwd /path/to/repo',
-    '    cat message.txt | node sai/tools/commit.js apply --amend --cwd /path/to/repo',
+    '    node sai/tools/commit.js apply --input-file message.txt --cwd /path/to/repo',
+    '    node sai/tools/commit.js apply --amend --input-file message.txt --cwd /path/to/repo',
   ].join('\n');
 }
 
@@ -540,6 +541,8 @@ function parseArgs(argv) {
       opts.cwd = argv[++i];
     } else if (arg === '--acknowledge-secrets') {
       opts.acknowledgeSecrets = argv[++i];
+    } else if (arg === '--input-file') {
+      opts.inputFile = argv[++i];
     } else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
     } else if (opts.subcommand === null) {
@@ -597,7 +600,7 @@ function main(argv) {
       }
       return (result.has_staged || result.amend_target) ? 0 : 1;
     } else if (opts.subcommand === 'apply') {
-      const result = applyCommit(opts.cwd, opts.acknowledgeSecrets, opts.amend, opts.allowAttribution);
+      const result = applyCommit(opts.cwd, opts.acknowledgeSecrets, opts.amend, opts.allowAttribution, opts.inputFile);
       if (opts.json) {
         process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       } else {

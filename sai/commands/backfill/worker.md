@@ -125,8 +125,9 @@ do not replace receiver-side CLI validation.
 
 The worker never returns draft content in a message. After composing the drafts
 (instruction Phase 6), write each one with
-`node <tool-path> put --dir <transfer-dir> --path <relative>` (content on
-standard input), resolving `transfer.js` per
+`node <tool-path> put --dir <transfer-dir> --path <relative> --input-file <path>`
+(the content first written with the native file-write tool to a unique file in
+the SAI temp root), resolving `transfer.js` per
 `@sai/policies/tool-resolution.md` and writing the transfer file at the path
 that mirrors its destination relative to `openspec/changes/{name}/`:
 `.openspec.yaml`, `proposal.md`, and `specs/<capability>/spec.md`. Never write
