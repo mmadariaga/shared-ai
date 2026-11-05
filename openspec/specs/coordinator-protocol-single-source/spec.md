@@ -17,7 +17,7 @@ The coordinator cards SHALL retain only routing and adapter responsibilities, wh
 
 ### Requirement: Coordinator safety literals remain unchanged and isolation lives in the wrappers
 
-Each coordinator's MANDATORY STOP literal SHALL remain byte-for-byte identical. Clean-session enforcement SHALL NOT live in the coordinator or body cards: no card under `sai/commands/` carries a `# Isolation Mode` block or an inline clean-session sentence, and every command wrapper (`commands/claude/sai-*.md` and `commands/opencode/sai-*.md`) except `sai-context-cache-ttl-benchmark.md`, which deliberately runs in the current conversation, carries the byte-identical clean-start line "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." before its card fetch, as the sole mechanism that discards prior conversational context at invocation start.
+Each coordinator's MANDATORY STOP literal SHALL remain byte-for-byte identical. Clean-session enforcement SHALL NOT live in the coordinator or body cards: no card under `sai/commands/` carries a `# Isolation Mode` block or an inline clean-session sentence, and every command wrapper (`commands/claude/sai-*.md` and `commands/opencode/sai-*.md`) except `sai-context-cache-ttl-benchmark.md` and `sai-cache-warmer.md`, which deliberately run in the current conversation, carries the byte-identical clean-start line "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." before its card fetch, as the sole mechanism that discards prior conversational context at invocation start.
 
 #### Scenario: safety literals survive the boot retirement
 
@@ -26,6 +26,6 @@ Each coordinator's MANDATORY STOP literal SHALL remain byte-for-byte identical. 
 
 #### Scenario: isolation enforcement lives in the wrappers only
 
-- **WHEN** any card under `sai/commands/` and any `sai-*` wrapper of either harness other than `sai-context-cache-ttl-benchmark.md` is read
+- **WHEN** any card under `sai/commands/` and any `sai-*` wrapper of either harness other than `sai-context-cache-ttl-benchmark.md` and `sai-cache-warmer.md` is read
 - **THEN** no card contains a `# Isolation Mode` block or an inline clean-session sentence
 - **AND** every wrapper carries the byte-identical clean-start line before its card fetch

@@ -40,3 +40,19 @@ Successful preparation SHALL return a fixed interval and closing instant for the
 #### Scenario: Explicit past target
 - **WHEN** an explicitly dated target plus one minute has already passed
 - **THEN** preparation supplies the resolved state and the wait helper finishes without waiting.
+
+### Requirement: Command wrapper loads the cache-warmer skill on both harnesses
+
+The system SHALL ship a `/sai-cache-warmer` command wrapper for Claude Code (`commands/claude/sai-cache-warmer.md`) and for opencode (`commands/opencode/sai-cache-warmer.md`). Each wrapper SHALL read `sai-cache-warmer/SKILL.md` from the project-local harness skills root first (`.claude/skills/` or `.opencode/skills/`) and from the user-global root second (`~/.claude/skills/` or `~/.config/opencode/skills/`), follow it in the current conversation, and pass `$ARGUMENTS` unchanged as the invocation input. When neither copy exists, the wrapper SHALL report that the sai-cache-warmer skill is not installed and stop. The wrapper SHALL read `SKILL.md` directly rather than invoke the skill through the harness skill tool, so the skill's explicit-only activation is preserved.
+
+#### Scenario: Explicit command follows the skill unchanged
+- **WHEN** the user invokes `/sai-cache-warmer` with or without arguments on Claude Code or opencode
+- **THEN** the wrapper follows the installed `sai-cache-warmer` skill in the current conversation with the invocation input passed through unchanged.
+
+#### Scenario: Project-local copy takes precedence
+- **WHEN** both the project-local and the user-global copy of `sai-cache-warmer/SKILL.md` exist
+- **THEN** the wrapper reads the project-local copy.
+
+#### Scenario: Skill is not installed
+- **WHEN** neither the project-local nor the user-global copy of `sai-cache-warmer/SKILL.md` exists
+- **THEN** the wrapper reports that the sai-cache-warmer skill is not installed and stops.
