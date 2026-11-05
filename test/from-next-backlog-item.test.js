@@ -210,8 +210,8 @@ test('both installations include selector, provider instructions, tools, and bou
   }
   const profile = manifest.capabilities.profiles['from-next-backlog-item-command'];
   assert.deepEqual(profile.skills, ['from-next-backlog-item', 'from-backlog', 'fetch']);
-  assert.deepEqual(profile.shell, ['node {sai}/tools/from-next-backlog-item.js select', 'node {sai}/tools/from-next-backlog-item.js select *', 'node {sai}/tools/from-backlog.js *']);
-  assert.equal(profile.write, undefined);
+  assert.deepEqual(profile.shell, ['node {sai}/tools/from-next-backlog-item.js select', 'node {sai}/tools/from-next-backlog-item.js select *', 'node {sai}/tools/from-backlog.js *', 'node {sai}/tools/transfer.js open *']);
+  assert.equal(require('../bin/capabilities').resolveProfile(manifest.capabilities, 'from-next-backlog-item-command').write, 'temp');
 });
 test('selection instructions hand off exactly once without duplicating source retrieval', () => {
   const skill = fs.readFileSync(path.join(root, 'skills/universal/from-next-backlog-item/SKILL.md'), 'utf8');

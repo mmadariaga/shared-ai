@@ -24,6 +24,9 @@ const DETECTOR_CANDIDATES = [
 // Installed and source layouts both put temp-root beside the detector.
 const TEMP_ROOT_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'temp-root.js'));
 
+// The shared input reader, resolved the same way. Reads `--input-file` or stdin.
+const INPUT_READER_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'input-reader.js'));
+
 let receivedAt = null;
 
 // Every stdout JSON response goes through here so `received_at` is its first key.
@@ -43,6 +46,13 @@ function loadTempRoot() {
     if (fs.existsSync(candidate)) return require(candidate);
   }
   throw new Error('sai-state could not load temp-root.js; tried: ' + TEMP_ROOT_CANDIDATES.join(', '));
+}
+
+function loadInputReader() {
+  for (const candidate of INPUT_READER_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  throw new Error('sai-state could not load input-reader.js; tried: ' + INPUT_READER_CANDIDATES.join(', '));
 }
 
 function loadDetector() {
@@ -107,11 +117,11 @@ function sessionDir() {
   return path.join(tempRoot.resolveTempRoot(tempRoot.harnessFromInstalledPath(__filename)), 'sai-state');
 }
 
-const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
-const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress -";
-const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
+const EMIT_STDIN_FORM = "node <tool-path> emit <id> <machineId> --input-file <path> (event JSON in the input file; stdin `-` is still accepted)";
+const EMIT_PROGRESS_FORM = "node <tool-path> emit <id> <machineId> --progress --input-file <path> (worker progress payload JSON in the input file; stdin `-` is still accepted)";
+const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --input-file <path> (Ready to Propose block set in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
 
-const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> - (one Ready to Propose block on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array)";
+const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path> (one Ready to Propose block in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
 
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
@@ -120,23 +130,17 @@ const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 const BLOCK_STAGE_MACHINE = 'explore-idea@1';
 const BLOCK_STAGE = 'crystallize';
 
-// Reads the whole of stdin synchronously. A closed or empty pipe yields ''.
-function readStdinSync() {
-  const chunks = [];
-  const buf = Buffer.alloc(65536);
-  for (;;) {
-    let n = 0;
-    try {
-      n = fs.readSync(0, buf, 0, buf.length, null);
-    } catch (err) {
-      if (err && err.code === 'EAGAIN') continue;
-      if (err && err.code === 'EOF') break;
-      throw err;
-    }
-    if (n === 0) break;
-    chunks.push(Buffer.from(buf.subarray(0, n)));
-  }
-  return Buffer.concat(chunks).toString('utf8');
+// Reads the structured input: the input file when given, otherwise stdin. A
+// stdin failure yields ''; an input file failure is reported and changes no state.
+function readEmitInput(inputFile) {
+  const reader = loadInputReader();
+  if (inputFile) return { text: reader.readInputFile(inputFile) };
+  try { return { text: reader.readStdinSync() }; } catch (err) { return { text: '' }; }
+}
+
+function inputFileFailure(error) {
+  process.stderr.write('emit: ' + error.message + '; no transition occurred\n');
+  process.exitCode = 2;
 }
 
 // Strips a leading BOM and surrounding whitespace/line breaks (Windows
@@ -517,21 +521,28 @@ function runEmit(id, machineIdArg, obtainEvent) {
   return { payload, code: 0 };
 }
 
-function commandEmit(id, machineIdArg, eventSource, extraArgs) {
-  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
-    process.stderr.write('emit requires <id> <machineId> - and reads the event JSON from stdin: ' + EMIT_STDIN_FORM + '\n');
+// True when the structured input comes from stdin: the `-` marker, no input file.
+function usesStdin(inputFile, eventSource) {
+  return !inputFile && eventSource === '-';
+}
+
+function commandEmit(id, machineIdArg, eventSource, extraArgs, inputFile) {
+  if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
+    process.stderr.write('emit requires <id> <machineId> and reads the event JSON from an input file: ' + EMIT_STDIN_FORM + '\n');
     process.exitCode = 2;
     return;
   }
 
+  let input;
+  try { input = readEmitInput(inputFile); } catch (error) { inputFileFailure(error); return; }
+
   const outcome = runEmit(id, machineIdArg, (session, loadWarnings) => {
-    let eventText = '';
-    try { eventText = readStdinSync(); } catch (err) { eventText = ''; }
+    const eventText = input.text;
     try {
       return { event: JSON.parse(normalizeEventText(eventText)) };
     } catch (err) {
       const payload = withWarnings({ error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, null) }, loadWarnings);
-      process.stderr.write('emit could not parse the event JSON read from stdin; no transition occurred. Send it as: ' + EMIT_STDIN_FORM + '\n');
+      process.stderr.write('emit could not parse the event JSON it read; no transition occurred. Send it as: ' + EMIT_STDIN_FORM + '\n');
       return { payload };
     }
   });
@@ -545,9 +556,9 @@ function commandEmit(id, machineIdArg, eventSource, extraArgs) {
 // the machine. Output is always an object carrying `validation` (the verdict);
 // a valid verdict adds the ordinary emit fields unchanged. Exit 1 covers both an
 // invalid verdict and a machine error; callers discriminate by `validation.ok`.
-function commandEmitProgress(id, machineIdArg, eventSource, extraArgs) {
-  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
-    process.stderr.write('emit --progress requires <id> <machineId> --progress - and reads the worker progress payload JSON from stdin: ' + EMIT_PROGRESS_FORM + '\n');
+function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile) {
+  if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
+    process.stderr.write('emit --progress requires <id> <machineId> --progress and reads the worker progress payload JSON from an input file: ' + EMIT_PROGRESS_FORM + '\n');
     process.exitCode = 2;
     return;
   }
@@ -557,7 +568,7 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs) {
   // The raw stdin text goes to the validator unmodified, so the verdict is
   // byte-identical to `worker-report-validator.js validate --kind progress`.
   let text = '';
-  try { text = readStdinSync(); } catch (err) { text = ''; }
+  try { text = readEmitInput(inputFile).text; } catch (error) { inputFileFailure(error); return; }
   const validation = validator.validateText(text, 'progress');
   if (!validation.ok) {
     writeResponse({ validation });
@@ -673,11 +684,12 @@ function ideaStageOf(id) {
   return state && typeof state.stage === 'string' ? state.stage : mod.initialState.stage;
 }
 
-function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName, blockFile, verdictsFile) {
+function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName, blockFile, verdictsFile, inputFile) {
   const amending = amendName !== undefined;
   const fromFiles = blockFile !== undefined || verdictsFile !== undefined;
-  if (!id || !machineIdArg || (fromFiles ? (eventSource !== undefined && eventSource !== '-') : eventSource !== '-') || (extraArgs && extraArgs.length > 0) || (!fromFiles && process.stdin.isTTY) || (amending && (typeof amendName !== 'string' || amendName === ''))) {
-    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from stdin: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
+  const fromInputFile = Boolean(inputFile) && !fromFiles;
+  if (!id || !machineIdArg || (fromFiles || fromInputFile ? (eventSource !== undefined && eventSource !== '-') : eventSource !== '-') || (extraArgs && extraArgs.length > 0) || (!fromFiles && !fromInputFile && process.stdin.isTTY) || (amending && (typeof amendName !== 'string' || amendName === ''))) {
+    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from an input file: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
     process.exitCode = 2;
     return;
   }
@@ -706,7 +718,7 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
       return;
     }
   } else {
-    try { text = readStdinSync(); } catch (err) { text = ''; }
+    try { text = readEmitInput(inputFile).text; } catch (error) { inputFileFailure(error); return; }
   }
   const verdict = detector.detect(text, 'dispatchable');
   const validation = projectBlockVerdict(verdict);
@@ -714,7 +726,7 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
   if (blockDeliveryFailed(text, verdict)) {
     const session = getSession(id);
     seedFromRecord(session, readSessionRecord(id).record);
-    process.stderr.write('emit --ready-to-propose read an empty or cut-off block set from stdin; no transition occurred. Send it as: ' + EMIT_BLOCKS_FORM + '\n');
+    process.stderr.write('emit --ready-to-propose read an empty or cut-off block set; no transition occurred. Send it as: ' + EMIT_BLOCKS_FORM + '\n');
     writeResponse({ validation, error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
     process.exitCode = 1;
     return;
@@ -1036,15 +1048,15 @@ function main(argv) {
       process.exitCode = 2;
       return;
     }
-    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.named['block-file'], parsed.named['verdicts-file']);
+    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.named['block-file'], parsed.named['verdicts-file'], parsed.named['input-file']);
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
-    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
+    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['input-file']);
     return;
   }
   if (parsed.command === 'emit') {
-    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
+    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['input-file']);
     return;
   }
   if (parsed.command === 'reset') {
@@ -1065,10 +1077,10 @@ function main(argv) {
     return;
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
-  process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --progress -   (worker progress payload JSON on stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -   (one amended block on stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --input-file <path>   (event JSON in the input file; `-` reads stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --progress --input-file <path>   (worker progress payload JSON in the input file; `-` reads stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --input-file <path>   (Ready to Propose block set in the input file; `-` reads stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path>   (one amended block in the input file; `-` reads stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>\n');
   process.stderr.write('       sai-state block <id> <change-name> [--export --harness <claude|opencode>]\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');

@@ -93,6 +93,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const inputReader = require('./input-reader');
 
 const PROFILES = ['loose', 'strict', 'dispatchable'];
 
@@ -968,18 +969,19 @@ function convertIssue(text, options = {}) {
 
 function usage() {
   return [
-    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] [--block-file <path> [--verdicts-file <path>]] < text',
-    '       node sai/tools/ready-to-propose.js hash < block',
+    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] [--block-file <path> [--verdicts-file <path>]] [--input-file <path>]  (text on stdin without --input-file or --block-file)',
+    '       node sai/tools/ready-to-propose.js hash [--input-file <path>]  (block on stdin without --input-file)',
     '       node sai/tools/ready-to-propose.js verify-file --block-file <path> --block-hash <hash>',
     '       node sai/tools/ready-to-propose.js compose --block-file <path> --verdicts-file <path> | sai-state emit ... --ready-to-propose -',
-    '       node sai/tools/ready-to-propose.js dependencies < complete block set',
-    '       node sai/tools/ready-to-propose.js attach-origin < JSON {text, correspondence}',
-    '       node sai/tools/ready-to-propose.js attach-origin --harness <claude|opencode> < JSON {block_files: [{block_file, hash}], correspondence}',
-    '       node sai/tools/ready-to-propose.js convert [--change-name <name>] [--declared-clean] < issue',
+    '       node sai/tools/ready-to-propose.js dependencies --input-file <path>  (complete block set; stdin also accepted)',
+    '       node sai/tools/ready-to-propose.js attach-origin --input-file <path>  (JSON {text, correspondence}; stdin also accepted)',
+    '       node sai/tools/ready-to-propose.js attach-origin --harness <claude|opencode> --input-file <path>  (JSON {block_files: [{block_file, hash}], correspondence}; stdin also accepted)',
+    '       node sai/tools/ready-to-propose.js convert [--change-name <name>] [--declared-clean] --input-file <path>  (issue description; stdin also accepted)',
     '',
-    '  check               Validate the Ready to Propose text read from stdin',
-    '  hash                Print the sha256 of the single block read from stdin',
-    '  convert             Convert the issue description (Markdown or HTML) read from stdin into a draft block',
+    '  check               Validate the Ready to Propose text read from the input file or stdin',
+    '  hash                Print the sha256 of the single block read from the input file or stdin',
+    '  convert             Convert the issue description (Markdown or HTML) read from the input file or stdin into a draft block',
+    '  --input-file <path> File holding the structured input; wins over stdin',
     '  --profile <name>    loose (backfill quorum), strict (full block format), or',
     `                      dispatchable (strict + implementation item rules + hygiene pre-filter;`,
     `                      verdicts JSON after a ${VERDICTS_MARKER} line)`,
@@ -1005,7 +1007,7 @@ function parseArgs(argv) {
         return { error: `${arg} requires a value` };
       }
       opts.changeName = argv[++i];
-    } else if (['--block-file', '--block-hash', '--verdicts-file', '--harness'].includes(arg)) {
+    } else if (['--block-file', '--block-hash', '--verdicts-file', '--harness', '--input-file'].includes(arg)) {
       if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) return { error: `${arg} requires a value` };
       opts[arg.slice(2)] = argv[++i];
     } else if (arg === '--declared-clean') {
@@ -1021,13 +1023,15 @@ function parseArgs(argv) {
   return { opts };
 }
 
-function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
+function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
     return 2;
   }
   const { opts } = parsed;
+  // Structured input comes from --input-file when given, otherwise from stdin.
+  const readInput = () => (opts['input-file'] ? inputReader.readInputFile(opts['input-file']) : readStdin());
   if (opts.help) {
     process.stdout.write(`${usage()}\n`);
     return 0;
@@ -1053,7 +1057,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     try {
       input = readInput();
     } catch (err) {
-      process.stderr.write(`cannot read stdin: ${err.message}\n`);
+      process.stderr.write(`cannot read input: ${err.message}\n`);
       return 2;
     }
     const texts = extractBlockTexts(input);
@@ -1067,7 +1071,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
   if (opts.command === 'convert') {
     let input;
     try { input = readInput(); }
-    catch (error) { process.stderr.write(`cannot read stdin: ${error.message}\n`); return 2; }
+    catch (error) { process.stderr.write(`cannot read input: ${error.message}\n`); return 2; }
     const outcome = convertIssue(input, { changeName: opts.changeName, declaredClean: opts.declaredClean });
     process.stdout.write(`${JSON.stringify(outcome, null, 2)}\n`);
     return outcome.ok ? 0 : 1;
@@ -1075,7 +1079,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
   if (opts.command === 'dependencies') {
     let input;
     try { input = readInput(); }
-    catch (error) { process.stderr.write(`cannot read stdin: ${error.message}\n`); return 2; }
+    catch (error) { process.stderr.write(`cannot read input: ${error.message}\n`); return 2; }
     const verdict = validateDependencySet(input);
     process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
     return verdict.ok ? 0 : 1;
@@ -1114,7 +1118,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     input = opts['block-file'] ? fs.readFileSync(opts['block-file'], 'utf8') : readInput();
     if (opts['verdicts-file']) input = composeVerdicts(input, JSON.parse(fs.readFileSync(opts['verdicts-file'], 'utf8')));
   } catch (err) {
-    process.stderr.write(`cannot read stdin: ${err.message}\n`);
+    process.stderr.write(`cannot read input: ${err.message}\n`);
     return 2;
   }
 

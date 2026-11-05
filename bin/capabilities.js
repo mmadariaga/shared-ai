@@ -8,6 +8,7 @@ const childProcess = require('child_process');
 const { harnessRoot, SAI_DIR } = require('../sai/tools/temp-root');
 const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message', 'stopTask'];
 const LISTS = ['shell', 'skills', 'delegate'];
+const TEMP_WRITE = 'temp';
 const AGENTS = {
   explorer: { claude: 'budget-explorer', opencode: 'budget-explorer' },
   executor: { claude: 'budget-executor', opencode: 'budget-executor' },
@@ -27,7 +28,10 @@ function resolveProfile(registry, name, ancestors = []) {
   const profile = definition.extends ? resolveProfile(registry, definition.extends, [...ancestors, name]) : {};
   for (const flag of FLAGS) {
     if (definition[flag] !== undefined) {
-      if (typeof definition[flag] !== 'boolean') throw new Error(`Capability ${name}.${flag} must be boolean`);
+      // `write` also takes the scoped value `temp`: native writes limited to the SAI temp root.
+      if (typeof definition[flag] !== 'boolean' && !(flag === 'write' && definition[flag] === TEMP_WRITE)) {
+        throw new Error(`Capability ${name}.${flag} must be boolean${flag === 'write' ? ` or "${TEMP_WRITE}"` : ''}`);
+      }
       profile[flag] = definition[flag];
     }
   }
@@ -131,7 +135,10 @@ function translate(registry, name, harness, installRoot) {
   const grant = (action, resource = '*', effect = 'allow') => rules.push({ action, resource, effect });
   if (profile.read) { tools.push('Read'); grant('read'); }
   if (profile.search) { tools.push('Glob', 'Grep'); grant('glob'); grant('grep'); }
-  if (profile.write) { tools.push('Edit', 'Write'); grant('edit'); }
+  const tempWrite = profile.write === TEMP_WRITE;
+  if (profile.write === true) { tools.push('Edit', 'Write'); grant('edit'); }
+  // Scoped write: only the `Write` tool (new files), and only the SAI temp root is granted.
+  if (tempWrite) { tools.push('Write'); grant('edit', `${saiTempRoot(harness).split(path.sep).join('/')}/*`); }
   for (const [flag, tool] of [['webfetch', 'WebFetch'], ['websearch', 'WebSearch'], ['question', 'AskUserQuestion']]) {
     if (profile[flag]) { tools.push(tool); grant(flag); }
   }
@@ -158,7 +165,7 @@ function translate(registry, name, harness, installRoot) {
   if (profile.stopTask) tools.push('TaskStop');
   // V2 has no built-in todo action; its panel adapter owns absence handling.
   if (profile.panel) tools.push('TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList');
-  if (profile.read || shell.length) {
+  if (profile.read || shell.length || tempWrite) {
     grant('external_directory', '*', 'ask');
     grant('external_directory', '~/.config/opencode/*');
     grant('external_directory', '/tmp/opencode/*');
@@ -174,12 +181,15 @@ function translate(registry, name, harness, installRoot) {
     grant('read', '*.env.*', 'ask');
     grant('read', '*.env.example');
   }
-  const allowed = tools.filter(tool => !['Bash', 'PowerShell'].includes(tool));
+  const allowed = tools.filter(tool => !['Bash', 'PowerShell'].includes(tool) && !(tempWrite && tool === 'Write'));
+  // Claude Code applies path rules for file writes only under the `Edit` rule name, which also covers the
+  // `Write` tool; a `Write(<path>)` entry is ignored and every write would ask. The tool granted stays `Write`.
+  if (tempWrite) allowed.push(`Edit(${claudePathRule(`${saiTempRoot('claude').split(path.sep).join('/')}/**`)})`);
   allowed.push(...shellPatterns(shell, 'claude', harness === 'claude' ? installRoot : undefined).flatMap(pattern => ['Bash', 'PowerShell'].map(tool => pattern === '*' ? tool : `${tool}(${pattern.replace(/ \*$/, ':*')})`)));
   const nativeTools = harness === 'claude' ? [...new Set(tools)]
     : [...new Set(rules.filter(rule => rule.effect === 'allow' && rule.action !== 'external_directory').map(rule => rule.action))];
   const toolRequirements = [];
-  if (profile.write) toolRequirements.push({ capability: 'write', anyOf: harness === 'claude' ? [['Edit', 'Write']] : [['patch'], ['edit', 'write']] });
+  if (profile.write) toolRequirements.push({ capability: 'write', anyOf: harness === 'claude' ? (tempWrite ? [['Write']] : [['Edit', 'Write']]) : [['patch'], ['edit', 'write']] });
   if (shell.length) toolRequirements.push({ capability: 'shell', anyOf: harness === 'claude' ? [['Bash'], ['PowerShell']] : [['shell']] });
   return { profile, toolRequirements,
     ...(harness === 'claude' ? { nativeTools, tools: [...new Set(tools)].join(', '), allowedTools: [...new Set(allowed)].join(', ') }
@@ -188,8 +198,14 @@ function translate(registry, name, harness, installRoot) {
 }
 
 // The SAI temp root opencode resolves on this platform (computed, never created).
-function saiTempRoot() {
-  return path.join(harnessRoot('opencode'), SAI_DIR);
+function saiTempRoot(harness = 'opencode') {
+  return path.join(harnessRoot(harness), SAI_DIR);
+}
+
+// Claude Code path rules: `//` marks an absolute filesystem path; a Windows drive `C:/x` is written `//c/x`.
+function claudePathRule(absolute) {
+  const drive = /^([A-Za-z]):\/(.*)$/.exec(absolute);
+  return drive ? `//${drive[1].toLowerCase()}/${drive[2]}` : `/${absolute}`;
 }
 
 function permissionYaml(rules) {

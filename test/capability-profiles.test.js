@@ -62,7 +62,7 @@ test('write includes creation and modification, while archive mutates only throu
   }
   for (const harness of ['claude', 'opencode']) {
     const archive = translate(registry, registry.assignments.agents['sai-archive-worker'], harness);
-    assert.equal(archive.profile.write, undefined);
+    assert.equal(archive.profile.write, 'temp', 'a read-only profile writes only inside the SAI temp root');
     assert.deepEqual(archive.profile.shell, ['*']);
   }
 });
@@ -80,7 +80,8 @@ test('contract-specific web, auxiliary and delegation access is translated separ
   for (const action of ['execute', 'codegraph_codegraph_explore', 'read', 'glob', 'grep', 'webfetch', 'websearch']) {
     assert.ok(research.permissions.some(rule => rule.action === action && rule.effect === 'allow'));
   }
-  assert.ok(!research.permissions.some(rule => ['edit', 'subagent', 'new_tool'].includes(rule.action) && rule.effect === 'allow'));
+  assert.ok(!research.permissions.some(rule => ['subagent', 'new_tool'].includes(rule.action) && rule.effect === 'allow'));
+  assert.ok(!research.permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'), 'the explorer holds no write grant');
   assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.resource.endsWith('/opencode/tool-output/*') && rule.effect === 'allow'));
   const saiTempRoot = path.join(harnessRoot('opencode'), 'sai').split(path.sep).join('/');
   assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.effect === 'allow'

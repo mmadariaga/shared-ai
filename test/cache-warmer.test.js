@@ -298,7 +298,7 @@ test('the policy defines the wake acknowledgement, the final response, and the c
   assert.match(policy, /Arm after every response except your final response/);
   assert.match(policy, /arm nothing, so a finished session never wakes again/);
   assert.match(policy, /`needs_input`\) and an intermediate step report are not final/);
-  assert.match(policy, /"chain": "<chain>"/);
+  assert.match(policy, /--chain <chain>/);
   assert.match(policy, /Claude Code `Bash`[\s\S]*opencode shell/);
 });
 
@@ -351,7 +351,7 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /\/sai-context-cache-ttl-benchmark/);
   assert.match(step, /§ Stop your own wait/);
   assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*only a wake re-arms/i);
-  assert.match(read('sai/policies/cache-warming.md'), /add no `interval` and resolve no setting/);
+  assert.match(read('sai/policies/cache-warming.md'), /add no `--interval` and resolve no setting/);
   assert.match(read('sai/policies/cache-warming.md'), /Each re-arm launches a new background task, so replace the task id[\s\S]{0,120}chain stays the same/);
   assert.match(step, /Every wake re-arm launches a new background task: replace the task id in `handoff_wait`/);
   assert.match(step, /updates the task id in `handoff_wait`/);
@@ -373,4 +373,17 @@ test('the explore command may stop its own background task: TaskStop on Claude C
   const opencode = translate(manifest.capabilities, 'explore-command', 'opencode');
   assert.ok(!opencode.nativeActions.includes('TaskStop'));
   assert.ok(!translate(manifest.capabilities, 'coordinator', 'claude').nativeTools.includes('TaskStop'));
+});
+
+test('the warm argv form arms and re-arms without JSON, a file, or stdin', () => {
+  const { inputFromArgv, stateToken } = require('../skills/universal/sai-cache-warmer/wait.js');
+  assert.deepEqual(inputFromArgv(['--interval', '4', '--max', '60', '--chain', 'abc']), { interval: 4, max: 60, chain: 'abc' });
+  const state = { interval_ms: 1000, closing_ms: 9000, chain: 'abc', generation: 1, armed_ms: 5 };
+  const token = stateToken(state);
+  assert.match(token, /^[A-Za-z0-9_-]+$/);
+  assert.deepEqual(inputFromArgv(['--state', token]), { state });
+  assert.deepEqual(inputFromArgv(['--state', token, '--interval', '2']), { state, interval: 2 });
+  for (const bad of [['--interval', '4'], ['--interval', 'x', '--max', '1'], ['--state', '!!'], ['--max'], ['--bogus', '1']]) {
+    assert.throws(() => inputFromArgv(bad), bad.join(' '));
+  }
 });

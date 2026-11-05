@@ -1,7 +1,7 @@
 # GitLab issue import
 
 Run `node <tool> read <registry>` with JSON `{"reference":"<exact issue URL>"}`
-on stdin. The adapter delegates the URL's project to authenticated `glab repo
+in `--input-file <path>`. The adapter delegates the URL's project to authenticated `glab repo
 view`, then reads structured `glab api` issue and paginated note responses.
 Use the adapter result as the authority for reference compatibility and issue
 identity and type. Ask only for reference components it identifies as missing.

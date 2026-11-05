@@ -11,11 +11,17 @@ const { AUDIT_RENAMES, migratePreset } = require('../bin/audit-name-migration');
 const { recognizedRetirement } = require('../bin/retirement-identity');
 
 // Generated opencode agent bodies carry the platform-resolved SAI temp root; the
-// pinned hashes were taken on Linux, so projection runs as Linux.
+// pinned hashes were taken on Linux, so projection runs as Linux. Windows has no
+// process.getuid, which the Linux Claude Code temp root needs, so supply one there.
 function asLinux(action) {
   const original = Object.getOwnPropertyDescriptor(process, 'platform');
+  const stubUid = typeof process.getuid !== 'function';
   Object.defineProperty(process, 'platform', { value: 'linux' });
-  try { return action(); } finally { Object.defineProperty(process, 'platform', original); }
+  if (stubUid) process.getuid = () => 1000;
+  try { return action(); } finally {
+    Object.defineProperty(process, 'platform', original);
+    if (stubUid) delete process.getuid;
+  }
 }
 
 // The pre-renumbering command wrappers are pinned verbatim: the retired-file

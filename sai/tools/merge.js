@@ -946,7 +946,7 @@ function collect(action, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
@@ -954,7 +954,7 @@ function main(argv) {
     if (arg === '--help') {
       process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
-        + 'valid/collision: receipt JSON on stdin; conflicts/correction: --record <external-new-file>; correction: authorized region inventory on stdin\n'
+        + 'valid/collision: receipt JSON in --input-file <path> (stdin also accepted); conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
         + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
         + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
@@ -977,6 +977,13 @@ function main(argv) {
     const utf16 = input[0] === 0xFF && input[1] === 0xFE ? 'utf-16le' : input[0] === 0xFE && input[1] === 0xFF ? 'utf-16be' : null;
     return JSON.parse(new TextDecoder(utf16 || 'utf-8').decode(input));
   };
+  if (opts['input-file'] !== undefined) {
+    if (opts.input !== undefined) throw new Error('--input-file and --input are one option: give only --input-file');
+    // The structured input is a UTF-8 JSON file (BOM tolerated), read through the shared input reader.
+    const { readInputBytes } = require('./input-reader');
+    const bytes = readInputBytes(opts['input-file']);
+    stdin = () => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF ? 3 : 0)));
+  }
   if (opts.input !== undefined) {
     if (action !== 'write') throw new Error('--input applies to write only');
     // Never read standard input here: a harness shell can hand over a pipe that stays open and silent.
