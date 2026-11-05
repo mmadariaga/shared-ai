@@ -71,8 +71,10 @@ The only commits that carry a closing line are archive commits. Write one
 `Closes owner/repo#N` footer line per archived change, from the `backlog_origin`
 key of `openspec/changes/archive/<date>-<name>/.openspec.yaml`, converted from
 the issue URL: a GitHub `https://github.com/owner/repo/issues/N` becomes
-`owner/repo#N`, a GitLab `https://host/group/project/-/issues/N` becomes
-`group/project#N`. Always write the fully qualified form: `to-pr`
+`owner/repo#N`, a GitLab `https://host/group/project/-/issues/N` or
+`https://host/group/project/-/work_items/N` becomes `group/project#N`. Derive
+the line from the URL shape alone, with no API call. Always write the fully
+qualified form: `to-pr`
 normalizes it against the destination repository. A change without a
 `backlog_origin`, or with an Azure DevOps origin, gets no closing line.
 Apply `issue-origin-preservation.md`'s known-origin handoff check. An invalid,
