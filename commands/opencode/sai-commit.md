@@ -1,6 +1,6 @@
 ---
 description: Commit the staged changes with a Conventional Commits message — drafts the subject (≤50 chars) and optional body, and commits only after you authorize it.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#high
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

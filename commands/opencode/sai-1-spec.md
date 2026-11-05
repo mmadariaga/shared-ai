@@ -1,6 +1,6 @@
 ---
 description: Write or refine a change's proposal.md and specs/ with no human in the loop, from a /sai-explore Ready to Propose block or from a change name plus feedback. Reviewed, checked, and committed locally; stops before design.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

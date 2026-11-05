@@ -1,6 +1,6 @@
 ---
 description: Manage linked git worktrees — list them, then safely create or delete them from a selector loop. No OpenSpec prerequisite.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.

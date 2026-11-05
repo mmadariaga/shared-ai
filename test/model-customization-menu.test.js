@@ -2242,13 +2242,13 @@ test('parseModelCatalog preserves first-appearance provider order for the provid
 test('parseApiModelList reads .data with variants in original order', () => {
   const stdout = makeApiFixture([
     { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high', 'max']) },
-    { providerID: 'opencode', id: 'muse-spark-1.3-contributor-free', variants: variantIdsToRecords(['minimal', 'low', 'medium', 'high', 'xhigh']) },
+    { providerID: 'opencode', id: 'glm-5.3-flash', variants: variantIdsToRecords(['minimal', 'low', 'medium', 'high', 'xhigh']) },
   ]);
   const list = parseApiModelList(stdout);
   assert.equal(list.length, 2);
   assert.deepEqual(extractApiVariants(list, 'opencode-go', 'deepseek-v4-flash'), ['low', 'high', 'max'],
     'variant ids preserve original order');
-  assert.deepEqual(extractApiVariants(list, 'opencode', 'muse-spark-1.3-contributor-free'),
+  assert.deepEqual(extractApiVariants(list, 'opencode', 'glm-5.3-flash'),
     ['minimal', 'low', 'medium', 'high', 'xhigh']);
 });
 

@@ -168,8 +168,8 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
     for (const field of [
       `description: ${descriptions[name]}`,
       'mode: subagent',
-      'model: opencode/muse-spark-1.3-contributor-free',
-      'variant: xhigh',
+      'model: opencode-go/deepseek-v4.1-flash',
+      'variant: high',
     ]) {
       assert.equal(fields.filter(line => line === field).length, 1,
         `${name} frontmatter should contain exactly ${field}`);

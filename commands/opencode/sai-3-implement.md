@@ -1,6 +1,6 @@
 ---
 description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step.
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
