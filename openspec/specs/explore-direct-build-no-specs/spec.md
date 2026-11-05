@@ -7,9 +7,9 @@ TBD
 
 ### Requirement: Direct Build no-specs profile runs only viability steps
 
-The Direct Build `--no-specs` profile SHALL be dispatched only from inside the POC lane, the conditional stage between `Explore change` and `Review edge cases`. It SHALL run only the implementer and functional fix loop (Steps 1 and 2) and SHALL return to the lane, which forms the verdict naming the winning agreed candidate or none. It SHALL NOT run backfill, spec review, ADR or DDR processing, artifact archive, or other Steps 3 through 8 behavior. It SHALL NOT create or modify anything under `openspec/`, create planning artifacts, or run mutating Git commands. The POC SHALL be a direct worker dispatch that emits nothing to `explore-slice@1` and bypasses the slice machine entirely, so the NO_PENDING_SLICE rejection SHALL NOT apply to it. Dirty implementation code is acceptable, and minimal tests or human observation provide the verdict authority. The implementer's `changed_files` union SHALL be returned to the lane for verdict assessment.
+The Direct Build `--no-specs` profile SHALL be dispatched only from inside the POC lane, the conditional stage between `Explore change` and `Review edge cases`. Its envelope SHALL open with the line `--direct-build --no-specs` followed by the line `--work-root <path>`, carrying the path of the POC isolation worktree the lane recorded at creation, and SHALL carry no block file or hash line. The implementer SHALL read and write only under that work root. It SHALL run only the implementer and functional fix loop (Steps 1 and 2) and SHALL return to the lane, which forms the verdict naming the winning agreed candidate or none. It SHALL NOT run backfill, spec review, ADR or DDR processing, artifact archive, or other Steps 3 through 8 behavior. It SHALL NOT create or modify anything under `openspec/`, create planning artifacts, or run mutating Git commands. The POC SHALL be a direct worker dispatch that emits nothing to `explore-slice@1` and bypasses the slice machine entirely, so the NO_PENDING_SLICE rejection SHALL NOT apply to it. Dirty implementation code is acceptable, and minimal tests or human observation provide the verdict authority. The implementer's `changed_files` union SHALL be returned to the lane for verdict assessment.
 
-The profile SHALL be pinned: it SHALL NOT be offered by the crystallization-close route selector, SHALL NOT be reachable as the Plan or the Manual route, and SHALL NOT be altered by `--fast-track`, which SHALL neither add back a skipped step, nor remove one of Steps 1 and 2, nor auto-approve any of the lane's three stops. The POC's writes SHALL be confined to the lane's reversible isolation and SHALL be discarded when that isolation is abandoned.
+The profile SHALL be pinned: it SHALL NOT be offered by the crystallization-close route selector, SHALL NOT be reachable as the Plan or the Manual route, and SHALL NOT be altered by `--fast-track`, which SHALL neither add back a skipped step, nor remove one of Steps 1 and 2, nor auto-approve any of the lane's three stops. The POC's writes SHALL be confined to the lane's POC isolation, a dedicated sibling worktree on an exclusive branch, and SHALL be discarded only when the user confirms `Destroy the POC` at a lane exit; otherwise the worktree and branch SHALL be kept and their location reported. The prohibition on mutating Git commands SHALL bind the dispatched implementer only and SHALL NOT bind the lane's own creation and confirmed destruction of that isolation.
 
 #### Scenario: no-specs runs the implementer and fix loop
 
@@ -24,7 +24,7 @@ The profile SHALL be pinned: it SHALL NOT be offered by the crystallization-clos
 #### Scenario: no-specs preserves the OpenSpec boundary
 
 - **WHEN** the implementer-only POC executes
-- **THEN** it writes only the authorized code, tests, or required project configuration outside `openspec/` and runs no mutating Git command
+- **THEN** it writes only the authorized code, tests, or required project configuration outside `openspec/`, only under its `--work-root` path, and runs no mutating Git command
 
 #### Scenario: POC changes are returned for verdict assessment
 
@@ -45,3 +45,8 @@ The profile SHALL be pinned: it SHALL NOT be offered by the crystallization-clos
 
 - **WHEN** `--fast-track` is active while the POC lane dispatches the profile
 - **THEN** Steps 1 and 2 run unchanged, no skipped step returns, and none of the lane's three stops is auto-approved
+
+#### Scenario: the envelope carries the recorded work root
+
+- **WHEN** the POC lane dispatches the `--no-specs` profile after creating the POC isolation
+- **THEN** the envelope's second line is `--work-root <path>` naming the recorded worktree path, it carries no block file or hash line, and the implementer reads and writes only under that path

@@ -19,7 +19,7 @@ When a change or slice has no spec-level behavior, such as a pure refactor, tool
 
 If it detects that the place where the feature would be added mixes too many responsibilities or does not offer a clear extension point, it may first propose a reorganization that preserves current behavior. This gives the new feature a clearer place to connect.
 
-When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it. The POC runs on its own branch or worktree, which is abandoned afterward, so your repository returns to its prior state. Its verdict names one agreed candidate or `none`.
+When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it. The POC runs in a dedicated sibling worktree on its own branch, created from your committed `HEAD`, so your checkout and its uncommitted changes are never touched. Whenever the POC lane ends, it asks whether to destroy the POC: on confirmation it removes both the worktree and the branch, and otherwise it keeps them and tells you where they are. Its verdict names one agreed candidate or `none`.
 
 The edge-case and implementation-detail lists use the optional third-party
 `writing-for-agents` skill for wording: Explore drafts each list, runs a silent

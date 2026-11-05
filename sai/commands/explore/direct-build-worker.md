@@ -25,7 +25,9 @@ other work, verify that block against the hash per
 both reference lines are required, and a missing/unreadable file or a mismatch returns
 `failed` with no changes. The one exception is the pinned `--no-specs` POC
 profile, which has no stored block: its first line is `--direct-build --no-specs`,
-it carries no file or hash line, and nothing is verified. Then strip the marker and reference
+its second line is `--work-root <path>`, it carries no file or hash line, and
+nothing is verified. The POC worker reads and writes only under that work root,
+the isolated worktree that the coordinator created for the POC. Then strip the marker and reference
 lines and treat that block as your sole substantive input: no design or
 tasks artifacts exist, no conversation context is forwarded, and none may be
 inferred from repository discovery beyond what implementing the block
