@@ -335,9 +335,9 @@ Both Claude Code and opencode name the generic helpers `budget-explorer`,
 the [agent migration instructions](docs/skills.md#migrating-existing-opencode-agents),
 especially project-local overrides and external dispatch references.
 
-The default mix uses Muse Spark for coordination, DeepSeek Flash for most
-implementation work, GPT Luna for code review, and free models for helpers.
-It aims for reliable results at moderate cost. See the
+The default mix uses DeepSeek Flash for coordination and implementation
+work, GPT Luna for code review, and Muse Spark plus free models for light
+helpers. It aims for reliable results at moderate cost. See the
 [full model table](docs/models.md) or replace the mix through `setup`.
 
 ### Example presets
@@ -348,7 +348,7 @@ presets but keeps personal presets and does not change your project's selections
 
 | Preset | Choose it for |
 |--------|---------------|
-| `[sai-default]-Go.json` | OpenCode Go models throughout. |
+| `[sai-default]-oGo-Deepseek.json` | OpenCode Go models throughout: DeepSeek V4.1 Flash for every role. |
 | `[sai-default]-oAI-LUNA.json` | OpenAI Luna for every role, with GPT-5.6 Luna for demanding work. |
 | `[sai-default]-oAI-SOL.json` | OpenAI Sol for the more demanding planning/build work, Luna for lighter tasks. |
 | `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |

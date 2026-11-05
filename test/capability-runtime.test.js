@@ -86,7 +86,7 @@ test('opencode native effective access survives inherited allow/deny and keeps e
   evaluate('research', 'unrelated_mcp_tool', '*', 'deny');
   const generic = api('get', '/api/agent/sai-generic-probe', undefined, root).data;
   assert.ok(generic, 'generated Markdown must parse in the native harness');
-  assert.deepEqual(generic.model, { providerID: 'opencode', id: 'muse-spark-1.3-contributor-free', variant: 'xhigh' }, 'native parsing must retain the model and separate variant');
+  assert.deepEqual(generic.model, { providerID: 'opencode-go', id: 'deepseek-v4.1-flash', variant: 'high' }, 'native parsing must retain the model and separate variant');
   // Preserve the fixture/session as inspectable evidence; no model runs here.
   console.log(`Native verification fixture: ${root}; session: ${session.id}`);
 });

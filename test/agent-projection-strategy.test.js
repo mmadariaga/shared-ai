@@ -337,7 +337,7 @@ test('fresh OpenCode install separates every managed agent model from its varian
       variant: entry.opencodeAgent.variant,
     }));
     expected.push(...['budget-executor', 'budget-explorer', 'budget-subagent'].map(name => ({
-      name, model: 'opencode/muse-spark-1.3-contributor-free', variant: 'xhigh',
+      name, model: 'opencode-go/deepseek-v4.1-flash', variant: 'high',
     })));
     for (const { name, model, variant } of expected) {
       const text = fs.readFileSync(path.join(root, 'agents', `${name}.md`), 'utf8');

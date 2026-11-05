@@ -1,8 +1,8 @@
 ---
 description: Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.
 mode: subagent
-model: opencode/muse-spark-1.3-contributor-free
-variant: xhigh
+model: opencode-go/deepseek-v4.1-flash
+variant: high
 permissions:
   - action: "*"
     resource: "*"

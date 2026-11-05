@@ -1,6 +1,6 @@
 ---
 description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments).
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

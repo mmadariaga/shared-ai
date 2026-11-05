@@ -119,6 +119,14 @@
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
+  "command:sai-cache-warmer": {
+    "model": "openai/gpt-6-luna",
+    "variant": "high"
+  },
+  "command:sai-context-cache-ttl-benchmark": {
+    "model": "openai/gpt-6-luna",
+    "variant": "high"
+  },
   "worker:sai-commit-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
