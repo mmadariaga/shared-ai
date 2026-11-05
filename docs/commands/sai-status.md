@@ -2,21 +2,20 @@
 
 ## Command function
 
-Shows the state of project changes in a read-only panel and suggests what the next command should be.
+Shows change progress and a suggested next command. It is read-only: files,
+branches, and workflow state stay unchanged.
 
-## Flags and behavior modifiers
+## Usage
 
-It has no documented behavior flags.
+`/sai-status [<change-name>]`
 
-- With a change name, it shows the details for that change.
-- Without a change name, it asks which change to show, with a `See all` option for a table of all active changes. With exactly one active change, it asks you to confirm it. With none, it stops and reports that no active changes exist.
+- With a name, shows that change's panel, including an archived change.
+- Without a name, asks which active change to show, or offers `See all` for a
+  summary table. With exactly one active change, asks you to confirm it; with
+  none, reports that no active changes exist.
 
-## In detail
+## Output
 
-For a specific change, the command states which process documents exist, whether the proposal has been approved, how many of the tasks in `tasks.md` are checked, and where the change is located if it has already been archived. For a change that declares no specs (`skip_specs: true`, from a `**Specs**: none` block), the specs show as `skipped` instead of missing.
-
-It also presents a `Next:` suggestion based on the observed state. This suggestion points to the next reasonable action, such as preparing the design, implementing the tasks, or reviewing the result.
-
-With `See all`, it gathers the same essential information for each active change in a table. This makes it easy to see which work has started, which work is waiting for a phase, and which work can be cleaned up.
-
-The command never modifies documents, code, branches, or state. It only reads and explains the current situation, so it can be used for orientation without accidentally moving work forward.
+The panel shows available workflow documents, specs approval, completed tasks,
+archive location when applicable, and a `Next:` suggestion. For a change with
+`skip_specs: true`, specs appear as `skipped`, not missing.

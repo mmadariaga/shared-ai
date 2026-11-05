@@ -1,6 +1,6 @@
 # Skills
 
-Skills are reusable behavior modules loaded by wrappers and subagents at runtime. SAI skills live under `skills/` and are installed globally by the main installer. OpenSpec skills are project-local and are installed by `openspec init` during project setup.
+Skills are reusable behavior modules loaded by command wrappers, coordinators, and subagents at runtime. Pipeline wrappers load `fetch`; their cards load the behavior skills they need. The cache-warmer and benchmark wrappers load their own skills directly. SAI skills live under `skills/` and are installed globally by the main installer. OpenSpec skills are project-local and are installed by `openspec init` during project setup.
 
 The backlog and branch workflow skills are described in the
 [backlog command reference](backlog-commands.md).
@@ -12,8 +12,8 @@ skills below directly in your prompts for cost discipline or guarded operations.
 
 | Skill | Purpose | Trigger |
 |-------|---------|---------|
-| `sai-commands` | Lists all `/sai-*` commands and requires loading the command file before executing any of them, so the agent does not skip the wrappers. | `/sai-*` commands |
-| `fetch` | Resolves `Fetch @` paths through the active harness's installed roots. Loaded first by the Claude Code and opencode wrappers. | auto-loaded |
+| `sai-commands` | Resolves `/sai-*` invocations through the installed command files, which are the registry, and requires loading the matching file before execution. | `/sai-*` commands |
+| `fetch` | Resolves `Fetch @` paths through the active harness's installed roots. Loaded first by the Claude Code and opencode pipeline wrappers. | auto-loaded |
 | `safe-operations` | Enforces reversibility and impact awareness — agent must ask before destructive, hard-to-reverse, or shared-system operations, and must not use destructive shortcuts. | `"dangerous"`, `"destructive"`, `"git push --force"`, `"rm -rf"`, `"delete files/branches"` |
 | `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write artifacts in English unless the user explicitly requests another language. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
 | `budget-explorer` | Read-only research and documentation lookup, with bounded output and a 40-call ceiling per execution segment. Main-agent synthesis stays outside the helper. | `"budget explorer"`, `"cheap explorer"` |

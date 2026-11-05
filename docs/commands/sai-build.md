@@ -4,10 +4,6 @@
 
 Runs a change's build in one invocation. It chains [`/sai-3-implement`](sai-3-implement.md), then one pass of [`/sai-4-review`](sai-4-review.md), assesses the review findings itself, runs `/sai-3-implement` again for the findings it selects, and closes with the lists of fixed, excluded, and left-open findings.
 
-## Flags and behavior modifiers
-
-- `--fast-track`: accepted and ignored. Local commits are authorized by invoking the command.
-
 ## In detail
 
 The command runs the implementation segment, the review segment, and the fix segment in the same session, with no approval between segments. The behavior, preconditions, checks, and stops of each segment are the ones described in [`/sai-3-implement`](sai-3-implement.md) and [`/sai-4-review`](sai-4-review.md).

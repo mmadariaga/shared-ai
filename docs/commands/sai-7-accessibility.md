@@ -11,7 +11,6 @@ Reviews interface changes to find accessibility barriers and check compatibility
 - `--runtime`: runs the browser scanners (axe, pa11y, Lighthouse). The flag is the whole authorization: no scanner question is asked. A scanner that is not installed is marked unavailable in the report, and the static review goes on. Without it the review is static only.
 - `--url <url>`: the dev-server URL the scanners take. It is an input, not an authorization. When `--runtime` comes without `--url`, the command asks for the URL before the audit starts; if you decline, or the URL does not respond, the runtime part is marked unavailable.
 - `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
-- `--fast-track`: accepted and ignored. The command already runs with no human in the loop.
 
 Without a change name, the command takes the only active change that has a `proposal.md`; with none or several it prints the candidates and stops. Apart from the URL, it asks nothing between resolving the change and finishing.
 

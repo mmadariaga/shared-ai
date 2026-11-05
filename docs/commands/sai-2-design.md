@@ -7,7 +7,6 @@ Turns an approved proposal into an understandable, actionable technical design. 
 ## Flags and behavior modifiers
 
 - `--overview-lang <language>`: generates an optional `change-overview.md` in that language at the end of the run. Without it, no overview is generated.
-- `--fast-track` and `--supervised`: accepted and ignored. The command asks no approval and prints no banner.
 
 Supply the change name before the options, for example `/sai-2-design my-change --overview-lang Spanish`. Text after the name is feedback: on a change that already has `design.md`, `/sai-2-design my-change <feedback>` runs the same cycle over the design artifacts with the feedback as its input.
 
@@ -28,4 +27,4 @@ accompanies the tasks. The design reads `SAI_LEARNINGS.md` when it exists. It
 writes no ADR or DDR: it marks each qualifying decision with its record family,
 and the implementing command creates the record at its close.
 
-Without `proposal.md` and specs the command stops before any dispatch. It ends when the design is complete and does not implement the solution or execute tasks from the plan. In normal use, it stops so the user can review the design before running [`/sai-3-implement`](sai-3-implement.md) or [`/sai-build`](sai-build.md). [`/sai-plan`](sai-plan.md) runs this command after `/sai-1-spec` in one invocation.
+The command requires `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`; otherwise it stops before any dispatch. It ends when the design is complete and does not implement the solution or execute tasks from the plan. In normal use, it stops so the user can review the design before running [`/sai-3-implement`](sai-3-implement.md) or [`/sai-build`](sai-build.md). [`/sai-plan`](sai-plan.md) runs this command after `/sai-1-spec` in one invocation.

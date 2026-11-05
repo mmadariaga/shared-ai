@@ -81,7 +81,7 @@ The pipeline depends on the OpenSpec CLI:
 | `skills/` | Universal skills installed globally (not project-local). Resolved via `~/.claude/skills/` or `~/.config/opencode/skills/`. Wrappers fetch only the harness `fetch` skill; budget / safe-operations load on cards, and sai-commands triggers from its description. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command resolver — makes a `/sai-*` invocation that arrives as text run through its installed command file (`commands/sai-*.md`, which is the registry) before any task work. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by sai-* commands and the `to-pr` skill; load sites in ### Safe Operations. |
-| `skills/universal/to-pr/SKILL.md` | User-invoked skill that creates or updates a GitHub PR or GitLab MR from committed Git changes; mechanics in `sai/tools/to-pr.js` and its provider adapters, with separate publication and push approval. |
+| `skills/universal/to-pr/SKILL.md` | User-invoked skill that creates or updates a GitHub PR or GitLab MR from committed Git changes; mechanics in `sai/tools/to-pr.js` and its provider adapters, with one combined approval when a push is needed and independent push and publication tokens. |
 | `skills/universal/budget-ro/SKILL.md` | Budget read-only skill — loads the explorer binding and `token-efficient-languages` only; fetched by `steps/common.md` of spec/review/security/performance/accessibility. |
 | `skills/universal/budget/SKILL.md` | Loads the explorer + executor + subagent bindings together (the language contract comes from `remember.md`). Load sites in ### Cost Discipline. |
 | `skills/universal/` | Universal skills (no vendor). Loaded from cards, not from wrappers. |
@@ -232,7 +232,9 @@ OpenSpec setup. See [backlog usage](docs/backlog.md),
 [PR/MR publication](docs/commands/to-pr.md), and
 [local branch creation](docs/commands/new-change-branch.md). Provider workflows
 load the selected registry reference, keep import read-only, and require exact
-publication approval; `to-pr` gates pushes separately. Branch creation preserves
+publication approval; `to-pr` asks one combined approval when a push is needed,
+with independent push and publication tokens on both Claude Code and opencode.
+Branch creation preserves
 dirty work and never fetches, stashes, commits, or pushes. New branches are named
 `<type>/<id>_<name_with_underscores>`; `/sai-explore` asks a slice set one
 three-choice branch question (`shared`, `per-slice`, `none`) and chains per-slice

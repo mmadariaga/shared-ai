@@ -12,7 +12,6 @@ Integrates a branch into the current branch: it resolves every conflict by commi
 - no flag: the command asks the method (merge, rebase, or squash) together with the branch question, before any work. Without a picker it runs a `Merge`. Cancelling a question ends the run with nothing launched. The merge stops before its commit, so every merge, clean or conflicted, is finalized by the coordinator.
 - `--rebase`: replays the commits of the current branch one by one on top of the selected branch. Conflicts may appear at each commit.
 - `--squash`: first turns the commits of the current branch since the merge base into one local commit, then rebases it, so conflicts appear at most once. When both `--rebase` and `--squash` are given, `--squash` wins.
-- `--fast-track`: accepted and ignored. The command asks for no approval beyond the start questions above.
 
 ## In detail
 

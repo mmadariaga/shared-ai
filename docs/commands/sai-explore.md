@@ -6,7 +6,6 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: accepted and ignored. The token is stripped silently and has no effect, so every question and gate behaves as it does without it.
 - `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 
@@ -53,32 +52,30 @@ published specs directly. Lines that merely mention these are judged as context.
 A confirmed violation records nothing; Explore shows the clause, line, and evidence,
 and corrects the block.
 
-Plan - Unattended and Direct Build - Unattended export the exact validated block
-directly from the per-chat `sai-state` store into a private temporary file. Workers
-receive its path and hash, not a model-copied message body. This works the same in
-Claude Code and opencode. The receiving worker verifies the file before doing any
-dependent work and stops with no changes if it is missing, unreadable, or altered.
-A compaction of the conversation therefore cannot
-lose or change the next slice's block. If the stored block is missing, Explore
-dispatches nothing and offers stop options that include emitting the block again.
-To correct one slice that is pending or stopped, Explore validates the corrected
-block and replaces only that slice's stored block; completed and running slices cannot
-be amended. Manual has no store and no hash check. Block text is kept in the chat's
-session file under the SAI temp root, never in the project.
-An amendment gets a fresh file/hash reference; prior files remain available while
-continuation or recovery may need them. Registration and amendment attach hygiene
-verdicts mechanically, including when the stored separator has no final newline.
+Plan - Unattended and Direct Build - Unattended retain the validated proposal
+outside the conversation context, so compaction does not change the next slice's
+input. If that proposal becomes unavailable or fails verification, execution
+stops before changes and offers recovery options, including emitting it again.
+Ask Explore to revise a pending or stopped slice; a running or completed slice
+cannot be amended. Manual gives you the block to paste into a new chat.
+For the technical storage and verification rules, see
+[stored block transport](../../sai/policies/ready-to-propose-format.md#stored-block-transport).
 
 After displaying the complete Ready to Propose block set, Explore normally asks
 in three conditional rounds, each one native interaction (on opencode, one call
 per question when its picker takes a single question). Round 1: whether to
 create or update a backlog item through `to-backlog`, whether to create and
 switch to a local branch through `new-change-branch`, and whether to assign the
-concrete user named in the question to the linked issue when
-implementation starts (left out when no issue is linked yet; implementation start
-then asks it). Round 2: the exact publication approval and the branch
-base. Round 3: the route and, for several pending slices, whether later Direct
-Build slices start automatically (ignored unless you choose Direct Build). Each
+linked issue when implementation starts. An existing issue's question names the
+concrete user; when no issue exists yet but backlog creation is selected, it asks
+the intent to assign the authenticated user once the issue exists. Without a
+linked issue or planned creation, the assignment question is left out.
+Round 2: the exact publication approval and the branch base. Round 3: the route;
+for several pending slices, whether later Direct Build slices start automatically
+(ignored unless you choose Direct Build); and, when unresolved, whether to create
+`change-overview.md` and in which language (applies only to Plan). An explicit
+overview language, a previously resolved answer, or a project setting answers
+the overview question in advance. Each
 answer authorizes only its own action; a missing or ambiguous answer leaves it
 pending, and cancelling publication skips only the publication. Publication
 runs first, then the branch is named with the created issue's identifier and
