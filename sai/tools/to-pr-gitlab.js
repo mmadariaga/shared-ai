@@ -17,6 +17,7 @@ function resolve({ explicit, config, remotes }, io) {
 function identity(row) {
   if (!Number.isSafeInteger(row.iid) || typeof row.web_url !== 'string' || typeof row.title !== 'string' || (row.description !== null && typeof row.description !== 'string')) throw new Error('Incomplete GitLab MR response');
   return { number: row.iid, url: row.web_url, title: row.title, description: row.description ?? '', version: row.updated_at,
+    ...(typeof row.draft === 'boolean' ? { isDraft: row.draft } : typeof row.work_in_progress === 'boolean' ? { isDraft: row.work_in_progress } : {}),
     assignees: Array.isArray(row.assignees) ? row.assignees.map(item => item?.username) : [], labels: Array.isArray(row.labels) ? row.labels.map(item => typeof item === 'string' ? item : item?.name) : [] };
 }
 // The authenticated user, who is assigned to a request created through this tool.

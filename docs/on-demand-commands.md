@@ -9,7 +9,7 @@ are in the [backlog command reference](backlog-commands.md).
 | [`/sai-cache-warmer`](commands/sai-cache-warmer.md) | Keep this conversation active until a chosen time; cache retention and savings are not guaranteed. |
 | [`/sai-context-cache-ttl-benchmark`](commands/sai-context-cache-ttl-benchmark.md) | Measure context-cache lifetime through an explicitly authorized experiment in this conversation or a same-model subagent. |
 | [`/sai-explore`](commands/sai-explore.md) | Clarify an idea, split large work into slices, and choose Plan, Direct Build, or Manual. |
-| [`/sai-plan`](commands/sai-plan.md) | Prepare, check, and review specs and design in one run, with a local commit per segment. |
+| [`/sai-plan`](commands/sai-plan.md) | Prepare, check, and review specs and design in one run, with a local commit per segment and an optional draft PR/MR offer. |
 | [`/sai-build`](commands/sai-build.md) | Implement, review, and apply the fixes it selects, with local commits authorized by invocation. |
 | [`/sai-deep-review`](commands/sai-deep-review.md) | Review, run relevant audits, and automatically apply the fixes it judges justified, with local commits. |
 | [`/sai-commit`](commands/sai-commit.md) | Draft a message for staged changes and commit after your approval. |

@@ -34,6 +34,7 @@ function list(target, source, base, io) {
 function identity(row) {
   if (!Number.isSafeInteger(row.number) || typeof row.html_url !== 'string' || typeof row.title !== 'string' || (row.body !== null && typeof row.body !== 'string')) throw new Error('Incomplete GitHub PR response');
   return { number: row.number, url: row.html_url, title: row.title, description: row.body ?? '', version: row.updated_at,
+    ...(typeof row.draft === 'boolean' ? { isDraft: row.draft } : {}), ...(typeof row.node_id === 'string' ? { nodeId: row.node_id } : {}),
     assignees: Array.isArray(row.assignees) ? row.assignees.map(item => item?.login) : [], labels: Array.isArray(row.labels) ? row.labels.map(item => item?.name) : [] };
 }
 // The authenticated user, who is assigned to a request created through this tool.
@@ -57,9 +58,16 @@ function labels(target, io) {
 }
 function mutate(proposal, io) {
   const endpoint = `repos/${proposal.target.repository}/pulls`;
+  if (proposal.draft === true && proposal.existing && proposal.existing.isDraft !== true) {
+    if (!proposal.existing.nodeId) throw new Error('Cannot convert a GitHub PR without its verified node ID');
+    api(proposal.target, 'graphql', io, 'POST', {
+      query: 'mutation($id:ID!){convertPullRequestToDraft(input:{pullRequestId:$id}){pullRequest{id isDraft}}}',
+      variables: { id: proposal.existing.nodeId }
+    });
+  }
   const row = identity(api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PATCH' : 'POST', proposal.existing
     ? { title: proposal.title, body: proposal.description }
-    : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base }));
+    : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base, ...(proposal.draft === true ? { draft: true } : {}) }));
   if (proposal.existing) return row;
   // A pull request has no assignee or label field at creation: a second call on its issue sets them.
   const body = { ...(proposal.assignee ? { assignees: [proposal.assignee.login] } : {}), ...(proposal.labels?.length ? { labels: proposal.labels } : {}) };

@@ -37,9 +37,11 @@ target. Pending staged, unstaged, and untracked files stay out of the request.
 Relevant OpenSpec documents are optional context, never a substitute for Git
 evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
-the title and description and preserve unrelated content. An explicit Azure request
-can also create a draft or convert an existing PR to draft; without it, existing
-state is preserved. This adds no GitHub or GitLab draft behavior.
+the title and description and preserve unrelated content. An explicit draft request
+can create a draft or convert an existing PR/MR to draft on all three providers;
+without it, existing state is preserved. Conversion is part of the exact approval.
+GitHub creates via REST and converts via GraphQL; GitLab uses its `Draft: ` title
+prefix. Read-back must verify draft state, not just the title or response.
 
 AI authorship credits in descriptions are blocked by default for both creation
 and updates. Human coauthor credits are allowed. If you explicitly request AI
@@ -75,7 +77,7 @@ other text or move the **complete** Inherent Risk block to a managed comment.
 This option works on all three providers; no new local limits are imposed on
 GitHub or GitLab. Relocation is optional and does not excuse remaining overflow.
 Approval shows the final description, complete comment and destination, and any
-explicit Azure draft request. Changing that allocation requires fresh approval.
+explicit draft request. Changing that allocation requires fresh approval.
 The tool reuses the authenticated author's uniquely marked comment and preserves
 other people's comments; ambiguous matches need clarification. Moving the block
 back to the description leaves a location notice in the managed comment.
@@ -118,7 +120,7 @@ Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only
 and never automatically repeats creation.
 
-PR content, requested Azure draft state, and risk-comment publication must each
+PR content, requested draft state, and risk-comment publication must each
 be verified. A published PR with a failed or unverified comment is not complete
 success. Recovery reports those outcomes separately and never repeats a completed
 push or PR creation. A verified safe pending-comment operation can be resumed
