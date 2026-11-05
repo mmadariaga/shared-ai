@@ -93,12 +93,18 @@ The POC verdict SHALL be exactly `<Cn> wins` or `none`, where `<Cn>` is one of t
 
 ### Requirement: The POC runs in reversible isolation and is discarded when the lane closes
 
-Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on its own branch or worktree created for it, and SHALL abandon that branch or worktree when the lane closes. Only the verdict SHALL survive the lane. The POC code SHALL be discarded by abandoning the isolation and SHALL NOT be discarded by destructive deletion of the working tree, by `git reset --hard` on the user's branch, or by removing files the user owns. Because the repository the lane leaves behind is the one it found, the size and integration-point friction judgments at the `Crystallize` stage SHALL evaluate the original repository and never one carrying throwaway POC code. The `--no-specs` profile's prohibition on mutating git commands SHALL bind the dispatched implementer only and SHALL NOT bind the lane's own reversible isolation, which `sai-explore` creates and abandons as the coordinator under the POC lane's isolation authority.
+Before the POC runs, `sai-explore` SHALL create the POC isolation as the coordinator: a dedicated sibling worktree on an exclusive branch, created through `worktree.js create <repo>.poc-<idea-slug>`, which yields the worktree `<repo>.poc-<idea-slug>` on the branch `poc-<idea-slug>`. `sai-explore` SHALL record the `path` and `branch` that the tool's JSON output returns, SHALL keep those recorded values in the conversation only and never in the `sai-state` store or a repository file, and SHALL treat them as the only targets of a later destruction. The worktree SHALL start from the user's current committed `HEAD`, and `sai-explore` SHALL tell the user before the POC runs that uncommitted changes in the user's checkout are not carried into the POC. The POC SHALL run only under the recorded path, which the Direct Build `--no-specs` envelope carries as the implementer's work root. A `create` refusal (`directory-exists`, `branch-exists`, `invalid-branch`, `git-refused`) SHALL stop the lane before the POC runs, SHALL be reported with the tool's reason, and SHALL ask no destroy question; an existing branch SHALL NEVER be reused as the POC branch.
+
+At every lane exit — `Continue with <Cn>`, a `none` verdict, an execution failure, a cancellation, or a discard of the idea from inside the lane — once the POC isolation exists, `sai-explore` SHALL ask whether to destroy the POC through the harness-native picker with exactly two options in this order: `Destroy the POC` and `Keep the POC`, naming the recorded path and branch in the question context. `Stay here` SHALL keep the lane open and SHALL ask nothing. On `Continue with <Cn>` the question SHALL be answered before the progression advances to `Review edge cases`. When a POC run is interrupted mid-turn, the question SHALL be asked on the next turn of the lane; no automatic or deferred cleanup of a POC left on disk SHALL exist. The verdict and the lessons learned SHALL stay in the conversation whatever the answer is.
+
+On `Destroy the POC`, `sai-explore` SHALL first confirm through `worktree.js inventory --json` that a registered worktree has exactly the recorded path and branch; on any mismatch it SHALL remove nothing and SHALL report the mismatch. Otherwise it SHALL run `worktree.js remove <path> --force` and then `worktree.js delete-branch <branch> --force`, in that order, forcing past the uncommitted-changes and unmerged-branch safeguards on the recorded targets alone. A failure of the first step SHALL skip the second, and a partial cleanup SHALL report what was removed, what remains, and the exact command that finishes it by hand, with no automatic retry. On `Keep the POC`, `sai-explore` SHALL keep the worktree and the branch and SHALL report their exact path and branch name.
+
+Only the verdict SHALL survive the lane. The POC code SHALL be discarded only by a confirmed destruction of the POC isolation and SHALL NOT be discarded by deletion of the user's working tree, by `git reset --hard` on the user's branch, or by removing files the user owns. Because the lane never modifies the user's checkout, its branch, or its uncommitted changes, the size and integration-point friction judgments at the `Crystallize` stage SHALL evaluate the original repository and never one carrying throwaway POC code. The `--no-specs` profile's prohibition on mutating git commands SHALL bind the dispatched implementer only and SHALL NOT bind the lane's own isolation, which `sai-explore` creates and, on the user's confirmation, destroys as the coordinator under the POC isolation exception of the Explore read-only rule.
 
 #### Scenario: the isolation is abandoned, not deleted
 
 - **WHEN** the POC lane closes after an execution
-- **THEN** the POC's branch or worktree is abandoned, the repository returns to its prior state, and no destructive deletion of the working tree occurs
+- **THEN** the user's checkout, its branch, and its uncommitted changes are unchanged, no deletion of the user's working tree occurs, and the POC code is removed only if the user confirms `Destroy the POC`
 
 #### Scenario: stage 4 judges the original repository
 
@@ -107,8 +113,53 @@ Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on 
 
 #### Scenario: the no-mutating-git prohibition binds the implementer, not the isolation
 
-- **WHEN** the POC lane creates or abandons its branch or worktree while the `--no-specs` profile forbids the dispatched implementer from running mutating git commands
-- **THEN** the isolation is still created and abandoned by `sai-explore` as coordinator, because the prohibition binds the implementer only
+- **WHEN** the POC lane creates or destroys its worktree and branch while the `--no-specs` profile forbids the dispatched implementer from running mutating git commands
+- **THEN** the isolation is still created and, on the user's confirmation, destroyed by `sai-explore` as coordinator, because the prohibition binds the implementer only
+
+#### Scenario: the isolation is a sibling worktree on an exclusive branch
+
+- **WHEN** the POC is about to run
+- **THEN** `sai-explore` creates the sibling worktree `<repo>.poc-<idea-slug>` on the branch `poc-<idea-slug>` from committed `HEAD`, records the returned path and branch, tells the user that uncommitted changes are not carried over, and runs the POC only under that path
+
+#### Scenario: a create refusal stops the lane without a destroy question
+
+- **WHEN** `worktree.js create` refuses, for example because the branch already exists
+- **THEN** the POC does not run, the lane reports the tool's reason, no destroy question is asked, and the existing branch is not reused
+
+#### Scenario: every lane exit asks the destroy question
+
+- **WHEN** the lane ends by `Continue with <Cn>`, a `none` verdict, an execution failure, a cancellation, or a discard of the idea after the POC isolation was created
+- **THEN** the picker offers `Destroy the POC` and `Keep the POC` in that order, naming the recorded path and branch, and on `Continue with <Cn>` it is answered before the progression advances to `Review edge cases`
+
+#### Scenario: staying in the lane asks nothing
+
+- **WHEN** the user selects `Stay here` after a winning verdict
+- **THEN** the lane stays open and no destroy question is asked
+
+#### Scenario: a confirmed destruction removes the worktree and the branch
+
+- **WHEN** the user selects `Destroy the POC` and the inventory shows a registered worktree with the recorded path and branch
+- **THEN** `sai-explore` runs `worktree.js remove <path> --force` and then `worktree.js delete-branch <branch> --force`, removing both
+
+#### Scenario: a target mismatch removes nothing
+
+- **WHEN** the user selects `Destroy the POC` and no registered worktree matches the recorded path and branch
+- **THEN** nothing is removed and the mismatch is reported
+
+#### Scenario: a declined destruction keeps and reports the POC
+
+- **WHEN** the user selects `Keep the POC`
+- **THEN** the worktree and the branch remain and their exact path and branch name are reported
+
+#### Scenario: a partial cleanup is reported without retry
+
+- **WHEN** the worktree removal succeeds but the branch deletion fails, or the worktree removal fails
+- **THEN** `sai-explore` reports what was removed, what remains, and the exact command that finishes the cleanup by hand, skips the branch deletion after a failed worktree removal, and retries nothing automatically
+
+#### Scenario: an interrupted run asks on the next lane turn
+
+- **WHEN** a POC run is interrupted mid-turn after the isolation was created
+- **THEN** the destroy question is asked on the next turn of the lane, and no automatic cleanup runs if the chat never resumes
 
 ### Requirement: The POC lane can be entered explicitly from stages 2 through 4
 
