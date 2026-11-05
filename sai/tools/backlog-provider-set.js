@@ -187,11 +187,11 @@ function bind(provider, mechanics) {
     if (ready.status !== 'ready') return ready;
     const rows = mechanics.inventory(ready.proposal, io);
     const candidates = rows.flatMap(row => {
-      const value = identity.upper(identity.decode(row.description));
-      if (!value || value.platform !== provider || value.change_name !== request.change_name || value.slices.find(slice => slice.change_name === value.change_name)?.issue !== row.issue.url) return [];
+      const value = identity.upper(identity.decode(row.description, row.issue.url));
+      if (!value || value.platform !== provider || value.change_name !== request.change_name || identity.slicesOf(value, row.issue.url).find(slice => slice.change_name === value.change_name)?.issue !== row.issue.url) return [];
       const parentRow = rows.find(row => row.issue.url === value.parent);
-      const parent = parentRow && identity.decode(parentRow.description);
-      if (!parent || parent.role !== 'parent' || parent.platform !== provider || parent.parent !== value.parent || digest(parent.slices) !== digest(value.slices)) throw new Error('Parent does not confirm recovered slice correspondence');
+      const parent = parentRow && identity.decode(parentRow.description, parentRow.issue.url);
+      if (!parent || parent.role !== 'parent' || parent.platform !== provider || parent.parent !== value.parent || digest(identity.slicesOf(parent, parentRow.issue.url)) !== digest(value.slices)) throw new Error('Parent does not confirm recovered slice correspondence');
       return [{ issue: row.issue.url, parent: value.parent, change_name: value.change_name, platform: provider, correspondence: value }];
     });
     return candidates.length === 1 ? { status: 'complete', ...candidates[0] } : { status: 'needs_input', reason: 'slice-identity-ambiguous', candidates };
