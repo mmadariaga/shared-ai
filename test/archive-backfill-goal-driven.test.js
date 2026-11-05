@@ -117,6 +117,6 @@ test('the retired archive and backfill bootstraps are listed for removal from in
 test('the archive and backfill command profiles carry the safe-operations skill', () => {
   const profiles = JSON.parse(read('sai/install-manifest.json')).capabilities.profiles;
   for (const name of COMMANDS) {
-    assert.deepEqual(profiles[`${name}-command`].skills, ['safe-operations']);
+    assert.deepEqual(profiles[`${name}-command`].skills, ['safe-operations', 'fetch']);
   }
 });

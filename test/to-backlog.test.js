@@ -552,7 +552,7 @@ test('both harness projections install references, registry, wrappers, skill and
     }
     const profile = translate(manifest.capabilities, 'to-backlog-command', harness).profile;
     assert.ok(profile.question);
-    assert.ok(profile.shell.includes('node {sai}/tools/to-backlog.js *'));
+    assert.deepEqual(profile.shell, ['*']);
     assert.ok(!profile.shell.some(command => /^(gh|glab) /.test(command)));
   }
 });
