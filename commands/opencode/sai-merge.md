@@ -1,6 +1,6 @@
 ---
 description: Merge, rebase, or squash-rebase a branch — asks only at start (branch, method, autostash) and on escalation, resolves all conflicts by commit intent, repairs ADR/DDR collisions, verifies the result against the suite baseline taken at HEAD, and finalizes locally. Accepts [<branch>] [--rebase|--squash].
-model: opencode-go/muse-spark-1.3-contributor#xhigh
+model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

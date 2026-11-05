@@ -208,8 +208,8 @@
         },
         "opencodeAgent": {
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
-          "model": "opencode-go/muse-spark-1.3-contributor",
-          "variant": "xhigh"
+          "model": "opencode-go/deepseek-v4.1-flash",
+          "variant": "high"
         }
       },
       {
@@ -225,7 +225,7 @@
         },
         "opencodeAgent": {
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
-          "model": "opencode-go/muse-spark-1.3-contributor",
+          "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "high"
         }
       },
