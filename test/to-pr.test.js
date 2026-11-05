@@ -617,7 +617,7 @@ test('E9 / I2 / I10: both harnesses retain thin explicit-invocation wrappers and
     assert.equal(manifest.capabilities.assignments.commands['to-pr'], 'to-pr-command');
     const profile = translate(manifest.capabilities, 'to-pr-command', harness).profile;
     assert.equal(profile.question, true);
-    assert.deepEqual(profile.shell, ['node {sai}/tools/to-pr.js *']);
+    assert.deepEqual(profile.shell, ['*']);
     assert.ok(profile.skills.includes('to-pr'));
     assert.ok(profile.skills.includes('safe-operations'));
   }

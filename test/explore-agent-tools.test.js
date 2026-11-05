@@ -79,3 +79,14 @@ test('Claude Code retains equivalent research tool access and both harnesses loa
     assert.match(text, /Fetch `@sai\/policies\/explore-agent\.md`/);
   }
 });
+
+test('the shared explorer policy states the single-command shell rule and its output-limiting options', () => {
+  const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/explore-agent.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.match(policy, /Run one allowed command per shell call, from the project root/);
+  assert.match(policy, /no pipe, chaining, redirection, or command substitution/);
+  for (const option of ['git grep -l', 'git grep -c', 'git grep --max-count <n>', 'a narrower pathspec']) {
+    assert.ok(policy.includes(option), `the policy names ${option}`);
+  }
+  assert.match(policy, /never with a trailing `\| head`/);
+  assert.match(policy, /record `shell operation refused: <description>` in `ladder_discards`/);
+});

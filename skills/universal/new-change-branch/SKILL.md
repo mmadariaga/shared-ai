@@ -1,6 +1,7 @@
 ---
 name: new-change-branch
 description: Create and switch to a consistently named local change branch from a selected base.
+allowed-tools: {{capabilityAllowedTools}}
 ---
 
 # New change branch

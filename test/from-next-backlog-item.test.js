@@ -209,8 +209,8 @@ test('both installations include selector, provider instructions, tools, and bou
     assert.doesNotMatch(entry, /boot\.md/);
   }
   const profile = manifest.capabilities.profiles['from-next-backlog-item-command'];
-  assert.deepEqual(profile.skills, ['from-next-backlog-item', 'from-backlog']);
-  assert.deepEqual(profile.shell, ['node {sai}/tools/from-next-backlog-item.js select', 'node {sai}/tools/from-backlog.js *']);
+  assert.deepEqual(profile.skills, ['from-next-backlog-item', 'from-backlog', 'fetch']);
+  assert.deepEqual(profile.shell, ['node {sai}/tools/from-next-backlog-item.js select', 'node {sai}/tools/from-next-backlog-item.js select *', 'node {sai}/tools/from-backlog.js *']);
   assert.equal(profile.write, undefined);
 });
 test('selection instructions hand off exactly once without duplicating source retrieval', () => {

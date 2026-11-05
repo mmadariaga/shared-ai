@@ -19,7 +19,7 @@ The managed budget-explorer source SHALL project its research profile into order
 
 ### Requirement: The managed opencode `explore` agent SHALL retain shell access and its fetch wrapper.
 
-The managed budget-explorer source SHALL grant the V2 shell action only for contracted git grep and codegraph explore patterns, the `node {skills}/sai-cache-warmer/wait.js *` pattern of the cache-warming background wait, and the universal `node {skills}/fetch/fetch.js *` pattern of the fetch tool, rather than default unrestricted bash access. Its body SHALL preserve fetch bootstrap first, followed by profile disclosure and the canonical explore-agent policy Fetch. Profile access SHALL NOT authorize unrelated shell purposes.
+The managed budget-explorer source SHALL grant the V2 shell action only for contracted git grep and codegraph explore patterns, the `node {skills}/sai-cache-warmer/wait.js *` pattern of the cache-warming background wait, and the universal patterns: `node {skills}/fetch/fetch.js *` of the fetch tool and `opencode debug paths` of the last-resort opencode tool-location step, rather than default unrestricted bash access. Its body SHALL preserve fetch bootstrap first, followed by profile disclosure and the canonical explore-agent policy Fetch. Profile access SHALL NOT authorize unrelated shell purposes.
 
 #### Scenario: Research and wrapper behavior remain available
 - **WHEN** the managed budget-explorer definition is projected
@@ -35,4 +35,8 @@ The managed budget-explorer source SHALL grant the V2 shell action only for cont
 
 #### Scenario: Fetch tool pattern is granted
 - **WHEN** shell permissions are evaluated for the installed `skills/fetch/fetch.js` command
+- **THEN** the research profile allows it
+
+#### Scenario: opencode tool-location fallback is granted
+- **WHEN** shell permissions are evaluated for `opencode debug paths`
 - **THEN** the research profile allows it
