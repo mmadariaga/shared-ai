@@ -16,7 +16,9 @@
  * Sub-commands:
  *   index <target> [--paths "<p1>,<p2>"] [--limit <N>] [--cwd <dir>]
  *       <target> is a Claude Code session UUID, an opencode `ses_` session ID,
- *       or a `sai-` / `/sai-` command name. `--paths` is a quote-aware,
+ *       or a `sai-` / `/sai-` command name. A `ses_` ID is looked up in whatever
+ *       directory it recorded; `--paths` then excludes it when it lies outside.
+ *       `--paths` is a quote-aware,
  *       comma-separated project list (default: the current project); `--limit`
  *       caps command executions in total across projects and harnesses
  *       (default 5). `--with-worktrees` measures each project together with the
@@ -87,7 +89,18 @@ const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
 const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
+const SHELL_TOOLS = new Set(['Bash', 'PowerShell', 'bash', 'shell']);
+// One shell segment that runs `node` on the `fetch` skill's tool as its script, whatever separator the path uses
+// (optionally after PowerShell's `&`): a path mentioned in `node -e`, a grep pattern, or another argument is not a run.
+const FETCH_INVOCATION = /^(?:&\s*)?["']?(?:[^\s"']*[\\/])?node(?:\.exe)?["']?\s+(?:(?!-e\b|-p\b|--eval\b|--print\b)--?[\w-]+\s+)*(?:"[^"]*|'[^']*|[^\s"']*)skills[\\/]+fetch[\\/]+fetch\.js["']?(?=\s|$)/;
+const HEREDOC = /<<-?[ \t]*(["']?)(\w+)\1([^\n]*)\n[\s\S]*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|$)/g;
+// One resolved subpath prints `path:`, `root:`, a blank line, then the file content. Several subpaths print `subpath:` blocks and a too-large file prints `too-large:` instead of content: neither carries content.
+const FETCH_SINGLE = /^\s*path: (.+?)\r?\nroot: (?:project|global)\r?\n\r?\n([\s\S]*)$/;
+const OPENCODE_TIMEOUT = 'bash tool terminated command after exceeding timeout';
 const BASELINE_FORMAT = 1;
+
+// Instruction paths are matched and reported with `/`, whichever platform recorded them.
+const forwardSlashes = value => typeof value === 'string' ? value.replace(/\\/g, '/') : value;
 
 class ToolError extends Error {
   constructor(code, message) {
@@ -222,23 +235,61 @@ function toolResultText(block) {
   return Array.isArray(content) ? content.map(part => part?.text ?? '').join('\n') : '';
 }
 
+// The commands of a shell line: split at `&&`, `||`, `;`, `|`, and a line end outside quotes, with heredoc bodies left out. Each segment names the separator that ended it.
+function shellSegments(command) {
+  const text = command.replace(HEREDOC, '$3');
+  const segments = [];
+  let current = '', quote = null;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quote) { if (char === quote) quote = null; }
+    else if (char === '"' || char === "'") quote = char;
+    else if (char === '\n' || char === ';' || char === '|' || (char === '&' && text[i + 1] === '&')) {
+      const doubled = text[i + 1] === char && char !== '\n' && char !== ';';
+      segments.push({ command: current, end: doubled ? char + char : char });
+      current = '';
+      if (doubled) i++;
+      continue;
+    }
+    current += char;
+  }
+  return [...segments, { command: current, end: '' }];
+}
+
+// Whether the call's own output shows what `fetch.js` printed: a run whose stdout is piped into a later command (`|`) leaves its header and content to that command.
+const showsFetchOutput = command => shellSegments(command).some(segment => segment.end !== '|' && FETCH_INVOCATION.test(segment.command.trim()));
+
+// The `fetch.js` call a shell call made: the file it returned (null unless exactly one subpath resolved with its content) and whether it failed to return any file.
+function fetchCall(toolName, command, output) {
+  if (!SHELL_TOOLS.has(toolName) || typeof command !== 'string' || !showsFetchOutput(command)) return null;
+  const single = output.match(FETCH_SINGLE);
+  return { load: single ? { path: forwardSlashes(single[1]), text: single[2] } : null, failed: /^error: /m.test(output) || !/^path: /m.test(output) };
+}
+
+// The class of a failed tool call: a shell timeout (even when the harness flags no error), the harness's own error flag, or a `fetch.js` call that returned no file.
+function toolFailureClass({ name, command, output, flagged, timedOut }) {
+  if (timedOut) return 'timeout';
+  if (flagged) return 'error';
+  return fetchCall(name, command, output)?.failed ? 'error' : null;
+}
+
 // The instruction text a record put in front of the agent, when it did.
 function loadedInstruction(row) {
   if (row.type === 'user' && row.toolUseResult?.file?.filePath) {
     const file = row.toolUseResult.file;
-    return { path: file.filePath, source: 'Read', text: typeof file.content === 'string' ? file.content : null };
+    return { path: forwardSlashes(file.filePath), source: 'Read', text: typeof file.content === 'string' ? file.content : null };
   }
   if (row.type === 'attachment' && row.attachment?.type === 'file' && row.attachment.content?.file) {
     const file = row.attachment.content.file;
-    return { path: row.attachment.filename ?? file.filePath, source: 'attachment', text: typeof file.content === 'string' ? file.content : null };
+    return { path: forwardSlashes(row.attachment.filename ?? file.filePath), source: 'attachment', text: typeof file.content === 'string' ? file.content : null };
   }
   if (row.type === 'attachment' && row.attachment?.type === 'already_read_file') {
-    return { path: row.attachment.filename, source: 'already_read_file', text: null };
+    return { path: forwardSlashes(row.attachment.filename), source: 'already_read_file', text: null };
   }
   if (row.type === 'user' && row.isMeta && row.sourceToolUseID) {
     const text = textOf(row);
     const directory = text.match(SKILL_BODY)?.[1];
-    if (directory) return { path: path.posix.join(directory.trim(), 'SKILL.md'), source: 'Skill', text };
+    if (directory) return { path: path.posix.join(forwardSlashes(directory.trim()), 'SKILL.md'), source: 'Skill', text };
   }
   return null;
 }
@@ -300,8 +351,8 @@ function changeNameFromArgs(args) {
 
 function writtenChanges(toolName, input, into) {
   if (!WRITE_TOOLS.has(toolName) || !input || typeof input !== 'object') return;
-  const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
-  for (const match of text.matchAll(/openspec\/changes\/([^/\s"'`]+)\//g)) if (match[1] !== 'archive' && CHANGE_NAME.test(match[1])) into.add(match[1]);
+  const text = Object.values(input).filter(value => typeof value === 'string').join('\n');
+  for (const match of forwardSlashes(text).matchAll(/openspec\/changes\/([^/\s"'`]+)\//g)) if (match[1] !== 'archive' && CHANGE_NAME.test(match[1])) into.add(match[1]);
 }
 
 // Only a pipeline command's arguments name a change; any other command (explore takes a topic) is read from what its workers wrote.
@@ -312,23 +363,28 @@ function changeNameOf(command, args, written) {
 function scanRows(rows, agent) {
   const toolUses = new Map(), changes = new Set();
   for (const row of rows) for (const block of blocks(row)) if (block?.type === 'tool_use') {
-    toolUses.set(block.id, { name: block.name, row: row.uuid, timestamp: row.timestamp });
+    toolUses.set(block.id, { name: block.name, command: block.input?.command, row: row.uuid, timestamp: row.timestamp });
     writtenChanges(block.name, block.input, changes);
   }
-  const loaded = [], errors = [];
+  const loaded = [], errors = new Map(); // one error per tool call, so a call that is both flagged and timed out counts once
   let otherReads = 0;
+  const addLoad = (instruction, row) => {
+    if (INSTRUCTION_PATH.test(instruction.path ?? '')) loaded.push({ path: instruction.path, source: instruction.source, record: row.uuid, timestamp: row.timestamp, agent, text_available: instruction.text !== null });
+    else otherReads++;
+  };
   for (const row of rows) {
     const instruction = loadedInstruction(row);
-    if (instruction && INSTRUCTION_PATH.test(instruction.path ?? '')) {
-      loaded.push({ path: instruction.path, source: instruction.source, record: row.uuid, timestamp: row.timestamp, agent, text_available: instruction.text !== null });
-    } else if (instruction) otherReads++;
+    if (instruction) addLoad(instruction, row);
     if (row.type === 'user') for (const block of blocks(row)) {
-      if (block?.type === 'tool_result' && block.is_error) {
-        errors.push({ record: row.uuid, timestamp: row.timestamp, agent, tool_use_id: block.tool_use_id, tool: toolUses.get(block.tool_use_id)?.name ?? null, message: clip(toolResultText(block), 160) });
-      }
+      if (block?.type !== 'tool_result') continue;
+      const use = toolUses.get(block.tool_use_id), output = toolResultText(block);
+      const fetched = fetchCall(use?.name, use?.command, output)?.load;
+      if (fetched) addLoad({ path: fetched.path, source: 'fetch', text: fetched.text }, row);
+      const failure = toolFailureClass({ name: use?.name, command: use?.command, output, flagged: Boolean(block.is_error), timedOut: row.toolUseResult?.timedOutAfterMs != null });
+      if (failure) errors.set(block.tool_use_id ?? row.uuid, { record: row.uuid, timestamp: row.timestamp, agent, tool_use_id: block.tool_use_id, tool: use?.name ?? null, class: failure, message: clip(output, 160) });
     }
   }
-  return { toolUses, loaded, errors, otherReads, changes };
+  return { toolUses, loaded, errors: [...errors.values()], otherReads, changes };
 }
 
 function readAgents(sessionDir) {
@@ -573,25 +629,28 @@ function opencodeLoads(record) {
   const loads = [];
   if (record.type === 'synthetic') {
     const text = opencodeText(record);
-    const file = text.match(OPENCODE_SYNTHETIC_READ)?.[1];
+    const file = forwardSlashes(text.match(OPENCODE_SYNTHETIC_READ)?.[1]);
     if (file) loads.push({ path: file, source: 'synthetic-read', text: text.includes('<content>') ? text : null });
   }
   for (const item of opencodeToolItems(record)) {
     if (item.state?.status !== 'completed') continue;
     const text = opencodeToolText(item);
     if (item.name === 'read') {
-      const file = item.state.input?.path ?? item.state.input?.filePath;
+      const file = forwardSlashes(item.state.input?.path ?? item.state.input?.filePath);
       if (typeof file === 'string' && !file.endsWith('/')) loads.push({ path: file, source: 'Read', text: text || null });
     } else if (item.name === 'skill') {
-      const base = skillBasePath(text);
+      const base = forwardSlashes(skillBasePath(text));
       loads.push({ path: base ? path.posix.join(base, 'SKILL.md') : `skill:${item.state.input?.id ?? ''}`, source: 'Skill', text });
+    } else {
+      const fetched = fetchCall(item.name, item.state.input?.command, text)?.load;
+      if (fetched) loads.push({ path: fetched.path, source: 'fetch', text: fetched.text });
     }
   }
   return loads;
 }
 
 function scanOpencodeRecords(records, agent) {
-  const loaded = [], errors = [], changes = new Set();
+  const loaded = [], errors = new Map(), changes = new Set();
   let otherReads = 0;
   for (const record of records) {
     for (const item of opencodeToolItems(record)) writtenChanges(item.name, item.state?.input, changes);
@@ -599,11 +658,14 @@ function scanOpencodeRecords(records, agent) {
       if (load.source === 'Skill' || INSTRUCTION_PATH.test(load.path)) loaded.push({ path: load.path, source: load.source, record: record.id, timestamp: record.timestamp, agent, text_available: load.text !== null });
       else otherReads++;
     }
-    for (const item of opencodeToolItems(record)) {
-      if (item.state?.status === 'error') errors.push({ record: record.id, timestamp: record.timestamp, agent, tool_use_id: item.id, tool: item.name ?? null, message: clip(opencodeToolText(item), 160) });
+    // A tool-call id is unique within its record only.
+    for (const item of opencodeToolItems(record).filter(opencodeSettled)) {
+      const output = opencodeToolText(item);
+      const failure = toolFailureClass({ name: item.name, command: item.state.input?.command, output, flagged: item.state.status === 'error', timedOut: SHELL_TOOLS.has(item.name) && output.includes(OPENCODE_TIMEOUT) });
+      if (failure) errors.set(`${record.id}:${item.id}`, { record: record.id, timestamp: record.timestamp, agent, tool_use_id: item.id, tool: item.name ?? null, class: failure, message: clip(output, 160) });
     }
   }
-  return { loaded, errors, otherReads, changes };
+  return { loaded, errors: [...errors.values()], otherReads, changes };
 }
 
 // The session and its root, following `parent_id` upward.
@@ -685,30 +747,49 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
   };
 }
 
-// Reads the opencode executions of the supplied projects. Each project entry
-// reports whether opencode recorded a session for it.
-function indexOpencode({ db, registry, reader, members, target }) {
-  const result = { projects: [], executions: [], unlinked_agents: [], unread: [], notes: [] };
-  let sessionId = null, child = null;
-  if (target.kind === 'opencode-session') {
-    const root = opencodeRoot(db, target.session);
-    sessionId = root?.id ?? target.session;
-    if (root && root.id !== target.session) {
-      child = target.session;
-      result.notes.push(`${target.session} is a child session of ${root.id}: its parent execution is analyzed instead.`);
-    }
+// The root session an explicit `ses_` target selects, looked up by id in whatever
+// directory it recorded. Without `--paths` that directory is the project; with it
+// the supplied projects still narrow the search, and a session outside them is
+// reported as excluded. Returns the sessions to read (none when not found).
+function opencodeTargetSession(db, target, owner, scoped, result) {
+  const root = opencodeRoot(db, target.session);
+  if (!root) {
+    result.notes.push(`No opencode session ${target.session} was found in the opencode database.`);
+    return { sessions: [], adHoc: null, child: null };
   }
+  const member = owner.get(root.directory) ?? (scoped ? null : { path: root.directory, group: root.directory });
+  if (!member) {
+    result.notes.push(`No opencode session ${target.session} was found under the supplied --paths: its recorded directory ${root.directory} is outside them, so --paths excluded it.`);
+    return { sessions: [], adHoc: null, child: null };
+  }
+  const child = root.id === target.session ? null : target.session;
+  if (child) result.notes.push(`${target.session} is a child session of ${root.id}: its parent execution is analyzed instead.`);
+  return { sessions: [{ id: root.id, directory: root.directory, member }], adHoc: owner.has(root.directory) ? null : member, child };
+}
+
+// Reads the opencode executions of the supplied projects. Each project entry
+// reports whether opencode recorded a session for it. `scoped` tells that
+// `--paths` was given; an explicit session target outside the current project is
+// otherwise read from its own directory.
+function indexOpencode({ db, registry, reader, members, target, scoped }) {
+  const result = { projects: [], executions: [], unlinked_agents: [], unread: [], notes: [] };
   // opencode records a directory with the separators of the platform that created it.
   const owner = new Map();
   for (const member of members) for (const form of directoryForms(member.path)) if (!owner.has(form)) owner.set(form, member);
-  const forms = [...owner.keys()];
-  const marks = forms.map(() => '?').join(',');
-  const sessions = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${marks})${sessionId ? ' AND id = ?' : ''} ORDER BY time_created, id`).all(...forms, ...(sessionId ? [sessionId] : []));
+  let sessions, child = null, reported = members;
+  if (target.kind === 'opencode-session') {
+    const found = opencodeTargetSession(db, target, owner, scoped, result);
+    ({ sessions, child } = found);
+    if (found.adHoc) reported = [found.adHoc];
+  } else {
+    const forms = [...owner.keys()];
+    sessions = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')}) ORDER BY time_created, id`).all(...forms).map(session => ({ ...session, member: owner.get(session.directory) }));
+  }
   const hasInvocation = db.prepare("SELECT 1 FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' LIMIT 1");
-  const read = new Map(members.map(member => [member.path, 0]));
+  const read = new Map(reported.map(member => [member.path, 0]));
   for (const root of sessions) {
     if (!hasInvocation.get(root.id)) continue;
-    const member = owner.get(root.directory);
+    const { member } = root;
     try {
       const built = buildOpencodeSession({ db, registry, reader, root, member });
       read.set(member.path, read.get(member.path) + 1);
@@ -720,11 +801,10 @@ function indexOpencode({ db, registry, reader, members, target }) {
       result.unread.push({ kind: 'session', project: member.path, session: root.id, reason: error.message });
     }
   }
-  const recorded = new Set(sessions.map(session => owner.get(session.directory).path));
-  result.projects = members.map(({ path: project, group }) => recorded.has(project)
+  const recorded = new Set(sessions.map(session => session.member.path));
+  result.projects = reported.map(({ path: project, group }) => recorded.has(project)
     ? { harness: 'opencode', project, project_group: group, status: 'analyzed', reason: null, sessions_read: read.get(project) }
     : { harness: 'opencode', project, project_group: group, status: 'inaccessible', reason: 'No opencode session is recorded for this project', sessions_read: 0 });
-  if (target.kind === 'opencode-session' && sessions.length === 0) result.notes.push(`No opencode session ${target.session} was found under the supplied projects.`);
   if (child) result.executions = result.executions.filter(execution => [...execution.principal_workers, ...execution.auxiliary_agents].some(agent => agent.agent_id === child));
   return result;
 }
@@ -759,11 +839,11 @@ function excerptOpencode(options, env, loadSqlite) {
 
 // opencode records a directory with the separators of the platform that created it.
 function directoryForms(directory) {
-  const forward = directory.replace(/\\/g, '/');
+  const forward = forwardSlashes(directory);
   return [...new Set([directory, forward, forward.replace(/\//g, '\\')])];
 }
 
-const sameDirectory = (a, b) => a.replace(/\\/g, '/') === b.replace(/\\/g, '/');
+const sameDirectory = (a, b) => forwardSlashes(a) === forwardSlashes(b);
 
 // The worktrees `git worktree list` reports for a project, as paths; null when
 // git cannot list them.
@@ -820,7 +900,7 @@ function indexClaude({ target, members, reader, workers, env, output }) {
 
 // opencode side of an index run: a reader that cannot run reports the harness
 // as not analyzed and contributes no data.
-function indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output }) {
+function indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output, scoped }) {
   let db;
   try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
     if (!(error instanceof OpencodeUnavailable)) throw error;
@@ -828,7 +908,7 @@ function indexOpencodeHarness({ target, members, reader, registry, env, loadSqli
     return [];
   }
   try {
-    const result = indexOpencode({ db, registry, reader, members, target });
+    const result = indexOpencode({ db, registry, reader, members, target, scoped });
     output.projects.push(...result.projects);
     output.unread.push(...result.unread);
     output.unlinked_agents.push(...result.unlinked_agents);
@@ -858,7 +938,7 @@ function resolveMembers(options, cwd, defaults, notes) {
 }
 
 // Collects the executions a target selects across both harnesses, newest first.
-function collectExecutions({ target, members, env, loadSqlite, output, registry }) {
+function collectExecutions({ target, members, env, loadSqlite, output, registry, scoped = false }) {
   const reader = loadClaudeTranscriptReader();
   const executions = [];
   // A session or agent ID belongs to one harness; a command name is read from both.
@@ -867,7 +947,7 @@ function collectExecutions({ target, members, env, loadSqlite, output, registry 
     if (claude === null) return null;
     executions.push(...claude);
   }
-  if (target.kind === 'command' || target.kind === 'pipeline' || target.kind === 'opencode-session') executions.push(...indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output }));
+  if (target.kind === 'command' || target.kind === 'pipeline' || target.kind === 'opencode-session') executions.push(...indexOpencodeHarness({ target, members, reader, registry, env, loadSqlite, output, scoped }));
   const selected = executions.filter(execution => {
     if (target.kind === 'command') return execution.invocation.command === target.command;
     // A run is a pipeline command, or any execution (explore's routes) whose workers did a pipeline segment.
@@ -889,7 +969,7 @@ function index(argv, env, loadSqlite) {
   const defaults = [], notes = [];
   const members = resolveMembers(options, cwd, defaults, notes);
   const output = { read_at: new Date().toISOString(), target: { input: positional[0], ...target }, limit: target.kind === 'command' ? limit : null, defaults_applied: defaults, harnesses: [], projects: [], executions: [], unlinked_agents: [], unread: [], notes };
-  let executions = collectExecutions({ target, members, env, loadSqlite, output, registry: loadRegistry() });
+  let executions = collectExecutions({ target, members, env, loadSqlite, output, registry: loadRegistry(), scoped: options.paths !== undefined });
   if (executions === null) return output;
   if (target.kind === 'command' && executions.length > limit) {
     output.unread.push({ kind: 'executions-beyond-limit', count: executions.length - limit, reason: `--limit ${limit}` });
