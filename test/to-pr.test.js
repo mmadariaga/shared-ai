@@ -761,6 +761,19 @@ for (const provider of ['github', 'gitlab']) {
     assert.match(result.warnings[0], /#10.*not evaluated/);
   });
 }
+test('E4 / I3: a GitLab work-item origin closes through the same merge-request line as an issue origin', () => {
+  const host = 'https://gitlab.example.com';
+  const log = [`Closes team/repo#7`, `Closes ${host}/team/repo/-/work_items/7`, `Closes group/sub/project#8`, `Closes ${host}/group/sub/project/-/work_items/8`].join('\n');
+  const { request, io } = closingFixture('gitlab', { log });
+  const refs = tool.closingReferences(log, { host: 'gitlab.example.com', repository: 'team/repo' });
+  assert.deepEqual(refs.map(ref => `${ref.repository}#${ref.number}`), ['team/repo#7', 'team/repo#7', 'group/sub/project#8', 'group/sub/project#8']);
+  assert.equal(tool.query(request, io).proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #7', 'Closes group/sub/project#8')}`);
+});
+test('I3: the archive closing-line rule names the GitLab work-item form', () => {
+  const rules = fs.readFileSync('sai/policies/commit-rules.md', 'utf8');
+  const section = rules.slice(rules.indexOf('## Closing Lines'), rules.indexOf('## Repo Commit-Style Detection Rubric'));
+  assert.match(section, /-\/work_items\/N/);
+});
 test('I3: publication writes the block into the created request exactly as approved', t => {
   const { request, io, state } = closingFixture('github', { log: 'Closes #5\n' });
   const ready = tool.query(request, io);
