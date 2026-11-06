@@ -29,7 +29,7 @@ warns once (`Warning: the writing-for-agents skill is unavailable, so the list
 is shown without its review.`), skips the review pass, and continues with its
 own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
-Direct Build also creates the ADR or DDR records of the block's qualifying decisions, written by the implementer on the coordinator's order, inside its single local commit.
+Direct Build also creates the ADR or DDR records of the block's qualifying decisions, written by the implementer on the coordinator's order, inside the archived-change commit.
 
 In Claude Code and opencode, each E/I list question explains that a bare
 `next-step` confirms the displayed list and advances. Confirmation applies only
@@ -127,8 +127,8 @@ for the first pending slice: spec and design run with up to three review rounds 
 segment, one local commit per segment, then it stops for your review before `/sai-build`.
 A worker question that nothing in the block, the artifacts, or the repository settles
 still escalates. `Direct Build - Unattended` authorizes
-implementation, review/fix, retroactive specs, archive, and one local commit;
-it never pushes. For slices, the selector repeats per slice.
+implementation, review/fix, retroactive specs, archive, and two local commits
+(the archived change and its change telemetry); it never pushes. For slices, the selector repeats per slice.
 
 When a `Plan - Unattended` slice closes, or a sliced `Manual` hand-off is printed,
 and at least one other slice is still pending, you go to another chat and come back
@@ -165,7 +165,7 @@ writes. Independent archive checks still run.
 
 An interrupted Direct Build can resume in the same conversation. It retains
 its agents, accepted work, verification references, recovery counters, and the
-original authorization for one local commit. Resumption continues the first
+original authorization for two local commits. Resumption continues the first
 pending step; it does not start implementation again or offer Plan as a
 replacement. Available agents are continued before any permitted replacement.
 Invalid responses are corrected by their author and validated unchanged before

@@ -3,20 +3,24 @@
 'use strict';
 
 /**
- * change-telemetry — writes the telemetry of one `/sai-plan` or `/sai-build`
- * execution into the change's optional `telemetry.md`.
+ * change-telemetry — writes the telemetry of one `/sai-plan`, `/sai-build`, or
+ * `/sai-explore` in-session route execution into the change's optional `telemetry.md`.
  *
- *   collect --harness <claude|opencode> --command <sai-plan|sai-build> --change <name>
- *           --cwd <project-dir> --status <completed|failed|stopped|blocked|unanswered>
- *           [--run-dir <dir>]
+ *   collect --harness <claude|opencode>
+ *           --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build>
+ *           --change <name> --cwd <project-dir>
+ *           --status <completed|failed|stopped|blocked|unanswered> [--run-dir <dir>]
  *
  * The coordinator runs it at its close, once. Every figure is read after the fact
  * from `opencode.db` (read-only, through the shared reader in `opencode-db.js`):
  * the coordinator session and each subagent session of the latest execution of the
- * command on that change in that project directory. `--run-dir` is the plan run
- * directory, whose `reviews/{segment}-round-{k}.md` files hold the review findings.
- * Only `telemetry.md` is written, and only when the collection succeeds. The
- * tool never runs git: the coordinator commits the file.
+ * command on that change in that project directory. A direct command is found by
+ * its invocation envelope; an in-session route is found by the first worker that
+ * writes under the change directory, because the explore session carries no route
+ * invocation and one explore session can host several routes. `--run-dir` is the
+ * plan run directory, whose `reviews/{segment}-round-{k}.md` files hold the review
+ * findings. Only `telemetry.md` is written, and only when the collection succeeds.
+ * The tool never runs git: the coordinator commits the file.
  *
  * It prints one JSON object and exits 0: `{outcome: "written", path, message}` or
  * `{outcome: "skipped", reason}`. A usage error exits 2 with
@@ -33,6 +37,8 @@ const DISPATCH_TOOLS = new Set(['task', 'subagent']);
 const STATUSES = ['completed', 'failed', 'stopped', 'blocked', 'unanswered'];
 const HARNESSES = ['claude', 'opencode'];
 // The segments of each command, in order, and the worker type that starts each one.
+// A direct command is discovered through its invocation envelope; an in-session
+// route has no such envelope and is discovered through the workers it creates.
 const COMMANDS = {
   'sai-plan': { envelope: 'plan', order: ['spec', 'design'], workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design' } },
   'sai-build': {
@@ -40,8 +46,25 @@ const COMMANDS = {
     order: ['implement', 'review', 'fix-implement'],
     workers: { 'sai-3-red-worker': 'implement', 'sai-3-green-worker': 'implement', 'sai-direct-build-worker': 'implement', 'sai-4-review-worker': 'review' },
   },
+  'sai-explore-plan': {
+    inSession: true,
+    label: 'sai-explore (Plan - Unattended)',
+    coordinator: 'sai-explore',
+    order: ['spec', 'design'],
+    workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design' },
+  },
+  'sai-explore-direct-build': {
+    inSession: true,
+    label: 'sai-explore (Direct Build - Unattended)',
+    coordinator: 'sai-explore',
+    order: ['implement', 'backfill', 'archive'],
+    workers: { 'sai-direct-build-worker': 'implement', 'sai-backfill-worker': 'backfill', 'sai-archive-worker': 'archive' },
+  },
 };
-const SEGMENT_LABELS = { spec: 'Spec', design: 'Design', implement: 'Implement', review: 'Review', 'fix-implement': 'Fix implement', other: 'Other agents' };
+const SEGMENT_LABELS = { spec: 'Spec', design: 'Design', implement: 'Implement', backfill: 'Backfill', archive: 'Archive', review: 'Review', 'fix-implement': 'Fix implement', other: 'Other agents' };
+const PLAN_COMMANDS = new Set(['sai-plan', 'sai-explore-plan']);
+const commandLabel = command => COMMANDS[command].label ?? `/${command}`;
+const coordinatorName = command => COMMANDS[command].coordinator ?? command;
 const METRICS = [
   ['requests', 'Requests'], ['input', 'Input'], ['output', 'Output'], ['reasoning', 'Reasoning'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write'],
   ['cacheMisses', 'Cache misses'], ['cost', 'Cost'], ['ms', 'Time'], ['toolCalls', 'Tool calls'], ['toolErrors', 'Tool errors'], ['subagents', 'Subagents dispatched'],
@@ -185,8 +208,42 @@ function toolItems(row) {
   try { const content = JSON.parse(row.data)?.content; return Array.isArray(content) ? content.filter(item => item?.type === 'tool') : []; } catch { return []; }
 }
 
+// A worker session wrote under `openspec/changes/<change>/` through a write tool.
+function wroteChange(db, sessionId, change) {
+  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
+    for (const item of toolItems(row)) {
+      const written = new Set();
+      writtenChanges(item.name, item.state?.input, written);
+      if (written.has(change)) return true;
+    }
+  }
+  return false;
+}
+
+// An in-session route has no invocation envelope of its own: it is the explore
+// session whose route worker wrote the change. The window starts at the creation
+// of that first worker and ends when the coordinator asks for this collection.
+function findRouteExecution(db, { command, change, cwd }) {
+  const forms = directoryForms(cwd);
+  const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
+  const candidates = [];
+  for (const root of roots) {
+    if (!invocations(db, root.id).some(inv => inv.name === 'explore')) continue;
+    const anchors = opencodeChildren(db, root.id)
+      .filter(child => COMMANDS[command].workers[child.agent] && wroteChange(db, child.id, change))
+      .sort((a, b) => a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
+    if (anchors.length) candidates.push({ root, anchor: anchors[0] });
+  }
+  const latest = candidates
+    .sort((a, b) => b.anchor.time_created - a.anchor.time_created || (a.root.id < b.root.id ? -1 : 1))[0];
+  if (!latest) return null;
+  return { root: latest.root, inv: { id: latest.anchor.id, time: latest.anchor.time_created, args: '' }, end: Date.now() };
+}
+
 // The latest execution of the command, on the change, in the project directory.
-function findExecution(db, { command, change, cwd }) {
+function findExecution(db, options) {
+  const { command, change, cwd } = options;
+  if (COMMANDS[command].inSession) return findRouteExecution(db, options);
   const forms = directoryForms(cwd);
   const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
   const candidates = roots.flatMap(root => {
@@ -262,12 +319,13 @@ function pendingReviewTally(cwd, change) {
 }
 
 function findingsOf(db, { command, segment, runDir, reviewers, change, cwd }) {
-  if (command === 'sai-plan') return planFindings(runDir, segment);
+  if (PLAN_COMMANDS.has(command)) return planFindings(runDir, segment);
   if (segment === 'review') {
     // Without review.md on disk at close, neither count is trusted.
     const pending = pendingReviewTally(cwd, change);
     return { found: pending && reviewers[0] ? firstReviewTally(db, reviewers[0], change) : null, pending };
   }
+  if (COMMANDS[command].inSession) return { unavailable: 'the route records no review-finding tally' };
   return { unavailable: 'the step reviews carry no Summary line' };
 }
 
@@ -304,7 +362,7 @@ function measure(db, options, execution) {
       rows.get(segmentOfSession.get(session) ?? segmentAt(marks, link.time)).push(missingRow(link.session, depthOf.get(session) + 1));
     }
   }
-  const coordinator = agentRow(options.command, 0, requests);
+  const coordinator = agentRow(coordinatorName(command), 0, requests);
   const reviewers = children.filter(child => child.agent === 'sai-4-review-worker').map(child => child.id);
   const segments = [...COMMANDS[command].order, 'other']
     .filter(key => key !== 'other' || rows.get('other').length)
@@ -349,7 +407,7 @@ function findingsLine(findings) {
 
 function sectionText(number, options, execution, measured) {
   const out = [
-    `## Execution ${number} — /${options.command} — ${options.status}`,
+    `## Execution ${number} — ${commandLabel(options.command)} — ${options.status}`,
     '',
     `<!-- telemetry-execution ${execution.inv.id} -->`,
     `<!-- telemetry-totals ${JSON.stringify(measured.totals)} -->`,
@@ -422,7 +480,7 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
     execution = findExecution(db, options);
     if (execution) measured = measure(db, options, execution);
   } finally { db.close(); }
-  if (!execution) return skipped(`No opencode execution of /${command} on ${change} was found for ${cwd}.`);
+  if (!execution) return skipped(`No opencode execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
   const file = path.join(cwd, relative);
   const existing = readExisting(file);
   if (existing.foreign) return skipped(`${relative} exists and was not written by this tool, so it is left as it is.`);

@@ -104,7 +104,7 @@ After a clean Direct Build slice completion, Explore SHALL preserve crystallizat
 #### Scenario: Authorized continuation starts next slice in order
 
 - **WHEN** the continuation state resolves to `auto_continue` with pending slices remaining
-- **THEN** the first pending slice starts as Direct Build with one local commit authorized and no push
+- **THEN** the first pending slice starts as Direct Build with two local commits authorized — the archived change and its change telemetry — and no push
 
 #### Scenario: Chained branch stop falls back to the route picker
 
@@ -159,7 +159,7 @@ Fast-track SHALL not auto-select Plan or Direct Build and SHALL not suppress rou
 - **THEN** the native picker remains required with no auto-selection, no emission-turn handoff, and unchanged command literals
 
 ### Requirement: Direct Build continuation requests authorization for each pending slice
-The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue, SHALL authorize only starting each later slice in order and that slice's single local commit, and SHALL authorize nothing else; switches between chained branches SHALL stay authorized by the `per-slice` answer of the branch question, assignment of each later slice's issue SHALL stay authorized only by the set-level assignment answer of round 1, and no continuation answer SHALL select another route; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
+The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue, SHALL authorize only starting each later slice in order and that slice's two local commits — the archived change and its change telemetry — and SHALL authorize nothing else; switches between chained branches SHALL stay authorized by the `per-slice` answer of the branch question, assignment of each later slice's issue SHALL stay authorized only by the set-level assignment answer of round 1, and no continuation answer SHALL select another route; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
 
 #### Scenario: pending slices remain after clean completion
 - **WHEN** a clean Direct Build slice completes and pending_slices is non-empty
@@ -179,7 +179,7 @@ The system SHALL ask the one-time Direct Build continuation question once per cr
 
 #### Scenario: Continuation yes keeps its own authorization scope
 - **WHEN** round 3 returns Direct Build with a continuation answer of yes under the `per-slice` branch strategy
-- **THEN** yes authorizes starting each later slice in order with its single local commit and nothing else, while the chained branch switches rest on the `per-slice` branch answer.
+- **THEN** yes authorizes starting each later slice in order with its two local commits — the archived change and its change telemetry — and nothing else, while the chained branch switches rest on the `per-slice` branch answer.
 
 #### Scenario: Continuation yes does not authorize assignment
 - **WHEN** round 3 returns Direct Build with a continuation answer of yes and later slices start automatically
@@ -258,12 +258,12 @@ An active supervised run SHALL begin only after a valid native Plan picker answe
 
 ### Requirement: Authorize Direct Build - Unattended dispatch
 
-A valid native picker answer for `Direct Build - Unattended` SHALL authorize the delegated-write exception for the Direct Build workers and pre-authorize exactly one local commit executed by the archive worker inside its closed order. It SHALL remain consent to selection and dispatch only.
+A valid native picker answer for `Direct Build - Unattended` SHALL authorize the delegated-write exception for the Direct Build workers and pre-authorize exactly two local commits within the route's closed orders: the archived change, executed by the archive worker inside its order, and its change telemetry, committed after that order. It SHALL remain consent to selection and dispatch only.
 
 #### Scenario: Consent scope of the fast-lane selection
 
 - **WHEN** the native picker returns `Direct Build - Unattended`
-- **THEN** delegated writes are consented for the Direct Build workers and exactly one local commit is pre-authorized, with no other command surface affected
+- **THEN** delegated writes are consented for the Direct Build workers and exactly two local commits are pre-authorized, with no other command surface affected
 
 ### Requirement: Selector fires once at end only with same-turn block
 

@@ -23,31 +23,27 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the routes that record nothing, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the direct commands and the in-session routes that record, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read
 - **THEN** its settings table has an `experimental.changeTelemetry` row with the values `true` or `false`, and the page has a `## Change telemetry` section
 
-### Requirement: Only direct /sai-plan and /sai-build invocations record telemetry
-
-The plan and build coordinators SHALL fetch `sai/policies/change-telemetry.md` and SHALL record telemetry only when the command was invoked directly, the run resolved its change name, `openspec/changes/{name}/` exists, and the setting is `true`. The `/sai-explore` `Plan - Unattended` route and `/sai-deep-review` SHALL record nothing. Only the coordinator that owns the run SHALL record telemetry; a worker SHALL NOT.
-
-#### Scenario: the Plan - Unattended route records nothing
-- **WHEN** `/sai-explore` runs the plan coordinator through the `Plan - Unattended` route with the setting enabled
-- **THEN** the coordinator runs no collector and writes no `telemetry.md`
-
 ### Requirement: The coordinator runs the collector once at its close with the run status
 
-The coordinator SHALL run `change-telemetry.js collect --harness <claude|opencode> --command <sai-plan|sai-build> --change {name} --cwd <project-root> --status <status>` once, after the last segment ended and before the closing line, passing no figure of its own. `<status>` SHALL be `completed`, `failed`, `stopped`, `blocked`, or `unanswered`, so every run outcome records its execution.
+The coordinator SHALL run `change-telemetry.js collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change {name} --cwd <project-root> --status <status>` once, after the last segment ended and before the closing line, passing no figure of its own. `<status>` SHALL be `completed`, `failed`, `stopped`, `blocked`, or `unanswered` for a direct command, so every run outcome records its execution; the Direct Build route SHALL collect only at its clean close with `completed`.
 
 #### Scenario: a stopped build records its execution
 - **WHEN** a `/sai-build` run with the setting enabled is stopped by the user
 - **THEN** the coordinator runs the collector with `--status stopped` and the appended section is marked `stopped`
 
+#### Scenario: the Direct Build route passes completed
+- **WHEN** a Direct Build - Unattended run reaches its clean close with the setting enabled
+- **THEN** the coordinator runs the collector with `--command sai-explore-direct-build` and `--status completed`
+
 ### Requirement: /sai-plan collects before its run directory is removed
 
-`/sai-plan` SHALL run the collector before its run is closed and before its closing line and publication offer, passing `--run-dir` set to the run directory, which still holds the review round files. `/sai-build` SHALL run the collector after its decision records and before its report, with no `--run-dir`.
+`/sai-plan` SHALL run the collector before its run is closed and before its closing line and publication offer, passing `--run-dir` set to the run directory, which still holds the review round files. The Plan - Unattended route SHALL do the same inside the explore session with `--command sai-explore-plan`. `/sai-build` SHALL run the collector after its decision records and before its report, with no `--run-dir`.
 
 #### Scenario: the plan collector reads the run directory
 - **WHEN** a `/sai-plan` run with the setting enabled reaches its close
@@ -155,7 +151,7 @@ The collector SHALL write only `openspec/changes/{name}/telemetry.md`, atomicall
 
 ### Requirement: Each section lists the command's segments in order
 
-A section SHALL hold the start time, root session, wall time, a coordinator table, and one subsection per segment in command order: Spec and Design for `/sai-plan`; Implement, Review, and Fix implement for `/sai-build`. A segment that did not run SHALL show `Not run.`, not zeros. Subagents outside any segment SHALL be listed under `Other agents`.
+A section SHALL hold the start time, root session, wall time, a coordinator table, and one subsection per segment in command order: Spec and Design for `/sai-plan` and the Plan - Unattended route; Implement, Review, and Fix implement for `/sai-build`; Implement, Backfill, and Archive for the Direct Build - Unattended route. A segment that did not run SHALL show `Not run.`, not zeros. Subagents outside any segment SHALL be listed under `Other agents`.
 
 #### Scenario: a skipped spec segment shows as not run
 - **WHEN** a `/sai-plan` execution ran only the design segment because `proposal.md` and `specs/` already existed
@@ -167,7 +163,7 @@ A section SHALL hold the start time, root session, wall time, a coordinator tabl
 
 ### Requirement: Plan review findings come from the round Summary lines
 
-For each `/sai-plan` segment, the found counts SHALL come from the `Summary:` line of its first review round file and the pending counts from its last round file under `reviews/` of the run directory, so a segment that ends after its first round reports the same counts for both. A missing or unreadable `Summary:` line SHALL show that count as `unavailable`.
+For each `/sai-plan` segment and each Plan - Unattended segment, the found counts SHALL come from the `Summary:` line of its first review round file and the pending counts from its last round file under `reviews/` of the run directory, so a segment that ends after its first round reports the same counts for both. A missing or unreadable `Summary:` line SHALL show that count as `unavailable`.
 
 #### Scenario: a plan segment with one round
 - **WHEN** a plan segment's review ended after its first round, whose file ends with `Summary: High=1 Medium=0 Low=2`
@@ -191,7 +187,7 @@ In the `/sai-build` review segment, found counts SHALL come from the `Summary:` 
 
 ### Requirement: The coordinator commits telemetry.md only when it is not ignored
 
-After a `written` outcome, the coordinator SHALL check the path with `git check-ignore -q`. When not ignored, it SHALL `git add` that path alone and run `git commit -m "<subject>" -- <path>` with a Conventional Commits subject of at most 50 characters. When ignored, the file SHALL stay on disk uncommitted and one report line SHALL say so. It SHALL never force-add or push, and SHALL commit only this file.
+After a `written` outcome, the coordinator SHALL check the path with `git check-ignore -q`. When not ignored, it SHALL `git add` that path alone and run `git commit -m "<subject>" -- <path>` with a Conventional Commits subject of at most 50 characters. When ignored, the file SHALL stay on disk uncommitted and one report line SHALL say so. It SHALL never force-add or push, and SHALL commit only this file. A direct `/sai-plan` or `/sai-build` invocation authorizes this one local commit; on an in-session route the route selection authorizes it, and the Direct Build route's telemetry commit is its second pre-authorized local commit.
 
 #### Scenario: an ignored telemetry file stays uncommitted
 - **WHEN** the project's `.gitignore` ignores `openspec/changes/**` and the collector writes `telemetry.md`
@@ -216,3 +212,59 @@ After a `written` outcome, the coordinator SHALL check the path with `git check-
 #### Scenario: the collector invocation is documented
 - **WHEN** `sai/policies/tool-resolution.md` is read
 - **THEN** it names `change-telemetry.js` and its `collect --harness` invocation
+
+### Requirement: The /sai-explore in-session routes record one telemetry section per slice
+
+The `/sai-explore` **Plan - Unattended** route SHALL record telemetry at its plan close; the **Direct Build - Unattended** route SHALL record it after the archive worker's clean `completed` result and before its terminal report. Each SHALL pass its own command name (`sai-explore-plan` or `sai-explore-direct-build`). Direct Build SHALL pass `--status completed` and SHALL record nothing for a run that stops earlier.
+
+#### Scenario: the plan route collects at its plan close
+- **WHEN** a Plan - Unattended slice closes with `experimental.changeTelemetry` set to `true`
+- **THEN** the coordinator runs the collector with `--command sai-explore-plan` and `--run-dir` set to the run directory before the closing line, and one section is appended
+
+#### Scenario: Direct Build collects after its archive
+- **WHEN** the archive worker returns a clean `completed` result in a Direct Build - Unattended slice
+- **THEN** the coordinator runs the collector with `--command sai-explore-direct-build` and `--status completed` before the terminal report, then makes the second local commit
+
+#### Scenario: a stopped Direct Build records nothing
+- **WHEN** a Direct Build - Unattended run stops before the archive worker's clean `completed` result
+- **THEN** no collector runs, no `telemetry.md` is written, and no second commit is made
+
+### Requirement: An in-session route is discovered through its first worker that writes the change
+
+The collector SHALL treat as the route session the `/sai-explore` root session whose route worker wrote under `openspec/changes/{name}/`, start the window at that first worker's creation, end it at the collection, and choose the latest such session when several wrote the change. It SHALL measure the root session under the name `sai-explore`.
+
+#### Scenario: the first writing worker starts the window
+- **WHEN** the explore session made a request before its first Plan route worker wrote the change
+- **THEN** that request is outside the window, and the segment rows follow `sai-1-spec-proposal-worker` and `sai-2-design-worker`
+
+#### Scenario: a direct plan execution is not an in-session route
+- **WHEN** only a direct `/sai-plan` session wrote the change
+- **THEN** the collector returns `skipped`, naming the `sai-explore (Plan - Unattended)` route
+
+#### Scenario: the design worker alone starts the window
+- **WHEN** the spec segment was already done and only `sai-2-design-worker` wrote the change
+- **THEN** the window starts at that worker, and the Spec subsection says `Not run.`
+
+### Requirement: In-session route sections name the route and list its segments
+
+The collector SHALL head an in-session section with `sai-explore (Plan - Unattended)` or `sai-explore (Direct Build - Unattended)`, list the Plan route's `Spec` and `Design` segments and the Direct Build route's `Implement`, `Backfill`, and `Archive` segments in command order, show a segment that did not run as `Not run.`, and report an in-session route's findings as `unavailable`.
+
+#### Scenario: a Direct Build section lists its three segments
+- **WHEN** a Direct Build - Unattended section is written
+- **THEN** its Implement, Backfill, and Archive subsections name `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`
+
+#### Scenario: an in-session findings line is unavailable
+- **WHEN** a Direct Build - Unattended section is written
+- **THEN** its findings show as `unavailable` because the route records no review-finding tally
+
+### Requirement: Only the coordinator that owns a run records telemetry
+
+The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, SHALL record telemetry only when the run resolved its change name, `openspec/changes/{name}/` exists, and the setting is `true`. `/sai-deep-review` SHALL record nothing. Only the run's owning coordinator SHALL record it; a worker SHALL NOT.
+
+#### Scenario: a deep-review run records nothing
+- **WHEN** `/sai-deep-review` closes with the setting enabled
+- **THEN** it runs no collector and writes no `telemetry.md`
+
+#### Scenario: a worker never records telemetry
+- **WHEN** a plan, build, or route worker finishes
+- **THEN** it writes no `telemetry.md`, whatever the setting

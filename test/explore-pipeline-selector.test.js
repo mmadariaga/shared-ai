@@ -798,7 +798,7 @@ test('Direct Build continuation starts the next ordered slice only after clean s
   assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
   assert.match(transition, /Resolve the authoritative continuation state in `route-selector\.md`[\s\S]{0,250}If it resolves to `auto_continue`, start the first pending slice as Direct Build/i);
   assert.match(transition, /emit `\{intent: auto-continue\}`/i);
-  assert.match(transition, /exactly one local commit for this automatically started slice/i);
+  assert.match(transition, /exactly two local commits for this automatically started slice/i);
   assert.match(transition, /If it resolves to `route_choice`[\s\S]{0,250}present a fresh native three-option picker/i);
   assert.match(transition, /do not emit a route intent or dispatch work until the user's explicit answer arrives in a later turn/i);
   assert.match(transition, /no slice-name picker/i);
@@ -927,9 +927,9 @@ test('Direct Build continuation consent is one-time, set-scoped, context-complet
   assert.match(routeSelector, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/i);
   assert.match(routeSelector, /ask once through the harness-native picker, even if earlier slices used Manual or Plan/i);
   assert.match(routeSelector, /Only an explicit `yes` authorizes automatic continuation/i);
-  assert.match(routeSelector, /authorizes one local commit per automatically started slice; nothing is pushed/i);
+  assert.match(routeSelector, /authorizes up to two local commits per automatically started slice[\s\S]{0,200}nothing is pushed/i);
   assert.match(routeSelector, /There are \{pending_count\} proposed slices still pending[\s\S]{0,220}current slice is \{active_change\}/i);
-  assert.match(routeSelector, /each automatically started later slice makes a local commit[\s\S]{0,300}nothing is pushed/i);
+  assert.match(routeSelector, /each automatically started later slice makes up to two local commits[\s\S]{0,300}nothing is pushed/i);
   assert.match(routeSelector, /No lets this slice finish, then presents the native route picker for the next slice/i);
   assert.match(routeSelector, /Should later slices start automatically after each successful slice\?/);
   assert.match(routeSelector, /localized option labels and descriptions of about 100 characters maximum/i);
