@@ -70,6 +70,9 @@ const CLAUDE_AGENTS = [
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
 const UTILITY_COMMANDS = ['sai-retire-docs', 'sai-retrospective', 'sai-status', 'sai-worktree'];
+// Wrappers that only load a skill inherit the session model, so the customization
+// surfaces never offer them as a target.
+const SKILL_LAUNCHER_COMMANDS = ['sai-cache-warmer', 'sai-context-cache-ttl-benchmark'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -1459,6 +1462,25 @@ test('command enumeration reads the manifest-declared package source directory, 
   }
 });
 
+test('the real manifest exposes no customization target for the skill launcher wrappers on any scope or harness', () => {
+  for (const [harness, createAdapter] of [['opencode', createOpencodeAdapter], ['claude', createClaudeAdapter]]) {
+    const targets = createAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
+    for (const family of ['worker', 'agent', 'command', 'utility']) {
+      for (const name of SKILL_LAUNCHER_COMMANDS) {
+        assert.ok(!targets[family].includes(name), `${harness}/${family}: excludes ${name}`);
+      }
+    }
+    for (const scope of ['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']) {
+      const values = modelCustomization.buildChecklistTargets(scope, targets)
+        .filter(entry => !entry.separator)
+        .map(entry => entry.value);
+      for (const name of SKILL_LAUNCHER_COMMANDS) {
+        assert.ok(!values.includes(`command:${name}`), `${harness}/${scope}: excludes command:${name}`);
+      }
+    }
+  }
+});
+
 test('both harnesses exclude non-SAI wrappers in Orchestrators and All without hiding unknown SAI targets', async () => {
   for (const [harness, label, factoryName, createAdapter, agents] of [
     ['opencode', 'OpenCode', 'createOpencodeAdapter', createOpencodeAdapter, OPENCODE_AGENTS],
@@ -1497,7 +1519,7 @@ test('both harnesses exclude non-SAI wrappers in Orchestrators and All without h
           assert.ok(!items.includes(`command:${name}`), `${harness}/${scope}: excludes ${name}`);
           assert.ok(!defaults.includes(`command:${name}`));
         }
-        for (const name of SHIPPED_COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name))) {
+        for (const name of SHIPPED_COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name) && !SKILL_LAUNCHER_COMMANDS.includes(name))) {
           assert.ok(defaults.includes(`command:${name}`), `${harness}/${scope}: retains ${name}`);
         }
         const unknownRow = items.indexOf('command:sai-unmapped');
