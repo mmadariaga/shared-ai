@@ -30,7 +30,7 @@ test('the Direct Build card is a goal-driven card on the shared obstacle policy'
 
 test('E8: the card keeps the user-visible Direct Build contract', () => {
   const card = read(CARD);
-  assert.match(card, /pre-authorized exactly one local commit/);
+  assert.match(card, /pre-authorized exactly two local commits/);
   assert.match(card, /Never push/);
   for (const step of ['1. **Implement**', '2. **Functional fix loop**', '2b. **Suite gate**', '3. **Sibling backfill preparation**',
     '4. **Spec review**', '5. **ADR/DDR pass**', '6. **Backfill execution**', '7. **Archive preparation**',

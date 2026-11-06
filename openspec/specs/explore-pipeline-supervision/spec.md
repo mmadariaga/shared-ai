@@ -139,9 +139,9 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 ### Requirement: Direct Build - Unattended eight-step unattended flow
 
-On a Direct Build - Unattended selection, explore SHALL follow the Direct Build coordinator card and run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
+On a Direct Build - Unattended selection, explore SHALL follow the Direct Build coordinator card and run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the archived change's pre-authorized local commit. After that clean `completed` result, the flow SHALL record the change telemetry with its own route command and make the second pre-authorized local commit before the terminal report. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
 
-At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and local commit short SHA and subject and state `Nothing was pushed.` If archiving or the commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. After an escalation, the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate question; cancellation and a stop the user chose SHALL get no options.
+At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and the local commit short SHA and subject of the archived change and of its change telemetry and state `Nothing was pushed.` If archiving or a commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. After an escalation, the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate question; cancellation and a stop the user chose SHALL get no options.
 
 Execution details SHALL preserve the work and commit record, original tool-generated commit reports, and the Verification and Incidents diagnostic records. Verification SHALL always state the Step 2b suite-gate command and its observed result (green, red with the failing tests, cannot run with the error, or `no test suite found`), SHALL list pre-existing failures classified at `base_sha` separately from failures introduced or worsened by the run, and SHALL list every test file the implementer touched in a gate round. It SHALL state `No known verification issues.` only when the suite gate ran green, no pre-existing failure was found, and no test file was touched in a gate round. A pre-existing test failure SHALL remain a verification limitation, not an incident. Incidents SHALL report run-caused execution problems and contract violations with their violated rule and known effect and identify expected generated files excluded from the commit with their reasons.
 
@@ -150,16 +150,16 @@ The report SHALL omit routine execution telemetry and verbatim worker summaries 
 #### Scenario: Unattended run reaches an archived, committed change
 
 - **WHEN** the eight Direct Build steps complete without an escalation
-- **THEN** the flow presents the shared outcome-first report, names the archive destination and local commit short SHA and subject, states `Nothing was pushed.`, and reaches the terminal archived-and-committed state
+- **THEN** the flow presents the shared outcome-first report, names the archive destination and the local commit short SHAs and subjects of the archived change and its change telemetry, states `Nothing was pushed.`, and reaches the terminal archived-and-committed state
 
 #### Scenario: Direct Build reports a completed archive and commit
 
 - **WHEN** the final archive execution returns a clean terminal `completed` result and no uncompleted slice remains
-- **THEN** explore presents the shared report with the archive destination, local commit short SHA and subject, and `Nothing was pushed.` in What you need to know and preserves diagnostic records in Execution details last
+- **THEN** explore presents the shared report with the archive destination, the local commit short SHAs and subjects of the archived change and its change telemetry, and `Nothing was pushed.` in What you need to know and preserves diagnostic records in Execution details last
 
 #### Scenario: Direct Build reports incomplete terminal work
 
-- **WHEN** archiving or the local commit does not complete
+- **WHEN** archiving or a local commit does not complete
 - **THEN** explore uses the stopped report, states what completed and what remains, does not describe the run as completed, and preserves existing non-clean failure handling and commit ownership
 
 #### Scenario: Verification reports the observed suite gate
@@ -183,7 +183,7 @@ When the completion transition finds uncompleted entries in last_crystallization
 
 ### Requirement: Direct Build slice attempts reset only per-attempt state
 
-Only a new Direct Build slice execution SHALL initialize its execution state, capture initial `base_sha` and slice snapshots, reset `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters, start at Step 1, and receive that slice's original one-local-commit authorization. The initialization SHALL retain completed changes and completed idea-progress states.
+Only a new Direct Build slice execution SHALL initialize its execution state, capture initial `base_sha` and slice snapshots, reset `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters, start at Step 1, and receive that slice's original two-local-commit authorization. The initialization SHALL retain completed changes and completed idea-progress states.
 
 Resumption of a pending execution in the same conversation SHALL preserve its accepted work, initial references, counters, replacement usage, pending step, and authorization consumption instead of initializing a fresh attempt. A failed, cancelled, incomplete-recovery, coordinator-disproved, STOP-bearing, or suite-gate-stopped result SHALL not mark the slice completed or trigger completion re-entry.
 
