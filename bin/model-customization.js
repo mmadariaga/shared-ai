@@ -18,11 +18,7 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-// Cache warming stays implemented but is hidden from the post-setup menu until it is tested; flip to re-enable.
-const CACHE_WARMING_MENU_ENABLED = false;
-const ALL_MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Cache warming', 'Exit']);
-const visibleMenuOptions = cacheWarmingEnabled => Object.freeze(ALL_MENU_OPTIONS.filter(option => cacheWarmingEnabled || option !== 'Cache warming'));
-const MENU_OPTIONS = visibleMenuOptions(CACHE_WARMING_MENU_ENABLED);
+const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const OPENCODE_QUERY_TIMEOUT_MS = 30_000;
@@ -1468,9 +1464,7 @@ async function runPostSetupMenuInternal({
   promptChoice: selectChoice = promptSelect,
   promptChecklist: selectChecklist = installFlowPromptChecklist,
   promptInput = defaultPromptInput,
-  cacheWarmingMenuEnabled = CACHE_WARMING_MENU_ENABLED, // test-only override of the visibility constant
 } = {}) {
-  const menuOptions = visibleMenuOptions(cacheWarmingMenuEnabled);
   const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
   const effectiveOpencodeCommandRoot = opencodeGlobalCommandRoot !== undefined ? opencodeGlobalCommandRoot : defaultOpencodeGlobalCommandRoot();
   const effectiveClaudePresetDir = claudePresetDir !== undefined
@@ -1507,7 +1501,7 @@ async function runPostSetupMenuInternal({
       if (screen === 'menu') {
         const action = await promptChoice(
           'Post-setup customization:',
-          menuOptions,
+          MENU_OPTIONS,
           undefined,
           null,
         );
@@ -1534,19 +1528,20 @@ async function runPostSetupMenuInternal({
           continue;
         }
         if (action === 'Project behavior settings') {
-          await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput });
-          continue;
-        }
-        if (action === 'Cache warming' && cacheWarmingMenuEnabled) {
-          const pairs = guidedWarmingPairs({
+          const openCacheWarming = () => runWarmingSetup({
             projectPath,
-            packageRoot,
-            roots: [
-              ['claude', claudeGlobalAgentRoot, claudeGlobalCommandRoot],
-              ['opencode', effectiveOpencodeAgentRoot, effectiveOpencodeCommandRoot],
-            ],
+            pairs: guidedWarmingPairs({
+              projectPath,
+              packageRoot,
+              roots: [
+                ['claude', claudeGlobalAgentRoot, claudeGlobalCommandRoot],
+                ['opencode', effectiveOpencodeAgentRoot, effectiveOpencodeCommandRoot],
+              ],
+            }),
+            promptChoice,
+            promptInput,
           });
-          await runWarmingSetup({ projectPath, pairs, promptChoice, promptInput });
+          await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput, openCacheWarming });
           continue;
         }
         return skippedOutcome('cancelled');

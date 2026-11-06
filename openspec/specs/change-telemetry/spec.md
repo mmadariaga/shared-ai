@@ -7,7 +7,7 @@ Record the cost and review figures of each direct `/sai-plan` and `/sai-build` e
 
 ### Requirement: An experimental project setting gates change telemetry
 
-The settings catalogue in `sai/tools/project-settings.js` SHALL declare the boolean key `experimental.changeTelemetry` with no label or section, so it is edited by hand and the settings screen does not list it. A non-boolean value SHALL be dropped with a warning that it must be true or false. A coordinator SHALL treat any value other than `true`, including an absent key or a failing settings read, as disabled.
+The settings catalogue in `sai/tools/project-settings.js` SHALL declare the boolean key `experimental.changeTelemetry` with the label `Change telemetry`, the section `Experimental`, and the absent text `off`, so the project behavior settings screen lists it in its `Experimental` section; the key MAY also be edited by hand. A non-boolean value SHALL be dropped with a warning that it must be true or false. A coordinator SHALL treat any value other than `true`, including an absent key or a failing settings read, as disabled.
 
 #### Scenario: an absent key leaves the close unchanged
 - **WHEN** `/sai-plan` or `/sai-build` closes in a project whose settings do not set `experimental.changeTelemetry` to `true`
@@ -23,7 +23,7 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: hand-edited, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the routes that record nothing, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the routes that record nothing, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read
