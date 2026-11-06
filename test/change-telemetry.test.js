@@ -83,6 +83,7 @@ test('claude: the harness is not supported yet and nothing is written', () => {
 sqliteTest('collect: a missing database, a missing sqlite, and an unsupported schema each skip with a reason (E3)', () => {
   const f = scratch();
   try {
+    f.db.close();
     fs.rmSync(f.file);
     assert.match(collect(options(f), { env: f.env }).reason, /No opencode database was found/);
     const unreadable = () => { throw new Error('no sqlite'); };
