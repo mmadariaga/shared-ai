@@ -1,0 +1,142 @@
+{
+  "agent:budget-subagent": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "agent:budget-executor": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "agent:budget-explorer": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "command:sai-explore": {
+    "model": "claude-agent/opus",
+    "variant": "medium"
+  },
+  "worker:sai-direct-build-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-1-spec": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "worker:sai-1-spec-proposal-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-2-design": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-plan": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "worker:sai-2-design-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-build": {
+    "model": "claude-agent/opus",
+    "variant": "medium"
+  },
+  "command:sai-3-implement": {
+    "model": "claude-agent/opus",
+    "variant": "medium"
+  },
+  "worker:sai-3-red-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-3-green-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-4-review": {
+    "model": "claude-agent/opus",
+    "variant": "medium"
+  },
+  "worker:sai-4-review-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-deep-review": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "command:sai-5-security": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "worker:sai-5-security-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-6-performance": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-6-performance-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-7-accessibility": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-7-accessibility-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-backfill": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-backfill-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-archive": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-archive-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "command:sai-merge": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "worker:sai-merge-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "command:sai-commit": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "worker:sai-commit-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "utility:sai-retire-docs": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "utility:sai-retrospective": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
+  "utility:sai-status": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  },
+  "utility:sai-worktree": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "high"
+  }
+}
