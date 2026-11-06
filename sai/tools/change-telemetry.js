@@ -15,12 +15,14 @@
  * from `opencode.db` (read-only, through the shared reader in `opencode-db.js`):
  * the coordinator session and each subagent session of the latest execution of the
  * command on that change in that project directory. A direct command is found by
- * its invocation envelope; an in-session route is found by the first worker that
- * writes under the change directory, because the explore session carries no route
- * invocation and one explore session can host several routes. `--run-dir` is the
- * plan run directory, whose `reviews/{segment}-round-{k}.md` files hold the review
- * findings. Only `telemetry.md` is written, and only when the collection succeeds.
- * The tool never runs git: the coordinator commits the file.
+ * its invocation envelope; an in-session route is found through its workers,
+ * because the explore session carries no route invocation and one explore session
+ * can host several routes and Direct Build slices. `--run-dir` is the plan or
+ * Direct Build run directory, whose `reviews/{segment}-round-{k}.md` files hold the
+ * review findings. The change folder may already be archived when Direct Build
+ * collects, so `telemetry.md` is written into that folder. Only `telemetry.md` is
+ * written, and only when the collection succeeds. The tool never runs git: the
+ * coordinator commits the file.
  *
  * It prints one JSON object and exits 0: `{outcome: "written", path, message}` or
  * `{outcome: "skipped", reason}`. A usage error exits 2 with
@@ -220,19 +222,88 @@ function wroteChange(db, sessionId, change) {
   return false;
 }
 
+// Direct Build workers write the change through `transfer.js materialize` and git
+// in shell calls, not through a write tool, so any tool input naming the change
+// path counts as a touch.
+function touchesChange(db, sessionId, change) {
+  const target = new RegExp(`openspec/changes/(?:archive/\\d{4}-\\d{2}-\\d{2}-)?${change.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`);
+  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
+    for (const item of toolItems(row)) {
+      const input = item.state?.input;
+      if (!input || typeof input !== 'object') continue;
+      const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
+      if (target.test(text)) return true;
+    }
+  }
+  return false;
+}
+
+// The changes a worker's tool inputs name. A Direct Build worker writes the change
+// through transfer files and git, so its paths, not a write tool, identify it.
+function touchedChanges(db, sessionId) {
+  const names = new Set();
+  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
+    for (const item of toolItems(row)) {
+      const input = item.state?.input;
+      if (!input || typeof input !== 'object') continue;
+      const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
+      for (const match of text.matchAll(/openspec\/changes\/(?:archive\/\d{4}-\d{2}-\d{2}-)?([a-z0-9][a-z0-9-]*)(?=[/\s"'`]|$)/g)) {
+        if (match[1] !== 'archive') names.add(match[1]);
+      }
+    }
+  }
+  return names;
+}
+
+// A POC implementer runs `--direct-build --no-specs` in the same explore session
+// before crystallization; it is not a worker of any final slice.
+function isPocWorker(db, sessionId) {
+  return db.prepare("SELECT data FROM session_message WHERE session_id = ? AND type = 'user'").all(sessionId)
+    .some(row => userText(row.data).includes('--no-specs'));
+}
+
+// The route's workers in creation order. Direct Build hosts several slices in one
+// explore session, so a slice starts after the last worker that touched a different
+// change. A replaced worker of the current slice touched this change and stays in.
+function routeWorkers(db, rootId, command) {
+  return opencodeChildren(db, rootId)
+    .filter(child => COMMANDS[command].workers[child.agent])
+    .filter(child => !(command === 'sai-explore-direct-build' && child.agent === 'sai-direct-build-worker' && isPocWorker(db, child.id)))
+    .sort((a, b) => a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
+}
+
+const CHANGE_OWNERS = new Set(['sai-backfill-worker', 'sai-archive-worker']);
+
+function directBuildSlice(db, workers, change) {
+  let start = 0;
+  for (let index = 0; index < workers.length; index++) {
+    // An implementer reads other changes routinely and never owns one, so only a
+    // backfill or archive worker can end the previous slice.
+    if (!CHANGE_OWNERS.has(workers[index].agent)) continue;
+    const changes = touchedChanges(db, workers[index].id);
+    if (changes.size && !changes.has(change)) start = index + 1;
+  }
+  return workers.slice(start);
+}
+
 // An in-session route has no invocation envelope of its own: it is the explore
 // session whose route worker wrote the change. The window starts at the creation
-// of that first worker and ends when the coordinator asks for this collection.
+// of the route's first worker and ends when the coordinator asks for this
+// collection. Plan keeps its first writing worker; Direct Build starts at the
+// current slice's first worker, because its first writer is the backfill worker.
 function findRouteExecution(db, { command, change, cwd }) {
   const forms = directoryForms(cwd);
   const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
   const candidates = [];
   for (const root of roots) {
     if (!invocations(db, root.id).some(inv => inv.name === 'explore')) continue;
-    const anchors = opencodeChildren(db, root.id)
-      .filter(child => COMMANDS[command].workers[child.agent] && wroteChange(db, child.id, change))
-      .sort((a, b) => a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
-    if (anchors.length) candidates.push({ root, anchor: anchors[0] });
+    const workers = routeWorkers(db, root.id, command);
+    if (!workers.length) continue;
+    const slice = command === 'sai-explore-direct-build' ? directBuildSlice(db, workers, change) : workers;
+    const writer = child => (command === 'sai-explore-direct-build' ? touchesChange(db, child.id, change) : wroteChange(db, child.id, change));
+    if (!slice.some(writer)) continue;
+    const anchor = command === 'sai-explore-direct-build' ? slice[0] : slice.find(writer);
+    candidates.push({ root, anchor });
   }
   const latest = candidates
     .sort((a, b) => b.anchor.time_created - a.anchor.time_created || (a.root.id < b.root.id ? -1 : 1))[0];
@@ -309,20 +380,26 @@ function firstReviewTally(db, reviewer, change) {
 }
 
 // `/sai-build`: pending counts from review.md on disk, every finding that carries no fixed mark.
-function pendingReviewTally(cwd, change) {
+function pendingReviewTally(directory) {
   let text;
-  try { text = fs.readFileSync(path.join(cwd, 'openspec', 'changes', change, 'review.md'), 'utf8'); } catch { return null; }
+  try { text = fs.readFileSync(path.join(directory.absolute, 'review.md'), 'utf8'); } catch { return null; }
   if (!reviewTally(text)) return null;
   const pending = { Critical: 0, High: 0, Medium: 0, Low: 0, Questions: 0 };
   for (const heading of text.matchAll(/^#### ([CHMLQ])\d+\b(.*)$/gm)) if (!/ \(FIXED\)\s*$/.test(heading[2])) pending[REVIEW_SEVERITY[heading[1]]]++;
   return pending;
 }
 
-function findingsOf(db, { command, segment, runDir, reviewers, change, cwd }) {
+function findingsOf(db, { command, segment, runDir, reviewers, change, directory }) {
   if (PLAN_COMMANDS.has(command)) return planFindings(runDir, segment);
+  // Direct Build's functional fix loop writes the same round files as a plan segment.
+  if (command === 'sai-explore-direct-build') {
+    return segment === 'implement'
+      ? planFindings(runDir, segment)
+      : { unavailable: 'this segment records no review-finding tally' };
+  }
   if (segment === 'review') {
     // Without review.md on disk at close, neither count is trusted.
-    const pending = pendingReviewTally(cwd, change);
+    const pending = pendingReviewTally(directory);
     return { found: pending && reviewers[0] ? firstReviewTally(db, reviewers[0], change) : null, pending };
   }
   if (COMMANDS[command].inSession) return { unavailable: 'the route records no review-finding tally' };
@@ -435,7 +512,7 @@ function headerText(change, count, totals) {
     `# Telemetry: ${change}`,
     '',
     MARKER,
-    'Written by `sai/tools/change-telemetry.js` at the close of `/sai-plan` and `/sai-build`. Each execution adds one section at the end and recomputes the change total below; earlier sections are never edited.',
+    'Written by `sai/tools/change-telemetry.js` at the close of `/sai-plan`, `/sai-build`, and the `/sai-explore` in-session routes. Each execution adds one section at the end and recomputes the change total below; earlier sections are never edited.',
     '',
     '## Change total',
     '',
@@ -459,6 +536,18 @@ function totalsOf(section) {
   try { return JSON.parse(section.match(/<!-- telemetry-totals (\{.*\}) -->/)[1]); } catch { return UNKNOWN_FIGURES; }
 }
 
+// The change's folder: the active one, or the latest archived one after a Direct
+// Build archive moved it.
+function changeDirectory(cwd, change) {
+  const active = path.join(cwd, 'openspec', 'changes', change);
+  if (fs.existsSync(active)) return { absolute: active, relative: `openspec/changes/${change}` };
+  const archive = path.join(cwd, 'openspec', 'changes', 'archive');
+  let names = [];
+  try { names = fs.readdirSync(archive); } catch { return null; }
+  const latest = names.filter(name => /^\d{4}-\d{2}-\d{2}-/.test(name) && name.slice(11) === change).sort().at(-1);
+  return latest ? { absolute: path.join(archive, latest), relative: `openspec/changes/archive/${latest}` } : null;
+}
+
 // ---------------------------------------------------------------------------
 // Command
 // ---------------------------------------------------------------------------
@@ -468,8 +557,9 @@ const skipped = reason => ({ outcome: 'skipped', reason });
 function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } = {}) {
   const { harness, command, change, cwd } = options;
   if (harness !== 'opencode') return skipped('Change telemetry is not supported on Claude Code yet.');
-  const relative = `openspec/changes/${change}/telemetry.md`;
-  if (!fs.existsSync(path.join(cwd, 'openspec', 'changes', change))) return skipped(`The change directory openspec/changes/${change}/ was not found.`);
+  const directory = changeDirectory(cwd, change);
+  if (!directory) return skipped(`The change directory openspec/changes/${change}/ was not found.`);
+  const relative = `${directory.relative}/telemetry.md`;
   let db;
   try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
     if (error instanceof OpencodeUnavailable) return skipped(error.message);
@@ -478,10 +568,10 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
   let execution, measured;
   try {
     execution = findExecution(db, options);
-    if (execution) measured = measure(db, options, execution);
+    if (execution) measured = measure(db, { ...options, directory }, execution);
   } finally { db.close(); }
   if (!execution) return skipped(`No opencode execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
-  const file = path.join(cwd, relative);
+  const file = path.join(directory.absolute, 'telemetry.md');
   const existing = readExisting(file);
   if (existing.foreign) return skipped(`${relative} exists and was not written by this tool, so it is left as it is.`);
   if (existing.sections.some(section => section.includes(`<!-- telemetry-execution ${execution.inv.id} -->`))) return skipped(`This execution is already recorded in ${relative}.`);
