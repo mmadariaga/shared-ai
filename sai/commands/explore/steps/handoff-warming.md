@@ -11,7 +11,7 @@ Fetch `@sai/policies/cache-warming.md` and follow its § Hand-off wait. Fetch `@
 1. **Pending slice.** Warm or ask only when the recorded set holds at least one slice, other than the one just handed off, that is not done. The last slice, a change without slices, and a stopped, blocked, or failed Plan neither ask nor warm: end this file.
 2. **Already armed.** When `handoff_wait` is set, end this file: the wait is armed once per hand-off close, and a repeated hand-off text arms nothing.
 3. **An earlier answer.** When `handoff_answer` is set, it applies to this hand-off close with no new question: `off` ends this file; `{interval, max}` goes to § Arm.
-4. **The setting.** Otherwise run `node <tool-path> warming --provider <provider> --model <model> --role agent --json --cwd <project-root>` with the main session's provider and model as the harness states them (omit `--model` when it states none).
+4. **The setting.** Otherwise run `node <tool-path> warming --provider <provider> --model <model> --role agent --harness <claude|opencode> --json --cwd <project-root>` with the main session's provider and model as the harness states them (omit `--model` when it states none) and the active harness.
    - `origin: none`: no entry applies to the `agent` role. Go to § Question.
    - `warming: "off"` with any other origin: configured off. Neither warm nor ask: end this file.
    - `warming: {interval, max}`: configured. Use that interval, and `max` as the duration, with no question and no TTL notice. Go to § Arm without setting `handoff_answer`, so the next hand-off close resolves the setting again.

@@ -458,21 +458,33 @@ test('E12: the screen lists exactly its six keys, none of the repository, projec
   assert.deepEqual([...modelCustomization.MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
 });
 
-// The `Cache warming` section: role defaults and guided rules for the nested `warming` value (E1-E8).
+// The `Cache warming` screen: one harness at a time, each with its own block of the nested `warming` value.
 const WARMING_QUESTION = 'Cache warming:';
+const HARNESS_QUESTION = 'Choose a harness:';
 const PAIRS = {
-  agent: [{ provider: 'anthropic', model: 'opus' }],
-  subagent: [{ provider: 'anthropic', model: 'haiku' }, { provider: 'opencode-go', model: 'deepseek-v4.1-flash' }],
+  claude: {
+    agent: [{ provider: 'anthropic', model: 'opus' }],
+    subagent: [{ provider: 'anthropic', model: 'haiku' }],
+  },
+  opencode: {
+    agent: [],
+    subagent: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash' }],
+  },
 };
 const WARMING_TEXT = `// project note
 {
   "other": 1, // foreign key
   "warming": {
-    "defaults": { "agent": false },
-    "rules": [
-      { "provider": "anthropic", "model": "claude-opus-5-5", "role": "agent", "interval": 2, "max": 10 },
-      { "provider": "anthropic", "role": "subagent", "enabled": false }
-    ]
+    "claude": {
+      "defaults": { "agent": false },
+      "rules": [
+        { "provider": "anthropic", "model": "claude-opus-5-5", "role": "agent", "interval": 2, "max": 10 },
+        { "provider": "anthropic", "role": "subagent", "enabled": false }
+      ]
+    },
+    "opencode": {
+      "defaults": { "agent": { "interval": 3, "max": 12 } }
+    }
   }
 }
 `;
@@ -485,113 +497,161 @@ function runWarming(directory, choices, inputs = [], { pairs = PAIRS, log = () =
 
 const warmingOf = directory => writer.parseText(read(directory)).root.warming;
 
-test('E1/E4: the section enables a default with the pre-filled timings and creates the file; the other role stays off', async () => {
+test('E1/E4: the screen asks for a harness first, then enables that block default with the pre-filled timings', async () => {
   const directory = project();
   const seen = [];
   const prompts = [];
   const result = await warmingSetup.runWarmingSetup({
-    projectPath: directory, pairs: PAIRS, promptChoice: script(['default:agent', 'Enable', 'Done'], seen),
+    projectPath: directory, pairs: PAIRS, promptChoice: script(['Claude Code', 'default:agent', 'Enable', 'Done'], seen),
     promptInput: async question => { prompts.push(question); return ''; }, log: () => {},
   });
   assert.equal(result.status, 'saved');
   assert.deepEqual(prompts, ['Interval in minutes [4]: ', 'Maximum in minutes [30]: ']);
-  assert.deepEqual(warmingOf(directory), { defaults: { agent: { interval: 4, max: 30 } } });
-  assert.deepEqual(texts(seen[0]).slice(0, 3), ['-- Role defaults --', 'Default for agent: off', 'Default for subagent: off']);
-  assert.deepEqual(seen[0].navigator.groupHeaders, ['-- Role defaults --', '-- Rules for agent --', '-- Rules for subagent --']);
+  assert.deepEqual(warmingOf(directory), { claude: { defaults: { agent: { interval: 4, max: 30 } } } });
+  assert.equal(seen[0].question, HARNESS_QUESTION);
+  assert.deepEqual(seen[0].options, ['OpenCode', 'Claude Code']);
+  assert.deepEqual(texts(seen[1]).slice(0, 3), ['-- Role defaults --', 'Default for agent: off', 'Default for subagent: off']);
+  assert.deepEqual(seen[1].navigator.groupHeaders, ['-- Role defaults --', '-- Rules for agent --', '-- Rules for subagent --']);
 });
 
-test('E2/E4: guided pairs are listed per role, a rule pre-fills its value, and an invalid entry is asked again', async () => {
+test('E2/E3: each harness lists only its own pairs, and a rule saved under one harness stays in its block', async () => {
   const directory = project();
   const seen = [];
   const messages = [];
-  const result = await runWarming(directory, ['pair:agent:anthropic/opus', 'Enable', 'pair:subagent:opencode-go/deepseek-v4.1-flash', 'Off', 'Done'], ['0', '5', '3', '1', '7', '20'], { seen, log: message => messages.push(message) });
+  const result = await runWarming(directory, ['Claude Code', 'pair:agent:anthropic/opus', 'Enable', 'pair:subagent:anthropic/haiku', 'Off', 'Done'], ['0', '5', '3', '1', '7', '20'], { seen, log: message => messages.push(message) });
   assert.equal(result.status, 'saved');
-  assert.deepEqual(texts(seen[0]).filter(text => text.includes('/')), ['anthropic/opus: no rule', 'anthropic/haiku: no rule', 'opencode-go/deepseek-v4.1-flash: no rule']);
+  const rows = texts(seen[1]).filter(text => text.includes('/'));
+  assert.deepEqual(rows, ['anthropic/opus: no rule', 'anthropic/haiku: no rule']);
+  assert.equal(rows.some(text => text.includes('deepseek')), false);
   assert.equal(messages.filter(message => message.startsWith('Rejected:')).length, 2);
   assert.deepEqual(warmingOf(directory), {
-    rules: [
-      { provider: 'anthropic', model: 'opus', role: 'agent', interval: 7, max: 20 },
-      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', role: 'subagent', enabled: false },
-    ],
+    claude: {
+      rules: [
+        { provider: 'anthropic', model: 'opus', role: 'agent', interval: 7, max: 20 },
+        { provider: 'anthropic', model: 'haiku', role: 'subagent', enabled: false },
+      ],
+    },
   });
+  const open = [];
+  const opened = await runWarming(directory, ['OpenCode', 'Done'], [], { seen: open });
+  assert.equal(opened.status, 'unchanged');
+  assert.deepEqual(texts(open[1]).filter(text => text.includes('/')), ['opencode-go/deepseek-v4.1-flash: no rule']);
   const again = [];
-  await runWarming(directory, ['rule:0', null], [], { seen: again });
-  assert.equal(again[1].question, 'anthropic/opus:');
-  assert.deepEqual(again[1].options, ['Enable', 'Off', 'Remove rule']);
-  assert.ok(texts(again[0]).includes('anthropic/opus: every 7 min, up to 20 min'));
+  await runWarming(directory, ['Claude Code', 'rule:0', null], [], { seen: again });
+  assert.equal(again[2].question, 'anthropic/opus:');
+  assert.deepEqual(again[2].options, ['Enable', 'Off', 'Remove rule']);
+  assert.ok(texts(again[1]).includes('anthropic/opus: every 7 min, up to 20 min'));
   const prefilled = [];
-  await warmingSetup.runWarmingSetup({ projectPath: directory, pairs: PAIRS, promptChoice: script(['rule:0', 'Enable', null]), promptInput: async question => { prefilled.push(question); return null; }, log: () => {} });
+  await warmingSetup.runWarmingSetup({ projectPath: directory, pairs: PAIRS, promptChoice: script(['Claude Code', 'rule:0', 'Enable', null]), promptInput: async question => { prefilled.push(question); return null; }, log: () => {} });
   assert.deepEqual(prefilled, ['Interval in minutes [7]: ']);
 });
 
-test('E1: reopening the section after a save and leaving keeps the file byte-identical', async () => {
+test('E1: reopening the harness block after a save and leaving keeps the file byte-identical', async () => {
   const directory = project();
-  await runWarming(directory, ['default:subagent', 'Enable', 'Done'], ['3', '12']);
+  await runWarming(directory, ['Claude Code', 'default:subagent', 'Enable', 'Done'], ['3', '12']);
   const saved = read(directory);
   const seen = [];
-  const result = await runWarming(directory, ['Done'], [], { seen });
+  const result = await runWarming(directory, ['Claude Code', 'Done'], [], { seen });
   assert.equal(result.status, 'unchanged');
   assert.equal(read(directory), saved);
-  assert.ok(texts(seen[0]).includes('Default for subagent: every 3 min, up to 12 min'));
+  assert.ok(texts(seen[1]).includes('Default for subagent: every 3 min, up to 12 min'));
 });
 
-test('E5: a default switches to off, a rule switches to enabled: false, and a rule is removed', async () => {
+test('E5: a default switches to off, a rule switches to enabled: false, and a rule is removed, leaving the other harness block intact', async () => {
   const directory = project(WARMING_TEXT);
-  const result = await runWarming(directory, ['default:agent', 'Enable', 'default:agent', 'Off', 'rule:0', 'Off', 'rule:1', 'Remove rule', 'Done'], ['4', '30']);
+  const result = await runWarming(directory, ['Claude Code', 'default:agent', 'Enable', 'default:agent', 'Off', 'rule:0', 'Off', 'rule:1', 'Remove rule', 'Done'], ['4', '30']);
   assert.equal(result.status, 'saved');
   assert.deepEqual(warmingOf(directory), {
-    defaults: { agent: false },
-    rules: [{ provider: 'anthropic', model: 'claude-opus-5-5', role: 'agent', enabled: false }],
+    claude: { defaults: { agent: false }, rules: [{ provider: 'anthropic', model: 'claude-opus-5-5', role: 'agent', enabled: false }] },
+    opencode: { defaults: { agent: { interval: 3, max: 12 } } },
   });
   assert.match(read(directory), /\/\/ project note/);
   assert.match(read(directory), /"other": 1, \/\/ foreign key/);
 });
 
-test('E6: rules that match no installed pair are listed, editable, and kept by a save', async () => {
+test('E6: rules that match no installed pair stay listed, editable, and kept by a save', async () => {
   const directory = project(WARMING_TEXT);
   const seen = [];
-  const result = await runWarming(directory, ['default:subagent', 'Enable', 'Done'], ['', ''], { seen });
+  const result = await runWarming(directory, ['Claude Code', 'default:subagent', 'Enable', 'Done'], ['', ''], { seen });
   assert.equal(result.status, 'saved');
-  const rows = texts(seen[0]);
+  const rows = texts(seen[1]);
   assert.ok(rows.includes('anthropic/claude-opus-5-5: every 2 min, up to 10 min (no installed file uses it)'));
   assert.ok(rows.includes('anthropic (any model): off (no installed file uses it)'));
-  assert.deepEqual(warmingOf(directory).rules, writer.parseText(WARMING_TEXT).root.warming.rules);
-  assert.deepEqual(warmingOf(directory).defaults, { agent: false, subagent: { interval: 4, max: 30 } });
+  const warming = writer.parseText(WARMING_TEXT).root.warming;
+  assert.deepEqual(warmingOf(directory), {
+    claude: { defaults: { agent: false, subagent: { interval: 4, max: 30 } }, rules: warming.claude.rules },
+    opencode: warming.opencode,
+  });
 });
 
 test('E7: an invalid warming value shows the warning and starts empty; leaving unchanged keeps the file, saving replaces it', async () => {
-  const text = '{\n  "warming": { "defaults": { "agent": { "interval": 9, "max": 2 } } }\n}\n';
+  const text = '{\n  "warming": { "claude": { "defaults": { "agent": { "interval": 9, "max": 2 } } } }\n}\n';
   const directory = project(text);
   const messages = [];
   const seen = [];
-  const left = await runWarming(directory, ['Done'], [], { seen, log: message => messages.push(message) });
+  const left = await runWarming(directory, ['Claude Code', 'Done'], [], { seen, log: message => messages.push(message) });
   assert.equal(left.status, 'unchanged');
   assert.equal(read(directory), text);
-  assert.match(messages[0], /^Setting warming in \.sai\/settings\.jsonc defaults\.agent needs max to be at least interval/);
-  assert.ok(texts(seen[0]).includes('Default for agent: off'));
-  const replaced = await runWarming(directory, ['default:agent', 'Enable', 'Done'], ['5', '15']);
+  assert.match(messages[0], /^Setting warming in \.sai\/settings\.jsonc claude\.defaults\.agent needs max to be at least interval/);
+  assert.ok(texts(seen[1]).includes('Default for agent: off'));
+  const replaced = await runWarming(directory, ['Claude Code', 'default:agent', 'Enable', 'Done'], ['5', '15']);
   assert.equal(replaced.status, 'saved');
-  assert.deepEqual(warmingOf(directory), { defaults: { agent: { interval: 5, max: 15 } } });
+  assert.deepEqual(warmingOf(directory), { claude: { defaults: { agent: { interval: 5, max: 15 } } } });
 });
 
 test('E8: a local warming value is warned about, and only the base file is written', async () => {
   const local = '{ "warming": { "defaults": { "agent": false, "subagent": false } } }\n';
   const directory = projectWithLocal(WARMING_TEXT, local);
   const messages = [];
-  const result = await runWarming(directory, ['default:subagent', 'Enable', 'Done'], ['4', '30'], { log: message => messages.push(message) });
+  const result = await runWarming(directory, ['Claude Code', 'default:subagent', 'Enable', 'Done'], ['4', '30'], { log: message => messages.push(message) });
   assert.equal(result.status, 'saved');
   assert.match(messages[0], /^\.sai\/settings\.local\.jsonc defines warming, and that value replaces the one this section writes/);
   assert.equal(readLocal(directory), local);
-  assert.deepEqual(warmingOf(directory).defaults, { agent: false, subagent: { interval: 4, max: 30 } });
+  assert.deepEqual(warmingOf(directory).claude.defaults, { agent: false, subagent: { interval: 4, max: 30 } });
 });
 
-test('the section keeps the file byte-identical on an interrupt, backing out of a prompt, and an unparseable file', async () => {
+test('E5: a harness without a block is seeded from the legacy global value on its first edit', async () => {
+  const directory = project('{ "warming": { "defaults": { "agent": { "interval": 6, "max": 20 } }, "rules": [{ "provider": "anthropic", "role": "subagent", "enabled": false }] } }\n');
+  const seen = [];
+  const prompts = [];
+  const result = await warmingSetup.runWarmingSetup({
+    projectPath: directory, pairs: PAIRS, promptChoice: script(['Claude Code', 'default:agent', 'Enable', 'Done'], seen),
+    promptInput: async question => { prompts.push(question); return question.startsWith('Interval') ? '8' : '25'; }, log: () => {},
+  });
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(prompts, ['Interval in minutes [6]: ', 'Maximum in minutes [20]: ']);
+  assert.ok(texts(seen[1]).includes('Default for agent: every 6 min, up to 20 min'));
+  assert.ok(texts(seen[1]).some(text => text.startsWith('anthropic (any model): off')));
+  assert.deepEqual(warmingOf(directory), {
+    defaults: { agent: { interval: 6, max: 20 } },
+    rules: [{ provider: 'anthropic', role: 'subagent', enabled: false }],
+    claude: { defaults: { agent: { interval: 8, max: 25 } }, rules: [{ provider: 'anthropic', role: 'subagent', enabled: false }] },
+  });
+});
+
+test('E9: Done saves and leaves; Back saves and returns to the harness choice; Back at the choice leaves the section', async () => {
+  const directory = project();
+  const seen = [];
+  const result = await runWarming(directory, ['Claude Code', 'default:agent', 'Enable', BACK, 'OpenCode', 'default:agent', 'Enable', 'Done'], ['4', '30', '2', '10'], { seen });
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(warmingOf(directory), {
+    claude: { defaults: { agent: { interval: 4, max: 30 } } },
+    opencode: { defaults: { agent: { interval: 2, max: 10 } } },
+  });
+  assert.equal(seen.filter(call => call.question === HARNESS_QUESTION).length, 2);
+  const untouched = project();
+  const left = await runWarming(untouched, [BACK]);
+  assert.equal(left.status, 'unchanged');
+  assert.equal(fs.existsSync(path.join(untouched, FILE)), false);
+});
+
+test('the screen keeps the file byte-identical on an interrupt, backing out of a prompt, and an unparseable file', async () => {
   const directory = project(WARMING_TEXT);
   const messages = [];
-  const interrupted = await runWarming(directory, ['default:agent', 'Enable', 'Done'], [null], { log: message => messages.push(message) });
+  const interrupted = await runWarming(directory, ['Claude Code', 'default:agent', 'Enable', 'Done'], [null], { log: message => messages.push(message) });
   assert.equal(interrupted.status, 'discarded');
   assert.deepEqual(messages, ['Interrupted: the edits were discarded and nothing was saved.']);
-  const backed = await runWarming(directory, ['default:agent', 'Enable', 'default:agent', null], [BACK]);
+  const backed = await runWarming(directory, ['Claude Code', 'default:agent', 'Enable', 'default:agent', null], [BACK]);
   assert.equal(backed.status, 'discarded');
   assert.equal(read(directory), WARMING_TEXT);
   const broken = project('{ nope');
@@ -606,7 +666,7 @@ test('E7: the post-setup menu opens the warming screen from the Experimental sec
   const roots = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, fs.mkdtempSync(path.join(os.tmpdir(), `warming-${name}-`))]));
   fs.writeFileSync(path.join(roots.claudeCommands, 'sai-explore.md'), '---\nname: sai-explore\nmodel: opus\neffort: high\n---\n\nbody\n');
   const seen = [];
-  const answers = ['Project behavior settings', 'Cache warming', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Done', 'Exit'];
+  const answers = ['Project behavior settings', 'Cache warming', 'Claude Code', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Done', 'Exit'];
   const outcome = await modelCustomization.runPostSetupMenu({
     projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
     claudeGlobalAgentRoot: roots.claudeAgents, claudeGlobalCommandRoot: roots.claudeCommands,
@@ -615,8 +675,8 @@ test('E7: the post-setup menu opens the warming screen from the Experimental sec
   });
   assert.equal(outcome.reason, 'cancelled');
   assert.equal(answers.length, 0);
-  assert.deepEqual(seen.map(call => call.question).filter(question => question === WARMING_QUESTION || question === SCREEN_QUESTION), [SCREEN_QUESTION, WARMING_QUESTION, WARMING_QUESTION, SCREEN_QUESTION]);
-  assert.deepEqual(warmingOf(directory), { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] });
+  assert.deepEqual(seen.map(call => call.question).filter(question => question === WARMING_QUESTION || question === HARNESS_QUESTION || question === SCREEN_QUESTION), [SCREEN_QUESTION, HARNESS_QUESTION, WARMING_QUESTION, WARMING_QUESTION, SCREEN_QUESTION]);
+  assert.deepEqual(warmingOf(directory), { claude: { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] } });
 });
 
 test('E9: a Cache warming answer in the post-setup menu is cancelled and opens no warming screen', async () => {
@@ -719,7 +779,7 @@ test('E7: selecting Cache warming calls the injected callback once and returns t
 test('E8: a telemetry edit and a nested warming save both persist', async () => {
   const directory = project(COMMENTED);
   const choices = script([pick(TELEMETRY), 'On', 'Cache warming', DONE_ROW]);
-  const nested = script(['default:agent', 'Enable', 'Done']);
+  const nested = script(['Claude Code', 'default:agent', 'Enable', 'Done']);
   const result = await screen.runProjectSettingsScreen({
     projectPath: directory, promptChoice: choices, promptInput: script([]), log: () => {},
     openCacheWarming: () => warmingSetup.runWarmingSetup({ projectPath: directory, pairs: PAIRS, promptChoice: nested, promptInput: async () => '', log: () => {} }),
@@ -727,7 +787,7 @@ test('E8: a telemetry edit and a nested warming save both persist', async () => 
   assert.equal(result.status, 'saved');
   const root = writer.parseText(read(directory)).root;
   assert.equal(root.experimental.changeTelemetry, true);
-  assert.deepEqual(root.warming, { defaults: { agent: { interval: 4, max: 30 } } });
+  assert.deepEqual(root.warming, { claude: { defaults: { agent: { interval: 4, max: 30 } } } });
   assert.equal(root.backlog.provider, 'gitlab');
   assert.equal(root.other.x, 1);
 });

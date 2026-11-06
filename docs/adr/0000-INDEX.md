@@ -319,6 +319,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 - [0138 — Use manifest projections plus hash-gated retirement records](./0138-manifest-projections-and-hash-gated-retirement-records.md) — Refs 0091, Refs 0101, Refs 0134, Refs ddr:0123b
 - [0146b — Command-owned files live in their consuming command's directory](./0146b-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123b, Refs ddr:0149
+- [0211 — Per-harness cache warming settings](./0211-per-harness-cache-warming-settings.md)
 ### Harness wrappers & the shared instruction layer
 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
