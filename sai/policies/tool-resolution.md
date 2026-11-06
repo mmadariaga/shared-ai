@@ -119,7 +119,7 @@ takes one — never substitute one for the other.
   <name>] [--declared-clean] --input-file <path>` reads an issue description
   (Markdown or HTML) from the input file and prints one JSON object: the Ready to Propose form check, the draft
   block, and the dispatchable validation or the rejection reasons.
-- `change-telemetry.js`: `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build> --change <change-name> --cwd <project-root> --status <status> [--run-dir <dir>]`, per `@sai/policies/change-telemetry.md`. It always prints one JSON line (`written` or `skipped`), takes no `--json`, and exits 2 only for a usage error.
+- `change-telemetry.js`: `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change <change-name> --cwd <project-root> --status <status> [--run-dir <dir>]`, per `@sai/policies/change-telemetry.md`. It always prints one JSON line (`written` or `skipped`), takes no `--json`, and exits 2 only for a usage error.
 - `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
   --cwd <project-root>`. It always prints one JSON object with `index_exists`,
   `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and

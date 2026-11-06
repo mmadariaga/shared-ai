@@ -46,3 +46,19 @@ The Direct Build terminal report's execution details SHALL carry a `Pre-existing
 #### Scenario: The fix loop held Pre-existing findings
 - **WHEN** the functional fix loop marked at least one finding `Pre-existing`
 - **THEN** the terminal report's execution details list each one under `Pre-existing findings`
+
+### Requirement: Direct Build records each fix-loop pass in its run directory
+
+The Direct Build coordinator SHALL write each functional fix-loop pass to `reviews/implement-round-{k}.md` in the slice's run directory, with each finding's state and the snapshot identifier in `reviews/implement-round-{k}.tree`. `k` SHALL start at 1 for the first full pass and increment for every later pass, including the final report-only pass. Each file SHALL end with `Summary: High=<n> Medium=<n> Low=<n>` counting its open findings.
+
+#### Scenario: a pass writes a round file
+- **WHEN** the functional fix loop completes a review pass
+- **THEN** the coordinator writes `reviews/implement-round-{k}.md` with each finding's state and `reviews/implement-round-{k}.tree`, ending with the `Summary:` tally of its open findings
+
+#### Scenario: the first full pass is round 1
+- **WHEN** the functional fix loop runs its first full review
+- **THEN** its file is `implement-round-1.md`, and each later pass uses the next number
+
+#### Scenario: the final report-only pass is a round file
+- **WHEN** the third fix round is exhausted and the final report-only pass runs
+- **THEN** it is written as the next round file with its exact base-form tally

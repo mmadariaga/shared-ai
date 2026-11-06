@@ -413,7 +413,9 @@ The Direct Build - Unattended route SHALL classify every observation of its func
 
 ### Requirement: Direct Build owns retained same-conversation execution state
 
-The full Direct Build route SHALL define its retained execution state once in the Run state section of `sai/commands/explore/direct-build-coordinator.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed with its original envelope and the messages it received, first-seen changed-path union, findings, draft validation evidence, the backfill transfer directory path and the latest draft references (never draft content), suite results, the report directory, verification references, the per-step attempt counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
+The full Direct Build route SHALL define its retained execution state once in the Run state section of `sai/commands/explore/direct-build-coordinator.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed with its original envelope and the messages it received, first-seen changed-path union, findings, the fix loop's round files, draft validation evidence, the backfill transfer directory path and the latest draft references (never draft content), suite results, the report directory, the slice run directory, verification references, the per-step attempt counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
+
+The coordinator SHALL open the slice run directory with `temp-root.js mkdtemp` before any dispatch and SHALL remove it at accepted route closure; a failed or escalated closure SHALL keep it as evidence.
 
 Parking the slice SHALL release machine active state without clearing this conversation execution state. Guard baseline state SHALL remain local to its live window; a human interruption SHALL close and verify that window, and subsequent worker work SHALL open a fresh window under the existing guard policy. Resumption SHALL introduce no new persistent storage and SHALL not support a new conversation.
 
@@ -431,6 +433,16 @@ Parking the slice SHALL release machine active state without clearing this conve
 
 - **WHEN** a parked Direct Build slice resumes after its conversation was compacted
 - **THEN** the pending step reads the slice's block from `sai-state block` and no missing block keeps the route stopped while the store holds it
+
+#### Scenario: the run directory is removed at accepted closure
+
+- **WHEN** the Direct Build route reaches accepted closure with its slice run directory open
+- **THEN** the coordinator removes that directory
+
+#### Scenario: a failed closure keeps the run directory
+
+- **WHEN** the Direct Build route stops or escalates after opening its slice run directory
+- **THEN** the directory stays on disk as evidence
 
 ### Requirement: Direct Build resumes the first pending accepted-check operation
 
