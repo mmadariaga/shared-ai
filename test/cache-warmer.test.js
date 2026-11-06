@@ -302,21 +302,23 @@ test('the policy defines the wake acknowledgement, the final response, and the c
   assert.match(policy, /Claude Code `Bash`[\s\S]*opencode shell/);
 });
 
-test('the policy defines the warming declaration, the warm-up order, and dispose only after warming: true', () => {
+test('the policy defines the warming declaration and the warm-up order, and leaves disposal to the worker lifecycle', () => {
   const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
   assert.match(policy, /## Warming declaration/);
   assert.match(policy, /`warming: true` or `warming: false`/);
   assert.match(policy, /beside that path in the message and never inside the report file/);
   assert.match(policy, /counts as `warming: false`/);
-  assert.match(policy, /Dispose only a handle whose latest real message declared `warming: true`/);
-  assert.match(policy, /no stop call, no shell removal, and no `dispose` message/);
+  assert.doesNotMatch(policy, /Dispose only a handle whose latest real message declared `warming: true`/);
+  assert.match(policy, /## Dispose[\s\S]*`@sai\/policies\/worker-lifecycle\.md` owns the dispose points[\s\S]*The `warming` field gates no stop/);
   assert.match(policy, /\*\*Warm-up\.\*\*[\s\S]*Never send it to a `budget-executor` or to a worker/);
-  assert.match(policy, /not an obstacle, spends no attempt, and is not retried/);
+  const lifecycle = fs.readFileSync(path.resolve(__dirname, '../sai/policies/worker-lifecycle.md'), 'utf8');
+  assert.match(lifecycle, /unconditional action that ends a worker or helper[\s\S]*whatever the warming setting/);
+  assert.match(lifecycle, /spends no attempt and triggers no retry/);
   assert.doesNotMatch(policy, /silent no-op/);
   assert.match(policy, /never in the `sai-state` store/);
 });
 
-test('helper contracts declare warming and the budget skills dispose only after warming: true', () => {
+test('helper contracts declare warming and the budget skills dispose whatever the warming declaration', () => {
   const read = relative => fs.readFileSync(path.resolve(__dirname, '..', relative), 'utf8');
   assert.match(read('sai/policies/explore-agent.md'), /`ladder_discards`, `out_of_root_requests`, and `warming`/);
   assert.match(read('sai/policies/explore-agent.md'), /`warm-up` followed by a warming line/);
@@ -326,17 +328,21 @@ test('helper contracts declare warming and the budget skills dispose only after 
     for (const helper of ['budget-explorer', 'budget-subagent']) {
       const skill = read(`skills/${harness}/${helper}/SKILL.md`);
       assert.match(skill, /`warm-up` order/, `${harness} ${helper} describes warm-up`);
-      assert.match(skill, /declared `warming: true`/, `${harness} ${helper} disposes only after warming: true`);
+      assert.match(skill, /Fetch `@sai\/policies\/worker-lifecycle\.md`/, `${harness} ${helper} fetches the lifecycle policy`);
+      assert.match(skill, /whatever (?:its|the) `warming` declaration/, `${harness} ${helper} disposes whatever the declaration`);
+      assert.doesNotMatch(skill, /declared `warming: true`/, `${harness} ${helper} gates no dispose on warming: true`);
     }
-    assert.match(read(`skills/${harness}/budget-executor/SKILL.md`), /never arms[\s\S]*nothing to dispose/);
+    assert.match(read(`skills/${harness}/budget-executor/SKILL.md`), /never arms[\s\S]*still disposes it after its report/);
   }
 });
 
-test('worker bindings dispose only after a warming: true declaration, on both harnesses', () => {
+test('worker bindings dispose whatever the warming declaration, on both harnesses', () => {
   for (const harness of ['claude', 'opencode']) {
     const binding = fs.readFileSync(path.resolve(__dirname, `../sai/orchestration/workers/bindings/${harness}/standalone-worker-template.md`), 'utf8');
     assert.match(binding, /declares `warming: true\|false`/, harness);
-    assert.match(binding, /only when the worker's latest message declared\s+`warming: true`; with any other value it disposes nothing/, harness);
+    assert.match(binding, /disposes the worker whatever the warming setting/, harness);
+    assert.match(binding, /The `warming` declaration gates no dispose/, harness);
+    assert.doesNotMatch(binding, /disposes nothing/, harness);
   }
 });
 

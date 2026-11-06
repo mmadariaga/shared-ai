@@ -51,7 +51,7 @@ A merge worker stretch SHALL still close with exactly one terminal lifecycle sta
 
 ### Requirement: Worker turn ends with every started command finished
 
-The shared worker contract SHALL state that a worker's turn ends with its result: when the worker returns, every command it started has finished. A worker SHALL await a command that ends on its own and return once its outcome is known. A worker SHALL stop a process that never ends on its own, such as a development server started for the worker's own checks, before returning. The rule applies to nonterminal and terminal results alike and adds no result route.
+The shared worker contract SHALL state, through `sai/policies/worker-lifecycle.md` § Worker side, that a worker's turn ends with its message: when the worker sends a result, a step report, or a question, every command it launched has finished. The agent worker templates and the `budget-subagent` agent files on both harnesses SHALL fetch that section, and `sai/policies/executor-agent.md` SHALL point to it instead of restating the rule. A worker SHALL await a command that ends on its own, or end a background command it started, before it sends the message. A worker SHALL stop a process that never ends on its own, such as a development server started for the worker's own checks, before sending, and SHALL report a command it ended because it did not terminate as a failed command in that same message. The cache-warm wait that the worker arms after a response under `sai/policies/cache-warming.md` SHALL be exempt, because it is armed after the message by design. The rule applies to nonterminal and terminal results alike and adds no result route.
 
 #### Scenario: Finite command is awaited
 
@@ -62,3 +62,18 @@ The shared worker contract SHALL state that a worker's turn ends with its result
 
 - **WHEN** a worker has started a process that never ends on its own for its own checks
 - **THEN** the worker stops that process before it returns its result
+
+#### Scenario: Hung command is reported as failed
+
+- **WHEN** a command the worker launched does not terminate and the worker ends it before sending its message
+- **THEN** the worker reports that command as a failed command in that same message
+
+#### Scenario: Question waits for launched commands
+
+- **WHEN** a worker is about to return a `needs_input` question while a command it launched is still running
+- **THEN** it awaits or ends that command before it sends the question
+
+#### Scenario: Warm wait is exempt
+
+- **WHEN** a worker arms its cache-warm wait after sending a response
+- **THEN** that background wait does not violate the rule and the worker does not await it before the message

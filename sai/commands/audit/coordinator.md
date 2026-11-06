@@ -66,8 +66,8 @@ A `question` is answered by you when the change, its artifacts, or the repositor
 
 ## Close
 
-- `failed`: print the worker's `summary` and end the run with no closing line. Nothing is committed.
-- `completed`: verify the report, then commit it, then print the closing report.
+- `failed`: dispose the worker under `worker-lifecycle.md`, print its `summary`, and end the run with no closing line. Nothing is committed.
+- `completed`: dispose the worker under `worker-lifecycle.md`, because this result is its last use; then verify the report, then commit it, then print the closing report.
 
 **Verify.** The report must be valid on four counts: it exists and is non-empty; the deterministic `audit-report` check passes; its cited paths exist; and the worker's `counts` agree with the `Summary:` tally of the report (a Not Applicable report has no tally and its `counts` are all zero). From the project root, resolve `lint.js` and `check-cited-paths.js` per `tool-resolution.md` and run `node <lint-path> audit-report {report} --audit {audit}` and `node <cited-paths-path> audit-report {name} --audit {audit}`. Both must exit 0. A report that fails is an obstacle of the run (identifier `audit-report`), and the tool output names each defect and where it is.
 
@@ -83,10 +83,10 @@ Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/
 
 The approaches are:
 
-- a corrected instruction to the same worker that names the defect and where it is, which includes asking again when the worker is silent or drifted;
+- a corrected instruction to the same worker, while it is alive, that names the defect and where it is, which includes asking again when the worker is silent or drifted (a worker already disposed after its `completed` result gets no message: a defect found in its report goes to a new worker or a mechanical repair);
 - a new worker, created the same way as the first. It replaces the old one, gets the ready handshake, and receives a hand-over note you write that names the symptom. It never receives the old worker's history, and it audits from the first step;
 - a mechanical repair you write yourself when the defect is only mechanical, such as a `Summary:` tally that miscounts the findings. A repair never adds, removes, or rewrites a finding.
 
 When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no report file and no commit.
 
-Before ending in any outcome, dispose the worker under `cache-warming.md`'s Dispose rule (a worker paused on a user question stays armed until the answer) and `close` the `sai-state` session. Resolve the worker's timings at every message to it and end the message with the warming line the policy defines; a worker that a new worker replaces is disposed first.
+Before ending in any outcome, make sure the worker is disposed under `worker-lifecycle.md`: a `completed` or `failed` result disposed it already, and a replacement, a stop, or a question dismissed without an answer disposes it at that point. Then `close` the `sai-state` session. Resolve the worker's timings at every message to it and end the message with the warming line the policy defines; a worker that a new worker replaces is disposed first. The `warming` declaration gates no dispose.
