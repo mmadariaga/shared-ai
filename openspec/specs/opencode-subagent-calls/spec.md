@@ -39,10 +39,10 @@ An opencode dispatcher SHALL await each background subagent's completion notific
 - **THEN** it waits for the helper's completion notification within its own turn and uses the result only after it has arrived
 
 ### Requirement: Disposing or stopping an opencode subagent interrupts its session by sessionID
-Disposing an opencode worker SHALL remove the outstanding shell of its session and then interrupt that session through the session API (`api/session/:sessionID/interrupt`), both with the captured `sessionID`, falling back to the `dispose` message when the API is not reachable. When the user abandons a running explore route, the opencode session SHALL stop a still-running worker through the session interrupt of its captured `sessionID`.
+Disposing an opencode worker SHALL remove the outstanding shell of its session and then interrupt that session through the session API (`api/session/:sessionID/interrupt`), both with the captured `sessionID`, falling back to the `dispose` message when the API is not reachable. This dispose SHALL apply to every worker at the points of `sai/policies/worker-lifecycle.md`, whatever the warming setting and the worker's latest `warming` declaration. When the user abandons a running explore route, the opencode session SHALL stop a still-running worker through the session interrupt of its captured `sessionID`.
 
 #### Scenario: Dispose through the session API
-- **WHEN** an opencode coordinator disposes a worker whose latest message declared `warming: true` and the session API is reachable
+- **WHEN** an opencode coordinator disposes a worker, whatever its latest `warming` declaration, and the session API is reachable
 - **THEN** it removes the worker session's outstanding shell and interrupts the session at `api/session/:sessionID/interrupt` with the captured `sessionID`
 
 #### Scenario: Session API unreachable

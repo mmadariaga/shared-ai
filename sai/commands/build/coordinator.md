@@ -14,7 +14,7 @@ You chain the segments of one build run in a single session. The invocation carr
 
 No review runs after segment 3: one review pass runs per run, and the next `/sai-build` run reviews again. Segments 1 and 3 create no decision records; this command creates them at its Close.
 
-Each segment disposes its own workers when it ends, as `cache-warming.md` says, so no worker of a finished segment stays armed when the next segment starts; segment 3 creates new workers. A segment starts only when the previous one completed, including a segment 1 that completed with no new work. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
+Each segment disposes its own workers when it ends, in every outcome, as `worker-lifecycle.md` says, so no worker of a finished segment stays alive when the next segment starts; segment 3 creates new workers. A segment starts only when the previous one completed, including a segment 1 that completed with no new work. When segment 1 or segment 3 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
 
 ## Assessment pass
 

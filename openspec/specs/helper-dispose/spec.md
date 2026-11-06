@@ -7,15 +7,19 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Helpers are disposed after their result
 
-A helper's task message or continuation SHALL carry no warming line, and its result SHALL be final and declare `warming: false`. The budget executor SHALL never arm and SHALL never be disposed. A task subagent SHALL be disposed after its result only when its latest declaration is `warming: true`, which only a `warm-up` sent by its dispatcher can produce; otherwise the dispatcher SHALL dispose nothing. The executor policy (`sai/policies/executor-agent.md`) and the task subagent policy (`sai/policies/budget-agent.md`) SHALL end every report with `warming: false`. The budget executor and budget subagent skills on both harnesses SHALL fetch `@sai/policies/cache-warming.md` and state this rule.
+A helper's task message or continuation SHALL carry no warming line, and its result SHALL be final and declare `warming: false`. The budget executor SHALL never arm. A one-shot helper (`budget-subagent`, `budget-executor`) SHALL be disposed by its dispatcher after its result, under `sai/policies/worker-lifecycle.md`, whatever its latest `warming` declaration. The executor policy (`sai/policies/executor-agent.md`) and the task subagent policy (`sai/policies/budget-agent.md`) SHALL end every report with `warming: false`. The budget executor and budget subagent skills on both harnesses SHALL fetch `@sai/policies/cache-warming.md` and `@sai/policies/worker-lifecycle.md` and state that the coordinator disposes the helper after its result.
 
 #### Scenario: Executor result read
 - **WHEN** a coordinator reads an executor's result
-- **THEN** the result declares `warming: false` and the coordinator disposes nothing
+- **THEN** the result declares `warming: false` and the coordinator disposes the executor after reading it
 
 #### Scenario: Helper of a worker
 - **WHEN** a worker that cannot dispose dispatches its own helper
 - **THEN** it sends no warming line, so the helper never arms
+
+#### Scenario: Task subagent disposed without a warm-up
+- **WHEN** a coordinator reads the result of a `budget-subagent` that never received a `warm-up`
+- **THEN** the coordinator disposes the subagent after its result
 
 ### Requirement: Warm-up before helper reuse
 

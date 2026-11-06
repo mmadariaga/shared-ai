@@ -29,8 +29,9 @@ Dispatch in the background only from a main agent, routed SAI coordinator, or ro
 ## Warming and dispose
 
 Fetch `@sai/policies/cache-warming.md`
+Fetch `@sai/policies/worker-lifecycle.md`
 
-The task message carries no warming line, and the result declares `warming: false`. When the card you follow reuses the subagent after an idle stretch, send it the policy's `warm-up` order first. Dispose the helper only when its latest message declared `warming: true`; otherwise dispose nothing.
+The task message carries no warming line, and the result declares `warming: false`. When the card you follow reuses the subagent after an idle stretch, send it the policy's `warm-up` order first. The coordinator disposes the helper after its result, as `@sai/policies/worker-lifecycle.md` says, whatever its `warming` declaration.
 
 ## Cost model
 

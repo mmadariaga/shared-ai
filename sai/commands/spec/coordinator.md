@@ -25,7 +25,7 @@ Write or refine the change's `proposal.md` and `specs/` with no human in the loo
 
 ## The segment
 
-Fetch `@sai/orchestration/workers/bindings/spec-worker.md` and use it. Dispose the worker when the segment closes and on replacement, as the cycle's Warm and dispose says.
+Fetch `@sai/orchestration/workers/bindings/spec-worker.md` and use it. Dispose the worker when the segment closes and on replacement, as the cycle's Warm and dispose says under `worker-lifecycle.md`.
 
 The worker is `sai-1-spec-proposal-worker`. Its steps, in the order the static fallback uses, are `spec-intake` (inline), then `research`, `proposal`, `specs`, `validation`, each at `sai/commands/spec/steps/{step}.md`. The task message opens with the first pointer, then names the change, the mode (`creation` with `block_file`, or `refinement` with `feedback_file`), the report path, and the run directory. When the refinement feedback is empty, the refinement task is to re-verify the artifacts and correct what the verification finds.
 
