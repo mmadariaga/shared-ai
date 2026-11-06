@@ -292,6 +292,107 @@ sqliteTest('plan: a segment that ends after its first round reports the same cou
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 
+// An explore session hosting an in-session route: the route workers write the change.
+function routeFixture() {
+  const f = scratch();
+  f.session('ses_explore', null, 'build', 0);
+  f.invoke('ses_explore', 1, 'explore', 'crystallized idea');
+  f.request('ses_explore', 2, { tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }, cost: 0.1 });
+  f.session('ses_spec', 'ses_explore', 'sai-1-spec-proposal-worker', 10);
+  f.request('ses_spec', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
+  f.session('ses_design', 'ses_explore', 'sai-2-design-worker', 20);
+  f.request('ses_design', 21, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/design.md` })] });
+  f.request('ses_explore', 30, { cost: 0.5 });
+  return f;
+}
+
+const routeOptions = (fixture, extra = {}) => ({ harness: 'opencode', command: 'sai-explore-plan', change: 'demo', cwd: fixture.project, status: 'completed', ...extra });
+
+sqliteTest('plan route: the explore session is found through its first writing worker, which starts the window', () => {
+  const f = routeFixture();
+  try {
+    f.request('ses_explore', 32, { done: false });
+    f.db.close();
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 1 — sai-explore \(Plan - Unattended\) — completed/);
+    const coordinator = rowOf(section(text, 'Coordinator'), 'sai-explore').split(' | ').map(cell => cell.trim());
+    // The request before the first worker is outside the window; the closing turn is left out.
+    assert.equal(coordinator[3], '1');
+    assert.match(section(text, 'Spec'), /sai-1-spec-proposal-worker/);
+    assert.match(section(text, 'Design'), /sai-2-design-worker/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('plan route: a change written only from a direct plan session is not an in-session route', () => {
+  const f = planFixture();
+  try {
+    f.db.close();
+    const result = collect(routeOptions(f), { env: f.env });
+    assert.equal(result.outcome, 'skipped');
+    assert.match(result.reason, /No opencode execution of sai-explore \(Plan - Unattended\) on demo/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('plan route: design alone starts the window when the spec segment was already done (E3)', () => {
+  const f = scratch();
+  try {
+    f.session('ses_explore', null, 'build', 0);
+    f.invoke('ses_explore', 1, 'explore', 'idea');
+    f.session('ses_design', 'ses_explore', 'sai-2-design-worker', 10);
+    f.request('ses_design', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/design.md` })] });
+    f.request('ses_explore', 20, { done: false });
+    f.db.close();
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(section(text, 'Spec'), /Not run\./);
+    assert.match(section(text, 'Design'), /sai-2-design-worker/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('direct build route: segment marks follow the direct-build, backfill, and archive workers', () => {
+  const f = scratch();
+  try {
+    f.session('ses_explore', null, 'build', 0);
+    f.invoke('ses_explore', 1, 'explore', 'idea');
+    f.session('ses_direct', 'ses_explore', 'sai-direct-build-worker', 10);
+    f.request('ses_direct', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
+    f.session('ses_backfill', 'ses_explore', 'sai-backfill-worker', 20);
+    f.request('ses_backfill', 21, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/specs/demo/spec.md` })] });
+    f.session('ses_archive', 'ses_explore', 'sai-archive-worker', 30);
+    f.request('ses_archive', 31, {});
+    f.request('ses_explore', 40, { done: false });
+    f.db.close();
+    const result = collect(routeOptions(f, { command: 'sai-explore-direct-build' }), { env: f.env });
+    assert.equal(result.outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 1 — sai-explore \(Direct Build - Unattended\) — completed/);
+    assert.match(section(text, 'Implement'), /sai-direct-build-worker/);
+    assert.match(section(text, 'Backfill'), /sai-backfill-worker/);
+    assert.match(section(text, 'Archive'), /sai-archive-worker/);
+    assert.match(section(text, 'Implement'), /Findings: unavailable \(the route records no review-finding tally\)\./);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('plan route: the latest explore session that wrote the change wins', () => {
+  const f = scratch();
+  try {
+    f.session('ses_old', null, 'build', 0);
+    f.invoke('ses_old', 1, 'explore', 'old');
+    f.session('ses_old_spec', 'ses_old', 'sai-1-spec-proposal-worker', 10);
+    f.request('ses_old_spec', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
+    f.request('ses_old', 20, { done: false });
+    f.session('ses_new', null, 'build', 100);
+    f.invoke('ses_new', 101, 'explore', 'new');
+    f.session('ses_new_spec', 'ses_new', 'sai-1-spec-proposal-worker', 110);
+    f.request('ses_new_spec', 111, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
+    f.request('ses_new', 120, { done: false });
+    f.db.close();
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    assert.match(telemetryOf(f), /Session: ses_new/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
 const REVIEW_FIRST = '## Findings\n#### H1 — one\n#### M1 — two\n#### Q1 — ask\n\nSummary: Critical=0 High=1 Medium=1 Low=0 Questions=1\n';
 
 function buildFixture({ fix = true, firstWrite = true } = {}) {

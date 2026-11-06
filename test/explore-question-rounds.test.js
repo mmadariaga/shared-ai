@@ -88,7 +88,7 @@ test('round 3 carries the continuation question only for a multi-slice Direct Bu
   assert.match(continuation, /takes effect only when the same round's route answer is Direct Build/);
   assert.match(continuation, /When the route answer is Plan or Manual, or no valid route was answered, ignore the continuation answer: it authorizes nothing/);
   assert.match(continuation, /so a later Direct Build round asks again/);
-  assert.match(continuation, /authorizes one local commit per automatically started slice; nothing is pushed/);
+  assert.match(continuation, /authorizes up to two local commits per automatically started slice[\s\S]{0,200}nothing is pushed/);
 });
 
 test('round 3 carries the overview question as a conditional question resolved once per set', () => {

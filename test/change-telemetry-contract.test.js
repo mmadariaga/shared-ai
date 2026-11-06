@@ -28,7 +28,8 @@ test('I5: both coordinators fetch the telemetry policy and record telemetry befo
   const plan = read('sai/commands/plan/coordinator.md');
   assert.match(plan, /Fetch `@sai\/policies\/change-telemetry\.md`/);
   assert.ok(plan.indexOf('record the change telemetry') < plan.indexOf('close the planning report with exactly'), 'telemetry comes before the plan closing line');
-  assert.match(plan, /--command sai-plan[^\n]*--run-dir/);
+  assert.match(plan, /--command sai-explore-plan` when this coordinator runs inside the `\/sai-explore` \*\*Plan - Unattended\*\* route and `--command sai-plan` otherwise/);
+  assert.match(plan, /--run-dir` set to the run directory/);
   const build = read('sai/commands/build/coordinator.md');
   assert.match(build, /Fetch `@sai\/policies\/change-telemetry\.md`/);
   assert.ok(build.indexOf('record the change telemetry') < build.indexOf('End with exactly `Build done.`'), 'telemetry comes before the build closing line');
@@ -39,12 +40,34 @@ test('E1, E2, E3, E12, E13: the policy gates on the setting, skips relays, and c
   const policy = read('sai/policies/change-telemetry.md');
   assert.match(policy, /experimental\.changeTelemetry` is `true`/);
   assert.match(policy, /do nothing, with no tool call, no file, no commit, and no line/);
-  assert.match(policy, /`\/sai-explore` runs the plan coordinator[^\n]*`\/sai-deep-review`[^\n]*record nothing/);
+  assert.match(policy, /in-session route: \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\*/);
+  assert.match(policy, /`\/sai-deep-review` composes a segment, record nothing/);
+  assert.match(policy, /--command <sai-plan\|sai-build\|sai-explore-plan\|sai-explore-direct-build>/);
+  assert.match(policy, /starts at the creation of the first worker that writes under `openspec\/changes\/\{name\}\//);
   assert.match(policy, /add the `reason` as one line to the closing report/);
   assert.match(policy, /git check-ignore -q openspec\/changes\/\{name\}\/telemetry\.md/);
   assert.match(policy, /git add` that path alone and commit with `git commit -m "<subject>" -- <path>`/);
   assert.match(policy, /stays on disk uncommitted and one line of the closing report says so/);
   assert.match(policy, /Never force-add with `-f`, never push/);
+});
+
+test('I7: the Direct Build coordinator collects after the archive clean result and commits it before its report', () => {
+  const card = read('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(card, /Fetch `@sai\/policies\/change-telemetry\.md`/);
+  assert.match(card, /--command sai-explore-direct-build` and `--status completed/);
+  assert.match(card, /archive worker returned a clean `completed` result, record the change telemetry/);
+  assert.ok(card.indexOf('record the change telemetry') < card.indexOf('Close with the Direct Build terminal report'), 'telemetry comes before the terminal report');
+  assert.match(card, /pre-authorized exactly two local commits/);
+});
+
+test('I7: the Direct Build route pre-authorizes two local commits in the selector and the route card', () => {
+  const selector = read('sai/commands/explore/steps/route-selector.md');
+  assert.match(selector, /pre-authorizes exactly two local commits/);
+  assert.match(selector, /Description: Implement, update specs, archive, and authorize two local commits\./);
+  assert.ok(!/one local commit/.test(selector), 'no selector statement keeps the single-commit authorization');
+  const route = read('sai/commands/explore/steps/pipeline-direct-build.md');
+  assert.match(route, /pre-authorizes two local commits for the current slice/);
+  assert.ok(!/exactly one local commit/.test(route), 'the route card keeps no single-commit authorization');
 });
 
 test('I3: the setting is documented in the catalogue table and its own section', () => {

@@ -45,12 +45,12 @@ The records SHALL be created by the outermost implementing command, the command 
 
 ### Requirement: Direct Build creates the records inside its single commit
 
-The Direct Build - Unattended ADR/DDR pass SHALL, when the ordered routing test resolves a family for at least one decision of the block's Decisions & Rationale, prepare a decision-record order (the inventory and numbers through the executor, the already-cited check, and the `git check-ignore` check of each record and index path) and continue the same implementer with exactly that order. The implementer SHALL write exactly the listed records and index entries, never edit an existing record, and add every written path to its `changed_files`. The records SHALL enter the route's single pre-authorized local commit; the pass SHALL add no commit, and the backfill artifact set SHALL gain no record. When no decision qualifies, the pass SHALL order nothing and leave the indexes untouched.
+The Direct Build - Unattended ADR/DDR pass SHALL, when the ordered routing test resolves a family for at least one decision of the block's Decisions & Rationale, prepare a decision-record order (the inventory and numbers through the executor, the already-cited check, and the `git check-ignore` check of each record and index path) and continue the same implementer with exactly that order. The implementer SHALL write exactly the listed records and index entries, never edit an existing record, and add every written path to its `changed_files`. The records SHALL enter the route's pre-authorized archived-change local commit; the pass SHALL add no commit, and the backfill artifact set SHALL gain no record. When no decision qualifies, the pass SHALL order nothing and leave the indexes untouched.
 
 #### Scenario: Direct Build records a qualifying decision
 
 - **WHEN** the Direct Build ADR/DDR pass resolves `adr` for a block decision
-- **THEN** the implementer writes the record and its index entry on the coordinator's order, and they enter the route's single local commit
+- **THEN** the implementer writes the record and its index entry on the coordinator's order, and they enter the route's pre-authorized archived-change local commit
 
 #### Scenario: Direct Build with no qualifying decision
 
