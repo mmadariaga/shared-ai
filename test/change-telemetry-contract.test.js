@@ -43,9 +43,10 @@ test('E1, E2, E3, E12, E13: the policy gates on the setting, skips relays, and c
   assert.match(policy, /in-session route: \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\*/);
   assert.match(policy, /`\/sai-deep-review` composes a segment, record nothing/);
   assert.match(policy, /--command <sai-plan\|sai-build\|sai-explore-plan\|sai-explore-direct-build>/);
-  assert.match(policy, /starts at the creation of the first worker that writes under `openspec\/changes\/\{name\}\//);
+  assert.match(policy, /starts at the creation of the slice's first route worker/);
+  assert.match(policy, /openspec\/changes\/archive\/YYYY-MM-DD-\{name\}\//);
   assert.match(policy, /add the `reason` as one line to the closing report/);
-  assert.match(policy, /git check-ignore -q openspec\/changes\/\{name\}\/telemetry\.md/);
+  assert.match(policy, /git check-ignore -q <path>/);
   assert.match(policy, /git add` that path alone and commit with `git commit -m "<subject>" -- <path>`/);
   assert.match(policy, /stays on disk uncommitted and one line of the closing report says so/);
   assert.match(policy, /Never force-add with `-f`, never push/);
@@ -54,10 +55,12 @@ test('E1, E2, E3, E12, E13: the policy gates on the setting, skips relays, and c
 test('I7: the Direct Build coordinator collects after the archive clean result and commits it before its report', () => {
   const card = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(card, /Fetch `@sai\/policies\/change-telemetry\.md`/);
-  assert.match(card, /--command sai-explore-direct-build` and `--status completed/);
+  assert.match(card, /--command sai-explore-direct-build`, `--status completed`, and `--run-dir <run directory>/);
   assert.match(card, /archive worker returned a clean `completed` result, record the change telemetry/);
   assert.ok(card.indexOf('record the change telemetry') < card.indexOf('Close with the Direct Build terminal report'), 'telemetry comes before the terminal report');
   assert.match(card, /pre-authorized exactly two local commits/);
+  assert.match(card, /reviews\/implement-round-\{k\}\.md/);
+  assert.match(card, /mkdtemp --harness <claude\|opencode> --prefix direct-build-\{name\}-/);
 });
 
 test('I7: the Direct Build route pre-authorizes two local commits in the selector and the route card', () => {

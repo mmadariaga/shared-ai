@@ -23,7 +23,7 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the direct commands and the in-session routes that record, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read
@@ -67,7 +67,7 @@ On a `skipped` outcome, the coordinator SHALL add the reason as one line to its 
 
 ### Requirement: The collector skips unsupported or unsafe collections
 
-The collector SHALL return `skipped` without writing on Claude Code, saying change telemetry is not supported there yet; when `openspec/changes/{name}/` is missing; when `opencode.db` or `node:sqlite` is unavailable or the schema is unsupported; when no matching execution is found; when `telemetry.md` exists but was not written by the tool; and when the execution is already recorded.
+The collector SHALL return `skipped` without writing on Claude Code, saying change telemetry is not supported there yet; when the change's folder is missing, neither at `openspec/changes/{name}/` nor at `openspec/changes/archive/YYYY-MM-DD-{name}/`; when `opencode.db` or `node:sqlite` is unavailable or the schema is unsupported; when no matching execution is found; when `telemetry.md` exists but was not written by the tool; and when the execution is already recorded.
 
 #### Scenario: Claude Code collects nothing
 - **WHEN** `/sai-build` closes on Claude Code with the setting enabled
@@ -78,8 +78,12 @@ The collector SHALL return `skipped` without writing on Claude Code, saying chan
 - **THEN** the collector returns `skipped` saying the file was not written by the tool and leaves it unchanged
 
 #### Scenario: an already-recorded execution is not appended twice
-- **WHEN** the collector runs again for an execution whose section is already in `telemetry.md`
-- **THEN** it returns `skipped` and leaves the file unchanged
+- **WHEN** the collector runs again for an execution whose marker is already in `telemetry.md`
+- **THEN** it returns `skipped` saying the execution is already recorded and leaves the file unchanged
+
+#### Scenario: an archived change folder is collected
+- **WHEN** `openspec/changes/{name}/` is absent and `openspec/changes/archive/2026-02-01-{name}/` exists
+- **THEN** the collector writes `telemetry.md` in the archived folder instead of returning `skipped`
 
 ### Requirement: The collector measures the latest execution of the command on the change in the project directory
 
@@ -143,7 +147,7 @@ The collector SHALL leave out the coordinator's last request when it has no comp
 
 ### Requirement: telemetry.md appends one section per execution and recomputes the change total
 
-The collector SHALL write only `openspec/changes/{name}/telemetry.md`, atomically, and SHALL run no git command. Each execution SHALL append one section at the end, headed with its number, the command, and its final status, leaving earlier sections unchanged, and SHALL recompute the change total and execution count at the top from every section.
+The collector SHALL write only the change's `telemetry.md` — at `openspec/changes/{name}/telemetry.md`, or at `openspec/changes/archive/YYYY-MM-DD-{name}/telemetry.md` when the change is archived — atomically, and SHALL run no git command. Each execution SHALL append one section at the end, headed with its number, the command, and its final status, leaving earlier sections unchanged, and SHALL recompute the change total and execution count at the top from every section.
 
 #### Scenario: a second execution appends a section
 - **WHEN** the collector writes for a change whose `telemetry.md` already holds one section
@@ -163,7 +167,7 @@ A section SHALL hold the start time, root session, wall time, a coordinator tabl
 
 ### Requirement: Plan review findings come from the round Summary lines
 
-For each `/sai-plan` segment and each Plan - Unattended segment, the found counts SHALL come from the `Summary:` line of its first review round file and the pending counts from its last round file under `reviews/` of the run directory, so a segment that ends after its first round reports the same counts for both. A missing or unreadable `Summary:` line SHALL show that count as `unavailable`.
+For each `/sai-plan` segment, each Plan - Unattended segment, and the Direct Build - Unattended Implement segment, the found counts SHALL come from the `Summary:` line of its first review round file and the pending counts from its last round file under `reviews/` of the run directory, so a segment that ends after its first round reports the same counts for both. A missing or unreadable `Summary:` line SHALL show that count as `unavailable`.
 
 #### Scenario: a plan segment with one round
 - **WHEN** a plan segment's review ended after its first round, whose file ends with `Summary: High=1 Medium=0 Low=2`
@@ -172,6 +176,10 @@ For each `/sai-plan` segment and each Plan - Unattended segment, the found count
 #### Scenario: a round file without a Summary line
 - **WHEN** a plan segment's round file carries no `Summary:` line
 - **THEN** that segment's findings show as `unavailable`
+
+#### Scenario: a Direct Build implement segment reads its round files
+- **WHEN** a Direct Build - Unattended run passes `--run-dir` with `implement-round-1.md` and `implement-round-4.md`
+- **THEN** Implement reports found from the first file and pending from the last, and Backfill and Archive report `unavailable`
 
 ### Requirement: Build review findings come from review.md
 
@@ -207,7 +215,7 @@ After a `written` outcome, the coordinator SHALL check the path with `git check-
 
 ### Requirement: The tool resolution policy lists the collector
 
-`sai/policies/tool-resolution.md` SHALL list `change-telemetry.js` among the resolvable tool names and SHALL give its `collect` invocation.
+`sai/policies/tool-resolution.md` SHALL list `change-telemetry.js` among the resolvable tool names and SHALL give its `collect` invocation with the `sai-plan`, `sai-build`, `sai-explore-plan`, and `sai-explore-direct-build` commands.
 
 #### Scenario: the collector invocation is documented
 - **WHEN** `sai/policies/tool-resolution.md` is read
@@ -215,7 +223,7 @@ After a `written` outcome, the coordinator SHALL check the path with `git check-
 
 ### Requirement: The /sai-explore in-session routes record one telemetry section per slice
 
-The `/sai-explore` **Plan - Unattended** route SHALL record telemetry at its plan close; the **Direct Build - Unattended** route SHALL record it after the archive worker's clean `completed` result and before its terminal report. Each SHALL pass its own command name (`sai-explore-plan` or `sai-explore-direct-build`). Direct Build SHALL pass `--status completed` and SHALL record nothing for a run that stops earlier.
+The `/sai-explore` **Plan - Unattended** route SHALL record telemetry at its plan close; the **Direct Build - Unattended** route SHALL record it after the archive worker's clean `completed` result and before its terminal report. Each SHALL pass its own command name (`sai-explore-plan` or `sai-explore-direct-build`). Direct Build SHALL pass `--status completed` and `--run-dir` set to its run directory, SHALL write `telemetry.md` into the change's archived folder, and SHALL record nothing for a run that stops earlier.
 
 #### Scenario: the plan route collects at its plan close
 - **WHEN** a Plan - Unattended slice closes with `experimental.changeTelemetry` set to `true`
@@ -223,7 +231,7 @@ The `/sai-explore` **Plan - Unattended** route SHALL record telemetry at its pla
 
 #### Scenario: Direct Build collects after its archive
 - **WHEN** the archive worker returns a clean `completed` result in a Direct Build - Unattended slice
-- **THEN** the coordinator runs the collector with `--command sai-explore-direct-build` and `--status completed` before the terminal report, then makes the second local commit
+- **THEN** the coordinator runs the collector with `--command sai-explore-direct-build`, `--status completed`, and `--run-dir` set to the run directory before the terminal report, writes `telemetry.md` into the archived folder, and then makes the second local commit
 
 #### Scenario: a stopped Direct Build records nothing
 - **WHEN** a Direct Build - Unattended run stops before the archive worker's clean `completed` result
@@ -231,7 +239,7 @@ The `/sai-explore` **Plan - Unattended** route SHALL record telemetry at its pla
 
 ### Requirement: An in-session route is discovered through its first worker that writes the change
 
-The collector SHALL treat as the route session the `/sai-explore` root session whose route worker wrote under `openspec/changes/{name}/`, start the window at that first worker's creation, end it at the collection, and choose the latest such session when several wrote the change. It SHALL measure the root session under the name `sai-explore`.
+The collector SHALL treat as the route session the `/sai-explore` root session whose route worker named `openspec/changes/{name}/` in a tool input, start the window at the slice's first route worker, end it at the collection, and choose the latest such session when several named the change. For the Plan route the first writing worker starts the window; for Direct Build the current slice starts at its first route worker, after the previous slice's last backfill or archive worker that named a different change. A replaced worker of the current slice SHALL stay inside the slice, and a `sai-direct-build-worker` whose session carries `--no-specs` SHALL be excluded as a POC implementer. It SHALL measure the root session under the name `sai-explore`.
 
 #### Scenario: the first writing worker starts the window
 - **WHEN** the explore session made a request before its first Plan route worker wrote the change
@@ -245,9 +253,25 @@ The collector SHALL treat as the route session the `/sai-explore` root session w
 - **WHEN** the spec segment was already done and only `sai-2-design-worker` wrote the change
 - **THEN** the window starts at that worker, and the Spec subsection says `Not run.`
 
+#### Scenario: a Direct Build slice starts at its first route worker
+- **WHEN** the explore session ran a previous Direct Build slice and made a request before the current slice's implementer
+- **THEN** the window starts at the current slice's first worker, and the previous slice stays outside it
+
+#### Scenario: an implementer that reads another change does not end the slice
+- **WHEN** the current slice's implementer read another change's archived proposal
+- **THEN** the slice continues from that implementer, because only a backfill or archive worker that named a different change starts the next slice
+
+#### Scenario: a replaced archive worker stays in the current slice
+- **WHEN** a replaced archive worker of the current slice named the change in its tool input
+- **THEN** both archive workers stay inside the slice and are measured
+
+#### Scenario: a POC implementer is excluded
+- **WHEN** a `sai-direct-build-worker` session carries `--no-specs`
+- **THEN** it starts no slice and contributes no row
+
 ### Requirement: In-session route sections name the route and list its segments
 
-The collector SHALL head an in-session section with `sai-explore (Plan - Unattended)` or `sai-explore (Direct Build - Unattended)`, list the Plan route's `Spec` and `Design` segments and the Direct Build route's `Implement`, `Backfill`, and `Archive` segments in command order, show a segment that did not run as `Not run.`, and report an in-session route's findings as `unavailable`.
+The collector SHALL head an in-session section with `sai-explore (Plan - Unattended)` or `sai-explore (Direct Build - Unattended)`, list the Plan route's `Spec` and `Design` segments and the Direct Build route's `Implement`, `Backfill`, and `Archive` segments in command order, show a segment that did not run as `Not run.`, report the Direct Build Implement findings from its round files, and report Backfill and Archive findings as `unavailable` because those segments record no tally.
 
 #### Scenario: a Direct Build section lists its three segments
 - **WHEN** a Direct Build - Unattended section is written
@@ -255,11 +279,11 @@ The collector SHALL head an in-session section with `sai-explore (Plan - Unatten
 
 #### Scenario: an in-session findings line is unavailable
 - **WHEN** a Direct Build - Unattended section is written
-- **THEN** its findings show as `unavailable` because the route records no review-finding tally
+- **THEN** Backfill and Archive show their findings as `unavailable`, while Implement reads its own round files
 
 ### Requirement: Only the coordinator that owns a run records telemetry
 
-The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, SHALL record telemetry only when the run resolved its change name, `openspec/changes/{name}/` exists, and the setting is `true`. `/sai-deep-review` SHALL record nothing. Only the run's owning coordinator SHALL record it; a worker SHALL NOT.
+The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, SHALL record telemetry only when the run resolved its change name, the change's folder exists either active at `openspec/changes/{name}/` or archived at `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the setting is `true`. `/sai-deep-review` SHALL record nothing. Only the run's owning coordinator SHALL record it; a worker SHALL NOT.
 
 #### Scenario: a deep-review run records nothing
 - **WHEN** `/sai-deep-review` closes with the setting enabled
