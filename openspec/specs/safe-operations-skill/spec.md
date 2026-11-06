@@ -3,7 +3,9 @@
 ## Purpose
 
 Make agents confirm destructive, hard-to-reverse, and shared-system operations with the user, count a confirmation the running command already holds, and never clear an obstacle by a destructive shortcut.
+
 ## Requirements
+
 ### Requirement: Agent SHALL evaluate operation reversibility before acting
 
 The agent MUST assess whether a requested operation is hard to reverse, destructive, or affects shared systems before executing it.
@@ -30,14 +32,14 @@ When encountering obstacles, the agent MUST NOT bypass safety checks (e.g., `--n
 
 ### Requirement: A confirmation the running command already holds counts
 
-A confirmation the running command already holds for the exact operation SHALL satisfy the confirmation gate: an authorization gate the user answered, or a user selection the command defines as pre-authorizing that operation. The skill SHALL name Direct Build's one local commit and the no-commit guard's mixed `git reset <guard_base>` as such pre-authorizations. An operation the confirmation does not name SHALL still be confirmed. `--fast-track` SHALL never count as such a confirmation.
+A confirmation the running command already holds for the exact operation SHALL satisfy the confirmation gate: an authorization gate the user answered, or a user selection the command defines as pre-authorizing that operation. The skill SHALL name Direct Build's two local commits — the archived change and its change telemetry — and the no-commit guard's mixed `git reset <guard_base>` as such pre-authorizations. An operation the confirmation does not name SHALL still be confirmed. `--fast-track` SHALL never count as such a confirmation.
 
 #### Scenario: answered gate is not asked twice
 - **WHEN** the user answered `yes` to a command's authorization gate for an operation
 - **THEN** the agent runs that operation without a second safe-operations confirmation
 
 #### Scenario: Direct Build commit is pre-authorized
-- **WHEN** a Direct Build run reaches its one local commit
+- **WHEN** a Direct Build run reaches either of its two pre-authorized local commits
 - **THEN** the commit proceeds without a safe-operations confirmation, and a push still requires one
 
 #### Scenario: fast-track is not a confirmation
@@ -53,4 +55,3 @@ The one mixed `git reset <guard_base>` that a coordinator runs while remediating
 - **WHEN** a coordinator remediates a no-commit-guard violation with `git reset <guard_base>` (mixed)
 - **THEN** the remediation proceeds without the destructive-operation confirmation gate and the route continues
 - **AND** any other destructive operation still requires the user's confirmation
-

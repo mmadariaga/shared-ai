@@ -45,7 +45,7 @@ The route-choice capability SHALL present exactly one native single-select route
 
 ### Requirement: Explicit route choice remains the delegated-write gate
 
-A valid native picker answer SHALL remain the sole route-selection authorization. A valid Plan answer SHALL authorize the existing supervised Plan dispatch, and a valid Direct Build answer SHALL authorize the existing Direct Build dispatch and exactly one local commit within its closed order. A valid Manual answer SHALL dispatch no worker and SHALL authorize no delegated write. Fast-track SHALL not bypass the picker answer or auto-select a route.
+A valid native picker answer SHALL remain the sole route-selection authorization. A valid Plan answer SHALL authorize the existing supervised Plan dispatch, and a valid Direct Build answer SHALL authorize the existing Direct Build dispatch and exactly two pre-authorized local commits within its closed orders: the archived change and its change telemetry. A valid Manual answer SHALL dispatch no worker and SHALL authorize no delegated write. Fast-track SHALL not bypass the picker answer or auto-select a route.
 
 #### Scenario: Manual reply does not dispatch
 
