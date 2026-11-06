@@ -112,9 +112,9 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 
 ### Requirement: Derived target families
 
-The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters. `sai-commit-worker` SHALL remain a routed worker and `sai-commit` SHALL remain a command on both adapters, with `utility:sai-commit` absent. An existing project-local override for sai-commit SHALL keep resolving without migration because both families resolve to the same commands directory.
+The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST consist of active `sai-*` wrappers, excluding the skill-launcher wrappers named below and `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters. `sai-commit-worker` SHALL remain a routed worker and `sai-commit` SHALL remain a command on both adapters, with `utility:sai-commit` absent. An existing project-local override for sai-commit SHALL keep resolving without migration because both families resolve to the same commands directory.
 
-Both Claude Code and opencode adapters SHALL restrict their shared command enumeration to manifest-projected Markdown wrappers whose names begin with `sai-`, before command-versus-utility classification. Non-SAI wrappers, including `from-backlog`, `from-next-backlog-item`, `to-backlog`, and `to-pr`, MUST NOT become customization command targets in Orchestrators or All scopes. Enumeration SHALL leave wrapper contents unchanged. Supported SAI command targets, independently derived worker and agent targets, and separate utility classification SHALL remain available. A missing target profile or unavailable effective setting MUST NOT exclude an otherwise eligible SAI target.
+Both Claude Code and opencode adapters SHALL restrict their shared command enumeration to manifest-projected Markdown wrappers whose names begin with `sai-`, before command-versus-utility classification. The adapters SHALL exclude the skill-launcher wrappers `sai-cache-warmer` and `sai-context-cache-ttl-benchmark` from every target family through a static command-name set applied before that classification, so neither name becomes a customization target on either harness and neither appears in the target checklist or in the reset, save-preset, and load-preset previews. The exclusion SHALL be command-name based and harness-neutral, and SHALL NOT read wrapper frontmatter or depend on a target profile or an effective setting. Non-SAI wrappers, including `from-backlog`, `from-next-backlog-item`, `to-backlog`, and `to-pr`, MUST NOT become customization command targets in Orchestrators or All scopes. Enumeration SHALL leave wrapper contents unchanged. Supported SAI command targets, independently derived worker and agent targets, and separate utility classification SHALL remain available. A missing target profile or unavailable effective setting MUST NOT exclude an otherwise eligible SAI target. A preset key that names an excluded wrapper SHALL apply no model.
 
 #### Scenario: Merge targets appear in the menu
 
@@ -150,6 +150,21 @@ Both Claude Code and opencode adapters SHALL restrict their shared command enume
 
 - **WHEN** an eligible `sai-*` command has no mapped target profile and its effective setting is unavailable on either harness
 - **THEN** it SHALL remain in the Orchestrators and All checklists with Unknown profile columns and an unavailable setting
+
+#### Scenario: Skill launcher wrappers are never customization targets
+
+- **WHEN** either harness adapter enumerates the model-customization targets and the checklist, reset preview, and preset previews are built from that enumeration
+- **THEN** neither `command:sai-cache-warmer` nor `command:sai-context-cache-ttl-benchmark` SHALL appear in any target family or preview on either harness
+
+#### Scenario: Skill launcher exclusion leaves every other target unchanged
+
+- **WHEN** the skill-launcher exclusion applies to the command family on either harness
+- **THEN** every other target SHALL keep its family, membership, profile, order, and effective setting, and the four utility targets and the `sai-*` targets without a profile SHALL remain visible
+
+#### Scenario: A preset key naming an excluded wrapper applies no model
+
+- **WHEN** a personal preset contains a key for `sai-cache-warmer` or `sai-context-cache-ttl-benchmark` and is loaded
+- **THEN** the load SHALL succeed and the preset SHALL assign no model to either name
 
 ### Requirement: Checklist rows expose context and difficulty
 The model-customization checklist and the reset and save/load preset previews SHALL render columns in the order `TYPE`, `TARGET`, `CONTEXT`, `DIFFICULTY`, and `SETTING` for every target in both OpenCode and Claude Code flows, with headers, separators, and rows aligned and setting text preserved.

@@ -15,11 +15,23 @@ Each of `agents/opencode/budget-explorer.md`, `agents/opencode/budget-executor.m
 - **THEN** each declares the model without a suffix and a separate high variant while retaining its mode
 
 ### Requirement: Opencode command wrappers declare DeepSeek Flash with their role variant
-Each file in `commands/opencode/` SHALL declare `model: opencode-go/deepseek-v4.1-flash#<variant>` in single-line form with no separate variant line: `max` for `sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-plan`, `sai-build`, `sai-3-implement`, `sai-merge`, `sai-retire-docs`, and `sai-retrospective`, and `high` for `sai-4-review`, `sai-deep-review`, `sai-5-security`, `sai-6-performance`, `sai-7-accessibility`, `sai-backfill`, `sai-archive`, `sai-commit`, `sai-status`, and `sai-worktree`.
+
+Each model-bearing command wrapper in `commands/opencode/` SHALL declare `model: opencode-go/deepseek-v4.1-flash#<variant>` in single-line form with no separate variant line: `max` for `sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-plan`, `sai-build`, `sai-3-implement`, `sai-merge`, `sai-retire-docs`, and `sai-retrospective`, and `high` for `sai-4-review`, `sai-deep-review`, `sai-5-security`, `sai-6-performance`, `sai-7-accessibility`, `sai-backfill`, `sai-archive`, `sai-commit`, `sai-status`, and `sai-worktree`. The skill-launcher wrappers `sai-cache-warmer` and `sai-context-cache-ttl-benchmark` SHALL declare no `model:` line and no variant, and SHALL inherit the session model. The three distributed opencode presets SHALL carry no entry for either skill-launcher wrapper.
 
 #### Scenario: Wrapper frontmatter matches the preset
-- **WHEN** the opencode command wrappers are read after the change
+
+- **WHEN** the model-bearing opencode command wrappers are read after the change
 - **THEN** each declares the model with the variant its role carries in the shipped preset
+
+#### Scenario: Skill launcher wrappers keep the session model
+
+- **WHEN** `commands/opencode/sai-cache-warmer.md` and `commands/opencode/sai-context-cache-ttl-benchmark.md` are read
+- **THEN** neither declares a `model` or variant line and both use the session model
+
+#### Scenario: Distributed presets carry no skill launcher entry
+
+- **WHEN** the three distributed opencode presets are read
+- **THEN** none contains a key for `sai-cache-warmer` or `sai-context-cache-ttl-benchmark`
 
 ### Requirement: Worker-matrix opencodeAgent entries match the shipped presets
 
