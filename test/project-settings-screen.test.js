@@ -153,9 +153,12 @@ test('E15 and E12: the screen lists labelled rows under section headers, only it
     'Provider: gitlab',
     '-- Pull requests --',
     'Provider: ask',
+    '-- Experimental --',
+    'Change telemetry: off',
+    'Cache warming',
     'Done',
   ]);
-  assert.deepEqual(seen[0].navigator.groupHeaders, ['-- Explore --', '-- Backlog --', '-- Pull requests --']);
+  assert.deepEqual(seen[0].navigator.groupHeaders, ['-- Explore --', '-- Backlog --', '-- Pull requests --', '-- Experimental --']);
 });
 
 function DONE_ROW() { return 'Done'; }
@@ -437,7 +440,7 @@ test('I1: section headers are passed as non-selectable rows and an unparseable l
   });
   assert.equal(result.status, 'unchanged');
   const { groupHeaders, displayOptions } = seen[0].navigator;
-  assert.deepEqual(groupHeaders.map(header => seen[0].options.indexOf(header)), [0, 4, 6]);
+  assert.deepEqual(groupHeaders.map(header => seen[0].options.indexOf(header)), [0, 4, 6, 8]);
   assert.equal(displayOptions.length, seen[0].options.length);
   assert.equal(groupHeaders.some(header => screen.SETTING_IDS.includes(header)), false);
   const broken = projectWithLocal(COMMENTED, '{ nope');
@@ -450,8 +453,8 @@ test('I1: section headers are passed as non-selectable rows and an unparseable l
   assert.equal(readLocal(broken), '{ nope');
 });
 
-test('E12: the screen lists exactly its five keys, none of the repository, project or organization keys', () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']);
+test('E12: the screen lists exactly its six keys, none of the repository, project or organization keys', () => {
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
   assert.deepEqual([...modelCustomization.MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
 });
 
@@ -598,24 +601,25 @@ test('the section keeps the file byte-identical on an interrupt, backing out of 
   assert.equal(read(broken), '{ nope');
 });
 
-test('the post-setup menu opens the Cache warming section with the guided pairs of installed files when its visibility is enabled', async () => {
+test('E7: the post-setup menu opens the warming screen from the Experimental section with the guided pairs of installed files', async () => {
   const directory = project();
   const roots = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, fs.mkdtempSync(path.join(os.tmpdir(), `warming-${name}-`))]));
   fs.writeFileSync(path.join(roots.claudeCommands, 'sai-explore.md'), '---\nname: sai-explore\nmodel: opus\neffort: high\n---\n\nbody\n');
   const seen = [];
-  const answers = ['Cache warming', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Exit'];
+  const answers = ['Project behavior settings', 'Cache warming', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Done', 'Exit'];
   const outcome = await modelCustomization.runPostSetupMenu({
     projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
     claudeGlobalAgentRoot: roots.claudeAgents, claudeGlobalCommandRoot: roots.claudeCommands,
     opencodeGlobalAgentRoot: roots.opencodeAgents, opencodeGlobalCommandRoot: roots.opencodeCommands,
-    promptChoice: script(answers, seen), promptInput: async () => '', cacheWarmingMenuEnabled: true,
+    promptChoice: script(answers, seen), promptInput: async () => '',
   });
   assert.equal(outcome.reason, 'cancelled');
-  assert.deepEqual(seen[0].options.slice(-2), ['Cache warming', 'Exit']);
+  assert.equal(answers.length, 0);
+  assert.deepEqual(seen.map(call => call.question).filter(question => question === WARMING_QUESTION || question === SCREEN_QUESTION), [SCREEN_QUESTION, WARMING_QUESTION, WARMING_QUESTION, SCREEN_QUESTION]);
   assert.deepEqual(warmingOf(directory), { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] });
 });
 
-test('a Cache warming answer is cancelled and opens no warming screen while the entry is hidden', async () => {
+test('E9: a Cache warming answer in the post-setup menu is cancelled and opens no warming screen', async () => {
   const directory = project();
   const seen = [];
   const outcome = await modelCustomization.runPostSetupMenu({
@@ -626,4 +630,104 @@ test('a Cache warming answer is cancelled and opens no warming screen while the 
   assert.equal(seen.length, 1);
   assert.equal(seen[0].options.includes('Cache warming'), false);
   assert.equal(fs.existsSync(path.join(directory, FILE)), false);
+});
+
+// The `Experimental` section: the change telemetry boolean and the cache warming action row.
+const TELEMETRY = 'experimental.changeTelemetry';
+const telemetryOf = directory => writer.parseText(read(directory)).root.experimental?.changeTelemetry;
+
+test('E2: change telemetry shows on for true, and off for false or an absent key', async () => {
+  for (const [text, shown] of [['{"experimental":{"changeTelemetry":true}}', 'on'], ['{"experimental":{"changeTelemetry":false}}', 'off'], ['{}', 'off']]) {
+    const seen = [];
+    await screen.runProjectSettingsScreen({ projectPath: project(text), promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {} });
+    assert.ok(texts(seen[0]).includes(`Change telemetry: ${shown}`), text);
+  }
+});
+
+test('E3: change telemetry offers exactly On and Off, and the Cache warming row sits after it', async () => {
+  const seen = [];
+  await screen.runProjectSettingsScreen({
+    projectPath: project(), promptChoice: script([pick(TELEMETRY), BACK, DONE_ROW], seen), promptInput: script([]), log: () => {},
+  });
+  assert.equal(seen[1].question, 'Change telemetry:');
+  assert.deepEqual(seen[1].options, ['On', 'Off']);
+  assert.deepEqual(seen[0].options.slice(-4), ['-- Experimental --', TELEMETRY, 'Cache warming', 'Done']);
+});
+
+test('E4: On saves true and Off removes the key from the base file', async () => {
+  const directory = project('// top\n{\n  "other": 1\n}\n');
+  const on = await run(directory, [pick(TELEMETRY), 'On', DONE_ROW]);
+  assert.equal(on.status, 'saved');
+  assert.equal(telemetryOf(directory), true);
+  const seen = [];
+  const off = await screen.runProjectSettingsScreen({
+    projectPath: directory, promptChoice: script([pick(TELEMETRY), 'Off', DONE_ROW], seen), promptInput: script([]), log: () => {},
+  });
+  assert.equal(off.status, 'saved');
+  assert.ok(texts(seen[2]).includes('Change telemetry: off'));
+  assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.experimental, 'changeTelemetry'), false);
+  assert.equal(writer.parseText(read(directory)).root.other, 1);
+  assert.equal((await run(project('{}'), [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'unchanged');
+});
+
+test('E5: a key that the local file holds shows as an override and saves to the local file, with Off as an explicit false', async () => {
+  const base = '{"experimental":{"changeTelemetry":true}}';
+  const directory = projectWithLocal(base, '{"experimental":{"changeTelemetry":true}}');
+  const seen = [];
+  const result = await screen.runProjectSettingsScreen({
+    projectPath: directory, promptChoice: script([pick(TELEMETRY), 'Off', DONE_ROW], seen), promptInput: script([]), log: () => {}, color: false,
+  });
+  assert.equal(result.status, 'saved');
+  assert.ok(texts(seen[0]).includes('Change telemetry: on -> on (local)'));
+  assert.ok(texts(seen[2]).includes('Change telemetry: on -> off (local)'));
+  assert.equal(writer.parseText(readLocal(directory)).root.experimental.changeTelemetry, false);
+  assert.equal(read(directory), base);
+  const same = projectWithLocal(base, '{"experimental":{"changeTelemetry":false}}');
+  assert.equal((await run(same, [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'unchanged');
+});
+
+test('E6: a stored value that is not a boolean shows as invalid and any choice replaces it', async () => {
+  const text = '{ "experimental": { "changeTelemetry": "yes" } }';
+  const seen = [];
+  const messages = [];
+  const on = await screen.runProjectSettingsScreen({
+    projectPath: project(text), promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: message => messages.push(message),
+  });
+  assert.equal(on.status, 'unchanged');
+  assert.ok(texts(seen[0]).includes('Change telemetry: "yes" (invalid)'));
+  assert.match(messages[0], /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
+  const turnedOn = project(text);
+  assert.equal((await run(turnedOn, [pick(TELEMETRY), 'On', DONE_ROW])).status, 'saved');
+  assert.equal(telemetryOf(turnedOn), true);
+  const turnedOff = project(text);
+  assert.equal((await run(turnedOff, [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'saved');
+  assert.equal(Object.hasOwn(writer.parseText(read(turnedOff)).root.experimental, 'changeTelemetry'), false);
+});
+
+test('E7: selecting Cache warming calls the injected callback once and returns to the settings screen', async () => {
+  const seen = [];
+  let calls = 0;
+  const result = await screen.runProjectSettingsScreen({
+    projectPath: project(), promptChoice: script(['Cache warming', DONE_ROW], seen), promptInput: script([]), log: () => {},
+    openCacheWarming: async () => { calls += 1; },
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.status, 'unchanged');
+  assert.deepEqual(seen.map(call => call.question), [SCREEN_QUESTION, SCREEN_QUESTION]);
+});
+
+test('E8: a telemetry edit and a nested warming save both persist', async () => {
+  const directory = project(COMMENTED);
+  const choices = script([pick(TELEMETRY), 'On', 'Cache warming', DONE_ROW]);
+  const nested = script(['default:agent', 'Enable', 'Done']);
+  const result = await screen.runProjectSettingsScreen({
+    projectPath: directory, promptChoice: choices, promptInput: script([]), log: () => {},
+    openCacheWarming: () => warmingSetup.runWarmingSetup({ projectPath: directory, pairs: PAIRS, promptChoice: nested, promptInput: async () => '', log: () => {} }),
+  });
+  assert.equal(result.status, 'saved');
+  const root = writer.parseText(read(directory)).root;
+  assert.equal(root.experimental.changeTelemetry, true);
+  assert.deepEqual(root.warming, { defaults: { agent: { interval: 4, max: 30 } } });
+  assert.equal(root.backlog.provider, 'gitlab');
+  assert.equal(root.other.x, 1);
 });

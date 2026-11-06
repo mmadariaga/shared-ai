@@ -7,15 +7,15 @@ Lets a user see and edit the project settings that pre-answer command questions 
 
 ### Requirement: Project settings screen contents
 
-The `Project behavior settings` screen in `bin/project-settings-screen.js` SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `explore.chatPublicLanguage`, `backlog.provider`, and `pr.provider`, in that order, each as a row `<label>: <current value>` using the catalogue label, followed by a `Done` row. A section header row `-- <section> --` SHALL precede the first key of each catalogue section (`Explore`, `Backlog`, `Pull requests`); a header row SHALL be non-selectable, so the cursor skips it and it can never be chosen. The current value SHALL be the value edited in this session. Otherwise it SHALL be the reader's normalized value, the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, and `pr.project` SHALL NOT appear on the screen. The value prompt title SHALL be `<label>:`. The screen SHALL read the settings files of the project path it was given, without the git top-level or main-worktree lookup.
+The `Project behavior settings` screen in `bin/project-settings-screen.js` SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `explore.chatPublicLanguage`, `backlog.provider`, `pr.provider`, and `experimental.changeTelemetry`, in that order, each as a row `<label>: <current value>` using the catalogue label, followed by the `Cache warming` action row and a `Done` row. A section header row `-- <section> --` SHALL precede the first key of each catalogue section (`Explore`, `Backlog`, `Pull requests`, `Experimental`); a header row SHALL be non-selectable, so the cursor skips it and it can never be chosen. The current value SHALL be the value edited in this session. Otherwise it SHALL be the reader's normalized value, the key's absence text (`ask`, `follow my language` for `explore.chatPublicLanguage`, or `off` for `experimental.changeTelemetry`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, and `pr.project` SHALL NOT appear on the screen. The value prompt title SHALL be `<label>:`. The screen SHALL read the settings files of the project path it was given, without the git top-level or main-worktree lookup.
 
 #### Scenario: Rows show current values
 - **WHEN** the screen opens on a settings file that sets only `backlog.provider` to `gitlab`
-- **THEN** the rows are `-- Explore --`, `Ready to Propose language: ask`, `Change overview language: ask`, `Chat language: follow my language`, `-- Backlog --`, `Provider: gitlab`, `-- Pull requests --`, `Provider: ask`, and `Done`, and the three header rows are non-selectable
+- **THEN** the rows are `-- Explore --`, `Ready to Propose language: ask`, `Change overview language: ask`, `Chat language: follow my language`, `-- Backlog --`, `Provider: gitlab`, `-- Pull requests --`, `Provider: ask`, `-- Experimental --`, `Change telemetry: off`, `Cache warming`, and `Done`, and the four header rows are non-selectable
 
 ### Requirement: Value choices per setting
 
-Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `pr.provider` SHALL offer `ask` followed by the provider ids in `skills/universal/to-pr/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `explore.chatPublicLanguage` SHALL offer `follow my language`, `English`, and `Other language...`, where `follow my language` SHALL remove the key from the file that holds it, leaving the rest of that file intact. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, and an accepted value SHALL be recorded in the canonical form the catalogue returns. Back from a value prompt SHALL return to the rows without recording a change.
+Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `pr.provider` SHALL offer `ask` followed by the provider ids in `skills/universal/to-pr/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `explore.chatPublicLanguage` SHALL offer `follow my language`, `English`, and `Other language...`, where `follow my language` SHALL remove the key from the file that holds it, leaving the rest of that file intact. `experimental.changeTelemetry` SHALL offer `On` and `Off`. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, and an accepted value SHALL be recorded in the canonical form the catalogue returns. Back from a value prompt SHALL return to the rows without recording a change.
 
 #### Scenario: Provider choices come from the registries
 - **WHEN** the user selects the `backlog.provider` row and the registries list `github`, `gitlab`, and `azuredevops`
@@ -120,3 +120,43 @@ A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row
 #### Scenario: No local file means no override rows
 - **WHEN** the screen opens without `.sai/settings.local.jsonc`
 - **THEN** no row shows strikethrough or the `(local)` marker
+
+### Requirement: Change telemetry boolean editing
+
+The screen SHALL edit `experimental.changeTelemetry` as a boolean. Its row SHALL show `on` when the effective value is `true`, and `off` when the key is absent or `false`. Selecting the row SHALL offer exactly the choices `On` and `Off`, and SHALL NOT offer `ask`. Choosing `On` SHALL record `true`. Choosing `Off` SHALL remove the key from `.sai/settings.jsonc` when the key is saved to the base file, and SHALL record an explicit `false` when the key is saved to `.sai/settings.local.jsonc`, so that a `true` in the base file cannot apply. A stored value that is not a boolean SHALL follow the screen's invalid-value handling, and any choice SHALL replace it.
+
+#### Scenario: Telemetry row shows on or off
+- **WHEN** the screen opens on a settings file where `experimental.changeTelemetry` is `true`, `false`, or absent
+- **THEN** the row reads `Change telemetry: on` for `true` and `Change telemetry: off` for `false` or an absent key
+
+#### Scenario: Telemetry offers only On and Off
+- **WHEN** the user selects the `Change telemetry` row
+- **THEN** the prompt title is `Change telemetry:` and the choices are exactly `On` and `Off`
+
+#### Scenario: On saves true and Off removes the base key
+- **WHEN** the user chooses `On` and leaves the screen, then reopens it, chooses `Off`, and leaves again
+- **THEN** the first save writes `true` to `.sai/settings.jsonc`, and the second save removes `experimental.changeTelemetry` from that file and keeps its other keys
+
+#### Scenario: Off on an absent key changes nothing
+- **WHEN** `experimental.changeTelemetry` is absent and the user chooses `Off` and leaves the screen
+- **THEN** the screen reports no change and writes no file
+
+#### Scenario: Off saves an explicit false in the local file
+- **WHEN** both settings files set `experimental.changeTelemetry` to `true` and the user chooses `Off` and leaves the screen
+- **THEN** the row shows `on -> off (local)` before saving, `.sai/settings.local.jsonc` holds `false`, and `.sai/settings.jsonc` is unchanged
+
+#### Scenario: Non-boolean telemetry value is replaced
+- **WHEN** the stored `experimental.changeTelemetry` is `"yes"`
+- **THEN** the screen prints the reader's warning, the row shows `Change telemetry: "yes" (invalid)`, choosing `On` saves `true`, and choosing `Off` removes the key
+
+### Requirement: Cache warming action row
+
+The screen SHALL show a `Cache warming` action row in the `Experimental` section, after the `Change telemetry` row and before `Done`. The row SHALL NOT be a value row. The screen SHALL take an `openCacheWarming` callback as an injectable parameter and SHALL hold no knowledge of harness roots. Selecting the row SHALL call that callback once and then present the settings screen again, with every pending edit kept. The pending edits SHALL be saved when the user leaves the settings screen, and a save made inside the warming screen SHALL persist together with them.
+
+#### Scenario: Cache warming row returns to the settings screen
+- **WHEN** the user selects `Cache warming` and then `Done`
+- **THEN** the injected callback is called once, the settings screen is presented again after it returns, and the screen reports no change
+
+#### Scenario: Telemetry edit and nested warming save both persist
+- **WHEN** the user chooses `On` for `Change telemetry`, selects `Cache warming`, enables `Default for agent` in the warming screen, and then leaves the settings screen with `Done`
+- **THEN** `.sai/settings.jsonc` holds `experimental.changeTelemetry: true` and the new `warming` value, and its other keys are unchanged
