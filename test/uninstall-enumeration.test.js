@@ -397,7 +397,7 @@ test('enumeration includes retirement records but excludes them from active proj
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-3-implement-inline.md')), false);
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith(path.join('sai', 'commands', 'sai-4-apply.md'))), false);
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('coordinator-contract.md')), false);
-    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('worker-lifecycle.md')), false);
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith(path.join('orchestration', 'worker-lifecycle.md'))), false);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

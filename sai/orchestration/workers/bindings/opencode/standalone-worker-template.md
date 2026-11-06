@@ -32,14 +32,13 @@ subagent(agent: "{{workerName}}", description: "{{phase}} worker", sessionID: "<
 ## Warm and dispose
 
 Fetch `@sai/policies/cache-warming.md`
+Fetch `@sai/policies/worker-lifecycle.md`
 
 The worker may keep its prompt cache warm between messages. Resolve its
 timings and add the warming line to every task message and continuation, as the
 policy says. Every real message from the worker declares `warming: true|false`, beside the report path when it returns only a path (`cache-warming.md` § Warming declaration); the coordinator keeps the latest value for the handle.
-The coordinator disposes the worker at run close, at a segment
-boundary, and when it replaces the worker, and not while a `needs_input`
-question is pending, and only when the worker's latest message declared
-`warming: true`; with any other value it disposes nothing. It removes the outstanding shell of the worker's session
-and then interrupts that session through the session API
-(`api/session/:sessionID/interrupt`), both with the captured `sessionID`, and
-falls back to the `dispose` message when the API is not reachable.
+The coordinator disposes the worker whatever the warming setting, at the
+points and with the stop call that `@sai/policies/worker-lifecycle.md` defines:
+at its last use, when it replaces the worker, on abandon or stop, and at run
+close. The `warming` declaration gates no dispose, and a worker with a pending
+`needs_input` question stays alive until the answer arrives.

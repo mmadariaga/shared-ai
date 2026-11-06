@@ -112,15 +112,18 @@ test('Step 3 documentation does not instruct ownership or copying of retired pro
   }
 });
 
-test('every worker binding fetches the cache-warming policy and names its harness dispose action, once', () => {
+test('every worker binding fetches the cache-warming and worker-lifecycle policies once and defers disposal to the lifecycle policy', () => {
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/cache-warming.md')), 'the policy the bindings fetch exists');
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/worker-lifecycle.md')), 'the lifecycle policy the bindings fetch exists');
+  const lifecycle = fs.readFileSync(path.join(repoRoot, 'sai/policies/worker-lifecycle.md'), 'utf8');
+  assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/, 'the lifecycle policy names the Claude Code stop call');
+  assert.match(lifecycle, /`shell\.remove`[\s\S]*`session\.interrupt`[\s\S]*`dispose`/, 'the lifecycle policy names the opencode stop sequence and its message fallback');
   for (const harness of ['claude', 'opencode']) {
     for (const [, filename] of WORKERS) {
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.equal(binding.match(/^Fetch `@sai\/policies\/cache-warming\.md`$/gm)?.length, 1, `${harness} ${filename} fetches the policy once`);
-      assert.match(binding, /disposes the worker at run close, at a segment\s+boundary, and when it replaces the worker/, `${harness} ${filename} names the dispose points`);
-      if (harness === 'claude') assert.match(binding, /TaskStop\(task_id: "<captured agent ID>"\)/, `${filename} stops the worker by agent ID`);
-      else assert.match(binding, /removes the outstanding shell[\s\S]*interrupts that session[\s\S]*`dispose` message/, `${filename} removes the shell, interrupts the session, and falls back to the message`);
+      assert.equal(binding.match(/^Fetch `@sai\/policies\/worker-lifecycle\.md`$/gm)?.length, 1, `${harness} ${filename} fetches the lifecycle policy once`);
+      assert.match(binding, /disposes the worker whatever the warming setting[\s\S]*at its last use, when it replaces the worker, on abandon or stop, and at run\s+close/, `${harness} ${filename} names the dispose points`);
     }
   }
 });

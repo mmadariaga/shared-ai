@@ -25,7 +25,7 @@ Commits are local only and nothing is pushed. Only the `/sai-3-implement` fix se
 
 No review or audit runs after the fix segment: the next `/sai-deep-review` run reviews the fixed tree.
 
-Each segment disposes its own workers when it ends, as `cache-warming.md` says, so the review worker is disposed before the triage and the implement workers when the fix segment closes. An audit worker is disposed as soon as its cycle ends (verified, failed, or budget exhausted); a worker paused on a question for the user stays armed until the answer. A segment starts only when the previous one completed. When segment 1 or segment 5 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
+Each segment disposes its own workers when it ends, as `worker-lifecycle.md` says, so the review worker is disposed before the triage and the implement workers when the fix segment closes. An audit worker is disposed as soon as it returns its `completed` or `failed` result, before its report is verified, as the audit coordinator's Close says, and in any other end of its cycle (budget exhausted, a stop); a worker paused on a question for the user stays alive until the answer, and one whose question is dismissed is disposed. A segment starts only when the previous one completed. When segment 1 or segment 5 ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, print its report and end the run without a closing line, and do not start any later segment.
 
 ## Start
 

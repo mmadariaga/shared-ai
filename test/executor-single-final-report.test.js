@@ -37,7 +37,8 @@ test('executor policy states the single final report rule', () => {
   assert.match(long, /longest timeout the active harness's shell allows/);
   assert.match(long, /600000 ms/);
   assert.match(long, /in the background/);
-  assert.match(long, /Never report while a requested command is still running/);
+  assert.match(long, /worker-lifecycle\.md` § Worker side requires/);
+  assert.doesNotMatch(long, /Never report while a requested command is still running/);
   assert.match(long, /Failed with that reason and the path of its output log/);
   const report = section(policy, 'Report');
   assert.match(report, /One report per task message/);
