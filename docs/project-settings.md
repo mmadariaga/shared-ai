@@ -28,7 +28,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
-| `warming` | An object with `defaults` and `rules`; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
+| `warming` | An object with `defaults` and `rules`, or one block per harness (`claude`, `opencode`) with that shape and a global fallback; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
 | `experimental.changeTelemetry` | `true` or `false`; see [Change telemetry](#change-telemetry) | `/sai-plan` and `/sai-build` on opencode |
 
 All three `explore.*` ids accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage` and `explore.chatPublicLanguage`, `none` is invalid.
@@ -43,62 +43,86 @@ The work-item type has no setting; it is chosen at each creation. Provider ids c
 
 The `warming` setting lets SAI agents keep their prompt cache warm between continuations. An agent arms one background wait after each response except its final one (a closing report or a terminal result) and re-arms on each wake until its `max` window passes since its last real task or continuation, or until the agent that dispatched it disposes it. Each subagent message declares `warming: true` or `warming: false`. The declaration does not decide when an agent ends: a coordinator disposes every worker and helper it creates at its last use, whatever the setting (`sai/policies/worker-lifecycle.md`). Each agent keeps a single live chain of waits: a newer wait supersedes the earlier one, which ends at its next wake. The same applies on Claude Code and opencode. Without the setting, nothing warms. Each wake costs two short requests and some usage allowance, which the `max` window bounds; a pause longer than `max` still resumes cold.
 
-`interval` and `max` are numbers of minutes, and `max` is at least `interval`. The value is one object under the single id `warming`:
+`interval` and `max` are numbers of minutes, and `max` is at least `interval`. The value is one object under the single id `warming`. It holds one block per harness under `claude` and `opencode`; a top-level `defaults` and `rules` pair is the legacy global value that a harness without a block still reads:
 
 ```jsonc
 {
   "warming": {
-    // One entry per role: `agent` is a main session that runs a command, `subagent` is a worker or helper.
-    "defaults": {
-      "agent": { "interval": 4, "max": 30 },
-      "subagent": false
+    // Per-harness blocks: each role default applies only in its own harness.
+    "claude": {
+      // One entry per role: `agent` is a main session that runs a command, `subagent` is a worker or helper.
+      "defaults": {
+        "agent": { "interval": 4, "max": 30 },
+        "subagent": false
+      },
+      // Rules are keyed by provider, an optional model, and a role. Model ids are values, never keys.
+      "rules": [
+        { "provider": "anthropic", "model": "haiku", "role": "subagent", "interval": 4, "max": 20 },
+        { "provider": "anthropic", "role": "agent", "enabled": false }
+      ]
     },
-    // Rules are keyed by provider, an optional model, and a role. Model ids are values, never keys.
-    "rules": [
-      { "provider": "anthropic", "model": "haiku", "role": "subagent", "interval": 4, "max": 20 },
-      { "provider": "opencode-go", "role": "subagent", "enabled": false }
-    ]
+    "opencode": {
+      "defaults": { "agent": { "interval": 4, "max": 30 } }
+    }
+  }
+}
+```
+
+A legacy global value keeps working until a harness is edited; once `claude` and `opencode` both exist, the top-level keys are ignored and stay in the file:
+
+```jsonc
+{
+  "warming": {
+    // The fallback that both harnesses read until they have a block of their own.
+    "defaults": { "agent": { "interval": 4, "max": 30 } },
+    "rules": [{ "provider": "anthropic", "role": "subagent", "enabled": false }],
+    // The first edit of a harness writes its block, seeded from the global defaults and rules above.
+    "claude": {
+      "defaults": { "agent": { "interval": 4, "max": 30 } },
+      "rules": [{ "provider": "anthropic", "role": "subagent", "enabled": false }]
+    }
   }
 }
 ```
 
 - A `defaults` entry is `{ "interval", "max" }` or `false`. A rule carries `provider`, an optional `model`, `role`, and either `interval` and `max` or `"enabled": false`.
-- Resolution runs separately for each role: the first rule that matches the provider, the model, and the role; then, for the provider `anthropic`, the first rule whose model is the model family of the runtime id; then the first rule that matches the provider and the role and has no `model`; then `defaults` for the role. When none applies, or the winning entry is `false`, the agent does not warm.
+- Resolution runs per harness: the harness's own block when it has one, and otherwise the top-level global value. Within the chosen value it runs separately for each role: the first rule that matches the provider, the model, and the role; then, for the provider `anthropic`, the first rule whose model is the model family of the runtime id; then the first rule that matches the provider and the role and has no `model`; then `defaults` for the role. When none applies, or the winning entry is `false`, the agent does not warm.
 - The model family is the version-less alias of a Claude model: the runtime id `claude-opus-5-5` belongs to the family `opus`, so a rule for `opus` applies to it when no rule names the full id. The tool derives the family from ids of the form `claude-<family>-...`; an id of another shape, or a provider other than `anthropic`, has no family and skips this step. A command on Claude Code declares an alias such as `opus`, while the running session reports the full id, which is why the family step exists.
 - The provider and model of a worker or helper come from the `model` frontmatter of its installed agent file. On Claude Code the provider is `anthropic` and the model is the frontmatter value as written (for example `haiku`). On opencode the value is `<provider>/<model>`, so `opencode-go/deepseek-v4.1-flash` is the provider `opencode-go` and the model `deepseek-v4.1-flash`.
-- Timings are resolved again for every arm, so a change in either settings file, a local override included, applies from the next arm without restarting any agent. The local file replaces the whole `warming` value, as it replaces any key.
+- Timings are resolved again for every arm, so a change in either settings file, a local override included, applies from the next arm without restarting any agent. The local file replaces the whole `warming` value, as it replaces any key: a local value with per-harness blocks applies only to the harnesses it names, and an unnamed harness reads `off`.
 - An invalid `warming` value is dropped with a warning, and nothing warms.
 
-`/sai-explore` reads `warming` for the `agent` role at its hand-off closes: when a `Plan - Unattended` slice closes, or a sliced `Manual` hand-off is printed, with another slice still pending, it keeps its own cache warm until you return with `next-slice`. An entry for the `agent` role supplies the interval, and `max` is the fixed duration counted from the hand-off, with no question; an off entry means no warming and no question. With no entry, `/sai-explore` asks for an interval and a duration instead, keeps the answer for the invocation only, and writes nothing to this file. See the [`/sai-explore` page](commands/sai-explore.md).
+`/sai-explore` reads `warming` for the `agent` role of its own harness at its hand-off closes: when a `Plan - Unattended` slice closes, or a sliced `Manual` hand-off is printed, with another slice still pending, it keeps its own cache warm until you return with `next-slice`. An entry for the `agent` role supplies the interval, and `max` is the fixed duration counted from the hand-off, with no question; an off entry means no warming and no question. With no entry, `/sai-explore` asks for an interval and a duration instead, keeps the answer for the invocation only, and writes nothing to this file. See the [`/sai-explore` page](commands/sai-explore.md).
 
 Print the effective values for one agent:
 
 ```sh
-node sai/tools/project-settings.js warming --provider anthropic --model haiku --role subagent --json --cwd <project-root>
+node sai/tools/project-settings.js warming --provider anthropic --model haiku --role subagent --harness claude --json --cwd <project-root>
 ```
 
 It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or `off`, and `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
 
 ### Cache warming screen
 
-Run `npx --allow-git=all github:mmadariaga/shared-ai setup`, choose **Project behavior settings**, and select **Cache warming** under `Experimental`. You can still edit the file by hand. The screen shows one default per role, then guided rules per role:
+Run `npx --allow-git=all github:mmadariaga/shared-ai setup`, choose **Project behavior settings**, and select **Cache warming** under `Experimental`. You can still edit the file by hand. The screen asks which harness to configure first (`Claude Code` or `OpenCode`), then shows that harness's role defaults and rules:
 
 - **Role defaults**: `Default for agent` and `Default for subagent`. Each is `off` or `every <interval> min, up to <max> min`. A new project shows both as `off`, so nothing warms until you enable one.
-- **Guided rules**: one row for each (provider, model) pair that an installed SAI file declares in its `model` frontmatter, with any effort or variant suffix (`#xhigh`) removed. The `agent` role lists the pairs of installed commands and utilities. The `subagent` role lists the pairs of installed workers and helpers. A file without a `model` key adds no row; provider rules and the defaults cover it. The screen reads the files of both harnesses and writes nothing to them.
-- **Existing rules** that match no installed pair, for example a hand-written rule or one for a full model id, are listed with the note `(no installed file uses it)`. You can edit or remove them, and a save never drops them.
+- **Guided rules**: one row for each (provider, model) pair that an installed SAI file of the chosen harness declares in its `model` frontmatter, with any effort or variant suffix (`#xhigh`) removed. The `agent` role lists the pairs of that harness's installed commands and utilities. The `subagent` role lists the pairs of its installed workers and helpers. A file without a `model` key adds no row; provider rules and the defaults cover it. The screen reads the files of both harnesses and writes nothing to them.
+- **Existing rules** of the chosen harness that match no installed pair, for example a hand-written rule or one for a full model id, are listed with the note `(no installed file uses it)`. You can edit or remove them, and a save never drops them.
+- **Harness isolation**: a row of one harness never appears under the other, even when both use the same provider and model. A rule saved under one harness does not change the other harness's effective warming. When the chosen harness has no block of its own but a legacy global value exists, the screen shows that global value and the first save writes the harness's block from it; the other harness keeps reading the global value until it is edited too.
 
 Choose a row to **Enable** it, set it to **Off** (`false` for a default, `"enabled": false` for a rule), or, for a rule, **Remove rule**. **Enable** asks for the interval and the maximum in minutes. An empty answer keeps the pre-filled value, which is the current one or `4` and `30` when none exists. Values must be positive and `max` at least `interval`; the screen asks again otherwise, so it never writes an invalid value.
 
-Leaving with **Done** saves when at least one edit changed the value, and returns to the project behavior settings screen. The screen writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the screen prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the screen warns that the local value replaces the one it writes, and it still writes only the base file.
+**Done** saves the edits of the chosen harness and leaves the screen; **Back** saves them and returns to the harness choice; **Back** or **Esc** at the harness choice returns to the project behavior settings screen. The screen writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments, including the other harness's block and the legacy global keys. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the unsaved edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the screen prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the screen warns that the local value replaces the one it writes, and it still writes only the base file.
 
 ### Editing `warming` by hand
 
-Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one default per role, then rules per role. The `Cache warming` row of the `Experimental` section in the [project behavior settings screen](#project-behavior-settings-screen) opens a screen that edits `warming`; see [Cache warming screen](#cache-warming-screen).
+Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one block per harness (`claude`, `opencode`), or the legacy top-level `defaults` and `rules` that both harnesses read until they have a block. The `Cache warming` row of the `Experimental` section in the [project behavior settings screen](#project-behavior-settings-screen) opens a screen that edits `warming`; see [Cache warming screen](#cache-warming-screen).
 
 - A new project has no `warming` key, so nothing warms until you add one.
 - Edit the `warming` key only; the other keys and comments of the file stay as they are, and a reinstall keeps the stored values.
 - Values must be positive, and `max` at least `interval`. An invalid `warming` value is dropped with a warning and nothing warms, as described under [Cache warming](#cache-warming).
-- When `.sai/settings.local.jsonc` defines `warming`, its value replaces the whole value of `.sai/settings.jsonc`.
+- When `.sai/settings.local.jsonc` defines `warming`, its value replaces the whole value of `.sai/settings.jsonc`; a local value with per-harness blocks applies only to the harnesses it names, and an unnamed harness reads `off`.
 - Check the result with the resolver command shown under [Cache warming](#cache-warming).
 
 The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).

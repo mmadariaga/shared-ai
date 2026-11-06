@@ -137,7 +137,7 @@ next slice would resume cold. `/sai-explore` keeps its own cache warm until you
 return with `next-slice` or a fixed deadline passes:
 
 - With a [`warming` setting](../project-settings.md#cache-warming) for the `agent`
-  role, it applies that interval and uses `max` as the duration, and asks nothing.
+  role of the active harness, it applies that interval and uses `max` as the duration, and asks nothing.
   A setting that is off (`false` or `"enabled": false`) means no warming and no question.
 - Otherwise it prints a cache-lifetime notice (Claude Code: 1 hour with a Claude
   subscription, 5 minutes with pay-per-token; opencode: it depends on the provider,

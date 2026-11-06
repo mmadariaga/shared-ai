@@ -23,18 +23,21 @@ TBD - created by archiving change explore-handoff-cache-warming. Update Purpose 
 
 ### Requirement: The warming setting supplies the hand-off timings
 
-Before asking, the step SHALL run `project-settings.js warming --provider <provider> --model <model> --role agent` with the main session's provider and model. An `origin: none` result, a non-zero exit, or unreadable output SHALL mean no entry applies and SHALL lead to the question. A `warming: "off"` result with any other origin SHALL mean configured off: explore SHALL neither warm nor ask. A `warming: {interval, max}` result SHALL be applied with `max` as the duration, with no question and no TTL notice, and SHALL be resolved again at the next hand-off close.
+Before asking, the step SHALL run `project-settings.js warming --provider <provider> --model <model> --role agent --harness <claude|opencode>` with the main session's provider and model and the active harness, so the timings come from that harness's block or, when it has none, from the top-level global value. An `origin: none` result, a non-zero exit, or unreadable output SHALL mean no entry applies and SHALL lead to the question. A `warming: "off"` result with any other origin SHALL mean configured off: explore SHALL neither warm nor ask. A `warming: {interval, max}` result SHALL be applied with `max` as the duration, with no question and no TTL notice, and SHALL be resolved again at the next hand-off close.
 
 #### Scenario: Configured agent entry
-- **WHEN** the `warming` setting has an entry for the `agent` role with an interval and a `max`
+
+- **WHEN** the `warming` setting has an entry for the `agent` role of the active harness with an interval and a `max`
 - **THEN** explore arms the hand-off wait with that interval and `max` as the duration, without asking
 
 #### Scenario: Configured off
+
 - **WHEN** the resolved `warming` value is `off` with an origin other than `none`
 - **THEN** explore neither asks nor warms
 
 #### Scenario: No applicable entry
-- **WHEN** the lookup returns `origin: none`
+
+- **WHEN** the lookup returns `origin: none` for the active harness
 - **THEN** explore asks the hand-off warming question
 
 ### Requirement: Hand-off warming question

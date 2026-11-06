@@ -4745,7 +4745,7 @@ test('setup rejects a reported customization failure and a missing customization
   }
 });
 
-test('guided warming pairs list each installed (provider, model) once per role, without effort or variant suffix', () => {
+test('guided warming pairs are grouped per harness and list each installed (provider, model) once per role, without effort or variant suffix', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'warming-pairs-'));
   try {
     const dirs = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, path.join(root, name)]));
@@ -4758,6 +4758,7 @@ test('guided warming pairs list each installed (provider, model) once per role, 
     file(dirs.claudeAgents, 'sai-direct-build-worker', 'sonnet', ['effort: low']);
     file(dirs.claudeAgents, 'budget-explorer', 'haiku', ['effort: low']);
     file(dirs.opencodeCommands, 'sai-explore', 'opencode-go/deepseek-v4.1-flash#high');
+    file(dirs.opencodeCommands, 'sai-plan', 'anthropic/opus');
     file(dirs.opencodeAgents, 'sai-merge-worker', 'opencode-go/glm-5.1', ['variant: high']);
     file(dirs.opencodeAgents, 'sai-commit-worker', 'plain-model');
     const pairs = modelCustomization.guidedWarmingPairs({
@@ -4766,16 +4767,25 @@ test('guided warming pairs list each installed (provider, model) once per role, 
       roots: [['claude', dirs.claudeAgents, dirs.claudeCommands], ['opencode', dirs.opencodeAgents, dirs.opencodeCommands]],
     });
     assert.deepEqual(pairs, {
-      agent: [
-        { provider: 'anthropic', model: 'haiku' },
-        { provider: 'anthropic', model: 'opus' },
-        { provider: 'opencode-go', model: 'deepseek-v4.1-flash' },
-      ],
-      subagent: [
-        { provider: 'anthropic', model: 'haiku' },
-        { provider: 'anthropic', model: 'sonnet' },
-        { provider: 'opencode-go', model: 'glm-5.1' },
-      ],
+      claude: {
+        agent: [
+          { provider: 'anthropic', model: 'haiku' },
+          { provider: 'anthropic', model: 'opus' },
+        ],
+        subagent: [
+          { provider: 'anthropic', model: 'haiku' },
+          { provider: 'anthropic', model: 'sonnet' },
+        ],
+      },
+      opencode: {
+        agent: [
+          { provider: 'anthropic', model: 'opus' },
+          { provider: 'opencode-go', model: 'deepseek-v4.1-flash' },
+        ],
+        subagent: [
+          { provider: 'opencode-go', model: 'glm-5.1' },
+        ],
+      },
     });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

@@ -6,11 +6,12 @@ Terms. **Arm**: start one background wait whose completion wakes the agent. **Wa
 
 ## Timings
 
-Timings are `interval` and `max`, in minutes, from the `warming` setting of `.sai/settings.jsonc` (overridable by `.sai/settings.local.jsonc`), keyed by provider, model, and role. Nothing warms until the user enables it: no entry, or a `false` entry, means off. Resolve them fresh for every arm, so a changed setting, a local override included, applies from the next arm and no agent restarts.
+Timings are `interval` and `max`, in minutes, from the `warming` setting of `.sai/settings.jsonc` (overridable by `.sai/settings.local.jsonc`), keyed by harness, provider, model, and role. Each harness reads its own block (`warming.claude` or `warming.opencode`); a harness without one reads the top-level `warming.defaults` and `warming.rules`, so a legacy global value keeps applying until that harness is edited. Nothing warms until the user enables it: no entry, or a `false` entry, means off. Resolve them fresh for every arm, so a changed setting, a local override included, applies from the next arm and no agent restarts.
 
-Run `node <tool-path> warming --provider <provider> --model <model> --role <agent|subagent> --json --cwd <project-root>`, with `project-settings.js` resolved per `@sai/policies/tool-resolution.md`. It prints `{"warming": "off" | {"interval", "max"}, "origin", "warnings"}`. A non-zero exit or unreadable output is `off`.
+Run `node <tool-path> warming --provider <provider> --model <model> --role <agent|subagent> --harness <claude|opencode> --json --cwd <project-root>`, with `project-settings.js` resolved per `@sai/policies/tool-resolution.md` and the harness of the agent whose timings you resolve. It prints `{"warming": "off" | {"interval", "max"}, "origin", "warnings"}`. A non-zero exit or unreadable output is `off`.
 
 - **Provider and model of a subagent**: the `model` frontmatter of its installed agent file (`.claude/agents/{agent}.md`, then `~/.claude/agents/{agent}.md` on Claude Code; the `agents/` folder of `.opencode/`, then `~/.config/opencode/`, on opencode). On Claude Code the provider is `anthropic` and the model is the frontmatter value as written. On opencode the value is `<provider>/<model>`: the provider is the text before the first `/`, the model the rest. The agent cannot read its own runtime model, so its dispatcher resolves for it.
+- **Harness**: the harness the agent runs on: the active harness for a main session, and the dispatcher's harness for a subagent. Each harness resolves only its own block, so a value saved for one harness never changes the other.
 - **Provider and model of the main session**: those of the running session, as the harness states them; omit `--model` when the session does not state its model.
 - **Role**: `agent` for the main session, `subagent` for everything a dispatcher creates.
 

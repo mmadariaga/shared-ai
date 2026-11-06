@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
 const { runProjectSettingsScreen } = require('./project-settings-screen.js');
-const { runWarmingSetup } = require('./warming-setup.js');
+const { runWarmingSetup, HARNESS_OPTIONS } = require('./warming-setup.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
@@ -19,7 +19,6 @@ const {
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
-const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const OPENCODE_QUERY_TIMEOUT_MS = 30_000;
 const OPENCODE_CLEANUP_TIMEOUT_MS = 1_000;
@@ -562,23 +561,26 @@ function warmingPairFromSetting(setting) {
   return slash <= 0 || slash === value.length - 1 ? null : { provider: value.slice(0, slash), model: value.slice(slash + 1) };
 }
 
-// The guided warming pairs, each once per role: the `agent` role takes the commands and utilities of both
-// harnesses, the `subagent` role their workers and helpers (agents), from the effective `model` frontmatter.
+// The guided warming pairs, grouped by harness and deduplicated within each: the `agent` role takes the commands
+// and utilities of that harness, the `subagent` role its workers and helpers (agents), from the effective
+// `model` frontmatter. A pair used by both harnesses appears in both groups.
 function guidedWarmingPairs({ projectPath, packageRoot, loadManifest = loadInstallManifest, roots }) {
-  const found = { agent: new Map(), subagent: new Map() };
+  const found = {};
   const sources = { agent: ['command', 'utility'], subagent: ['worker', 'agent'] };
   for (const [harness, agentRoot, commandRoot] of roots) {
+    const byRole = { agent: new Map(), subagent: new Map() };
     const families = enumerateProjectionTargets(packageRoot, loadManifest, harness);
     for (const [role, roleFamilies] of Object.entries(sources)) {
       for (const family of roleFamilies) {
         for (const name of families[family]) {
           const pair = warmingPairFromSetting(effectiveSetting(target(family, name), projectPath, agentRoot, commandRoot, harness));
-          if (pair) found[role].set(`${pair.provider}/${pair.model}`, pair);
+          if (pair) byRole[role].set(`${pair.provider}/${pair.model}`, pair);
         }
       }
     }
+    found[harness] = Object.fromEntries(Object.entries(byRole).map(([role, pairs]) => [role, [...pairs.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, pair]) => pair)]));
   }
-  return Object.fromEntries(Object.entries(found).map(([role, pairs]) => [role, [...pairs.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, pair]) => pair)]));
+  return found;
 }
 
 function localOverridePath(targetEntry, projectPath, harness) {
