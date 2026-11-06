@@ -9,6 +9,7 @@ tools: {{capabilityTools}}
 Fetch `@skills/fetch/SKILL.md`
 Required capability profile: {{capabilityProfile}}.
 Fetch `@sai/policies/tool-access.md`; check access after task disclosure.
+Fetch `@sai/policies/worker-lifecycle.md`, and apply its § Worker side.
 Fetch `@sai/policies/budget-agent.md`
 
 <!-- User customizations below this line -->

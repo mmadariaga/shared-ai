@@ -7,15 +7,19 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Single cache-warming policy
 
-`sai/policies/cache-warming.md` SHALL be the single source for arming, waking, the `max` window, resolving timings, the `warming: true|false` declaration, the `warm-up` order, and disposing, including the rule that a dispatcher disposes only after a `warming: true` declaration. Worker binding templates, budget helper skills on both harnesses, helper output contracts, and the coordinator cards that dispatch workers SHALL fetch or point to it rather than restate it. The user-invoked `/sai-cache-warmer` SHALL keep its own `prepare` and `wait` behavior.
+`sai/policies/cache-warming.md` SHALL be the single source for arming, waking, the `max` window, resolving timings, the `warming: true|false` declaration, the `warm-up` order, and the hand-off wait. It SHALL NOT define when a worker or helper ends: disposing SHALL belong to `sai/policies/worker-lifecycle.md`, to which `cache-warming.md` SHALL point, and the `warming` declaration SHALL gate no stop. Its "Stop your own wait" SHALL end the session's own background wait and then dispose every worker and helper still alive under `worker-lifecycle.md`. Worker binding templates, budget helper skills on both harnesses, helper output contracts, and the coordinator cards that dispatch workers SHALL fetch or point to `cache-warming.md` rather than restate it. The user-invoked `/sai-cache-warmer` SHALL keep its own `prepare` and `wait` behavior.
 
 #### Scenario: Binding template fetches the policy
 - **WHEN** a Claude Code or opencode standalone worker binding template is rendered
-- **THEN** it carries a `Warm and dispose` section that fetches `@sai/policies/cache-warming.md` and points to its `Warming declaration` section
+- **THEN** it carries a `Warm and dispose` section that fetches `@sai/policies/cache-warming.md` and `@sai/policies/worker-lifecycle.md`, points to the `Warming declaration` section, and states that the coordinator disposes the worker whatever the warming setting
 
 #### Scenario: User-invoked warmer is unchanged
 - **WHEN** a user runs `/sai-cache-warmer`
 - **THEN** `wait.js` still accepts its `prepare` and `wait` subcommands with their existing behavior
+
+#### Scenario: Stopping your own wait disposes live agents
+- **WHEN** a session stops the wait it armed itself through "Stop your own wait"
+- **THEN** it ends its background wait task and disposes every worker and helper still alive under `worker-lifecycle.md`, whatever their `warming` declaration
 
 ### Requirement: Dispatcher sends resolved timings
 

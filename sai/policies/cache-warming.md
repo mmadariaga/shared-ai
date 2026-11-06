@@ -1,8 +1,8 @@
 # Cache warming
 
-An agent keeps its prompt cache warm between continuations by arming one background wait after each response and re-arming on each wake, until a configured maximum or until its dispatcher disposes it. A subagent declares in every real message whether its wait is armed, and its dispatcher disposes only what the subagent declared armed. A worker resumed after a longer pause than the cache lifetime rewrites its whole prefix instead of reading it; a wake costs two short requests, so the window is bounded. This policy is the single source for arming, waking, the window, resolving timings, and disposing. Bindings, budget skills, and coordinator cards fetch it and never restate it. The user-invoked `/sai-cache-warmer` is a different activity and keeps its own behavior.
+An agent keeps its prompt cache warm between continuations by arming one background wait after each response and re-arming on each wake, until a configured maximum or until its dispatcher disposes it. A subagent declares in every real message whether its wait is armed. A worker resumed after a longer pause than the cache lifetime rewrites its whole prefix instead of reading it; a wake costs two short requests, so the window is bounded. This policy is the single source for arming, waking, the window, and resolving timings. Ending a worker or helper belongs to `@sai/policies/worker-lifecycle.md`, and the warming declaration gates no stop. Bindings, budget skills, and coordinator cards fetch it and never restate it. The user-invoked `/sai-cache-warmer` is a different activity and keeps its own behavior.
 
-Terms. **Arm**: start one background wait whose completion wakes the agent. **Wake**: the turn that a completed wait triggers. **Dispose**: stop an agent's warming from outside. **Agent role**: a main session that runs a command (a coordinator). **Subagent role**: a worker or helper that another agent dispatches. **Live explorer**: an explorer kept armed and reused by its coordinator until run close. **Chain**: the waits one agent arms in succession from its first arm; each agent owns one chain, and only the newest wait of a chain stays live. **Final response**: a response after which the agent expects no continuation: a coordinator's closing report, or a worker's terminal result (`completed`, `failed`, `cancelled`). A question (`needs_input`) and an intermediate step report are not final. **Warming field**: the `warming: true|false` line a subagent puts in each real message to its dispatcher; `true` means its wait was armed when it sent that message. **Warm-up**: the dispatcher's order to a finished helper to arm without doing other work. **Helper**: `budget-explorer`, `budget-subagent`, or `budget-executor`; **worker**: any other subagent a command creates and keeps alive. **Real message**: any subagent message except the `ok` of a wake or of a `dispose`.
+Terms. **Arm**: start one background wait whose completion wakes the agent. **Wake**: the turn that a completed wait triggers. **Agent role**: a main session that runs a command (a coordinator). **Subagent role**: a worker or helper that another agent dispatches. **Chain**: the waits one agent arms in succession from its first arm; each agent owns one chain, and only the newest wait of a chain stays live. **Final response**: a response after which the agent expects no continuation: a coordinator's closing report, or a worker's terminal result (`completed`, `failed`, `cancelled`). A question (`needs_input`) and an intermediate step report are not final. **Warming field**: the `warming: true|false` line a subagent puts in each real message to its dispatcher; `true` means its wait was armed when it sent that message. **Warm-up**: the dispatcher's order to a finished helper to arm without doing other work. **Helper**: `budget-explorer`, `budget-subagent`, or `budget-executor`; **worker**: any other subagent a command creates and keeps alive. **Real message**: any subagent message except the `ok` of a wake or of a `dispose`.
 
 ## Timings
 
@@ -58,23 +58,11 @@ A wake performs no work. Run no tool other than the re-arm, send no report, emit
 
 **Failure.** When arming fails (no shell, a permission refusal, a missing script), stop warming without retrying and declare `warming: false` in that same message. The outcome and the report of your task do not change.
 
-**`dispose` message.** When the message is exactly `dispose`, reply `ok` and arm nothing again. It is the fallback of the dispose actions below.
+**`dispose` message.** A message that is exactly `dispose` is answered as `@sai/policies/worker-lifecycle.md` § Worker side says: reply `ok` and arm nothing again.
 
 ## Dispose
 
-Dispose is a dispatcher action on the handle it captured at dispatch: it stops an agent's warming from outside, without a model turn. Dispose only a handle whose latest real message declared `warming: true`. For any other handle (declared `false`, no declaration, or a lost value) do nothing: no stop call, no shell removal, and no `dispose` message. With the warming setting `off` nothing is ever armed, so nothing is ever disposed.
-
-- **Claude Code**: `TaskStop(task_id: <agent ID>)`, the same pattern as `sai/commands/explore/steps/slice.md` uses to stop a worker.
-- **opencode**: `shell.remove` of the outstanding shell of the agent's session, then `session.interrupt` of that session. `session.interrupt` alone does nothing on an idle session, so the shell goes first.
-- **Neither reachable** (for example the server API is not reachable from the session): send the message `dispose`. It costs one model turn.
-
-A dispose after a `true` declaration can find nothing left to stop because the `max` window expired first. That result is expected and harmless: it is not an obstacle, spends no attempt, and is not retried.
-
-**Workers.** A coordinator disposes each long-lived worker whose latest declaration is `true` at run close, at a segment boundary (when a following segment starts), and when it replaces the worker. A pending `needs_input` question keeps its worker armed, because the answer is a continuation.
-
-**Live explorer.** A coordinator keeps one explorer for its whole run and reuses it for every sequential search: the first search goes through the ready handshake, and each later search is a continuation on the same handle with its own per-segment tool-call ceiling. Parallel searches start additional explorers, which are reused the same way. An explorer's result declares `warming: false`; send it a `warm-up` only when you will reuse it after an idle stretch. Dispose the explorers whose latest declaration is `true` at run close; a command with no run close disposes them when its route ends or is abandoned, and otherwise the `max` window bounds them.
-
-**Other helpers.** An executor never arms and needs no dispose. A task subagent is disposed after you have its result only when its latest declaration is `true`, which only a `warm-up` you sent can make so.
+Ending a worker or helper does not depend on warming: `@sai/policies/worker-lifecycle.md` owns the dispose points, the stop call, and the already-ended and failure handling. The `warming` field gates no stop. A dispose ends an armed wait together with its agent, so no second stop of the wait follows.
 
 ## Hand-off wait
 
@@ -88,4 +76,4 @@ A command that sends the user to another chat and waits for them to return (the 
 
 ## Stop your own wait
 
-To stop the wait that your own session armed (the benchmark's measurement and the hand-off wait need this), end the background task it launched: Claude Code `TaskStop` with that task's ID, opencode the shell removal of that shell. Then dispose every agent whose latest declaration is `true`, as above. A stop that finds the task already ended is harmless and spends no attempt.
+To stop the wait that your own session armed (the benchmark's measurement and the hand-off wait need this), end the background task it launched: Claude Code `TaskStop` with that task's ID, opencode the shell removal of that shell. Then dispose every worker and helper still alive, under `@sai/policies/worker-lifecycle.md`. A stop that finds the task already ended is harmless and spends no attempt.
