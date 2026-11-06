@@ -276,6 +276,14 @@ artifacts:
       Fetch and follow sai/commands/accessibility/accessibility-report.template.md exactly. This instruction is an informative reference only; it does not restate the accessibility report contract.
     requires: []
 
+  - id: telemetry
+    generates: telemetry.md
+    description: Change telemetry — optional per-execution cost and review figures of /sai-plan and /sai-build, read from opencode.db
+    template: telemetry.md
+    instruction: |
+      Optional artifact. sai/tools/change-telemetry.js writes it at the close of a direct /sai-plan or /sai-build run on opencode when the project setting experimental.changeTelemetry is true; do not write it by hand. Nothing requires it, and every command works with or without it.
+    requires: []
+
 apply:
   requires: [tasks]
   tracks: tasks.md
