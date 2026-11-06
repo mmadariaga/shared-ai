@@ -51,7 +51,7 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
-const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
+const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
 
 const DEFAULT_LIMIT = 5;
 const DEFAULT_COUNT = 10;
@@ -66,8 +66,6 @@ const INSTRUCTION_PATH = /(^|\/)(\.claude|\.opencode|sai|skills|agents|commands)
 const SKILL_BODY = /^Base directory for this skill: (.+)/;
 // Conversation records only; idle and model/agent/location switches are state markers.
 const OPENCODE_RECORD_TYPES = ['user', 'assistant', 'synthetic', 'system', 'shell', 'compaction'];
-// The opencode command wrappers embed the invoked command in an envelope.
-const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
 const OPENCODE_SYNTHETIC_READ = /^Called the Read tool with the following input:[\s\S]*?<path>([^<]+)<\/path>\s*<type>file<\/type>/;
 const OPENCODE_SKILL_BASE = /Base directory for this skill: (\S+)/;
 const UNAVAILABLE = 'unavailable';
@@ -479,9 +477,7 @@ function opencodeToolText(item) {
 const opencodeSettled = item => item.state?.status === 'completed' || item.state?.status === 'error';
 
 function opencodeInvocation(record) {
-  if (record.type !== 'user') return null;
-  const match = opencodeText(record).match(OPENCODE_ENVELOPE);
-  return match ? { name: match[1], args: match[2].trim() } : null;
+  return record.type === 'user' ? parseInvocation(opencodeText(record)) : null;
 }
 
 // The envelope names the command body (`design`); the registry holds the command
@@ -665,12 +661,6 @@ function excerptOpencode(options, env, loadSqlite) {
     const records = opencodeRecords(db, options.agent ?? options.session);
     return { session: options.session, agent: options.agent ?? null, ...pageRecords(records, record => record.id, options, renderOpencodeRecord) };
   } finally { db.close(); }
-}
-
-// opencode records a directory with the separators of the platform that created it.
-function directoryForms(directory) {
-  const forward = directory.replace(/\\/g, '/');
-  return [...new Set([directory, forward, forward.replace(/\//g, '\\')])];
 }
 
 const sameDirectory = (a, b) => a.replace(/\\/g, '/') === b.replace(/\\/g, '/');

@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx --allow-git=all github:mmadariaga/shared-ai setup`, or by hand; the `warming` setting is edited by hand only. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx --allow-git=all github:mmadariaga/shared-ai setup`, or by hand; the `warming` and `experimental.changeTelemetry` settings are edited by hand only. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -29,6 +29,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
 | `warming` | An object with `defaults` and `rules`; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
+| `experimental.changeTelemetry` | `true` or `false`; see [Change telemetry](#change-telemetry) | `/sai-plan` and `/sai-build` on opencode |
 
 All three `explore.*` ids accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage` and `explore.chatPublicLanguage`, `none` is invalid.
 
@@ -89,6 +90,24 @@ Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.
 - Check the result with the resolver command shown under [Cache warming](#cache-warming).
 
 The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settings.local.jsonc` while it measures and restores the file afterwards; see its [command page](commands/sai-context-cache-ttl-benchmark.md#warming-override).
+
+## Change telemetry
+
+`experimental.changeTelemetry` is a boolean, edited by hand like `warming`: the settings screen does not list it, and an absent key reads as `false`. This setting is experimental and its shape may change.
+
+```jsonc
+{
+  "experimental": { "changeTelemetry": true }
+}
+```
+
+With `true`, a direct `/sai-plan` or `/sai-build` run on opencode records the cost of the run in `openspec/changes/<name>/telemetry.md` when it closes. The file is an optional artifact of the `sai-workflow` schema. Each run adds one section at the end, marked with its final status (`completed`, `failed`, `stopped`, `blocked`, or `unanswered`), and the change total at the top is recomputed. For the coordinator and every subagent, a section lists the model and variant, the requests, the tokens (input, output, reasoning, cache read, cache write), the cache misses, the cost, the model time, the tool calls with their errors and a breakdown by tool, and the subagents dispatched. It also lists the review findings of each segment: found by the first review pass and still pending after the last one. Where a segment has no such tally, the section says `unavailable`.
+
+- Every figure is read after the run from `opencode.db` by `sai/tools/change-telemetry.js`. A datum that opencode did not record shows as `unavailable`, never as zero, and a total that depends on it is marked `≥`.
+- The figures of the coordinator leave out its own closing turn, because that turn is still running when the collection starts.
+- Only opencode with the V2 session schema is supported. On Claude Code the command prints one line saying so. When the database cannot be read, or the run is not found in it, the command still closes normally, writes nothing, and prints the reason.
+- The `/sai-explore` `Plan - Unattended` route and `/sai-deep-review` record no telemetry.
+- The command commits `telemetry.md` only when the project does not ignore it. A project that ignores `openspec/changes/` keeps the file on disk, and the closing report says so.
 
 ## Values and precedence
 

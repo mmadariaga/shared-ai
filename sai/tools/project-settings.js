@@ -109,6 +109,8 @@ const CATALOGUE = {
       : nonEmptyString,
     ...(field === 'provider' ? { label: 'Provider', section: 'Pull requests' } : {}),
   }])),
+  // Hand-edited: no label, so the settings screen does not list it. An absent key reads as false.
+  'experimental.changeTelemetry': { validate: value => (typeof value === 'boolean' ? null : 'must be true or false') },
   'explore.readyToProposeLanguage': {
     validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
     normalize: languageName,
