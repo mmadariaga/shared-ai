@@ -49,16 +49,13 @@
   },
   "worker:sai-3-red-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
-    "variant": "high"
+    "variant": "max"
   },
   "worker:sai-3-green-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
-  "command:sai-deep-review": {
-    "model": "opencode-go/deepseek-v4.1-flash",
-    "variant": "high"
-  },
+
   "command:sai-4-review": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "high"
@@ -67,9 +64,13 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
-  "command:sai-5-security": {
+  "command:sai-deep-review": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "high"
+  },
+  "command:sai-5-security": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "worker:sai-5-security-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
@@ -116,14 +117,6 @@
     "variant": "max"
   },
   "command:sai-commit": {
-    "model": "opencode-go/deepseek-v4.1-flash",
-    "variant": "high"
-  },
-  "command:sai-cache-warmer": {
-    "model": "opencode-go/deepseek-v4.1-flash",
-    "variant": "high"
-  },
-  "command:sai-context-cache-ttl-benchmark": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "high"
   },
