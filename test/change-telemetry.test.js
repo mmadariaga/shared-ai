@@ -56,7 +56,7 @@ function scratch() {
 const tool = (name, status = 'completed', input = {}, content = []) => ({ type: 'tool', id: `call_${name}`, name, state: { status, input, content } });
 const dispatch = (sessionId, name = 'task') => ({ type: 'tool', id: `call_${sessionId}`, name, state: { status: 'completed', input: {}, metadata: { sessionId }, content: [] } });
 const options = (fixture, extra = {}) => ({ harness: 'opencode', command: 'sai-plan', change: 'demo', cwd: fixture.project, status: 'completed', ...extra });
-const telemetryOf = fixture => fs.readFileSync(path.join(fixture.project, 'openspec', 'changes', 'demo', 'telemetry.md'), 'utf8');
+const telemetryOf = (fixture, relative = 'openspec/changes/demo/telemetry.md') => fs.readFileSync(path.join(fixture.project, relative), 'utf8');
 const section = (text, heading) => text.split(/^### /m).find(part => part.startsWith(heading)) ?? '';
 const rowOf = (text, agent) => text.split('\n').find(line => line.startsWith(`| ${agent} |`));
 
@@ -350,27 +350,130 @@ sqliteTest('plan route: design alone starts the window when the spec segment was
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 
-sqliteTest('direct build route: segment marks follow the direct-build, backfill, and archive workers', () => {
+// A completed Direct Build slice: the change is already archived, its workers write
+// through transfer files and git in shell calls, and a previous slice ran in the
+// same explore session.
+function directBuildFixture() {
   const f = scratch();
+  fs.rmSync(path.join(f.project, 'openspec', 'changes', 'demo'), { recursive: true });
+  fs.mkdirSync(path.join(f.project, 'openspec', 'changes', 'archive', '2026-02-01-demo'), { recursive: true });
+  f.session('ses_explore', null, 'build', 0);
+  f.invoke('ses_explore', 1, 'explore', 'idea');
+  f.session('ses_old_direct', 'ses_explore', 'sai-direct-build-worker', 5);
+  f.request('ses_old_direct', 6, { cost: 9 });
+  f.session('ses_old_archive', 'ses_explore', 'sai-archive-worker', 7);
+  f.request('ses_old_archive', 8, { cost: 9, content: [tool('shell', 'completed', { command: 'git add openspec/changes/archive/2026-02-01-old/' })] });
+  f.session('ses_direct', 'ses_explore', 'sai-direct-build-worker', 10);
+  // The implementer reads a previous change's archived proposal; that never makes it a slice boundary.
+  f.request('ses_direct', 11, { content: [
+    tool('edit', 'completed', { path: `${f.project}/sai/tools/change-telemetry.js` }),
+    tool('read', 'completed', { path: `${f.project}/openspec/changes/archive/2026-02-01-old/proposal.md` }),
+  ] });
+  f.session('ses_backfill', 'ses_explore', 'sai-backfill-worker', 20);
+  f.request('ses_backfill', 21, { content: [tool('shell', 'completed', { command: 'node transfer.js materialize --destination openspec/changes/demo/proposal.md' })] });
+  f.session('ses_archive', 'ses_explore', 'sai-archive-worker', 30);
+  f.request('ses_archive', 31, { content: [tool('shell', 'completed', { command: 'git add openspec/changes/archive/2026-02-01-demo/' })] });
+  f.request('ses_explore', 40, { cost: 0.5 });
+  return f;
+}
+
+const directBuildOptions = (fixture, extra = {}) => ({ ...routeOptions(fixture, { command: 'sai-explore-direct-build' }), ...extra });
+const ARCHIVED_TELEMETRY = 'openspec/changes/archive/2026-02-01-demo/telemetry.md';
+
+sqliteTest('direct build route: the current slice starts at its implementer, and the archived change is found', () => {
+  const f = directBuildFixture();
   try {
-    f.session('ses_explore', null, 'build', 0);
-    f.invoke('ses_explore', 1, 'explore', 'idea');
-    f.session('ses_direct', 'ses_explore', 'sai-direct-build-worker', 10);
-    f.request('ses_direct', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
-    f.session('ses_backfill', 'ses_explore', 'sai-backfill-worker', 20);
-    f.request('ses_backfill', 21, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/specs/demo/spec.md` })] });
-    f.session('ses_archive', 'ses_explore', 'sai-archive-worker', 30);
-    f.request('ses_archive', 31, {});
-    f.request('ses_explore', 40, { done: false });
+    f.request('ses_explore', 42, { done: false });
     f.db.close();
-    const result = collect(routeOptions(f, { command: 'sai-explore-direct-build' }), { env: f.env });
+    const result = collect(directBuildOptions(f), { env: f.env });
     assert.equal(result.outcome, 'written');
-    const text = telemetryOf(f);
+    assert.equal(result.path, ARCHIVED_TELEMETRY);
+    const text = telemetryOf(f, ARCHIVED_TELEMETRY);
     assert.match(text, /## Execution 1 — sai-explore \(Direct Build - Unattended\) — completed/);
     assert.match(section(text, 'Implement'), /sai-direct-build-worker/);
     assert.match(section(text, 'Backfill'), /sai-backfill-worker/);
     assert.match(section(text, 'Archive'), /sai-archive-worker/);
-    assert.match(section(text, 'Implement'), /Findings: unavailable \(the route records no review-finding tally\)\./);
+    // The previous slice's workers and the request before the implementer are outside the window.
+    assert.ok(!text.includes('ses_old_direct'));
+    const coordinator = rowOf(section(text, 'Coordinator'), 'sai-explore').split(' | ').map(cell => cell.trim());
+    assert.equal(coordinator[3], '1');
+    assert.match(coordinator.join(' | '), /\$0\.5000/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('direct build route: an implementer reading another change does not start the slice', () => {
+  const f = directBuildFixture();
+  try {
+    f.request('ses_explore', 42, { done: false });
+    f.db.close();
+    assert.equal(collect(directBuildOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f, ARCHIVED_TELEMETRY);
+    assert.match(section(text, 'Implement'), /\| sai-direct-build-worker \|/);
+    assert.match(section(text, 'Backfill'), /\| sai-backfill-worker \|/);
+    const coordinator = rowOf(section(text, 'Coordinator'), 'sai-explore').split(' | ').map(cell => cell.trim());
+    assert.equal(coordinator[3], '1');
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('direct build route: a replaced archive worker stays inside the current slice', () => {
+  const f = directBuildFixture();
+  try {
+    f.session('ses_archive_first', 'ses_explore', 'sai-archive-worker', 25);
+    f.request('ses_archive_first', 26, { content: [tool('shell', 'completed', { command: 'git add openspec/changes/demo/' })] });
+    f.request('ses_explore', 42, { done: false });
+    f.db.close();
+    assert.equal(collect(directBuildOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f, ARCHIVED_TELEMETRY);
+    assert.match(section(text, 'Implement'), /sai-direct-build-worker/);
+    assert.match(section(text, 'Backfill'), /sai-backfill-worker/);
+    assert.equal(section(text, 'Archive').split('\n').filter(line => line.startsWith('| sai-archive-worker |')).length, 2);
+    const coordinator = rowOf(section(text, 'Coordinator'), 'sai-explore').split(' | ').map(cell => cell.trim());
+    assert.equal(coordinator[3], '1');
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('direct build route: a POC implementer before the first slice is excluded', () => {
+  const f = scratch();
+  try {
+    fs.rmSync(path.join(f.project, 'openspec', 'changes', 'demo'), { recursive: true });
+    fs.mkdirSync(path.join(f.project, 'openspec', 'changes', 'archive', '2026-02-01-demo'), { recursive: true });
+    f.session('ses_explore', null, 'build', 0);
+    f.invoke('ses_explore', 1, 'explore', 'idea');
+    f.session('ses_poc', 'ses_explore', 'sai-direct-build-worker', 4);
+    f.user('ses_poc', 5, '--direct-build --no-specs\n--work-root /tmp/poc');
+    f.request('ses_poc', 6, { cost: 42 });
+    f.session('ses_direct', 'ses_explore', 'sai-direct-build-worker', 10);
+    f.request('ses_direct', 11, {});
+    f.session('ses_backfill', 'ses_explore', 'sai-backfill-worker', 20);
+    f.request('ses_backfill', 21, { content: [tool('shell', 'completed', { command: 'node transfer.js materialize --destination openspec/changes/demo/proposal.md' })] });
+    f.session('ses_archive', 'ses_explore', 'sai-archive-worker', 30);
+    f.request('ses_archive', 31, { content: [tool('shell', 'completed', { command: 'git add openspec/changes/archive/2026-02-01-demo/' })] });
+    f.request('ses_explore', 40, { cost: 0.5 });
+    f.request('ses_explore', 42, { done: false });
+    f.db.close();
+    assert.equal(collect(directBuildOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f, ARCHIVED_TELEMETRY);
+    assert.equal(section(text, 'Implement').split('\n').filter(line => line.startsWith('| sai-direct-build-worker |')).length, 1);
+    assert.ok(!text.includes('$42.0000'));
+    const coordinator = rowOf(section(text, 'Coordinator'), 'sai-explore').split(' | ').map(cell => cell.trim());
+    assert.equal(coordinator[3], '1');
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('direct build route: implement findings come from the fix-loop round files, the other segments carry none', () => {
+  const f = directBuildFixture();
+  try {
+    f.request('ses_explore', 42, { done: false });
+    f.db.close();
+    const runDir = writeRounds(f.project, {
+      'implement-round-1.md': '#### H1\nSummary: High=2 Medium=1 Low=0\n',
+      'implement-round-4.md': '#### H1\nSummary: High=0 Medium=1 Low=0\n',
+    });
+    assert.equal(collect(directBuildOptions(f, { runDir }), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f, ARCHIVED_TELEMETRY);
+    assert.match(section(text, 'Implement'), /Findings found: High=2 Medium=1 Low=0 · pending: High=0 Medium=1 Low=0/);
+    assert.match(section(text, 'Backfill'), /Findings: unavailable \(this segment records no review-finding tally\)\./);
+    assert.match(section(text, 'Archive'), /Findings: unavailable \(this segment records no review-finding tally\)\./);
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 
