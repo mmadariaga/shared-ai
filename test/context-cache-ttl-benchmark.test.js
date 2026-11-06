@@ -251,10 +251,10 @@ function warmingFixture(t, { base = '{ "warming": { "defaults": { "agent": { "in
   if (base !== null) fs.writeFileSync(path.join(project, '.sai', 'settings.jsonc'), base);
   const localFile = path.join(project, '.sai', 'settings.local.jsonc');
   if (local !== undefined) fs.writeFileSync(localFile, local);
-  return { project, saiRoot, localFile, args: { tools: settingsTools, project, saiRoot } };
+  return { project, saiRoot, localFile, args: { tools: settingsTools, project, saiRoot, harness: 'claude' } };
 }
 
-const resolveRole = (project, role) => settingsTools.warming({ provider: 'anthropic', model: 'haiku', role }, { cwd: project, locate: false }).warming;
+const resolveRole = (project, role, harness = 'claude') => settingsTools.warming({ provider: 'anthropic', model: 'haiku', role, harness }, { cwd: project, locate: false }).warming;
 
 test('E16 the skill asks for permission before writing the override and stops when the user declines', () => {
   const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/sai-context-cache-ttl-benchmark/SKILL.md'), 'utf8');

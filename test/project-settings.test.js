@@ -469,7 +469,7 @@ const warmingProject = (value = warmingSetting, local) => project({
   '.sai/settings.jsonc': JSON.stringify({ warming: value }),
   ...(local === undefined ? {} : { '.sai/settings.local.jsonc': JSON.stringify({ warming: local }) }),
 });
-const resolved = (cwd, provider, model, role) => settings.warming({ provider, model, role }, { cwd });
+const resolved = (cwd, provider, model, role, harness = 'claude') => settings.warming({ provider, model, role, harness }, { cwd });
 
 test('I3: warming is one catalogue id and no setting means off for both roles (E1)', () => {
   assert.ok(settings.CATALOGUE.warming);
@@ -478,6 +478,23 @@ test('I3: warming is one catalogue id and no setting means off for both roles (E
     assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', role), { warming: 'off', origin: 'none', warnings: [] });
   }
   assert.equal(resolved(warmingProject({ defaults: { agent: false, subagent: false } }), 'anthropic', 'haiku', 'agent').warming, 'off');
+});
+
+test('E3/E4/E5: a harness reads its own block, and a harness without one reads the global fallback', () => {
+  const cwd = warmingProject({
+    defaults: { agent: { interval: 9, max: 30 }, subagent: false },
+    rules: [{ provider: 'anthropic', role: 'agent', interval: 8, max: 30 }],
+    claude: { defaults: { agent: { interval: 1, max: 10 } } },
+  });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'agent', 'claude'), { warming: { interval: 1, max: 10 }, origin: 'defaults', warnings: [] });
+  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'agent', 'opencode'), { warming: { interval: 8, max: 30 }, origin: 'provider', warnings: [] });
+  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'subagent', 'opencode').warming, 'off');
+  const scoped = warmingProject({ defaults: { agent: { interval: 9, max: 30 } }, opencode: { rules: [{ provider: 'opencode-go', role: 'subagent', enabled: false }] } });
+  assert.deepEqual(resolved(scoped, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'a harness block is not merged with the global value');
+  assert.equal(resolved(scoped, 'opencode-go', 'm', 'subagent', 'opencode').warming, 'off');
+  const both = warmingProject({ defaults: { agent: { interval: 9, max: 30 } }, claude: { defaults: { agent: { interval: 1, max: 10 } } }, opencode: { defaults: { agent: { interval: 2, max: 20 } } } });
+  assert.deepEqual(resolved(both, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 10 });
+  assert.deepEqual(resolved(both, 'x', 'y', 'agent', 'opencode').warming, { interval: 2, max: 20 });
 });
 
 test('E2/I4: the model rule beats the provider rule, which beats the role default, separately per role', () => {
@@ -519,12 +536,15 @@ test('E1/E2: a rule with enabled: false turns warming off even where the default
   assert.deepEqual(resolved(cwd, 'opencode-go', 'other', 'subagent').warming, { interval: 4, max: 30 });
 });
 
-test('E15: the resolver reads the files again at every call, and the local file overrides the whole entry', () => {
+test('E15/E8: the resolver reads the files again at every call, and the local file replaces the whole entry', () => {
   const cwd = warmingProject();
   assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
   fs.writeFileSync(path.join(cwd, '.sai/settings.local.jsonc'), '{ "warming": { "defaults": { "agent": false, "subagent": false }, "rules": [] } }');
   assert.equal(resolved(cwd, 'x', 'y', 'agent').warming, 'off');
   assert.equal(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, 'off');
+  fs.writeFileSync(path.join(cwd, '.sai/settings.local.jsonc'), '{ "warming": { "claude": { "defaults": { "agent": { "interval": 1, "max": 5 } } } } }');
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 5 });
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'an unnamed harness reads off');
   fs.rmSync(path.join(cwd, '.sai/settings.local.jsonc'));
   assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, { interval: 4, max: 20 });
 });
@@ -535,6 +555,8 @@ test('I3: an invalid warming value drops the key with a warning, so nothing warm
     { rules: {} }, { rules: [{ provider: 'p', role: 'agent' }] }, { rules: [{ provider: 'p', role: 'boss', interval: 1, max: 2 }] },
     { rules: [{ provider: '', role: 'agent', interval: 1, max: 2 }] }, { rules: [{ provider: 'p', role: 'agent', enabled: false, interval: 1, max: 2 }] },
     { rules: [{ provider: 'p', role: 'agent', interval: 1, max: 2, extra: 1 }] }, { surprise: true },
+    { claude: false }, { claude: { defaults: { agent: { interval: 0, max: 5 } } } }, { opencode: { rules: [{ provider: 'p', role: 'agent' }] } },
+    { claude: { defaults: { agent: { interval: 1, max: 2 } }, extra: 1 } },
   ];
   for (const value of invalid) {
     const result = resolved(warmingProject(value), 'p', 'm', 'agent');
@@ -546,13 +568,13 @@ test('I3: an invalid warming value drops the key with a warning, so nothing warm
 test('I4: the warming subcommand prints the effective values as JSON and rejects bad arguments', () => {
   const cwd = warmingProject();
   const run = (...args) => spawnSync(process.execPath, [path.join(root, 'sai/tools/project-settings.js'), 'warming', ...args, '--json', '--cwd', cwd], { encoding: 'utf8' });
-  const ok = run('--provider', 'anthropic', '--model', 'haiku', '--role', 'subagent');
+  const ok = run('--provider', 'anthropic', '--model', 'haiku', '--role', 'subagent', '--harness', 'claude');
   assert.equal(ok.status, 0);
   assert.deepEqual(JSON.parse(ok.stdout), { warming: { interval: 4, max: 20 }, origin: 'model', warnings: [] });
-  assert.equal(JSON.parse(run('--provider', 'x', '--role', 'subagent').stdout).warming, 'off');
-  for (const args of [['--role', 'agent'], ['--provider', 'p', '--role', 'boss'], ['--provider', 'p', '--role', 'agent', '--wat', '1']]) {
+  assert.deepEqual(JSON.parse(run('--provider', 'x', '--role', 'subagent', '--harness', 'opencode').stdout).warming, 'off');
+  for (const args of [['--role', 'agent', '--harness', 'claude'], ['--provider', 'p', '--role', 'boss', '--harness', 'claude'], ['--provider', 'p', '--role', 'agent'], ['--provider', 'p', '--role', 'agent', '--harness', 'boss'], ['--provider', 'p', '--role', 'agent', '--harness', 'claude', '--wat', '1']]) {
     const bad = run(...args);
-    assert.equal(bad.status, 2);
+    assert.equal(bad.status, 2, args.join(' '));
     assert.equal(JSON.parse(bad.stdout).status, 'error');
   }
 });
@@ -564,9 +586,15 @@ test('I3: the settings writer validates and saves a warming entry through the ca
   const text = fs.readFileSync(path.join(cwd, '.sai/settings.jsonc'), 'utf8');
   assert.match(text, /\/\/ keep me/);
   assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
+  assert.equal(writer.saveSettings(cwd, { warming: { claude: { defaults: { agent: { interval: 1, max: 5 } } }, defaults: { agent: { interval: 4, max: 30 } } } }).ok, true);
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 5 });
+  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'opencode').warming, { interval: 4, max: 30 });
   const refused = writer.saveSettings(cwd, { warming: { defaults: { agent: { interval: -1, max: 30 } } } });
   assert.equal(refused.ok, false);
   assert.match(refused.error, /warming/);
+  const refusedBlock = writer.saveSettings(cwd, { warming: { opencode: { defaults: { agent: { interval: -1, max: 30 } } } } });
+  assert.equal(refusedBlock.ok, false);
+  assert.match(refusedBlock.error, /opencode/);
 });
 
 test('I3: experimental.changeTelemetry is a boolean that reads as absent until set, and a non-boolean is dropped with a warning', () => {
