@@ -35,6 +35,9 @@ const MODEL_TABLE_DIFFICULTY_WIDTH = MODEL_TABLE_DIFFICULTY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
 const UTILITY_NAMES = Object.freeze(['sai-retire-docs', 'sai-retrospective', 'sai-status', 'sai-worktree']);
+// Wrappers that only load a skill into the current conversation have no model role
+// of their own: they inherit the session model, so no surface offers them a model.
+const SKILL_LAUNCHER_NAMES = Object.freeze(['sai-cache-warmer', 'sai-context-cache-ttl-benchmark']);
 // Display-only profile per family-qualified target. `context` estimates typical task
 // context (instructions, documents, results, history), not model context-window size;
 // fresh per-Step workers carry less than their supervisor. `difficulty` is reasoning demand.
@@ -498,6 +501,7 @@ function enumerateProjectionTargets(packageRoot, loadManifest, harness) {
     }
   }
   for (const name of enumerateCommands(packageRoot, loadManifest, harness)) {
+    if (SKILL_LAUNCHER_NAMES.includes(name)) continue;
     families[UTILITY_NAMES.includes(name) ? 'utility' : 'command'].push(name);
   }
   for (const family of Object.keys(families)) families[family] = [...new Set(families[family])].sort();

@@ -47,3 +47,14 @@ for (const [harness, install, names] of [
     }
   });
 }
+
+test('the three distributed opencode presets assign no model to the skill launcher wrappers', () => {
+  const skillLaunchers = ['sai-cache-warmer', 'sai-context-cache-ttl-benchmark'];
+  for (const name of ['oGo-Deepseek.json', 'oAI-LUNA.json', 'oAI-SOL.json']) {
+    const preset = JSON.parse(fs.readFileSync(path.join(repoRoot, 'sai', 'presets', 'opencode', prefix + name), 'utf8'));
+    for (const launcher of skillLaunchers) {
+      assert.ok(!Object.keys(preset).some(key => key.endsWith(`:${launcher}`)),
+        `${prefix}${name} should carry no entry for ${launcher}`);
+    }
+  }
+});
