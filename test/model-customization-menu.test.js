@@ -4760,8 +4760,8 @@ test('guided warming pairs list each installed (provider, model) once per role, 
   }
 });
 
-test('the post-setup menu hides Cache warming while its visibility constant is off', () => {
+test('the post-setup menu keeps its six actions and has no Cache warming entry', () => {
   const options = modelCustomization.MENU_OPTIONS;
+  assert.deepEqual([...options], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
   assert.equal(options.includes('Cache warming'), false);
-  assert.equal(options.at(-1), 'Exit');
 });

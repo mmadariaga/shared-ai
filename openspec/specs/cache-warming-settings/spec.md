@@ -51,12 +51,12 @@ The project settings catalogue in `sai/tools/project-settings.js` SHALL accept o
 
 ### Requirement: Warming setting documentation
 
-`docs/project-settings.md` SHALL list `warming` in the catalogue table and SHALL describe, in a Cache warming section, the value shape, the resolution order including the model-family step for provider `anthropic`, the `family` origin, how the provider and model of a worker or helper derive from its installed agent `model` frontmatter on each harness, that timings are resolved again for every arm, and the resolver command. While the `Cache warming` post-setup menu action is hidden, the documentation SHALL state that `warming` is edited by hand only, SHALL explain how to set the `warming` key in `.sai/settings.jsonc` or in `.sai/settings.local.jsonc` for a personal override, SHALL state that neither the project behavior settings screen nor any other step of the setup flow edits `warming`, and SHALL NOT direct readers to the `Cache warming` menu action.
+`docs/project-settings.md` SHALL list `warming` in the catalogue table and SHALL describe, in a Cache warming section, the value shape, the resolution order including the model-family step for provider `anthropic`, the `family` origin, how the provider and model of a worker or helper derive from its installed agent `model` frontmatter on each harness, that timings are resolved again for every arm, and the resolver command. The documentation SHALL explain that the `Cache warming` row of the `Experimental` section in the project behavior settings screen opens the cache warming screen, SHALL describe that screen in a `Cache warming screen` subsection, and SHALL explain how to set the `warming` key by hand in `.sai/settings.jsonc` or in `.sai/settings.local.jsonc` for a personal override. It SHALL NOT direct readers to a `Cache warming` action of the post-setup menu.
 
 #### Scenario: Reader looks up the warming setting
 - **WHEN** a user reads `docs/project-settings.md`
 - **THEN** the catalogue table links `warming` to a Cache warming section with an example value and the resolver command
 
 #### Scenario: Reader learns how to edit warming in setup
-- **WHEN** a user reads `docs/project-settings.md` to learn how to change `warming` while the `Cache warming` post-setup menu action is hidden
-- **THEN** it explains editing the `warming` key by hand in `.sai/settings.jsonc` or `.sai/settings.local.jsonc`, states that no setup step edits `warming`, and does not name the `Cache warming` menu action
+- **WHEN** a user reads `docs/project-settings.md` to learn how to change `warming`
+- **THEN** it explains that **Project behavior settings** > `Experimental` > `Cache warming` opens the cache warming screen, explains editing the `warming` key by hand in `.sai/settings.jsonc` or `.sai/settings.local.jsonc`, and does not name a `Cache warming` post-setup menu action
