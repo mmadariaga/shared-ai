@@ -1,0 +1,120 @@
+'use strict';
+
+/**
+ * opencode-db — the read-only opencode database reader shared by the SAI tools.
+ *
+ * It opens `opencode.db` (`$XDG_DATA_HOME/opencode`, default
+ * `~/.local/share/opencode`) read-only through `node:sqlite` after a schema
+ * guard, links child sessions to their root by `parent_id`, and detects the
+ * change a run belongs to. It writes nothing. opencode's database is an internal
+ * format: opencode v2.2.0 keeps current and migrated sessions in `session_v2`
+ * and their messages in `session_message`.
+ */
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const OPENCODE_SCHEMA = {
+  session_v2: ['id', 'parent_id', 'agent', 'title', 'directory', 'time_created'],
+  session_message: ['id', 'session_id', 'type', 'seq', 'time_created', 'data'],
+};
+const OPENCODE_MAX_DEPTH = 16;
+const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
+const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
+
+// The opencode reader could not be used; the harness is reported not analyzed.
+class OpencodeUnavailable extends Error {}
+
+const defaultLoadSqlite = () => require('node:sqlite');
+
+function opencodeDatabasePath(env) {
+  return path.join(env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'opencode', 'opencode.db');
+}
+
+// opencode's database is an internal format: every table and column the reader
+// uses must exist before the first query, otherwise nothing is read.
+function guardOpencodeSchema(db) {
+  for (const [table, columns] of Object.entries(OPENCODE_SCHEMA)) {
+    const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
+    if (present.size === 0) throw new OpencodeUnavailable(`The opencode database has no ${table} table`);
+    const missing = columns.filter(column => !present.has(column));
+    if (missing.length) throw new OpencodeUnavailable(`The opencode ${table} table lacks the column(s) ${missing.join(', ')}`);
+  }
+}
+
+// `node:sqlite` needs Node 22.13 or later without a flag; package.json declares
+// `node >=22`, so an older runtime is detected here instead of raising the minimum.
+function openOpencodeDatabase(env, loadSqlite) {
+  let sqlite;
+  try { sqlite = loadSqlite(); } catch { throw new OpencodeUnavailable('node:sqlite is not available in this Node runtime (it needs Node 22.13 or later)'); }
+  const file = opencodeDatabasePath(env);
+  if (!fs.existsSync(file)) throw new OpencodeUnavailable(`No opencode database was found at ${file}`);
+  let db;
+  try { db = new sqlite.DatabaseSync(file, { readOnly: true }); } catch (error) {
+    throw new OpencodeUnavailable(`The opencode database could not be opened read-only (${error.code ?? error.message})`);
+  }
+  try { guardOpencodeSchema(db); } catch (error) {
+    db.close();
+    throw error instanceof OpencodeUnavailable ? error : new OpencodeUnavailable(`The opencode database could not be read (${error.message})`);
+  }
+  return db;
+}
+
+// The session and its root, following `parent_id` upward.
+function opencodeRoot(db, sessionId) {
+  return db.prepare(`
+    WITH RECURSIVE up(id, parent_id, directory, depth) AS (
+      SELECT id, parent_id, directory, 0 FROM session_v2 WHERE id = ?
+      UNION ALL
+      SELECT s.id, s.parent_id, s.directory, up.depth + 1 FROM session_v2 s JOIN up ON s.id = up.parent_id WHERE up.depth < ${OPENCODE_MAX_DEPTH})
+    SELECT id, directory FROM up WHERE parent_id IS NULL`).get(sessionId);
+}
+
+// Every child session below a root, parents before their children.
+function opencodeChildren(db, rootId) {
+  return db.prepare(`
+    WITH RECURSIVE tree(id, parent_id, agent, title, time_created, depth) AS (
+      SELECT id, parent_id, agent, title, time_created, 1 FROM session_v2 WHERE parent_id = ?
+      UNION ALL
+      SELECT s.id, s.parent_id, s.agent, s.title, s.time_created, tree.depth + 1 FROM session_v2 s JOIN tree ON s.parent_id = tree.id WHERE tree.depth < ${OPENCODE_MAX_DEPTH})
+    SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
+}
+
+// The change a run belongs to: the name its invocation gives (or its Ready to
+// Propose block), otherwise the single `openspec/changes/<name>/` its workers wrote to.
+function changeNameFromArgs(args) {
+  const block = args.match(CHANGE_NAME_IN_BLOCK)?.[1];
+  if (block) return block;
+  const tokens = args.replace(/["'|]/g, ' ').split(/\s+/).filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].startsWith('--')) { if (VALUE_OPTIONS.has(tokens[i].slice(2))) i++; continue; }
+    return CHANGE_NAME.test(tokens[i]) ? tokens[i] : null;
+  }
+  return null;
+}
+
+function writtenChanges(toolName, input, into) {
+  if (!WRITE_TOOLS.has(toolName) || !input || typeof input !== 'object') return;
+  const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
+  for (const match of text.matchAll(/openspec\/changes\/([^/\s"'`]+)\//g)) if (match[1] !== 'archive' && CHANGE_NAME.test(match[1])) into.add(match[1]);
+}
+
+// Only a pipeline command's arguments name a change; any other command (explore takes a topic) is read from what its workers wrote.
+function changeNameOf(command, args, written, pipelineCommands) {
+  return (pipelineCommands.has(command) ? changeNameFromArgs(args) : null) ?? (written.size === 1 ? [...written][0] : null);
+}
+
+module.exports = {
+  OPENCODE_MAX_DEPTH,
+  OpencodeUnavailable,
+  defaultLoadSqlite,
+  openOpencodeDatabase,
+  opencodeRoot,
+  opencodeChildren,
+  changeNameFromArgs,
+  writtenChanges,
+  changeNameOf,
+};

@@ -51,6 +51,7 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
+const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
 
 const DEFAULT_LIMIT = 5;
 const DEFAULT_COUNT = 10;
@@ -63,13 +64,8 @@ const INVOCATION = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
 const INVOCATION_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 const INSTRUCTION_PATH = /(^|\/)(\.claude|\.opencode|sai|skills|agents|commands)\/|(^|\/)(CLAUDE|AGENTS)\.md$/;
 const SKILL_BODY = /^Base directory for this skill: (.+)/;
-const OPENCODE_SCHEMA = {
-  session_v2: ['id', 'parent_id', 'agent', 'title', 'directory', 'time_created'],
-  session_message: ['id', 'session_id', 'type', 'seq', 'time_created', 'data'],
-};
 // Conversation records only; idle and model/agent/location switches are state markers.
 const OPENCODE_RECORD_TYPES = ['user', 'assistant', 'synthetic', 'system', 'shell', 'compaction'];
-const OPENCODE_MAX_DEPTH = 16;
 // The opencode command wrappers embed the invoked command in an envelope.
 const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
 const OPENCODE_SYNTHETIC_READ = /^Called the Read tool with the following input:[\s\S]*?<path>([^<]+)<\/path>\s*<type>file<\/type>/;
@@ -83,10 +79,6 @@ const PLANNING_COMMANDS = ['sai-1-spec', 'sai-2-design', 'sai-plan'];
 const IMPLEMENTATION_COMMANDS = ['sai-3-implement', 'sai-build'];
 const PIPELINE_COMMANDS = new Set([...PLANNING_COMMANDS, ...IMPLEMENTATION_COMMANDS]);
 const SEGMENT_ORDER = ['spec', 'design', 'implement', 'other'];
-const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
-const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
-const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
-const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
 const BASELINE_FORMAT = 1;
 
 class ToolError extends Error {
@@ -285,30 +277,6 @@ function opencodeMetrics(records, reader) {
   return { usage: summarizeUsage(assistants.map(record => reader.opencodeTokens(record.data))), tool_calls: assistants.reduce((sum, record) => sum + opencodeToolItems(record).length, 0) };
 }
 
-// The change a run belongs to: the name its invocation gives (or its Ready to
-// Propose block), otherwise the single `openspec/changes/<name>/` its workers wrote to.
-function changeNameFromArgs(args) {
-  const block = args.match(CHANGE_NAME_IN_BLOCK)?.[1];
-  if (block) return block;
-  const tokens = args.replace(/["'|]/g, ' ').split(/\s+/).filter(Boolean);
-  for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i].startsWith('--')) { if (VALUE_OPTIONS.has(tokens[i].slice(2))) i++; continue; }
-    return CHANGE_NAME.test(tokens[i]) ? tokens[i] : null;
-  }
-  return null;
-}
-
-function writtenChanges(toolName, input, into) {
-  if (!WRITE_TOOLS.has(toolName) || !input || typeof input !== 'object') return;
-  const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
-  for (const match of text.matchAll(/openspec\/changes\/([^/\s"'`]+)\//g)) if (match[1] !== 'archive' && CHANGE_NAME.test(match[1])) into.add(match[1]);
-}
-
-// Only a pipeline command's arguments name a change; any other command (explore takes a topic) is read from what its workers wrote.
-function changeNameOf(command, args, written) {
-  return (PIPELINE_COMMANDS.has(command) ? changeNameFromArgs(args) : null) ?? (written.size === 1 ? [...written][0] : null);
-}
-
 function scanRows(rows, agent) {
   const toolUses = new Map(), changes = new Set();
   for (const row of rows) for (const block of blocks(row)) if (block?.type === 'tool_use') {
@@ -421,7 +389,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
       project_group: group,
       session,
       invocation: { record: rows[start].uuid, timestamp: rows[start].timestamp, command: invocation.command, args: invocation.args },
-      change_name: changeNameOf(invocation.command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes]))),
+      change_name: changeNameOf(invocation.command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes])), PIPELINE_COMMANDS),
       start_time: rows[start].timestamp,
       end_time: starts[k + 1] === undefined ? null : rows[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && (own.some(agent => agent.finished === false) || !finished),
@@ -475,44 +443,6 @@ function findSubagentSession(projectsRoot, projectPaths, agentId) {
 // ---------------------------------------------------------------------------
 // opencode source
 // ---------------------------------------------------------------------------
-
-// The opencode reader could not be used; the harness is reported not analyzed.
-class OpencodeUnavailable extends Error {}
-
-const defaultLoadSqlite = () => require('node:sqlite');
-
-function opencodeDatabasePath(env) {
-  return path.join(env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'opencode', 'opencode.db');
-}
-
-// opencode's database is an internal format: every table and column the reader
-// uses must exist before the first query, otherwise nothing is read.
-function guardOpencodeSchema(db) {
-  for (const [table, columns] of Object.entries(OPENCODE_SCHEMA)) {
-    const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
-    if (present.size === 0) throw new OpencodeUnavailable(`The opencode database has no ${table} table`);
-    const missing = columns.filter(column => !present.has(column));
-    if (missing.length) throw new OpencodeUnavailable(`The opencode ${table} table lacks the column(s) ${missing.join(', ')}`);
-  }
-}
-
-// `node:sqlite` needs Node 22.13 or later without a flag; package.json declares
-// `node >=22`, so an older runtime is detected here instead of raising the minimum.
-function openOpencodeDatabase(env, loadSqlite) {
-  let sqlite;
-  try { sqlite = loadSqlite(); } catch { throw new OpencodeUnavailable('node:sqlite is not available in this Node runtime (it needs Node 22.13 or later)'); }
-  const file = opencodeDatabasePath(env);
-  if (!fs.existsSync(file)) throw new OpencodeUnavailable(`No opencode database was found at ${file}`);
-  let db;
-  try { db = new sqlite.DatabaseSync(file, { readOnly: true }); } catch (error) {
-    throw new OpencodeUnavailable(`The opencode database could not be opened read-only (${error.code ?? error.message})`);
-  }
-  try { guardOpencodeSchema(db); } catch (error) {
-    db.close();
-    throw error instanceof OpencodeUnavailable ? error : new OpencodeUnavailable(`The opencode database could not be read (${error.message})`);
-  }
-  return db;
-}
 
 function opencodeRecord(row) {
   let data = {}, parsed = true;
@@ -606,26 +536,6 @@ function scanOpencodeRecords(records, agent) {
   return { loaded, errors, otherReads, changes };
 }
 
-// The session and its root, following `parent_id` upward.
-function opencodeRoot(db, sessionId) {
-  return db.prepare(`
-    WITH RECURSIVE up(id, parent_id, directory, depth) AS (
-      SELECT id, parent_id, directory, 0 FROM session_v2 WHERE id = ?
-      UNION ALL
-      SELECT s.id, s.parent_id, s.directory, up.depth + 1 FROM session_v2 s JOIN up ON s.id = up.parent_id WHERE up.depth < ${OPENCODE_MAX_DEPTH})
-    SELECT id, directory FROM up WHERE parent_id IS NULL`).get(sessionId);
-}
-
-// Every child session below a root, parents before their children.
-function opencodeChildren(db, rootId) {
-  return db.prepare(`
-    WITH RECURSIVE tree(id, parent_id, agent, title, time_created, depth) AS (
-      SELECT id, parent_id, agent, title, time_created, 1 FROM session_v2 WHERE parent_id = ?
-      UNION ALL
-      SELECT s.id, s.parent_id, s.agent, s.title, s.time_created, tree.depth + 1 FROM session_v2 s JOIN tree ON s.parent_id = tree.id WHERE tree.depth < ${OPENCODE_MAX_DEPTH})
-    SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
-}
-
 function buildOpencodeSession({ db, registry, reader, root, member }) {
   const records = opencodeRecords(db, root.id);
   const starts = [];
@@ -663,7 +573,7 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
       project_group: member.group,
       session: root.id,
       invocation: { record: records[start].id, timestamp: records[start].timestamp, command, args: invocation.args },
-      change_name: changeNameOf(command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes]))),
+      change_name: changeNameOf(command, invocation.args, new Set(scans.flatMap(scan => [...scan.changes])), PIPELINE_COMMANDS),
       start_time: records[start].timestamp,
       end_time: starts[k + 1] === undefined ? null : records[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && !finished,
