@@ -569,7 +569,7 @@ test('I3: the settings writer validates and saves a warming entry through the ca
   assert.match(refused.error, /warming/);
 });
 
-test('I3: experimental.changeTelemetry is a hand-edited boolean that reads as absent until set, and a non-boolean is dropped with a warning', () => {
+test('I3: experimental.changeTelemetry is a boolean that reads as absent until set, and a non-boolean is dropped with a warning', () => {
   assert.deepEqual(settings.get('experimental.changeTelemetry', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
   const enabled = project({ '.sai/settings.jsonc': '{ "experimental": { "changeTelemetry": true } }' });
   assert.deepEqual(settings.get('experimental.changeTelemetry', { cwd: enabled }), { value: true, source: 'setting', warnings: [] });
@@ -578,5 +578,5 @@ test('I3: experimental.changeTelemetry is a hand-edited boolean that reads as ab
   const invalid = settings.get('experimental.changeTelemetry', { cwd: project({ '.sai/settings.jsonc': '{ "experimental": { "changeTelemetry": "yes" } }' }) });
   assert.equal(invalid.value, null);
   assert.match(invalid.warnings.join('\n'), /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
-  assert.equal(settings.CATALOGUE['experimental.changeTelemetry'].label, undefined, 'the settings screen does not list it');
+  assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Change telemetry', section: 'Experimental', absent: 'off' });
 });

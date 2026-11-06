@@ -11,7 +11,9 @@ const { CATALOGUE, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require(
 const { checkValue, readStored, storedValue, saveSettings } = require('./project-settings-writer.js');
 const { BACK } = require('./install-flow.js');
 
-const SETTING_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']);
+const SETTING_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
+// Keys that the screen edits as a boolean: the choices are `On` and `Off`.
+const BOOLEAN_IDS = Object.freeze(['experimental.changeTelemetry']);
 const REGISTRIES = Object.freeze([
   ['skills', 'universal', 'to-backlog', 'providers', 'registry.json'],
   ['skills', 'universal', 'from-backlog', 'providers', 'registry.json'],
@@ -19,6 +21,10 @@ const REGISTRIES = Object.freeze([
 const PR_REGISTRY = Object.freeze(['skills', 'universal', 'to-pr', 'providers', 'registry.json']);
 const OTHER_LANGUAGE = 'Other language...';
 const DONE = 'Done';
+const ON = 'On';
+const OFF = 'Off';
+// An action row under `Experimental`, after the setting rows: it opens the cache warming screen.
+const CACHE_WARMING = 'Cache warming';
 const ASK = 'ask';
 
 /** The union of the provider ids in the to-backlog and from-backlog registries. */
@@ -39,8 +45,10 @@ function prProviderIdsFrom(packageRoot) {
 
 // What a key with no value reads as: `ask` unless the catalogue words it otherwise.
 const absentText = id => CATALOGUE[id].absent ?? ASK;
+const showValue = value => (typeof value === 'boolean' ? (value ? 'on' : 'off') : value);
 
 function valueChoices(id, providerIds, prProviderIds) {
+  if (BOOLEAN_IDS.includes(id)) return [ON, OFF];
   if (id === 'backlog.provider') return [ASK, ...providerIds];
   if (id === 'pr.provider') return [ASK, ...prProviderIds];
   return [absentText(id), 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE];
@@ -69,6 +77,7 @@ async function runProjectSettingsScreen({
   packageRoot = path.join(__dirname, '..'),
   promptChoice,
   promptInput,
+  openCacheWarming,
   log = console.log,
   color = colorEnabled(),
 } = {}) {
@@ -96,11 +105,11 @@ async function runProjectSettingsScreen({
   const shownIn = (root, values, id) => {
     const raw = storedValue(root, id);
     if (raw === undefined) return absentText(id);
-    if (Object.hasOwn(values, id)) return values[id];
+    if (Object.hasOwn(values, id)) return showValue(values[id]);
     return checkValue(id, raw, providerIds, prProviderIds).ok ? absentText(id) : `${JSON.stringify(raw)} (invalid)`;
   };
   const baseText = id => shownIn(baseRoot, baseValues, id);
-  const pendingText = id => changes[id] ?? absentText(id);
+  const pendingText = id => (changes[id] === undefined ? absentText(id) : showValue(changes[id]));
   const displayValue = id => {
     if (!isLocal(id)) return pending(id) ? pendingText(id) : baseText(id);
     // Removing a key from the local file lets the base value apply again.
@@ -145,23 +154,30 @@ async function runProjectSettingsScreen({
       options.push(id);
       displayOptions.push(rowLabel(id, displayValue(id)));
     });
-    options.push(DONE);
-    displayOptions.push(DONE);
+    options.push(CACHE_WARMING, DONE);
+    displayOptions.push(CACHE_WARMING, DONE);
     const action = await promptChoice('Project behavior settings:', options, undefined, undefined, { groupHeaders, displayOptions });
     if (action === null) return discard();
     if (action === BACK || action === DONE) break;
+    // The warming screen saves its own key; the pending edits here stay pending and save when this screen is left.
+    if (action === CACHE_WARMING) {
+      await openCacheWarming();
+      continue;
+    }
     const id = SETTING_IDS.find(candidate => candidate === action);
     if (!id) return discard();
-    const chosen = await promptChoice(`${CATALOGUE[id].label}:`, valueChoices(id, providerIds, prProviderIds));
-    if (chosen === null) return discard();
-    if (chosen === BACK) continue;
-    if (chosen === OTHER_LANGUAGE) {
+    const choice = await promptChoice(`${CATALOGUE[id].label}:`, valueChoices(id, providerIds, prProviderIds));
+    if (choice === null) return discard();
+    if (choice === BACK) continue;
+    if (choice === OTHER_LANGUAGE) {
       const language = await askLanguage(id);
       if (language === null) return discard();
       if (language !== BACK) record(id, language);
       continue;
     }
-    if (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent) {
+    // `On` saves true; `Off` removes the key, except in the local file, where it saves false so a shared true cannot apply.
+    const chosen = BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal(id) ? false : undefined) : choice;
+    if (chosen === undefined || (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent)) {
       record(id, undefined);
       continue;
     }
