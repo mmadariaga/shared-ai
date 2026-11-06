@@ -7,7 +7,7 @@ TBD - created by archiving change project-settings-backlog. Update Purpose after
 
 ### Requirement: Read-only project settings reader
 
-`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the project root that the settings root location resolves, together with the optional `.sai/settings.local.jsonc` that overrides it key by key; these two files SHALL be its only settings sources. It SHALL be the single source of the setting id catalogue, its validation, its canonical forms, and its presentation fields, and it SHALL NOT write any file. The catalogue SHALL contain exactly `warming`, `backlog.provider`, `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.provider`, `pr.repository`, `pr.organization`, `pr.project`, `explore.readyToProposeLanguage`, `explore.overviewLanguage`, and `explore.chatPublicLanguage`, where a setting id is the dotted key path inside the file's top-level object, except `warming`, whose whole object value is one setting. A catalogue entry MAY declare a normalization that maps a valid value to the value the reader returns. The reader SHALL NOT read `.to-backlog.json`. A `readPr` function SHALL return the `pr.*` values as a to-pr `config` object, separate from the `backlog.*` values that `readBacklog` returns.
+`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the project root that the settings root location resolves, together with the optional `.sai/settings.local.jsonc` that overrides it key by key; these two files SHALL be its only settings sources. It SHALL be the single source of the setting id catalogue, its validation, its canonical forms, and its presentation fields, and it SHALL NOT write any file. The catalogue SHALL contain exactly `warming`, `experimental.changeTelemetry`, `backlog.provider`, `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.provider`, `pr.repository`, `pr.organization`, `pr.project`, `explore.readyToProposeLanguage`, `explore.overviewLanguage`, and `explore.chatPublicLanguage`, where a setting id is the dotted key path inside the file's top-level object, except `warming`, whose whole object value is one setting. A catalogue entry MAY declare a normalization that maps a valid value to the value the reader returns. The reader SHALL NOT read `.to-backlog.json`. A `readPr` function SHALL return the `pr.*` values as a to-pr `config` object, separate from the `backlog.*` values that `readBacklog` returns.
 
 #### Scenario: Missing settings file
 - **WHEN** neither `.sai/settings.jsonc` nor `.sai/settings.local.jsonc` exists in the project root
@@ -33,6 +33,10 @@ TBD - created by archiving change project-settings-backlog. Update Purpose after
 - **WHEN** the file contains a valid `warming` object with `defaults` and `rules`
 - **THEN** the reader returns it as the single `warming` value rather than as dotted ids
 
+#### Scenario: Change telemetry key resolves to a dotted id
+- **WHEN** the file contains `{"experimental": {"changeTelemetry": true}}`
+- **THEN** the reader returns `experimental.changeTelemetry` with the value `true` and `source: setting`
+
 ### Requirement: JSONC parsing
 
 The reader SHALL parse the settings file as JSON after removing line comments, block comments, and trailing commas before a closing brace or bracket, and SHALL leave string contents, including comment markers inside strings, unchanged. When the file cannot be read or parsed, the reader SHALL return one warning naming the file and the error and SHALL return no values. A top-level value that is not an object SHALL produce one warning and no values.
@@ -47,7 +51,7 @@ The reader SHALL parse the settings file as JSON after removing line comments, b
 
 ### Requirement: Per-key validation
 
-The reader SHALL skip a key whose value is a string that equals `ask` case-insensitively after trimming. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, except `warming`, whose value SHALL be an object validated by its own rules and dropped with a warning when invalid. It SHALL drop a `backlog.provider` value that is not among the backlog provider ids supplied by the caller with a warning listing the allowed ids, and SHALL drop a `pr.provider` value that is not among the to-pr provider ids supplied by the caller with a warning listing the allowed ids. It SHALL apply each id's own value rules, and SHALL return a valid value through the id's normalization when the catalogue declares one. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of either provider list.
+The reader SHALL skip a key whose value is a string that equals `ask` case-insensitively after trimming. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, except `warming`, whose value SHALL be an object validated by its own rules and dropped with a warning when invalid, and `experimental.changeTelemetry`, whose value SHALL be a boolean and dropped with a warning that it must be true or false otherwise. It SHALL drop a `backlog.provider` value that is not among the backlog provider ids supplied by the caller with a warning listing the allowed ids, and SHALL drop a `pr.provider` value that is not among the to-pr provider ids supplied by the caller with a warning listing the allowed ids. It SHALL apply each id's own value rules, and SHALL return a valid value through the id's normalization when the catalogue declares one. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of either provider list.
 
 #### Scenario: Unknown id and invalid value
 - **WHEN** the file contains a valid `backlog.repository`, an unknown `backlog.type`, and a `backlog.provider` that is not a supplied provider id
@@ -68,6 +72,10 @@ The reader SHALL skip a key whose value is a string that equals `ask` case-insen
 #### Scenario: Invalid warming value does not affect other keys
 - **WHEN** the file holds an invalid `warming` object and a valid `backlog.repository`
 - **THEN** the reader drops `warming` with a warning and still returns `backlog.repository`
+
+#### Scenario: Non-boolean change telemetry value is dropped
+- **WHEN** the file sets `experimental.changeTelemetry` to `"yes"`
+- **THEN** the reader returns no value for `experimental.changeTelemetry` and a warning that it must be true or false
 
 ### Requirement: Single-setting CLI
 

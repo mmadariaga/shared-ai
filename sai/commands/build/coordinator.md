@@ -3,6 +3,7 @@
 Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/finding-state.md`
 Fetch `@sai/policies/cache-warming.md`
+Fetch `@sai/policies/change-telemetry.md`
 
 You chain the segments of one build run in a single session. The invocation carries one string, `arguments_value`: the change name.
 
@@ -31,6 +32,8 @@ The assessment keeps no memory: a rerun regenerates `review.md` without earlier 
 ## Close
 
 **Decision records.** After the last segment that ran ends and before the report, Fetch `@sai/policies/decision-record-creation.md` and create the decision records when every segment that ran completed (a segment 2 that found no changes counts as completed). Work from the final code and the deviations that the closing reports of segments 1 and 3 list, which are the only record of them once those runs end, and add the records to the report as that policy says. Its one local commit falls under the commit authorization the invocation gives. When a segment failed, was stopped, or ended blocked, create none.
+
+**Telemetry.** After the decision records and before the report, record the change telemetry as `change-telemetry.md` says, with `--command sai-build` and no `--run-dir`; its one line, when it has one, goes into the report.
 
 After the last segment that ran ends, print the report of each segment. A segment's own closing line is replaced by this command's.
 

@@ -94,12 +94,17 @@ When opening the run finds a `running` or `escalated` stage whose directory lies
 
 ### Requirement: The plan run persists nothing beyond its artifacts and commits
 
-At close, a completed run SHALL remove its run directory with `temp-root.js remove`; a stopped run, a blocked run, and an unanswered escalation SHALL keep it. No file in the change or the repository SHALL record the assumptions, the pending findings, or the scope observations. The closing report SHALL always list the assumptions and the pending findings, saying explicitly when there are none.
+At close, a completed run SHALL remove its run directory with `temp-root.js remove`; a stopped run, a blocked run, and an unanswered escalation SHALL keep it. No file in the change or the repository SHALL record the assumptions, the pending findings, or the scope observations; the found and pending finding counts that the optional `telemetry.md` records are not findings and are exempt. The closing report SHALL always list the assumptions and the pending findings, saying explicitly when there are none.
 
 #### Scenario: a completed run leaves no run directory
 
 - **WHEN** a plan run completes and its reports have been read
 - **THEN** the run directory is removed and the closing report lists the assumptions and pending findings or says there are none
+
+#### Scenario: telemetry records counts, not findings
+
+- **WHEN** a plan run with change telemetry enabled closes
+- **THEN** `telemetry.md` carries only the found and pending finding counts per severity, and no finding text, assumption, or scope observation
 
 ### Requirement: The artifact review contract enumerates the plan review rounds
 
