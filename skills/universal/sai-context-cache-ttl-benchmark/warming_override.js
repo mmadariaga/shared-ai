@@ -132,11 +132,11 @@ function restore({ tools, saiRoot, project }) {
   return { ok: true, status: 'restored', file, removed: record.state === 'absent' };
 }
 
-/** Confirm that the resolver turns warming off for both roles with the override in place. */
-function verify({ tools, project }) {
+/** Confirm that the resolver turns warming off for both roles of the harness with the override in place. */
+function verify({ tools, project, harness }) {
   const root = settingsRoot(tools, project);
   const roles = {};
-  for (const role of tools.WARMING_ROLES) roles[role] = tools.warming({ provider: 'benchmark', model: 'benchmark', role }, { cwd: root, locate: false }).warming;
+  for (const role of tools.WARMING_ROLES) roles[role] = tools.warming({ provider: 'benchmark', model: 'benchmark', role, harness }, { cwd: root, locate: false }).warming;
   return { ok: Object.values(roles).every(value => value === 'off'), status: 'verified', roles };
 }
 
@@ -159,8 +159,9 @@ function main(argv) {
     const { action, options } = parseArguments(argv);
     const toolsDir = options['tools-dir'] ?? defaultToolsDir();
     const tempRoot = loadTool(toolsDir, 'temp-root.js');
-    const saiRoot = options['sai-root'] ?? tempRoot.resolveTempRoot(options.harness ?? tempRoot.harnessFromInstalledPath(__filename));
-    const result = ACTIONS[action]({ tools: loadTool(toolsDir, 'project-settings.js'), saiRoot, project: path.resolve(options.project ?? process.cwd()) });
+    const harness = options.harness ?? tempRoot.harnessFromInstalledPath(__filename);
+    const saiRoot = options['sai-root'] ?? tempRoot.resolveTempRoot(harness);
+    const result = ACTIONS[action]({ tools: loadTool(toolsDir, 'project-settings.js'), saiRoot, project: path.resolve(options.project ?? process.cwd()), harness });
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return result.ok ? 0 : 1;
   } catch (error) {

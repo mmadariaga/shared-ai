@@ -22,29 +22,36 @@ const languageName = value => (isKeyword(value, 'english') ? 'English' : isKeywo
 
 // The `warming` setting: how long an agent keeps its prompt cache warm between continuations.
 // `defaults` holds one entry per role; `rules` hold entries keyed by provider, an optional model, and a role.
+// The value may instead hold one block per harness (`claude`, `opencode`) with that same shape. A harness
+// without a block reads the top-level `defaults`/`rules`, so an existing global value keeps applying until
+// that harness is edited, and the global keys stay in the file after both blocks exist.
 // An entry is `{ interval, max }` in minutes (defaults also accept `false`) or, in a rule, `enabled: false`.
 const WARMING_ROLES = ['agent', 'subagent'];
-const WARMING_KEYS = ['defaults', 'rules'];
+const WARMING_HARNESSES = ['claude', 'opencode'];
+const WARMING_BLOCK_KEYS = ['defaults', 'rules'];
+const WARMING_KEYS = [...WARMING_BLOCK_KEYS, ...WARMING_HARNESSES];
 const RULE_KEYS = ['provider', 'model', 'role', 'interval', 'max', 'enabled'];
 const positiveNumber = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
+const join = (prefix, key) => (prefix ? `${prefix}.${key}` : key);
 
 function warmingTimings(entry, label) {
   if (!positiveNumber(entry.interval) || !positiveNumber(entry.max)) return `${label} needs a positive number of minutes for interval and max`;
   return entry.max < entry.interval ? `${label} needs max to be at least interval` : null;
 }
 
-function warmingDefaultsProblem(defaults) {
-  if (!isObject(defaults)) return 'defaults must be an object';
+function warmingDefaultsProblem(defaults, prefix = '') {
+  const label = join(prefix, 'defaults');
+  if (!isObject(defaults)) return `${label} must be an object`;
   for (const [role, entry] of Object.entries(defaults)) {
-    if (!WARMING_ROLES.includes(role)) return `defaults.${role} is not a role (${WARMING_ROLES.join(', ')})`;
-    if (entry !== false && !isObject(entry)) return `defaults.${role} must be false or an object with interval and max`;
-    if (entry !== false) { const problem = warmingTimings(entry, `defaults.${role}`); if (problem) return problem; }
+    if (!WARMING_ROLES.includes(role)) return `${label}.${role} is not a role (${WARMING_ROLES.join(', ')})`;
+    if (entry !== false && !isObject(entry)) return `${label}.${role} must be false or an object with interval and max`;
+    if (entry !== false) { const problem = warmingTimings(entry, `${label}.${role}`); if (problem) return problem; }
   }
   return null;
 }
 
-function warmingRuleProblem(rule, index) {
-  const label = `rules[${index}]`;
+function warmingRuleProblem(rule, index, prefix = '') {
+  const label = `${join(prefix, 'rules')}[${index}]`;
   if (!isObject(rule)) return `${label} must be an object`;
   const unknown = Object.keys(rule).find(key => !RULE_KEYS.includes(key));
   if (unknown) return `${label} has the unknown key ${unknown}`;
@@ -57,14 +64,33 @@ function warmingRuleProblem(rule, index) {
   return warmingTimings(rule, label);
 }
 
+function warmingRulesProblem(rules, prefix = '') {
+  if (!Array.isArray(rules)) return `${join(prefix, 'rules')} must be a list`;
+  for (const [index, rule] of rules.entries()) { const problem = warmingRuleProblem(rule, index, prefix); if (problem) return problem; }
+  return null;
+}
+
+// One `{defaults, rules}` block, global or per harness.
+function warmingBlockProblem(block, prefix) {
+  if (!isObject(block)) return `${prefix} must be an object with defaults and rules`;
+  const unknown = Object.keys(block).find(key => !WARMING_BLOCK_KEYS.includes(key));
+  if (unknown) return `${prefix} has the unknown key ${unknown}`;
+  if (block.defaults !== undefined) { const problem = warmingDefaultsProblem(block.defaults, prefix); if (problem) return problem; }
+  if (block.rules !== undefined) { const problem = warmingRulesProblem(block.rules, prefix); if (problem) return problem; }
+  return null;
+}
+
 function validateWarming(value) {
-  if (!isObject(value)) return 'must be an object with defaults and rules';
+  if (!isObject(value)) return 'must be an object with defaults and rules, optionally one block per harness';
   const unknown = Object.keys(value).find(key => !WARMING_KEYS.includes(key));
   if (unknown) return `has the unknown key ${unknown}`;
   if (value.defaults !== undefined) { const problem = warmingDefaultsProblem(value.defaults); if (problem) return problem; }
-  if (value.rules === undefined) return null;
-  if (!Array.isArray(value.rules)) return 'rules must be a list';
-  for (const [index, rule] of value.rules.entries()) { const problem = warmingRuleProblem(rule, index); if (problem) return problem; }
+  if (value.rules !== undefined) { const problem = warmingRulesProblem(value.rules); if (problem) return problem; }
+  for (const harness of WARMING_HARNESSES) {
+    if (value[harness] === undefined) continue;
+    const problem = warmingBlockProblem(value[harness], harness);
+    if (problem) return problem;
+  }
   return null;
 }
 
@@ -73,11 +99,17 @@ function validateWarming(value) {
 const ANTHROPIC_FAMILY = /^claude-([a-z]+)(?:-|$)/;
 const modelFamily = (provider, model) => (provider === 'anthropic' && typeof model === 'string' ? ANTHROPIC_FAMILY.exec(model)?.[1] : undefined);
 
+// The value one harness resolves: its own block when present, the top-level `defaults`/`rules` otherwise.
+function harnessWarmingValue(value, harness) {
+  return isObject(value) && Object.hasOwn(value, harness) ? value[harness] : value;
+}
+
 // The effective warming of one agent: the model rule, then the model-family rule, then the provider rule, then the role default; `off` when none applies.
 // Rules match their provider and role exactly; a rule without `model` is the provider rule. The first matching rule wins.
-function resolveWarmingValue(value, { provider, model, role }) {
+function resolveWarmingValue(value, { provider, model, role, harness }) {
+  const scoped = harnessWarmingValue(value, harness);
   const entries = [];
-  const rules = (value?.rules ?? []).filter(rule => rule.provider === provider && rule.role === role);
+  const rules = (scoped?.rules ?? []).filter(rule => rule.provider === provider && rule.role === role);
   const modelRule = model === undefined ? undefined : rules.find(rule => rule.model === model);
   if (modelRule) entries.push(['model', modelRule]);
   const family = modelFamily(provider, model);
@@ -85,7 +117,7 @@ function resolveWarmingValue(value, { provider, model, role }) {
   if (familyRule) entries.push(['family', familyRule]);
   const providerRule = rules.find(rule => rule.model === undefined);
   if (providerRule) entries.push(['provider', providerRule]);
-  const roleDefault = value?.defaults?.[role];
+  const roleDefault = scoped?.defaults?.[role];
   if (roleDefault !== undefined) entries.push(['defaults', roleDefault]);
   const [origin, entry] = entries[0] ?? ['none', false];
   return entry === false || entry.enabled === false ? { warming: 'off', origin } : { warming: { interval: entry.interval, max: entry.max }, origin };
@@ -278,9 +310,11 @@ function get(id, options) {
 /**
  * The effective warming of one agent, resolved from the merged settings: { warming, origin, warnings, notices? }.
  * `warming` is `{ interval, max }` in minutes or `off`; `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
+ * `harness` is required: the resolver reads that harness's block, or the global value when it has none.
  * Nothing warms until the user enables it, so an absent or unusable setting resolves to `off`.
  */
 function warming(query, options) {
+  if (!WARMING_HARNESSES.includes(query.harness)) throw new Error(`warming needs --harness <${WARMING_HARNESSES.join('|')}>`);
   const { values, warnings, notices = [] } = readSettings(options);
   return { ...resolveWarmingValue(values.warming, query), warnings, ...(notices.length ? { notices } : {}) };
 }
@@ -346,9 +380,10 @@ function parseWarmingArguments(args) {
     else if (args[i] === '--provider' && args[i + 1]) query.provider = args[i += 1];
     else if (args[i] === '--model' && args[i + 1]) query.model = args[i += 1];
     else if (args[i] === '--role' && args[i + 1]) query.role = args[i += 1];
+    else if (args[i] === '--harness' && args[i + 1]) query.harness = args[i += 1];
     else throw new Error(`Unknown argument: ${args[i]}`);
   }
-  if (!query.provider || !WARMING_ROLES.includes(query.role)) throw new Error(`Usage: node project-settings.js warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> [--json] [--cwd <root>]`);
+  if (!query.provider || !WARMING_ROLES.includes(query.role) || !WARMING_HARNESSES.includes(query.harness)) throw new Error(`Usage: node project-settings.js warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> --harness <${WARMING_HARNESSES.join('|')}> [--json] [--cwd <root>]`);
   return { query, options };
 }
 
@@ -368,7 +403,7 @@ function main(argv) {
       else if (rest[i] === '--pr-providers' && rest[i + 1]) options.prProviderIds = rest[i += 1].split(',');
       else throw new Error(`Unknown argument: ${rest[i]}`);
     }
-    if (command !== 'get' || !CATALOGUE[id]) throw new Error(`Usage: node project-settings.js get <${Object.keys(CATALOGUE).join('|')}> [--json] [--cwd <root>] [--providers <id,id>] [--pr-providers <id,id>]; or warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> [--json] [--cwd <root>]`);
+    if (command !== 'get' || !CATALOGUE[id]) throw new Error(`Usage: node project-settings.js get <${Object.keys(CATALOGUE).join('|')}> [--json] [--cwd <root>] [--providers <id,id>] [--pr-providers <id,id>]; or warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> --harness <${WARMING_HARNESSES.join('|')}> [--json] [--cwd <root>]`);
     process.stdout.write(`${JSON.stringify(get(id, options))}\n`);
     return 0;
   } catch (error) {
@@ -378,4 +413,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, isKeyword, parseJsonc, projectRoot, readSettings, get, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };
