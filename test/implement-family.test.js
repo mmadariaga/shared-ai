@@ -78,6 +78,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/sai-learnings-format.md',
     '@sai/policies/decision-record-creation.md',
     '@sai/policies/inherent-risk.md',
+    '@sai/policies/change-telemetry.md',
     '@sai/orchestration/workers/bindings/red-worker.md',
     '@sai/orchestration/workers/bindings/green-worker.md',
     '@sai/orchestration/workers/bindings/review-worker.md',

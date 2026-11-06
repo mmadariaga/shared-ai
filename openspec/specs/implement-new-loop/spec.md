@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Implement-new loads only non-stopping cross-cutting policies
 
-The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `obstacle-escalation` for its obstacles and escalation, `artifact-review-contract` for the step review, `finding-state` for the audit findings, `sai-learnings-format` for the learnings promotion and correction at run close, and `decision-record-creation` for the decision records at its completed close. `/sai-build` SHALL load `decision-record-creation` at its own close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
+The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `obstacle-escalation` for its obstacles and escalation, `artifact-review-contract` for the step review, `finding-state` for the audit findings, `sai-learnings-format` for the learnings promotion and correction at run close, and `decision-record-creation` for the decision records at its completed close. `/sai-build` SHALL load `decision-record-creation` and `change-telemetry` at its own close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
 
 #### Scenario: Shared stopping orchestration is absent
 
@@ -23,6 +23,11 @@ The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutti
 
 - **WHEN** the `/sai-3-implement` coordinator card is inspected
 - **THEN** it fetches `@sai/policies/sai-learnings-format.md` only in its run-close learnings step, when a deviation qualifies for promotion or a `SAI_LEARNINGS.md stale:` deviation names an entry
+
+#### Scenario: The build coordinator loads the change telemetry policy
+
+- **WHEN** the `/sai-build` coordinator card is inspected
+- **THEN** it fetches `@sai/policies/change-telemetry.md`
 
 ### Requirement: Start preconditions
 

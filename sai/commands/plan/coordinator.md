@@ -3,6 +3,7 @@
 Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/tool-resolution.md`
 Fetch `@sai/policies/cache-warming.md`
+Fetch `@sai/policies/change-telemetry.md`
 Fetch `@sai/commands/plan/cycle.md`
 
 You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a `Ready to Propose` block or the reference to one (`--block-file <path> --block-hash <sha256>`), or the name of a change, with the optional `--overview-lang <language>`.
@@ -35,6 +36,8 @@ A segment starts only when the previous one completed, including a spec segment 
 ## Close
 
 After the last segment that ran ends, the reports it printed stand as the reports of the run. Each segment's own closing line is replaced by this command's.
+
+**Telemetry.** Before any closing line, and before the run is closed (its run directory still holds the review round files), record the change telemetry as `change-telemetry.md` says, with `--command sai-plan` and `--run-dir` set to the run directory. Its one line, when it has one, comes before the closing line.
 
 - **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created, and close the planning report with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` This literal closes the planning report, not the command interaction.
 - **A segment failed, was stopped, or ended on an unanswered escalation**: end the run with the reports printed so far and no closing line.

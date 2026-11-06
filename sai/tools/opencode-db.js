@@ -22,6 +22,8 @@ const OPENCODE_SCHEMA = {
 const OPENCODE_MAX_DEPTH = 16;
 const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
+// The opencode command wrappers embed the invoked command in an envelope.
+const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
 const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
 
@@ -61,6 +63,18 @@ function openOpencodeDatabase(env, loadSqlite) {
     throw error instanceof OpencodeUnavailable ? error : new OpencodeUnavailable(`The opencode database could not be read (${error.message})`);
   }
   return db;
+}
+
+// opencode records a directory with the separators of the platform that created it.
+function directoryForms(directory) {
+  const forward = directory.replace(/\\/g, '/');
+  return [...new Set([directory, forward, forward.replace(/\//g, '\\')])];
+}
+
+// The command a user message invoked through a wrapper envelope: `{ name, args }`, or null.
+function parseInvocation(text) {
+  const match = text.match(OPENCODE_ENVELOPE);
+  return match ? { name: match[1], args: match[2].trim() } : null;
 }
 
 // The session and its root, following `parent_id` upward.
@@ -112,6 +126,8 @@ module.exports = {
   OpencodeUnavailable,
   defaultLoadSqlite,
   openOpencodeDatabase,
+  directoryForms,
+  parseInvocation,
   opencodeRoot,
   opencodeChildren,
   changeNameFromArgs,
