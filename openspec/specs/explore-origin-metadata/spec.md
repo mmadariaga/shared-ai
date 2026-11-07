@@ -28,3 +28,11 @@ When a validated block carries `**Explore origin**`, the spec worker, the backfi
 #### Scenario: an absent key reads as empty
 - **WHEN** `.openspec.yaml` has no `explore_origin` key
 - **THEN** the reader returns `explore_origin` as an empty array
+
+### Requirement: The harness of a persisted explore_origin id is inferred from its shape
+
+`.openspec.yaml` SHALL keep the `explore_origin` ids bare, without a harness prefix. `sai/tools/openspec-yaml.js` SHALL export `exploreOriginHarness(id)`, which SHALL return `opencode` for an id matching `ses_...`, `claude` for a UUID, and `null` for any other id, and SHALL export the `OPENCODE_SESSION` and `CLAUDE_SESSION` patterns it uses.
+
+#### Scenario: each id shape maps to its harness
+- **WHEN** `exploreOriginHarness` receives `ses_a`, a UUID, and `abc`
+- **THEN** it returns `opencode`, `claude`, and `null` respectively

@@ -12,6 +12,8 @@ Required capability profile: {{capabilityProfile}}.
 Fetch `@sai/adapters/claude/idea-list-render.md` and use it.
 Fetch `@sai/commands/explore/body.md` and follow it exactly, forwarding the InvocationEnvelope block below.
 
+Session id: ${CLAUDE_SESSION_ID}
+
 InvocationEnvelope:
   command_name: explore
   arguments_value: $ARGUMENTS

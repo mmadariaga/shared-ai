@@ -401,8 +401,59 @@ sqliteTest('claude and opencode executions share one telemetry.md: each section 
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 
-test('claude explore-origin: the sub-command skips and says why', () => {
-  assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_x']).payload, { outcome: 'skipped', reason: 'Recording the explore origin on Claude Code is not supported yet.' });
+const CLAUDE_ORIGIN = '11111111-1111-4111-8111-111111111111';
+const OTHER_CLAUDE = '22222222-2222-4222-8222-222222222222';
+
+test('claude explore-origin: the session itself is found when it holds a /sai-explore invocation, anything else is skipped (E9, E10)', () => {
+  const f = claudeScratch();
+  try {
+    f.command(f.root(CLAUDE_ORIGIN), CLAUDE_ORIGIN, 1, 'sai-explore', 'idea');
+    f.command(f.root(OTHER_CLAUDE), OTHER_CLAUDE, 1, 'sai-plan', 'demo');
+    const run = session => main(['explore-origin', '--harness', 'claude', '--session', session], { env: f.env, cwd: f.project });
+    assert.deepEqual(run(CLAUDE_ORIGIN), { status: 0, payload: { outcome: 'found', session: CLAUDE_ORIGIN } });
+    assert.match(run(OTHER_CLAUDE).payload.reason, /holds no \/sai-explore invocation/);
+    assert.match(run('33333333-3333-4333-8333-333333333333').payload.reason, /is not in the Claude Code transcripts/);
+    assert.match(main(['explore-origin', '--harness', 'claude', '--session', CLAUDE_ORIGIN], { env: { CLAUDE_CONFIG_DIR: path.join(f.base, 'elsewhere') }, cwd: f.project }).payload.reason, /No readable Claude Code transcript folder/);
+  } finally { f.close(); }
+});
+
+test('claude explore-origin: a session that is not a UUID is a usage error', () => {
+  for (const session of ['ses_x', '${CLAUDE_SESSION_ID}', 'not-a-uuid']) {
+    const { status, payload } = main(['explore-origin', '--harness', 'claude', '--session', session]);
+    assert.equal(status, 2, session);
+    assert.equal(payload.error.code, 'USAGE');
+  }
+});
+
+// A /sai-plan execution on demo in one Claude Code session, listing the given origin sessions.
+function claudeOriginFixture(origins) {
+  const f = claudePlanFixture();
+  f.command(f.root(CLAUDE_ORIGIN), CLAUDE_ORIGIN, 0, 'sai-explore', 'idea');
+  f.request(f.root(CLAUDE_ORIGIN), CLAUDE_ORIGIN, 0.5, { usage: SPLIT_USAGE(7, 1, 0) });
+  fs.writeFileSync(path.join(f.project, 'openspec', 'changes', 'demo', '.openspec.yaml'), `schema: sai-workflow\nexplore_origin: [${origins.join(', ')}]\n`);
+  return f;
+}
+
+test('claude collect: a Claude Code origin session records its exploration, and a missing one is unavailable (E10)', () => {
+  const f = claudeOriginFixture([CLAUDE_ORIGIN, OTHER_CLAUDE]);
+  try {
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const block = text.slice(text.indexOf('## Exploration'), text.indexOf('## Execution 1'));
+    assert.match(block, new RegExp(`### Origin session ${CLAUDE_ORIGIN}\\n`));
+    assert.equal(rowOf(block, 'sai-explore').split(' | ').map(cell => cell.trim())[3], '1');
+    assert.match(block, new RegExp(`### Origin session ${OTHER_CLAUDE}\\n\\nExploration: unavailable \\(session ${OTHER_CLAUDE} is not in the Claude Code transcripts\\)\\.`));
+  } finally { f.close(); }
+});
+
+test('claude collect: an opencode origin is unavailable when opencode.db is absent on this machine (E10)', () => {
+  const f = claudeOriginFixture([CLAUDE_ORIGIN, 'ses_remote']);
+  try {
+    assert.equal(collect(claudeOptions(f), { env: { ...f.env, XDG_DATA_HOME: path.join(f.base, 'no-data'), HOME: path.join(f.base, 'no-home') } }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /### Origin session ses_remote\n\nExploration: unavailable \(session ses_remote is not in opencode\.db\)\./);
+    assert.match(text, new RegExp(`### Origin session ${CLAUDE_ORIGIN}\\n`));
+  } finally { f.close(); }
 });
 
 sqliteTest('collect: a missing database, a missing sqlite, and an unsupported schema each skip with a reason (E3)', () => {
@@ -1014,6 +1065,26 @@ sqliteTest('exploration: a change without explore_origin has no exploration sect
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 
+sqliteTest('exploration: an opencode collection reads a Claude Code origin from the transcripts, and marks it unavailable without them (E10)', () => {
+  const f = planFixture();
+  try {
+    f.db.close();
+    writeOrigin(f, [CLAUDE_ORIGIN]);
+    const config = path.join(f.base, 'config');
+    const folder = path.join(config, 'projects', f.project.replace(/[^A-Za-z0-9]/g, '-'));
+    fs.mkdirSync(folder, { recursive: true });
+    const command = { type: 'user', uuid: 'u-1', parentUuid: null, timestamp: claudeIso(-50), sessionId: CLAUDE_ORIGIN, message: { role: 'user', content: '<command-name>/sai-explore</command-name>\n<command-args>idea</command-args>' } };
+    const answer = { type: 'assistant', uuid: 'a-1', parentUuid: 'u-1', timestamp: claudeIso(-48), sessionId: CLAUDE_ORIGIN, message: { id: 'm-1', role: 'assistant', model: 'claude-test', content: [], usage: SPLIT_USAGE(3, 1, 0) } };
+    fs.writeFileSync(path.join(folder, `${CLAUDE_ORIGIN}.jsonl`), `${JSON.stringify(command)}\n${JSON.stringify(answer)}\n`);
+    assert.equal(collect(options(f), { env: { ...f.env, CLAUDE_CONFIG_DIR: config } }).outcome, 'written');
+    const found = telemetryOf(f);
+    assert.match(found, new RegExp(`### Origin session ${CLAUDE_ORIGIN}\\n\\n<!-- telemetry-totals`));
+    fs.rmSync(path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md'));
+    assert.equal(collect(options(f), { env: { ...f.env, CLAUDE_CONFIG_DIR: path.join(f.base, 'elsewhere') } }).outcome, 'written');
+    assert.match(telemetryOf(f), new RegExp(`Exploration: unavailable \\(session ${CLAUDE_ORIGIN} is not in the Claude Code transcripts\\)\\.`));
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
 sqliteTest('exploration: a session without a /sai-explore invocation is unavailable', () => {
   const f = routeFixture();
   try {
@@ -1039,7 +1110,6 @@ sqliteTest('explore-origin: a subagent session resolves to its explore root, any
     assert.deepEqual(run('ses_explore').payload, { outcome: 'found', session: 'ses_explore' });
     assert.match(run('ses_plain_child').payload.reason, /root session ses_plain holds no \/sai-explore invocation/);
     assert.match(run('ses_unknown').payload.reason, /not in opencode\.db/);
-    assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_helper']).payload, { outcome: 'skipped', reason: 'Recording the explore origin on Claude Code is not supported yet.' });
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 

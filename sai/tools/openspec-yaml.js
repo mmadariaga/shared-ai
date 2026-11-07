@@ -33,7 +33,7 @@ function pathExists(target) {
 /**
  * Read .openspec.yaml and extract key values by regex.
  * Returns object with: approval_specs_approved_at, overview_state, backfilled,
- * backlog_origin, explore_origin (the opencode origin sessions, a flat flow list)
+ * backlog_origin, explore_origin (the origin session ids of either harness, bare, a flat flow list)
  * Returns null if file doesn't exist.
  * Throws ToolError if file is unreadable.
  */
@@ -89,7 +89,7 @@ function readOpenspecYaml(yamlPath) {
     result.backlog_origin = originMatch[1];
   }
 
-  // Extract the origin explore sessions (flat flow list: `explore_origin: [ses_a, ses_b]`)
+  // Extract the origin explore sessions (flat flow list: `explore_origin: [ses_a, <claude-uuid>]`)
   const exploreMatch = content.match(/^explore_origin:[ \t]*\[([^\]\n]*)\][ \t]*$/m);
   if (exploreMatch) {
     result.explore_origin = exploreMatch[1].split(',').map(part => part.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
@@ -98,4 +98,18 @@ function readOpenspecYaml(yamlPath) {
   return result;
 }
 
-module.exports = { readOpenspecYaml, ToolError };
+/**
+ * The harness an explore-origin session id belongs to, inferred from its shape:
+ * `ses_...` is opencode, a UUID is Claude Code, anything else is null. The block
+ * label carries the harness as a prefix; `.openspec.yaml` keeps bare ids.
+ */
+const OPENCODE_SESSION = /^ses_[A-Za-z0-9_]+$/;
+const CLAUDE_SESSION = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function exploreOriginHarness(id) {
+  if (OPENCODE_SESSION.test(id)) return 'opencode';
+  if (CLAUDE_SESSION.test(id)) return 'claude';
+  return null;
+}
+
+module.exports = { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION, ToolError };

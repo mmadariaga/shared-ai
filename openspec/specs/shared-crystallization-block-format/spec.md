@@ -121,24 +121,28 @@ An open decision is a behavior the exploration left undefined. The `**Request Ad
 
 ### Requirement: Optional Explore origin field lists the originating explore sessions
 
-`sai/policies/ready-to-propose-format.md` SHALL define an optional `**Explore origin**` field, placed after `**Backlog origin**` (or after `**Depends on**` when the block has no Backlog origin) and before `**What**`. Its value SHALL read `opencode <sessionID>[, <sessionID>…]`: the ordered opencode root sessions of the `/sai-explore` chats that crystallized the block. The field SHALL be provenance only: no requirement, scenario, or scope SHALL derive from it. A block without an originating opencode explore session SHALL omit the line. The issue format, `convert`, and `to-backlog` SHALL carry nothing for it, because a published slice travels as the literal block.
+`sai/policies/ready-to-propose-format.md` SHALL define an optional `**Explore origin**` field, placed after `**Backlog origin**` (or after `**Depends on**` when the block has no Backlog origin) and before `**What**`. Its value SHALL read `<harness> <sessionID>[, <harness> <sessionID>…]`: the ordered root sessions of the `/sai-explore` chats that crystallized the block, each entry naming its own harness (`opencode` with a `ses_…` id, `claude` with a session UUID), so one list MAY mix both harnesses. An entry without a harness SHALL inherit the previous entry's, so the older `opencode ses_a, ses_b` form stays valid. The field SHALL be provenance only: no requirement, scenario, or scope SHALL derive from it. A block without an originating explore session SHALL omit the line. The issue format, `convert`, and `to-backlog` SHALL carry nothing for it, because a published slice travels as the literal block.
 
 #### Scenario: the field sits between Backlog origin and What
 - **WHEN** a block carries both `**Backlog origin**` and `**Explore origin**`
 - **THEN** the `**Explore origin**` line follows the `**Backlog origin**` line and precedes the `**What**` line
 
 #### Scenario: a block without an explore session omits the field
-- **WHEN** a block is crystallized with no originating opencode explore session
+- **WHEN** a block is crystallized with no originating explore session
 - **THEN** it carries no `**Explore origin**` line
 
 ### Requirement: Crystallization inherits and extends the Explore origin list
 
-Every block of a crystallized set SHALL carry the same `**Explore origin**` list, composed before validation and storage. When the conversation holds an imported block that carries `**Explore origin**`, the new block SHALL copy its list in order and unchanged. The current explore session SHALL be appended only when it is not already listed, the chat runs on opencode, `experimental.changeTelemetry` is `true` as read through `project-settings.js`, and `change-telemetry.js explore-origin` returns `outcome: found` for the `sessionID` of a subagent the chat already dispatched. On Claude Code, with the setting off or unreadable, with no known subagent `sessionID`, or with a `skipped` outcome, the inherited list SHALL stay unchanged and nothing SHALL be appended; with no session at all, the line SHALL be omitted.
+Every block of a crystallized set SHALL carry the same `**Explore origin**` list, composed before validation and storage. When the conversation holds an imported block that carries `**Explore origin**`, the new block SHALL copy its list in order and unchanged. The current explore session SHALL be appended, with its own harness prefix, only when it is not already listed, `experimental.changeTelemetry` is `true` as read through `project-settings.js`, and `change-telemetry.js explore-origin` returns `outcome: found`: on opencode for the `sessionID` of a subagent the chat already dispatched, on Claude Code for the id of the `Session id:` line that `commands/claude/sai-explore.md` carries as `Session id: ${CLAUDE_SESSION_ID}`. On Claude Code, a value that still reads `${CLAUDE_SESSION_ID}` or is not a UUID SHALL count as absent: the lookup SHALL be skipped, nothing SHALL be appended, one line SHALL say that the explore origin was not recorded, and crystallization SHALL continue. With the setting off or unreadable, with no known opencode subagent `sessionID`, or with a `skipped` outcome, the inherited list SHALL stay unchanged and nothing SHALL be appended; with no session at all, the line SHALL be omitted.
 
 #### Scenario: a re-crystallized import appends the current session
 - **WHEN** a block carrying `**Explore origin**: opencode ses_a` is imported and re-crystallized on opencode with `experimental.changeTelemetry` set to `true`, and `explore-origin` returns `found` with `ses_b`
 - **THEN** the new block reads `**Explore origin**: opencode ses_a, ses_b`
 
 #### Scenario: Claude Code keeps the inherited list
-- **WHEN** a block carrying `**Explore origin**: opencode ses_a` is re-crystallized on Claude Code
-- **THEN** the new block reads `**Explore origin**: opencode ses_a` unchanged
+- **WHEN** a block carrying `**Explore origin**: opencode ses_a` is re-crystallized on Claude Code and the `Session id:` line still reads `${CLAUDE_SESSION_ID}`
+- **THEN** the new block reads `**Explore origin**: opencode ses_a` unchanged, and one line says that the explore origin was not recorded
+
+#### Scenario: Claude Code appends its own session
+- **WHEN** a block carrying `**Explore origin**: opencode ses_a` is re-crystallized on Claude Code with `experimental.changeTelemetry` set to `true`, and `explore-origin --harness claude` returns `found` with the session UUID of the `Session id:` line
+- **THEN** the new block reads `**Explore origin**: opencode ses_a, claude <uuid>`
