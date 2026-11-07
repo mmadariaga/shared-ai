@@ -94,6 +94,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const inputReader = require('./input-reader');
+const { exploreOriginHarness } = require('./openspec-yaml');
 
 const PROFILES = ['loose', 'strict', 'dispatchable'];
 
@@ -185,8 +186,29 @@ const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LABEL_LINE = /^\*\*(.+?)\*\*:(.*)$/;
 /** The no-specs declaration: `none — <reason>`; the reason is captured and must not be blank. */
 const SPECS_NONE = /^none\s*—(.*)$/;
-/** The explore-origin value: `opencode <sessionID>[, <sessionID>…]`; the capture is the comma-separated sessions. */
-const EXPLORE_ORIGIN = /^opencode (ses_[A-Za-z0-9_]+(?:, ses_[A-Za-z0-9_]+)*)$/;
+const EXPLORE_ORIGIN_FORM = '"<harness> <sessionID>[, <harness> <sessionID>…]" (harness: opencode or claude; an entry without one inherits the previous entry\'s)';
+
+/**
+ * The explore-origin value: `<harness> <id>[, [<harness> ]<id>…]`, harness `opencode`
+ * (`ses_…`) or `claude` (a UUID). The first entry names its harness; a later entry
+ * without one inherits the previous entry's. Returns the bare ids in order, or null.
+ */
+function parseExploreOrigin(value) {
+  const ids = [];
+  let harness = null;
+  for (const entry of value.split(', ')) {
+    const parts = entry.split(' ');
+    if (parts.length > 2 || parts.some(part => part === '')) return null;
+    if (parts.length === 2) {
+      if (!['opencode', 'claude'].includes(parts[0])) return null;
+      harness = parts[0];
+    }
+    const id = parts[parts.length - 1];
+    if (harness === null || exploreOriginHarness(id) !== harness) return null;
+    ids.push(id);
+  }
+  return ids;
+}
 
 function normalize(text) {
   return String(text ?? '').replace(/\r\n?/g, '\n');
@@ -352,9 +374,9 @@ function checkStrictBlock(lines, block, index) {
       }
     }
     if (entry.label === 'Explore origin' && entry.inline !== '') {
-      const sessions = EXPLORE_ORIGIN.exec(entry.inline);
-      if (sessions) exploreOrigin = sessions[1].split(', ');
-      else violations.push(violation(line, 'INVALID_EXPLORE_ORIGIN', 'Explore origin must read "opencode <sessionID>[, <sessionID>…]"'));
+      const sessions = parseExploreOrigin(entry.inline);
+      if (sessions) exploreOrigin = sessions;
+      else violations.push(violation(line, 'INVALID_EXPLORE_ORIGIN', `Explore origin must read ${EXPLORE_ORIGIN_FORM}`));
     }
   }
 
