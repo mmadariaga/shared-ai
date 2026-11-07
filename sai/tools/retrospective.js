@@ -25,9 +25,10 @@
  *        [--format json|markdown] [--cwd <dir>]
  *       Reads every planning and implementation execution (/sai-1-spec,
  *       /sai-2-design, /sai-plan, /sai-3-implement, /sai-build) of the projects
- *       and reports token usage and tool calls per agent and per pipeline
- *       segment, plus the pairing of planning runs with implementation runs by
- *       change name. `markdown` prints the versioned baseline report; an
+ *       and reports token usage, tool calls, and cache-warming wakes (their count
+ *       and the usage of their requests, a subset of the usage) per agent and per
+ *       pipeline segment, plus the pairing of planning runs with implementation
+ *       runs by change name. `markdown` prints the versioned baseline report; an
  *       aliased project shows only its alias and numbered changes there.
  *   excerpt --project <path> --session <uuid|ses_id> [--agent <agentId|ses_id>]
  *           [--from <recordId>] [--count <N>] [--max-chars <N>]
@@ -51,8 +52,8 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
-const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
-const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents } = require('./claude-transcripts');
+const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
+const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents, claudeWaitTasks, claudeWakes } = require('./claude-transcripts');
 
 const DEFAULT_LIMIT = 5;
 const DEFAULT_COUNT = 10;
@@ -76,7 +77,7 @@ const PLANNING_COMMANDS = ['sai-1-spec', 'sai-2-design', 'sai-plan'];
 const IMPLEMENTATION_COMMANDS = ['sai-3-implement', 'sai-build'];
 const PIPELINE_COMMANDS = new Set([...PLANNING_COMMANDS, ...IMPLEMENTATION_COMMANDS]);
 const SEGMENT_ORDER = ['spec', 'design', 'implement', 'other'];
-const BASELINE_FORMAT = 1;
+const BASELINE_FORMAT = 2;
 
 class ToolError extends Error {
   constructor(code, message) {
@@ -218,10 +219,22 @@ function summarizeUsage(requests) {
   return usage;
 }
 
+// The wakes of an agent and the usage of their requests, a subset of its usage. A
+// wake counts even when no request of its turn is recorded; an agent that was
+// never read has no wake figure (`null`, never zero). `usageOf` maps a request key
+// to its token record.
+function wakeMetrics(wakes, usageOf) {
+  if (wakes === null) return { wakes: null, wake_usage: UNAVAILABLE };
+  const requests = [...new Set(wakes.flatMap(wake => wake.requests))].filter(key => usageOf.has(key)).map(key => usageOf.get(key));
+  return { wakes: wakes.length, wake_usage: requests.length ? summarizeUsage(requests) : { requests: 0 } };
+}
+
 // A request spans several transcript lines sharing message.id; the line with the
-// most output carries its final usage.
-function claudeMetrics(rows, reader) {
-  if (!rows) return { usage: UNAVAILABLE, tool_calls: null };
+// most output carries its final usage. `tasks` are the background task ids of the
+// cache-warm waits the agent launched (default: those of `rows`); a session cut
+// into executions passes the tasks of the whole session.
+function claudeMetrics(rows, reader, tasks) {
+  if (!rows) return { usage: UNAVAILABLE, tool_calls: null, ...wakeMetrics(null) };
   const requests = new Map(), toolIds = new Set();
   for (const row of rows) {
     if (row.type !== 'assistant' || !row.message || row.message.model === '<synthetic>' || row.isApiErrorMessage) continue;
@@ -229,13 +242,16 @@ function claudeMetrics(rows, reader) {
     const key = row.message.id ?? `row:${row.uuid}`, tokens = reader.claudeTokens(row), kept = requests.get(key);
     if (kept === undefined || (tokens !== UNAVAILABLE && (kept === UNAVAILABLE || tokens.output >= kept.output))) requests.set(key, tokens);
   }
-  return { usage: summarizeUsage([...requests.values()]), tool_calls: toolIds.size };
+  const wakes = claudeWakes(rows, tasks ?? claudeWaitTasks(rows)).map(wake => ({ requests: wake.keys }));
+  return { usage: summarizeUsage([...requests.values()]), tool_calls: toolIds.size, ...wakeMetrics(wakes, requests) };
 }
 
-function opencodeMetrics(records, reader) {
-  if (!records) return { usage: UNAVAILABLE, tool_calls: null };
+// `wakes` are the wakes (`opencodeWakes`) of the agent that `records` cover.
+function opencodeMetrics(records, reader, wakes = []) {
+  if (!records) return { usage: UNAVAILABLE, tool_calls: null, ...wakeMetrics(null) };
   const assistants = records.filter(record => record.type === 'assistant');
-  return { usage: summarizeUsage(assistants.map(record => reader.opencodeTokens(record.data))), tool_calls: assistants.reduce((sum, record) => sum + opencodeToolItems(record).length, 0) };
+  const usageOf = new Map(assistants.map(record => [record.id, reader.opencodeTokens(record.data)]));
+  return { usage: summarizeUsage([...usageOf.values()]), tool_calls: assistants.reduce((sum, record) => sum + opencodeToolItems(record).length, 0), ...wakeMetrics(wakes.map(wake => ({ requests: wake.requests })), usageOf) };
 }
 
 function scanRows(rows, agent) {
@@ -261,11 +277,11 @@ function scanRows(rows, agent) {
 }
 
 // `parent_agent_id` names the agent that dispatched this one (null: the main
-// session did). `usage` and `tool_calls` are present once the agent is linked to
-// an execution.
+// session did). `usage`, `tool_calls`, `wakes`, and `wake_usage` are present once
+// the agent is linked to an execution.
 function agentSummary(agent, rows, idOf = row => row.uuid) {
   const { agent_id, agent_type, description, tool_use_id, parent_agent_id, spawn_depth, finished } = agent;
-  const measured = agent.metrics ? { usage: agent.metrics.usage, tool_calls: agent.metrics.tool_calls } : {};
+  const measured = agent.metrics ? { usage: agent.metrics.usage, tool_calls: agent.metrics.tool_calls, wakes: agent.metrics.wakes, wake_usage: agent.metrics.wake_usage } : {};
   return { agent_id, agent_type, description, tool_use_id, parent_agent_id: parent_agent_id ?? null, spawn_depth, finished, pipeline_segment: pipelineSegmentOf(agent_type), ...measured, records: rows ? rows.length : null, first_record: rows?.length ? idOf(rows[0]) : null, last_record: rows?.length ? idOf(rows.at(-1)) : null };
 }
 
@@ -302,6 +318,8 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
   const uses = new Map(); // tool_use_id -> segment of the transcript that issued it
   rows.forEach((row, index) => { if (segmentOf[index] >= 0) for (const block of blocks(row)) if (block?.type === 'tool_use') uses.set(block.id, segmentOf[index]); });
 
+  // A wait armed in one execution can complete in a later one, so the tasks come from the whole session.
+  const waitTasks = claudeWaitTasks(rows);
   const agents = readAgents(sessionDir).map(agent => ({ ...agent, segment: null, rows: null }));
   const pending = new Set(agents), byId = new Map(agents.map(agent => [agent.agent_id, agent]));
   for (let progressed = true; progressed;) {
@@ -344,7 +362,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
       end_time: starts[k + 1] === undefined ? null : rows[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && (own.some(agent => agent.finished === false) || !finished),
       records: { count: segmentRows.length, first: segmentRows[0].uuid, last: segmentRows.at(-1).uuid },
-      coordinator: { pipeline_segment: COMMAND_SEGMENTS[invocation.command] ?? null, ...claudeMetrics(segmentRows, reader) },
+      coordinator: { pipeline_segment: COMMAND_SEGMENTS[invocation.command] ?? null, ...claudeMetrics(segmentRows, reader, waitTasks) },
       principal_workers: principal.map(agent => agentSummary(agent, agent.rows)),
       auxiliary_agents: auxiliary.map(agent => agentSummary(agent, null)),
       loaded_instructions: scans.flatMap(scan => scan.loaded).sort(byTimeThenRecord),
@@ -500,11 +518,12 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
     segmentOfSession.set(child.id, segment);
     const principal = segment >= 0 && registry.workers.has(child.agent);
     const rows = principal ? opencodeRecords(db, child.id) : null;
-    const metrics = segment >= 0 ? opencodeMetrics(rows ?? opencodeAssistants(db, child.id), reader) : null;
+    const metrics = segment >= 0 ? opencodeMetrics(rows ?? opencodeAssistants(db, child.id), reader, opencodeWakes(db, child.id)) : null;
     return { agent_id: child.id, agent_type: child.agent, description: child.title, tool_use_id: null, parent_agent_id: child.parent_id === root.id ? null : child.parent_id, spawn_depth: child.depth, finished: null, segment, rows, metrics };
   });
 
   const recordId = record => record.id;
+  const rootWakes = opencodeWakes(db, root.id);
   const executions = starts.map((start, k) => {
     const invocation = opencodeInvocation(records[start]);
     const command = resolveOpencodeCommand(invocation.name, registry.commands);
@@ -526,7 +545,7 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
       end_time: starts[k + 1] === undefined ? null : records[starts[k + 1]].timestamp,
       in_progress: k === starts.length - 1 && !finished,
       records: { count: segmentRecords.length, first: segmentRecords[0].id, last: segmentRecords.at(-1).id },
-      coordinator: { pipeline_segment: COMMAND_SEGMENTS[command] ?? null, ...opencodeMetrics(segmentRecords, reader) },
+      coordinator: { pipeline_segment: COMMAND_SEGMENTS[command] ?? null, ...opencodeMetrics(segmentRecords, reader, rootWakes.filter(wake => segmentRecords.some(record => record.id === wake.id))) },
       principal_workers: principal.map(child => agentSummary(child, child.rows, recordId)),
       auxiliary_agents: auxiliary.map(child => agentSummary(child, null, recordId)),
       loaded_instructions: scans.flatMap(scan => scan.loaded).sort(byTimeThenRecord),
@@ -817,7 +836,7 @@ function attributeAgents(execution) {
     const parent = byId.get(agent.parent_agent_id);
     return parent ? segmentOf(parent, depth + 1) : null;
   };
-  const coordinator = { role: 'coordinator', agent_type: null, agent_id: null, parent_agent_id: null, parent_agent_type: null, segment: execution.coordinator.pipeline_segment, usage: execution.coordinator.usage, tool_calls: execution.coordinator.tool_calls };
+  const coordinator = { role: 'coordinator', agent_type: null, agent_id: null, parent_agent_id: null, parent_agent_type: null, segment: execution.coordinator.pipeline_segment, usage: execution.coordinator.usage, tool_calls: execution.coordinator.tool_calls, wakes: execution.coordinator.wakes ?? null, wake_usage: execution.coordinator.wake_usage ?? UNAVAILABLE };
   return [coordinator, ...listed.map(agent => ({
     role: principalIds.has(agent.agent_id) ? 'worker' : 'dispatched',
     agent_type: agent.agent_type,
@@ -827,7 +846,20 @@ function attributeAgents(execution) {
     segment: segmentOf(agent),
     usage: agent.usage ?? UNAVAILABLE,
     tool_calls: agent.tool_calls ?? null,
+    wakes: agent.wakes ?? null,
+    wake_usage: agent.wake_usage ?? UNAVAILABLE,
   }))];
+}
+
+// The wakes of an agent, added to `total.wakes` and `total.wake_usage`: a subset of
+// the usage the total already holds. An agent whose wakes were never read (or whose
+// wake requests carry no usage) adds no figure and is counted apart, never as zero.
+function addWakes(total, agent) {
+  if (agent.wakes === null || agent.wakes === undefined) { total.unavailable_wake_agents = (total.unavailable_wake_agents ?? 0) + 1; return; }
+  total.wakes = (total.wakes ?? 0) + agent.wakes;
+  if (agent.wake_usage === UNAVAILABLE) { total.unavailable_wake_agents = (total.unavailable_wake_agents ?? 0) + 1; return; }
+  total.wake_usage ??= {};
+  for (const field of ['requests', ...USAGE_FIELDS]) if (agent.wake_usage[field] !== undefined) total.wake_usage[field] = (total.wake_usage[field] ?? 0) + agent.wake_usage[field];
 }
 
 function addAgent(total, agent) {
@@ -835,6 +867,7 @@ function addAgent(total, agent) {
   if (agent.usage === UNAVAILABLE) total.unavailable_agents = (total.unavailable_agents ?? 0) + 1;
   else for (const field of ['requests', ...USAGE_FIELDS]) if (agent.usage[field] !== undefined) total[field] = (total[field] ?? 0) + agent.usage[field];
   if (agent.tool_calls !== null) total.tool_calls = (total.tool_calls ?? 0) + agent.tool_calls;
+  addWakes(total, agent);
   return total;
 }
 
@@ -863,7 +896,7 @@ function costRuns(executions) {
   return [...executions].sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time) || (a.invocation.record < b.invocation.record ? -1 : 1)).map((execution, i) => {
     const agents = attributeAgents(execution);
     const totals = agents.reduce((total, agent) => addAgent(total, agent), {});
-    return { run: i + 1, harness: execution.harness, project_group: execution.project_group, command: execution.invocation.command, kinds: runKinds(execution.invocation.command, agents), start_time: execution.start_time, in_progress: execution.in_progress, change: execution.change_name, totals: { tokens: totalTokens(totals), tool_calls: totals.tool_calls ?? 0, unavailable_agents: totals.unavailable_agents ?? 0 }, agents };
+    return { run: i + 1, harness: execution.harness, project_group: execution.project_group, command: execution.invocation.command, kinds: runKinds(execution.invocation.command, agents), start_time: execution.start_time, in_progress: execution.in_progress, change: execution.change_name, totals: { tokens: totalTokens(totals), tool_calls: totals.tool_calls ?? 0, unavailable_agents: totals.unavailable_agents ?? 0, wakes: totals.wakes ?? 0, wake_requests: totals.wake_usage?.requests ?? 0, wake_tokens: totalTokens(totals.wake_usage ?? {}), unavailable_wake_agents: totals.unavailable_wake_agents ?? 0 }, agents };
   });
 }
 
@@ -941,14 +974,22 @@ const usageHeader = harness => harness === 'claude'
   ? ['Input', 'Output', 'Cache read', 'Cache write 5m', 'Cache write 1h', 'Tool calls']
   : ['Input', 'Output', 'Cache read', 'Cache write', 'Tool calls', 'Cost'];
 
+const wakeHeader = ['Wakes', 'Wake requests', 'Wake tokens'];
+
+// The wakes of a total, a subset of its usage; `-` is no figure, `*` a total that leaves out an agent without wake data.
+function wakeColumns(total) {
+  const wakes = total.wakes === undefined ? '-' : `${figure(total.wakes)}${total.unavailable_wake_agents ? '*' : ''}`;
+  return [wakes, figure(total.wake_usage?.requests), total.wake_usage ? figure(totalTokens(total.wake_usage)) : '-'];
+}
+
 function segmentTable(harness, rows) {
   const body = [];
   for (const segment of SEGMENT_ORDER) {
     const own = rows.filter(row => row.segment === segment);
     if (!own.length) continue;
-    for (const row of own) body.push([segment, row.role, row.agent_type, figure(row.runs), agentsCell(row), ...usageColumns(harness, row)]);
+    for (const row of own) body.push([segment, row.role, row.agent_type, figure(row.runs), agentsCell(row), ...usageColumns(harness, row), ...wakeColumns(row)]);
   }
-  return table(['Segment', 'Role', 'Agent', 'Runs', 'Agents', ...usageHeader(harness)], body);
+  return table(['Segment', 'Role', 'Agent', 'Runs', 'Agents', ...usageHeader(harness), ...wakeHeader], body);
 }
 
 // Mean per run of the runs that have the segment, over every agent reported in it.
@@ -963,9 +1004,15 @@ function meanTable(harness, rows, runsByRun) {
     }, {});
     const runs = runsByRun.get(segment) ?? 1;
     const mean = Object.fromEntries(Object.entries(total).map(([field, value]) => [field, value / runs]));
-    body.push([segment, figure(runs), figure(totalTokens(total) / runs), ...usageColumns(harness, mean)]);
+    const wakes = own.reduce((sum, row) => sum + (row.wakes ?? 0), 0), wakeTokens = own.reduce((sum, row) => sum + totalTokens(row.wake_usage ?? {}), 0);
+    body.push([segment, figure(runs), figure(totalTokens(total) / runs), ...usageColumns(harness, mean), (wakes / runs).toFixed(1), figure(wakeTokens / runs)]);
   }
-  return table(['Segment', 'Runs', 'Total tokens', ...usageHeader(harness)], body);
+  return table(['Segment', 'Runs', 'Total tokens', ...usageHeader(harness), 'Wakes', 'Wake tokens'], body);
+}
+
+// One row per run: its wakes and what their requests cost, a subset of the run's own figures.
+function wakeRunTable(runs) {
+  return table(['Run', 'Command', ...wakeHeader], runs.map(run => [figure(run.run), `\`${run.command}\``, `${figure(run.totals.wakes)}${run.totals.unavailable_wake_agents ? '*' : ''}`, figure(run.totals.wake_requests), figure(run.totals.wake_tokens)]));
 }
 
 function renderBaseline(report, aliases) {
@@ -982,6 +1029,7 @@ function renderBaseline(report, aliases) {
   lines.push('- A dispatched agent is a helper another agent launched (for example the explorers of the design worker). It is reported by type, apart from the agent that dispatched it, under that agent\'s segment; a helper the main session launched follows the run\'s command.');
   lines.push('- Usage is summed per model request. Claude Code separates 5-minute and 1-hour cache writes and records no cost; opencode records one cache-write figure and a cost when the provider reports one. An agent whose usage is missing counts as `unavailable` and adds nothing to the sums.');
   lines.push('- Total tokens are input, output, cache read, and cache write added together. Tool calls are the tool-use blocks an agent issued.');
+  lines.push('- A wake is the turn of an agent that the completion of its own `wait.js ... warm` background wait opens (cache warming), the main session included. Wake requests and tokens cover every request of those turns and are a subset of the figures above, never added to them. A `-` in a wake column means the agent\'s data could not be read; a `*` marks a total that leaves such an agent out. An agent that armed no wait has zero wakes.');
   lines.push('- Review rounds and coordination stay inside the coordinator\'s figures.', '');
   lines.push('## Coverage', '');
   lines.push(table(['Project', 'Harness', 'Directories with sessions', 'Sessions read', 'Status'], [...groups].flatMap(group => {
@@ -1010,6 +1058,7 @@ function renderBaseline(report, aliases) {
       lines.push('Cost by segment, role, and agent type:', '', segmentTable(harness, rows), '');
       const segmentRuns = new Map(SEGMENT_ORDER.map(segment => [segment, runs.filter(run => run.agents.some(agent => (agent.segment ?? 'other') === segment)).length]));
       lines.push('Mean per run, over the runs that have the segment:', '', meanTable(harness, rows, segmentRuns), '');
+      lines.push('Cache-warming wakes per run (a subset of the figures above):', '', wakeRunTable(runs), '');
     }
     const named = report.changes.filter(change => change.project_group === group);
     const sideTotals = (runNumbers) => runNumbers.map(number => report.runs[number - 1]).reduce((sum, run) => ({ tokens: sum.tokens + run.totals.tokens, tool_calls: sum.tool_calls + run.totals.tool_calls, unavailable: sum.unavailable + run.totals.unavailable_agents }), { tokens: 0, tool_calls: 0, unavailable: 0 });

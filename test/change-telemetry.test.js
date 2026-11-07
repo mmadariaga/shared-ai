@@ -48,6 +48,8 @@ function scratch() {
       for (const field of drop) delete data[field];
       insertMessage.run(`msg_${++seq}`, session, 'assistant', seq, at(seconds), JSON.stringify(data));
     },
+    // Any other record of the session, such as a shell completion or an idle marker.
+    raw: (session, type, seconds, data) => insertMessage.run(`msg_${++seq}`, session, type, seq, at(seconds), JSON.stringify(data)),
     close: () => { db.close(); fs.rmSync(base, { recursive: true, force: true }); },
   };
   return api;
@@ -106,9 +108,9 @@ function claudeScratch() {
       tails.set(file, id);
       return id;
     },
-    user: (file, session, seconds, text) => {
+    user: (file, session, seconds, text, extra = {}) => {
       const id = uuid();
-      write(file, { type: 'user', uuid: id, parentUuid: tails.get(file) ?? null, timestamp: claudeIso(seconds), sessionId: session, message: { role: 'user', content: text } });
+      write(file, { type: 'user', uuid: id, parentUuid: tails.get(file) ?? null, timestamp: claudeIso(seconds), sessionId: session, ...extra, message: { role: 'user', content: text } });
       tails.set(file, id);
     },
     // One request: a first line at `seconds`, one line per tool call at `seconds + length`, and a result
@@ -129,7 +131,7 @@ function claudeScratch() {
       tails.set(file, previous);
       if (!pending) tools.forEach((call, index) => {
         const id = uuid();
-        write(file, { type: 'user', uuid: id, parentUuid: tails.get(file), timestamp: claudeIso(seconds + length + 0.5), sessionId: session, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: ids[index], content: 'result', ...(call.error ? { is_error: true } : {}) }] } });
+        write(file, { type: 'user', uuid: id, parentUuid: tails.get(file), timestamp: claudeIso(seconds + length + 0.5), sessionId: session, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: ids[index], content: call.result ?? 'result', ...(call.error ? { is_error: true } : {}) }] } });
         tails.set(file, id);
       });
       return ids;
@@ -143,7 +145,7 @@ const use = (name, input = {}, extra = {}) => ({ name, input, ...extra });
 const claudeOptions = (fixture, extra = {}) => ({ harness: 'claude', command: 'sai-plan', change: 'demo', cwd: fixture.project, status: 'completed', ...extra });
 const metricCells = (text, area, agent) => {
   const cells = rowOf(section(text, area), agent).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
-  const names = ['agent', 'model', 'variant', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cacheMisses', 'cost', 'time', 'toolCalls', 'toolErrors', 'subagents', 'tools'];
+  const names = ['agent', 'model', 'variant', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cacheMisses', 'cost', 'time', 'toolCalls', 'toolErrors', 'subagents', 'wakes', 'tools'];
   return Object.fromEntries(names.map((name, index) => [name, cells[index]]));
 };
 
@@ -175,7 +177,7 @@ test('claude collect: a direct /sai-plan is measured from its transcripts, with 
     assert.match(text, /Claude Code transcripts record no cost, reasoning, or variant/);
     // The repeated line of one message.id is one request; the request still running is left out.
     const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
-    assert.deepEqual(coordinator, { agent: 'sai-plan', model: 'claude-test', variant: 'unavailable', requests: '2', input: '120', output: '12', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '50', cacheMisses: '1', cost: 'unavailable', time: '7s', toolCalls: '4', toolErrors: '1', subagents: '1', tools: 'Read×2, Bash×1, Grep×1' });
+    assert.deepEqual(coordinator, { agent: 'sai-plan', model: 'claude-test', variant: 'unavailable', requests: '2', input: '120', output: '12', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '50', cacheMisses: '1', cost: 'unavailable', time: '7s', toolCalls: '4', toolErrors: '1', subagents: '1', wakes: '0', tools: 'Read×2, Bash×1, Grep×1' });
     // Cache write sums the 5-minute and 1-hour creation tokens; a SendMessage continuation dispatches nothing.
     const spec = metricCells(text, 'Spec', 'sai-1-spec-proposal-worker');
     assert.deepEqual({ requests: spec.requests, input: spec.input, cacheRead: spec.cacheRead, cacheWrite: spec.cacheWrite, toolCalls: spec.toolCalls, subagents: spec.subagents, cost: spec.cost }, { requests: '2', input: '61', cacheRead: '300', cacheWrite: '10', toolCalls: '3', subagents: '1', cost: 'unavailable' });
@@ -372,7 +374,7 @@ test('claude collect: a Direct Build slice starts after the previous slice and s
     assert.match(section(text, 'Implement'), /sai-direct-build-worker/);
     assert.match(section(text, 'Backfill'), /sai-backfill-worker/);
     assert.ok(!text.includes('sai-archive-worker'), 'the previous slice stays outside the window');
-    assert.equal(text.split('sai-direct-build-worker').length - 1, 1, 'the proof of concept worker is not a slice worker');
+    assert.equal(text.split('### Cache-warming wakes')[0].split('sai-direct-build-worker').length - 1, 1, 'the proof of concept worker is not a slice worker');
   } finally { f.close(); }
 });
 
@@ -493,12 +495,12 @@ sqliteTest('collect: reads per-agent figures, counts tool calls apart from dispa
     const text = telemetryOf(f);
     // E6: the third coordinator request is still running (no completion), so it is the closing turn and is left out.
     const coordinator = rowOf(section(text, 'Coordinator'), 'sai-plan').split(' | ').map(cell => cell.trim());
-    assert.deepEqual(coordinator.slice(1, -1), ['model-a', 'high', '2', '120', '12', '0', '0', '50', '1', '$0.7500', '4s', '4', '1', '1']);
+    assert.deepEqual(coordinator.slice(1, -1), ['model-a', 'high', '2', '120', '12', '0', '0', '50', '1', '$0.7500', '4s', '4', '1', '1', '0']);
     assert.equal(coordinator.at(-1), 'read×2, bash×1, grep×1 |');
     assert.match(text, /closing turn/);
     // E16/E15: the dispatch call is a subagent dispatched and never a tool call; the websearch counts as a call.
     const spec = rowOf(section(text, 'Spec'), 'sai-1-spec-proposal-worker').split(' | ').map(cell => cell.trim());
-    assert.deepEqual(spec.slice(1, -1), ['model-a', 'high', '2', '61', '7', '1', '300', '10', '1', '$3.0000', '4s', '2', '0', '1']);
+    assert.deepEqual(spec.slice(1, -1), ['model-a', 'high', '2', '61', '7', '1', '300', '10', '1', '$3.0000', '4s', '2', '0', '1', '0']);
     assert.match(spec.at(-1), /websearch×1, write×1/);
     assert.match(rowOf(section(text, 'Spec'), '↳ budget-explorer'), /\| 1 \| 5 \| 1 \| 0 \| 50 \| 0 \| 0 \| \$0\.0000 \|/);
     // E9: the segment that never started shows as not run.
@@ -1119,4 +1121,230 @@ test('explore-origin: a missing or malformed session is a usage error', () => {
     assert.equal(status, 2, args.join(' '));
     assert.equal(payload.error.code, 'USAGE');
   }
+});
+
+// ---------------------------------------------------------------------------
+// Cache-warming wakes: the turns that the completion of an agent's own wait opens
+// ---------------------------------------------------------------------------
+
+const WAIT = 'node "/home/u/.claude/skills/sai-cache-warmer/wait.js"';
+const WAIT_OC = 'node /home/u/.config/opencode/skills/sai-cache-warmer/wait.js';
+const background = (id, command, description = 'keep warm') => use('Bash', { command, description, run_in_background: true }, { id, result: `Command running in background with ID: ${id.replace('toolu_', '')}. Output is being written to: /tmp/x.output.` });
+const notification = taskId => `<task-notification>\n<task-id>${taskId}</task-id>\n<tool-use-id>toolu_z</tool-use-id>\n<status>completed</status>\n<summary>Background command "x" completed (exit code 0)</summary>\n</task-notification>`;
+const subagentNotice = taskId => `[SYSTEM NOTIFICATION - NOT USER INPUT]\nThis is an automated background-task event, NOT a message from the user.\n\n${notification(taskId)}`;
+const wakeSection = text => text.slice(text.indexOf('### Cache-warming wakes'));
+const wakeCellsOf = (text, agent) => {
+  const cells = rowOf(wakeSection(text), agent).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
+  return Object.fromEntries(['agent', 'wakes', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cost'].map((name, index) => [name, cells[index]]));
+};
+
+// A /sai-plan run on Claude Code in which the main session wakes twice (the first wake re-arms, the second
+// finishes), then answers a `dispose` and another task's completion with an `ok`, and the spec worker wakes once.
+function claudeWakeFixture() {
+  const f = claudeScratch();
+  const root = f.root('cs-root');
+  f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+  f.request(root, 'cs-root', 2, { tools: [use('Agent', { subagent_type: 'sai-1-spec-proposal-worker' }, { id: 'toolu_spec' }), background('toolu_bgA', `${WAIT} warm --chain abc`)] });
+  f.request(root, 'cs-root', 8, {});
+  f.user(root, 'cs-root', 60, notification('bgA'));
+  f.request(root, 'cs-root', 61, { tools: [background('toolu_bgB', `${WAIT} warm --state tok`, 'cache-warm')] });
+  f.request(root, 'cs-root', 65, {});
+  f.user(root, 'cs-root', 120, notification('bgB'));
+  f.request(root, 'cs-root', 121, {});
+  f.user(root, 'cs-root', 130, 'dispose');
+  f.request(root, 'cs-root', 131, {});
+  f.user(root, 'cs-root', 140, notification('zzz'));
+  f.request(root, 'cs-root', 141, {});
+  f.request(root, 'cs-root', 150, { tools: [use('Bash', { command: 'node change-telemetry.js collect' })], pending: true });
+  f.meta('cs-root', 'aspec', { agentType: 'sai-1-spec-proposal-worker', toolUseId: 'toolu_spec', spawnDepth: 1 });
+  const spec = f.agent('cs-root', 'aspec');
+  f.request(spec, 'cs-root', 5, { tools: [use('Write', { file_path: `${f.project}/openspec/changes/demo/proposal.md` }), background('toolu_wA', `${WAIT} warm --chain wxyz`), background('toolu_sl', 'sleep 5', 'cache-warm')] });
+  f.user(spec, 'cs-root', 90, subagentNotice('sl'), { isMeta: true });
+  f.request(spec, 'cs-root', 91, {});
+  f.user(spec, 'cs-root', 100, subagentNotice('wA'), { isMeta: true });
+  f.request(spec, 'cs-root', 101, {});
+  // Two wakes close together keep one turn each.
+  f.user(spec, 'cs-root', 102, subagentNotice('wA'), { isMeta: true });
+  f.request(spec, 'cs-root', 103, {});
+  f.meta('cs-root', 'ahelper', { agentType: 'budget-explorer', toolUseId: 'toolu_helper', parentAgentId: 'aspec', spawnDepth: 2 });
+  f.request(f.agent('cs-root', 'ahelper'), 'cs-root', 7, {});
+  return f;
+}
+
+test('claude wakes: the turns a completed wait opens are counted per agent whatever the task description, and the others are not (E18, E20, E21, E22, E24)', () => {
+  const f = claudeWakeFixture();
+  try {
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    // E24: the main session counts under the coordinator. Two wakes (E22 the second finished); the `ok` after
+    // `dispose` and after another task's completion are requests of the coordinator and never wakes (E21).
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').wakes, '2');
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').requests, '7');
+    // E20: the worker's wait carried another description, and its `sleep` described as cache-warm is no wait. The
+    // second notice repeats the task id of the first, so it opens a wake of its own.
+    assert.equal(metricCells(text, 'Spec', 'sai-1-spec-proposal-worker').wakes, '2');
+    // E18: a helper that never armed a wait has zero wakes.
+    assert.equal(metricCells(text, 'Spec', '↳ budget-explorer').wakes, '0');
+    assert.equal(metricCells(text, 'Spec', 'sai-1-spec-proposal-worker').requests, '4');
+  } finally { f.close(); }
+});
+
+test('claude wakes: the wake-cost table holds the requests of the wake turns, a subset of the existing totals (E23)', () => {
+  const f = claudeWakeFixture();
+  try {
+    collect(claudeOptions(f), { env: f.env });
+    const text = telemetryOf(f);
+    // The re-arm, the `ok` of the first wake and the `ok` of the second: three requests of 10 input, 5 output, 100 cache read.
+    assert.deepEqual(wakeCellsOf(text, 'sai-plan'), { agent: 'sai-plan', wakes: '2', requests: '3', input: '30', output: '15', reasoning: 'unavailable', cacheRead: '300', cacheWrite: '60', cost: 'unavailable' });
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').input, '70', 'the wake requests stay inside the coordinator row');
+    // The spec worker's two wakes each have one request.
+    assert.deepEqual([wakeCellsOf(text, 'sai-1-spec-proposal-worker').wakes, wakeCellsOf(text, 'sai-1-spec-proposal-worker').requests], ['2', '2']);
+    // An agent without wakes has zero requests and zero tokens where its requests record them; Claude Code records no cost.
+    assert.deepEqual(wakeCellsOf(text, '↳ budget-explorer'), { agent: '↳ budget-explorer', wakes: '0', requests: '0', input: '0', output: '0', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '0', cost: 'unavailable' });
+    const total = wakeCellsOf(text, 'Run total');
+    assert.deepEqual([total.wakes, total.requests, total.input, total.cacheRead], ['4', '5', '50', '500']);
+    assert.match(text, /Wakes \| Tools \|/, 'the per-agent tables carry the Wakes column');
+    assert.match(text, /\| Wakes \|\n\|[-|]+\|\n\|.* \| 4 \|\n/, 'the change total adds the wakes of every agent');
+  } finally { f.close(); }
+});
+
+test('claude wakes: a run whose agents never armed a wait reports zero for each agent and for the run (E18)', () => {
+  const f = claudePlanFixture();
+  try {
+    collect(claudeOptions(f), { env: f.env });
+    const text = telemetryOf(f);
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').wakes, '0');
+    assert.equal(metricCells(text, 'Spec', 'sai-1-spec-proposal-worker').wakes, '0');
+    assert.deepEqual([wakeCellsOf(text, 'sai-plan').wakes, wakeCellsOf(text, 'sai-plan').requests, wakeCellsOf(text, 'Run total').wakes], ['0', '0', '0']);
+  } finally { f.close(); }
+});
+
+test('claude wakes: a subagent whose session is not recorded has no wake figure, apart from zero (E19)', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+    f.request(root, 'cs-root', 2, { tools: [use('Agent', {}, { id: 'toolu_ghost' })] });
+    f.request(root, 'cs-root', 6, { pending: true, tools: [use('Bash')] });
+    collect(claudeOptions(f), { env: f.env });
+    const text = telemetryOf(f);
+    const ghost = wakeCellsOf(text, 'unavailable (session toolu_ghost is not in the Claude Code transcripts)');
+    assert.deepEqual([ghost.wakes, ghost.requests, ghost.input], ['unavailable', 'unavailable', 'unavailable']);
+    assert.match(wakeCellsOf(text, 'Run total').wakes, /^≥0$/, 'the total is partial, never a plain zero');
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').wakes, '0');
+  } finally { f.close(); }
+});
+
+function opencodeWakeFixture() {
+  const f = scratch();
+  const shell = (session, seconds, command, description, state = 'completed') => f.raw(session, 'synthetic', seconds, { metadata: { source: 'shell', shellID: 'sh_1', jobID: 'sh_1', state }, time: { created: at(seconds) }, text: `<shell id="sh_1" state="${state}" command="${command}">\n{"status":"continue"}\n</shell>`, description });
+  const idle = (session, seconds) => f.raw(session, 'idle', seconds, { time: { created: at(seconds) }, outcome: 'succeeded' });
+  f.session('ses_root', null, 'build', 0);
+  f.invoke('ses_root', 1, 'plan', 'demo');
+  f.request('ses_root', 2, { content: [dispatch('ses_spec'), tool('shell', 'completed', { command: `${WAIT_OC} warm --chain abc`, background: true })] });
+  idle('ses_root', 3);
+  shell('ses_root', 60, `${WAIT_OC} warm --chain abc`, 'a description that is not cache-warm');
+  f.request('ses_root', 61, { content: [tool('shell', 'completed', { command: `${WAIT_OC} warm --state tok`, background: true })] });
+  f.request('ses_root', 62, {});
+  idle('ses_root', 63);
+  shell('ses_root', 120, `${WAIT_OC} warm --state tok`, 'cache-warm', 'error');
+  f.request('ses_root', 121, {});
+  idle('ses_root', 122);
+  f.user('ses_root', 130, 'dispose');
+  f.request('ses_root', 131, {});
+  shell('ses_root', 140, 'sleep 240', 'cache-warm');
+  f.request('ses_root', 141, {});
+  f.request('ses_root', 150, { done: false, content: [tool('read')] });
+  f.session('ses_spec', 'ses_root', 'sai-1-spec-proposal-worker', 5);
+  f.request('ses_spec', 6, { content: [tool('write')] });
+  shell('ses_spec', 90, `${WAIT_OC} warm --chain wxyz`, 'keep warm');
+  f.request('ses_spec', 91, {});
+  f.session('ses_helper', 'ses_spec', 'budget-explorer', 7);
+  f.request('ses_helper', 7, {});
+  return f;
+}
+
+sqliteTest('opencode wakes: a shell completion that runs the wait opens a wake whatever its description or state, and the others do not (E18, E20, E21, E22, E24)', () => {
+  const f = opencodeWakeFixture();
+  try {
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').wakes, '2');
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').requests, '6');
+    assert.equal(metricCells(text, 'Spec', 'sai-1-spec-proposal-worker').wakes, '1');
+    assert.equal(metricCells(text, 'Spec', '↳ budget-explorer').wakes, '0');
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('opencode wakes: the wake-cost table adds requests, tokens, and cost of the wake turns, inside the existing totals (E23)', () => {
+  const f = opencodeWakeFixture();
+  try {
+    f.db.close();
+    collect(options(f), { env: f.env });
+    const text = telemetryOf(f);
+    // Three requests of 10 input, 5 output, 1 reasoning, 100 cache read, 20 cache write, and $0.50 each.
+    assert.deepEqual(wakeCellsOf(text, 'sai-plan'), { agent: 'sai-plan', wakes: '2', requests: '3', input: '30', output: '15', reasoning: '3', cacheRead: '300', cacheWrite: '60', cost: '$1.5000' });
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').input, '60');
+    assert.deepEqual(wakeCellsOf(text, 'sai-1-spec-proposal-worker'), { agent: 'sai-1-spec-proposal-worker', wakes: '1', requests: '1', input: '10', output: '5', reasoning: '1', cacheRead: '100', cacheWrite: '20', cost: '$0.5000' });
+    assert.deepEqual(wakeCellsOf(text, '↳ budget-explorer'), { agent: '↳ budget-explorer', wakes: '0', requests: '0', input: '0', output: '0', reasoning: '0', cacheRead: '0', cacheWrite: '0', cost: '$0.0000' });
+    const total = wakeCellsOf(text, 'Run total');
+    assert.deepEqual([total.wakes, total.requests, total.input, total.cost], ['3', '4', '40', '$2.0000']);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('opencode wakes: a malformed shell record or a shell record that is not a wait never fails the collection (E13)', () => {
+  const f = scratch();
+  try {
+    f.session('ses_root', null, 'build', 0);
+    f.invoke('ses_root', 1, 'plan', 'demo');
+    f.request('ses_root', 2, {});
+    f.db.prepare("INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, 'synthetic', 900, ?, ?)").run('msg_broken', 'ses_root', at(3), 'wait.js warm {not json');
+    f.raw('ses_root', 'synthetic', 4, { metadata: { source: 'plugin' }, text: `<shell command="${WAIT_OC} warm --chain x">\nout\n</shell>` });
+    f.request('ses_root', 5, {});
+    f.request('ses_root', 8, { done: false });
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    assert.equal(metricCells(telemetryOf(f), 'Coordinator', 'sai-plan').wakes, '0');
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('wakes: a telemetry.md written before the Wakes column keeps its sections and makes the change total partial', () => {
+  const f = opencodeWakeFixture();
+  try {
+    f.db.close();
+    collect(options(f), { env: f.env });
+    const file = path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md');
+    // Make the first section read as one an earlier version wrote: no wakes in its totals.
+    const old = fs.readFileSync(file, 'utf8').replace(/<!-- telemetry-totals (\{.*\}) -->/, (_, json) => { const totals = JSON.parse(json); delete totals.wakes; return `<!-- telemetry-totals ${JSON.stringify(totals)} -->`; });
+    fs.writeFileSync(file, old);
+    const db = new DatabaseSync(f.file);
+    const insert = db.prepare('INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)');
+    insert.run('msg_second_user', 'ses_root', 'user', 1000, at(500), JSON.stringify({ text: envelope('plan', 'demo') }));
+    insert.run('msg_second_req', 'ses_root', 'assistant', 1001, at(501), JSON.stringify({ time: { created: at(501), completed: at(503) }, agent: 'x', content: [] }));
+    insert.run('msg_second_req2', 'ses_root', 'assistant', 1002, at(510), JSON.stringify({ time: { created: at(510) }, agent: 'x', content: [] }));
+    db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const text = fs.readFileSync(file, 'utf8');
+    assert.match(text, /Executions: 2/);
+    const total = text.split('\n').find(line => /^\| ≥?\d/.test(line)).split(' | ').map(cell => cell.replace(/^\| /, '').replace(/ \|$/, '').trim());
+    assert.equal(total.at(-1), '≥0', 'the earlier section has no wake figure, so the total is partial');
+    assert.match(text, /Execution 1/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('exploration wakes: an origin session counts its wakes inside the exploration windows and tabulates their cost (E24)', () => {
+  const f = originFixture();
+  try {
+    f.raw('ses_origin', 'synthetic', 40, { metadata: { source: 'shell' }, time: { created: at(40) }, text: `<shell id="s" state="completed" command="${WAIT_OC} warm --state t">\nout\n</shell>` });
+    f.request('ses_origin', 41, {});
+    f.db.close();
+    writeOrigin(f, ['ses_origin']);
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const block = exploration(telemetryOf(f));
+    const origin = section(block, 'Origin session ses_origin');
+    assert.equal(origin.split('#### ')[1].split('\n').find(line => line.startsWith('| sai-explore |')).split(' | ').map(cell => cell.trim()).at(-2), '1', 'the Wakes column of the origin coordinator');
+    assert.match(origin, /#### Cache-warming wakes\n\n\| Agent \| Wakes \| Requests/);
+    assert.match(origin, /\| Exploration total \| 1 \| 1 \|/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
