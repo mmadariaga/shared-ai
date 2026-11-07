@@ -34,11 +34,12 @@ subagent(agent: "{{workerName}}", description: "{{phase}} worker", sessionID: "<
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-The worker may keep its prompt cache warm between messages. Resolve its
-timings and add the warming line to every task message and continuation, as the
-policy says. Every real message from the worker declares `warming: true|false`, beside the report path when it returns only a path (`cache-warming.md` § Warming declaration); the coordinator keeps the latest value for the handle.
+The worker keeps its prompt cache warm between messages when it receives the
+warming switch. End every task message and continuation to it with the switch,
+as the policy says: the coordinator sends it because it disposes the worker.
+Every real message from the worker carries the diagnostic line `warming: true|false`, beside the report path when it returns only a path (`cache-warming.md` § Warming diagnostic).
 The coordinator disposes the worker whatever the warming setting, at the
 points and with the stop call that `@sai/policies/worker-lifecycle.md` defines:
 at its last use, when it replaces the worker, on abandon or stop, and at run
-close. The `warming` declaration gates no dispose, and a worker with a pending
+close. The `warming` diagnostic gates no dispose, and a worker with a pending
 `needs_input` question stays alive until the answer arrives.

@@ -7,15 +7,15 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Dispose is a dispatcher action
 
-Dispose SHALL be the unconditional action of a dispatcher that ends a worker or helper it created, on the handle it captured at dispatch, without a model turn, whatever the warming setting and whatever the agent's latest `warming` declaration. `sai/policies/worker-lifecycle.md` SHALL be the single source of the dispose points, the stop call, and the dispose outcomes; `sai/policies/cache-warming.md` SHALL point to it and its `warming` field SHALL gate no stop. The stop call SHALL be, on Claude Code, `TaskStop(task_id: <captured agent ID>)`; on opencode, `shell.remove` of the outstanding shell of the agent's session followed by `session.interrupt` of that session with the captured `sessionID`. When the opencode session API is not reachable, the dispatcher SHALL send the message `dispose`. One dispose SHALL also end the cache-warm wait the agent armed, with no second stop action. A dispose that finds the agent already finished or no longer existing SHALL count as success: it SHALL NOT be an obstacle, SHALL spend no attempt, and SHALL NOT be retried. Handles SHALL live in conversation state only, never in the `sai-state` store; a handle lost to a context compaction SHALL be skipped, and the run outcome SHALL NOT change. Any other dispose failure (a permission refusal, an unreachable opencode API) SHALL print one notice naming the worker role and the error, and the run SHALL continue to its close and keep its outcome. Claude Code and opencode SHALL dispose at the same points and differ only in the stop call.
+Dispose SHALL be the unconditional action of a dispatcher that ends a worker or helper it created, on the handle it captured at dispatch, without a model turn, whatever the warming setting and whatever the agent's latest `warming` diagnostic. `sai/policies/worker-lifecycle.md` SHALL be the single source of the dispose points, the stop call, and the dispose outcomes; `sai/policies/cache-warming.md` SHALL point to it and its `warming` diagnostic SHALL gate no stop. The stop call SHALL be, on Claude Code, `TaskStop(task_id: <captured agent ID>)`; on opencode, `node <tool-path> --session <sessionID> --cwd <project-root>` of `sai/tools/dispose-shells.js`, resolved per `sai/policies/tool-resolution.md`, with the captured `sessionID`, which removes every running shell of that session. `removed` and `none` SHALL be a complete dispose with no notice. Only when the tool reports `failed` or `unavailable` SHALL the dispatcher print a one-line notice and send the message `dispose`. The stop call SHALL include no `session.interrupt`, and neither harness SHALL send the `dispose` message first. One dispose SHALL also end the cache-warm wait the agent armed, with no second stop action. A dispose that finds the agent already finished or no longer existing SHALL count as success: it SHALL NOT be an obstacle, SHALL spend no attempt, and SHALL NOT be retried. Handles SHALL live in conversation state only, never in the `sai-state` store; a handle lost to a context compaction SHALL be skipped, and the run outcome SHALL NOT change. Any other dispose failure (a permission refusal, a failed `TaskStop`, the `dispose` fallback itself) SHALL print one notice naming the worker role and the error, and the run SHALL continue to its close and keep its outcome. Claude Code and opencode SHALL dispose at the same points and differ only in the stop call.
 
 #### Scenario: Claude Code dispose
-- **WHEN** a Claude Code coordinator disposes a worker, whatever its latest `warming` declaration
-- **THEN** it calls `TaskStop` with the worker's captured agent ID
+- **WHEN** a Claude Code coordinator disposes a worker, whatever its latest `warming` diagnostic
+- **THEN** it calls `TaskStop` with the worker's captured agent ID, which also ends the worker's armed wait
 
 #### Scenario: opencode API unreachable
-- **WHEN** an opencode coordinator disposes a worker and cannot reach the session API from its session
-- **THEN** it sends the message `dispose` to the worker instead
+- **WHEN** an opencode coordinator disposes a worker and `dispose-shells.js` reports `unavailable` or `failed`
+- **THEN** it prints a one-line notice and sends the message `dispose` to the worker instead, and the worker answers each later wake with `ok` and arms nothing
 
 #### Scenario: Disposing a finished agent
 - **WHEN** a dispatcher reaches a dispose point for an agent that already finished or no longer exists
@@ -36,6 +36,10 @@ Dispose SHALL be the unconditional action of a dispatcher that ends a worker or 
 #### Scenario: Lost handle is skipped
 - **WHEN** a context compaction lost the handle of a worker before its dispose point
 - **THEN** the coordinator disposes the workers whose handles it still holds and the run outcome does not change
+
+#### Scenario: opencode dispose removes the worker's shells
+- **WHEN** an opencode coordinator disposes a worker and `dispose-shells.js` reports `removed` or `none`
+- **THEN** the dispose is complete, the worker's armed wait has ended, no notice is printed, and no `dispose` message is sent
 
 ### Requirement: Coordinators dispose workers at close points
 
@@ -84,3 +88,27 @@ Coordinators SHALL dispose every worker they create, under `sai/policies/worker-
 #### Scenario: Replacement disposes the old worker first
 - **WHEN** a coordinator replaces a worker with a new worker
 - **THEN** it disposes the old worker before the replacement receives its first message and does not process a later message from the old worker as a result
+
+### Requirement: opencode shell removal tool
+
+`sai/tools/dispose-shells.js` SHALL take `--session <sessionID> --cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals the given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, list again, and print one JSON object `{status, removed, failed}`. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any other session. `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing. It SHALL exit 0 for `removed` and `none`, 1 for `failed` and `unavailable`, and 2 for a usage error (a session id that is not a plain identifier, or a missing `--cwd`). The existing `sai-tools` projection SHALL install it with no new shell grant, and `sai/policies/tool-resolution.md` SHALL list it among the resolvable tools. Its tests SHALL stub the `opencode` CLI.
+
+#### Scenario: Worker with running shells
+- **WHEN** the tool runs for a session that has running shells, its armed cache-warm wait included
+- **THEN** it removes each of them, the second listing no longer shows them, and it prints `removed` with their ids
+
+#### Scenario: Worker with no running shell
+- **WHEN** the tool runs for a session that has no running shell
+- **THEN** it removes nothing and prints `none` with exit 0
+
+#### Scenario: Shell still listed after removal
+- **WHEN** a removed shell still appears in the second listing
+- **THEN** the tool prints `failed` with that shell's id and exits 1
+
+#### Scenario: Server unreachable
+- **WHEN** the `opencode` CLI is absent or the server does not answer the listing
+- **THEN** the tool prints `unavailable` and exits 1
+
+#### Scenario: Shell of another session
+- **WHEN** the listing holds running shells of other sessions
+- **THEN** the tool leaves them running

@@ -2,7 +2,7 @@
 
 Single source for when and how a coordinator ends the workers and helpers it creates, and for the rule every worker follows on the commands it launches. Ending a worker never depends on the warming setting: `@sai/policies/cache-warming.md` decides whether a worker's prompt cache stays warm, and this policy decides when the worker ends. Coordinators, worker bindings, and helper skills fetch this file and never restate it.
 
-Terms. **Dispose**: the unconditional action that ends a worker or helper the coordinator created, whatever the warming setting and whatever the worker's latest `warming` declaration. **Last use**: the point after which the coordinator sends no further message to that worker. **Handle**: the identifier the coordinator captured when it created the worker (the agent ID on Claude Code, the `sessionID` on opencode). **Worker**, **helper**, and **live explorer** keep the meaning they have in `cache-warming.md` Terms and below.
+Terms. **Dispose**: the unconditional action that ends a worker or helper the coordinator created, whatever the warming setting and whatever the worker's latest `warming` diagnostic. **Last use**: the point after which the coordinator sends no further message to that worker. **Handle**: the identifier the coordinator captured when it created the worker (the agent ID on Claude Code, the `sessionID` on opencode). **Worker**, **helper**, and **live explorer** keep the meaning they have in `cache-warming.md` Terms and below.
 
 ## Dispose
 
@@ -22,15 +22,15 @@ Claude Code and opencode dispose at the same points and differ only in the stop 
 ## Stop call
 
 - **Claude Code**: `TaskStop(task_id: "<captured agent ID>")`.
-- **opencode**: `shell.remove` of the outstanding shell of the worker's session, then `session.interrupt` of that session through the session API (`api/session/:sessionID/interrupt`), both with the captured `sessionID`. `session.interrupt` alone does nothing on an idle session, so the shell goes first. When the API is not reachable, send the message `dispose`.
+- **opencode**: `node <tool-path> --session <sessionID> --cwd <project-root>`, with `dispose-shells.js` resolved per `@sai/policies/tool-resolution.md`, the captured `sessionID`, and the project root. The tool removes every running shell of that session, which ends the agent's armed cache-warm wait with them, and prints `{"status": "removed" | "none" | "failed" | "unavailable"}`. `removed` and `none` (a worker with no running shell) are a complete dispose and print no notice. Send the message `dispose` only when the status is `failed` or `unavailable`, after printing a one-line notice: from then on the agent answers each wake with `ok` and arms nothing. No `session.interrupt` call exists in this stop: it returns 404 for a child session, and aimed at your own session it aborts the tool call that is running.
 
-One dispose also ends the cache-warm wait the agent armed; no second stop action follows.
+One dispose also ends the cache-warm wait the agent armed; no second stop action follows. Neither harness sends the `dispose` message first.
 
 ## Outcomes
 
 - **Already ended.** A worker that finished or no longer exists counts as disposed. It spends no attempt and triggers no retry. On Claude Code, `TaskStop` on a cleanly finished worker returns `No task found`.
 - **Lost handle.** Handles live in conversation state only, never in the `sai-state` store. A handle lost to a context compaction is skipped: dispose the workers whose handles you still hold. The run outcome does not change.
-- **Other failure.** For any other dispose failure (a permission refusal, an unreachable opencode API), print one notice naming the worker role and the error. The run continues to its close and keeps its outcome.
+- **Other failure.** For any other dispose failure (a permission refusal, a failed `TaskStop`, the `dispose` fallback itself), print one notice naming the worker role and the error. The run continues to its close and keeps its outcome.
 
 ## Worker side
 
@@ -38,4 +38,4 @@ Every worker and helper follows these rules.
 
 - **Shell hygiene.** Send no result, step report, or question while a command you launched is still running. Await each background command you started, or end it first (Claude Code `TaskStop` on its background task, opencode removal of its shell). End a command that does not terminate and report it as a failed command in that same message.
 - **Warm wait exemption.** The cache-warm wait that you arm after a response is exempt from the shell rule: `cache-warming.md` arms it after the message by design.
-- **`dispose` message.** A message that is exactly `dispose` is the fallback of the opencode stop call. Reply `ok`, run no tool, and arm nothing again.
+- **`dispose` message.** A message that is exactly `dispose` is the fallback of the opencode stop call. Reply `ok`, run no tool, arm nothing again, and answer each later wake of a wait you armed with `ok` alone.
