@@ -63,7 +63,7 @@ On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm 
 
 ### Requirement: Bounded warming window
 
-The `warm` subcommand of `wait.js` SHALL wait with the timings in minutes resolved from the chain record, with no target time and no closing margin, and timings that are non-positive or whose `max` is below `interval` SHALL be rejected. Each `warm --chain` SHALL open a window that closes `max` minutes after that arm. A re-arm after a wake SHALL pass the returned state back unchanged and SHALL keep the closing instant, while a freshly resolved `interval` applies without moving it. Each real task or continuation SHALL start a new window, and a real message that arrives while a wait is armed SHALL be handled as normal work, after which the agent arms again with `warm --chain <chain>`; the earlier wait is superseded and its late wake returns `finished`. An agent that is never disposed SHALL stop arming once `max` minutes have passed since its last real message. A hand-off wait (see the requirement "Hand-off wait with a fixed deadline") is the exception: a real message SHALL neither re-arm it nor start a new window, and its window keeps the fixed deadline set by the arm that opened it.
+The `warm` subcommand of `wait.js` SHALL wait with the timings in minutes resolved from the chain record, with no target time and no closing margin, and timings that are non-positive or whose `max` is below `interval` SHALL be rejected. Each `warm --chain` SHALL open a window that closes `max` minutes after that arm. A re-arm after a wake SHALL pass the returned state back unchanged and SHALL keep the closing instant, while a freshly resolved `interval` applies without moving it. Each real task or continuation SHALL start a new window, and a real message that arrives while a wait is armed SHALL be handled as normal work, after which the agent arms again with `warm --chain <chain>`; the earlier wait is superseded and its late wake returns `finished`. An agent that is never disposed SHALL stop arming once `max` minutes have passed since its last real message. A chain whose record holds a fixed deadline (see the requirement "Hand-off wait with a fixed deadline") is the exception: every `warm --chain` on it SHALL supersede the earlier wait and keep the window's closing instant at the stored deadline, and an arm at or after the deadline SHALL return `finished` with `waited_ms` 0 and open no new generation.
 
 #### Scenario: Window closes after max
 - **WHEN** `max` minutes have passed since the agent's last real task or continuation
@@ -72,6 +72,14 @@ The `warm` subcommand of `wait.js` SHALL wait with the timings in minutes resolv
 #### Scenario: Re-arm with a new interval keeps the closing instant
 - **WHEN** the setting's `interval` changes while an agent warms and the agent re-arms after a wake
 - **THEN** the wait uses the new interval and the window still closes at the original instant
+
+#### Scenario: Arm on a chain with a fixed deadline
+- **WHEN** `warm --chain <chain>` runs again on a chain whose record holds a fixed deadline that has not passed
+- **THEN** the earlier wait is superseded and the new wait closes at the stored deadline, not `max` minutes after this arm
+
+#### Scenario: Arm after the fixed deadline
+- **WHEN** `warm --chain <chain>` runs at or after the chain's fixed deadline
+- **THEN** it returns `finished` with `waited_ms` 0 and the chain's generation does not change
 
 ### Requirement: Explorer shell grant for the wait
 
@@ -135,15 +143,19 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 
 ### Requirement: Hand-off wait with a fixed deadline
 
-`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: the same `wait.js` wait and chain, opened by the main session's `begin`, with a fixed deadline `max` minutes after the arm that opened it, armed only at the end of the hand-off close. When the timings are the user's answers, the command SHALL add `--interval <interval> --max <max>` to `begin`, which fix the chain's timings in place of the setting; `begin` SHALL reject them as a usage error unless both are given as positive numbers of minutes with `max` at least `interval`. A real message SHALL neither re-arm the hand-off wait nor move its deadline, overriding the window and arm rules for real messages; only a wake SHALL re-arm it, with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. Timings the user chose SHALL stay as chosen at every wake; timings from the `warming` setting SHALL be resolved again at the wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
+`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: an ordinary `wait.js` chain of the main session whose window is a fixed deadline that `wait.js` owns. The command SHALL settle the timings (from the `warming` setting for the `agent` role, or from the user's answers to its question) and SHALL pass them explicitly as `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`; `begin` SHALL reject `--interval` and `--max` as a usage error unless both are given as positive numbers of minutes with `max` at least `interval`. The chain record SHALL then hold the deadline, `max` minutes after that `begin`, and no arm or wake SHALL move it. The command SHALL arm with `warm --chain <chain>` only at the end of the hand-off close; a real message other than the event the command waits for SHALL re-arm nothing. A wake SHALL re-arm with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. The timings SHALL stay as passed to `begin` at every wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
 
 #### Scenario: Wake with user-supplied timings
 - **WHEN** a hand-off wait whose timings came from the user's answers wakes
-- **THEN** the command re-arms with `--state <state_token>` unchanged and no other flag, the wait keeps the user's timings, and the command records the new task id
+- **THEN** the command re-arms with `--state <state_token>` unchanged and no other flag, the wait keeps the timings passed to `begin`, and the command records the new task id
 
 #### Scenario: Deadline reached
 - **WHEN** the hand-off wait reaches its deadline
 - **THEN** the wait returns `finished`, the command replies `ok`, and nothing is armed
+
+#### Scenario: Timings from the setting
+- **WHEN** the hand-off timings come from the `warming` setting for the `agent` role
+- **THEN** the command passes that `interval` and `max` to `begin` with `--fixed-deadline`, and a later wake keeps them without resolving the setting again
 
 ### Requirement: Stopping an ended wait is harmless
 
@@ -155,7 +167,7 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 
 ### Requirement: Foreground begin resolves the timings
 
-`wait.js begin` SHALL run in the foreground in the first response of an agent that received the warming switch, and of a main session that runs a command, before its first arm. A subagent SHALL call `begin --agent <agent> --harness <claude|opencode>`, and `begin` SHALL read the provider and model from the `model` frontmatter of the installed agent file, searching the project-local agents folder, then the install root, then the user-global folder: on Claude Code the provider is `anthropic` and the model is the value as written; on opencode the value is `<provider>/<model>`. A main session SHALL call `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode>`. `begin` SHALL resolve the timings from the `warming` setting through `sai/tools/project-settings.js` and the SAI temp root through `sai/tools/temp-root.js`, store the agent's identity in its chain record, and print `{"chain": "<id>", "warming": {"interval", "max"}}`. When the setting has no entry for the agent or turns it off, `begin` SHALL print `{"chain": null, "warming": "off"}` and write no chain record, and the agent SHALL arm nothing for the session. `begin` SHALL reject `--agent` combined with `--role`, `--provider`, `--model`, `--interval`, or `--max`, and a harness other than `claude` or `opencode`, as a usage error with exit 2. When the SAI temp root cannot be resolved (on Linux, a missing harness root, which SAI never creates), `begin` SHALL fail in the foreground with a non-zero exit and a message; the agent SHALL print one line naming that message, arm nothing, and finish its task unchanged. A main session's chain SHALL be derived from the harness session identifier (`CLAUDE_CODE_SESSION_ID` on Claude Code, `OPENCODE_SESSION_ID` on opencode), so a later `begin` in the same chat returns the chain that chat already owns.
+`wait.js begin` SHALL run in the foreground in the first response of an agent that received the warming switch, and of a main session that runs a command, before its first arm. A subagent SHALL call `begin --agent <agent> --harness <claude|opencode>`, and `begin` SHALL read the provider and model from the `model` frontmatter of the installed agent file, searching the project-local agents folder, then the install root, then the user-global folder: on Claude Code the provider is `anthropic` and the model is the value as written; on opencode the value is `<provider>/<model>`. A main session SHALL call `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode>`. `begin` SHALL resolve the timings from the `warming` setting through `sai/tools/project-settings.js` and the SAI temp root through `sai/tools/temp-root.js`, store the agent's identity in its chain record, and print `{"chain": "<id>", "warming": {"interval", "max"}}`. When the setting has no entry for the agent or turns it off, `begin` SHALL print `{"chain": null, "warming": "off"}` and write no chain record, and the agent SHALL arm nothing for the session. `begin` SHALL reject `--agent` combined with `--role`, `--provider`, `--model`, `--interval`, or `--max`, and a harness other than `claude` or `opencode`, as a usage error with exit 2. `begin` SHALL accept the valueless switch `--fixed-deadline` for a main session only: it SHALL reject the switch as a usage error with exit 2 when `--interval` and `--max` are not both given or when `--agent` is given, and with the switch it SHALL store in the chain record a deadline `max` minutes after that `begin`. A later `begin` of the same chain without the switch SHALL rewrite the record with no deadline. When the SAI temp root cannot be resolved (on Linux, a missing harness root, which SAI never creates), `begin` SHALL fail in the foreground with a non-zero exit and a message; the agent SHALL print one line naming that message, arm nothing, and finish its task unchanged. A main session's chain SHALL be derived from the harness session identifier (`CLAUDE_CODE_SESSION_ID` on Claude Code, `OPENCODE_SESSION_ID` on opencode), so a later `begin` in the same chat returns the chain that chat already owns.
 
 #### Scenario: Setting off
 - **WHEN** `begin` runs and the `warming` setting has no entry for the agent, or turns it off
@@ -176,6 +188,14 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 #### Scenario: Subagent flags mixed with main-session flags
 - **WHEN** `begin` receives `--agent` together with `--provider`
 - **THEN** it exits 2 and writes no chain record
+
+#### Scenario: Fixed deadline without explicit timings
+- **WHEN** `begin --role agent` receives `--fixed-deadline` without both `--interval` and `--max`, or `begin --agent` receives `--fixed-deadline`
+- **THEN** it exits 2 as a usage error
+
+#### Scenario: Fixed deadline stored by begin
+- **WHEN** `begin --role agent` runs with `--interval`, `--max`, and `--fixed-deadline`
+- **THEN** the chain record holds a deadline `max` minutes after that `begin`, and a later `begin` of the same chain without the switch removes it
 
 ### Requirement: Dispatcher sends the warming switch
 

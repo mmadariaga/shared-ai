@@ -14,7 +14,7 @@ Fetch `@sai/policies/cache-warming.md` and follow its § Hand-off wait. Fetch `@
 4. **The setting.** Otherwise run `node <tool-path> warming --provider <provider> --model <model> --role agent --harness <claude|opencode> --json --cwd <project-root>` with the main session's provider and model as the harness states them (omit `--model` when it states none) and the active harness.
    - `origin: none`: no entry applies to the `agent` role. Go to § Question.
    - `warming: "off"` with any other origin: configured off. Neither warm nor ask: end this file.
-   - `warming: {interval, max}`: configured. Use that interval, and `max` as the duration, with no question and no TTL notice. Go to § Arm without setting `handoff_answer`, so the next hand-off close resolves the setting again.
+   - `warming: {interval, max}`: configured. Use that interval, and `max` as the duration, with no question and no TTL notice. Go to § Arm with those timings, without setting `handoff_answer`, so the next hand-off close resolves the setting again.
    - A non-zero exit or unreadable output is `origin: none`.
 
 ## Question
@@ -36,11 +36,11 @@ Read the answers:
 
 Arm the hand-off wait as the last tool call of the hand-off close turn, then end the turn with the hand-off text unchanged:
 
-1. Run `begin` in the foreground as `cache-warming.md` § Begin states for the main session. When the timings are the user's answers (`handoff_answer`), add `--interval <interval> --max <max>`; when they come from the setting, add nothing, and `begin` resolves the setting again. A `begin` that prints `off` or fails arms nothing: say so in one line when it failed, leave `handoff_wait` unset, and end this file.
+1. Run `begin` in the foreground as `cache-warming.md` § Begin states for the main session, adding `--interval <interval> --max <max> --fixed-deadline` with the timings this file settled (the user's answers in `handoff_answer`, or the setting's `interval` and `max`). The tool sets the deadline `max` minutes from this `begin` and keeps it fixed. A `begin` that prints `off` or fails arms nothing: say so in one line when it failed, leave `handoff_wait` unset, and end this file.
 2. Launch `wait.js warm --chain <chain>` in the background, as `cache-warming.md` § Arm, wake, and window states for each harness.
 3. Set `handoff_wait` to the background task id and the chain.
 
-The deadline is `max` minutes after this arm. Only a wake re-arms, with the state it returned, and it updates the task id in `handoff_wait`; a real message other than `next-slice` neither re-arms the wait nor moves the deadline. At the deadline the wait ends by itself and no wake follows.
+The wait is a chain like any other: a wake re-arms with the state it returned and updates the task id in `handoff_wait`, and a real message other than `next-slice` re-arms nothing. The tool ends the wait at the deadline, and no wake follows.
 
 When arming fails (no shell, a missing `wait.js`, a refused permission), say so in one line, leave `handoff_wait` unset, and let the hand-off close continue unchanged.
 
