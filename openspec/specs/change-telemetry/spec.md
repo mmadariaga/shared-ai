@@ -420,3 +420,51 @@ Each execution section SHALL name the harness it was collected from (`Claude Cod
 #### Scenario: a mixed-harness change total is partial for cost
 - **WHEN** a `telemetry.md` holds an opencode execution with a known cost and a Claude Code execution is appended
 - **THEN** the Claude Code section reads `Harness: Claude Code`, and the change total's cost is marked `≥`
+
+### Requirement: The collector detects cache-warming wakes from the wait command on both harnesses
+
+The collector SHALL count as a wake the turn of an agent that the completion of its own `wait.js … warm` background wait opens, the main session included. It SHALL match the wait command and never the background task description or an `ok` reply. On Claude Code a wake SHALL open at the `<task-notification>` whose task id equals the background id returned for a shell `tool_use` that runs `wait.js` with `warm`; on opencode a wake SHALL open at the `synthetic` `session_message` with `metadata.source: "shell"` whose `<shell … command="…">` header runs `wait.js` with `warm`. A wake SHALL last to the next record that opens a turn, and a wait that returned `finished` SHALL still count as a wake.
+
+#### Scenario: a wait task with another description is a wake
+- **WHEN** a Claude Code agent arms `wait.js warm` in a background shell whose description is not `cache-warm` and its task notification later opens a turn
+- **THEN** that turn counts as one wake of the agent
+
+#### Scenario: an ok reply alone is not a wake
+- **WHEN** an agent replies `ok` to a `dispose` message or closes a turn that no completed wait opened
+- **THEN** the collector counts no wake for that reply
+
+#### Scenario: a finished wait on opencode is a wake
+- **WHEN** an opencode session holds a `synthetic` shell message for `wait.js warm` whose wait returned `finished`
+- **THEN** the turn it opens counts as one wake
+
+### Requirement: Per-agent rows and the change total report the wake count
+
+Each per-agent table of a telemetry section SHALL carry a `Wakes` column with the number of wakes of the agent in the window of its section, and the change total SHALL add it. A run whose agents never armed a wait SHALL report zero wakes for each agent. A subagent session that is not recorded SHALL show the unavailable marker in `Wakes`, and a total that depends on it SHALL be marked partial (`≥`); a section written before the column existed SHALL count as unknown in the change total.
+
+#### Scenario: agents that never armed a wait
+- **WHEN** a run's coordinator and subagents never armed a wait
+- **THEN** each agent row shows `0` in `Wakes`
+
+#### Scenario: an unrecorded subagent session
+- **WHEN** a dispatched subagent's session is not recorded
+- **THEN** its `Wakes` cell shows the unavailable marker and the run total is marked `≥`
+
+### Requirement: Each section reports the wake cost as a subset of its figures
+
+Each execution section and each exploration segment SHALL end with a `Cache-warming wakes` table that lists, per agent and for the run or exploration total, the wakes and the requests, input, output, reasoning, cache read, cache write, and cost of every request of the wake turns, the re-arm and the `ok` reply included. Wake requests SHALL stay inside the ordinary figures, so no existing total changes meaning. On Claude Code the cost and reasoning columns SHALL be unavailable, as in every Claude Code row.
+
+#### Scenario: wake requests stay inside the totals
+- **WHEN** an agent spends two requests in one wake turn
+- **THEN** the wake table shows one wake and two requests for the agent, and its ordinary `Requests` figure still includes those two requests
+
+#### Scenario: an exploration segment lists its wakes
+- **WHEN** a change with `explore_origin` records its exploration
+- **THEN** the exploration segment ends with a `Cache-warming wakes` table whose last row is the exploration total
+
+### Requirement: The wake figures are documented
+
+`sai/policies/change-telemetry.md` and the change telemetry setting documentation SHALL describe the wake definition, the `Wakes` column, the wake-cost table, and that wake figures are a subset of the existing figures.
+
+#### Scenario: the policy defines a wake
+- **WHEN** a reader opens the `Cache-warming wakes` section of `sai/policies/change-telemetry.md`
+- **THEN** it defines a wake from the wait command on both harnesses and states that an `ok` reply alone is not a wake

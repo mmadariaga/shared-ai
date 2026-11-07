@@ -65,10 +65,13 @@
 
   Each execution reports its coordinator and each agent with `usage` (input,
   output, cache read and write, and `cost` where the harness gives it),
-  `tool_calls`, `pipeline_segment` (`spec`, `design`, or `implement`, `null` for any
+  `tool_calls`, `wakes` and `wake_usage` (the cache-warming turns that the
+  completion of the agent's own wait opened, and the usage of their requests, a
+  subset of `usage`), `pipeline_segment` (`spec`, `design`, or `implement`, `null` for any
   other agent), and `parent_agent_id` (the agent that dispatched it, `null` for the
   main session). Usage the transcript does not hold reads `unavailable`, never
-  zero: report it as missing.
+  zero: report it as missing. An agent with no wake figure (`wakes: null`) could not
+  be read; zero wakes is a real count.
 
   The JSON result holds the harness and project status, the executions of both
   harnesses merged (newest first, `--limit` applied to the merged list), the unlinked agents, a `notes` list, and an `unread` list of
