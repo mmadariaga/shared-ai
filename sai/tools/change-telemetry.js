@@ -33,9 +33,13 @@
  * collection that writes `telemetry.md` also records the exploration that produced
  * the change: one segment per listed session, made of the windows of its `explore`
  * invocation minus the route windows of that session (and, in the route's own
- * session, only up to the route's first worker). `explore-origin` resolves the
- * explore root session of a subagent session, for the block's `Explore origin`.
- * Both are opencode only: a Claude Code collection records no exploration yet.
+ * session, only up to the route's first worker). Each listed id is read with the
+ * reader of its own harness (`ses_...` is opencode, a UUID is Claude Code), whatever
+ * harness runs the collection, and an id whose data is absent on this machine is
+ * marked unavailable. `explore-origin` resolves the session the block's `Explore
+ * origin` lists: on opencode the explore root session of a subagent session, on
+ * Claude Code the given session itself when it holds a `/sai-explore` invocation
+ * in the Claude Code transcripts of the working directory.
  *
  * It prints one JSON object and exits 0: `{outcome: "written", path, message}` or
  * `{outcome: "skipped", reason}`; `explore-origin` prints `{outcome: "found", session}`
@@ -47,7 +51,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges } = require('./opencode-db');
 const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
-const { readOpenspecYaml } = require('./openspec-yaml');
+const { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION } = require('./openspec-yaml');
 
 const OPEN_END = Number.MAX_SAFE_INTEGER;
 const UNAVAILABLE = 'unavailable';
@@ -562,6 +566,25 @@ function measureOrigin(source, sessionId, execution, change) {
   return { id: sessionId, start: windows[0]?.[0] ?? null, siblings, coordinator, rows: rows.get('other'), totals: combine([coordinator, ...rows.get('other')].map(row => row.figures)) };
 }
 
+// One origin session, read with the reader of its own harness. The reader of another
+// harness than the collection's is opened on first use; data absent on this machine
+// (or an id of no known harness) is an unavailable origin, never an error.
+const STORE_OF = { opencode: 'opencode.db', claude: 'the Claude Code transcripts' };
+
+function measureOriginOf(sources, sessionId, execution, change, { cwd, env, loadSqlite }) {
+  const harness = exploreOriginHarness(sessionId);
+  if (!harness) return { id: sessionId, unavailable: `session ${sessionId} is not an opencode or Claude Code session ID` };
+  if (!sources.has(harness)) {
+    try { sources.set(harness, openSource(harness, { cwd, env, loadSqlite })); } catch (error) {
+      if (!isSourceUnavailable(error)) throw error;
+      sources.set(harness, null);
+    }
+  }
+  const source = sources.get(harness);
+  if (!source) return { id: sessionId, unavailable: `session ${sessionId} is not in ${STORE_OF[harness]}` };
+  return measureOrigin(source, sessionId, execution, change);
+}
+
 // ---------------------------------------------------------------------------
 // telemetry.md
 // ---------------------------------------------------------------------------
@@ -720,14 +743,14 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
   const file = path.join(directory.absolute, 'telemetry.md');
   const existing = readExisting(file);
   // The exploration is recorded once: by the first execution that writes the file, from the origin sessions of the change.
-  // The origin sessions are opencode sessions: a Claude Code collection records none yet.
-  const origins = harness !== 'opencode' || existing.foreign || existing.exploration ? [] : [...new Set(readOpenspecYaml(path.join(directory.absolute, '.openspec.yaml'))?.explore_origin ?? [])];
+  const origins = existing.foreign || existing.exploration ? [] : [...new Set(readOpenspecYaml(path.join(directory.absolute, '.openspec.yaml'))?.explore_origin ?? [])];
+  const originSources = new Map([[harness, source]]);
   let execution, measured, exploration = null;
   try {
     execution = findExecution(source, options);
     if (execution) measured = measure(source, { ...options, directory }, execution);
-    if (execution && origins.length) exploration = explorationText(origins.map(session => measureOrigin(source, session, execution, change)));
-  } finally { source.close(); }
+    if (execution && origins.length) exploration = explorationText(origins.map(session => measureOriginOf(originSources, session, execution, change, { cwd, env, loadSqlite })));
+  } finally { for (const opened of originSources.values()) if (opened) opened.close(); }
   if (!execution) return skipped(`No ${source.name} execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
   if (existing.foreign) return skipped(`${relative} exists and was not written by this tool, so it is left as it is.`);
   if (existing.sections.some(section => section.includes(`<!-- telemetry-execution ${execution.inv.id} -->`))) return skipped(`This execution is already recorded in ${relative}.`);
@@ -740,10 +763,22 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
   return { outcome: 'written', path: relative, message: `Change telemetry written to ${relative} (execution ${sections.length}).` };
 }
 
-// The explore root session of a subagent session of the current explore session: the
-// session an `Explore origin` lists. Only a session that holds a `/sai-explore` invocation counts.
-function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = defaultLoadSqlite } = {}) {
-  if (harness !== 'opencode') return skipped('Recording the explore origin on Claude Code is not supported yet.');
+// The session an `Explore origin` lists. On opencode, the explore root session of a subagent
+// session of the current explore session; on Claude Code, the given session itself. Only a
+// session that holds a `/sai-explore` invocation counts.
+function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = defaultLoadSqlite, cwd = process.cwd() } = {}) {
+  if (harness === 'claude') {
+    let source;
+    try { source = openClaudeSource({ cwd: path.resolve(cwd), env }); } catch (error) {
+      if (error instanceof ClaudeUnavailable) return skipped(error.message);
+      throw error;
+    }
+    try {
+      if (!source.isRoot(session)) return skipped(`Session ${session} is not in the Claude Code transcripts of ${path.resolve(cwd)}.`);
+      if (!isExploreSession(source, session)) return skipped(`The session ${session} holds no /sai-explore invocation.`);
+      return { outcome: 'found', session };
+    } finally { source.close(); }
+  }
   let db;
   try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
     if (error instanceof OpencodeUnavailable) return skipped(error.message);
@@ -758,8 +793,6 @@ function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = d
   } finally { db.close(); }
 }
 
-const SESSION_ID = /^ses_[A-Za-z0-9_]+$/;
-
 function parseOptions(argv) {
   const [subcommand, ...rest] = argv;
   if (!['collect', 'explore-origin'].includes(subcommand)) throw new UsageError('The sub-commands are collect and explore-origin');
@@ -772,7 +805,9 @@ function parseOptions(argv) {
   }
   if (!HARNESSES.includes(values.harness)) throw new UsageError(`--harness must be one of ${HARNESSES.join(', ')}`);
   if (subcommand === 'explore-origin') {
-    if (!SESSION_ID.test(values.session ?? '')) throw new UsageError('--session must be an opencode session ID (ses_...)');
+    if (values.harness === 'claude' ? !CLAUDE_SESSION.test(values.session ?? '') : !OPENCODE_SESSION.test(values.session ?? '')) {
+      throw new UsageError(values.harness === 'claude' ? '--session must be a Claude Code session ID (a UUID)' : '--session must be an opencode session ID (ses_...)');
+    }
     return values;
   }
   if (!COMMANDS[values.command]) throw new UsageError(`--command must be one of ${Object.keys(COMMANDS).join(', ')}`);

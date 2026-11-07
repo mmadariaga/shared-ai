@@ -122,7 +122,7 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 
 ### Requirement: Strict profile validates the optional Explore origin label
 
-`sai/tools/ready-to-propose.js` SHALL register `Explore origin` as an optional inline label of the strict field order, after `Backlog origin` and before `What`. A value matching `opencode <sessionID>[, <sessionID>…]`, each session ID of the form `ses_...`, SHALL be returned per block as the ordered `explore_origin` list; a block without the label SHALL return an empty list. Any other value SHALL produce an `INVALID_EXPLORE_ORIGIN` violation, and a label out of order SHALL fail like any misplaced label, so the block fails the strict and dispatchable checks.
+`sai/tools/ready-to-propose.js` SHALL register `Explore origin` as an optional inline label of the strict field order, after `Backlog origin` and before `What`. A value of the form `<harness> <sessionID>[, [<harness> ]<sessionID>…]` SHALL be accepted, where the harness is `opencode` with a `ses_...` session ID or `claude` with a UUID session ID, the first entry names its harness, and a later entry without a harness inherits the previous entry's. The bare session IDs SHALL be returned per block, in order, as the `explore_origin` list; a block without the label SHALL return an empty list. Any other value, including an entry whose ID shape does not match its harness or a first entry without a harness, SHALL produce an `INVALID_EXPLORE_ORIGIN` violation, and a label out of order SHALL fail like any misplaced label, so the block fails the strict and dispatchable checks.
 
 #### Scenario: a valid list is returned in order
 - **WHEN** a block carrying `**Explore origin**: opencode ses_a, ses_b` after `**Backlog origin**` is checked with the strict profile
@@ -130,4 +130,12 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 
 #### Scenario: a malformed value fails
 - **WHEN** a block carries `**Explore origin**: ses_a` without the `opencode` prefix
+- **THEN** the verdict carries an `INVALID_EXPLORE_ORIGIN` violation and the block is not dispatchable
+
+#### Scenario: a mixed-harness list is returned bare
+- **WHEN** a block carrying `**Explore origin**: claude <uuid>, opencode ses_a, ses_b` is checked with the strict profile
+- **THEN** the verdict passes and the block's `explore_origin` is `["<uuid>", "ses_a", "ses_b"]`
+
+#### Scenario: an id that does not match its harness fails
+- **WHEN** a block carries `**Explore origin**: claude ses_a`
 - **THEN** the verdict carries an `INVALID_EXPLORE_ORIGIN` violation and the block is not dispatchable
