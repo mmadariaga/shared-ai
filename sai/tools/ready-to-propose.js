@@ -160,6 +160,7 @@ const STRICT_FIELDS = [
   { label: 'Change name', inline: true },
   { label: 'Depends on', inline: true, optional: true },
   { label: 'Backlog origin', inline: true, optional: true },
+  { label: 'Explore origin', inline: true, optional: true },
   { label: 'What', inline: true },
   { label: 'Why', inline: true },
   { label: 'Specs', inline: true, optional: true },
@@ -184,6 +185,8 @@ const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const LABEL_LINE = /^\*\*(.+?)\*\*:(.*)$/;
 /** The no-specs declaration: `none — <reason>`; the reason is captured and must not be blank. */
 const SPECS_NONE = /^none\s*—(.*)$/;
+/** The explore-origin value: `opencode <sessionID>[, <sessionID>…]`; the capture is the comma-separated sessions. */
+const EXPLORE_ORIGIN = /^opencode (ses_[A-Za-z0-9_]+(?:, ses_[A-Za-z0-9_]+)*)$/;
 
 function normalize(text) {
   return String(text ?? '').replace(/\r\n?/g, '\n');
@@ -296,6 +299,7 @@ function checkStrictBlock(lines, block, index) {
   // Content per field.
   let name = null;
   let backlogOrigin = null;
+  let exploreOrigin = [];
   for (let k = 0; k < firsts.length; k++) {
     const entry = firsts[k];
     const field = known.get(entry.label);
@@ -347,6 +351,11 @@ function checkStrictBlock(lines, block, index) {
         violations.push(violation(line, 'INVALID_BACKLOG_ORIGIN', 'Backlog origin must be a canonical GitHub, GitLab or Azure DevOps issue URL'));
       }
     }
+    if (entry.label === 'Explore origin' && entry.inline !== '') {
+      const sessions = EXPLORE_ORIGIN.exec(entry.inline);
+      if (sessions) exploreOrigin = sessions[1].split(', ');
+      else violations.push(violation(line, 'INVALID_EXPLORE_ORIGIN', 'Explore origin must read "opencode <sessionID>[, <sessionID>…]"'));
+    }
   }
 
   // `**Overview language**` must be the last non-blank line before `---`.
@@ -363,7 +372,7 @@ function checkStrictBlock(lines, block, index) {
 
   const dependency = validateDependencies(lines.slice(block.start, bodyEnd).join('\n'), name);
   violations.push(...dependency.violations.map(entry => ({ ...entry, line: entry.line + block.start })));
-  return { index, line: headingLine, name, backlog_origin: backlogOrigin, dependencies: dependency.dependencies, violations };
+  return { index, line: headingLine, name, backlog_origin: backlogOrigin, explore_origin: exploreOrigin, dependencies: dependency.dependencies, violations };
 }
 
 /**
@@ -463,7 +472,7 @@ function attachBacklogOrigins(text, correspondence) {
     const adopted = block.backlog_origin === association.parent;
     if (block.backlog_origin && !adopted && block.backlog_origin !== slice.issue) throw new Error('Existing selected issue origin conflicts with publication; obtain a user decision');
     const updated = adopted ? originals[index].replace(/^\*\*Backlog origin\*\*:.*$/m, () => `**Backlog origin**: ${slice.issue}`)
-      : block.backlog_origin ? originals[index] : originals[index].replace(/^\*\*What\*\*:/m, `**Backlog origin**: ${slice.issue}\n**What**:`);
+      : block.backlog_origin ? originals[index] : originals[index].replace(/^\*\*(Explore origin|What)\*\*:/m, (_, label) => `**Backlog origin**: ${slice.issue}\n**${label}**:`);
     return { name: block.name, text: updated, hash: hashBlock(updated), backlog_origin: slice.issue };
   });
   return { ok: true, order: validation.order, blocks };

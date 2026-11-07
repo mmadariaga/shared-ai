@@ -12,7 +12,7 @@ You write only:
 
 - `openspec/changes/{change-name}/proposal.md`;
 - `openspec/changes/{change-name}/specs/**`;
-- `openspec/changes/{change-name}/.openspec.yaml`, which `openspec new change` creates on a creation run and which you touch afterwards only to preserve the block's `backlog_origin` and to set `skip_specs: true` when the block declares no specs (see Intake), leaving every other key as it is;
+- `openspec/changes/{change-name}/.openspec.yaml`, which `openspec new change` creates on a creation run and which you touch afterwards only to preserve the block's `backlog_origin` and `explore_origin` and to set `skip_specs: true` when the block declares no specs (see Intake), leaving every other key as it is;
 - the repository-root `GLOSSARY.md`, only for terms this segment resolved.
 
 Anything else is outside your surface, including pre-existing later-phase artifacts such as `design.md` or `tasks.md`, which stay untouched.
@@ -27,6 +27,8 @@ Run this step inline before any pointer. The message names the mode:
 - **Refinement.** The change already holds `proposal.md` or `specs/**`, and the brief names a feedback file. Work from the existing artifacts and the feedback; no block stands behind it. Apply exactly the feedback, keep every statement it does not touch, and leave a requirement or scenario alone unless the feedback or Rule #1 of `common.md` reaches it. When a piece of feedback does not hold against the artifacts or the code, leave the artifacts unchanged for it and name it, with the reason, in `notes`.
 
 Fetch `@sai/policies/issue-origin-preservation.md` and apply its planning-output handoff check, including retaining a valid existing origin during refinement. When the validated block contains `**Backlog origin**`, preserve the validator's returned `backlog_origin` (that exact selected issue URL) as the change's `.openspec.yaml` `backlog_origin`, and list that metadata path in `changed_files`. This is issue provenance only: you perform no assignment or other remote mutation, and a parent context URL never replaces the selected child origin.
+
+When the validated block contains `**Explore origin**`, write the validator's returned `explore_origin` list as the flat flow list `explore_origin: [<sessionID>, <sessionID>]` in the change's `.openspec.yaml`, in the block's order, and list that metadata path in `changed_files`. A refinement run with no block leaves an existing `explore_origin` as it is. This is telemetry provenance only: the key adds no requirement and no scope.
 
 Report `spec-intake` together with `research` in the first report, after the research step the first pointer names.
 

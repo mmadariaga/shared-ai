@@ -292,3 +292,67 @@ The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Di
 #### Scenario: a worker never records telemetry
 - **WHEN** a plan, build, or route worker finishes
 - **THEN** it writes no `telemetry.md`, whatever the setting
+
+### Requirement: A change with explore_origin records its exploration once
+
+When the change's `.openspec.yaml` lists `explore_origin` sessions, the collector SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it.
+
+#### Scenario: the first collection writes the exploration
+- **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` reads `explore_origin: [ses_origin]` and the file has no `## Exploration` section
+- **THEN** the written file holds one `## Exploration` section with an `### Origin session ses_origin` subsection, before `## Execution 1`
+
+#### Scenario: a later collection keeps the exploration unchanged
+- **WHEN** the collector appends `## Execution 2` to a `telemetry.md` that already holds an `## Exploration` section
+- **THEN** the file still holds exactly one `## Exploration` section, with its earlier content unchanged
+
+#### Scenario: a change without explore_origin has no exploration
+- **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` has no `explore_origin` key
+- **THEN** the file holds no `## Exploration` section
+
+### Requirement: Each origin session yields one exploration segment
+
+The `## Exploration` section SHALL hold one `### Origin session <sessionID>` subsection per distinct session listed in `explore_origin`; a session listed more than once SHALL yield one subsection. A segment SHALL cover the coordinator and the subagents of the session's `explore` invocations, each invocation lasting until the session's next invocation, minus every route window of that session. A route window SHALL run from a slice's first route worker to the turn that ran its collector. In the session where the measured route runs, the segment SHALL end where that route starts, so each slice records its own segment. Each segment SHALL report its coordinator row and an "Other agents" table, in which subagents of the exploration, proof-of-concept workers included, are listed.
+
+#### Scenario: a duplicated session yields one segment
+- **WHEN** `explore_origin` lists the same session twice
+- **THEN** the `## Exploration` section holds one `### Origin session` subsection for that session
+
+#### Scenario: route windows are left out of the segment
+- **WHEN** an origin session ran a route for another slice between two parts of its exploration
+- **THEN** the segment's figures cover the exploration parts only and leave out that route window
+
+### Requirement: An exploration segment states whether it is shared
+
+Each segment SHALL carry a `Shared:` line. When other changes had a route window in that origin session, the line SHALL name them; otherwise it SHALL state that no other change had a route window. Either form SHALL state that other slices without a route window may exist. The section SHALL note that adding several `telemetry.md` files counts a shared exploration more than once.
+
+#### Scenario: a sibling route is named
+- **WHEN** the origin session also ran a route for the change `sibling-change`
+- **THEN** the segment's `Shared:` line names `sibling-change` and states that other slices without a route window may exist
+
+### Requirement: An unreadable origin session is recorded as unavailable
+
+When a listed session is not a root session in the local `opencode.db`, or holds no `/sai-explore` invocation, its subsection SHALL record the exploration as `unavailable` with the reason, and the collector SHALL still record the other origin sessions and the route execution.
+
+#### Scenario: a session from another machine
+- **WHEN** `explore_origin` lists a session that is not in the local `opencode.db`
+- **THEN** that session's subsection reads `Exploration: unavailable` with the reason, and the execution section is still written
+
+### Requirement: The collector resolves the explore root session of a subagent
+
+`sai/tools/change-telemetry.js` SHALL offer the sub-command `explore-origin --harness <claude|opencode> --session <sessionID>`. On opencode it SHALL resolve the root session of the given session through `opencodeRoot` and print `{"outcome": "found", "session": <root sessionID>}` only when that root holds a `/sai-explore` invocation; otherwise, and on Claude Code or with an unreadable database, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. A missing session, or one that does not match `ses_...`, SHALL be a usage error that exits 2. `sai/policies/tool-resolution.md` SHALL document this invocation beside `collect`.
+
+#### Scenario: a subagent of an explore session
+- **WHEN** `explore-origin --harness opencode --session <explorer sessionID>` runs for an explorer dispatched by a `/sai-explore` root session
+- **THEN** it prints `{"outcome": "found", "session": <that root sessionID>}`
+
+#### Scenario: a malformed session is a usage error
+- **WHEN** `explore-origin` runs with `--session` missing or not matching `ses_...`
+- **THEN** it exits 2 with a usage error
+
+### Requirement: The exploration record is documented
+
+`docs/project-settings.md`, `sai/policies/change-telemetry.md` § Exploration, and the `## Exploration` part of `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL describe the exploration section: written once per change from `explore_origin`, one segment per listed session, shared segments counted in each change, an `unavailable` segment for a session missing from `opencode.db`, and every listed session ID visible in a published issue.
+
+#### Scenario: the documentation names the exploration section
+- **WHEN** `docs/project-settings.md` and `sai/policies/change-telemetry.md` are read
+- **THEN** both describe the `Exploration` section recorded from `explore_origin`
