@@ -159,120 +159,302 @@ test('instruction contract keeps continuation and recovery with the main agent u
 const os = require('node:os');
 const warmer = require('../skills/universal/sai-cache-warmer/wait');
 
-function chainFixture(t) {
+const WAIT = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
+const ON = { interval: 4, max: 30 };
+
+function chainFixture(t, timings = ON) {
   const saiRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'warm-chain-'));
   t.after(() => fs.rmSync(saiRoot, { recursive: true, force: true }));
   const clock = { time: 0 };
-  const io = { saiRoot, now: () => clock.time, wait: async ms => { clock.time += ms; } };
-  return { saiRoot, clock, io };
+  const setting = { value: timings };
+  const resolved = [];
+  const io = { saiRoot, now: () => clock.time, wait: async ms => { clock.time += ms; }, resolve: identity => { resolved.push(identity); return setting.value; } };
+  const begin = (input = { agent: 'sai-3-red-worker', harness: 'claude' }, extra = {}) =>
+    warmer.beginOnce(input, { ...io, cwd: saiRoot, agentFolders: [], ...extra });
+  return { saiRoot, clock, io, setting, resolved, begin };
 }
 
-test('warm opens a window of max minutes, and the returned state re-arms it unchanged', async t => {
-  const { warmState, warmOnce } = warmer;
-  const { io, clock } = chainFixture(t);
-  assert.deepEqual(warmState({ interval: 4, max: 30 }, 1000), { interval_ms: 240000, closing_ms: 1000 + 1800000 });
-  for (const bad of [{}, { interval: 0, max: 5 }, { interval: 5, max: 4 }, { interval: 'x', max: 5 }]) assert.throws(() => warmState(bad, 0), /Warming/);
-  const first = await warmOnce({ interval: 4, max: 10 }, io);
-  assert.match(first.state.chain, /^[0-9a-f]{16}$/);
-  assert.deepEqual(first, { status: 'continue', waited_ms: 240000, state: { interval_ms: 240000, closing_ms: 600000, chain: first.state.chain, generation: 1, armed_ms: 0 } });
-  const second = await warmOnce({ state: first.state }, io);
+const recordOf = (saiRoot, chain) => JSON.parse(fs.readFileSync(path.join(saiRoot, `warm-chain-${chain}.json`), 'utf8'));
+
+test('warmState opens a window of max minutes and refuses unusable timings', () => {
+  assert.deepEqual(warmer.warmState({ interval: 4, max: 30 }, 1000), { interval_ms: 240000, closing_ms: 1000 + 1800000 });
+  for (const bad of [{}, { interval: 0, max: 5 }, { interval: 5, max: 4 }, { interval: 'x', max: 5 }]) assert.throws(() => warmer.warmState(bad, 0), /Warming/);
+});
+
+test('E1 begin returns off with no chain and no record when the setting is off', t => {
+  const { begin, saiRoot } = chainFixture(t, 'off');
+  assert.deepEqual(begin(), { chain: null, warming: 'off' });
+  assert.deepEqual(fs.readdirSync(saiRoot), []);
+});
+
+test('begin resolves a subagent from its agent file, a model on Claude Code and provider/model on opencode', t => {
+  const { begin, resolved, saiRoot } = chainFixture(t);
+  const folder = path.join(saiRoot, 'agents');
+  fs.mkdirSync(folder);
+  fs.writeFileSync(path.join(folder, 'sai-3-red-worker.md'), '---\nname: sai-3-red-worker\nmodel: "claude-haiku-5"\neffort: low\n---\nBody\nmodel: ignored\n');
+  fs.writeFileSync(path.join(folder, 'budget-explorer.md'), '---\nmodel: deepseek/deepseek-v4\nvariant: high\n---\n');
+  const first = begin(undefined, { agentFolders: [folder] });
+  assert.match(first.chain, /^[0-9a-f]{16}$/);
+  assert.deepEqual(first.warming, ON);
+  assert.deepEqual(resolved.at(-1), { provider: 'anthropic', model: 'claude-haiku-5', role: 'subagent', harness: 'claude', cwd: saiRoot });
+  begin({ agent: 'budget-explorer', harness: 'opencode' }, { agentFolders: [folder] });
+  assert.deepEqual(resolved.at(-1), { provider: 'deepseek', model: 'deepseek-v4', role: 'subagent', harness: 'opencode', cwd: saiRoot });
+  begin({ agent: 'unlisted', harness: 'claude' }, { agentFolders: [folder] });
+  assert.deepEqual(resolved.at(-1), { provider: 'anthropic', role: 'subagent', harness: 'claude', cwd: saiRoot }, 'a Claude Code agent without a file resolves by provider');
+  assert.throws(() => begin({ agent: 'unlisted', harness: 'opencode' }, { agentFolders: [folder] }), /<provider>\/<model>/);
+  assert.throws(() => begin({ agent: '../escape', harness: 'claude' }), warmer.UsageError);
+  assert.equal(warmer.frontmatterModel('---\nmodel: sonnet\n---\n'), 'sonnet');
+  assert.equal(warmer.frontmatterModel('no frontmatter\nmodel: x'), undefined);
+  assert.notEqual(begin().chain, begin().chain, 'each subagent begin opens its own chain');
+});
+
+test('each begin writes the chain record with the identity that arms and wakes resolve from', t => {
+  const { begin, saiRoot } = chainFixture(t);
+  const { chain } = begin();
+  assert.deepEqual(recordOf(saiRoot, chain).identity, { provider: 'anthropic', role: 'subagent', harness: 'claude', cwd: saiRoot });
+  assert.equal(recordOf(saiRoot, chain).generation, 0);
+});
+
+test('E2 a missing Linux harness root fails begin in the foreground, naming the path, without creating it', t => {
+  const { io } = chainFixture(t);
+  const tempRoot = require('../sai/tools/temp-root');
+  const missing = '/tmp/sai-warm-test-missing-root';
+  assert.equal(fs.existsSync(missing), false);
+  const resolveRoot = () => tempRoot.resolveTempRoot('claude', { platform: 'linux', uid: 424242, io: { ...fs, lstatSync: target => (target === '/tmp/claude-424242' ? (() => { const error = new Error('missing'); error.code = 'ENOENT'; throw error; })() : fs.lstatSync(target)) } });
+  assert.throws(resolveRoot, /\/tmp\/claude-424242 is missing/);
+  const rest = { ...io };
+  delete rest.saiRoot;
+  assert.throws(() => warmer.beginOnce({ agent: 'x', harness: 'claude' }, { ...rest, cwd: os.tmpdir(), agentFolders: [], get saiRoot() { return resolveRoot(); } }), /\/tmp\/claude-424242 is missing/);
+});
+
+test('begin for the main session keys the chain on the harness session id, so a later invocation continues it', t => {
+  const { begin, saiRoot, resolved } = chainFixture(t);
+  const main = { role: 'agent', provider: 'anthropic', model: 'claude-opus-5-5', harness: 'claude' };
+  const first = begin({ ...main, session: 'session-1' });
+  assert.equal(first.chain, warmer.sessionChainId('claude', 'session-1'));
+  assert.deepEqual(resolved.at(-1), { provider: 'anthropic', model: 'claude-opus-5-5', role: 'agent', harness: 'claude', cwd: saiRoot });
+  assert.equal(begin({ ...main, session: 'session-1' }).chain, first.chain);
+  assert.notEqual(begin({ ...main, session: 'session-2' }).chain, first.chain);
+  assert.notEqual(warmer.sessionChainId('opencode', 'session-1'), first.chain, 'the harness is part of the key');
+  assert.throws(() => begin({ role: 'agent', harness: 'claude' }), warmer.UsageError, 'the main session names its provider');
+  assert.throws(() => begin({ agent: 'x', provider: 'anthropic', harness: 'claude' }), warmer.UsageError);
+  assert.throws(() => begin({ agent: 'x', harness: 'bogus' }), warmer.UsageError);
+});
+
+test('begin for the main session may carry timings the user chose, which replace the setting', t => {
+  const { begin, setting, io, saiRoot } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 's' };
+  const kept = warmer.beginOnce({ ...main, interval: 30, max: 240 }, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  assert.deepEqual(kept.warming, { interval: 30, max: 240 });
+  assert.deepEqual(recordOf(saiRoot, kept.chain).identity.fixed, { interval: 30, max: 240 });
+  for (const bad of [{ interval: 30 }, { max: 30 }, { interval: 40, max: 30 }, { interval: 0, max: 30 }]) {
+    assert.throws(() => begin({ ...main, ...bad }), warmer.UsageError, JSON.stringify(bad));
+  }
+  assert.equal(setting.value, 'off');
+});
+
+test('warm opens a window of max minutes, and the returned state re-arms it with the same window', async t => {
+  const { io, clock, begin } = chainFixture(t, { interval: 4, max: 10 });
+  const { chain } = begin();
+  const first = await warmer.warmOnce({ chain }, io);
+  assert.deepEqual(first, { status: 'continue', waited_ms: 240000, state: { interval_ms: 240000, closing_ms: 600000, chain, generation: 1, armed_ms: 0 } });
+  const second = await warmer.warmOnce({ state: first.state }, io);
   assert.equal(second.status, 'continue');
   assert.deepEqual(second.state, first.state, 'a wake re-arms the state unchanged');
-  const last = await warmOnce({ state: first.state }, io);
+  const last = await warmer.warmOnce({ state: first.state }, io);
   assert.deepEqual([last.status, last.waited_ms], ['finished', 120000]);
-  clock.time = 0;
-  const stale = await warmOnce({ state: first.state, interval: 1 }, io);
-  assert.deepEqual([stale.status, stale.waited_ms], ['finished', 0], 'the finished chain released its record, so a stale state is superseded');
-  await assert.rejects(warmOnce({ state: first.state, interval: 0 }, io), /positive interval/);
+  const later = await warmer.warmOnce({ chain }, io);
+  assert.equal(later.status, 'continue', 'a real message after the window closed arms the same chain again');
+  assert.equal(later.state.generation, 2);
+  assert.equal(later.state.closing_ms, clock.time + 600000 - 240000, 'the new arm opens a new window');
+  const old = await warmer.warmOnce({ state: first.state }, io);
+  assert.deepEqual([old.status, old.waited_ms], ['finished', 0], 'a wait of the closed window is superseded by the new arm');
 });
 
-test('E1 a real message supersedes the earlier wait of its chain, and only the newest generation stays live', async t => {
-  const { warmOnce } = warmer;
-  const { io, clock } = chainFixture(t);
-  const chain = warmer.newChainId();
-  const early = await warmOnce({ interval: 4, max: 30, chain }, io);
+test('E3 warm without a chain and without a state is a usage error, in the argv and the JSON forms', async t => {
+  const { io } = chainFixture(t);
+  await assert.rejects(warmer.warmOnce({}, io), warmer.UsageError);
+  await assert.rejects(warmer.warmOnce({ interval: 4, max: 30 }, io), warmer.UsageError);
+  await assert.rejects(warmer.warmOnce({ chain: '0123456789abcdef' }, io), /run begin first/);
+  assert.throws(() => warmer.inputFromArgv([]), warmer.UsageError);
+  for (const bad of [['--interval', '4', '--max', '60', '--chain', 'abc'], ['--interval', '4'], ['--max'], ['--bogus', '1'], ['--chain', 'a', '--state', 'b']]) {
+    assert.throws(() => warmer.inputFromArgv(bad), warmer.UsageError, bad.join(' '));
+  }
+  assert.equal(spawnSync(process.execPath, [WAIT, 'warm', '--interval', '4', '--max', '30'], { encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [WAIT, 'warm', '--interval', '4', '--max', '30', '--chain', '0123456789abcdef'], { encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [WAIT, 'warm'], { input: '', encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [WAIT, 'warm'], { input: JSON.stringify({ interval: 5, max: 1 }), encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [WAIT, 'warm'], { input: JSON.stringify({}), encoding: 'utf8' }).status, 2);
+});
+
+test('E4 timings are resolved again at every arm and wake: a new interval applies from that wait, off finishes the chain', async t => {
+  const { io, setting, begin, saiRoot } = chainFixture(t, { interval: 4, max: 30 });
+  const { chain } = begin();
+  const armed = await warmer.warmOnce({ chain }, io);
+  assert.equal(armed.waited_ms, 240000);
+  setting.value = { interval: 2, max: 30 };
+  const woken = await warmer.warmOnce({ state: armed.state }, io);
+  assert.equal(woken.waited_ms, 120000);
+  assert.equal(woken.state.interval_ms, 120000);
+  assert.equal(woken.state.closing_ms, armed.state.closing_ms, 'the window stays where it was set');
+  setting.value = 'off';
+  const off = await warmer.warmOnce({ state: woken.state }, io);
+  assert.deepEqual([off.status, off.waited_ms], ['finished', 0]);
+  assert.equal(recordOf(saiRoot, chain).generation, 1, 'a chain whose setting turned off keeps its record');
+  setting.value = { interval: 4, max: 30 };
+  assert.equal((await warmer.warmOnce({ chain }, io)).state.generation, 2, 'it arms again when the setting is back on');
+  setting.value = { interval: 4, max: 30 };
+  const { chain: second } = begin();
+  setting.value = 'off';
+  const none = await warmer.warmOnce({ chain: second }, io);
+  assert.deepEqual([none.status, none.waited_ms], ['finished', 0], 'an arm with the setting off waits for nothing');
+});
+
+test('E5 a real message supersedes the earlier wait of its chain, and only the newest generation stays live', async t => {
+  const { io, clock, begin } = chainFixture(t);
+  const { chain } = begin();
+  const early = await warmer.warmOnce({ chain }, io);
   assert.equal(early.state.generation, 1);
-  // A real message arrives; the agent arms again with its chain id before the earlier wait wakes.
   clock.time = 60000;
-  const newest = await warmOnce({ interval: 4, max: 30, chain }, io);
+  const newest = await warmer.warmOnce({ chain }, io);
   assert.equal(newest.state.generation, 2);
   assert.equal(newest.status, 'continue');
-  // The earlier wait wakes: it is superseded and finishes, whatever its window.
-  const woken = await warmOnce({ state: early.state }, io);
+  const woken = await warmer.warmOnce({ state: early.state }, io);
   assert.deepEqual([woken.status, woken.waited_ms], ['finished', 0]);
-  const live = await warmOnce({ state: newest.state }, io);
-  assert.equal(live.status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: newest.state }, io)).status, 'continue');
 });
 
-test('E1 a wait superseded while it sleeps finishes at its wake', async t => {
-  const { warmOnce } = warmer;
-  const { io, saiRoot } = chainFixture(t);
-  const chain = warmer.newChainId();
-  const rearm = () => warmOnce({ interval: 4, max: 30, chain }, { ...io, wait: async () => {} });
-  const result = await warmOnce({ interval: 4, max: 30, chain }, { ...io, wait: async () => { await rearm(); } });
+test('a wait superseded while it sleeps finishes at its wake', async t => {
+  const { io, saiRoot, begin } = chainFixture(t);
+  const { chain } = begin();
+  const rearm = () => warmer.warmOnce({ chain }, { ...io, wait: async () => {} });
+  const result = await warmer.warmOnce({ chain }, { ...io, wait: async () => { await rearm(); } });
   assert.equal(result.status, 'finished');
-  assert.equal(JSON.parse(fs.readFileSync(path.join(saiRoot, `warm-chain-${chain}.json`), 'utf8')).generation, 2);
+  assert.equal(recordOf(saiRoot, chain).generation, 2);
 });
 
-test('E2 each agent owns its own chain: one agent\'s arm never supersedes another agent\'s wait', async t => {
-  const { warmOnce } = warmer;
-  const { io } = chainFixture(t);
-  const a = await warmOnce({ interval: 4, max: 30 }, io);
-  const b = await warmOnce({ interval: 4, max: 30 }, io);
+test('each agent owns its own chain: one agent\'s arm never supersedes another agent\'s wait', async t => {
+  const { io, begin } = chainFixture(t);
+  const a = await warmer.warmOnce({ chain: begin().chain }, io);
+  const b = await warmer.warmOnce({ chain: begin().chain }, io);
   assert.notEqual(a.state.chain, b.state.chain);
-  assert.equal((await warmOnce({ state: a.state }, io)).status, 'continue');
-  assert.equal((await warmOnce({ state: b.state }, io)).status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: a.state }, io)).status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: b.state }, io)).status, 'continue');
 });
 
-test('E3 a cutoff mark newer than the arm ends the chain at its next wake, and later arms follow the new timings', async t => {
-  const { warmOnce } = warmer;
-  const { io, saiRoot, clock } = chainFixture(t);
-  const chain = warmer.newChainId();
-  const before = await warmOnce({ interval: 4, max: 30, chain }, io);
+test('E11 a cutoff mark newer than the arm ends the chain at its next wake, and later arms stay live', async t => {
+  const { io, saiRoot, clock, begin } = chainFixture(t);
+  const { chain } = begin();
+  const before = await warmer.warmOnce({ chain }, io);
   fs.writeFileSync(path.join(saiRoot, warmer.CUTOFF_FILE), JSON.stringify({ cutoff_ms: clock.time + 1 }));
-  assert.equal((await warmOnce({ state: before.state }, io)).status, 'finished');
+  assert.equal((await warmer.warmOnce({ state: before.state }, io)).status, 'finished');
   clock.time += 10;
-  const after = await warmOnce({ interval: 4, max: 30, chain }, io);
+  const after = await warmer.warmOnce({ chain }, io);
   assert.equal(after.status, 'continue', 'a chain armed after the mark stays live even when it reuses the chain id');
-  assert.equal((await warmOnce({ state: after.state }, io)).status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: after.state }, io)).status, 'continue');
 });
 
-test('the chain record is pruned when stale, released when its window closes, and refuses a path-like id', async t => {
-  const { warmOnce } = warmer;
-  const { io, saiRoot, clock } = chainFixture(t);
+test('I4 and E10 every arm and wake refreshes the record, so the age prune never reaches a live chain', async t => {
+  const { io, saiRoot, begin, clock } = chainFixture(t, { interval: 1, max: 10 });
+  clock.time = Date.now();
+  const { chain } = begin();
+  const record = path.join(saiRoot, `warm-chain-${chain}.json`);
+  const old = new Date(Date.now() - 2 * 86400000);
+  const age = () => fs.utimesSync(record, old, old);
+  age();
+  const armed = await warmer.warmOnce({ chain }, io);
+  assert.ok(fs.statSync(record).mtimeMs > Date.now() - 60000, 'an arm refreshes the modification time');
+  age();
+  await warmer.warmOnce({ state: armed.state }, io);
+  assert.ok(fs.statSync(record).mtimeMs > Date.now() - 60000, 'a wake refreshes the modification time');
+  age();
+  const other = begin();
+  assert.equal(fs.existsSync(record), false, 'a record that no arm or wake touched is pruned by a later begin');
+  assert.equal((await warmer.warmOnce({ chain: other.chain }, io)).status, 'continue');
+});
+
+test('the chain record is pruned when stale, kept when its window closes, and refuses a path-like id', async t => {
+  const { io, saiRoot, clock, begin } = chainFixture(t, { interval: 1, max: 3 });
   const stale = path.join(saiRoot, 'warm-chain-0000000000000000.json');
   fs.writeFileSync(stale, '{"generation":1}');
   const old = new Date(Date.now() - 2 * 86400000);
   fs.utimesSync(stale, old, old);
   clock.time = Date.now();
-  const fresh = await warmOnce({ interval: 1, max: 3 }, io);
+  const { chain } = begin();
   assert.equal(fs.existsSync(stale), false);
-  const record = path.join(saiRoot, `warm-chain-${fresh.state.chain}.json`);
+  const record = path.join(saiRoot, `warm-chain-${chain}.json`);
   assert.equal(fs.existsSync(record), true);
-  assert.equal((await warmOnce({ state: fresh.state }, io)).status, 'continue');
-  assert.equal((await warmOnce({ state: fresh.state }, io)).status, 'finished');
-  assert.equal(fs.existsSync(record), false);
-  await assert.rejects(warmOnce({ interval: 1, max: 2, chain: '../escape' }, io), /chain must be the id/);
+  const fresh = await warmer.warmOnce({ chain }, io);
+  assert.equal((await warmer.warmOnce({ state: fresh.state }, io)).status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: fresh.state }, io)).status, 'finished');
+  assert.equal(fs.existsSync(record), true, 'the age prune, not the window, removes a record');
+  await assert.rejects(warmer.warmOnce({ chain: '../escape' }, io), /chain must be the id/);
 });
 
-test('the warm subcommand runs from the CLI and the user-invoked prepare and wait are unchanged', () => {
-  const script = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
-  const done = JSON.parse(execFileSync(process.execPath, [script, 'warm'], { input: JSON.stringify({ state: { interval_ms: 60000, closing_ms: 0 } }), encoding: 'utf8' }));
-  assert.deepEqual(done, { status: 'finished', waited_ms: 0, state: { interval_ms: 60000, closing_ms: 0 } });
-  assert.equal(spawnSync(process.execPath, [script, 'warm'], { input: JSON.stringify({ interval: 5, max: 1 }) }).status, 1);
-  assert.equal(spawnSync(process.execPath, [script, 'nonsense'], { input: '{}' }).status, 1);
+test('E17 a main-session chain keeps its record when its window closes, so generations keep counting', async t => {
+  const { io, begin, saiRoot } = chainFixture(t, { interval: 1, max: 1 });
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'chat' };
+  const { chain } = begin(main);
+  const first = await warmer.warmOnce({ chain }, io);
+  assert.equal((await warmer.warmOnce({ state: first.state }, io)).status, 'finished');
+  assert.equal(recordOf(saiRoot, chain).generation, 1);
+  assert.equal(begin(main).chain, chain);
+  assert.equal((await warmer.warmOnce({ chain }, io)).state.generation, 2);
 });
 
-test('the chain subcommand prints a fresh id without reading stdin', () => {
-  const script = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
-  const run = () => JSON.parse(execFileSync(process.execPath, [script, 'chain'], { input: '', encoding: 'utf8' })).chain;
-  const [first, second] = [run(), run()];
-  assert.match(first, /^[0-9a-f]{16}$/);
-  assert.notEqual(first, second);
+test('M1 a subagent chain whose window closed arms again at its next real message with the same chain', async t => {
+  const { io, begin, clock, saiRoot } = chainFixture(t, { interval: 1, max: 2 });
+  const { chain } = begin();
+  const armed = await warmer.warmOnce({ chain }, io);
+  assert.equal((await warmer.warmOnce({ state: armed.state }, io)).status, 'finished');
+  assert.equal(fs.existsSync(path.join(saiRoot, `warm-chain-${chain}.json`)), true, 'the record outlives the window');
+  clock.time += 3600000;
+  const again = await warmer.warmOnce({ chain }, io);
+  assert.equal(again.status, 'continue');
+  assert.equal(again.state.generation, 2);
+  assert.equal((await warmer.warmOnce({ state: again.state }, io)).status, 'finished');
+  const third = await warmer.warmOnce({ chain }, io);
+  assert.equal(third.state.generation, 3, 'every real message re-arms with the same chain');
 });
 
-test('the benchmark override writes the cutoff file that the warmer reads', () => {
-  assert.equal(require('../skills/universal/sai-context-cache-ttl-benchmark/warming_override').CUTOFF_FILE, warmer.CUTOFF_FILE);
+test('E6 an agent nobody disposes stops arming once max minutes passed since its last real message', async t => {
+  const { io, begin } = chainFixture(t, { interval: 4, max: 10 });
+  const { chain } = begin();
+  let state = (await warmer.warmOnce({ chain }, io)).state;
+  const statuses = [];
+  for (let wake = 0; wake < 5; wake += 1) {
+    const result = await warmer.warmOnce({ state }, io);
+    statuses.push(result.status);
+    if (result.status === 'finished') break;
+    state = result.state;
+  }
+  assert.deepEqual(statuses, ['continue', 'finished']);
+});
+
+test('E12 a state or call from an earlier installed version is refused, leaving the task unchanged', async t => {
+  const { io } = chainFixture(t);
+  await assert.rejects(warmer.warmOnce({ state: { interval_ms: 60000, closing_ms: 0 } }, io), warmer.UsageError);
+  assert.equal(spawnSync(process.execPath, [WAIT, 'chain'], { input: '', encoding: 'utf8' }).status, 1, 'the retired chain subcommand is no longer known');
+});
+
+test('the CLI prints begin output, warm output, and the state token without JSON input', t => {
+  const script = [WAIT];
+  const off = spawnSync(process.execPath, [...script, 'begin', '--agent', 'budget-explorer', '--harness', 'claude'], { encoding: 'utf8', cwd: os.tmpdir() });
+  assert.equal(off.status, 0);
+  assert.deepEqual(JSON.parse(off.stdout), { chain: null, warming: 'off' });
+  assert.equal(spawnSync(process.execPath, [...script, 'begin', '--harness', 'claude'], { encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [...script, 'begin', '--agent', 'budget-explorer', '--harness', 'bogus'], { encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync(process.execPath, [...script, 'warm', '--chain', '0123456789abcdef'], { encoding: 'utf8' }).status, 2, 'a chain without a record is refused');
+});
+
+test('the warm argv form arms and re-arms without JSON, a file, or stdin', () => {
+  const { inputFromArgv, stateToken } = warmer;
+  assert.deepEqual(inputFromArgv(['--chain', 'abc']), { chain: 'abc' });
+  const state = { interval_ms: 1000, closing_ms: 9000, chain: 'abc', generation: 1, armed_ms: 5 };
+  const token = stateToken(state);
+  assert.match(token, /^[A-Za-z0-9_-]+$/);
+  assert.deepEqual(inputFromArgv(['--state', token]), { state });
+  assert.throws(() => inputFromArgv(['--state', '!!']), warmer.UsageError);
 });
 
 test('E6 the explore command allows the wait script on both harnesses', () => {
@@ -291,58 +473,81 @@ test('E6 the explore command allows the wait script on both harnesses', () => {
   }
 });
 
-test('the policy defines the wake acknowledgement, the final response, and the chain', () => {
+
+test('the policy keeps the reduced rule set: switch, begin, arm after every response, wake, dispose, diagnostic', () => {
   const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
-  assert.match(policy, /exactly `ok`[\s\S]{0,200}never a result/);
-  assert.match(policy, /spend no attempt on it/);
-  assert.match(policy, /Arm after every response except your final response/);
-  assert.match(policy, /arm nothing, so a finished session never wakes again/);
-  assert.match(policy, /`needs_input`\) and an intermediate step report are not final/);
-  assert.match(policy, /--chain <chain>/);
-  assert.match(policy, /Claude Code `Bash`[\s\S]*opencode shell/);
+  assert.match(policy, /`Warming: on, agent \{agent\}\. Fetch @sai\/policies\/cache-warming\.md and follow it as a subagent\.`/);
+  assert.match(policy, /`budget-executor` never does: it never arms/);
+  assert.match(policy, /ready-only dispatch[\s\S]{0,120}no switch/);
+  assert.match(policy, /A dispatcher that cannot dispose[\s\S]{0,160}never arm/);
+  assert.match(policy, /begin --agent <agent> --harness <claude\|opencode>/);
+  assert.match(policy, /begin --role agent --provider <provider> \[--model <model>\] --harness <claude\|opencode>/);
+  assert.match(policy, /Arm after every response: a result, a question, and a step report all keep the wait armed until the agent is disposed/);
+  assert.match(policy, /warm --chain <chain>/);
+  assert.match(policy, /warm --state <state_token>/);
+  assert.match(policy, /exactly `ok`[\s\S]{0,300}not a real message/);
+  assert.match(policy, /Claude Code `Bash` with `run_in_background: true`[\s\S]*opencode shell with `background: true`/);
+  assert.match(policy, /`max` minutes have passed since your last real message, whether or not anyone disposed you/);
+  assert.match(policy, /answer every wake with `ok` and arm nothing again/);
+  assert.match(policy, /## Warming diagnostic[\s\S]*It gates no stop and no dispatch/);
+  assert.match(policy, /## Dispose[\s\S]*`@sai\/policies\/worker-lifecycle\.md` owns the dispose points[\s\S]*No `dispose` message is sent first/);
+  assert.match(policy, /The main session is never disposed[\s\S]*continues the same chain/);
+  assert.match(policy, /beside that path in the message and never inside the report file/);
+  assert.match(policy, /never in the `sai-state` store/);
+  for (const retired of [/final response/i, /Warm-up/, /`warm-up`/, /--interval \{interval\}/, /node "<wait-path>" chain/]) assert.doesNotMatch(policy, retired);
 });
 
-test('the policy defines the warming declaration and the warm-up order, and leaves disposal to the worker lifecycle', () => {
-  const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
-  assert.match(policy, /## Warming declaration/);
-  assert.match(policy, /`warming: true` or `warming: false`/);
-  assert.match(policy, /beside that path in the message and never inside the report file/);
-  assert.match(policy, /counts as `warming: false`/);
-  assert.doesNotMatch(policy, /Dispose only a handle whose latest real message declared `warming: true`/);
-  assert.match(policy, /## Dispose[\s\S]*`@sai\/policies\/worker-lifecycle\.md` owns the dispose points[\s\S]*The `warming` field gates no stop/);
-  assert.match(policy, /\*\*Warm-up\.\*\*[\s\S]*Never send it to a `budget-executor` or to a worker/);
+test('the lifecycle policy disposes unconditionally, names the Claude Code stop and the opencode dispose-shells tool', () => {
   const lifecycle = fs.readFileSync(path.resolve(__dirname, '../sai/policies/worker-lifecycle.md'), 'utf8');
   assert.match(lifecycle, /unconditional action that ends a worker or helper[\s\S]*whatever the warming setting/);
   assert.match(lifecycle, /spends no attempt and triggers no retry/);
-  assert.doesNotMatch(policy, /silent no-op/);
-  assert.match(policy, /never in the `sai-state` store/);
+  assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/);
+  assert.match(lifecycle, /node <tool-path> --session <sessionID> --cwd <project-root>[\s\S]*`dispose-shells\.js`/);
+  assert.match(lifecycle, /`removed`, `none`, `failed`, or `unavailable`|"removed" \| "none" \| "failed" \| "unavailable"/);
+  assert.match(lifecycle, /Send the message `dispose` only when the status is `failed` or `unavailable`/);
+  assert.match(lifecycle, /No `session\.interrupt` call exists/);
+  assert.doesNotMatch(lifecycle, /api\/session\/:sessionID\/interrupt/);
+  assert.match(lifecycle, /answer each later wake of a wait you armed with `ok` alone/);
 });
 
-test('helper contracts declare warming and the budget skills dispose whatever the warming declaration', () => {
+test('helper contracts and budget skills send the switch only to agents their coordinator disposes, and never to the executor', () => {
   const read = relative => fs.readFileSync(path.resolve(__dirname, '..', relative), 'utf8');
   assert.match(read('sai/policies/explore-agent.md'), /`ladder_discards`, `out_of_root_requests`, and `warming`/);
-  assert.match(read('sai/policies/explore-agent.md'), /`warm-up` followed by a warming line/);
+  assert.doesNotMatch(read('sai/policies/explore-agent.md'), /warm-up/);
+  assert.match(read('sai/policies/explore-agent.md'), /`begin` and the background `warm`/);
   assert.match(read('sai/policies/executor-agent.md'), /`warming: false`/);
-  assert.match(read('sai/policies/budget-agent.md'), /`warming: false`/);
+  assert.match(read('sai/policies/budget-agent.md'), /`warming: true` or `warming: false`/);
   for (const harness of ['claude', 'opencode']) {
-    for (const helper of ['budget-explorer', 'budget-subagent']) {
-      const skill = read(`skills/${harness}/${helper}/SKILL.md`);
-      assert.match(skill, /`warm-up` order/, `${harness} ${helper} describes warm-up`);
-      assert.match(skill, /Fetch `@sai\/policies\/worker-lifecycle\.md`/, `${harness} ${helper} fetches the lifecycle policy`);
-      assert.match(skill, /whatever (?:its|the) `warming` declaration/, `${harness} ${helper} disposes whatever the declaration`);
-      assert.doesNotMatch(skill, /declared `warming: true`/, `${harness} ${helper} gates no dispose on warming: true`);
+    const explorer = read(`skills/${harness}/budget-explorer/SKILL.md`);
+    assert.match(explorer, /end with the warming switch of `@sai\/policies\/cache-warming\.md`/, `${harness} explorer sends the switch`);
+    assert.match(explorer, /whatever its `warming` diagnostic/, `${harness} explorer disposes whatever the diagnostic`);
+    const subagent = read(`skills/${harness}/budget-subagent/SKILL.md`);
+    assert.match(subagent, /A one-shot task message carries no warming switch/, `${harness} subagent one-shot`);
+    assert.match(subagent, /Fetch `@sai\/policies\/worker-lifecycle\.md`/, `${harness} subagent fetches the lifecycle policy`);
+    for (const helper of [explorer, subagent]) {
+      assert.match(helper, /Fetch `@sai\/policies\/worker-lifecycle\.md`/);
+      assert.doesNotMatch(helper, /`warm-up`/);
     }
-    assert.match(read(`skills/${harness}/budget-executor/SKILL.md`), /never arms[\s\S]*still disposes it after its report/);
+    assert.match(read(`skills/${harness}/budget-executor/SKILL.md`), /never arms[\s\S]*never sent the warming switch[\s\S]*still disposes it after its report/);
   }
 });
 
-test('worker bindings dispose whatever the warming declaration, on both harnesses', () => {
+test('worker bindings send the switch and dispose whatever the warming diagnostic, on both harnesses', () => {
   for (const harness of ['claude', 'opencode']) {
     const binding = fs.readFileSync(path.resolve(__dirname, `../sai/orchestration/workers/bindings/${harness}/standalone-worker-template.md`), 'utf8');
-    assert.match(binding, /declares `warming: true\|false`/, harness);
+    assert.match(binding, /End every task message and continuation to it with the switch/, harness);
+    assert.match(binding, /diagnostic line `warming: true\|false`/, harness);
     assert.match(binding, /disposes the worker whatever the warming setting/, harness);
-    assert.match(binding, /The `warming` declaration gates no dispose/, harness);
-    assert.doesNotMatch(binding, /disposes nothing/, harness);
+    assert.match(binding, /The `warming` diagnostic gates no dispose/, harness);
+    assert.doesNotMatch(binding, /disposes nothing|Resolve its\s+timings/, harness);
+  }
+});
+
+test('coordinator cards end each worker message with the switch and resolve no timings', () => {
+  for (const card of ['implement/coordinator', 'review/coordinator', 'plan/cycle', 'audit/coordinator', 'explore/direct-build-coordinator']) {
+    const text = fs.readFileSync(path.resolve(__dirname, `../sai/commands/${card}.md`), 'utf8');
+    assert.match(text, /with the warming switch the policy defines/, card);
+    assert.doesNotMatch(text, /resolve (?:each|the) worker's timings|warming line the policy defines/i, card);
   }
 });
 
@@ -356,8 +561,10 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /1 hour with a Claude subscription and 5 minutes with pay-per-token/);
   assert.match(step, /\/sai-context-cache-ttl-benchmark/);
   assert.match(step, /§ Stop your own wait/);
+  assert.match(step, /Run `begin` in the foreground as `cache-warming\.md` § Begin states for the main session[\s\S]*--interval <interval> --max <max>/);
+  assert.match(step, /Launch `wait\.js warm --chain <chain>` in the background/);
   assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*only a wake re-arms/i);
-  assert.match(read('sai/policies/cache-warming.md'), /add no `--interval` and resolve no setting/);
+  assert.match(read('sai/policies/cache-warming.md'), /Timings the user chose stay as chosen/);
   assert.match(read('sai/policies/cache-warming.md'), /Each re-arm launches a new background task, so replace the task id[\s\S]{0,120}chain stays the same/);
   assert.match(step, /Every wake re-arm launches a new background task: replace the task id in `handoff_wait`/);
   assert.match(step, /updates the task id in `handoff_wait`/);
@@ -381,15 +588,8 @@ test('the explore command may stop its own background task: TaskStop on Claude C
   assert.ok(!translate(manifest.capabilities, 'coordinator', 'claude').nativeTools.includes('TaskStop'));
 });
 
-test('the warm argv form arms and re-arms without JSON, a file, or stdin', () => {
-  const { inputFromArgv, stateToken } = require('../skills/universal/sai-cache-warmer/wait.js');
-  assert.deepEqual(inputFromArgv(['--interval', '4', '--max', '60', '--chain', 'abc']), { interval: 4, max: 60, chain: 'abc' });
-  const state = { interval_ms: 1000, closing_ms: 9000, chain: 'abc', generation: 1, armed_ms: 5 };
-  const token = stateToken(state);
-  assert.match(token, /^[A-Za-z0-9_-]+$/);
-  assert.deepEqual(inputFromArgv(['--state', token]), { state });
-  assert.deepEqual(inputFromArgv(['--state', token, '--interval', '2']), { state, interval: 2 });
-  for (const bad of [['--interval', '4'], ['--interval', 'x', '--max', '1'], ['--state', '!!'], ['--max'], ['--bogus', '1']]) {
-    assert.throws(() => inputFromArgv(bad), bad.join(' '));
-  }
+
+test('the benchmark override writes the cutoff file that the warmer reads', () => {
+  assert.equal(require('../skills/universal/sai-context-cache-ttl-benchmark/warming_override').CUTOFF_FILE, warmer.CUTOFF_FILE);
 });
+

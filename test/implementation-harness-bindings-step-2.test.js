@@ -117,7 +117,8 @@ test('every worker binding fetches the cache-warming and worker-lifecycle polici
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/worker-lifecycle.md')), 'the lifecycle policy the bindings fetch exists');
   const lifecycle = fs.readFileSync(path.join(repoRoot, 'sai/policies/worker-lifecycle.md'), 'utf8');
   assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/, 'the lifecycle policy names the Claude Code stop call');
-  assert.match(lifecycle, /`shell\.remove`[\s\S]*`session\.interrupt`[\s\S]*`dispose`/, 'the lifecycle policy names the opencode stop sequence and its message fallback');
+  assert.match(lifecycle, /`dispose-shells\.js`[\s\S]*`dispose`/, 'the lifecycle policy names the opencode stop tool and its message fallback');
+  assert.doesNotMatch(lifecycle, /`shell\.remove`|`session\.interrupt` of that session/, 'the lifecycle policy no longer names the unrunnable opencode API calls');
   for (const harness of ['claude', 'opencode']) {
     for (const [, filename] of WORKERS) {
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);

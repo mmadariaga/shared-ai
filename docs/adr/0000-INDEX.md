@@ -222,6 +222,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0207 — Explore writes `Ready to Propose` block files with the native write tool into a private transfer directory](./0207-explore-writes-block-files-with-the-native-write-tool.md)
 - [0209a — SAI tools take structured input from an input file](./0209a-sai-tools-take-structured-input-from-an-input-file.md) — **Amends** 0207
 - [0210 — Workers are disposed unconditionally by the worker lifecycle](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) — **Amends** 0202
+- [0212 — Cache warming is tool-owned and ends only on dispose](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) — **Amends** 0202, Refs 0210, Refs 0211
+- [0213 — opencode dispose removes the worker's shells](./0213-opencode-dispose-removes-the-workers-shells.md) — **Amends** 0210, Refs 0202
 
 ### `/sai-backfill`
 
@@ -544,6 +546,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0202 — One live explorer per coordinator, and agents keep their own prompt cache warm](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) — **Amends** 0188, Refs 0194, Refs 0199
 - [0206 — opencode dispatches subagents in the background through the v2 `subagent` tool](./0206-opencode-dispatches-subagents-in-the-background-through-the-v2-tool.md) — **Amends** 0185
 - [0210 — Workers are disposed unconditionally by the worker lifecycle](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) — **Amends** 0202
+- [0212 — Cache warming is tool-owned and ends only on dispose](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) — **Amends** 0202, Refs 0210, Refs 0211
+- [0213 — opencode dispose removes the worker's shells](./0213-opencode-dispose-removes-the-workers-shells.md) — **Amends** 0210, Refs 0202
 
 ### Testability routing & RED → GREEN
 
@@ -679,6 +683,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) | amends | [0188](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) |
 | [0206](./0206-opencode-dispatches-subagents-in-the-background-through-the-v2-tool.md) | amends | [0185](./0185-remove-hang-rationale-from-sibling-dispatch.md) |
 | [0210](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) | amends | [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) |
+| [0212](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) | amends | [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) |
+| [0213](./0213-opencode-dispose-removes-the-workers-shells.md) | amends | [0210](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
