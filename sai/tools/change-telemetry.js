@@ -49,7 +49,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges } = require('./opencode-db');
+const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, changeNameFromArgs, writtenChanges } = require('./opencode-db');
 const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
 const { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION } = require('./openspec-yaml');
 
@@ -89,8 +89,10 @@ const commandLabel = command => COMMANDS[command].label ?? `/${command}`;
 const coordinatorName = command => COMMANDS[command].coordinator ?? command;
 const METRICS = [
   ['requests', 'Requests'], ['input', 'Input'], ['output', 'Output'], ['reasoning', 'Reasoning'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write'],
-  ['cacheMisses', 'Cache misses'], ['cost', 'Cost'], ['ms', 'Time'], ['toolCalls', 'Tool calls'], ['toolErrors', 'Tool errors'], ['subagents', 'Subagents dispatched'],
+  ['cacheMisses', 'Cache misses'], ['cost', 'Cost'], ['ms', 'Time'], ['toolCalls', 'Tool calls'], ['toolErrors', 'Tool errors'], ['subagents', 'Subagents dispatched'], ['wakes', 'Wakes'],
 ];
+// The requests of an agent's wake turns, a subset of the figures above (`wakes` counts the turns themselves).
+const WAKE_METRICS = [['requests', 'Requests'], ['input', 'Input'], ['output', 'Output'], ['reasoning', 'Reasoning'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write'], ['cost', 'Cost']];
 const MARKER = '<!-- change-telemetry -->';
 const PLAN_SUMMARY = /^Summary: High=(\d+) Medium=(\d+) Low=(\d+)[ \t]*$/gm;
 const REVIEW_SUMMARY = /^Summary: Critical=(\d+) High=(\d+) Medium=(\d+) Low=(\d+) Questions=(\d+)[ \t]*$/m;
@@ -107,6 +109,7 @@ const label = value => (typeof value === 'string' && value ? value : null);
 const exact = value => ({ value, partial: false });
 const UNKNOWN = { value: null, partial: true };
 const UNKNOWN_FIGURES = Object.fromEntries(METRICS.map(([key]) => [key, UNKNOWN]));
+const UNKNOWN_WAKE = Object.fromEntries(WAKE_METRICS.map(([key]) => [key, UNKNOWN]));
 
 // The session a dispatch call started or continued.
 function dispatchLink(item) {
@@ -128,8 +131,10 @@ function toRequest(row) {
   const items = toolItems(data);
   const dispatches = items.filter(item => DISPATCH_TOOLS.has(item.name));
   return {
+    id: row.id,
     time: row.time_created,
     completed,
+    wake: false,
     input: number(tokens.input),
     output: number(tokens.output),
     reasoning: number(tokens.reasoning),
@@ -152,10 +157,12 @@ function sum(values) {
   return { value: known.length ? known.reduce((total, value) => total + value, 0) : null, partial: known.length < values.length };
 }
 
-function figuresOf(requests) {
-  if (requests.length === 0) return { ...UNKNOWN_FIGURES, requests: exact(0) };
+// `wakes` is the number of wakes of the agent in the same window as `requests`.
+function figuresOf(requests, wakes) {
+  if (requests.length === 0) return { ...UNKNOWN_FIGURES, requests: exact(0), wakes: exact(wakes) };
   const calls = requests.flatMap(request => request.calls);
   return {
+    wakes: exact(wakes),
     requests: exact(requests.length),
     input: sum(requests.map(request => request.input)),
     output: sum(requests.map(request => request.output)),
@@ -172,11 +179,21 @@ function figuresOf(requests) {
   };
 }
 
-// The figures of several agents added up; a total is partial when any part is.
-function combine(list) {
-  return Object.fromEntries(METRICS.map(([key]) => {
-    const known = list.map(figures => figures[key]).filter(metric => metric.value !== null);
-    return [key, { value: known.length ? known.reduce((total, metric) => total + metric.value, 0) : null, partial: list.some(figures => figures[key].partial || figures[key].value === null) }];
+// The requests of the wake turns of one agent. An agent with no wake request has zero of each figure its
+// requests record, and no figure for one they never record (Claude Code records no cost or reasoning).
+function wakeFiguresOf(requests) {
+  const own = requests.filter(request => request.wake);
+  const field = key => (own.length ? sum(own.map(request => request[key])) : requests.length === 0 || requests.some(request => request[key] !== null) ? exact(0) : UNKNOWN);
+  return { requests: exact(own.length), input: field('input'), output: field('output'), reasoning: field('reasoning'), cacheRead: field('cacheRead'), cacheWrite: field('cacheWrite'), cost: field('cost') };
+}
+
+// The figures of several agents added up; a total is partial when any part is. A part a figure set
+// lacks (a section written before the figure existed) is unknown.
+function combine(list, metrics = METRICS) {
+  return Object.fromEntries(metrics.map(([key]) => {
+    const parts = list.map(figures => figures[key] ?? UNKNOWN);
+    const known = parts.filter(metric => metric.value !== null);
+    return [key, { value: known.length ? known.reduce((total, metric) => total + metric.value, 0) : null, partial: parts.some(metric => metric.partial || metric.value === null) }];
   }));
 }
 
@@ -189,11 +206,11 @@ function toolBreakdown(requests) {
   return entries.length ? entries.map(([name, count]) => `${name}×${count}`).join(', ') : '-';
 }
 
-function agentRow(name, depth, requests) {
-  return { name, depth, figures: figuresOf(requests), model: distinct(requests, 'model'), variant: distinct(requests, 'variant'), tools: toolBreakdown(requests) };
+function agentRow(name, depth, requests, wakes) {
+  return { name, depth, figures: figuresOf(requests, wakes), wake: wakeFiguresOf(requests), model: distinct(requests, 'model'), variant: distinct(requests, 'variant'), tools: toolBreakdown(requests) };
 }
 
-const missingRow = (session, depth, store) => ({ name: `${UNAVAILABLE} (session ${session} is not in ${store})`, depth, figures: UNKNOWN_FIGURES, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
+const missingRow = (session, depth, store) => ({ name: `${UNAVAILABLE} (session ${session} is not in ${store})`, depth, figures: UNKNOWN_FIGURES, wake: UNKNOWN_WAKE, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
 
 // ---------------------------------------------------------------------------
 // Sources: finding the execution and reading its sessions
@@ -204,7 +221,8 @@ const missingRow = (session, depth, store) => ({ name: `${UNAVAILABLE} (session 
 //   name, store            the harness name and where its record lives
 //   roots(cwd)             the root sessions of the project: [{ id }]
 //   invocations(session)   the SAI command invocations of a root: [{ id, time, name, args }]
-//   requests(session, from, to)  the requests created in [from, to), each shaped by `toRequest`
+//   requests(session, from, to)  the requests created in [from, to), each shaped by `toRequest`; a request of a wake turn is flagged `wake`
+//   wakes(session, from, to)     the wakes opened in [from, to): the turns that the completion of the agent's own `wait.js ... warm` wait opens
 //   children(root)         every subagent session below a root, parents first
 //   hasSession(id), isRoot(id), userTexts(session), routeId(root, anchor), close()
 
@@ -218,6 +236,11 @@ function userText(data) {
 }
 
 function opencodeSource(db) {
+  const wakeCache = new Map();
+  const wakesOf = sessionId => {
+    if (!wakeCache.has(sessionId)) wakeCache.set(sessionId, opencodeWakes(db, sessionId));
+    return wakeCache.get(sessionId);
+  };
   return {
     name: 'opencode',
     store: 'opencode.db',
@@ -231,9 +254,13 @@ function opencodeSource(db) {
     invocations: sessionId => db.prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' ORDER BY seq").all(sessionId)
       .flatMap(row => { const parsed = parseInvocation(userText(row.data)); return parsed ? [{ id: row.id, time: row.time_created, ...parsed }] : []; }),
     routeId: (rootId, anchorId) => anchorId,
-    requests: (sessionId, from, to) => db
-      .prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
-      .all(sessionId, from, to).map(toRequest),
+    requests(sessionId, from, to) {
+      const wakeIds = new Set(wakesOf(sessionId).flatMap(wake => wake.requests));
+      return db
+        .prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
+        .all(sessionId, from, to).map(row => ({ ...toRequest(row), wake: wakeIds.has(row.id) }));
+    },
+    wakes: (sessionId, from, to) => wakesOf(sessionId).filter(wake => wake.time >= from && wake.time < to),
     userTexts: sessionId => db.prepare("SELECT data FROM session_message WHERE session_id = ? AND type = 'user'").all(sessionId).map(row => userText(row.data)),
     children: rootId => opencodeChildren(db, rootId),
   };
@@ -474,7 +501,7 @@ function subagentRows(source, root, requests, children, segmentFor) {
     segmentOfSession.set(child.id, segment);
     depthOf.set(child.id, child.depth);
     requestsOf.set(child.id, source.requests(child.id, 0, OPEN_END));
-    rows.get(segment).push(agentRow(`${child.depth > 1 ? '↳ ' : ''}${child.agent ?? UNAVAILABLE}`, child.depth, requestsOf.get(child.id)));
+    rows.get(segment).push(agentRow(`${child.depth > 1 ? '↳ ' : ''}${child.agent ?? UNAVAILABLE}`, child.depth, requestsOf.get(child.id), source.wakes(child.id, 0, OPEN_END).length));
   }
   // A dispatch whose child session is not recorded is an unavailable subagent.
   const missing = new Set();
@@ -497,14 +524,14 @@ function measure(source, options, execution) {
   const children = childrenIn(source, execution);
   const marks = segmentMarks(command, children);
   const { rows, requestsOf } = subagentRows(source, root, requests, children, time => segmentAt(marks, time));
-  const coordinator = agentRow(coordinatorName(command), 0, requests);
+  const coordinator = agentRow(coordinatorName(command), 0, requests, source.wakes(root.id, inv.time, end).length);
   const reviewers = children.filter(child => child.agent === 'sai-4-review-worker').map(child => child.id);
   const segments = [...COMMANDS[command].order, 'other']
     .filter(key => key !== 'other' || rows.get('other').length)
     .map(key => ({ key, ran: marks.some(mark => mark.segment === key), rows: rows.get(key), findings: findingsOf(source, { ...options, segment: key, reviewers }) }));
   const all = [coordinator, ...segments.flatMap(segment => segment.rows)];
   const completed = [...requestsOf.values()].flat().map(request => request.completed).filter(value => value !== null);
-  return { start: inv.time, wallMs: completed.length ? Math.max(...completed) - inv.time : null, coordinator, segments, totals: combine(all.map(row => row.figures)) };
+  return { start: inv.time, wallMs: completed.length ? Math.max(...completed) - inv.time : null, coordinator, segments, totals: combine(all.map(row => row.figures)), wakeTotals: combine(all.map(row => row.wake), WAKE_METRICS) };
 }
 
 // ---------------------------------------------------------------------------
@@ -561,9 +588,9 @@ function measureOrigin(source, sessionId, execution, change) {
     return keep;
   });
   const { rows } = subagentRows(source, root, requests, children, () => 'other');
-  const coordinator = agentRow('sai-explore', 0, requests);
+  const coordinator = agentRow('sai-explore', 0, requests, windows.reduce((total, [a, b]) => total + source.wakes(sessionId, a, b).length, 0));
   const siblings = [...new Set(routes.map(route => route.change))].filter(name => name !== change);
-  return { id: sessionId, start: windows[0]?.[0] ?? null, siblings, coordinator, rows: rows.get('other'), totals: combine([coordinator, ...rows.get('other')].map(row => row.figures)) };
+  return { id: sessionId, start: windows[0]?.[0] ?? null, siblings, coordinator, rows: rows.get('other'), totals: combine([coordinator, ...rows.get('other')].map(row => row.figures)), wakeTotals: combine([coordinator, ...rows.get('other')].map(row => row.wake), WAKE_METRICS) };
 }
 
 // One origin session, read with the reader of its own harness. The reader of another
@@ -611,6 +638,16 @@ const tableLines = rows => [
   ...rows.map(row => `| ${[row.name, row.model, row.variant, ...metricCells(row.figures), row.tools].map(cell).join(' | ')} |`),
 ];
 
+// The wake-cost table: for each agent, its wakes and the requests of its wake turns, then the total of the table.
+const WAKE_HEAD = ['Agent', 'Wakes', ...WAKE_METRICS.map(([, name]) => name)];
+const wakeCells = wake => WAKE_METRICS.map(([key]) => show(wake[key], key));
+const wakeTableLines = (rows, totals, totalName) => [
+  `| ${WAKE_HEAD.join(' | ')} |`,
+  `|${WAKE_HEAD.map(() => '---').join('|')}|`,
+  ...rows.map(row => `| ${[row.name, show(row.figures.wakes, 'wakes'), ...wakeCells(row.wake)].map(cell).join(' | ')} |`),
+  `| ${[totalName, show(totals.wakes, 'wakes'), ...wakeCells(totals.wakeTotals)].map(cell).join(' | ')} |`,
+];
+
 const counts = tally => Object.entries(tally).map(([name, count]) => `${name}=${count}`).join(' ');
 
 function findingsLine(findings) {
@@ -630,6 +667,7 @@ function sectionText(number, options, execution, measured, source) {
     `- Started: ${new Date(measured.start).toISOString()} · Session: ${execution.root.id} · Harness: ${source.name}`,
     `- Wall time: ${measured.wallMs === null ? UNAVAILABLE : duration(measured.wallMs)}`,
     '- Note: the coordinator row leaves out its own closing turn, the model request that was still running when this section was written.',
+    `- Note: a wake is the turn of an agent that the completion of its own \`wait.js … warm\` background wait opens (cache warming), the main session included. Its requests stay inside the tables above; the wake-cost table at the end is their subset. ${UNAVAILABLE} in Wakes means the agent's session was not recorded.`,
     `- Note: ≥ marks a partial total (a request lacks the datum); ${UNAVAILABLE} means no request supplied it. A subagent's own subagents are indented with ↳; dispatch calls count as subagents dispatched and stay out of tool calls.`,
     ...(UNRECORDED[options.harness] ? [UNRECORDED[options.harness]] : []),
     '',
@@ -642,6 +680,7 @@ function sectionText(number, options, execution, measured, source) {
     if (!segment.ran && !segment.rows.length) { out.push('Not run.'); continue; }
     out.push(findingsLine(segment.findings), '', ...(segment.rows.length ? tableLines(segment.rows) : ['No subagents.']));
   }
+  out.push('', '### Cache-warming wakes', '', ...wakeTableLines([measured.coordinator, ...measured.segments.flatMap(segment => segment.rows)], { wakes: measured.totals.wakes, wakeTotals: measured.wakeTotals }, 'Run total'));
   return `${out.join('\n')}\n`;
 }
 
@@ -671,6 +710,10 @@ function explorationText(origins) {
       '#### Other agents',
       '',
       ...(origin.rows.length ? tableLines(origin.rows) : ['No subagents.']),
+      '',
+      '#### Cache-warming wakes',
+      '',
+      ...wakeTableLines([origin.coordinator, ...origin.rows], { wakes: origin.totals.wakes, wakeTotals: origin.wakeTotals }, 'Exploration total'),
     );
   }
   return `${out.join('\n')}\n\n`;

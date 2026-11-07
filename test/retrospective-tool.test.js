@@ -658,7 +658,7 @@ test('cost: Claude Code agents carry usage, tool calls, pipeline segment, and th
     assert.equal(executions.length, 2, 'the design run and the lonely design run');
     const design = executions.find(execution => execution.change_name === 'plan-change');
     // E1: the request without usage is counted apart; the two lines of one request count once, with the final output.
-    assert.deepEqual(design.coordinator, { pipeline_segment: 'design', usage: { requests: 3, requests_without_usage: 1, input: 150, output: 30, cache_read: 3000, cache_write_5m: 200, cache_write_1h: 400 }, tool_calls: 3 });
+    assert.deepEqual(design.coordinator, { pipeline_segment: 'design', usage: { requests: 3, requests_without_usage: 1, input: 150, output: 30, cache_read: 3000, cache_write_5m: 200, cache_write_1h: 400 }, tool_calls: 3, wakes: 0, wake_usage: { requests: 0 } });
     const worker = agentOf(design, AG.designWorker);
     assert.equal(worker.pipeline_segment, 'design');
     assert.equal(worker.parent_agent_id, null);
@@ -799,7 +799,7 @@ opencodeTest('cost: opencode agents carry usage and cost from the session messag
     const { executions } = index(['sai-2-design', '--paths', repos.main], env, realSqlite);
     const design = executions.find(execution => execution.harness === 'opencode');
     assert.equal(design.project, repos.main, 'the project is the supplied path, whatever separators opencode stored');
-    assert.deepEqual(design.coordinator, { pipeline_segment: 'design', usage: { requests: 2, input: 120, output: 12, reasoning: 4, cache_read: 1200, cache_write: 50, cost: 0.75 }, tool_calls: 2 });
+    assert.deepEqual(design.coordinator, { pipeline_segment: 'design', usage: { requests: 2, input: 120, output: 12, reasoning: 4, cache_read: 1200, cache_write: 50, cost: 0.75 }, tool_calls: 2, wakes: 0, wake_usage: { requests: 0 } });
     const worker = agentOf(design, OCC.designWorker);
     assert.equal(worker.pipeline_segment, 'design');
     assert.equal(worker.parent_agent_id, null);
@@ -850,6 +850,239 @@ gitTest('cost --format markdown: an aliased project shows its alias and numbered
     const named = cost(['--paths', repos.main, '--format', 'markdown'], env, unavailableSqlite);
     assert.match(named, /## demo/);
     assert.match(named, /`plan-change`/);
+  } finally { cleanup(); }
+});
+
+// ---------------------------------------------------------------------------
+// cache-warming wakes: counted per agent, costed per request, a subset of the usage
+// ---------------------------------------------------------------------------
+
+const WAKE_PROJECT = rooted('work', 'wake.project');
+const WK = { design: '2b000000-0000-4000-8000-000000000001', implement: '2b000000-0000-4000-8000-000000000002' };
+const WA = { worker: 'a2000000000000001', explorer: 'a2000000000000002', ghost: 'a2000000000000003', plain: 'a2000000000000004' };
+const WAIT = 'node "/home/u/.claude/skills/sai-cache-warmer/wait.js"';
+
+// A shell call that launched a command in the background, and the result Claude Code returned for it.
+const shellUse = (id, command, description) => ({ type: 'tool_use', id, name: 'Bash', input: { command, description, run_in_background: true } });
+function backgroundResult(session, agent, uuid, time, toolUseId, taskId) {
+  return JSON.stringify({ sessionId: session, ...(agent ? { agentId: agent, isSidechain: true } : {}), type: 'user', uuid, timestamp: time, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolUseId, content: `Command running in background with ID: ${taskId}. Output is being written to: /tmp/${taskId}.output.`, is_error: false }] }, toolUseResult: { stdout: '', stderr: '', backgroundTaskId: taskId } });
+}
+// The record Claude Code writes when a background task completes: a user record that is not a tool result.
+// The main session's record is an ordinary user record; a subagent's is marked `isMeta` and starts with a notice.
+function completion(session, agent, uuid, time, taskId, summary = 'Background command "keep warm" completed (exit code 0)') {
+  const notice = agent ? '[SYSTEM NOTIFICATION - NOT USER INPUT]\nThis is an automated background-task event, NOT a message from the user.\n\n' : '';
+  return JSON.stringify({ sessionId: session, ...(agent ? { agentId: agent, isSidechain: true, isMeta: true } : {}), type: 'user', uuid, timestamp: time, origin: { kind: 'task-notification', producer: 'session-task' }, message: { role: 'user', content: `${notice}<task-notification>\n<task-id>${taskId}</task-id>\n<tool-use-id>toolu_x</tool-use-id>\n<status>completed</status>\n<summary>${summary}</summary>\n</task-notification>` } });
+}
+const ok = (session, agent, uuid, time, id, input) => turnLine(session, agent, uuid, time, id, usage(input, 1, input * 10, 0, 0), [{ type: 'text', text: 'ok' }], 'end_turn');
+
+// A /sai-2-design run on Claude Code. The main session arms a wait described as anything but cache-warm, and
+// it wakes twice: the first wake re-arms, the second ends with `finished`. The `ok` that answers `dispose` and
+// the turn another task opens are not wakes. The design worker wakes once; its `sleep` is not a wait.
+function makeWakeClaude(config) {
+  const folder = projectFolder(path.join(config, 'projects'), WAKE_PROJECT);
+  const S = WK.design;
+  writeSession(folder, S, [
+    invocationLine(S, 'wd-inv', '2026-03-01T10:00:00.000Z', 'sai-2-design', 'wake-change'),
+    turnLine(S, null, 'wd-1', '2026-03-01T10:00:01.000Z', 'wm-1', usage(10, 1, 100, 0, 0), [agentTool('tu-worker', 'sai-2-design-worker'), agentTool('tu-ghost', 'budget-explorer'), shellUse('tu-arm', `${WAIT} warm --chain abc`, 'keep the conversation warm')]),
+    backgroundResult(S, null, 'wd-2', '2026-03-01T10:00:01.500Z', 'tu-arm', 'bg111'),
+    ok(S, null, 'wd-3', '2026-03-01T10:00:02.000Z', 'wm-2', 20),
+    // First wake: the re-arm and the `ok` reply are its requests.
+    completion(S, null, 'wd-4', '2026-03-01T10:04:00.000Z', 'bg111'),
+    turnLine(S, null, 'wd-5', '2026-03-01T10:04:01.000Z', 'wm-3', usage(5, 1, 300, 0, 0), [shellUse('tu-rearm', `${WAIT} warm --state tok`, 'cache-warm')]),
+    backgroundResult(S, null, 'wd-6', '2026-03-01T10:04:02.000Z', 'tu-rearm', 'bg222'),
+    ok(S, null, 'wd-7', '2026-03-01T10:04:03.000Z', 'wm-4', 6),
+    // Second wake: the wait returned `finished`, so there is no re-arm.
+    completion(S, null, 'wd-8', '2026-03-01T10:08:00.000Z', 'bg222', 'Background command "cache-warm" completed (exit code 0)'),
+    ok(S, null, 'wd-9', '2026-03-01T10:08:01.000Z', 'wm-5', 7),
+    // An `ok` that answers a `dispose` message is not a wake.
+    userLine(S, null, 'wd-10', '2026-03-01T10:09:00.000Z', 'dispose'),
+    ok(S, null, 'wd-11', '2026-03-01T10:09:01.000Z', 'wm-6', 8),
+    // Nor is the `ok` that closes a turn another task completion opened.
+    completion(S, null, 'wd-12', '2026-03-01T10:10:00.000Z', 'other999', 'Agent "explorer" finished'),
+    ok(S, null, 'wd-13', '2026-03-01T10:10:01.000Z', 'wm-7', 9),
+  ], [
+    { id: WA.worker, meta: { agentType: 'sai-2-design-worker', toolUseId: 'tu-worker', spawnDepth: 1, finished: true }, lines: [
+      userLine(S, WA.worker, 'ww-0', '2026-03-01T10:00:03.000Z', 'task'),
+      turnLine(S, WA.worker, 'ww-1', '2026-03-01T10:00:04.000Z', 'wwm-1', usage(2, 1, 20, 0, 0), [shellUse('tw-arm', `${WAIT} warm --chain wxyz`, 'keep warm'), shellUse('tw-sleep', 'sleep 5', 'cache-warm')]),
+      backgroundResult(S, WA.worker, 'ww-2', '2026-03-01T10:00:04.500Z', 'tw-arm', 'wbg1'),
+      backgroundResult(S, WA.worker, 'ww-3', '2026-03-01T10:00:04.600Z', 'tw-sleep', 'sleep1'),
+      completion(S, WA.worker, 'ww-4', '2026-03-01T10:00:09.000Z', 'sleep1', 'Background command "cache-warm" completed (exit code 0)'),
+      ok(S, WA.worker, 'ww-5', '2026-03-01T10:00:10.000Z', 'wwm-2', 3),
+      // Two wakes in a row: the first re-arms, the second ends the window. Each wake keeps only its own turn.
+      completion(S, WA.worker, 'ww-6', '2026-03-01T10:05:00.000Z', 'wbg1'),
+      turnLine(S, WA.worker, 'ww-7', '2026-03-01T10:05:01.000Z', 'wwm-3', usage(4, 1, 40, 0, 0), [shellUse('tw-rearm', `${WAIT} warm --state tok`, 'keep warm')]),
+      backgroundResult(S, WA.worker, 'ww-8', '2026-03-01T10:05:02.000Z', 'tw-rearm', 'wbg2'),
+      ok(S, WA.worker, 'ww-9', '2026-03-01T10:05:03.000Z', 'wwm-4', 5),
+      completion(S, WA.worker, 'ww-10', '2026-03-01T10:09:00.000Z', 'wbg2'),
+      ok(S, WA.worker, 'ww-11', '2026-03-01T10:09:01.000Z', 'wwm-5', 6),
+    ] },
+    // A helper that never armed a wait has zero wakes; a helper without a transcript has no wake figure.
+    { id: WA.explorer, meta: { agentType: 'budget-explorer', toolUseId: 'tu-x', parentAgentId: WA.worker, spawnDepth: 2, finished: true }, lines: [ok(S, WA.explorer, 'we-1', '2026-03-01T10:00:06.000Z', 'wem-1', 1)] },
+    { id: WA.ghost, meta: { agentType: 'budget-explorer', toolUseId: 'tu-ghost', spawnDepth: 1, finished: true } },
+  ]);
+  // E18: a run whose agents never armed a wait.
+  const I = WK.implement;
+  writeSession(folder, I, [
+    invocationLine(I, 'wi-inv', '2026-03-02T10:00:00.000Z', 'sai-3-implement', 'wake-change'),
+    turnLine(I, null, 'wi-1', '2026-03-02T10:00:01.000Z', 'wim-1', usage(7, 7, 70, 7, 0), [agentTool('tu-red', 'sai-3-red-worker')], 'end_turn'),
+  ], [
+    { id: WA.plain, meta: { agentType: 'sai-3-red-worker', toolUseId: 'tu-red', spawnDepth: 1, finished: true }, lines: [turnLine(I, WA.plain, 'wp-1', '2026-03-02T10:00:02.000Z', 'wpm-1', usage(1, 1, 10, 1, 0), [])] },
+  ]);
+}
+
+function wakeConfig() {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-wake-cfg-'));
+  makeWakeClaude(config);
+  return { config, env: envFor(config), cleanup: () => fs.rmSync(config, { recursive: true, force: true }) };
+}
+
+test('wakes: Claude Code counts the turns a completed wait opens, whatever the task description, and costs their requests (E20, E21, E22, E23, E24)', () => {
+  const { env, cleanup } = wakeConfig();
+  try {
+    const { executions } = index(['sai-2-design', '--paths', WAKE_PROJECT], env, unavailableSqlite);
+    assert.equal(executions.length, 1);
+    const [design] = executions;
+    // E24: the main session counts under the coordinator. Two wakes: the one that re-arms and the one that finished (E22).
+    // Their three requests (the re-arm, and two `ok` replies) are a subset of the seven the coordinator made (E23).
+    assert.equal(design.coordinator.wakes, 2);
+    assert.deepEqual(design.coordinator.wake_usage, { requests: 3, input: 18, output: 3, cache_read: 430, cache_write_5m: 0, cache_write_1h: 0 });
+    assert.equal(design.coordinator.usage.requests, 7);
+    assert.equal(design.coordinator.usage.input, 65, 'the wake requests stay inside the existing totals');
+    // E21: the `ok` after `dispose` and the one after another task's completion are in the totals but never wakes.
+    const worker = agentOf(design, WA.worker);
+    assert.equal(worker.wakes, 2, 'a `sleep` described as cache-warm is not a wait');
+    assert.deepEqual(worker.wake_usage, { requests: 3, input: 15, output: 3, cache_read: 150, cache_write_5m: 0, cache_write_1h: 0 });
+    // E18: a helper that armed nothing has zero wakes; a helper whose transcript is missing has no figure at all.
+    assert.deepEqual([agentOf(design, WA.explorer).wakes, agentOf(design, WA.explorer).wake_usage], [0, { requests: 0 }]);
+    assert.deepEqual([agentOf(design, WA.ghost).wakes, agentOf(design, WA.ghost).wake_usage], [null, 'unavailable']);
+  } finally { cleanup(); }
+});
+
+test('wakes: an `ok` reply alone never identifies a wake, and an unknown task id opens none', () => {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-wake-cfg-'));
+  try {
+    const S = WK.design;
+    writeSession(projectFolder(path.join(config, 'projects'), WAKE_PROJECT), S, [
+      invocationLine(S, 'n-inv', '2026-03-01T10:00:00.000Z', 'sai-2-design', 'wake-change'),
+      turnLine(S, null, 'n-1', '2026-03-01T10:00:01.000Z', 'nm-1', usage(1, 1, 10, 0, 0), [shellUse('tu-arm', `${WAIT} begin --agent x`, 'cache-warm')]),
+      backgroundResult(S, null, 'n-2', '2026-03-01T10:00:02.000Z', 'tu-arm', 'bgbegin'),
+      completion(S, null, 'n-3', '2026-03-01T10:01:00.000Z', 'bgbegin'),
+      ok(S, null, 'n-4', '2026-03-01T10:01:01.000Z', 'nm-2', 2),
+      completion(S, null, 'n-5', '2026-03-01T10:02:00.000Z', 'neverlaunched'),
+      ok(S, null, 'n-6', '2026-03-01T10:02:01.000Z', 'nm-3', 3),
+    ]);
+    const [design] = index(['sai-2-design', '--paths', WAKE_PROJECT], envFor(config), unavailableSqlite).executions;
+    assert.equal(design.coordinator.wakes, 0, 'a begin call is not a wait, and a notification of no wait task is not a wake');
+    assert.equal(design.coordinator.usage.requests, 3);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+test('wakes: the cost report carries wakes per agent, per segment row, and per run, as a subset of its totals (E13, E18, E19)', () => {
+  const { env, cleanup } = wakeConfig();
+  try {
+    const report = cost(['--paths', WAKE_PROJECT], env, unavailableSqlite);
+    const [design, implement] = report.runs;
+    const coordinator = design.agents.find(agent => agent.role === 'coordinator');
+    assert.deepEqual([coordinator.wakes, coordinator.wake_usage.requests], [2, 3]);
+    const worker = design.agents.find(agent => agent.agent_id === WA.worker);
+    assert.deepEqual([worker.wakes, worker.wake_usage.requests], [2, 3]);
+    // Per run: the wakes of every agent that was read; the helper without a transcript is counted apart, never as zero.
+    assert.deepEqual([design.totals.wakes, design.totals.wake_requests, design.totals.wake_tokens, design.totals.unavailable_wake_agents], [4, 6, 18 + 3 + 430 + 15 + 3 + 150, 1]);
+    assert.ok(design.totals.tokens > design.totals.wake_tokens, 'the wake figures are a subset of the run totals');
+    // E18: nothing armed a wait, so every agent reports zero wakes.
+    assert.deepEqual(implement.agents.map(agent => agent.wakes), [0, 0]);
+    assert.deepEqual([implement.totals.wakes, implement.totals.wake_requests, implement.totals.wake_tokens, implement.totals.unavailable_wake_agents], [0, 0, 0, 0]);
+    const row = report.rows.find(candidate => candidate.agent_type === 'sai-2-design-worker');
+    assert.deepEqual([row.wakes, row.wake_usage.requests], [2, 3]);
+    // The ordinary rows keep their meaning: wake requests are inside them.
+    assert.equal(report.rows.find(candidate => candidate.role === 'coordinator' && candidate.agent_type === 'sai-2-design').requests, 7);
+    // E19: a row whose agents were never read has no wake figure, which is not zero.
+    const ghostRow = report.rows.find(candidate => candidate.agent_type === 'budget-explorer' && candidate.unavailable_agents === 1);
+    assert.equal(ghostRow.wakes, 0, 'the row also holds the explorer that was read and armed nothing');
+    assert.equal(ghostRow.unavailable_wake_agents, 1);
+    const text = cost(['--paths', WAKE_PROJECT, '--format', 'markdown'], env, unavailableSqlite);
+    assert.match(text, /^Baseline format 2\./m);
+    assert.match(text, /Tool calls \| Wakes \| Wake requests \| Wake tokens \|/);
+    assert.match(text, /\| design \| worker \| sai-2-design-worker \| 1 \| 1 \| 20 \| 5 \| 200 \| 0 \| 0 \| 3 \| 2 \| 3 \| 168 \|/);
+    assert.match(text, /Cache-warming wakes per run/);
+    assert.match(text, /\| 1 \| `sai-2-design` \| 4\* \| 6 \| 619 \|/);
+    assert.match(text, /\| 2 \| `sai-3-implement` \| 0 \| 0 \| 0 \|/);
+  } finally { cleanup(); }
+});
+
+// opencode: the same run, recorded as `synthetic` shell messages. The shell state is never read.
+const WOC = { root: 'ses_wake_root', worker: 'ses_wake_worker', helper: 'ses_wake_helper' };
+
+function makeWakeOpencode(config) {
+  const directory = path.join(config, 'data', 'opencode');
+  fs.mkdirSync(directory, { recursive: true });
+  const db = new DatabaseSync(path.join(directory, 'opencode.db'));
+  db.exec(`CREATE TABLE session_v2 (${SESSION_COLUMNS}); CREATE TABLE session_message (${MESSAGE_COLUMNS});`);
+  const insertSession = db.prepare('INSERT INTO session_v2 (id, parent_id, agent, title, directory, time_created) VALUES (?, ?, ?, ?, ?, ?)');
+  for (const [id, parent, agent, clock] of [[WOC.root, null, 'build', '09:00:00.000'], [WOC.worker, WOC.root, 'sai-2-design-worker', '09:00:10.000'], [WOC.helper, WOC.worker, 'explore', '09:00:20.000']]) insertSession.run(id, parent, agent, `title ${id}`, WAKE_PROJECT.replace(/\\/g, '/'), at(clock));
+  const insertMessage = db.prepare('INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)');
+  let seq = 0;
+  const message = (session, type, clock, data) => insertMessage.run(`msg_${session}_${String(++seq).padStart(3, '0')}`, session, type, seq, at(clock), JSON.stringify(data));
+  const answer = (session, clock, tokens, content = [{ type: 'text', text: 'ok' }]) => message(session, 'assistant', clock, { time: doneTime(clock), agent: 'build', tokens: { input: tokens, output: 1, reasoning: 0, cache: { read: tokens * 10, write: 0 } }, cost: tokens / 100, content });
+  const shell = (session, clock, command, description, state = 'completed') => message(session, 'synthetic', clock, { metadata: { source: 'shell', shellID: 'sh_1', jobID: 'sh_1', state }, time: { created: at(clock) }, text: `<shell id="sh_1" state="${state}" command="${command}">\n{"status":"continue"}\n</shell>`, description });
+  const idle = (session, clock) => message(session, 'idle', clock, { time: { created: at(clock) }, outcome: 'succeeded' });
+  const WAIT_OC = 'node /home/u/.config/opencode/skills/sai-cache-warmer/wait.js';
+
+  message(WOC.root, 'user', '09:00:01.000', { time: { created: at('09:00:01.000') }, text: envelope('design', 'wake-oc') });
+  answer(WOC.root, '09:00:02.000', 10, [tool('arm', 'shell', { status: 'completed', input: { command: `${WAIT_OC} warm --chain abc`, background: true }, content: [] })]);
+  idle(WOC.root, '09:00:03.000');
+  // First wake: the re-arm and the `ok` reply, then the turn ends.
+  shell(WOC.root, '09:04:00.000', `${WAIT_OC} warm --chain abc`, 'a description that is not cache-warm');
+  answer(WOC.root, '09:04:01.000', 5, [tool('rearm', 'shell', { status: 'completed', input: { command: `${WAIT_OC} warm --state tok`, background: true }, content: [] })]);
+  answer(WOC.root, '09:04:02.000', 6);
+  idle(WOC.root, '09:04:03.000');
+  // Second wake: the wait returned `finished`; it still counts.
+  shell(WOC.root, '09:08:00.000', `${WAIT_OC} warm --state tok`, 'cache-warm', 'error');
+  answer(WOC.root, '09:08:01.000', 7);
+  idle(WOC.root, '09:08:02.000');
+  // The `ok` that answers `dispose`, and the one after a shell that is not a wait, are not wakes.
+  message(WOC.root, 'user', '09:09:00.000', { time: { created: at('09:09:00.000') }, text: 'dispose' });
+  answer(WOC.root, '09:09:01.000', 8);
+  shell(WOC.root, '09:10:00.000', 'sleep 240', 'cache-warm');
+  answer(WOC.root, '09:10:01.000', 9);
+  message(WOC.worker, 'user', '09:00:11.000', { time: { created: at('09:00:11.000') }, text: 'Worker contract' });
+  answer(WOC.worker, '09:00:12.000', 2);
+  shell(WOC.worker, '09:05:00.000', `${WAIT_OC} warm --chain wxyz`, 'keep warm');
+  answer(WOC.worker, '09:05:01.000', 3);
+  message(WOC.helper, 'user', '09:00:21.000', { time: { created: at('09:00:21.000') }, text: 'research' });
+  answer(WOC.helper, '09:00:22.000', 1);
+  db.close();
+}
+
+opencodeTest('wakes: opencode counts the turns a completed wait opens from the shell messages, whatever the description or state (E20, E21, E22, E23, E24)', () => {
+  const { config, env, cleanup } = wakeConfig();
+  try {
+    makeWakeOpencode(config);
+    const { executions } = index(['sai-2-design', '--paths', WAKE_PROJECT], env, realSqlite);
+    const design = executions.find(execution => execution.harness === 'opencode');
+    assert.equal(design.coordinator.wakes, 2);
+    assert.deepEqual(design.coordinator.wake_usage, { requests: 3, input: 18, output: 3, reasoning: 0, cache_read: 180, cache_write: 0, cost: 0.18 });
+    assert.equal(design.coordinator.usage.requests, 6, 'the wake requests stay inside the existing totals');
+    assert.equal(agentOf(design, WOC.worker).wakes, 1);
+    assert.deepEqual(agentOf(design, WOC.worker).wake_usage, { requests: 1, input: 3, output: 1, reasoning: 0, cache_read: 30, cache_write: 0, cost: 0.03 });
+    // E18: the helper armed nothing.
+    assert.deepEqual([agentOf(design, WOC.helper).wakes, agentOf(design, WOC.helper).wake_usage], [0, { requests: 0 }]);
+    const report = cost(['--paths', WAKE_PROJECT], env, realSqlite);
+    const run = report.runs.find(candidate => candidate.harness === 'opencode');
+    assert.deepEqual([run.totals.wakes, run.totals.wake_requests], [3, 4]);
+    assert.ok(report.rows.some(row => row.harness === 'opencode' && row.wake_usage?.cost !== undefined), 'opencode wake cost is reported where the harness records it');
+  } finally { cleanup(); }
+});
+
+opencodeTest('wakes: a harness that cannot be read reports its wakes as not analyzed, apart from zero (E19)', () => {
+  const { config, env, cleanup } = wakeConfig();
+  try {
+    makeWakeOpencode(config);
+    const unread = cost(['--paths', WAKE_PROJECT], env, unavailableSqlite);
+    assert.deepEqual(unread.harnesses.map(entry => [entry.harness, entry.status]), [['claude', 'analyzed'], ['opencode', 'not-analyzed']]);
+    assert.ok(unread.runs.every(run => run.harness === 'claude'), 'no opencode run carries a wake figure, not even zero');
+    const text = cost(['--paths', WAKE_PROJECT, '--format', 'markdown'], env, unavailableSqlite);
+    assert.match(text, /opencode: not analyzed/);
   } finally { cleanup(); }
 });
 

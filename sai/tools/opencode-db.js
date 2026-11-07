@@ -5,10 +5,10 @@
  *
  * It opens `opencode.db` (`$XDG_DATA_HOME/opencode`, default
  * `~/.local/share/opencode`) read-only through `node:sqlite` after a schema
- * guard, links child sessions to their root by `parent_id`, and detects the
- * change a run belongs to. It writes nothing. opencode's database is an internal
- * format: opencode v2.2.0 keeps current and migrated sessions in `session_v2`
- * and their messages in `session_message`.
+ * guard, links child sessions to their root by `parent_id`, detects the change
+ * a run belongs to, and finds the wakes of cache warming. It writes nothing.
+ * opencode's database is an internal format: opencode v2.2.0 keeps current and
+ * migrated sessions in `session_v2` and their messages in `session_message`.
  */
 
 const fs = require('node:fs');
@@ -25,6 +25,10 @@ const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
 // The opencode command wrappers embed the invoked command in an envelope.
 const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
 const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
+// The command of a cache-warm wait: `wait.js` followed by `warm`, whatever description the shell carries.
+const WAIT_WARM = /wait\.js["']?\s+warm\b/;
+// The records that open a turn; the next one ends the turn a wake opened.
+const TURN_OPENERS = "'user','synthetic','system','compaction','shell','idle'";
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'write', 'edit', 'patch']);
 
 // The opencode reader could not be used; the harness is reported not analyzed.
@@ -97,6 +101,31 @@ function opencodeChildren(db, rootId) {
     SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
 }
 
+// The wakes of a session: each opens at a `synthetic` message whose
+// `metadata.source` is `shell` and whose `<shell ... command="...">` header runs
+// `wait.js ... warm`, and lasts to the end of its turn, the next message that
+// opens one. A wake lists the ids of the `assistant` messages of that stretch,
+// the re-arm and the `ok` reply included. The shell state (`completed`, `error`)
+// is not read: a wait that returned `finished` is a wake too. An `ok` reply alone
+// never makes one.
+function opencodeWakes(db, sessionId) {
+  const opened = db.prepare("SELECT id, seq, time_created, data FROM session_message WHERE session_id = ? AND type = 'synthetic' AND data LIKE '%wait.js%' ORDER BY seq").all(sessionId);
+  const nextOpener = db.prepare(`SELECT seq FROM session_message WHERE session_id = ? AND seq > ? AND type IN (${TURN_OPENERS}) ORDER BY seq LIMIT 1`);
+  const requests = db.prepare("SELECT id FROM session_message WHERE session_id = ? AND type = 'assistant' AND seq > ? AND seq < ? ORDER BY seq");
+  const wakes = [];
+  for (const row of opened) {
+    let data;
+    try { data = JSON.parse(row.data); } catch { continue; }
+    const text = typeof data?.text === 'string' ? data.text : '';
+    if (data?.metadata?.source !== 'shell') continue;
+    const close = text.indexOf('">\n');
+    if (!WAIT_WARM.test(close === -1 ? text.split('\n')[0] : text.slice(0, close))) continue;
+    const end = nextOpener.get(sessionId, row.seq)?.seq ?? Number.MAX_SAFE_INTEGER;
+    wakes.push({ id: row.id, time: row.time_created, requests: requests.all(sessionId, row.seq, end).map(request => request.id) });
+  }
+  return wakes;
+}
+
 // The change a run belongs to: the name its invocation gives (or its Ready to
 // Propose block), otherwise the single `openspec/changes/<name>/` its workers wrote to.
 function changeNameFromArgs(args) {
@@ -130,6 +159,7 @@ module.exports = {
   parseInvocation,
   opencodeRoot,
   opencodeChildren,
+  opencodeWakes,
   changeNameFromArgs,
   writtenChanges,
   changeNameOf,

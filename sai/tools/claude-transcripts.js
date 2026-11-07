@@ -12,6 +12,10 @@
  * Claude Code's transcript is an internal format: a datum a record does not
  * hold is `null`, never zero.
  *
+ * It also finds the wakes of cache warming: the turns that the completion of an
+ * agent's own `wait.js ... warm` background wait opens, matched on the command and
+ * the background task id, never on the task description or an `ok` reply.
+ *
  * `retrospective.js` uses the locating and parsing helpers; `change-telemetry.js`
  * uses `openClaudeSource`, which answers the same questions as its opencode
  * source.
@@ -27,6 +31,11 @@ const DISPATCH_TOOL = 'Agent';
 const INVOCATION = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
 const INVOCATION_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 const RECORD_TYPES = new Set(['user', 'assistant', 'attachment', 'system']);
+const SHELL_TOOLS = new Set(['Bash', 'PowerShell']);
+// The command of a cache-warm wait: `wait.js` followed by `warm`, whatever description the task carries.
+const WAIT_WARM = /wait\.js["']?\s+warm\b/;
+const TASK_NOTIFICATION = /<task-notification>[\s\S]*?<task-id>\s*([^<\s]+)\s*<\/task-id>/;
+const BACKGROUND_ID = /with ID:\s*([A-Za-z0-9_-]+)/;
 
 // The Claude Code reader could not be used; the harness is reported not analyzed.
 class ClaudeUnavailable extends Error {}
@@ -107,6 +116,70 @@ function readAgents(sessionDir) {
 }
 
 // ---------------------------------------------------------------------------
+// Wakes: the turns that the completion of an agent's own cache-warm wait opens
+// ---------------------------------------------------------------------------
+
+const requestKey = row => row.message.id ?? `row:${row.uuid}`;
+const isModelRequest = row => row.type === 'assistant' && row.message && row.message.model !== '<synthetic>' && !row.isApiErrorMessage;
+
+function toolResultText(block) {
+  const content = block.content;
+  if (typeof content === 'string') return content;
+  return Array.isArray(content) ? content.map(part => part?.text ?? '').join('\n') : '';
+}
+
+/**
+ * The background task ids of the cache-warm waits an agent launched: the id that
+ * Claude Code returned for a shell `tool_use` whose command is `wait.js ... warm`.
+ * The task description is never read.
+ */
+function claudeWaitTasks(rows) {
+  const arms = new Set();
+  for (const row of rows) {
+    if (row.type !== 'assistant') continue;
+    for (const block of blocks(row)) {
+      if (block?.type === 'tool_use' && block.id && SHELL_TOOLS.has(block.name) && typeof block.input?.command === 'string' && WAIT_WARM.test(block.input.command)) arms.add(block.id);
+    }
+  }
+  const tasks = new Set();
+  if (arms.size === 0) return tasks;
+  for (const row of rows) {
+    if (row.type !== 'user') continue;
+    const results = blocks(row).filter(block => block?.type === 'tool_result' && arms.has(block.tool_use_id));
+    for (const block of results) {
+      const id = (typeof row.toolUseResult?.backgroundTaskId === 'string' && results.length === 1 ? row.toolUseResult.backgroundTaskId : null) ?? toolResultText(block).match(BACKGROUND_ID)?.[1];
+      if (id) tasks.add(id);
+    }
+  }
+  return tasks;
+}
+
+// A user record opens a turn unless it answers a tool call: a tool result, or the content a tool call injected
+// (a skill body). Injected messages, task notifications included, are marked `isMeta` and still open one.
+const opensTurn = row => row.type === 'user' && !row.sourceToolUseID && !blocks(row).some(block => block?.type === 'tool_result');
+
+/**
+ * The wakes of a transcript's records (sorted, from `readRecords`): each opens at
+ * the `<task-notification>` that completes one of the agent's own wait tasks, and
+ * lasts to the end of its turn, the next record that opens a turn. A wake lists
+ * the request keys (`message.id`) of every model request in that stretch, the
+ * re-arm and the `ok` reply included. An `ok` reply alone never makes a wake.
+ */
+function claudeWakes(rows, tasks = claudeWaitTasks(rows)) {
+  if (tasks.size === 0) return [];
+  const wakes = [];
+  rows.forEach((row, index) => {
+    if (row.type !== 'user') return;
+    const id = textOf(row).match(TASK_NOTIFICATION)?.[1];
+    if (!id || !tasks.has(id)) return;
+    const keys = new Set();
+    for (let i = index + 1; i < rows.length && !opensTurn(rows[i]); i++) if (isModelRequest(rows[i])) keys.add(requestKey(rows[i]));
+    wakes.push({ record: row.uuid, time: timeOf(row), keys: [...keys] });
+  });
+  return wakes.filter(wake => wake.time !== null);
+}
+
+// ---------------------------------------------------------------------------
 // Requests: one per assistant `message.id`
 // ---------------------------------------------------------------------------
 
@@ -125,10 +198,12 @@ function cacheWrite(usage) {
  * its `tool_use` id. The model time of a request runs from the record that
  * triggered it to its last line. A request whose tool calls have no result yet,
  * at the end of the transcript, is still running and has no completion time.
- * `agentOfToolUse` maps a dispatch call to the subagent it started.
+ * `agentOfToolUse` maps a dispatch call to the subagent it started. A request
+ * the turn of a wake (`claudeWakes`) made is flagged `wake`.
  */
 function transcriptRequests(rows, agentOfToolUse = new Map()) {
   const byUuid = new Map(rows.map(row => [row.uuid, row]));
+  const wakeKeys = new Set(claudeWakes(rows).flatMap(wake => wake.keys));
   const answered = new Set(), failed = new Set();
   for (const row of rows) {
     if (row.type !== 'user') continue;
@@ -140,10 +215,10 @@ function transcriptRequests(rows, agentOfToolUse = new Map()) {
   }
   const merged = new Map(), list = [];
   for (const row of rows) {
-    if (row.type !== 'assistant' || !row.message || row.message.model === '<synthetic>' || row.isApiErrorMessage) continue;
-    const key = row.message.id ?? `row:${row.uuid}`;
+    if (!isModelRequest(row)) continue;
+    const key = requestKey(row);
     let entry = merged.get(key);
-    if (!entry) { entry = { first: row, last: row, usage: row.message.usage, model: null, calls: new Map() }; merged.set(key, entry); list.push(entry); }
+    if (!entry) { entry = { key, first: row, last: row, usage: row.message.usage, model: null, calls: new Map() }; merged.set(key, entry); list.push(entry); }
     entry.last = row;
     if (typeof row.message.model === 'string') entry.model = row.message.model;
     const usage = row.message.usage;
@@ -160,6 +235,7 @@ function transcriptRequests(rows, agentOfToolUse = new Map()) {
     return {
       time: created,
       completed,
+      wake: wakeKeys.has(entry.key),
       input: count(entry.usage?.input_tokens),
       output: count(entry.usage?.output_tokens),
       reasoning: null,
@@ -214,7 +290,7 @@ function openClaudeSource({ cwd, env = process.env }) {
     throw new ClaudeUnavailable(`No readable Claude Code transcript folder was found for ${cwd} (${folder}: ${error.code ?? 'error'})`);
   }
   const roots = new Set(entries.map(name => name.slice(0, -'.jsonl'.length)));
-  const commandRoots = new Map(), rootRows = new Map(), agentsOf = new Map(), agentFile = new Map(), agentRows = new Map(), requestCache = new Map();
+  const commandRoots = new Map(), rootRows = new Map(), agentsOf = new Map(), agentFile = new Map(), agentRows = new Map(), requestCache = new Map(), wakeCache = new Map();
 
   const sessionDir = id => path.join(folder, id);
   const rootHasCommands = id => {
@@ -270,6 +346,11 @@ function openClaudeSource({ cwd, env = process.env }) {
     return requestCache.get(sessionId);
   }
 
+  function allWakes(sessionId) {
+    if (!wakeCache.has(sessionId)) wakeCache.set(sessionId, claudeWakes(sessionRecords(sessionId).rows ?? []));
+    return wakeCache.get(sessionId);
+  }
+
   return {
     name: 'Claude Code',
     store: 'the Claude Code transcripts',
@@ -288,6 +369,8 @@ function openClaudeSource({ cwd, env = process.env }) {
     },
     routeId: (rootId, anchorId) => `${rootId}:${anchorId}`,
     requests: (sessionId, from, to) => allRequests(sessionId).filter(request => request.time >= from && request.time < to),
+    // The wakes that opened in [from, to): `{ record, time, keys }`.
+    wakes: (sessionId, from, to) => allWakes(sessionId).filter(wake => wake.time >= from && wake.time < to),
     userTexts(sessionId) {
       const { rows } = sessionRecords(sessionId);
       return (rows ?? []).filter(row => row.type === 'user' && !blocks(row).some(block => block?.type === 'tool_result')).map(textOf);
@@ -325,6 +408,8 @@ module.exports = {
   invocationOf,
   claudeTokens,
   readAgents,
+  claudeWaitTasks,
+  claudeWakes,
   transcriptRequests,
   openClaudeSource,
 };
