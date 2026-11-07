@@ -293,7 +293,9 @@ function beginOnce(input, io = {}) {
       try { warmState(fixed); } catch { throw new UsageError('--interval and --max must be given together, as positive numbers of minutes with max at least interval'); }
       identity.fixed = fixed;
     }
+    if (input.fixedDeadline && !identity.fixed) throw new UsageError('--fixed-deadline needs the --interval and --max the user chose');
   }
+  if (input.fixedDeadline && input.agent !== undefined) throw new UsageError('--fixed-deadline belongs to the main session');
   identity = { ...identity, harness, cwd };
   const warming = (io.resolve ?? defaultResolve)(identity);
   if (warming === 'off') return { chain: null, warming: 'off' };
@@ -302,7 +304,9 @@ function beginOnce(input, io = {}) {
   const chain = identity.role === 'agent' && session ? sessionChainId(harness, session) : newChainId();
   const file = chainFile(saiRoot, chain);
   const held = readJson(file);
-  writeAtomic(file, `${JSON.stringify({ generation: Number.isSafeInteger(held?.generation) ? held.generation : 0, updated_ms: now(), identity })}\n`);
+  // A fixed deadline is a property of the record, set here: it closes `max` minutes from this begin, and no later arm moves it.
+  const deadline = input.fixedDeadline ? { deadline_ms: warmState(identity.fixed, now()).closing_ms } : {};
+  writeAtomic(file, `${JSON.stringify({ generation: Number.isSafeInteger(held?.generation) ? held.generation : 0, updated_ms: now(), identity, ...deadline })}\n`);
   touchChain(saiRoot, chain);
   pruneChains(saiRoot, now());
   return { chain, warming };
@@ -316,6 +320,11 @@ async function armOnce(chain, io) {
   const timings = (io.resolve ?? defaultResolve)(record.identity);
   if (timings === 'off') return { status: 'finished', waited_ms: 0, state: { chain } };
   const base = warmState(timings, now());
+  // A chain with a fixed deadline keeps the window its begin opened: an arm supersedes the earlier wait but never moves the end.
+  if (record.deadline_ms !== undefined) {
+    if (now() >= record.deadline_ms) return { status: 'finished', waited_ms: 0, state: { chain } };
+    base.closing_ms = record.deadline_ms;
+  }
   const generation = bumpGeneration(saiRoot, chain, now());
   touchChain(saiRoot, chain);
   pruneChains(saiRoot, now());
@@ -352,13 +361,20 @@ const FLAGS = {
   begin: ['--agent', '--role', '--provider', '--model', '--harness', '--session', '--interval', '--max'],
   warm: ['--chain', '--state'],
 };
+/** Flags that take no value. */
+const SWITCHES = { begin: ['--fixed-deadline'], warm: [] };
 
-/** Strict `--flag value` pairs of one subcommand; an unknown flag or a missing value is a usage error. */
+/** Strict `--flag value` pairs of one subcommand, plus its valueless switches; an unknown flag or a missing value is a usage error. */
 function parseFlags(command, args) {
   const values = {};
-  for (let i = 0; i < args.length; i += 2) {
-    if (!FLAGS[command].includes(args[i]) || i + 1 >= args.length) throw new UsageError(`${command} takes ${FLAGS[command].join(', ')} each with a value`);
+  for (let i = 0; i < args.length; i += 1) {
+    if (SWITCHES[command].includes(args[i])) {
+      values[args[i].slice(2).replace(/-(\w)/g, (_, letter) => letter.toUpperCase())] = true;
+      continue;
+    }
+    if (!FLAGS[command].includes(args[i]) || i + 1 >= args.length) throw new UsageError(`${command} takes ${[...FLAGS[command], ...SWITCHES[command]].join(', ')}, each flag with a value`);
     values[args[i].slice(2)] = args[i + 1];
+    i += 1;
   }
   return values;
 }

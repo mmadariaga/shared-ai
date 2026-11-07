@@ -253,6 +253,45 @@ test('begin for the main session may carry timings the user chose, which replace
   assert.equal(setting.value, 'off');
 });
 
+test('I3 begin with a fixed deadline stores it in the record, needs the user\'s timings, and a plain begin drops it', t => {
+  const { begin, saiRoot, clock } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'chat' };
+  const timings = { interval: 30, max: 240 };
+  const io = { ...chainFixture(t, 'off').io, saiRoot };
+  const fixed = warmer.beginOnce({ ...main, ...timings, fixedDeadline: true }, { ...io, now: () => clock.time, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  assert.deepEqual(fixed.warming, timings);
+  assert.equal(recordOf(saiRoot, fixed.chain).deadline_ms, clock.time + 240 * 60000);
+  assert.throws(() => begin({ ...main, fixedDeadline: true }), warmer.UsageError, 'a fixed deadline needs the user\'s interval and max');
+  assert.throws(() => begin({ agent: 'x', harness: 'claude', fixedDeadline: true }), warmer.UsageError, 'a subagent has no fixed deadline');
+  clock.time += 60000;
+  const plain = warmer.beginOnce({ ...main, ...timings }, { ...io, now: () => clock.time, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  assert.equal(plain.chain, fixed.chain);
+  assert.equal(recordOf(saiRoot, plain.chain).deadline_ms, undefined, 'a begin without the switch rewrites the record with no deadline');
+  assert.deepEqual(warmer.beginInputFromArgv(['--role', 'agent', '--provider', 'anthropic', '--interval', '30', '--max', '240', '--fixed-deadline', '--harness', 'claude']),
+    { role: 'agent', provider: 'anthropic', interval: '30', max: '240', fixedDeadline: true, harness: 'claude' });
+  assert.throws(() => warmer.beginInputFromArgv(['--fixed-deadline', 'yes']), warmer.UsageError);
+  assert.throws(() => warmer.inputFromArgv(['--chain', 'abc', '--fixed-deadline']), warmer.UsageError, 'warm takes no fixed-deadline switch');
+});
+
+test('E9 a fixed deadline holds: a later arm supersedes the earlier wait without moving the end, and the wait finishes at the deadline', async t => {
+  const { io, saiRoot } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'away', interval: 4, max: 10, fixedDeadline: true };
+  const { chain } = warmer.beginOnce(main, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  const wired = { ...io, resolve: undefined };
+  const first = await warmer.warmOnce({ chain }, wired);
+  assert.deepEqual([first.status, first.waited_ms, first.state.closing_ms], ['continue', 240000, 600000]);
+  const again = await warmer.warmOnce({ chain }, wired);
+  assert.equal(again.state.closing_ms, 600000, 'an arm after a real message does not move the deadline');
+  assert.equal(again.state.generation, 2);
+  const stale = await warmer.warmOnce({ state: first.state }, wired);
+  assert.deepEqual([stale.status, stale.waited_ms], ['finished', 0], 'the earlier wait is superseded');
+  const last = await warmer.warmOnce({ state: again.state }, wired);
+  assert.deepEqual([last.status, last.waited_ms], ['finished', 120000], 'the last wait is shortened to the deadline');
+  const late = await warmer.warmOnce({ chain }, wired);
+  assert.deepEqual([late.status, late.waited_ms], ['finished', 0], 'an arm after the deadline arms nothing');
+  assert.equal(recordOf(saiRoot, chain).generation, 2, 'the arm after the deadline opens no new generation');
+});
+
 test('warm opens a window of max minutes, and the returned state re-arms it with the same window', async t => {
   const { io, clock, begin } = chainFixture(t, { interval: 4, max: 10 });
   const { chain } = begin();
@@ -561,10 +600,11 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /1 hour with a Claude subscription and 5 minutes with pay-per-token/);
   assert.match(step, /\/sai-context-cache-ttl-benchmark/);
   assert.match(step, /§ Stop your own wait/);
-  assert.match(step, /Run `begin` in the foreground as `cache-warming\.md` § Begin states for the main session[\s\S]*--interval <interval> --max <max>/);
+  assert.match(step, /Run `begin` in the foreground as `cache-warming\.md` § Begin states for the main session[\s\S]*--interval <interval> --max <max> --fixed-deadline/);
+  assert.doesNotMatch(step, /Only a wake re-arms|moves the deadline/, 'the step file describes no variant of its own');
   assert.match(step, /Launch `wait\.js warm --chain <chain>` in the background/);
-  assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*only a wake re-arms/i);
-  assert.match(read('sai/policies/cache-warming.md'), /Timings the user chose stay as chosen/);
+  assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*--interval <interval> --max <max> --fixed-deadline[\s\S]*no arm or wake moves it/);
+  assert.match(read('sai/policies/cache-warming.md'), /The timings stay as passed to `begin`/);
   assert.match(read('sai/policies/cache-warming.md'), /Each re-arm launches a new background task, so replace the task id[\s\S]{0,120}chain stays the same/);
   assert.match(step, /Every wake re-arm launches a new background task: replace the task id in `handoff_wait`/);
   assert.match(step, /updates the task id in `handoff_wait`/);
