@@ -66,7 +66,7 @@ The first valid answer, or the decision not to warm, SHALL apply to every later 
 
 ### Requirement: Hand-off wait arms once with a fixed deadline
 
-Explore SHALL arm the hand-off wait once, as the last tool call of the hand-off close turn: it SHALL run `wait.js begin` in the foreground for the main session, adding `--interval <interval> --max <max>` when the timings are the user's answers and nothing when they come from the setting, and then launch `wait.js warm --chain <chain>` in the background, and SHALL hold the background task id and the chain. A `begin` that prints `off` or fails SHALL arm nothing. The deadline SHALL be `max` minutes after that arm. Only a wake SHALL re-arm the wait, with the state it returned, and each wake re-arm SHALL replace the held task id with the new task's id. A real message other than `next-slice` SHALL neither re-arm the wait nor move the deadline, and a repeated hand-off text while a wait is held SHALL arm nothing. At the deadline the wait SHALL end by itself with no further wake. When arming fails (no shell, a missing `wait.js`, a refused permission, or a failed `begin`), explore SHALL say so in one line and the hand-off close SHALL continue unchanged.
+Explore SHALL arm the hand-off wait once, as the last tool call of the hand-off close turn: it SHALL run `wait.js begin` in the foreground for the main session, adding `--interval <interval> --max <max> --fixed-deadline` with the timings it settled (the user's answers or the setting's `interval` and `max`), and then launch `wait.js warm --chain <chain>` in the background, and SHALL hold the background task id and the chain. A `begin` that prints `off` or fails SHALL arm nothing. The deadline SHALL be `max` minutes after that `begin`, held by `wait.js` in the chain record. A wake SHALL re-arm the wait with the state it returned, and each wake re-arm SHALL replace the held task id with the new task's id. A real message other than `next-slice` SHALL re-arm nothing, the deadline SHALL stay where `begin` set it, and a repeated hand-off text while a wait is held SHALL arm nothing. At the deadline the wait SHALL end by itself with no further wake. When arming fails (no shell, a missing `wait.js`, a refused permission, or a failed `begin`), explore SHALL say so in one line and the hand-off close SHALL continue unchanged.
 
 #### Scenario: Real message while away
 - **WHEN** the user sends a message other than `next-slice` while the hand-off wait is armed
@@ -75,6 +75,10 @@ Explore SHALL arm the hand-off wait once, as the last tool call of the hand-off 
 #### Scenario: Arming fails
 - **WHEN** `wait.js` cannot be run at the hand-off close, or its `begin` fails
 - **THEN** explore reports it in one line and the hand-off close continues unchanged
+
+#### Scenario: Timings from the setting
+- **WHEN** the hand-off timings come from the `warming` setting
+- **THEN** explore passes that `interval` and `max` to `begin` with `--fixed-deadline`, as it does for the user's answers
 
 ### Requirement: next-slice and a new invocation stop the hand-off wait
 
