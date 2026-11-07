@@ -62,6 +62,48 @@ function allViolations(verdict) {
 // strict profile
 // ---------------------------------------------------------------------------
 
+const withExploreOrigin = (value, text = block('add-thing')) => text.replace('**What**:', `**Explore origin**: ${value}\n**What**:`);
+
+test('strict: an Explore origin list is accepted after Backlog origin and returned as explore_origin', () => {
+  const origin = 'https://github.com/owner/repo/issues/4';
+  const text = withExploreOrigin('opencode ses_one, ses_Two2').replace('**Explore origin**', `**Backlog origin**: ${origin}\n**Explore origin**`);
+  const verdict = checkStrict(text);
+  assert.equal(verdict.ok, true, JSON.stringify(allViolations(verdict)));
+  assert.deepEqual(verdict.blocks[0].explore_origin, ['ses_one', 'ses_Two2']);
+  assert.equal(verdict.blocks[0].backlog_origin, origin);
+  assert.deepEqual(checkStrict(block('add-thing')).blocks[0].explore_origin, []);
+  assert.equal(checkDispatchable(withExploreOrigin('opencode ses_one')).dispatchable, true);
+});
+
+test('strict: Explore origin out of order or with a malformed value fails (E12)', () => {
+  for (const value of ['ses_one', 'opencode', 'opencode ses_one,ses_two', 'opencode ses_one, ', 'claude ses_one', 'opencode not-a-session', 'opencode https://x.test/ses_one']) {
+    const verdict = checkStrict(withExploreOrigin(value));
+    assert.equal(verdict.ok, false, value);
+    assert.ok(allViolations(verdict).some((entry) => entry.problem === 'INVALID_EXPLORE_ORIGIN'), value);
+  }
+  const misplaced = block('add-thing').replace('**Overview language**', '**Explore origin**: opencode ses_one\n**Overview language**');
+  assert.ok(allViolations(checkStrict(misplaced)).some((entry) => entry.problem === 'WRONG_SECTION_ORDER'));
+  const empty = checkStrict(withExploreOrigin(''));
+  assert.ok(allViolations(empty).some((entry) => entry.problem === 'EMPTY_SECTION'));
+});
+
+test('attach-origin: a published child origin is inserted before Explore origin', () => {
+  const text = withExploreOrigin('opencode ses_one');
+  const issue = 'https://github.com/owner/repo/issues/9';
+  const parent = 'https://github.com/owner/repo/issues/1';
+  const { attachBacklogOrigins } = require(TOOL);
+  const correspondence = { role: 'parent', parent, slices: [{ change_name: 'add-thing', depends_on: [], issue }] };
+  const identity = require(path.join(REPO_ROOT, 'sai', 'tools', 'backlog-slice-identity'));
+  const original = identity.checkIdentity;
+  identity.checkIdentity = () => ({ role: 'parent', parent, slices: correspondence.slices });
+  try {
+    const [attached] = attachBacklogOrigins(text, correspondence).blocks;
+    assert.match(attached.text, new RegExp(`\\*\\*Backlog origin\\*\\*: ${issue}\\n\\*\\*Explore origin\\*\\*: opencode ses_one\\n\\*\\*What\\*\\*:`));
+    assert.equal(checkStrict(attached.text).ok, true);
+  } finally { identity.checkIdentity = original; }
+});
+
+
 test('strict: a canonical block passes and its name is extracted', () => {
   const verdict = checkStrict(block('add-thing'));
   assert.equal(verdict.ok, true, JSON.stringify(allViolations(verdict)));

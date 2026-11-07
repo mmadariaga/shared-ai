@@ -245,9 +245,13 @@ block and the selected change's existing metadata, when present. Preserve the
 validated `backlog_origin` as an optional key in either form below; it is
 independent of usable intent and never sets `prior_intent` by itself. Compare
 the draft with the known origin before handing over its transfer reference.
+When the received block carries `**Explore origin**`, carry the validator's
+`explore_origin` list as the optional flat flow list
+`explore_origin: [<sessionID>, <sessionID>]`, in the block's order, in either
+form below; it too never sets `prior_intent`.
 
 For a run with no usable intent context, carry these three required keys and
-only the optional `backlog_origin` key:
+only the optional `backlog_origin` key (plus the optional `explore_origin` key above):
 
 ```yaml
 schema: sai-workflow
@@ -256,7 +260,7 @@ backfilled: true
 ```
 
 For a run with usable intent context, carry these four required keys and
-only the optional `backlog_origin` key:
+only the optional `backlog_origin` key (plus the optional `explore_origin` key above):
 
 ```yaml
 schema: sai-workflow

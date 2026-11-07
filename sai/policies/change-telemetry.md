@@ -17,6 +17,18 @@ An in-session route runs inside an explore session that carries no invocation of
 - **Plan - Unattended:** the plan coordinator is followed inside the explore session; its Telemetry paragraph in `sai/commands/plan/coordinator.md` passes the in-session command of this route and its `--run-dir`. It collects at the plan Close, before the run is closed and before the closing line.
 - **Direct Build - Unattended:** the Direct Build coordinator collects with `--command sai-explore-direct-build`, `--status completed`, and `--run-dir` set to its run directory after the archive worker's clean `completed` result and before its terminal report, then makes the second local commit. Its fix loop writes `reviews/implement-round-{k}.md`, so the Implement findings come from the first and last round files; Backfill and Archive carry no tally. A run that stops before that point records nothing.
 
+## Exploration
+
+A change whose `.openspec.yaml` carries `explore_origin` (the list of opencode origin sessions persisted from the block's `**Explore origin**` line, `@sai/policies/ready-to-propose-format.md`) also records the exploration that produced it. The collector does this by itself, with no extra flag and no change to a command's contract, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session routes record it.
+
+- The exploration is recorded once per change, as the `## Exploration` section written by the first collection that writes `telemetry.md`. A later collection leaves it unchanged. A change without `explore_origin` has no such section.
+- It holds one segment per listed session; a session listed twice yields one segment. A segment is the coordinator and the subagents of the session's `explore` invocations, minus every route window of that session. A route window is the interval from a slice's first route worker to the run of its collector. In the session where the route runs, the segment ends at the route's first worker, so each slice records its own segment.
+- A segment is marked shared and names the sibling changes that had a route window in that exploration. Other slices without a route window may exist, because the slice inventory is not in `opencode.db`. Adding several `telemetry.md` files counts a shared exploration more than once.
+- A session that is not in the local `opencode.db` (another machine, a pruned database) or holds no `/sai-explore` invocation is recorded as `unavailable`; the other segments and the route execution are still recorded.
+- A proof-of-concept worker of the exploration falls inside the segment, under "Other agents"; the proof of concept yields no telemetry of its own.
+
+The explore coordinator finds the session it lists with `node <tool-path> explore-origin --harness opencode --session <sessionID>` (`change-telemetry.js`, resolved per `tool-resolution.md`), passing the `sessionID` of a subagent it already dispatched in this chat. See `sai/commands/explore/steps/crystallization-protocol.md` § Explore origin.
+
 ## Collect
 
 Run `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change {name} --cwd <project-root> --status <status> [--run-dir <run directory>]` (`change-telemetry.js`, resolved per `tool-resolution.md`) once, after the last segment ended and before the closing line.

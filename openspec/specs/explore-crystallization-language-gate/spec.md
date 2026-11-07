@@ -218,3 +218,11 @@ Under the crystallization language gate, the `**Depends on**`, `**Backlog origin
 #### Scenario: Fixed literals stay English in a non-English block
 - **WHEN** a non-English crystallization language is chosen and the emitted block carries `**Depends on**`, `**Backlog origin**`, and `**Specs**: none — <reason>` lines
 - **THEN** the labels, the `**Depends on**` values, the `**Backlog origin**` URL, and the literal `none` with its em dash are rendered in English and verbatim, and only the Specs reason is rendered in the chosen language
+
+### Requirement: Explore origin scaffolding stays English
+
+Under the crystallization language gate, the `**Explore origin**` bold field label and its value SHALL remain English scaffolding and verbatim, regardless of the chosen language.
+
+#### Scenario: a translated block keeps the Explore origin line verbatim
+- **WHEN** a non-English crystallization language is chosen and the emitted block carries `**Explore origin**: opencode ses_a`
+- **THEN** that line is rendered in English and verbatim
