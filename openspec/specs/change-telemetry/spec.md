@@ -23,7 +23,7 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the opencode-only support, the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the support on both Claude Code and opencode with the fields Claude Code does not record (`cost`, `reasoning`, `variant`), the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read
@@ -67,11 +67,11 @@ On a `skipped` outcome, the coordinator SHALL add the reason as one line to its 
 
 ### Requirement: The collector skips unsupported or unsafe collections
 
-The collector SHALL return `skipped` without writing on Claude Code, saying change telemetry is not supported there yet; when the change's folder is missing, neither at `openspec/changes/{name}/` nor at `openspec/changes/archive/YYYY-MM-DD-{name}/`; when `opencode.db` or `node:sqlite` is unavailable or the schema is unsupported; when no matching execution is found; when `telemetry.md` exists but was not written by the tool; and when the execution is already recorded.
+The collector SHALL return `skipped` without writing when the change's folder is missing, neither at `openspec/changes/{name}/` nor at `openspec/changes/archive/YYYY-MM-DD-{name}/`; on opencode, when `opencode.db` or `node:sqlite` is unavailable or the schema is unsupported; on Claude Code, when the project's transcript folder is missing or unreadable; when no matching execution is found; when `telemetry.md` exists but was not written by the tool; and when the execution is already recorded.
 
 #### Scenario: Claude Code collects nothing
-- **WHEN** `/sai-build` closes on Claude Code with the setting enabled
-- **THEN** the collector returns `skipped` without reading any database, no `telemetry.md` is written, and the closing report states in one line that the harness is not supported yet
+- **WHEN** `/sai-build` closes on Claude Code with the setting enabled and the project's transcript folder cannot be read
+- **THEN** the collector returns `skipped` with the reason, no `telemetry.md` is written, and the closing report states the reason in one line
 
 #### Scenario: a hand-written telemetry file is left untouched
 - **WHEN** `openspec/changes/{name}/telemetry.md` exists without the tool's marker
@@ -87,7 +87,7 @@ The collector SHALL return `skipped` without writing on Claude Code, saying chan
 
 ### Requirement: The collector measures the latest execution of the command on the change in the project directory
 
-The collector SHALL read `opencode.db` read-only, only its V2 tables `session_v2` and `session_message`, and SHALL select the latest invocation of the command whose root session directory is the project directory, in any separator form, and whose change is the given one. An execution SHALL span from its invocation to the next invocation in the same root session, with the descendant sessions created in that span as its subagents.
+On opencode the collector SHALL read `opencode.db` read-only, only its V2 tables `session_v2` and `session_message`; on Claude Code it SHALL read the project's session transcripts read-only. It SHALL select the latest invocation of the command whose root session belongs to the project directory, in any separator form, and whose change is the given one. An execution SHALL span from its invocation to the next invocation in the same root session, with the descendant sessions (on Claude Code, the subagents) created in that span as its subagents.
 
 #### Scenario: a sibling worktree is not mixed in
 - **WHEN** a later `/sai-build` execution on the same change ran in a sibling worktree directory
@@ -127,7 +127,7 @@ A cache miss SHALL be a request with cache read `0` that is not the agent's firs
 
 ### Requirement: Dispatch calls count only as subagents dispatched
 
-Dispatch calls, recognized by the tool names `task` and `subagent`, SHALL count only as the agent's subagents dispatched and SHALL stay out of its tool-call total and breakdown, so no call is counted twice. A dispatched subagent whose child session is not in `opencode.db` SHALL appear as an `unavailable` row, and every total that depends on it SHALL be marked partial.
+Dispatch calls, recognized by the tool names `task` and `subagent` on opencode and `Agent` on Claude Code, SHALL count only as the agent's subagents dispatched and SHALL stay out of its tool-call total and breakdown, so no call is counted twice. A Claude Code `SendMessage` continuation SHALL count as no new dispatch. A dispatched subagent whose child session is not recorded (not in `opencode.db`, or with no transcript under the session's `subagents/` folder) SHALL appear as an `unavailable` row, and every total that depends on it SHALL be marked partial.
 
 #### Scenario: dispatch calls are not counted twice
 - **WHEN** an agent made two `read` calls and one `task` call
@@ -183,7 +183,7 @@ For each `/sai-plan` segment, each Plan - Unattended segment, and the Direct Bui
 
 ### Requirement: Build review findings come from review.md
 
-In the `/sai-build` review segment, found counts SHALL come from the `Summary:` tally of the review worker's first write of `review.md` recorded in `opencode.db`, and pending counts from `review.md` on disk at close, counting each finding heading without a `(FIXED)` mark. When `review.md` is absent at close, both SHALL show as `unavailable`. The implement and fix-implement segments SHALL show their findings as `unavailable`.
+In the `/sai-build` review segment, found counts SHALL come from the `Summary:` tally of the review worker's first write of `review.md` recorded by the harness (in `opencode.db` on opencode, in the review worker's transcript on Claude Code, where the write tools are `Write`, `Edit`, and `MultiEdit`), and pending counts from `review.md` on disk at close, counting each finding heading without a `(FIXED)` mark. When `review.md` is absent at close, both SHALL show as `unavailable`. The implement and fix-implement segments SHALL show their findings as `unavailable`.
 
 #### Scenario: review.md absent at close
 - **WHEN** a `/sai-build` execution closes with no `openspec/changes/{name}/review.md` on disk
@@ -295,7 +295,7 @@ The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Di
 
 ### Requirement: A change with explore_origin records its exploration once
 
-When the change's `.openspec.yaml` lists `explore_origin` sessions, the collector SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it.
+When the change's `.openspec.yaml` lists `explore_origin` sessions, an opencode collection SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it on opencode. A Claude Code collection SHALL record no exploration and write no `## Exploration` section.
 
 #### Scenario: the first collection writes the exploration
 - **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` reads `explore_origin: [ses_origin]` and the file has no `## Exploration` section
@@ -356,3 +356,51 @@ When a listed session is not a root session in the local `opencode.db`, or holds
 #### Scenario: the documentation names the exploration section
 - **WHEN** `docs/project-settings.md` and `sai/policies/change-telemetry.md` are read
 - **THEN** both describe the `Exploration` section recorded from `explore_origin`
+
+### Requirement: On Claude Code the collector reads the session transcripts through the shared reader
+
+On Claude Code the collector SHALL read the project's session transcripts read-only through the shared reader `sai/tools/claude-transcripts.js`: `<config>/projects/<encoded-project>/<session>.jsonl` and, beside it, `<session>/subagents/agent-<id>.jsonl` with `agent-<id>.meta.json`, where `<config>` is `CLAUDE_CONFIG_DIR` when set and `~/.claude` otherwise. The same `experimental.changeTelemetry` setting SHALL gate collection on Claude Code and on opencode. The collector SHALL select its source by `--harness`, and both sources SHALL give the measurement the same request shape, so a Claude Code section has the same sections, rows, and totals as an opencode section.
+
+#### Scenario: a direct /sai-plan is measured on Claude Code
+- **WHEN** `collect --harness claude --command sai-plan` runs for a change whose `/sai-plan` execution is in the project's session transcripts
+- **THEN** the collector writes a `telemetry.md` section with the coordinator row and the rows of the spec and design workers read from the session transcript and its `subagents/` folder
+
+#### Scenario: a missing transcript folder skips the collection
+- **WHEN** the project's transcript folder under `CLAUDE_CONFIG_DIR` (or `~/.claude`) is missing or unreadable
+- **THEN** the collector returns `skipped` with the reason and writes no `telemetry.md`
+
+### Requirement: On Claude Code an execution is anchored on its invocation record or its workers
+
+On Claude Code the collector SHALL anchor a direct `/sai-plan` or `/sai-build` execution on its `<command-name>` user record in the session transcript, spanning to the next SAI command invocation of that session, and an in-session `/sai-explore` route on the `agentType` of its worker subagents. The execution identifier SHALL combine the session id and the anchor record's id. An execution that is not in the session transcripts SHALL make the collector return `skipped` with the reason and write no partial section.
+
+#### Scenario: a Plan - Unattended route is found through its workers
+- **WHEN** `collect --harness claude --command sai-explore-plan` runs and an explore session holds `sai-1-spec-proposal-worker` and `sai-2-design-worker` subagents that wrote the change
+- **THEN** the section measures that explore session from its first writing worker
+
+#### Scenario: a run split by /clear is not found
+- **WHEN** `/clear` started a new Claude Code session in the middle of the run, so the session transcript holds no invocation of the command on the change
+- **THEN** the collector returns `skipped` with the reason and writes no section
+
+### Requirement: Claude Code figures come only from what the transcripts record
+
+On Claude Code each request SHALL be one assistant `message.id`, however many transcript lines repeat it; each tool call SHALL count once by its `tool_use` id; and a `tool_result` with `is_error: true` SHALL count as one tool error of the tool call it answers. `Cache write` SHALL be the sum of the 5-minute and 1-hour cache creation tokens, or the unsplit cache creation value when the transcript has no split. `cost`, `reasoning`, and `variant` SHALL be `unavailable` in every Claude Code row and total, never `0`, and each Claude Code section SHALL carry a note saying that the transcripts record none of them. No figure SHALL be estimated.
+
+#### Scenario: repeated lines of one response are one request
+- **WHEN** a subagent transcript holds three lines with the same `message.id`
+- **THEN** that agent's row counts one request and its tokens once
+
+#### Scenario: the cache write adds the 5-minute and 1-hour writes
+- **WHEN** a request's usage carries `ephemeral_5m_input_tokens` 100 and `ephemeral_1h_input_tokens` 50
+- **THEN** its cache write is 150
+
+#### Scenario: cost, reasoning, and variant are unavailable on Claude Code
+- **WHEN** a section is written from Claude Code transcripts
+- **THEN** its cost, reasoning, and variant are `unavailable` in every row and total, no cost figure appears, and the section carries the note that Claude Code transcripts record none of them
+
+### Requirement: Each section names its harness
+
+Each execution section SHALL name the harness it was collected from (`Claude Code` or `opencode`) beside its session. One `telemetry.md` MAY hold executions from both harnesses; a change total SHALL add each field over the executions that recorded it and SHALL be marked partial with `≥` when any execution lacks that field.
+
+#### Scenario: a mixed-harness change total is partial for cost
+- **WHEN** a `telemetry.md` holds an opencode execution with a known cost and a Claude Code execution is appended
+- **THEN** the Claude Code section reads `Harness: Claude Code`, and the change total's cost is marked `≥`
