@@ -29,6 +29,15 @@ A change whose `.openspec.yaml` carries `explore_origin` (the list of origin ses
 
 The explore coordinator finds the session it lists with `node <tool-path> explore-origin --harness <claude|opencode> --session <sessionID>` (`change-telemetry.js`, resolved per `tool-resolution.md`). On opencode it passes the `sessionID` of a subagent it already dispatched in this chat. On Claude Code it passes its own session id, which the wrapper's `Session id: ${CLAUDE_SESSION_ID}` line carries; a value still reading `${CLAUDE_SESSION_ID}` is absent and records no origin. See `sai/commands/explore/steps/crystallization-protocol.md` § Explore origin.
 
+## Cache-warming wakes
+
+The collector also measures what cache warming spends (`@sai/policies/cache-warming.md`), so its timings can be tuned against measured cost. It does this by itself, on both harnesses, with no flag and no change to a command's contract; it never changes the outcome of a run.
+
+- **Wake.** The turn of an agent that the completion of its own `wait.js … warm` background wait opens, the main session included, a hand-off wait among them. It is found from the wait command, never from the description of the background task and never from an `ok` reply: on Claude Code the turn opened by the `<task-notification>` whose task id is the background id returned for a shell call that runs `wait.js` with `warm`; on opencode the turn opened by the `synthetic` shell message (`metadata.source: "shell"`) whose `<shell … command="…">` runs `wait.js` with `warm`. A wait that returned `finished` (end of the window, or superseded by a later arm) is a wake. An `ok` that answers a `dispose` message, or that closes a turn no completed wait opened, is not.
+- **Wake count.** The wakes of an agent in the window of its section; a run whose agents never armed a wait reports zero for each. The per-agent tables carry it as the `Wakes` column, and the change total adds it.
+- **Wake cost.** Every request of the wake turns (the re-arm and the `ok` reply included): requests, input, output, reasoning, cache read, cache write, and cost. These requests stay inside the ordinary figures, so no existing total changes meaning; the `Cache-warming wakes` table at the end of each execution section, and of each exploration segment, lists them per agent with the total of the table. On Claude Code the cost and reasoning columns are `unavailable`, as in every Claude Code row.
+- **Unavailable, not zero.** A subagent session that is not recorded has no wake figure, and a total that depends on it is marked `≥`. A section written before this column existed keeps its text, and the change total marks its wakes `≥`.
+
 ## Collect
 
 Run `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change {name} --cwd <project-root> --status <status> [--run-dir <run directory>]` (`change-telemetry.js`, resolved per `tool-resolution.md`) once, after the last segment ended and before the closing line.
