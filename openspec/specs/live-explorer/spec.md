@@ -7,7 +7,7 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: One live explorer per coordinator
 
-A coordinator SHALL keep one explorer for its whole run and reuse it for every sequential search. The first search SHALL open the explorer through the unchanged ready handshake, and each later sequential search SHALL be a continuation on the same handle with no new ready and its own per-segment tool-call ceiling. Searches that run at once SHALL start additional explorers, which are reused the same way. Explorer task messages and continuations SHALL carry no warming line, and an explorer's result SHALL declare `warming: false` in its always-present `warming` field; a coordinator that will reuse an explorer after an idle stretch MAY first send it the `warm-up` order of `cache-warming.md`. A live explorer SHALL NOT be disposed between searches. The coordinator SHALL dispose every live explorer, under `sai/policies/worker-lifecycle.md` and whatever its latest `warming` declaration, at the route end, on abandon or stop, and at run close. ADR 0202 SHALL record this as an amendment of ADR 0188 decision 3, referencing ADR 0194.
+A coordinator SHALL keep one explorer for its whole run and reuse it for every sequential search. The first search SHALL open the explorer through the unchanged ready handshake, and each later sequential search SHALL be a continuation on the same handle with no new ready and its own per-segment tool-call ceiling. Searches that run at once SHALL start additional explorers, which are reused the same way. Explorer task messages and continuations SHALL end with the warming switch of `cache-warming.md`, because the coordinator disposes the explorer; the explorer SHALL arm after each result and stay warm between searches until it is disposed or its `max` window closes, and its always-present `warming` field SHALL be the diagnostic of that policy. A live explorer SHALL NOT be disposed between searches. The coordinator SHALL dispose every live explorer, under `sai/policies/worker-lifecycle.md` and whatever its latest `warming` diagnostic, at the route end, on abandon or stop, and at run close. ADR 0202 SHALL record this as an amendment of ADR 0188 decision 3, referencing ADR 0194.
 
 #### Scenario: Second sequential search reuses the explorer
 - **WHEN** a coordinator runs a second sequential search after the first completed
@@ -19,7 +19,7 @@ A coordinator SHALL keep one explorer for its whole run and reuse it for every s
 
 #### Scenario: Explore route ends
 - **WHEN** a `/sai-explore` route ends or is abandoned
-- **THEN** the coordinator disposes all its live explorers, whatever their latest `warming` declaration
+- **THEN** the coordinator disposes all its live explorers, whatever their latest `warming` diagnostic
 
 #### Scenario: Continuation keeps its own ceiling
 - **WHEN** a live explorer receives a later search as a continuation

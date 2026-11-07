@@ -31,7 +31,7 @@ Give one task per spawn: what to do, the files or area it covers, and, when you 
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-The task message carries no warming line, and the result declares `warming: false`. When the card you follow reuses the subagent after an idle stretch, send it the policy's `warm-up` order first. The coordinator disposes the helper after its result, as `@sai/policies/worker-lifecycle.md` says, whatever its `warming` declaration.
+A one-shot task message carries no warming switch, because the coordinator disposes the helper after its result, as `@sai/policies/worker-lifecycle.md` says, whatever its `warming` diagnostic. When the card you follow continues the subagent with further messages, end each message with the warming switch of `@sai/policies/cache-warming.md`.
 
 ## Task contract
 

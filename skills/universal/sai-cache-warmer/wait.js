@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
 
@@ -12,6 +13,16 @@ const CHAIN_PREFIX = 'warm-chain-';
 const CUTOFF_FILE = 'warming-cutoff.json';
 const CHAIN_STALE_MS = 24 * 3600000;
 const CHAIN_ID = /^[0-9a-f]{16}$/;
+const HARNESSES = ['claude', 'opencode'];
+const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+// The install root: `<root>/skills/sai-cache-warmer/wait.js`, or `<repo>/skills/universal/sai-cache-warmer/wait.js` in a
+// source checkout. The shared tools sit at `sai/tools` of that root.
+const INSTALL_ROOT = [path.resolve(__dirname, '..', '..'), path.resolve(__dirname, '..', '..', '..')]
+  .find(root => fs.existsSync(path.join(root, 'sai', 'tools', 'temp-root.js'))) ?? path.resolve(__dirname, '..', '..');
+const STDIN_GRACE_MS = 2000;
+
+/** A misuse of the command line (exit 2); every other failure exits 1. */
+class UsageError extends Error {}
 
 function intervalMilliseconds(value) {
   const match = /^(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?|h|hr|hours?)?$/i.exec(String(value ?? '').trim());
@@ -124,11 +135,13 @@ async function waitOnce(state, { now = Date.now, wait = sleep } = {}) {
   return { status: now() >= state.closing_ms ? 'finished' : 'continue', waited_ms };
 }
 
-// Agent self-warming (sai/policies/cache-warming.md): `interval` and `max` are minutes, with no target time and
-// no closing margin. The first call of a real message opens the window (`max` from now); each re-arm after a wake
-// passes the returned `state` back unchanged, so the window closes `max` minutes after the agent's last real task or
-// continuation. A real message passes the `chain` id of the agent's last returned state, which supersedes the
-// waits that the chain armed before.
+// Agent self-warming (sai/policies/cache-warming.md): `interval` and `max` are minutes, with no target time and no
+// closing margin. `begin` runs once in the foreground per agent: it resolves the agent's timings from the project
+// settings, stores the agent's identity in its chain record, and prints the chain id. `warm --chain <id>` arms after
+// each real message and opens a window of `max` minutes from now; each re-arm after a wake passes the returned `state`
+// back (`warm --state <token>`), so the window closes `max` minutes after the agent's last real task or continuation.
+// Every arm and every wake resolves the timings again from the stored identity, so a changed setting applies with no
+// agent restart.
 function warmState({ interval, max }, now = Date.now()) {
   const interval_ms = intervalMilliseconds(interval);
   const max_ms = intervalMilliseconds(max);
@@ -137,13 +150,26 @@ function warmState({ interval, max }, now = Date.now()) {
   return { interval_ms, closing_ms: now + max_ms };
 }
 
-/** A fresh chain id. An agent asks for one before its first arm, because a wait returns its state only at its wake. */
+/** A fresh chain id of an agent that is not the main session. */
 const newChainId = () => crypto.randomBytes(8).toString('hex');
+
+/** The chain id of a main session: the same harness session always owns the same chain. */
+const sessionChainId = (harness, session) => crypto.createHash('sha256').update(`${harness}:${session}`).digest('hex').slice(0, 16);
 
 /** The SAI temp root of the harness that installed this script. */
 function defaultSaiRoot() {
-  const tempRoot = require(path.resolve(__dirname, '..', '..', 'sai', 'tools', 'temp-root.js'));
+  const tempRoot = require(path.resolve(INSTALL_ROOT, 'sai', 'tools', 'temp-root.js'));
   return tempRoot.resolveTempRoot(tempRoot.harnessFromInstalledPath(__filename));
+}
+
+/** The effective timings of an identity: `off` or `{ interval, max }`. Unreadable settings are `off`. */
+function defaultResolve(identity) {
+  if (identity.fixed) return identity.fixed;
+  try {
+    const settings = require(path.resolve(INSTALL_ROOT, 'sai', 'tools', 'project-settings.js'));
+    const { provider, model, role, harness, cwd } = identity;
+    return settings.warming({ provider, model, role, harness }, { cwd }).warming;
+  } catch { return 'off'; }
 }
 
 function readJson(file) {
@@ -163,17 +189,33 @@ function writeAtomic(file, text) {
 }
 
 const chainFile = (saiRoot, chain) => {
-  if (typeof chain !== 'string' || !CHAIN_ID.test(chain)) throw new Error('Warming chain must be the id that an earlier warm call returned.');
+  if (typeof chain !== 'string' || !CHAIN_ID.test(chain)) throw new UsageError('Warming chain must be the id that begin returned.');
   return path.join(saiRoot, `${CHAIN_PREFIX}${chain}.json`);
 };
+
+/** The chain record of a `begin`, which holds the identity that every arm and wake resolves its timings from. */
+function chainRecord(saiRoot, chain) {
+  const record = readJson(chainFile(saiRoot, chain));
+  if (!record?.identity) throw new UsageError('Warming chain has no record: run begin first, and pass the chain it returned.');
+  return record;
+}
 
 /** Make the chain's newest generation the current one. */
 function bumpGeneration(saiRoot, chain, now) {
   const file = chainFile(saiRoot, chain);
-  const held = readJson(file)?.generation;
+  const record = readJson(file);
+  const held = record?.generation;
   const generation = (Number.isSafeInteger(held) ? held : 0) + 1;
-  writeAtomic(file, `${JSON.stringify({ generation, updated_ms: now })}\n`);
+  writeAtomic(file, `${JSON.stringify({ ...record, generation, updated_ms: now })}\n`);
   return generation;
+}
+
+/** Refresh the record's modification time, so the age prune never reaches a chain that still arms. */
+function touchChain(saiRoot, chain) {
+  try {
+    const stamp = new Date();
+    fs.utimesSync(chainFile(saiRoot, chain), stamp, stamp);
+  } catch (error) { if (error instanceof UsageError) throw error; /* a missing record means the chain already ended */ }
 }
 
 /** Remove chain records that no live window can still need. Best effort. */
@@ -195,86 +237,190 @@ function superseded(state, saiRoot) {
   return Number.isFinite(cutoff) && state.armed_ms < cutoff;
 }
 
-function releaseChain(saiRoot, state) {
-  const file = chainFile(saiRoot, state.chain);
-  if (readJson(file)?.generation === state.generation) fs.rmSync(file, { force: true });
+// A chain keeps its record when its window closes or its setting turns off: the same agent arms again after its next real
+// message with the same chain id, and the generation must keep counting up so that no earlier wait looks current. The
+// age prune removes the record 24 hours after its last arm or wake.
+
+/** The `model` of an agent file's frontmatter, as written. */
+function frontmatterModel(text) {
+  const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  const line = block && /^model:[ \t]*(.+?)[ \t]*$/m.exec(block[1]);
+  return line ? line[1].replace(/^(["'])(.*)\1$/, '$2') : undefined;
 }
 
-// A re-arm may carry a freshly resolved `interval`; the window closes where it was set.
-async function warmOnce(input, io = {}) {
+/** The folders whose `<name>.md` can hold an installed agent of one harness: project-local, install root, user-global. */
+function agentFolders(harness, cwd, home = os.homedir()) {
+  const project = path.join(cwd, harness === 'claude' ? '.claude' : '.opencode', 'agents');
+  const user = harness === 'claude' ? path.join(home, '.claude', 'agents') : path.join(home, '.config', 'opencode', 'agents');
+  return [...new Set([project, path.join(INSTALL_ROOT, 'agents'), user])];
+}
+
+/**
+ * The provider and model of a subagent, from the `model` frontmatter of its installed agent file. On Claude Code the
+ * provider is `anthropic` and the model is the value as written; on opencode the value is `<provider>/<model>`.
+ */
+function agentIdentity(name, harness, { cwd, folders = agentFolders(harness, cwd) }) {
+  if (!AGENT_NAME.test(name)) throw new UsageError('--agent must be the name of an installed agent.');
+  const file = folders.map(folder => path.join(folder, `${name}.md`)).find(candidate => fs.existsSync(candidate));
+  const model = file ? frontmatterModel(fs.readFileSync(file, 'utf8')) : undefined;
+  if (harness === 'claude') return { provider: 'anthropic', ...(model === undefined ? {} : { model }) };
+  const slash = model === undefined ? -1 : model.indexOf('/');
+  if (slash <= 0) throw new Error(`Agent ${name} has no <provider>/<model> in the model frontmatter of an installed agent file.`);
+  return { provider: model.slice(0, slash), model: model.slice(slash + 1) };
+}
+
+/**
+ * The foreground start of an agent's warming. A subagent names its installed agent file (`agent`); the main session
+ * names its provider and model (`role: 'agent'`). Prints `{ chain, warming }`: `off` (no chain, nothing to arm) or
+ * the resolved `{ interval, max }` with the chain every later `warm --chain` passes. The main session's chain follows
+ * its harness session id, so a later command invocation in the same chat returns the chain it already owns.
+ */
+function beginOnce(input, io = {}) {
   const now = io.now ?? Date.now;
-  if (!input.state) {
-    const base = warmState(input, now());
-    const saiRoot = io.saiRoot ?? defaultSaiRoot();
-    const chain = input.chain === undefined ? newChainId() : input.chain;
-    const generation = bumpGeneration(saiRoot, chain, now());
-    pruneChains(saiRoot, now());
-    return waitWith({ ...base, chain, generation, armed_ms: now() }, { ...io, saiRoot });
+  const cwd = io.cwd ?? process.cwd();
+  const { harness } = input;
+  if (!HARNESSES.includes(harness)) throw new UsageError(`begin needs --harness ${HARNESSES.join('|')}`);
+  let identity;
+  if (input.agent !== undefined) {
+    if ([input.role, input.provider, input.model, input.interval, input.max].some(value => value !== undefined)) throw new UsageError('begin takes --agent alone for a subagent; --role, --provider, --model, --interval and --max belong to the main session');
+    identity = { ...agentIdentity(input.agent, harness, { cwd, folders: io.agentFolders }), role: 'subagent' };
+  } else {
+    if (input.role !== 'agent' || !input.provider) throw new UsageError('begin takes --agent for a subagent, or --role agent --provider <p> for the main session');
+    identity = { provider: input.provider, ...(input.model === undefined ? {} : { model: input.model }), role: 'agent' };
+    // Timings the user chose in the conversation (the explore hand-off wait) replace the settings for this chain.
+    if (input.interval !== undefined || input.max !== undefined) {
+      const fixed = { interval: Number(input.interval), max: Number(input.max) };
+      try { warmState(fixed); } catch { throw new UsageError('--interval and --max must be given together, as positive numbers of minutes with max at least interval'); }
+      identity.fixed = fixed;
+    }
   }
-  if (input.interval === undefined) return waitWith(input.state, io);
-  const interval_ms = intervalMilliseconds(input.interval);
-  if (interval_ms === null) throw new Error('Warming needs a positive interval in minutes.');
-  return waitWith({ ...input.state, interval_ms }, io);
+  identity = { ...identity, harness, cwd };
+  const warming = (io.resolve ?? defaultResolve)(identity);
+  if (warming === 'off') return { chain: null, warming: 'off' };
+  const saiRoot = io.saiRoot ?? defaultSaiRoot();
+  const session = input.session ?? (harness === 'claude' ? process.env.CLAUDE_CODE_SESSION_ID : process.env.OPENCODE_SESSION_ID);
+  const chain = identity.role === 'agent' && session ? sessionChainId(harness, session) : newChainId();
+  const file = chainFile(saiRoot, chain);
+  const held = readJson(file);
+  writeAtomic(file, `${JSON.stringify({ generation: Number.isSafeInteger(held?.generation) ? held.generation : 0, updated_ms: now(), identity })}\n`);
+  touchChain(saiRoot, chain);
+  pruneChains(saiRoot, now());
+  return { chain, warming };
+}
+
+/** Arm after a real message: a new generation supersedes the chain's earlier waits, and the window opens now. */
+async function armOnce(chain, io) {
+  const now = io.now ?? Date.now;
+  const saiRoot = io.saiRoot ?? defaultSaiRoot();
+  const record = chainRecord(saiRoot, chain);
+  const timings = (io.resolve ?? defaultResolve)(record.identity);
+  if (timings === 'off') return { status: 'finished', waited_ms: 0, state: { chain } };
+  const base = warmState(timings, now());
+  const generation = bumpGeneration(saiRoot, chain, now());
+  touchChain(saiRoot, chain);
+  pruneChains(saiRoot, now());
+  return waitWith({ ...base, chain, generation, armed_ms: now() }, { ...io, saiRoot });
+}
+
+/** Re-arm after a wake: the timings are resolved again, and a new interval applies from this wait. The window stays. */
+async function wakeOnce(state, io) {
+  if (!state || typeof state !== 'object' || !state.chain) throw new UsageError('warm --state needs the state_token that a wake returned from a begin chain.');
+  const saiRoot = io.saiRoot ?? defaultSaiRoot();
+  if (superseded(state, saiRoot)) return { status: 'finished', waited_ms: 0, state };
+  const timings = (io.resolve ?? defaultResolve)(chainRecord(saiRoot, state.chain).identity);
+  if (timings === 'off') return { status: 'finished', waited_ms: 0, state };
+  const interval_ms = intervalMilliseconds(timings.interval);
+  touchChain(saiRoot, state.chain);
+  return waitWith(interval_ms === null ? state : { ...state, interval_ms }, { ...io, saiRoot });
+}
+
+async function warmOnce(input, io = {}) {
+  if (input.state !== undefined) return wakeOnce(input.state, io);
+  if (input.chain === undefined) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
+  return armOnce(input.chain, io);
 }
 
 async function waitWith(state, io) {
-  const saiRoot = state.chain ? (io.saiRoot ?? defaultSaiRoot()) : null;
-  if (saiRoot && superseded(state, saiRoot)) return { status: 'finished', waited_ms: 0, state };
+  const saiRoot = io.saiRoot;
+  if (superseded(state, saiRoot)) return { status: 'finished', waited_ms: 0, state };
   const result = await waitOnce(state, io);
-  if (saiRoot) {
-    if (superseded(state, saiRoot)) return { status: 'finished', waited_ms: result.waited_ms, state };
-    if (result.status === 'finished') releaseChain(saiRoot, state);
-  }
+  if (superseded(state, saiRoot)) return { status: 'finished', waited_ms: result.waited_ms, state };
   return { ...result, state };
 }
 
-const ARGV_FLAGS = ['--interval', '--max', '--chain', '--state'];
+const FLAGS = {
+  begin: ['--agent', '--role', '--provider', '--model', '--harness', '--session', '--interval', '--max'],
+  warm: ['--chain', '--state'],
+};
 
-/**
- * The argv form of `warm`: `--interval <n> --max <n> [--chain <id>]` arms a wait, and `--state <token> [--interval <n>]`
- * re-arms it. The token is the base64url `state_token` a previous wake returned, so no JSON, brace, or quote is typed.
- */
-function inputFromArgv(args) {
+/** Strict `--flag value` pairs of one subcommand; an unknown flag or a missing value is a usage error. */
+function parseFlags(command, args) {
   const values = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!ARGV_FLAGS.includes(args[i]) || i + 1 >= args.length) throw new Error(`warm takes ${ARGV_FLAGS.join(', ')} each with a value`);
+    if (!FLAGS[command].includes(args[i]) || i + 1 >= args.length) throw new UsageError(`${command} takes ${FLAGS[command].join(', ')} each with a value`);
     values[args[i].slice(2)] = args[i + 1];
   }
-  const number = (name, text) => { const value = Number(text); if (!Number.isFinite(value) || value <= 0) throw new Error(`--${name} needs a positive number of minutes`); return value; };
+  return values;
+}
+
+/** The argv form of `warm`: `--chain <id>` arms a wait, and `--state <token>` (the `state_token` of a wake) re-arms it. */
+function inputFromArgv(args) {
+  const values = parseFlags('warm', args);
   if (values.state !== undefined) {
+    if (values.chain !== undefined) throw new UsageError('warm takes --chain or --state, not both');
     let state;
     try { state = JSON.parse(Buffer.from(values.state, 'base64url').toString('utf8')); } catch { state = null; }
-    if (!state || typeof state !== 'object') throw new Error('--state is not a state token');
-    return values.interval === undefined ? { state } : { state, interval: number('interval', values.interval) };
+    if (!state || typeof state !== 'object') throw new UsageError('--state is not a state token');
+    return { state };
   }
-  if (values.interval === undefined || values.max === undefined) throw new Error('warm needs --interval and --max, or --state');
-  return { interval: number('interval', values.interval), max: number('max', values.max), ...(values.chain === undefined ? {} : { chain: values.chain }) };
+  if (values.chain === undefined) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
+  return { chain: values.chain };
+}
+
+/** The argv form of `begin`. */
+function beginInputFromArgv(args) {
+  return parseFlags('begin', args);
 }
 
 const stateToken = state => Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
 
+/** All of stdin. A `warm` with no arguments waits only `graceMs` for it, so a forgotten flag fails instead of hanging. */
+async function readStdin(graceMs) {
+  let text = '';
+  const timer = graceMs === undefined ? null : setTimeout(() => process.stdin.destroy(), graceMs);
+  try { for await (const chunk of process.stdin) text += chunk; } catch { /* destroyed after the grace period */ }
+  clearTimeout(timer);
+  return text;
+}
+
+const isInputFile = arg => arg === '--input-file' || arg.startsWith('--input-file=');
+
 if (require.main === module) {
   (async () => {
-    const command = process.argv[2];
-    if (command === 'chain') return console.log(JSON.stringify({ chain: newChainId() }));
-    if (command === 'warm' && process.argv.slice(3).some(arg => ARGV_FLAGS.includes(arg))) {
-      const result = await warmOnce(inputFromArgv(process.argv.slice(3)));
+    const [command, ...args] = process.argv.slice(2);
+    if (command === 'begin') return console.log(JSON.stringify(beginOnce(beginInputFromArgv(args))));
+    if (command === 'warm' && args.length && !args.some(isInputFile)) {
+      const result = await warmOnce(inputFromArgv(args));
       return console.log(JSON.stringify({ ...result, state_token: stateToken(result.state) }));
     }
+    if (command === 'warm' && !args.length && process.stdin.isTTY) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
     let text = '';
-    if (process.argv.slice(3).some(arg => arg === '--input-file' || arg.startsWith('--input-file='))) {
-      // The shared reader sits at `sai/tools` of the install root, or of the source checkout.
-      const reader = require(['../../sai/tools', '../../../sai/tools'].map(dir => path.resolve(__dirname, dir, 'input-reader.js')).find(file => fs.existsSync(file)));
-      text = reader.readInputFile(reader.extractInputFile(process.argv.slice(3)).inputFile);
-    } else for await (const chunk of process.stdin) text += chunk;
+    if (args.some(isInputFile)) {
+      const reader = require(path.join(INSTALL_ROOT, 'sai', 'tools', 'input-reader.js'));
+      text = reader.readInputFile(reader.extractInputFile(args).inputFile);
+    } else text = await readStdin(command === 'warm' && !args.length ? STDIN_GRACE_MS : undefined);
+    if (command === 'warm' && !text.trim()) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
     const input = JSON.parse(text);
-    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use prepare, wait or warm with JSON in --input-file <path> (stdin also accepted), or chain.');
+    if (!['prepare', 'wait', 'warm'].includes(command)) throw new Error('Use begin with flags, or prepare, wait or warm with JSON in --input-file <path> (stdin also accepted).');
     const run = { prepare: () => prepare(input), wait: () => waitOnce(input), warm: () => warmOnce(input) }[command];
     console.log(JSON.stringify(await run()));
   })().catch(error => {
     console.error(JSON.stringify({ status: 'failed', message: error.message }));
-    process.exitCode = 1;
+    process.exitCode = error instanceof UsageError ? 2 : 1;
   });
 }
 
-module.exports = { inputFromArgv, stateToken, CUTOFF_FILE, newChainId, intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, warmOnce };
+module.exports = {
+  UsageError, inputFromArgv, beginInputFromArgv, stateToken, CUTOFF_FILE, CHAIN_STALE_MS, newChainId, sessionChainId,
+  intervalMilliseconds, splitArguments, prepare, waitOnce, warmState, beginOnce, warmOnce, frontmatterModel, agentIdentity,
+};

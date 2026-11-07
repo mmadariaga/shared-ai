@@ -33,7 +33,7 @@ Run a path a tool returned, never a path you composed:
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`, `temp-root.js`, `change-telemetry.js`) for `<name>` below.
+`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`, `temp-root.js`, `change-telemetry.js`, `dispose-shells.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 

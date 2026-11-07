@@ -36,7 +36,7 @@ The model for `budget-executor` subagents is controlled by the `model` frontmatt
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-The executor never arms: its report declares `warming: false`, so it is never sent a warming line or a `warm-up`. The coordinator still disposes it after its report, as `@sai/policies/worker-lifecycle.md` says.
+The executor never arms: its report declares `warming: false`, so it is never sent the warming switch. The coordinator still disposes it after its report, as `@sai/policies/worker-lifecycle.md` says.
 
 ## Cost model
 

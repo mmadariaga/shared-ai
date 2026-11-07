@@ -36,8 +36,8 @@ Read the answers:
 
 Arm the hand-off wait as the last tool call of the hand-off close turn, then end the turn with the hand-off text unchanged:
 
-1. Reuse the chain in `handoff_wait` when one exists, and otherwise run `node "<wait-path>" chain` in the foreground (`cache-warming.md` § Arm, wake, and window).
-2. Launch `wait.js warm` in the background with `{"interval": <interval>, "max": <max>, "chain": "<chain>"}`, as that section states for each harness.
+1. Run `begin` in the foreground as `cache-warming.md` § Begin states for the main session. When the timings are the user's answers (`handoff_answer`), add `--interval <interval> --max <max>`; when they come from the setting, add nothing, and `begin` resolves the setting again. A `begin` that prints `off` or fails arms nothing: say so in one line when it failed, leave `handoff_wait` unset, and end this file.
+2. Launch `wait.js warm --chain <chain>` in the background, as `cache-warming.md` § Arm, wake, and window states for each harness.
 3. Set `handoff_wait` to the background task id and the chain.
 
 The deadline is `max` minutes after this arm. Only a wake re-arms, with the state it returned, and it updates the task id in `handoff_wait`; a real message other than `next-slice` neither re-arms the wait nor moves the deadline. At the deadline the wait ends by itself and no wake follows.
