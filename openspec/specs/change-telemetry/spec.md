@@ -295,7 +295,7 @@ The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Di
 
 ### Requirement: A change with explore_origin records its exploration once
 
-When the change's `.openspec.yaml` lists `explore_origin` sessions, an opencode collection SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it on opencode. A Claude Code collection SHALL record no exploration and write no `## Exploration` section.
+When the change's `.openspec.yaml` lists `explore_origin` sessions, a collection on either harness SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it on Claude Code and on opencode. Each listed id SHALL be read with the reader of its own harness, inferred from the id's shape (`ses_…` is an opencode session, a UUID is a Claude Code session), whichever harness runs the collection, so one list MAY mix both harnesses. The exploration of a Claude Code session SHALL show its cost, reasoning, and variant as `unavailable`.
 
 #### Scenario: the first collection writes the exploration
 - **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` reads `explore_origin: [ses_origin]` and the file has no `## Exploration` section
@@ -308,6 +308,10 @@ When the change's `.openspec.yaml` lists `explore_origin` sessions, an opencode 
 #### Scenario: a change without explore_origin has no exploration
 - **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` has no `explore_origin` key
 - **THEN** the file holds no `## Exploration` section
+
+#### Scenario: a Claude Code origin session records its exploration
+- **WHEN** `collect --harness claude` writes `telemetry.md` for a change whose `.openspec.yaml` lists a Claude Code session UUID that holds a `/sai-explore` invocation in the project's transcripts
+- **THEN** the `## Exploration` section holds an `### Origin session <uuid>` subsection with the `sai-explore` coordinator row read from that transcript
 
 ### Requirement: Each origin session yields one exploration segment
 
@@ -331,27 +335,39 @@ Each segment SHALL carry a `Shared:` line. When other changes had a route window
 
 ### Requirement: An unreadable origin session is recorded as unavailable
 
-When a listed session is not a root session in the local `opencode.db`, or holds no `/sai-explore` invocation, its subsection SHALL record the exploration as `unavailable` with the reason, and the collector SHALL still record the other origin sessions and the route execution.
+When a listed session is not a root session in the local data of its harness (`opencode.db` for an opencode session, the project's Claude Code transcripts for a Claude Code session), holds no `/sai-explore` invocation, belongs to a harness whose data is absent on the machine that collects, or has an id of no known harness, its subsection SHALL record the exploration as `unavailable` with the reason, and the collector SHALL still record the other origin sessions and the route execution.
 
 #### Scenario: a session from another machine
-- **WHEN** `explore_origin` lists a session that is not in the local `opencode.db`
+- **WHEN** `explore_origin` lists a session that is not in the local data of its harness
 - **THEN** that session's subsection reads `Exploration: unavailable` with the reason, and the execution section is still written
+
+#### Scenario: an opencode origin without opencode.db on a Claude Code collection
+- **WHEN** `collect --harness claude` runs for a change whose `explore_origin` lists an opencode session and `opencode.db` is absent on the machine
+- **THEN** that session's subsection reads `Exploration: unavailable` with the reason, and the Claude Code execution section is still written
 
 ### Requirement: The collector resolves the explore root session of a subagent
 
-`sai/tools/change-telemetry.js` SHALL offer the sub-command `explore-origin --harness <claude|opencode> --session <sessionID>`. On opencode it SHALL resolve the root session of the given session through `opencodeRoot` and print `{"outcome": "found", "session": <root sessionID>}` only when that root holds a `/sai-explore` invocation; otherwise, and on Claude Code or with an unreadable database, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. A missing session, or one that does not match `ses_...`, SHALL be a usage error that exits 2. `sai/policies/tool-resolution.md` SHALL document this invocation beside `collect`.
+`sai/tools/change-telemetry.js` SHALL offer the sub-command `explore-origin --harness <claude|opencode> --session <sessionID>`. On opencode it SHALL resolve the root session of the given session through `opencodeRoot` and print `{"outcome": "found", "session": <root sessionID>}` only when that root holds a `/sai-explore` invocation; otherwise, and with an unreadable database, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. On Claude Code it SHALL print `{"outcome": "found", "session": <sessionID>}` with the given session itself only when that session is a root session of the project's Claude Code transcripts and holds a `/sai-explore` invocation; otherwise, and with an unreadable transcript folder, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. A missing session, an opencode session that does not match `ses_...`, or a Claude Code session that is not a UUID SHALL be a usage error that exits 2. `sai/policies/tool-resolution.md` SHALL document this invocation beside `collect`.
 
 #### Scenario: a subagent of an explore session
 - **WHEN** `explore-origin --harness opencode --session <explorer sessionID>` runs for an explorer dispatched by a `/sai-explore` root session
 - **THEN** it prints `{"outcome": "found", "session": <that root sessionID>}`
 
 #### Scenario: a malformed session is a usage error
-- **WHEN** `explore-origin` runs with `--session` missing or not matching `ses_...`
+- **WHEN** `explore-origin` runs with `--session` missing, with `--harness opencode` and a value not matching `ses_...`, or with `--harness claude` and a value that is not a UUID
 - **THEN** it exits 2 with a usage error
+
+#### Scenario: a Claude Code explore session is found
+- **WHEN** `explore-origin --harness claude --session <uuid>` runs for a root session of the project's transcripts that holds a `/sai-explore` invocation
+- **THEN** it prints `{"outcome": "found", "session": <uuid>}`
+
+#### Scenario: a Claude Code session without an explore invocation is skipped
+- **WHEN** `explore-origin --harness claude --session <uuid>` runs for a session that is not in the project's transcripts or holds no `/sai-explore` invocation
+- **THEN** it prints `{"outcome": "skipped", "reason": ...}` and exits 0
 
 ### Requirement: The exploration record is documented
 
-`docs/project-settings.md`, `sai/policies/change-telemetry.md` § Exploration, and the `## Exploration` part of `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL describe the exploration section: written once per change from `explore_origin`, one segment per listed session, shared segments counted in each change, an `unavailable` segment for a session missing from `opencode.db`, and every listed session ID visible in a published issue.
+`docs/project-settings.md`, `sai/policies/change-telemetry.md` § Exploration, and the `## Exploration` part of `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL describe the exploration section: written once per change from `explore_origin` on both harnesses, one segment per listed session read with the reader of its own harness, shared segments counted in each change, an `unavailable` segment for a session missing from the data of its harness (`opencode.db` or the Claude Code transcripts), the fields unavailable on Claude Code (cost, reasoning, variant), and every listed session ID visible in a published issue.
 
 #### Scenario: the documentation names the exploration section
 - **WHEN** `docs/project-settings.md` and `sai/policies/change-telemetry.md` are read

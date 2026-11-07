@@ -75,6 +75,22 @@ test('strict: an Explore origin list is accepted after Backlog origin and return
   assert.equal(checkDispatchable(withExploreOrigin('opencode ses_one')).dispatchable, true);
 });
 
+test('strict: an Explore origin list may mix harnesses, an unprefixed entry inherits the previous prefix, and ids are returned bare (E10)', () => {
+  const claude = '11111111-1111-4111-8111-111111111111', other = '22222222-2222-4222-8222-222222222222';
+  for (const [value, ids] of [
+    [`claude ${claude}`, [claude]],
+    [`opencode ses_one, claude ${claude}, ${other}`, ['ses_one', claude, other]],
+    [`claude ${claude}, opencode ses_one, ses_two`, [claude, 'ses_one', 'ses_two']],
+  ]) {
+    const verdict = checkStrict(withExploreOrigin(value));
+    assert.equal(verdict.ok, true, `${value}: ${JSON.stringify(allViolations(verdict))}`);
+    assert.deepEqual(verdict.blocks[0].explore_origin, ids, value);
+  }
+  for (const value of [claude, `opencode ${claude}`, `claude ses_one`, `opencode ses_one, ${claude}`, `claude ${claude}, ses_one`, `claude ${claude},${other}`, `codex ${claude}`, `claude ${claude} ${other}`]) {
+    assert.ok(allViolations(checkStrict(withExploreOrigin(value))).some((entry) => entry.problem === 'INVALID_EXPLORE_ORIGIN'), value);
+  }
+});
+
 test('strict: Explore origin out of order or with a malformed value fails (E12)', () => {
   for (const value of ['ses_one', 'opencode', 'opencode ses_one,ses_two', 'opencode ses_one, ', 'claude ses_one', 'opencode not-a-session', 'opencode https://x.test/ses_one']) {
     const verdict = checkStrict(withExploreOrigin(value));
