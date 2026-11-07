@@ -87,3 +87,11 @@ The ordinary and Direct Build archive routes SHALL retain the pre-move origin as
 #### Scenario: Archived origin is missing or unverifiable
 - **WHEN** the archive handoff cannot retain or verify a known pre-move origin
 - **THEN** the workflow warns and continues without inventing a closing line
+
+### Requirement: Attaching a published origin keeps the Explore origin line after it
+
+When `attach-origin` inserts a published child's `**Backlog origin**` into a stored block that has none, it SHALL insert the line before `**Explore origin**` when the block carries that line, and before `**What**` otherwise, so the block keeps the canonical field order.
+
+#### Scenario: the origin is inserted before Explore origin
+- **WHEN** `attach-origin` adds a child issue URL to a block that carries `**Explore origin**` and no `**Backlog origin**`
+- **THEN** the amended block carries `**Backlog origin**` immediately before `**Explore origin**`, and the block still passes the strict check

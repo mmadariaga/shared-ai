@@ -33,7 +33,7 @@ function pathExists(target) {
 /**
  * Read .openspec.yaml and extract key values by regex.
  * Returns object with: approval_specs_approved_at, overview_state, backfilled,
- * backlog_origin
+ * backlog_origin, explore_origin (the opencode origin sessions, a flat flow list)
  * Returns null if file doesn't exist.
  * Throws ToolError if file is unreadable.
  */
@@ -54,6 +54,7 @@ function readOpenspecYaml(yamlPath) {
     overview_state: null,
     backfilled: false,
     backlog_origin: null,
+    explore_origin: [],
   };
 
   // Extract approval.specs.approved_at - look for the nested key more flexibly
@@ -86,6 +87,12 @@ function readOpenspecYaml(yamlPath) {
   const originMatch = content.match(/^backlog_origin:[ \t]*["']?([^\s"']+)["']?[ \t]*$/m);
   if (originMatch) {
     result.backlog_origin = originMatch[1];
+  }
+
+  // Extract the origin explore sessions (flat flow list: `explore_origin: [ses_a, ses_b]`)
+  const exploreMatch = content.match(/^explore_origin:[ \t]*\[([^\]\n]*)\][ \t]*$/m);
+  if (exploreMatch) {
+    result.explore_origin = exploreMatch[1].split(',').map(part => part.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
   }
 
   return result;

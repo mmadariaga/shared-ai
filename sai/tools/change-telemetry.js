@@ -10,8 +10,9 @@
  *           --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build>
  *           --change <name> --cwd <project-dir>
  *           --status <completed|failed|stopped|blocked|unanswered> [--run-dir <dir>]
+ *   explore-origin --harness <claude|opencode> --session <sessionID>
  *
- * The coordinator runs it at its close, once. Every figure is read after the fact
+ * The coordinator runs `collect` at its close, once. Every figure is read after the fact
  * from `opencode.db` (read-only, through the shared reader in `opencode-db.js`):
  * the coordinator session and each subagent session of the latest execution of the
  * command on that change in that project directory. A direct command is found by
@@ -24,14 +25,23 @@
  * written, and only when the collection succeeds. The tool never runs git: the
  * coordinator commits the file.
  *
+ * When the change's `.openspec.yaml` lists `explore_origin` sessions, the first
+ * collection that writes `telemetry.md` also records the exploration that produced
+ * the change: one segment per listed session, made of the windows of its `explore`
+ * invocation minus the route windows of that session (and, in the route's own
+ * session, only up to the route's first worker). `explore-origin` resolves the
+ * explore root session of a subagent session, for the block's `Explore origin`.
+ *
  * It prints one JSON object and exits 0: `{outcome: "written", path, message}` or
- * `{outcome: "skipped", reason}`. A usage error exits 2 with
+ * `{outcome: "skipped", reason}`; `explore-origin` prints `{outcome: "found", session}`
+ * or `{outcome: "skipped", reason}`. A usage error exits 2 with
  * `{error: {code, message}}`.
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeChildren, changeNameFromArgs, writtenChanges } = require('./opencode-db');
+const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges } = require('./opencode-db');
+const { readOpenspecYaml } = require('./openspec-yaml');
 
 const OPEN_END = Number.MAX_SAFE_INTEGER;
 const UNAVAILABLE = 'unavailable';
@@ -182,6 +192,8 @@ function userText(data) {
   try { const text = JSON.parse(data)?.text; return typeof text === 'string' ? text : ''; } catch { return ''; }
 }
 
+const isExploreSession = (db, sessionId) => invocations(db, sessionId).some(inv => inv.name === 'explore');
+
 function invocations(db, sessionId) {
   return db.prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' ORDER BY seq").all(sessionId)
     .flatMap(row => { const parsed = parseInvocation(userText(row.data)); return parsed ? [{ id: row.id, time: row.time_created, ...parsed }] : []; });
@@ -291,19 +303,23 @@ function directBuildSlice(db, workers, change) {
 // of the route's first worker and ends when the coordinator asks for this
 // collection. Plan keeps its first writing worker; Direct Build starts at the
 // current slice's first worker, because its first writer is the backfill worker.
+function routeAnchor(db, rootId, command, change, until = OPEN_END) {
+  const workers = routeWorkers(db, rootId, command).filter(child => child.time_created <= until);
+  const directBuild = command === 'sai-explore-direct-build';
+  const slice = directBuild ? directBuildSlice(db, workers, change) : workers;
+  const writer = child => (directBuild ? touchesChange(db, child.id, change) : wroteChange(db, child.id, change));
+  if (!slice.some(writer)) return null;
+  return directBuild ? slice[0] : slice.find(writer);
+}
+
 function findRouteExecution(db, { command, change, cwd }) {
   const forms = directoryForms(cwd);
   const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
   const candidates = [];
   for (const root of roots) {
-    if (!invocations(db, root.id).some(inv => inv.name === 'explore')) continue;
-    const workers = routeWorkers(db, root.id, command);
-    if (!workers.length) continue;
-    const slice = command === 'sai-explore-direct-build' ? directBuildSlice(db, workers, change) : workers;
-    const writer = child => (command === 'sai-explore-direct-build' ? touchesChange(db, child.id, change) : wroteChange(db, child.id, change));
-    if (!slice.some(writer)) continue;
-    const anchor = command === 'sai-explore-direct-build' ? slice[0] : slice.find(writer);
-    candidates.push({ root, anchor });
+    if (!isExploreSession(db, root.id)) continue;
+    const anchor = routeAnchor(db, root.id, command, change);
+    if (anchor) candidates.push({ root, anchor });
   }
   const latest = candidates
     .sort((a, b) => b.anchor.time_created - a.anchor.time_created || (a.root.id < b.root.id ? -1 : 1))[0];
@@ -410,20 +426,16 @@ function findingsOf(db, { command, segment, runDir, reviewers, change, directory
 // Measuring one execution
 // ---------------------------------------------------------------------------
 
-function measure(db, options, execution) {
-  const { command } = options;
-  const { root, inv, end } = execution;
-  // The coordinator's own closing turn is still running when it asks for this collection: it is left out.
-  const requests = assistantRows(db, root.id, inv.time, end).map(toRequest);
-  if (requests.length && requests.at(-1).completed === null) requests.pop();
-  const children = childrenIn(db, execution);
-  const marks = segmentMarks(command, children);
+// The rows of the subagents below a session, grouped by segment, and one row for each
+// dispatch whose session is not recorded. A child belongs to its parent's segment, and a
+// first-level child to the segment `segmentFor` gives its creation time.
+function subagentRows(db, root, requests, children, segmentFor) {
   const segmentOfSession = new Map([[root.id, null]]);
   const requestsOf = new Map([[root.id, requests]]);
   const rows = new Map(Object.keys(SEGMENT_LABELS).map(key => [key, []]));
   const depthOf = new Map([[root.id, 0]]);
   for (const child of children) {
-    const segment = segmentOfSession.get(child.parent_id) ?? segmentAt(marks, child.time_created);
+    const segment = segmentOfSession.get(child.parent_id) ?? segmentFor(child.time_created);
     segmentOfSession.set(child.id, segment);
     depthOf.set(child.id, child.depth);
     requestsOf.set(child.id, assistantRows(db, child.id, 0, OPEN_END).map(toRequest));
@@ -436,9 +448,21 @@ function measure(db, options, execution) {
     for (const link of list.flatMap(request => request.links)) {
       if (missing.has(link.session) || known.get(link.session)) continue;
       missing.add(link.session);
-      rows.get(segmentOfSession.get(session) ?? segmentAt(marks, link.time)).push(missingRow(link.session, depthOf.get(session) + 1));
+      rows.get(segmentOfSession.get(session) ?? segmentFor(link.time)).push(missingRow(link.session, depthOf.get(session) + 1));
     }
   }
+  return { rows, requestsOf };
+}
+
+function measure(db, options, execution) {
+  const { command } = options;
+  const { root, inv, end } = execution;
+  // The coordinator's own closing turn is still running when it asks for this collection: it is left out.
+  const requests = assistantRows(db, root.id, inv.time, end).map(toRequest);
+  if (requests.length && requests.at(-1).completed === null) requests.pop();
+  const children = childrenIn(db, execution);
+  const marks = segmentMarks(command, children);
+  const { rows, requestsOf } = subagentRows(db, root, requests, children, time => segmentAt(marks, time));
   const coordinator = agentRow(coordinatorName(command), 0, requests);
   const reviewers = children.filter(child => child.agent === 'sai-4-review-worker').map(child => child.id);
   const segments = [...COMMANDS[command].order, 'other']
@@ -447,6 +471,65 @@ function measure(db, options, execution) {
   const all = [coordinator, ...segments.flatMap(segment => segment.rows)];
   const completed = [...requestsOf.values()].flat().map(request => request.completed).filter(value => value !== null);
   return { start: inv.time, wallMs: completed.length ? Math.max(...completed) - inv.time : null, coordinator, segments, totals: combine(all.map(row => row.figures)) };
+}
+
+// ---------------------------------------------------------------------------
+// Exploration: the origin sessions that produced the change
+// ---------------------------------------------------------------------------
+
+const IN_SESSION_COMMANDS = Object.keys(COMMANDS).filter(command => COMMANDS[command].inSession);
+
+// The `explore` invocations of a session, each lasting until the session's next invocation.
+function exploreWindows(db, sessionId) {
+  const all = invocations(db, sessionId);
+  return all.flatMap((inv, index) => (inv.name === 'explore' ? [[inv.time, all[index + 1]?.time ?? OPEN_END]] : []));
+}
+
+// The route windows of an explore session: from a slice's first route worker to the
+// shell call that ran its collector, found in the session's own tool calls.
+function routeWindows(db, sessionId) {
+  const windows = [];
+  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
+    for (const item of toolItems(row)) {
+      const text = Object.values(item.state?.input ?? {}).filter(value => typeof value === 'string').join('\n');
+      if (!/change-telemetry\.js["']?\s+collect\b/.test(text)) continue;
+      const command = text.match(/--command\s+(\S+)/)?.[1];
+      const change = text.match(/--change\s+(\S+)/)?.[1];
+      if (!IN_SESSION_COMMANDS.includes(command) || !change) continue;
+      const anchor = routeAnchor(db, sessionId, command, change, row.time_created);
+      // The message that ran the collector is the route's closing turn, so the window covers it.
+      if (anchor) windows.push({ change, from: anchor.time_created, to: Math.max(toRequest(row).completed ?? 0, row.time_created) + 1 });
+    }
+  }
+  return windows;
+}
+
+// The parts of `windows` outside every cut.
+const subtract = (windows, cuts) => cuts.reduce((rest, { from, to }) => rest.flatMap(([a, b]) => [[a, Math.min(b, from)], [Math.max(a, to), b]].filter(([x, y]) => x < y)), windows);
+
+// One origin session: its coordinator and the subagents created inside its exploration windows.
+function measureOrigin(db, sessionId, execution, change) {
+  const root = db.prepare('SELECT id FROM session_v2 WHERE id = ? AND parent_id IS NULL').get(sessionId);
+  if (!root) return { id: sessionId, unavailable: `session ${sessionId} is not in opencode.db` };
+  const explored = exploreWindows(db, sessionId);
+  if (!explored.length) return { id: sessionId, unavailable: `session ${sessionId} holds no /sai-explore invocation` };
+  // In the route's own session the exploration ends where the route starts.
+  const capped = explored.map(([a, b]) => [a, execution.root.id === sessionId ? Math.min(b, execution.inv.time) : b]).filter(([a, b]) => a < b);
+  const routes = routeWindows(db, sessionId).filter(route => capped.some(([a, b]) => route.from >= a && route.from < b));
+  const windows = subtract(capped, routes);
+  const within = time => windows.some(([a, b]) => time >= a && time < b);
+  const requests = windows.flatMap(([a, b]) => assistantRows(db, sessionId, a, b)).map(toRequest);
+  if (requests.length && requests.at(-1).completed === null) requests.pop();
+  const included = new Set([sessionId]);
+  const children = opencodeChildren(db, sessionId).filter(child => {
+    const keep = child.parent_id === sessionId ? within(child.time_created) : included.has(child.parent_id);
+    if (keep) included.add(child.id);
+    return keep;
+  });
+  const { rows } = subagentRows(db, root, requests, children, () => 'other');
+  const coordinator = agentRow('sai-explore', 0, requests);
+  const siblings = [...new Set(routes.map(route => route.change))].filter(name => name !== change);
+  return { id: sessionId, start: windows[0]?.[0] ?? null, siblings, coordinator, rows: rows.get('other'), totals: combine([coordinator, ...rows.get('other')].map(row => row.figures)) };
 }
 
 // ---------------------------------------------------------------------------
@@ -505,6 +588,37 @@ function sectionText(number, options, execution, measured) {
   return `${out.join('\n')}\n`;
 }
 
+// The exploration block of telemetry.md: one subsection per origin session.
+function explorationText(origins) {
+  const out = [
+    '## Exploration',
+    '',
+    '<!-- telemetry-exploration -->',
+    `- Note: written once, by the first execution that wrote this file. Each subsection is the exploration of one origin session. An exploration shared by several changes is counted in each of their telemetry.md files, so adding those files up counts it more than once. A figure shown as ${UNAVAILABLE} could not be read; ≥ marks a partial total.`,
+  ];
+  for (const origin of origins) {
+    out.push('', `### Origin session ${origin.id}`, '');
+    if (origin.unavailable) { out.push(`Exploration: ${UNAVAILABLE} (${origin.unavailable}).`); continue; }
+    out.push(
+      `<!-- telemetry-totals ${JSON.stringify(origin.totals)} -->`,
+      `- Started: ${origin.start === null ? UNAVAILABLE : new Date(origin.start).toISOString()} · Session: ${origin.id}`,
+      origin.siblings.length
+        ? `- Shared: yes, with ${origin.siblings.join(', ')}, which had a route window in this exploration. Other slices without a route window may exist.`
+        : '- Shared: no other change had a route window in this exploration. Other slices without a route window may exist.',
+      '- Note: the figures cover the coordinator and the subagents of the exploration, and leave out every route window of the session.',
+      '',
+      '#### Coordinator',
+      '',
+      ...tableLines([origin.coordinator]),
+      '',
+      '#### Other agents',
+      '',
+      ...(origin.rows.length ? tableLines(origin.rows) : ['No subagents.']),
+    );
+  }
+  return `${out.join('\n')}\n\n`;
+}
+
 const metricsList = totals => `| ${METRICS.map(([, name]) => name).join(' | ')} |\n|${METRICS.map(() => '---').join('|')}|\n| ${METRICS.map(([key]) => show(totals[key], key)).join(' | ')} |`;
 
 function headerText(change, count, totals) {
@@ -525,11 +639,16 @@ function headerText(change, count, totals) {
 }
 
 function readExisting(file) {
-  if (!fs.existsSync(file)) return { sections: [] };
+  if (!fs.existsSync(file)) return { sections: [], exploration: null };
   const text = fs.readFileSync(file, 'utf8');
   const first = text.search(/^## Execution /m);
   if (!text.includes(MARKER)) return { foreign: true };
-  return { sections: first === -1 ? [] : text.slice(first).split(/(?=^## Execution )/m) };
+  const exploration = text.search(/^## Exploration$/m);
+  const end = first === -1 ? text.length : first;
+  return {
+    sections: first === -1 ? [] : text.slice(first).split(/(?=^## Execution )/m),
+    exploration: exploration !== -1 && exploration < end ? `${text.slice(exploration, end).trimEnd()}\n\n` : null,
+  };
 }
 
 function totalsOf(section) {
@@ -565,35 +684,62 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
     if (error instanceof OpencodeUnavailable) return skipped(error.message);
     throw error;
   }
-  let execution, measured;
+  const file = path.join(directory.absolute, 'telemetry.md');
+  const existing = readExisting(file);
+  // The exploration is recorded once: by the first execution that writes the file, from the origin sessions of the change.
+  const origins = existing.foreign || existing.exploration ? [] : [...new Set(readOpenspecYaml(path.join(directory.absolute, '.openspec.yaml'))?.explore_origin ?? [])];
+  let execution, measured, exploration = null;
   try {
     execution = findExecution(db, options);
     if (execution) measured = measure(db, { ...options, directory }, execution);
+    if (execution && origins.length) exploration = explorationText(origins.map(session => measureOrigin(db, session, execution, change)));
   } finally { db.close(); }
   if (!execution) return skipped(`No opencode execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
-  const file = path.join(directory.absolute, 'telemetry.md');
-  const existing = readExisting(file);
   if (existing.foreign) return skipped(`${relative} exists and was not written by this tool, so it is left as it is.`);
   if (existing.sections.some(section => section.includes(`<!-- telemetry-execution ${execution.inv.id} -->`))) return skipped(`This execution is already recorded in ${relative}.`);
   const section = sectionText(existing.sections.length + 1, options, execution, measured);
   const sections = [...existing.sections, section];
   const header = headerText(change, sections.length, combine(sections.map(totalsOf)));
   const temporary = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, header + sections.join(''));
+  fs.writeFileSync(temporary, header + (exploration ?? existing.exploration ?? '') + sections.join(''));
   fs.renameSync(temporary, file);
   return { outcome: 'written', path: relative, message: `Change telemetry written to ${relative} (execution ${sections.length}).` };
 }
 
+// The explore root session of a subagent session of the current explore session: the
+// session an `Explore origin` lists. Only a session that holds a `/sai-explore` invocation counts.
+function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = defaultLoadSqlite } = {}) {
+  if (harness !== 'opencode') return skipped('Change telemetry is not supported on Claude Code yet.');
+  let db;
+  try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
+    if (error instanceof OpencodeUnavailable) return skipped(error.message);
+    throw error;
+  }
+  try {
+    const root = opencodeRoot(db, session);
+    if (!root) return skipped(`Session ${session} is not in opencode.db.`);
+    if (!isExploreSession(db, root.id)) return skipped(`The root session ${root.id} holds no /sai-explore invocation.`);
+    return { outcome: 'found', session: root.id };
+  } finally { db.close(); }
+}
+
+const SESSION_ID = /^ses_[A-Za-z0-9_]+$/;
+
 function parseOptions(argv) {
   const [subcommand, ...rest] = argv;
-  if (subcommand !== 'collect') throw new UsageError('The only sub-command is collect');
-  const values = {};
+  if (!['collect', 'explore-origin'].includes(subcommand)) throw new UsageError('The sub-commands are collect and explore-origin');
+  const values = { subcommand };
+  const flags = subcommand === 'collect' ? ['--harness', '--command', '--change', '--cwd', '--status', '--run-dir'] : ['--harness', '--session'];
   for (let i = 0; i < rest.length; i += 2) {
     const flag = rest[i];
-    if (!['--harness', '--command', '--change', '--cwd', '--status', '--run-dir'].includes(flag) || rest[i + 1] === undefined) throw new UsageError(`Unknown or incomplete option ${flag}`);
+    if (!flags.includes(flag) || rest[i + 1] === undefined) throw new UsageError(`Unknown or incomplete option ${flag}`);
     values[flag.slice(2).replace(/-(\w)/g, (_, letter) => letter.toUpperCase())] = rest[i + 1];
   }
   if (!HARNESSES.includes(values.harness)) throw new UsageError(`--harness must be one of ${HARNESSES.join(', ')}`);
+  if (subcommand === 'explore-origin') {
+    if (!SESSION_ID.test(values.session ?? '')) throw new UsageError('--session must be an opencode session ID (ses_...)');
+    return values;
+  }
   if (!COMMANDS[values.command]) throw new UsageError(`--command must be one of ${Object.keys(COMMANDS).join(', ')}`);
   if (!/^[a-z0-9][a-z0-9-]*$/.test(values.change ?? '')) throw new UsageError('--change must be a kebab-case change name');
   if (!values.cwd) throw new UsageError('--cwd is required');
@@ -608,7 +754,10 @@ function main(argv, deps) {
     return { status: 2, payload: { error: { code: 'USAGE', message: error.message } } };
   }
   // The command closes with its normal result whatever happens here, so a failure is a skipped collection.
-  try { return { status: 0, payload: collect({ ...options, cwd: path.resolve(options.cwd) }, deps) }; } catch (error) {
+  try {
+    if (options.subcommand === 'explore-origin') return { status: 0, payload: exploreOrigin(options, deps) };
+    return { status: 0, payload: collect({ ...options, cwd: path.resolve(options.cwd) }, deps) };
+  } catch (error) {
     return { status: 0, payload: skipped(`Change telemetry collection failed: ${error.message}`) };
   }
 }
@@ -619,4 +768,4 @@ if (require.main === module) {
   process.exitCode = status;
 }
 
-module.exports = { collect, main };
+module.exports = { collect, exploreOrigin, main };
