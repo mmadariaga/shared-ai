@@ -23,7 +23,7 @@ const TABLE = {
     { node: T('worker-report-validator.js'), args: `validate --kind progress --json ${INPUT}` },
     { node: 'sai/bin/sai-state.js', args: `emit id explore-idea@1 ${INPUT}` }, { node: 'sai/bin/sai-state.js', args: `emit id machine --progress ${INPUT}` },
     { node: S('sai-cache-warmer/wait.js'), args: `wait ${INPUT}` }] },
-  research: { plain: PLAIN, nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'warm --interval 5 --max 60 --chain abc123' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --state eyJhIjoxfQ' }] },
+  research: { plain: PLAIN, nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'begin --agent budget-explorer --harness claude' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --chain abc123' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --state eyJhIjoxfQ' }] },
   'explore-command': { plain: ['openspec list --json', 'git status --short', ...PLAIN.slice(4)], nodes: [FETCH,
     { node: T('to-backlog.js'), args: 'create' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness}' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness} --dir x' },
     { node: S('sai-cache-warmer/wait.js'), args: 'wait' }, { node: T('ready-to-propose.js'), args: `check --profile strict ${INPUT}` }, OPEN] },

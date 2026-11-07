@@ -33,7 +33,7 @@ A report without a final result for a requested command (`pending`, `running`, o
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-The executor never arms: its report declares `warming: false`, so it is never sent a warming line or a `warm-up`. The coordinator still disposes it after its report, as `@sai/policies/worker-lifecycle.md` says.
+The executor never arms: its report declares `warming: false`, so it is never sent the warming switch. The coordinator still disposes it after its report, as `@sai/policies/worker-lifecycle.md` says.
 
 ## Execution contract
 
