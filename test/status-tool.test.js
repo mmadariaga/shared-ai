@@ -136,6 +136,21 @@ test('I5: backlog_origin is read from the archived change metadata and is null w
   }
 });
 
+test('explore_origin is read as the ordered session list and is empty when absent', () => {
+  const { cwd, parent } = makeTestOpenspec();
+  try {
+    const yamlPath = path.join(cwd, 'openspec', 'changes', 'explore-origin-change.yaml');
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\nexplore_origin: [ses_one, ses_two]\nbackfilled: true\n');
+    assert.deepEqual(readOpenspecYaml(yamlPath).explore_origin, ['ses_one', 'ses_two']);
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\nexplore_origin: ["ses_one"]\n');
+    assert.deepEqual(readOpenspecYaml(yamlPath).explore_origin, ['ses_one']);
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\n');
+    assert.deepEqual(readOpenspecYaml(yamlPath).explore_origin, []);
+  } finally {
+    cleanup(parent);
+  }
+});
+
 test('E2b: unreadable .openspec.yaml throws ToolError with exit code 2', () => {
   const { cwd, parent } = makeTestOpenspec();
   try {

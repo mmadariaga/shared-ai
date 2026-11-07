@@ -31,9 +31,14 @@ The `backfilled` field MUST be a binary boolean. The field MUST NOT carry additi
 
 ### Requirement: Direct Build Validates .openspec.yaml Against Both Canonical Forms
 
-The Direct Build (unattended) spec-review step SHALL validate a prepared `openspec/changes/{name}/.openspec.yaml` against the canonical forms defined in `sai/commands/backfill/instructions.md` section 6a rather than against the capability schema. The three-key form (`schema`, `created` as a `YYYY-MM-DD` date only, `backfilled: true`) SHALL validate for a run with no usable intent context, and the four-key form (those three keys plus `prior_intent: true`) SHALL validate for a run with usable intent context. Each form SHALL validate under its own condition, and no other key SHALL be accepted.
+The Direct Build (unattended) spec-review step SHALL validate a prepared `openspec/changes/{name}/.openspec.yaml` against the canonical forms defined in `sai/commands/backfill/instructions.md` section 6a rather than against the capability schema. The three-key form (`schema`, `created` as a `YYYY-MM-DD` date only, `backfilled: true`) SHALL validate for a run with no usable intent context, and the four-key form (those three keys plus `prior_intent: true`) SHALL validate for a run with usable intent context. Each form SHALL validate under its own condition. Either form SHALL also accept the optional validated `backlog_origin` and `explore_origin` keys of section 6a and, on a no-specs run, the optional `skip_specs: true`; no other key SHALL be accepted. The `explore_origin` key SHALL be the block's `**Explore origin**` sessions as a flat flow list in the block's order, and it SHALL never set `prior_intent`.
 
 #### Scenario: A prepared draft carries the four-key intent form
 
 - **WHEN** the spec-review step validates a prepared `.openspec.yaml` from a backfill run that had usable intent context
 - **THEN** the four-key form including `prior_intent: true` validates, while a three-key draft from a run without usable intent context also validates under its own condition
+
+#### Scenario: A prepared draft carries explore_origin
+
+- **WHEN** the spec-review step validates a prepared `.openspec.yaml` from a block that carries `**Explore origin**: opencode ses_a, ses_b`
+- **THEN** the draft with `explore_origin: [ses_a, ses_b]` validates under its canonical form

@@ -586,3 +586,140 @@ test('the CLI prints one JSON line and exits 0 for a skipped collection', () => 
   assert.equal(result.status, 0);
   assert.deepEqual(JSON.parse(result.stdout), { outcome: 'skipped', reason: 'Change telemetry is not supported on Claude Code yet.' });
 });
+
+// Exploration: the origin sessions listed in the change's .openspec.yaml.
+const writeOrigin = (fixture, sessions, change = 'demo') => fs.writeFileSync(path.join(fixture.project, 'openspec', 'changes', change, '.openspec.yaml'), `schema: sai-workflow\nexplore_origin: [${sessions.join(', ')}]\n`);
+const exploration = text => text.slice(text.indexOf('## Exploration'), text.indexOf('## Execution 1'));
+const collectCall = change => tool('bash', 'completed', { command: `node "/x/change-telemetry.js" collect --harness opencode --command sai-explore-plan --change ${change} --cwd /p --status completed` });
+const requestsOfRow = (text, agent) => rowOf(text, agent).split(' | ').map(cell => cell.trim())[3];
+
+// An earlier explore session that crystallized several slices and built one of them in-session.
+function originFixture() {
+  const f = scratch();
+  f.session('ses_origin', null, 'build', 0);
+  f.invoke('ses_origin', 1, 'explore', 'idea');
+  f.request('ses_origin', 2, { content: [dispatch('ses_explorer')] });
+  f.session('ses_explorer', 'ses_origin', 'budget-explorer', 3);
+  f.request('ses_explorer', 3, {});
+  f.session('ses_poc', 'ses_origin', 'sai-direct-build-worker', 4);
+  f.user('ses_poc', 4, '--direct-build --no-specs');
+  f.request('ses_poc', 5, {});
+  f.request('ses_origin', 6, {});
+  // A sibling slice ran its plan route in this session.
+  fs.mkdirSync(path.join(f.project, 'openspec', 'changes', 'sibling'), { recursive: true });
+  f.session('ses_sibling_spec', 'ses_origin', 'sai-1-spec-proposal-worker', 10);
+  f.request('ses_sibling_spec', 11, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/sibling/proposal.md` })] });
+  f.request('ses_origin', 12, {});
+  f.request('ses_origin', 20, { content: [collectCall('sibling')] });
+  f.request('ses_origin', 30, {});
+  // The slice under measure was planned later, in another session.
+  f.session('ses_later', null, 'build', 100);
+  f.invoke('ses_later', 101, 'explore', 'later');
+  f.session('ses_later_spec', 'ses_later', 'sai-1-spec-proposal-worker', 110);
+  f.request('ses_later_spec', 111, { content: [tool('write', 'completed', { filePath: `${f.project}/openspec/changes/demo/proposal.md` })] });
+  f.request('ses_later', 120, { done: false });
+  return f;
+}
+
+sqliteTest('exploration: an origin session records its explore windows minus the route windows, names the siblings, and a missing session is unavailable (E1, E3, E4, E8)', () => {
+  const f = originFixture();
+  try {
+    f.db.close();
+    writeOrigin(f, ['ses_origin', 'ses_gone', 'ses_origin']);
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const block = exploration(text);
+    assert.equal(text.indexOf('## Exploration') < text.indexOf('## Execution 1'), true);
+    assert.equal(block.split('### Origin session ses_origin').length, 2, 'one segment per session');
+    // Requests at 2, 6, and 30 count; the one at 12 and the closing turn at 20 belong to the sibling route.
+    assert.equal(requestsOfRow(section(block, 'Origin session ses_origin').split('#### ')[1], 'sai-explore'), '3');
+    assert.match(block, /Shared: yes, with sibling, which had a route window in this exploration\. Other slices without a route window may exist\./);
+    // The explorer and the POC worker fall inside the exploration; the sibling's spec worker does not.
+    const others = block.slice(block.indexOf('#### Other agents'));
+    assert.match(others, /\| budget-explorer \|/);
+    assert.match(others, /\| sai-direct-build-worker \|/);
+    assert.ok(!others.includes('sai-1-spec-proposal-worker'));
+    assert.match(block, /### Origin session ses_gone\n\nExploration: unavailable \(session ses_gone is not in opencode\.db\)\./);
+    // The route execution is still recorded.
+    assert.match(text, /## Execution 1 — sai-explore \(Plan - Unattended\) — completed/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('exploration: in the route session it stops at the route start and ignores later routes (E1)', () => {
+  const f = routeFixture();
+  try {
+    f.db.close();
+    writeOrigin(f, ['ses_explore']);
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const block = exploration(telemetryOf(f));
+    // The request at 2 counts; the one at 30 follows the route's first worker.
+    assert.equal(requestsOfRow(block, 'sai-explore'), '1');
+    assert.match(block, /Shared: no other change had a route window in this exploration\. Other slices without a route window may exist\./);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('exploration: it is written once; a later execution leaves it unchanged (E2)', () => {
+  const f = routeFixture();
+  try {
+    f.session('ses_build', null, 'build', 200);
+    f.invoke('ses_build', 201, 'build', 'demo');
+    f.request('ses_build', 202, {});
+    f.request('ses_build', 203, { done: false });
+    f.db.close();
+    writeOrigin(f, ['ses_explore']);
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    const first = exploration(telemetryOf(f));
+    writeOrigin(f, ['ses_explore', 'ses_other']);
+    assert.equal(collect(options(f, { command: 'sai-build' }), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 2 — \/sai-build — completed/);
+    assert.equal(exploration(text), first);
+    assert.equal(text.split('## Exploration').length, 2);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('exploration: a change without explore_origin has no exploration section (E7)', () => {
+  const f = routeFixture();
+  try {
+    f.db.close();
+    assert.equal(collect(routeOptions(f), { env: f.env }).outcome, 'written');
+    assert.ok(!telemetryOf(f).includes('## Exploration'));
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('exploration: a session without a /sai-explore invocation is unavailable', () => {
+  const f = routeFixture();
+  try {
+    f.session('ses_plain', null, 'build', 300);
+    f.invoke('ses_plain', 301, 'plan', 'other');
+    f.db.close();
+    writeOrigin(f, ['ses_plain']);
+    collect(routeOptions(f), { env: f.env });
+    assert.match(exploration(telemetryOf(f)), /Exploration: unavailable \(session ses_plain holds no \/sai-explore invocation\)\./);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('explore-origin: a subagent session resolves to its explore root, anything else is skipped (E9)', () => {
+  const f = routeFixture();
+  try {
+    f.session('ses_helper', 'ses_spec', 'budget-explorer', 12);
+    f.session('ses_plain', null, 'build', 300);
+    f.invoke('ses_plain', 301, 'plan', 'other');
+    f.session('ses_plain_child', 'ses_plain', 'budget-explorer', 302);
+    f.db.close();
+    const run = session => main(['explore-origin', '--harness', 'opencode', '--session', session], { env: f.env });
+    assert.deepEqual(run('ses_helper'), { status: 0, payload: { outcome: 'found', session: 'ses_explore' } });
+    assert.deepEqual(run('ses_explore').payload, { outcome: 'found', session: 'ses_explore' });
+    assert.match(run('ses_plain_child').payload.reason, /root session ses_plain holds no \/sai-explore invocation/);
+    assert.match(run('ses_unknown').payload.reason, /not in opencode\.db/);
+    assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_helper']).payload, { outcome: 'skipped', reason: 'Change telemetry is not supported on Claude Code yet.' });
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+test('explore-origin: a missing or malformed session is a usage error', () => {
+  for (const args of [['explore-origin', '--harness', 'opencode'], ['explore-origin', '--harness', 'opencode', '--session', 'not a session'], ['explore-origin', '--harness', 'opencode', '--session', 'ses_a', '--cwd', '.']]) {
+    const { status, payload } = main(args);
+    assert.equal(status, 2, args.join(' '));
+    assert.equal(payload.error.code, 'USAGE');
+  }
+});
