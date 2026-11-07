@@ -13,12 +13,16 @@
  *   explore-origin --harness <claude|opencode> --session <sessionID>
  *
  * The coordinator runs `collect` at its close, once. Every figure is read after the fact
- * from `opencode.db` (read-only, through the shared reader in `opencode-db.js`):
- * the coordinator session and each subagent session of the latest execution of the
- * command on that change in that project directory. A direct command is found by
- * its invocation envelope; an in-session route is found through its workers,
- * because the explore session carries no route invocation and one explore session
- * can host several routes and Direct Build slices. `--run-dir` is the plan or
+ * from the harness's own record, through a source with one shape on both harnesses:
+ * `opencode.db` on opencode (read-only, through the shared reader in `opencode-db.js`)
+ * and the session transcripts on Claude Code (read-only, through the shared reader in
+ * `claude-transcripts.js`). It measures the coordinator session and each subagent
+ * session of the latest execution of the command on that change in that project
+ * directory. A direct command is found by its invocation (the envelope on opencode,
+ * the `<command-name>` record on Claude Code); an in-session route is found through
+ * its workers, because the explore session carries no route invocation and one
+ * explore session can host several routes and Direct Build slices. Claude Code
+ * records no cost, reasoning, or variant: those figures are unavailable, never zero. `--run-dir` is the plan or
  * Direct Build run directory, whose `reviews/{segment}-round-{k}.md` files hold the
  * review findings. The change folder may already be archived when Direct Build
  * collects, so `telemetry.md` is written into that folder. Only `telemetry.md` is
@@ -31,6 +35,7 @@
  * invocation minus the route windows of that session (and, in the route's own
  * session, only up to the route's first worker). `explore-origin` resolves the
  * explore root session of a subagent session, for the block's `Explore origin`.
+ * Both are opencode only: a Claude Code collection records no exploration yet.
  *
  * It prints one JSON object and exits 0: `{outcome: "written", path, message}` or
  * `{outcome: "skipped", reason}`; `explore-origin` prints `{outcome: "found", session}`
@@ -41,6 +46,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges } = require('./opencode-db');
+const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
 const { readOpenspecYaml } = require('./openspec-yaml');
 
 const OPEN_END = Number.MAX_SAFE_INTEGER;
@@ -115,7 +121,7 @@ function toRequest(row) {
   } catch { /* an unreadable message leaves every datum of the request unavailable */ }
   const tokens = data.tokens ?? {};
   const created = number(data.time?.created), completed = number(data.time?.completed);
-  const items = Array.isArray(data.content) ? data.content.filter(item => item?.type === 'tool') : [];
+  const items = toolItems(data);
   const dispatches = items.filter(item => DISPATCH_TOOLS.has(item.name));
   return {
     time: row.time_created,
@@ -129,6 +135,7 @@ function toRequest(row) {
     ms: created !== null && completed !== null ? completed - created : null,
     model: label(data.model?.id),
     variant: label(data.model?.variant),
+    items,
     calls: items.filter(item => !DISPATCH_TOOLS.has(item.name)),
     dispatches: dispatches.length,
     links: dispatches.map(dispatchLink).filter(Boolean).map(session => ({ session, time: row.time_created })),
@@ -182,50 +189,79 @@ function agentRow(name, depth, requests) {
   return { name, depth, figures: figuresOf(requests), model: distinct(requests, 'model'), variant: distinct(requests, 'variant'), tools: toolBreakdown(requests) };
 }
 
-const missingRow = (session, depth) => ({ name: `${UNAVAILABLE} (session ${session} is not in opencode.db)`, depth, figures: UNKNOWN_FIGURES, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
+const missingRow = (session, depth, store) => ({ name: `${UNAVAILABLE} (session ${session} is not in ${store})`, depth, figures: UNKNOWN_FIGURES, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
 
 // ---------------------------------------------------------------------------
-// opencode.db: finding the execution and reading its sessions
+// Sources: finding the execution and reading its sessions
 // ---------------------------------------------------------------------------
+//
+// A source answers the same questions on both harnesses, so the measurement below
+// never reads a harness format:
+//   name, store            the harness name and where its record lives
+//   roots(cwd)             the root sessions of the project: [{ id }]
+//   invocations(session)   the SAI command invocations of a root: [{ id, time, name, args }]
+//   requests(session, from, to)  the requests created in [from, to), each shaped by `toRequest`
+//   children(root)         every subagent session below a root, parents first
+//   hasSession(id), isRoot(id), userTexts(session), routeId(root, anchor), close()
+
+// The tool items of one opencode message's parsed `data`.
+function toolItems(data) {
+  return Array.isArray(data?.content) ? data.content.filter(item => item?.type === 'tool') : [];
+}
 
 function userText(data) {
   try { const text = JSON.parse(data)?.text; return typeof text === 'string' ? text : ''; } catch { return ''; }
 }
 
-const isExploreSession = (db, sessionId) => invocations(db, sessionId).some(inv => inv.name === 'explore');
-
-function invocations(db, sessionId) {
-  return db.prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' ORDER BY seq").all(sessionId)
-    .flatMap(row => { const parsed = parseInvocation(userText(row.data)); return parsed ? [{ id: row.id, time: row.time_created, ...parsed }] : []; });
+function opencodeSource(db) {
+  return {
+    name: 'opencode',
+    store: 'opencode.db',
+    close: () => db.close(),
+    roots(cwd) {
+      const forms = directoryForms(cwd);
+      return db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
+    },
+    isRoot: id => Boolean(db.prepare('SELECT id FROM session_v2 WHERE id = ? AND parent_id IS NULL').get(id)),
+    hasSession: id => Boolean(db.prepare('SELECT 1 FROM session_v2 WHERE id = ?').get(id)),
+    invocations: sessionId => db.prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'user' AND data LIKE '%InvocationEnvelope:%' ORDER BY seq").all(sessionId)
+      .flatMap(row => { const parsed = parseInvocation(userText(row.data)); return parsed ? [{ id: row.id, time: row.time_created, ...parsed }] : []; }),
+    routeId: (rootId, anchorId) => anchorId,
+    requests: (sessionId, from, to) => db
+      .prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
+      .all(sessionId, from, to).map(toRequest),
+    userTexts: sessionId => db.prepare("SELECT data FROM session_message WHERE session_id = ? AND type = 'user'").all(sessionId).map(row => userText(row.data)),
+    children: rootId => opencodeChildren(db, rootId),
+  };
 }
 
-const assistantRows = (db, sessionId, from, to) => db
-  .prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
-  .all(sessionId, from, to);
+function openSource(harness, { cwd, env, loadSqlite }) {
+  return harness === 'claude' ? openClaudeSource({ cwd, env }) : opencodeSource(openOpencodeDatabase(env, loadSqlite));
+}
 
-const childrenIn = (db, execution) => opencodeChildren(db, execution.root.id).filter(child => child.time_created >= execution.inv.time && child.time_created < execution.end);
+const isSourceUnavailable = error => error instanceof OpencodeUnavailable || error instanceof ClaudeUnavailable;
+
+const isExploreSession = (source, sessionId) => source.invocations(sessionId).some(inv => inv.name === 'explore');
+
+const childrenIn = (source, execution) => source.children(execution.root.id).filter(child => child.time_created >= execution.inv.time && child.time_created < execution.end);
 
 // The change an execution worked on: its invocation names it, otherwise the one change its sessions wrote to.
-function changeOf(db, execution) {
+function changeOf(source, execution) {
   const named = changeNameFromArgs(execution.inv.args);
   if (named) return named;
   const written = new Set();
-  const rows = [
-    ...assistantRows(db, execution.root.id, execution.inv.time, execution.end),
-    ...childrenIn(db, execution).flatMap(child => assistantRows(db, child.id, 0, OPEN_END)),
+  const requests = [
+    ...source.requests(execution.root.id, execution.inv.time, execution.end),
+    ...childrenIn(source, execution).flatMap(child => source.requests(child.id, 0, OPEN_END)),
   ];
-  for (const row of rows) for (const item of toolItems(row)) writtenChanges(item.name, item.state?.input, written);
+  for (const request of requests) for (const item of request.items) writtenChanges(item.name, item.state?.input, written);
   return written.size === 1 ? [...written][0] : null;
 }
 
-function toolItems(row) {
-  try { const content = JSON.parse(row.data)?.content; return Array.isArray(content) ? content.filter(item => item?.type === 'tool') : []; } catch { return []; }
-}
-
 // A worker session wrote under `openspec/changes/<change>/` through a write tool.
-function wroteChange(db, sessionId, change) {
-  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
-    for (const item of toolItems(row)) {
+function wroteChange(source, sessionId, change) {
+  for (const request of source.requests(sessionId, 0, OPEN_END)) {
+    for (const item of request.items) {
       const written = new Set();
       writtenChanges(item.name, item.state?.input, written);
       if (written.has(change)) return true;
@@ -237,10 +273,10 @@ function wroteChange(db, sessionId, change) {
 // Direct Build workers write the change through `transfer.js materialize` and git
 // in shell calls, not through a write tool, so any tool input naming the change
 // path counts as a touch.
-function touchesChange(db, sessionId, change) {
+function touchesChange(source, sessionId, change) {
   const target = new RegExp(`openspec/changes/(?:archive/\\d{4}-\\d{2}-\\d{2}-)?${change.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`);
-  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
-    for (const item of toolItems(row)) {
+  for (const request of source.requests(sessionId, 0, OPEN_END)) {
+    for (const item of request.items) {
       const input = item.state?.input;
       if (!input || typeof input !== 'object') continue;
       const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
@@ -252,10 +288,10 @@ function touchesChange(db, sessionId, change) {
 
 // The changes a worker's tool inputs name. A Direct Build worker writes the change
 // through transfer files and git, so its paths, not a write tool, identify it.
-function touchedChanges(db, sessionId) {
+function touchedChanges(source, sessionId) {
   const names = new Set();
-  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
-    for (const item of toolItems(row)) {
+  for (const request of source.requests(sessionId, 0, OPEN_END)) {
+    for (const item of request.items) {
       const input = item.state?.input;
       if (!input || typeof input !== 'object') continue;
       const text = Object.values(input).filter(value => typeof value === 'string').join('\n').replace(/\\/g, '/');
@@ -269,75 +305,70 @@ function touchedChanges(db, sessionId) {
 
 // A POC implementer runs `--direct-build --no-specs` in the same explore session
 // before crystallization; it is not a worker of any final slice.
-function isPocWorker(db, sessionId) {
-  return db.prepare("SELECT data FROM session_message WHERE session_id = ? AND type = 'user'").all(sessionId)
-    .some(row => userText(row.data).includes('--no-specs'));
+function isPocWorker(source, sessionId) {
+  return source.userTexts(sessionId).some(text => text.includes('--no-specs'));
 }
 
 // The route's workers in creation order. Direct Build hosts several slices in one
 // explore session, so a slice starts after the last worker that touched a different
 // change. A replaced worker of the current slice touched this change and stays in.
-function routeWorkers(db, rootId, command) {
-  return opencodeChildren(db, rootId)
+function routeWorkers(source, rootId, command) {
+  return source.children(rootId)
     .filter(child => COMMANDS[command].workers[child.agent])
-    .filter(child => !(command === 'sai-explore-direct-build' && child.agent === 'sai-direct-build-worker' && isPocWorker(db, child.id)))
+    .filter(child => !(command === 'sai-explore-direct-build' && child.agent === 'sai-direct-build-worker' && isPocWorker(source, child.id)))
     .sort((a, b) => a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
 }
 
 const CHANGE_OWNERS = new Set(['sai-backfill-worker', 'sai-archive-worker']);
 
-function directBuildSlice(db, workers, change) {
+function directBuildSlice(source, workers, change) {
   let start = 0;
   for (let index = 0; index < workers.length; index++) {
     // An implementer reads other changes routinely and never owns one, so only a
     // backfill or archive worker can end the previous slice.
     if (!CHANGE_OWNERS.has(workers[index].agent)) continue;
-    const changes = touchedChanges(db, workers[index].id);
+    const changes = touchedChanges(source, workers[index].id);
     if (changes.size && !changes.has(change)) start = index + 1;
   }
   return workers.slice(start);
 }
 
-// An in-session route has no invocation envelope of its own: it is the explore
+// An in-session route has no invocation of its own: it is the explore
 // session whose route worker wrote the change. The window starts at the creation
 // of the route's first worker and ends when the coordinator asks for this
 // collection. Plan keeps its first writing worker; Direct Build starts at the
 // current slice's first worker, because its first writer is the backfill worker.
-function routeAnchor(db, rootId, command, change, until = OPEN_END) {
-  const workers = routeWorkers(db, rootId, command).filter(child => child.time_created <= until);
+function routeAnchor(source, rootId, command, change, until = OPEN_END) {
+  const workers = routeWorkers(source, rootId, command).filter(child => child.time_created <= until);
   const directBuild = command === 'sai-explore-direct-build';
-  const slice = directBuild ? directBuildSlice(db, workers, change) : workers;
-  const writer = child => (directBuild ? touchesChange(db, child.id, change) : wroteChange(db, child.id, change));
+  const slice = directBuild ? directBuildSlice(source, workers, change) : workers;
+  const writer = child => (directBuild ? touchesChange(source, child.id, change) : wroteChange(source, child.id, change));
   if (!slice.some(writer)) return null;
   return directBuild ? slice[0] : slice.find(writer);
 }
 
-function findRouteExecution(db, { command, change, cwd }) {
-  const forms = directoryForms(cwd);
-  const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
+function findRouteExecution(source, { command, change, cwd }) {
   const candidates = [];
-  for (const root of roots) {
-    if (!isExploreSession(db, root.id)) continue;
-    const anchor = routeAnchor(db, root.id, command, change);
+  for (const root of source.roots(cwd)) {
+    if (!isExploreSession(source, root.id)) continue;
+    const anchor = routeAnchor(source, root.id, command, change);
     if (anchor) candidates.push({ root, anchor });
   }
   const latest = candidates
     .sort((a, b) => b.anchor.time_created - a.anchor.time_created || (a.root.id < b.root.id ? -1 : 1))[0];
   if (!latest) return null;
-  return { root: latest.root, inv: { id: latest.anchor.id, time: latest.anchor.time_created, args: '' }, end: Date.now() };
+  return { root: latest.root, inv: { id: source.routeId(latest.root.id, latest.anchor.id), time: latest.anchor.time_created, args: '' }, end: Date.now() };
 }
 
 // The latest execution of the command, on the change, in the project directory.
-function findExecution(db, options) {
+function findExecution(source, options) {
   const { command, change, cwd } = options;
-  if (COMMANDS[command].inSession) return findRouteExecution(db, options);
-  const forms = directoryForms(cwd);
-  const roots = db.prepare(`SELECT id, directory FROM session_v2 WHERE parent_id IS NULL AND directory IN (${forms.map(() => '?').join(',')})`).all(...forms);
-  const candidates = roots.flatMap(root => {
-    const all = invocations(db, root.id);
+  if (COMMANDS[command].inSession) return findRouteExecution(source, options);
+  const candidates = source.roots(cwd).flatMap(root => {
+    const all = source.invocations(root.id);
     return all.map((inv, index) => ({ root, inv, end: all[index + 1]?.time ?? OPEN_END })).filter(candidate => candidate.inv.name === COMMANDS[command].envelope);
   }).sort((a, b) => b.inv.time - a.inv.time);
-  return candidates.find(candidate => changeOf(db, candidate) === change) ?? null;
+  return candidates.find(candidate => changeOf(source, candidate) === change) ?? null;
 }
 
 // Where each segment starts: the creation time of its first worker, in creation order.
@@ -383,12 +414,12 @@ function reviewTally(text) {
 }
 
 // `/sai-build`: found counts from the review worker's first write of review.md.
-function firstReviewTally(db, reviewer, change) {
+function firstReviewTally(source, reviewer, change) {
   const target = `openspec/changes/${change}/review.md`;
-  for (const row of assistantRows(db, reviewer, 0, OPEN_END)) {
-    for (const item of toolItems(row)) {
+  for (const request of source.requests(reviewer, 0, OPEN_END)) {
+    for (const item of request.items) {
       const strings = Object.values(item.state?.input ?? {}).filter(value => typeof value === 'string');
-      if (!strings.some(value => value.replace(/\\/g, '/').endsWith(target)) || !/^(write|edit|patch|apply_patch)$/.test(item.name ?? '')) continue;
+      if (!strings.some(value => value.replace(/\\/g, '/').endsWith(target)) || !/^(write|edit|multiedit|patch|apply_patch)$/i.test(item.name ?? '')) continue;
       return reviewTally(strings.join('\n'));
     }
   }
@@ -405,7 +436,7 @@ function pendingReviewTally(directory) {
   return pending;
 }
 
-function findingsOf(db, { command, segment, runDir, reviewers, change, directory }) {
+function findingsOf(source, { command, segment, runDir, reviewers, change, directory }) {
   if (PLAN_COMMANDS.has(command)) return planFindings(runDir, segment);
   // Direct Build's functional fix loop writes the same round files as a plan segment.
   if (command === 'sai-explore-direct-build') {
@@ -416,7 +447,7 @@ function findingsOf(db, { command, segment, runDir, reviewers, change, directory
   if (segment === 'review') {
     // Without review.md on disk at close, neither count is trusted.
     const pending = pendingReviewTally(directory);
-    return { found: pending && reviewers[0] ? firstReviewTally(db, reviewers[0], change) : null, pending };
+    return { found: pending && reviewers[0] ? firstReviewTally(source, reviewers[0], change) : null, pending };
   }
   if (COMMANDS[command].inSession) return { unavailable: 'the route records no review-finding tally' };
   return { unavailable: 'the step reviews carry no Summary line' };
@@ -429,7 +460,7 @@ function findingsOf(db, { command, segment, runDir, reviewers, change, directory
 // The rows of the subagents below a session, grouped by segment, and one row for each
 // dispatch whose session is not recorded. A child belongs to its parent's segment, and a
 // first-level child to the segment `segmentFor` gives its creation time.
-function subagentRows(db, root, requests, children, segmentFor) {
+function subagentRows(source, root, requests, children, segmentFor) {
   const segmentOfSession = new Map([[root.id, null]]);
   const requestsOf = new Map([[root.id, requests]]);
   const rows = new Map(Object.keys(SEGMENT_LABELS).map(key => [key, []]));
@@ -438,36 +469,35 @@ function subagentRows(db, root, requests, children, segmentFor) {
     const segment = segmentOfSession.get(child.parent_id) ?? segmentFor(child.time_created);
     segmentOfSession.set(child.id, segment);
     depthOf.set(child.id, child.depth);
-    requestsOf.set(child.id, assistantRows(db, child.id, 0, OPEN_END).map(toRequest));
+    requestsOf.set(child.id, source.requests(child.id, 0, OPEN_END));
     rows.get(segment).push(agentRow(`${child.depth > 1 ? '↳ ' : ''}${child.agent ?? UNAVAILABLE}`, child.depth, requestsOf.get(child.id)));
   }
   // A dispatch whose child session is not recorded is an unavailable subagent.
-  const known = db.prepare('SELECT 1 FROM session_v2 WHERE id = ?');
   const missing = new Set();
   for (const [session, list] of requestsOf) {
     for (const link of list.flatMap(request => request.links)) {
-      if (missing.has(link.session) || known.get(link.session)) continue;
+      if (missing.has(link.session) || source.hasSession(link.session)) continue;
       missing.add(link.session);
-      rows.get(segmentOfSession.get(session) ?? segmentFor(link.time)).push(missingRow(link.session, depthOf.get(session) + 1));
+      rows.get(segmentOfSession.get(session) ?? segmentFor(link.time)).push(missingRow(link.session, depthOf.get(session) + 1, source.store));
     }
   }
   return { rows, requestsOf };
 }
 
-function measure(db, options, execution) {
+function measure(source, options, execution) {
   const { command } = options;
   const { root, inv, end } = execution;
   // The coordinator's own closing turn is still running when it asks for this collection: it is left out.
-  const requests = assistantRows(db, root.id, inv.time, end).map(toRequest);
+  const requests = source.requests(root.id, inv.time, end);
   if (requests.length && requests.at(-1).completed === null) requests.pop();
-  const children = childrenIn(db, execution);
+  const children = childrenIn(source, execution);
   const marks = segmentMarks(command, children);
-  const { rows, requestsOf } = subagentRows(db, root, requests, children, time => segmentAt(marks, time));
+  const { rows, requestsOf } = subagentRows(source, root, requests, children, time => segmentAt(marks, time));
   const coordinator = agentRow(coordinatorName(command), 0, requests);
   const reviewers = children.filter(child => child.agent === 'sai-4-review-worker').map(child => child.id);
   const segments = [...COMMANDS[command].order, 'other']
     .filter(key => key !== 'other' || rows.get('other').length)
-    .map(key => ({ key, ran: marks.some(mark => mark.segment === key), rows: rows.get(key), findings: findingsOf(db, { ...options, segment: key, reviewers }) }));
+    .map(key => ({ key, ran: marks.some(mark => mark.segment === key), rows: rows.get(key), findings: findingsOf(source, { ...options, segment: key, reviewers }) }));
   const all = [coordinator, ...segments.flatMap(segment => segment.rows)];
   const completed = [...requestsOf.values()].flat().map(request => request.completed).filter(value => value !== null);
   return { start: inv.time, wallMs: completed.length ? Math.max(...completed) - inv.time : null, coordinator, segments, totals: combine(all.map(row => row.figures)) };
@@ -480,25 +510,25 @@ function measure(db, options, execution) {
 const IN_SESSION_COMMANDS = Object.keys(COMMANDS).filter(command => COMMANDS[command].inSession);
 
 // The `explore` invocations of a session, each lasting until the session's next invocation.
-function exploreWindows(db, sessionId) {
-  const all = invocations(db, sessionId);
+function exploreWindows(source, sessionId) {
+  const all = source.invocations(sessionId);
   return all.flatMap((inv, index) => (inv.name === 'explore' ? [[inv.time, all[index + 1]?.time ?? OPEN_END]] : []));
 }
 
 // The route windows of an explore session: from a slice's first route worker to the
 // shell call that ran its collector, found in the session's own tool calls.
-function routeWindows(db, sessionId) {
+function routeWindows(source, sessionId) {
   const windows = [];
-  for (const row of assistantRows(db, sessionId, 0, OPEN_END)) {
-    for (const item of toolItems(row)) {
+  for (const request of source.requests(sessionId, 0, OPEN_END)) {
+    for (const item of request.items) {
       const text = Object.values(item.state?.input ?? {}).filter(value => typeof value === 'string').join('\n');
       if (!/change-telemetry\.js["']?\s+collect\b/.test(text)) continue;
       const command = text.match(/--command\s+(\S+)/)?.[1];
       const change = text.match(/--change\s+(\S+)/)?.[1];
       if (!IN_SESSION_COMMANDS.includes(command) || !change) continue;
-      const anchor = routeAnchor(db, sessionId, command, change, row.time_created);
+      const anchor = routeAnchor(source, sessionId, command, change, request.time);
       // The message that ran the collector is the route's closing turn, so the window covers it.
-      if (anchor) windows.push({ change, from: anchor.time_created, to: Math.max(toRequest(row).completed ?? 0, row.time_created) + 1 });
+      if (anchor) windows.push({ change, from: anchor.time_created, to: Math.max(request.completed ?? 0, request.time) + 1 });
     }
   }
   return windows;
@@ -508,25 +538,25 @@ function routeWindows(db, sessionId) {
 const subtract = (windows, cuts) => cuts.reduce((rest, { from, to }) => rest.flatMap(([a, b]) => [[a, Math.min(b, from)], [Math.max(a, to), b]].filter(([x, y]) => x < y)), windows);
 
 // One origin session: its coordinator and the subagents created inside its exploration windows.
-function measureOrigin(db, sessionId, execution, change) {
-  const root = db.prepare('SELECT id FROM session_v2 WHERE id = ? AND parent_id IS NULL').get(sessionId);
-  if (!root) return { id: sessionId, unavailable: `session ${sessionId} is not in opencode.db` };
-  const explored = exploreWindows(db, sessionId);
+function measureOrigin(source, sessionId, execution, change) {
+  if (!source.isRoot(sessionId)) return { id: sessionId, unavailable: `session ${sessionId} is not in ${source.store}` };
+  const root = { id: sessionId };
+  const explored = exploreWindows(source, sessionId);
   if (!explored.length) return { id: sessionId, unavailable: `session ${sessionId} holds no /sai-explore invocation` };
   // In the route's own session the exploration ends where the route starts.
   const capped = explored.map(([a, b]) => [a, execution.root.id === sessionId ? Math.min(b, execution.inv.time) : b]).filter(([a, b]) => a < b);
-  const routes = routeWindows(db, sessionId).filter(route => capped.some(([a, b]) => route.from >= a && route.from < b));
+  const routes = routeWindows(source, sessionId).filter(route => capped.some(([a, b]) => route.from >= a && route.from < b));
   const windows = subtract(capped, routes);
   const within = time => windows.some(([a, b]) => time >= a && time < b);
-  const requests = windows.flatMap(([a, b]) => assistantRows(db, sessionId, a, b)).map(toRequest);
+  const requests = windows.flatMap(([a, b]) => source.requests(sessionId, a, b));
   if (requests.length && requests.at(-1).completed === null) requests.pop();
   const included = new Set([sessionId]);
-  const children = opencodeChildren(db, sessionId).filter(child => {
+  const children = source.children(sessionId).filter(child => {
     const keep = child.parent_id === sessionId ? within(child.time_created) : included.has(child.parent_id);
     if (keep) included.add(child.id);
     return keep;
   });
-  const { rows } = subagentRows(db, root, requests, children, () => 'other');
+  const { rows } = subagentRows(source, root, requests, children, () => 'other');
   const coordinator = agentRow('sai-explore', 0, requests);
   const siblings = [...new Set(routes.map(route => route.change))].filter(name => name !== change);
   return { id: sessionId, start: windows[0]?.[0] ?? null, siblings, coordinator, rows: rows.get('other'), totals: combine([coordinator, ...rows.get('other')].map(row => row.figures)) };
@@ -565,16 +595,20 @@ function findingsLine(findings) {
   return `Findings found: ${findings.found ? counts(findings.found) : UNAVAILABLE} · pending: ${findings.pending ? counts(findings.pending) : UNAVAILABLE}`;
 }
 
-function sectionText(number, options, execution, measured) {
+// What each harness's record cannot supply, stated in every section written from it.
+const UNRECORDED = { claude: `- Note: Claude Code transcripts record no cost, reasoning, or variant, so those figures are ${UNAVAILABLE}.` };
+
+function sectionText(number, options, execution, measured, source) {
   const out = [
     `## Execution ${number} — ${commandLabel(options.command)} — ${options.status}`,
     '',
     `<!-- telemetry-execution ${execution.inv.id} -->`,
     `<!-- telemetry-totals ${JSON.stringify(measured.totals)} -->`,
-    `- Started: ${new Date(measured.start).toISOString()} · Session: ${execution.root.id}`,
+    `- Started: ${new Date(measured.start).toISOString()} · Session: ${execution.root.id} · Harness: ${source.name}`,
     `- Wall time: ${measured.wallMs === null ? UNAVAILABLE : duration(measured.wallMs)}`,
     '- Note: the coordinator row leaves out its own closing turn, the model request that was still running when this section was written.',
     `- Note: ≥ marks a partial total (a request lacks the datum); ${UNAVAILABLE} means no request supplied it. A subagent's own subagents are indented with ↳; dispatch calls count as subagents dispatched and stay out of tool calls.`,
+    ...(UNRECORDED[options.harness] ? [UNRECORDED[options.harness]] : []),
     '',
     '### Coordinator',
     '',
@@ -675,29 +709,29 @@ const skipped = reason => ({ outcome: 'skipped', reason });
 
 function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } = {}) {
   const { harness, command, change, cwd } = options;
-  if (harness !== 'opencode') return skipped('Change telemetry is not supported on Claude Code yet.');
   const directory = changeDirectory(cwd, change);
   if (!directory) return skipped(`The change directory openspec/changes/${change}/ was not found.`);
   const relative = `${directory.relative}/telemetry.md`;
-  let db;
-  try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
-    if (error instanceof OpencodeUnavailable) return skipped(error.message);
+  let source;
+  try { source = openSource(harness, { cwd, env, loadSqlite }); } catch (error) {
+    if (isSourceUnavailable(error)) return skipped(error.message);
     throw error;
   }
   const file = path.join(directory.absolute, 'telemetry.md');
   const existing = readExisting(file);
   // The exploration is recorded once: by the first execution that writes the file, from the origin sessions of the change.
-  const origins = existing.foreign || existing.exploration ? [] : [...new Set(readOpenspecYaml(path.join(directory.absolute, '.openspec.yaml'))?.explore_origin ?? [])];
+  // The origin sessions are opencode sessions: a Claude Code collection records none yet.
+  const origins = harness !== 'opencode' || existing.foreign || existing.exploration ? [] : [...new Set(readOpenspecYaml(path.join(directory.absolute, '.openspec.yaml'))?.explore_origin ?? [])];
   let execution, measured, exploration = null;
   try {
-    execution = findExecution(db, options);
-    if (execution) measured = measure(db, { ...options, directory }, execution);
-    if (execution && origins.length) exploration = explorationText(origins.map(session => measureOrigin(db, session, execution, change)));
-  } finally { db.close(); }
-  if (!execution) return skipped(`No opencode execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
+    execution = findExecution(source, options);
+    if (execution) measured = measure(source, { ...options, directory }, execution);
+    if (execution && origins.length) exploration = explorationText(origins.map(session => measureOrigin(source, session, execution, change)));
+  } finally { source.close(); }
+  if (!execution) return skipped(`No ${source.name} execution of ${commandLabel(command)} on ${change} was found for ${cwd}.`);
   if (existing.foreign) return skipped(`${relative} exists and was not written by this tool, so it is left as it is.`);
   if (existing.sections.some(section => section.includes(`<!-- telemetry-execution ${execution.inv.id} -->`))) return skipped(`This execution is already recorded in ${relative}.`);
-  const section = sectionText(existing.sections.length + 1, options, execution, measured);
+  const section = sectionText(existing.sections.length + 1, options, execution, measured, source);
   const sections = [...existing.sections, section];
   const header = headerText(change, sections.length, combine(sections.map(totalsOf)));
   const temporary = `${file}.${process.pid}.tmp`;
@@ -709,16 +743,17 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
 // The explore root session of a subagent session of the current explore session: the
 // session an `Explore origin` lists. Only a session that holds a `/sai-explore` invocation counts.
 function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = defaultLoadSqlite } = {}) {
-  if (harness !== 'opencode') return skipped('Change telemetry is not supported on Claude Code yet.');
+  if (harness !== 'opencode') return skipped('Recording the explore origin on Claude Code is not supported yet.');
   let db;
   try { db = openOpencodeDatabase(env, loadSqlite); } catch (error) {
     if (error instanceof OpencodeUnavailable) return skipped(error.message);
     throw error;
   }
+  const source = opencodeSource(db);
   try {
     const root = opencodeRoot(db, session);
     if (!root) return skipped(`Session ${session} is not in opencode.db.`);
-    if (!isExploreSession(db, root.id)) return skipped(`The root session ${root.id} holds no /sai-explore invocation.`);
+    if (!isExploreSession(source, root.id)) return skipped(`The root session ${root.id} holds no /sai-explore invocation.`);
     return { outcome: 'found', session: root.id };
   } finally { db.close(); }
 }
