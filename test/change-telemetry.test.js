@@ -75,9 +75,334 @@ function planFixture() {
   return f;
 }
 
-test('claude: the harness is not supported yet and nothing is written', () => {
-  const result = collect({ harness: 'claude', command: 'sai-plan', change: 'demo', cwd: os.tmpdir(), status: 'completed' });
-  assert.deepEqual(result, { outcome: 'skipped', reason: 'Change telemetry is not supported on Claude Code yet.' });
+// ---------------------------------------------------------------------------
+// Claude Code: the same collection from the session transcripts
+// ---------------------------------------------------------------------------
+
+const claudeIso = seconds => new Date(BASE + seconds * 1000).toISOString();
+const SPLIT_USAGE = (input, output, read, write5m = 0, write1h = 0) => ({ input_tokens: input, output_tokens: output, cache_read_input_tokens: read, cache_creation_input_tokens: write5m + write1h, cache_creation: { ephemeral_5m_input_tokens: write5m, ephemeral_1h_input_tokens: write1h } });
+
+// A scratch project and its Claude Code config folder, with a builder for the transcripts.
+function claudeScratch() {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'change-telemetry-claude-'));
+  const project = path.join(base, 'project');
+  const config = path.join(base, 'config');
+  fs.mkdirSync(path.join(project, 'openspec', 'changes', 'demo'), { recursive: true });
+  const folder = path.join(config, 'projects', project.replace(/[^A-Za-z0-9]/g, '-'));
+  fs.mkdirSync(folder, { recursive: true });
+  let seq = 0;
+  const tails = new Map();
+  const uuid = () => `00000000-0000-0000-0000-${String(++seq).padStart(12, '0')}`;
+  const write = (file, row) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.appendFileSync(file, `${JSON.stringify(row)}\n`); };
+  const api = {
+    base, project, folder, env: { CLAUDE_CONFIG_DIR: config },
+    root: id => path.join(folder, `${id}.jsonl`),
+    agent: (root, id) => path.join(folder, root, 'subagents', `agent-${id}.jsonl`),
+    meta: (root, id, meta) => { const file = path.join(folder, root, 'subagents', `agent-${id}.meta.json`); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(meta)); },
+    // A slash command typed by the user; returns the record's uuid.
+    command: (file, session, seconds, name, args = '') => {
+      const id = uuid();
+      write(file, { type: 'user', uuid: id, parentUuid: tails.get(file) ?? null, timestamp: claudeIso(seconds), sessionId: session, message: { role: 'user', content: `<command-name>/${name}</command-name>\n<command-message>${name}</command-message>\n<command-args>${args}</command-args>` } });
+      tails.set(file, id);
+      return id;
+    },
+    user: (file, session, seconds, text) => {
+      const id = uuid();
+      write(file, { type: 'user', uuid: id, parentUuid: tails.get(file) ?? null, timestamp: claudeIso(seconds), sessionId: session, message: { role: 'user', content: text } });
+      tails.set(file, id);
+    },
+    // One request: a first line at `seconds`, one line per tool call at `seconds + length`, and a result
+    // for each call unless the request is still running. `duplicate` repeats the last line of the message.
+    request: (file, session, seconds, { usage = SPLIT_USAGE(10, 5, 100, 15, 5), tools = [], length = 2, pending = false, duplicate = false, model = 'claude-test' } = {}) => {
+      const messageId = `msg_${++seq}`;
+      const message = content => ({ id: messageId, role: 'assistant', model, stop_reason: tools.length ? 'tool_use' : 'end_turn', content, ...(usage ? { usage } : {}) });
+      let previous = uuid();
+      write(file, { type: 'assistant', uuid: previous, parentUuid: tails.get(file) ?? null, timestamp: claudeIso(seconds), sessionId: session, message: message([{ type: 'text', text: 'x' }]) });
+      const ids = [];
+      for (const call of tools) {
+        const id = uuid();
+        ids.push(call.id ?? `toolu_${id.slice(-6)}`);
+        write(file, { type: 'assistant', uuid: id, parentUuid: previous, timestamp: claudeIso(seconds + length), sessionId: session, message: message([{ type: 'tool_use', id: ids.at(-1), name: call.name, input: call.input ?? {} }]) });
+        previous = id;
+      }
+      if (duplicate) { const id = uuid(); write(file, { type: 'assistant', uuid: id, parentUuid: previous, timestamp: claudeIso(seconds + length), sessionId: session, message: message([{ type: 'text', text: 'x' }]) }); previous = id; }
+      tails.set(file, previous);
+      if (!pending) tools.forEach((call, index) => {
+        const id = uuid();
+        write(file, { type: 'user', uuid: id, parentUuid: tails.get(file), timestamp: claudeIso(seconds + length + 0.5), sessionId: session, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: ids[index], content: 'result', ...(call.error ? { is_error: true } : {}) }] } });
+        tails.set(file, id);
+      });
+      return ids;
+    },
+    close: () => fs.rmSync(base, { recursive: true, force: true }),
+  };
+  return api;
+}
+
+const use = (name, input = {}, extra = {}) => ({ name, input, ...extra });
+const claudeOptions = (fixture, extra = {}) => ({ harness: 'claude', command: 'sai-plan', change: 'demo', cwd: fixture.project, status: 'completed', ...extra });
+const metricCells = (text, area, agent) => {
+  const cells = rowOf(section(text, area), agent).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
+  const names = ['agent', 'model', 'variant', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cacheMisses', 'cost', 'time', 'toolCalls', 'toolErrors', 'subagents', 'tools'];
+  return Object.fromEntries(names.map((name, index) => [name, cells[index]]));
+};
+
+// A /sai-plan run in one Claude Code session: a spec worker that dispatches a helper and is continued once.
+function claudePlanFixture() {
+  const f = claudeScratch();
+  const root = f.root('cs-root');
+  f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+  f.request(root, 'cs-root', 2, { usage: SPLIT_USAGE(100, 10, 0, 50, 0), duplicate: true, tools: [use('Read'), use('Read'), use('Grep'), use('Agent', { subagent_type: 'sai-1-spec-proposal-worker' }, { id: 'toolu_spec' })] });
+  f.request(root, 'cs-root', 6, { usage: SPLIT_USAGE(20, 2, 0), tools: [use('Bash', {}, { error: true })] });
+  f.request(root, 'cs-root', 10, { tools: [use('Bash', { command: 'node change-telemetry.js collect' })], pending: true });
+  f.meta('cs-root', 'aspec', { agentType: 'sai-1-spec-proposal-worker', toolUseId: 'toolu_spec', spawnDepth: 1 });
+  const spec = f.agent('cs-root', 'aspec');
+  f.request(spec, 'cs-root', 5, { usage: SPLIT_USAGE(30, 3, 300, 10, 0), tools: [use('Write', { file_path: `${f.project}/openspec/changes/demo/proposal.md` }), use('WebSearch'), use('SendMessage'), use('Agent', {}, { id: 'toolu_helper' })] });
+  f.request(spec, 'cs-root', 9, { usage: SPLIT_USAGE(31, 4, 0) });
+  f.meta('cs-root', 'ahelper', { agentType: 'budget-explorer', toolUseId: 'toolu_helper', parentAgentId: 'aspec', spawnDepth: 2 });
+  f.request(f.agent('cs-root', 'ahelper'), 'cs-root', 7, { usage: SPLIT_USAGE(5, 1, 50) });
+  return f;
+}
+
+test('claude collect: a direct /sai-plan is measured from its transcripts, with no cost, reasoning, or variant (E4, E5, E6, E7)', () => {
+  const f = claudePlanFixture();
+  try {
+    const result = collect(claudeOptions(f), { env: f.env });
+    assert.deepEqual(result, { outcome: 'written', path: 'openspec/changes/demo/telemetry.md', message: 'Change telemetry written to openspec/changes/demo/telemetry.md (execution 1).' });
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 1 — \/sai-plan — completed/);
+    assert.match(text, /Session: cs-root · Harness: Claude Code/);
+    assert.match(text, /Claude Code transcripts record no cost, reasoning, or variant/);
+    // The repeated line of one message.id is one request; the request still running is left out.
+    const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
+    assert.deepEqual(coordinator, { agent: 'sai-plan', model: 'claude-test', variant: 'unavailable', requests: '2', input: '120', output: '12', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '50', cacheMisses: '1', cost: 'unavailable', time: '7s', toolCalls: '4', toolErrors: '1', subagents: '1', tools: 'Read×2, Bash×1, Grep×1' });
+    // Cache write sums the 5-minute and 1-hour creation tokens; a SendMessage continuation dispatches nothing.
+    const spec = metricCells(text, 'Spec', 'sai-1-spec-proposal-worker');
+    assert.deepEqual({ requests: spec.requests, input: spec.input, cacheRead: spec.cacheRead, cacheWrite: spec.cacheWrite, toolCalls: spec.toolCalls, subagents: spec.subagents, cost: spec.cost }, { requests: '2', input: '61', cacheRead: '300', cacheWrite: '10', toolCalls: '3', subagents: '1', cost: 'unavailable' });
+    assert.equal(spec.tools, 'SendMessage×1, WebSearch×1, Write×1');
+    const helper = metricCells(text, 'Spec', '↳ budget-explorer');
+    assert.equal(helper.requests, '1');
+    assert.equal(helper.cacheRead, '50');
+    const total = text.split('\n').find(line => /^\| ≥?\d/.test(line));
+    assert.match(total, /unavailable/);
+    assert.ok(!/\$\d/.test(text), 'no cost figure appears');
+  } finally { f.close(); }
+});
+
+test('claude collect: a cache write without the 5-minute and 1-hour split is the unsplit value (E5), and a missing usage is unavailable', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+    f.request(root, 'cs-root', 2, { usage: { input_tokens: 7, output_tokens: 3, cache_read_input_tokens: 0, cache_creation_input_tokens: 42 } });
+    f.request(root, 'cs-root', 5, { usage: null });
+    f.request(root, 'cs-root', 8, { pending: true, tools: [use('Bash')] });
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const coordinator = metricCells(telemetryOf(f), 'Coordinator', 'sai-plan');
+    assert.equal(coordinator.requests, '2');
+    assert.equal(coordinator.cacheWrite, '≥42');
+    assert.equal(coordinator.input, '≥7');
+  } finally { f.close(); }
+});
+
+test('claude collect: a dispatch whose subagent is not recorded is an unavailable row and a partial total (E7)', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+    f.request(root, 'cs-root', 2, { tools: [use('Agent', {}, { id: 'toolu_ghost' })] });
+    f.request(root, 'cs-root', 6, { pending: true, tools: [use('Bash')] });
+    collect(claudeOptions(f), { env: f.env });
+    assert.match(telemetryOf(f), /unavailable \(session toolu_ghost is not in the Claude Code transcripts\) \| unavailable \| unavailable \| unavailable/);
+  } finally { f.close(); }
+});
+
+test('claude collect: the latest execution of the command on that change wins, and another change is never mixed in', () => {
+  const f = claudeScratch();
+  try {
+    const old = f.root('cs-old');
+    f.command(old, 'cs-old', 1, 'sai-plan', 'demo');
+    f.request(old, 'cs-old', 2, { usage: SPLIT_USAGE(1, 1, 0) });
+    const root = f.root('cs-new');
+    f.command(root, 'cs-new', 100, 'sai-plan', 'other-change');
+    f.request(root, 'cs-new', 101, { usage: SPLIT_USAGE(900, 1, 0) });
+    f.command(root, 'cs-new', 200, 'model');
+    f.command(root, 'cs-new', 201, 'sai-plan', 'demo');
+    f.request(root, 'cs-new', 202, { usage: SPLIT_USAGE(2, 1, 0) });
+    f.request(root, 'cs-new', 205, { pending: true, tools: [use('Bash')] });
+    collect(claudeOptions(f), { env: f.env });
+    const text = telemetryOf(f);
+    assert.match(text, /Session: cs-new/);
+    assert.equal(metricCells(text, 'Coordinator', 'sai-plan').input, '2');
+  } finally { f.close(); }
+});
+
+test('claude collect: a change named only by the files its workers wrote is found', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 1, 'sai-plan', '--block-file /tmp/x/block.md --block-hash abc');
+    f.request(root, 'cs-root', 2, { tools: [use('Write', { file_path: `${f.project}/openspec/changes/demo/proposal.md` })] });
+    f.request(root, 'cs-root', 6, { pending: true, tools: [use('Bash')] });
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+  } finally { f.close(); }
+});
+
+test('claude collect: a missing or unreadable transcript folder skips with the reason and writes nothing (E2)', () => {
+  const f = claudeScratch();
+  try {
+    const result = collect(claudeOptions(f), { env: { CLAUDE_CONFIG_DIR: path.join(f.base, 'elsewhere') } });
+    assert.equal(result.outcome, 'skipped');
+    assert.match(result.reason, /No readable Claude Code transcript folder was found/);
+    assert.ok(!fs.existsSync(path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md')));
+  } finally { f.close(); }
+});
+
+test('claude collect: an execution that is not in the session transcripts skips and writes no section (E3)', () => {
+  const f = claudePlanFixture();
+  try {
+    const result = collect(claudeOptions(f, { command: 'sai-build' }), { env: f.env });
+    assert.equal(result.outcome, 'skipped');
+    assert.match(result.reason, /No Claude Code execution of \/sai-build on demo/);
+    assert.ok(!fs.existsSync(path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md')));
+    // /clear starts a new session mid-run: the new transcript holds no invocation of the command.
+    const cleared = claudeScratch();
+    try {
+      cleared.user(cleared.root('cs-cleared'), 'cs-cleared', 1, 'continue the plan');
+      cleared.request(cleared.root('cs-cleared'), 'cs-cleared', 2);
+      assert.match(collect(claudeOptions(cleared), { env: cleared.env }).reason, /No Claude Code execution of \/sai-plan on demo/);
+    } finally { cleared.close(); }
+  } finally { f.close(); }
+});
+
+test('claude collect: a rerun is idempotent, a foreign telemetry.md is left alone, and a second execution appends (E11)', () => {
+  const f = claudePlanFixture();
+  try {
+    collect(claudeOptions(f, { status: 'stopped' }), { env: f.env });
+    const first = telemetryOf(f);
+    assert.match(collect(claudeOptions(f), { env: f.env }).reason, /already recorded/);
+    assert.equal(telemetryOf(f), first);
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 100, 'sai-plan', 'demo');
+    f.request(root, 'cs-root', 101, { usage: SPLIT_USAGE(1, 1, 0) });
+    f.request(root, 'cs-root', 105, { pending: true, tools: [use('Bash')] });
+    collect(claudeOptions(f, { status: 'blocked' }), { env: f.env });
+    const text = telemetryOf(f);
+    assert.ok(text.includes(first.slice(first.indexOf('## Execution 1'))), 'the first section is byte-identical');
+    assert.match(text, /## Execution 2 — \/sai-plan — blocked/);
+    assert.match(text, /Executions: 2/);
+    const foreign = path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md');
+    fs.writeFileSync(foreign, 'my own notes\n');
+    assert.match(collect(claudeOptions(f, { status: 'completed' }), { env: f.env }).reason, /was not written by this tool/);
+    assert.equal(fs.readFileSync(foreign, 'utf8'), 'my own notes\n');
+  } finally { f.close(); }
+});
+
+test('claude collect: /sai-build finds its review worker and the findings review.md carries', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-root');
+    f.command(root, 'cs-root', 1, 'sai-build', 'demo');
+    f.request(root, 'cs-root', 2, { tools: [use('Agent', {}, { id: 'toolu_red' })] });
+    f.request(root, 'cs-root', 20, { tools: [use('Agent', {}, { id: 'toolu_review' })] });
+    f.request(root, 'cs-root', 40, { tools: [use('Agent', {}, { id: 'toolu_fix' })] });
+    f.request(root, 'cs-root', 60, { pending: true, tools: [use('Bash')] });
+    f.meta('cs-root', 'ared', { agentType: 'sai-3-red-worker', toolUseId: 'toolu_red', spawnDepth: 1 });
+    f.request(f.agent('cs-root', 'ared'), 'cs-root', 3, {});
+    f.meta('cs-root', 'areview', { agentType: 'sai-4-review-worker', toolUseId: 'toolu_review', spawnDepth: 1 });
+    const summary = 'Summary: Critical=0 High=2 Medium=1 Low=0 Questions=0';
+    f.request(f.agent('cs-root', 'areview'), 'cs-root', 21, { tools: [use('Write', { file_path: `${f.project}/openspec/changes/demo/review.md`, content: `# Review\n\n${summary}\n` })] });
+    f.meta('cs-root', 'afix', { agentType: 'sai-3-green-worker', toolUseId: 'toolu_fix', spawnDepth: 1 });
+    f.request(f.agent('cs-root', 'afix'), 'cs-root', 41, {});
+    fs.writeFileSync(path.join(f.project, 'openspec', 'changes', 'demo', 'review.md'), `# Review\n\n#### H1 first\n#### H2 second (FIXED)\n#### M1 third (FIXED)\n\n${summary}\n`);
+    assert.equal(collect(claudeOptions(f, { command: 'sai-build' }), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(section(text, 'Review'), /Findings found: Critical=0 High=2 Medium=1 Low=0 Questions=0 · pending: Critical=0 High=1 Medium=0 Low=0 Questions=0/);
+    assert.match(section(text, 'Fix implement'), /sai-3-green-worker/);
+    assert.match(section(text, 'Implement'), /sai-3-red-worker/);
+  } finally { f.close(); }
+});
+
+test('claude collect: a Plan - Unattended route is found through its workers in the explore session', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-explore');
+    f.command(root, 'cs-explore', 1, 'sai-explore', 'crystallized idea');
+    f.request(root, 'cs-explore', 2, { usage: SPLIT_USAGE(1, 1, 0) });
+    f.request(root, 'cs-explore', 9, { usage: SPLIT_USAGE(3, 1, 0), tools: [use('Agent', {}, { id: 'toolu_spec' })] });
+    f.request(root, 'cs-explore', 20, { usage: SPLIT_USAGE(4, 1, 0) });
+    f.request(root, 'cs-explore', 30, { pending: true, tools: [use('Bash')] });
+    f.meta('cs-explore', 'aspec', { agentType: 'sai-1-spec-proposal-worker', toolUseId: 'toolu_spec', spawnDepth: 1 });
+    f.request(f.agent('cs-explore', 'aspec'), 'cs-explore', 10, { tools: [use('Write', { file_path: `${f.project}/openspec/changes/demo/proposal.md` })] });
+    const result = collect(claudeOptions(f, { command: 'sai-explore-plan' }), { env: f.env });
+    assert.equal(result.outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 1 — sai-explore \(Plan - Unattended\) — completed/);
+    assert.match(text, /<!-- telemetry-execution cs-explore:aspec -->/);
+    // The request before the first worker is outside the window; the closing turn is left out.
+    assert.equal(metricCells(text, 'Coordinator', 'sai-explore').requests, '1');
+    assert.match(section(text, 'Spec'), /sai-1-spec-proposal-worker/);
+    // A direct /sai-plan command is not an in-session route.
+    assert.match(collect(claudeOptions(f, { command: 'sai-plan' }), { env: f.env }).reason, /No Claude Code execution of \/sai-plan/);
+  } finally { f.close(); }
+});
+
+test('claude collect: a Direct Build slice starts after the previous slice and skips the proof of concept worker', () => {
+  const f = claudeScratch();
+  try {
+    const root = f.root('cs-explore');
+    f.command(root, 'cs-explore', 1, 'sai-explore', 'idea');
+    f.request(root, 'cs-explore', 2, { tools: [use('Agent', {}, { id: 'toolu_poc' })] });
+    f.request(root, 'cs-explore', 20, { tools: [use('Agent', {}, { id: 'toolu_archive_a' })] });
+    f.request(root, 'cs-explore', 40, { tools: [use('Agent', {}, { id: 'toolu_impl' })] });
+    f.request(root, 'cs-explore', 50, { tools: [use('Agent', {}, { id: 'toolu_backfill' })] });
+    f.request(root, 'cs-explore', 60, { pending: true, tools: [use('Bash')] });
+    f.meta('cs-explore', 'apoc', { agentType: 'sai-direct-build-worker', toolUseId: 'toolu_poc', spawnDepth: 1 });
+    f.user(f.agent('cs-explore', 'apoc'), 'cs-explore', 3, '--direct-build --no-specs\n--work-root /tmp/x');
+    f.request(f.agent('cs-explore', 'apoc'), 'cs-explore', 4, {});
+    f.meta('cs-explore', 'aarchive-a', { agentType: 'sai-archive-worker', toolUseId: 'toolu_archive_a', spawnDepth: 1 });
+    f.request(f.agent('cs-explore', 'aarchive-a'), 'cs-explore', 21, { tools: [use('Bash', { command: 'git mv openspec/changes/earlier openspec/changes/archive/2026-02-01-earlier && echo openspec/changes/earlier/' })] });
+    f.meta('cs-explore', 'aimpl', { agentType: 'sai-direct-build-worker', toolUseId: 'toolu_impl', spawnDepth: 1 });
+    f.request(f.agent('cs-explore', 'aimpl'), 'cs-explore', 41, {});
+    f.meta('cs-explore', 'abackfill', { agentType: 'sai-backfill-worker', toolUseId: 'toolu_backfill', spawnDepth: 1 });
+    f.request(f.agent('cs-explore', 'abackfill'), 'cs-explore', 51, { tools: [use('Bash', { command: 'node transfer.js materialize openspec/changes/demo/proposal.md' })] });
+    assert.equal(collect(claudeOptions(f, { command: 'sai-explore-direct-build' }), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 1 — sai-explore \(Direct Build - Unattended\) — completed/);
+    assert.match(section(text, 'Implement'), /sai-direct-build-worker/);
+    assert.match(section(text, 'Backfill'), /sai-backfill-worker/);
+    assert.ok(!text.includes('sai-archive-worker'), 'the previous slice stays outside the window');
+    assert.equal(text.split('sai-direct-build-worker').length - 1, 1, 'the proof of concept worker is not a slice worker');
+  } finally { f.close(); }
+});
+
+sqliteTest('claude and opencode executions share one telemetry.md: each section names its harness and a total is partial where a harness lacks a field (E8)', () => {
+  const f = planFixture();
+  try {
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    assert.match(telemetryOf(f), /Session: ses_root · Harness: opencode/);
+    const folder = path.join(f.base, 'config', 'projects', f.project.replace(/[^A-Za-z0-9]/g, '-'));
+    fs.mkdirSync(folder, { recursive: true });
+    const rows = [
+      { type: 'user', uuid: 'u-1', parentUuid: null, timestamp: claudeIso(500), sessionId: 'cs-1', message: { role: 'user', content: '<command-name>/sai-plan</command-name>\n<command-args>demo</command-args>' } },
+      { type: 'assistant', uuid: 'a-1', parentUuid: 'u-1', timestamp: claudeIso(502), sessionId: 'cs-1', message: { id: 'm-1', role: 'assistant', model: 'claude-test', content: [{ type: 'tool_use', id: 't-1', name: 'Bash', input: {} }], usage: SPLIT_USAGE(1000, 1, 0) } },
+    ];
+    fs.writeFileSync(path.join(folder, 'cs-1.jsonl'), `${rows.map(row => JSON.stringify(row)).join('\n')}\n`);
+    fs.writeFileSync(path.join(folder, 'cs-0.jsonl'), `${JSON.stringify({ ...rows[0], uuid: 'u-0', sessionId: 'cs-0', timestamp: claudeIso(400) })}\n${JSON.stringify({ ...rows[1], uuid: 'a-0', parentUuid: 'u-0', sessionId: 'cs-0', timestamp: claudeIso(402), message: { ...rows[1].message, id: 'm-0', content: [], usage: SPLIT_USAGE(7, 1, 0) } })}\n`);
+    assert.equal(collect(claudeOptions(f), { env: { CLAUDE_CONFIG_DIR: path.join(f.base, 'config') } }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /## Execution 2 — \/sai-plan — completed/);
+    assert.match(text, /Session: cs-1 · Harness: Claude Code/);
+    assert.match(text, /Executions: 2/);
+    const total = text.split('\n').find(line => /^\| ≥?\d/.test(line));
+    // The opencode execution recorded a cost and the Claude Code one did not: the sum is partial.
+    assert.match(total, /≥\$3\.7500/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+test('claude explore-origin: the sub-command skips and says why', () => {
+  assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_x']).payload, { outcome: 'skipped', reason: 'Recording the explore origin on Claude Code is not supported yet.' });
 });
 
 sqliteTest('collect: a missing database, a missing sqlite, and an unsupported schema each skip with a reason (E3)', () => {
@@ -584,7 +909,9 @@ test('usage errors exit 2 with their code and write nothing', () => {
 test('the CLI prints one JSON line and exits 0 for a skipped collection', () => {
   const result = spawnSync(process.execPath, [TOOL, 'collect', '--harness', 'claude', '--command', 'sai-build', '--change', 'demo', '--cwd', os.tmpdir(), '--status', 'completed'], { encoding: 'utf8' });
   assert.equal(result.status, 0);
-  assert.deepEqual(JSON.parse(result.stdout), { outcome: 'skipped', reason: 'Change telemetry is not supported on Claude Code yet.' });
+  const lines = result.stdout.trim().split('\n');
+  assert.equal(lines.length, 1);
+  assert.deepEqual(JSON.parse(lines[0]), { outcome: 'skipped', reason: 'The change directory openspec/changes/demo/ was not found.' });
 });
 
 // Exploration: the origin sessions listed in the change's .openspec.yaml.
@@ -712,7 +1039,7 @@ sqliteTest('explore-origin: a subagent session resolves to its explore root, any
     assert.deepEqual(run('ses_explore').payload, { outcome: 'found', session: 'ses_explore' });
     assert.match(run('ses_plain_child').payload.reason, /root session ses_plain holds no \/sai-explore invocation/);
     assert.match(run('ses_unknown').payload.reason, /not in opencode\.db/);
-    assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_helper']).payload, { outcome: 'skipped', reason: 'Change telemetry is not supported on Claude Code yet.' });
+    assert.deepEqual(main(['explore-origin', '--harness', 'claude', '--session', 'ses_helper']).payload, { outcome: 'skipped', reason: 'Recording the explore origin on Claude Code is not supported yet.' });
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
 

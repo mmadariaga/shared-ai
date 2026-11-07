@@ -135,7 +135,7 @@ The collector SHALL record as loaded instructions every load of an instruction p
 
 ### Requirement: Claude Code transcript source
 
-The collector SHALL read Claude Code transcripts from `<config>/projects/<encoded-project-path>/*.jsonl`, resolving `<config>` from `CLAUDE_CONFIG_DIR` before `~/.claude` through the `claudeProjectsRoot` and `parseTranscript` functions of the context-cache benchmark adapters, with no second copy of that logic. A supplied project without a readable transcript folder SHALL be reported as `inaccessible` with its reason, and the collector SHALL continue with the remaining projects.
+The collector SHALL read Claude Code transcripts from `<config>/projects/<encoded-project-path>/*.jsonl`, resolving `<config>` from `CLAUDE_CONFIG_DIR` before `~/.claude`, through the shared reader `sai/tools/claude-transcripts.js` (`claudeProjectsRoot`, `projectFolder`, `parseTranscript`, and the record helpers), the same reader `sai/tools/change-telemetry.js` uses for its Claude Code source, with no second copy of that logic inside `sai/tools/`. It SHALL NOT require the context-cache benchmark skill's adapters, and its output SHALL stay unchanged. A supplied project without a readable transcript folder SHALL be reported as `inaccessible` with its reason, and the collector SHALL continue with the remaining projects.
 
 #### Scenario: One inaccessible project among several
 - **WHEN** `--paths` names one project with transcripts and one without a readable transcript folder

@@ -52,6 +52,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
+const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents } = require('./claude-transcripts');
 
 const DEFAULT_LIMIT = 5;
 const DEFAULT_COUNT = 10;
@@ -60,8 +61,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const OPENCODE_SESSION = /^ses_[A-Za-z0-9]+$/;
 const CLAUDE_AGENT = /^(?:agent-)?(a[0-9a-f]{16})$/;
 const COMMAND_NAME = /^\/?(sai-[A-Za-z0-9-]+)$/;
-const INVOCATION = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
-const INVOCATION_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 const INSTRUCTION_PATH = /(^|\/)(\.claude|\.opencode|sai|skills|agents|commands)\/|(^|\/)(CLAUDE|AGENTS)\.md$/;
 const SKILL_BODY = /^Base directory for this skill: (.+)/;
 // Conversation records only; idle and model/agent/location switches are state markers.
@@ -86,18 +85,18 @@ class ToolError extends Error {
   }
 }
 
-// The transcript-location logic lives in the cache-benchmark skill; the source
-// tree and the installed tree place that skill at different depths.
-function loadClaudeTranscriptReader() {
-  const candidates = [
-    path.join(__dirname, '..', '..', 'skills', 'sai-context-cache-ttl-benchmark', 'adapters.js'),
-    path.join(__dirname, '..', '..', 'skills', 'universal', 'sai-context-cache-ttl-benchmark', 'adapters.js'),
-  ];
-  const found = candidates.find(file => fs.existsSync(file));
-  if (!found) throw new ToolError('READER_UNAVAILABLE', `The Claude transcript reader was not found (tried ${candidates.join(', ')})`);
-  const { claudeProjectsRoot, parseTranscript, claudeTokens, opencodeTokens } = require(found);
-  return { claudeProjectsRoot, parseTranscript, claudeTokens, opencodeTokens };
+// The tokens of one opencode assistant message (its parsed `data`): a request
+// whose usage is absent reads as `unavailable`, never as zero.
+const finite = value => (Number.isFinite(value) ? value : null);
+function opencodeTokens(data) {
+  const t = data?.tokens;
+  const input = finite(t?.input), output = finite(t?.output), cacheRead = finite(t?.cache?.read);
+  if (input === null || output === null || cacheRead === null) return UNAVAILABLE;
+  return { input, output, reasoning: finite(t.reasoning), cache_read: cacheRead, cache_write: finite(t.cache?.write), cost: finite(data.cost) };
 }
+
+// The token readers the cost measurement uses; Claude Code transcripts are read through the shared reader.
+const READER = { claudeProjectsRoot, parseTranscript, claudeTokens, opencodeTokens };
 
 // The SAI workers and commands declared beside the tool.
 function loadRegistry() {
@@ -163,42 +162,6 @@ function classifyTarget(target) {
 function resolveProject(project, cwd) {
   const expanded = project === '~' || project.startsWith('~/') ? path.join(os.homedir(), project.slice(1)) : project;
   return path.resolve(cwd, expanded);
-}
-
-// Claude Code names a project folder after its path with every character
-// outside [A-Za-z0-9] replaced by a dash.
-function projectFolder(projectsRoot, projectPath) {
-  return path.join(projectsRoot, projectPath.replace(/[^A-Za-z0-9]/g, '-'));
-}
-
-function byTimeThenUuid(a, b) {
-  return (Date.parse(a.timestamp) - Date.parse(b.timestamp)) || (a.uuid < b.uuid ? -1 : a.uuid > b.uuid ? 1 : 0);
-}
-
-const RECORD_TYPES = new Set(['user', 'assistant', 'attachment', 'system']);
-
-function readRecords(text, reader) {
-  const rows = reader.parseTranscript(text);
-  return rows.filter(row => RECORD_TYPES.has(row.type) && row.uuid && row.timestamp).sort(byTimeThenUuid);
-}
-
-function blocks(row) {
-  return Array.isArray(row.message?.content) ? row.message.content : [];
-}
-
-function textOf(row) {
-  const content = row.message?.content;
-  if (typeof content === 'string') return content;
-  return blocks(row).filter(block => block?.type === 'text').map(block => block.text).join('\n');
-}
-
-function invocationOf(row) {
-  if (row.type !== 'user' || row.isMeta) return null;
-  const text = textOf(row).trim();
-  if (!text.startsWith('<command-')) return null;
-  const name = text.match(INVOCATION)?.[1];
-  if (!name) return null;
-  return { command: name, args: (text.match(INVOCATION_ARGS)?.[1] ?? '').trim() };
 }
 
 function clip(value, max) {
@@ -297,17 +260,6 @@ function scanRows(rows, agent) {
   return { toolUses, loaded, errors, otherReads, changes };
 }
 
-function readAgents(sessionDir) {
-  const directory = path.join(sessionDir, 'subagents');
-  if (!fs.existsSync(directory)) return [];
-  return fs.readdirSync(directory).filter(name => /^agent-.+\.meta\.json$/.test(name)).sort().map(name => {
-    const id = name.slice('agent-'.length, -'.meta.json'.length);
-    let meta = {};
-    try { meta = JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')); } catch { /* an unreadable meta file leaves the agent unlinked */ }
-    return { agent_id: id, agent_type: meta.agentType ?? null, description: meta.description ?? null, tool_use_id: meta.toolUseId ?? null, parent_agent_id: meta.parentAgentId ?? null, spawn_depth: meta.spawnDepth ?? null, finished: meta.finished ?? null, file: path.join(directory, `agent-${id}.jsonl`) };
-  });
-}
-
 // `parent_agent_id` names the agent that dispatched this one (null: the main
 // session did). `usage` and `tool_calls` are present once the agent is linked to
 // an execution.
@@ -336,11 +288,11 @@ function assignSegments(rows, starts) {
 
 // A subagent whose transcript is missing or unreadable measures as `unavailable`.
 function readAgentRows(agent, reader) {
-  try { return fs.existsSync(agent.file) ? readRecords(fs.readFileSync(agent.file, 'utf8'), reader) : null; } catch { return null; }
+  try { return fs.existsSync(agent.file) ? readRecords(fs.readFileSync(agent.file, 'utf8')) : null; } catch { return null; }
 }
 
 function buildSession({ reader, workers, project, group, sessionDir, text, session }) {
-  const rows = readRecords(text, reader);
+  const rows = readRecords(text);
   // Only a SAI command invocation starts an execution; any other slash command
   // typed during one stays inside it as an ordinary record.
   const starts = [];
@@ -364,7 +316,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
       progressed = true;
       const principal = workers.has(agent.agent_type);
       if (principal && fs.existsSync(agent.file)) {
-        agent.rows = readRecords(fs.readFileSync(agent.file, 'utf8'), reader);
+        agent.rows = readRecords(fs.readFileSync(agent.file, 'utf8'));
         for (const row of agent.rows) for (const block of blocks(row)) if (block?.type === 'tool_use') uses.set(block.id, agent.segment);
       }
       agent.metrics = claudeMetrics(agent.rows ?? (principal ? null : readAgentRows(agent, reader)), reader);
@@ -759,7 +711,7 @@ function resolveMembers(options, cwd, defaults, notes) {
 
 // Collects the executions a target selects across both harnesses, newest first.
 function collectExecutions({ target, members, env, loadSqlite, output, registry }) {
-  const reader = loadClaudeTranscriptReader();
+  const reader = READER;
   const executions = [];
   // A session or agent ID belongs to one harness; a command name is read from both.
   if (target.kind !== 'opencode-session') {
@@ -831,12 +783,12 @@ function excerpt(argv, env, loadSqlite) {
   if (OPENCODE_SESSION.test(options.session)) return excerptOpencode(options, env, loadSqlite);
   if (!UUID.test(options.session)) throw new ToolError('USAGE', '--session must be a Claude Code session UUID or an opencode ses_ session ID');
   if (options.agent !== undefined && !CLAUDE_AGENT.test(options.agent)) throw new ToolError('USAGE', '--agent must be a Claude Code agent ID');
-  const reader = loadClaudeTranscriptReader();
+  const reader = READER;
   const folder = projectFolder(reader.claudeProjectsRoot(env), resolveProject(options.project, process.cwd()));
   const agent = options.agent?.match(CLAUDE_AGENT)[1];
   const file = agent ? path.join(folder, options.session, 'subagents', `agent-${agent}.jsonl`) : path.join(folder, `${options.session}.jsonl`);
   if (!fs.existsSync(file)) throw new ToolError('NOT_FOUND', 'No transcript matches that project, session, and agent');
-  const rows = readRecords(fs.readFileSync(file, 'utf8'), reader);
+  const rows = readRecords(fs.readFileSync(file, 'utf8'));
   return { session: options.session, agent: agent ?? null, ...pageRecords(rows, row => row.uuid, options, renderRecord) };
 }
 
