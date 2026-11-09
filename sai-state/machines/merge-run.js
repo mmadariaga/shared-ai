@@ -19,7 +19,7 @@
 //   attempt    {obstacle}                             spends one of the obstacle's attempts
 //   escalate   {obstacle}                             the run waits for the user's answer
 //   answer     {obstacle, choice}                     `continue` resets the obstacle, `stop` stops the run
-//   record     {ref, path}                            ref: obstacle | finding | assumption
+//   record     {ref, path}                            ref: obstacle | finding | assumption | report-dir
 //   close      {outcome}                              outcome: completed | escalated | stopped
 //   status     {}                                     changes nothing; returns the run state
 
@@ -33,6 +33,7 @@ const REFS = Object.freeze({
   obstacle: 'obstacles',
   finding: 'findings',
   assumption: 'assumptions',
+  'report-dir': 'report_dirs',
 });
 
 const COMMIT_ID = /^[0-9a-f]{7,64}$/;

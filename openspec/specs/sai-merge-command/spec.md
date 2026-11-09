@@ -438,12 +438,17 @@ When the worker's strategy report lists an escalation because commit intent cann
 
 ### Requirement: Merge obstacles and escalation
 
-An obstacle SHALL be anything that prevents closing a stop or the run, including a rejected or unreviewable resolution, a new failure, an unreadable report, a silent or drifting worker, a git refusal, or a tool error. Each named obstacle SHALL have a budget of three attempts, each a different approach, and the coordinator SHALL emit `attempt` before each one and escalate at once when the budget is exhausted. Escalation SHALL state what happened, what is done, and what was tried, and SHALL ask through the native picker with options the coordinator writes, including one that accepts the new failure and finalizes when the obstacle is `new-failure`, one that leaves everything as it is, and, while a merge or rebase is in progress, one that aborts it. A dismissed question SHALL close the run `escalated` with the operation left in progress.
+An obstacle SHALL be anything that prevents closing a stop or the run, including a rejected or unreviewable resolution, a new failure, a worker report that cannot be read, does not validate with `--command merge`, or is `failed`, a silent or drifting worker, a git refusal, or a tool error. A `failed` report's summary SHALL name the blocker and the affected path. The first invalid report SHALL go back to the same worker as a corrected instruction, and a second consecutive invalid report SHALL replace it. Each named obstacle SHALL have a budget of three attempts, each a different approach, and the coordinator SHALL emit `attempt` before each one and escalate at once when the budget is exhausted. Escalation SHALL state what happened, what is done, and what was tried, and SHALL ask through the native picker with options the coordinator writes, including one that accepts the new failure and finalizes when the obstacle is `new-failure`, one that leaves everything as it is, and, while a merge or rebase is in progress, one that aborts it. A dismissed question SHALL close the run `escalated` with the operation left in progress.
 
 #### Scenario: Exhausted budget escalates
 
 - **WHEN** the third attempt on an obstacle fails
 - **THEN** the coordinator escalates through the native picker instead of making a fourth attempt
+
+#### Scenario: A failed worker report is an obstacle of its step
+
+- **WHEN** the merge worker returns a validated `failed` report for a strategy or apply step
+- **THEN** the coordinator handles it as an obstacle of that stop, spending one attempt, instead of treating it as a planned stop
 
 ### Requirement: Command-local authority of a merge run
 
@@ -475,7 +480,7 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 ### Requirement: Merge coordinator loads only its own contracts
 
-Both `/sai-merge` wrappers SHALL load the harness fetch skill and `sai/commands/merge/coordinator.md` directly, with no boot adapter and no command bootstrap. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `obstacle-escalation`, and `incremental-review`, SHALL load no budget binding, and SHALL load none of `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, or `no-commit-guard`. The only subagent of a run SHALL be the merge worker; lookups that shared policies delegate to a `budget-explorer` SHALL be done by the coordinator itself.
+Both `/sai-merge` wrappers SHALL load the harness fetch skill and `sai/commands/merge/coordinator.md` directly, with no boot adapter and no command bootstrap. The coordinator SHALL load only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `obstacle-escalation`, `incremental-review`, and `worker-report-transport` (whose receiver side it follows for every merge worker report), SHALL resolve `merge.js`, `temp-root.js`, `transfer.js`, `worker-report-validator.js`, `review-delta.js`, and the `sai-state` CLI per `tool-resolution`, SHALL load no budget binding, and SHALL load none of `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, or `no-commit-guard`. The only subagent of a run SHALL be the merge worker; lookups that shared policies delegate to a `budget-explorer` SHALL be done by the coordinator itself.
 
 #### Scenario: Wrapper reaches the coordinator directly
 

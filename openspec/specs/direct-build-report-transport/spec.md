@@ -7,7 +7,7 @@ Deliver full Direct Build worker reports through private file references and val
 
 ### Requirement: Full Direct Build reports use private references
 
-For the full Direct Build - Unattended route in Claude Code and opencode, the coordinator SHALL create a private report directory with `transfer.js open --harness <claude|opencode>` and disclose it to the implementation, backfill, and archive workers through an outermost `--report-dir <absolute path>` line after ready. Workers SHALL strip that line before parsing their ordinary input and retain the directory across same-worker continuations. A full-route task lacking the directory SHALL report missing transport without work. The initial ready return, `--no-specs` POC, and standalone backfill and archive report transport SHALL remain unchanged.
+For the full Direct Build - Unattended route in Claude Code and opencode, the coordinator SHALL create a private report directory with `transfer.js open --harness <claude|opencode>` and disclose it to the implementation, backfill, and archive workers through an outermost `--report-dir <absolute path>` line after ready. Workers SHALL strip that line before parsing their ordinary input and retain the directory across same-worker continuations. A full-route task lacking the directory SHALL report missing transport without work. The standalone `/sai-backfill` and `/sai-archive` routes SHALL disclose a report directory the same way, opened by their own coordinators, so the backfill and archive workers report through private references on every route. The initial ready return and the `--no-specs` POC transport SHALL remain unchanged.
 
 #### Scenario: Report storage is disclosed after ready
 - **WHEN** the coordinator discloses a full Direct Build task after the initial ready exchange
@@ -18,8 +18,8 @@ For the full Direct Build - Unattended route in Claude Code and opencode, the co
 - **THEN** the worker reports the missing transport without performing task work
 
 #### Scenario: Existing routes retain their transport
-- **WHEN** a worker returns initial readiness or operates in POC or standalone backfill or archive mode
-- **THEN** the existing transport applies without this full-route migration
+- **WHEN** a worker returns initial readiness or operates in the `--no-specs` POC mode
+- **THEN** the existing transport applies without this migration, while standalone backfill and archive workers report through private references like the full route
 
 ### Requirement: Workers preserve complete reports without inline copying
 
@@ -63,7 +63,7 @@ Each full-route worker SHALL compose its ordinary closed report, including role-
 
 ### Requirement: Receiver consumes only accepted verified payloads
 
-For each post-ready response that travels as a report reference, the coordinator SHALL pass only its reference values to the resolved validator as `validate --kind terminal --command <command> --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>`, where `<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `direct-build`, `backfill`, or `archive` for the Direct Build worker of that role), and use the accepted parsed payload without another file read. It SHALL preserve report bytes without copying, normalizing, or silently repairing them. A missing reference or helper failure SHALL be failed delivery, not report rejection. A call returning no response SHALL establish neither acceptance nor rejection. An unaccepted report SHALL grant no lifecycle status or changed-path claim.
+For each post-ready response that travels as a report reference, the coordinator SHALL pass only its reference values to the resolved validator as `validate --kind terminal --command <command> --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>`, where `<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `spec` or `design` for the plan workers; `review` for the review worker; `security`, `performance`, or `accessibility` for the audit worker of that audit; `commit`, `archive`, `backfill`, or `merge` for the worker of that command, standalone or, for `archive` and `backfill`, in Direct Build; `direct-build` for the Direct Build implementer), and use the accepted parsed payload without another file read. It SHALL preserve report bytes without copying, normalizing, or silently repairing them. A missing reference or helper failure SHALL be failed delivery, not report rejection. A call returning no response SHALL establish neither acceptance nor rejection. An unaccepted report SHALL grant no lifecycle status or changed-path claim.
 
 #### Scenario: Accepted report drives ordinary handling
 - **WHEN** reference validation returns accepted
@@ -73,9 +73,13 @@ For each post-ready response that travels as a report reference, the coordinator
 - **WHEN** the validator call is interrupted without a result
 - **THEN** the coordinator records no acceptance or rejection and retains the evidence for bounded recovery
 
+#### Scenario: Standalone commands name their own validator command
+- **WHEN** the commit, archive, backfill, or merge coordinator validates a worker report on its standalone route
+- **THEN** it passes `--command commit`, `--command archive`, `--command backfill`, or `--command merge` respectively
+
 ### Requirement: Full-route failed reports carry the failure fields
 
-`sai/policies/worker-report-transport.md` SHALL define, in a `Direct Build role fields` section, that a full-route `failed` report carrying `resolved_change_name` also carries `failure_class` (one of `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, or `unclassified-worker-fault`) and a boolean `unrecoverable`, as role fields of Direct Build that no other worker carries. Each Direct Build worker SHALL compose the report of its own contract with these fields. `failure_class` SHALL be worker-authored evidence, not an eligibility gate: the coordinator SHALL decide the response under `sai/policies/obstacle-escalation.md`. A worker SHALL set `unrecoverable: true` only when its own evidence shows that continuing is unsafe, and neither field SHALL be written into a repository artifact. Report delivery and validity recovery SHALL be handled as an obstacle under the same policy.
+`sai/policies/worker-report-transport.md` SHALL define, in a `Direct Build role fields` section, that a `failed` report of a Direct Build, archive, or backfill worker carrying `resolved_change_name` also carries `failure_class` (one of `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, or `unclassified-worker-fault`) and a boolean `unrecoverable`, as role fields of the workers that carry `resolved_change_name`, on every route they run, that no other worker carries. Each such worker SHALL compose the report of its own contract with these fields. `failure_class` SHALL be worker-authored evidence, not an eligibility gate: the coordinator SHALL decide the response under `sai/policies/obstacle-escalation.md`. A worker SHALL set `unrecoverable: true` only when its own evidence shows that continuing is unsafe, and neither field SHALL be written into a repository artifact. Report delivery and validity recovery SHALL be handled as an obstacle under the same policy.
 
 #### Scenario: A failed full-route report carries the failure fields
 
@@ -87,9 +91,14 @@ For each post-ready response that travels as a report reference, the coordinator
 - **WHEN** the coordinator receives a failed report with `unrecoverable: false`
 - **THEN** it decides the response under `sai/policies/obstacle-escalation.md` and treats the fields as evidence only
 
+#### Scenario: A standalone failed report carries the failure fields
+
+- **WHEN** a backfill or archive worker of a standalone `/sai-backfill` or `/sai-archive` run returns `failed` after its change name resolved
+- **THEN** its saved report carries `failure_class` and `unrecoverable` as on the full route
+
 ### Requirement: One shared worker report policy
 
-`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, the audit workers of `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. The policy SHALL name the role fields of each family (spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`; audits: `report_path` and `counts`), the run state that keeps the report directory (`plan-run@1` for the plan commands, the conversation for `/sai-4-review` and the audit cycles), and the validator command of each audit worker (`security`, `performance`, or `accessibility`). `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
+`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, the audit workers of `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`, the commit, archive, backfill, and merge workers of `/sai-commit`, `/sai-archive`, `/sai-backfill`, and `/sai-merge`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. The policy SHALL name the role fields of each family (spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`; audits: `report_path` and `counts`; commit: none; archive: `resolved_change_name`; backfill: `resolved_change_name`, `draft_references`, and `corrected_specs`; merge: the fields its step files name), the run state that keeps the report directory (`plan-run@1` for the plan commands, `merge-run@1` for `/sai-merge`, the conversation for `/sai-4-review`, the audit cycles, `/sai-commit`, `/sai-archive`, `/sai-backfill`, and Direct Build), and the validator command of each worker family. `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. Only the `--no-specs` POC SHALL keep its existing transport. Claude Code and opencode SHALL produce, validate, and recover reports identically.
 
 #### Scenario: The retired policy leaves the installation
 
@@ -98,8 +107,8 @@ For each post-ready response that travels as a report reference, the coordinator
 
 #### Scenario: A worker family outside the slice keeps its dialect
 
-- **WHEN** a worker whose contract does not fetch `worker-report-transport.md`, such as a commit, archive, backfill, or merge worker outside the full Direct Build route, returns a result
-- **THEN** its coordinator receives it in that family's present report form
+- **WHEN** a commit, archive, backfill, or merge worker returns a result on its standalone route, outside the full Direct Build route
+- **THEN** it returns a report reference that its coordinator validates with `--command commit`, `--command archive`, `--command backfill`, or `--command merge` before reading any field, and only the `--no-specs` POC keeps its present report form
 
 #### Scenario: The plan and review workers follow the policy
 
