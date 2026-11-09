@@ -30,7 +30,7 @@ The fetch resolution rules SHALL apply recursively. If a loaded skill or fetched
 
 #### Scenario: nested fetch in loaded file
 - **WHEN** a fetched file contains `Fetch @sai/policies/glossary-format.md` and that subpath is not already loaded in Claude's context
-- **THEN** Claude resolves it in the fetch tool call of the next batch, which checks project `.claude/` first and global `~/.claude/` second
+- **THEN** Claude resolves it in the fetch tool call of the next batch, which checks project `.claude/` first and the user-global root (`CLAUDE_CONFIG_DIR`, else `~/.claude/`) second
 - **AND** the output that delivered the outer file does not contain the nested file's content
 
 #### Scenario: nested fetch of an already-loaded subpath
@@ -59,16 +59,16 @@ The disambiguation table MUST document that these two patterns resolve to differ
 ### Requirement: Resolve Fetch @subpath through one deterministic tool
 When an instruction contains `Fetch @<subpath>` that does not have the form `skills/<name>/SKILL.md`, Claude SHALL resolve it by running the fetch tool `fetch.js`, which the installer places beside the fetch skill's `SKILL.md` for Claude Code and opencode alike, with `--harness claude` and the subpaths of the current batch as the batching requirement defines, except a directive that the `fetch-loaded-copy-reuse` capability lets Claude follow from a complete copy it already loaded in this conversation. When the skill's base directory is the project-local copy `.claude/skills/fetch` under the working directory, Claude SHALL run `node .claude/skills/fetch/fetch.js --harness claude <subpath> [<subpath> ...]` relative to the working directory as written. Otherwise Claude SHALL run `node "<base directory>/fetch.js" --harness claude <subpath> [<subpath> ...]`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted, so the command matches the generated shell permission rules.
 
-The tool SHALL check `.claude/<subpath>` under the working directory, a worktree included, and then `~/.claude/<subpath>`, on every call, for every subpath, and with no session memory, and SHALL use the first file that exists. On a call with exactly one subpath that resolves, it SHALL print `path: <absolute resolved path>` with `/` separators, `root: project` or `root: global`, one blank line, and the unchanged file content. When the header and the content together exceed the 30000-character output cap, it SHALL print the header and a `too-large` line instead of the content, and Claude SHALL Read the exact header path. Claude SHALL use the header path as given and SHALL NOT compose a path itself. When no root has the file on a one-subpath call, the tool SHALL exit with code 1 and the message `File not found: <subpath> (tried <paths>)` on stderr, naming every path it tried.
+The tool SHALL check `.claude/<subpath>` under the working directory, a worktree included, and then `<subpath>` under the user-global root, on every call, for every subpath, and with no session memory, and SHALL use the first file that exists. The user-global root SHALL be the one the shared resolver `skills/universal/fetch/harness-root.js` (installed beside `fetch.js`) returns: the directory `CLAUDE_CONFIG_DIR` names when that variable is set and not blank, and `~/.claude` otherwise; when `CLAUDE_CONFIG_DIR` is set, `~/.claude` SHALL NOT be consulted. A root or a file reached through a symbolic link SHALL resolve like any other: the scope check SHALL stay lexical and SHALL NOT compare real paths. A file that exists but cannot be read SHALL be a declared error of that subpath, with no stack trace. On a call with exactly one subpath that resolves, it SHALL print `path: <absolute resolved path>` with `/` separators, `root: project` or `root: global`, one blank line, and the unchanged file content. When the header and the content together exceed the 30000-character output cap, it SHALL print the header and a `too-large` line instead of the content, and Claude SHALL Read the exact header path. Claude SHALL use the header path as given and SHALL NOT compose a path itself. When no root has the file on a one-subpath call, the tool SHALL exit with code 1 and the message `File not found: <subpath> (tried <paths>)` on stderr, naming every path it tried; when the file exists but cannot be read, it SHALL exit with code 1 and a `File cannot be read:` message naming the subpath or path and the error code.
 
 When a one-subpath call exits with an error, Claude SHALL stop the directive and report the tool's message. When the tool cannot run (the permission is rejected, `node` is absent, or the install has no `fetch.js`), Claude SHALL stop the directive and report the failure with the action that fixes it: reinstall shared-ai, or review the shell permission for the fetch tool. Claude SHALL NOT fall back to resolving the path itself, and MUST NOT search the project filesystem broadly (glob/grep) for the file.
 
 #### Scenario: project-local file wins
 - **WHEN** an instruction says `Fetch @sai/policies/prereqs.md` and `.claude/sai/policies/prereqs.md` exists under the working directory
-- **THEN** the fetch tool prints that file's absolute path with `root: project`, one blank line, and its content, and Claude uses that content without a read of `~/.claude/sai/policies/prereqs.md`
+- **THEN** the fetch tool prints that file's absolute path with `root: project`, one blank line, and its content, and Claude uses that content without a read of the user-global copy
 
 #### Scenario: global file used when the project has none
-- **WHEN** an instruction says `Fetch @sai/policies/prereqs.md`, `.claude/sai/policies/prereqs.md` does not exist, and `~/.claude/sai/policies/prereqs.md` exists
+- **WHEN** an instruction says `Fetch @sai/policies/prereqs.md`, `.claude/sai/policies/prereqs.md` does not exist, `CLAUDE_CONFIG_DIR` is unset, and `~/.claude/sai/policies/prereqs.md` exists
 - **THEN** the fetch tool prints the global file's absolute path with `root: global` and its content
 
 #### Scenario: file missing in both roots
@@ -92,17 +92,30 @@ When a one-subpath call exits with an error, Claude SHALL stop the directive and
 #### Scenario: tool cannot run
 - **WHEN** the fetch tool command is rejected by the shell permission, `node` is absent, or the install has no `fetch.js`
 - **THEN** Claude stops the directive and reports the failure with the reinstall or permission-review action
-- **AND** Claude does not read `.claude/<subpath>` or `~/.claude/<subpath>` by itself as a fallback
+- **AND** Claude does not read `.claude/<subpath>` or the user-global copy by itself as a fallback
+
+#### Scenario: CLAUDE_CONFIG_DIR names the global root
+- **WHEN** `CLAUDE_CONFIG_DIR` is set to a directory that holds `sai/policies/prereqs.md`, the project has no copy, and `~/.claude/sai/policies/prereqs.md` also exists
+- **THEN** the fetch tool prints the file under `CLAUDE_CONFIG_DIR` with `root: global` and does not consult `~/.claude`
+
+#### Scenario: unreadable file is a declared error
+- **WHEN** the resolved file exists but cannot be read
+- **THEN** the fetch tool exits with code 1 and a `File cannot be read:` message, with no stack trace
+
+#### Scenario: linked root resolves and the scope stays lexical
+- **WHEN** the global root or a file under it is reached through a symbolic link
+- **THEN** the fetch tool resolves the file like any other
+- **AND** a subpath with `..`, an absolute path, or a prefix outside `sai/`, `commands/`, and `skills/` is still rejected
 
 ### Requirement: The fetch tool resolves two or more subpaths in path mode
-When the fetch tool receives two or more subpaths in one call, it SHALL print only one block per subpath argument, in argument order, entirely on stdout, and SHALL NOT print file content, whatever the file sizes. A resolved subpath SHALL print a resolution block of the lines `subpath: <argument>`, `path: <absolute resolved path>` with `/` separators, and `root: project` or `root: global`. A subpath that is rejected by the scope check or found in no root SHALL print an error block of the lines `subpath: <argument>` and `error: <message>`, and the other subpaths SHALL still resolve. One blank line SHALL separate the blocks. A subpath repeated in one call SHALL print one block per occurrence, with no deduplication. The tool SHALL exit with code 0 when every subpath resolved and with code 1 when at least one error block was printed.
+When the fetch tool receives two or more subpaths in one call, it SHALL print only one block per subpath argument, in argument order, entirely on stdout, and SHALL NOT print file content, whatever the file sizes. A resolved subpath SHALL print a resolution block of the lines `subpath: <argument>`, `path: <absolute resolved path>` with `/` separators, and `root: project` or `root: global`. A subpath that is rejected by the scope check, found in no root, or found as a file that cannot be read SHALL print an error block of the lines `subpath: <argument>` and `error: <message>`, and the other subpaths SHALL still resolve. One blank line SHALL separate the blocks. A subpath repeated in one call SHALL print one block per occurrence, with no deduplication. The tool SHALL exit with code 0 when every subpath resolved and with code 1 when at least one error block was printed.
 
 #### Scenario: two subpaths print resolution blocks only
 - **WHEN** the fetch tool runs with `--harness claude sai/a.md sai/b.md` and both files exist
 - **THEN** it prints a resolution block for `sai/a.md` and then one for `sai/b.md`, separated by one blank line, with no file content, and exits with code 0
 
 #### Scenario: a failing subpath prints an error block and the others resolve
-- **WHEN** the fetch tool runs with two or more subpaths and one of them is out of scope or found in no root
+- **WHEN** the fetch tool runs with two or more subpaths and one of them is out of scope, found in no root, or found as a file that cannot be read
 - **THEN** that subpath prints an error block on stdout in its argument position, every other subpath prints its resolution block, and the tool exits with code 1
 
 #### Scenario: a repeated subpath prints one block per occurrence

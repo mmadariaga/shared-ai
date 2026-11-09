@@ -28,6 +28,22 @@ test('extractInputFile splits the flag out in both spellings and rejects misuse'
   assert.throws(() => extractInputFile(['--input-file', 'a', '--input-file', 'b']), /more than once/);
 });
 
+test('E12 an --input-file value that starts with -- is a usage error, and the = form keeps accepting such a path', () => {
+  assert.throws(() => extractInputFile(['select', '--input-file', '--json']), error => error instanceof InputFileError && /requires a path/.test(error.message) && error.message.includes('--json'));
+  assert.throws(() => extractInputFile(['--input-file', '--input-file', 'a']), InputFileError);
+  assert.deepEqual(extractInputFile(['--input-file=--odd.json', 'x']), { argv: ['x'], inputFile: '--odd.json' });
+  assert.deepEqual(extractInputFile(['--input-file', '-']), { argv: [], inputFile: '-' });
+});
+
+test('E12 a tool that reads input through the reader exits 2 naming the flag, and sai-state inherits the rejection', () => {
+  const access = run(tool('sai', 'tools', 'tool-access.js'), ['verify', '--input-file', '--json']);
+  assert.equal(access.status, 2);
+  assert.match(access.stderr, /--input-file requires a path, not the option --json/);
+  const state = run(path.join(REPO, 'bin', 'sai-state.js'), ['emit', '11111111-1111-4111-8111-111111111111', 'spec-steps@1', '--input-file', '--progress']);
+  assert.equal(state.status, 2);
+  assert.match(state.stderr, /--input-file requires a path; no transition occurred/);
+});
+
 test('E3 the input file bytes arrive exactly, quotes, braces and non-ASCII included', () => {
   const dir = scratch();
   try {

@@ -7,7 +7,7 @@ TBD - created by archiving change structured-input-file-delivery. Update Purpose
 
 ### Requirement: Shared input reader for structured tool input
 
-The repository SHALL provide one shared reader, `sai/tools/input-reader.js`, that every SAI tool reading structured input uses. The reader SHALL resolve `--input-file <path>` (or `--input-file=<path>`) first and SHALL fall back to standard input only when no input file is given. It SHALL reject the flag without a path and the flag given more than once. The tools that read structured input through it SHALL include `bin/sai-state.js` `emit` (event, `--progress`, and `--ready-to-propose` forms), `worker-report-validator.js`, `validate-backfill-drafts.js`, `tool-access.js`, `ready-to-propose.js` (`check`, `hash`, `dependencies`, `attach-origin`, and `convert`), `commit.js apply`, `from-backlog.js`, `from-next-backlog-item.js select`, `to-backlog.js`, `to-pr.js`, `new-change-branch.js`, `transfer.js put`, `merge.js` (`valid`, `collision`, and `correction`), and `skills/universal/sai-cache-warmer/wait.js` (`prepare`, `wait`, and the JSON form of `warm`).
+The repository SHALL provide one shared reader, `sai/tools/input-reader.js`, that every SAI tool reading structured input uses. The reader SHALL resolve `--input-file <path>` (or `--input-file=<path>`) first and SHALL fall back to standard input only when no input file is given. It SHALL reject the flag without a path and the flag given more than once. It SHALL reject `--input-file` followed by a separate value that starts with `--` as a usage error that names the flag and suggests the `=` form, while `--input-file=<path>` SHALL accept any path, one that starts with `--` included. The tools that read structured input through it SHALL include `bin/sai-state.js` `emit` (event, `--progress`, and `--ready-to-propose` forms), `worker-report-validator.js`, `validate-backfill-drafts.js`, `tool-access.js`, `ready-to-propose.js` (`check`, `hash`, `dependencies`, `attach-origin`, and `convert`), `commit.js apply`, `from-backlog.js`, `from-next-backlog-item.js select`, `to-backlog.js`, `to-pr.js`, `new-change-branch.js`, `transfer.js put`, `merge.js` (`valid`, `collision`, and `correction`), and `skills/universal/sai-cache-warmer/wait.js` (`prepare`, `wait`, and the JSON form of `warm`), and each of them SHALL inherit that rejection with no change of its own.
 
 #### Scenario: Input file wins over stdin
 - **WHEN** a converted tool is run with `--input-file <path>`
@@ -16,6 +16,14 @@ The repository SHALL provide one shared reader, `sai/tools/input-reader.js`, tha
 #### Scenario: Flag misuse is rejected
 - **WHEN** `--input-file` is given without a path or more than once
 - **THEN** the reader raises an input-file error instead of choosing an input
+
+#### Scenario: Option-like value is rejected
+- **WHEN** `--input-file` is followed by a separate token that starts with `--`
+- **THEN** the reader raises an input-file usage error naming the flag, and a tool that reads through it, `bin/sai-state.js` included, exits 2
+
+#### Scenario: Equals form keeps an option-like path
+- **WHEN** a tool is run with `--input-file=<path>` whose path starts with `--`
+- **THEN** the reader accepts that path
 
 ### Requirement: Stdin input stays accepted
 

@@ -15,11 +15,11 @@ The change SHALL provide one policy file that authorizes the closed sets of perm
 
 ### Requirement: Copy Selection Verbatim
 
-Copy selection SHALL stay first-existing (project-local first, then user-global, XDG fallback last) and SHALL never compose paths by joining root strings. A project-local candidate SHALL run exactly as written; a user-global or XDG fallback candidate SHALL run as the absolute path the existence check returned, with backslashes turned into forward slashes and double-quoted, so the command runs a path a tool returned and never a path the agent composed.
+Copy selection SHALL stay first-existing (project-local first, then the one user-global root the fetch tool resolves) and SHALL never compose paths by joining root strings: the copy is the one the fetch tool returns in path mode. A `root: project` copy SHALL run exactly as written; a `root: global` copy SHALL run as the absolute path the fetch tool printed, with backslashes turned into forward slashes and double-quoted, so the command runs a path a tool returned and never a path the agent composed.
 
 #### Scenario: Verbatim resolution
 - **WHEN** resolving a tool path
-- **THEN** the first existing candidate is used with no string-joined composition, as written when project-local and as the returned absolute path when global
+- **THEN** the first existing copy the fetch tool returns is used with no string-joined composition, as written when project-local and as the returned absolute path when global
 
 ### Requirement: Closed Set Evolution
 

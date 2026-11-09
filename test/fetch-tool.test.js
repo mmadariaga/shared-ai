@@ -28,10 +28,13 @@ function write(file, text) {
   fs.writeFileSync(file, text);
 }
 
-function run(args, { cwd, home, runOpencodePaths } = {}) {
+// The tool resolves its global root through `harness-root.js`, so the helper hands it an empty environment and a
+// silent `opencode debug paths` unless the test supplies its own: no variable of the machine running the suite
+// (CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME) and no installed opencode reaches the result.
+function run(args, { cwd, home, env = {}, runOpencodePaths = () => ({ status: 1, stdout: '' }) } = {}) {
   let out = '';
   let err = '';
-  const code = main(args, { cwd, home, runOpencodePaths, stdout: { write: text => { out += text; } }, stderr: { write: text => { err += text; } } });
+  const code = main(args, { cwd, home, env, runOpencodePaths, stdout: { write: text => { out += text; } }, stderr: { write: text => { err += text; } } });
   return { code, out, err };
 }
 
@@ -162,7 +165,7 @@ test('E10 directives inside the returned content are returned as text, never fol
 test('the script runs as a command and takes its local root from the working directory', () => {
   const { cwd, home } = fixture();
   write(path.join(cwd, '.opencode/sai/a.md'), 'cli');
-  const result = spawnSync(process.execPath, [script, '--harness', 'opencode', 'sai/a.md'], { cwd, encoding: 'utf8', env: { ...process.env, HOME: home, USERPROFILE: home } });
+  const result = spawnSync(process.execPath, [script, '--harness', 'opencode', 'sai/a.md'], { cwd, encoding: 'utf8', env: { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: '', XDG_CONFIG_HOME: '' } });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /root: project\n\ncli$/);
   assert.equal(spawnSync(process.execPath, [script, 'sai/a.md'], { cwd, encoding: 'utf8' }).status, 2);
@@ -360,5 +363,84 @@ test('E7 to E11 both fetch skills state the batch, parallel-read, conditional-di
     assert.ok(text.includes('the full ' + read + ' of a `path` that a multi-subpath call returned'), harness);
     assert.ok(text.includes("stop only that subpath's directive and report the tool's message"), harness);
     assert.ok(text.includes('Never compose or guess another path'), harness);
+  }
+});
+
+test('E7 the global root of Claude Code follows CLAUDE_CONFIG_DIR and ~/.claude is not consulted when it is set', () => {
+  const { base, cwd, home } = fixture();
+  const configured = path.join(base, 'alt-claude');
+  write(path.join(configured, 'sai/policies/z.md'), 'configured');
+  write(path.join(home, '.claude/sai/policies/z.md'), 'default');
+  const result = run(['--harness', 'claude', 'sai/policies/z.md'], { cwd, home, env: { CLAUDE_CONFIG_DIR: configured } });
+  assert.equal(result.code, 0);
+  assert.match(result.out, /root: global\n\nconfigured$/);
+  assert.match(run(['--harness', 'claude', 'sai/policies/z.md'], { cwd, home }).out, /root: global\n\ndefault$/);
+  const missing = run(['--harness', 'claude', 'sai/policies/none.md'], { cwd, home, env: { CLAUDE_CONFIG_DIR: configured } });
+  assert.equal(missing.code, 1);
+  assert.ok(missing.err.includes(path.join(configured, 'sai/policies/none.md').replace(/\\/g, '/')));
+  assert.ok(!missing.err.includes(path.join(home, '.claude').replace(/\\/g, '/')));
+});
+
+test('E8 the opencode global root is the reported directory, then XDG_CONFIG_HOME/opencode, then ~/.config/opencode', () => {
+  const { base, cwd, home } = fixture();
+  const reported = path.join(base, 'reported');
+  const xdg = path.join(base, 'xdg');
+  write(path.join(reported, 'sai/p.md'), 'reported');
+  write(path.join(xdg, 'opencode/sai/p.md'), 'xdg');
+  write(path.join(home, '.config/opencode/sai/p.md'), 'default');
+  const probe = () => ({ status: 0, stdout: `config ${reported}\n` });
+  const silent = () => ({ status: 1, stdout: '' });
+  assert.match(run(['--harness', 'opencode', 'sai/p.md'], { cwd, home, env: { XDG_CONFIG_HOME: xdg }, runOpencodePaths: probe }).out, /\n\nreported$/);
+  assert.match(run(['--harness', 'opencode', 'sai/p.md'], { cwd, home, env: { XDG_CONFIG_HOME: xdg }, runOpencodePaths: silent }).out, /\n\nxdg$/);
+  assert.match(run(['--harness', 'opencode', 'sai/p.md'], { cwd, home, env: {}, runOpencodePaths: silent }).out, /\n\ndefault$/);
+});
+
+test('E10 an unreadable file is a declared error with no stack trace, and in path mode only that subpath fails', { skip: process.platform === 'win32' || (process.getuid && process.getuid() === 0) }, () => {
+  const { cwd, home } = fixture();
+  const locked = path.join(home, '.claude/sai/locked.md');
+  write(locked, 'secret');
+  write(path.join(home, '.claude/sai/open.md'), 'open');
+  fs.chmodSync(locked, 0o000);
+  try {
+    const single = run(['--harness', 'claude', 'sai/locked.md'], { cwd, home });
+    assert.equal(single.code, 1);
+    assert.equal(single.out, '');
+    assert.match(single.err, /^File cannot be read: sai\/locked\.md \(.*locked\.md: EACCES\)\n$/);
+    assert.ok(!single.err.includes('    at '));
+    const batch = run(['--harness', 'claude', 'sai/locked.md', 'sai/open.md'], { cwd, home });
+    assert.equal(batch.code, 1);
+    const blocks = batch.out.split('\n\n');
+    assert.match(blocks[0], /^subpath: sai\/locked\.md\nerror: File cannot be read: /);
+    assert.match(blocks[1], /^subpath: sai\/open\.md\npath: .*open\.md\nroot: global\n$/);
+  } finally {
+    fs.chmodSync(locked, 0o600);
+  }
+});
+
+test('E11 a root or a file reached through a symbolic link resolves, and the lexical scope still rejects escapes', { skip: process.platform === 'win32' }, () => {
+  const { base, cwd, home } = fixture();
+  const shared = path.join(base, 'shared');
+  write(path.join(shared, 'sai/policies/l.md'), 'linked');
+  fs.symlinkSync(shared, path.join(home, '.claude'), 'dir');
+  const viaRoot = run(['--harness', 'claude', 'sai/policies/l.md'], { cwd, home });
+  assert.equal(viaRoot.code, 0);
+  assert.match(viaRoot.out, /root: global\n\nlinked$/);
+  fs.symlinkSync(path.join(shared, 'sai/policies/l.md'), path.join(shared, 'sai/policies/alias.md'));
+  assert.match(run(['--harness', 'claude', 'sai/policies/alias.md'], { cwd, home }).out, /\n\nlinked$/);
+  for (const subpath of ['../shared/sai/policies/l.md', path.join(shared, 'sai/policies/l.md'), 'vendor/l.md']) {
+    const rejected = run(['--harness', 'claude', subpath], { cwd, home });
+    assert.equal(rejected.code, 1, subpath);
+    assert.match(rejected.err, /outside the permitted scope/, subpath);
+  }
+});
+
+test('the manifest installs harness-root.js beside fetch.js for both harnesses', () => {
+  const { expandInstallManifest: expand } = require('../bin/install-manifest');
+  for (const harness of ['claude', 'opencode']) {
+    const base = path.join(os.tmpdir(), `sai-root-${harness}`);
+    const roots = { commands: path.join(base, 'commands'), sai: path.join(base, 'sai'), skills: path.join(base, 'skills'), agents: path.join(base, 'agents'), config: base, root: base };
+    const destinations = expand(manifest, { harness, repoRoot, destinationRoot: roots }).map(projection => projection.destinationPath);
+    assert.ok(destinations.includes(path.join(base, 'skills', 'fetch', 'fetch.js')), harness);
+    assert.ok(destinations.includes(path.join(base, 'skills', 'fetch', 'harness-root.js')), harness);
   }
 });

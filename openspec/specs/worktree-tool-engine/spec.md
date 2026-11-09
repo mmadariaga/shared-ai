@@ -2,7 +2,9 @@
 
 ## Purpose
 Defines `sai/tools/worktree.js`, the engine behind `/sai-worktree`: its sub-commands, exit-code contract, and path resolution.
+
 ## Requirements
+
 ### Requirement: The whole state machine runs through the worktree tool
 
 The `/sai-worktree` command SHALL make every deterministic decision of its state machine — repository resolution, porcelain parsing, the free-slot search, branch derivation, refname validation, the dirty-worktree check, and the unmerged-commits check — by invoking `sai/tools/worktree.js`, and the consuming instruction SHALL NOT reproduce, second-guess, repair, or re-derive those decisions in prose.
@@ -73,13 +75,12 @@ The consuming instruction SHALL surface a tool `message` and a stderr report ver
 
 ### Requirement: Tool path resolves through verbatim root candidates
 
-The consuming instruction SHALL locate the tool through `sai/policies/tool-resolution.md` (substituting `worktree.js`), which owns the candidate list, by taking the first existing candidate from an ordered list of verbatim path literals, project-local before user-global, and SHALL NOT compose an absolute path by joining a root string to a suffix. On Claude Code the candidates SHALL be `.claude/sai/tools/worktree.js` then `~/.claude/sai/tools/worktree.js`; on opencode they SHALL be `.opencode/sai/tools/worktree.js` then `~/.config/opencode/sai/tools/worktree.js`, and only when neither exists MAY the instruction run `opencode debug paths` and append the fixed suffix `sai/tools/worktree.js` to the config directory exactly as that command prints it.
+The consuming instruction SHALL locate the tool through `sai/policies/tool-resolution.md` (substituting `worktree.js`), by taking the copy the fetch tool returns in path mode for the subpath `sai/tools/worktree.js`, project-local before user-global, and SHALL NOT compose an absolute path by joining a root string to a suffix. The fetch tool SHALL check `.claude/sai/tools/worktree.js` and then the file under the resolved Claude Code root (`CLAUDE_CONFIG_DIR`, else `~/.claude`) on Claude Code, and `.opencode/sai/tools/worktree.js` and then the file under the resolved opencode root (the directory `opencode debug paths` reports, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`) on opencode.
 
 #### Scenario: The project-local copy wins
 - **WHEN** both a project-local and a user-global copy exist
 - **THEN** the project-local candidate is used, so the tool is the copy under the root that served the calling instruction
 
 #### Scenario: No candidate exists
-- **WHEN** none of the candidates exists
-- **THEN** the command names the candidates it tried and stops, falling back neither to prose nor to running git commands itself
-
+- **WHEN** the fetch tool resolves no copy
+- **THEN** the command names the paths it tried and stops, falling back neither to prose nor to running git commands itself

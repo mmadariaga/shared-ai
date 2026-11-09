@@ -6,7 +6,11 @@
 //   node "<skills>/fetch/fetch.js" --harness claude|opencode <subpath> [<subpath> ...]
 //
 // Looks each subpath up in the project-local root of the working directory and then in the
-// user-global root. One subpath prints a header (absolute resolved path, root), one blank line, and
+// user-global root, which `harness-root.js` resolves (Claude Code: `CLAUDE_CONFIG_DIR`, else `~/.claude`;
+// opencode: the directory `opencode debug paths` reports, else `XDG_CONFIG_HOME/opencode`, else
+// `~/.config/opencode`). A root or a file reached through a symbolic link resolves like any other: the scope
+// check is lexical (see `checkSubpath`) and never compares real paths, because linked install roots are a
+// supported layout. A file that exists but cannot be read is a declared error for that subpath alone. One subpath prints a header (absolute resolved path, root), one blank line, and
 // the unchanged file content. Two or more subpaths (path mode) print only one block per subpath, in
 // argument order, on stdout: `subpath:`, `path:`, `root:` for a resolved one, `subpath:` and `error:`
 // for a failed one, and never file content. Exit 0 when every subpath resolved, 1 when at least one
@@ -16,12 +20,12 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { resolveGlobalRoot, defaultRunOpencodePaths } = require('./harness-root');
 
 const HARNESSES = {
-  claude: { local: '.claude', global: ['.claude'], skillTool: 'Skill', outputCap: 30000 },
+  claude: { local: '.claude', skillTool: 'Skill', outputCap: 30000 },
   // The opencode output cap is a provisional value until the design measures it.
-  opencode: { local: '.opencode', global: ['.config', 'opencode'], skillTool: 'skill', outputCap: 30000 },
+  opencode: { local: '.opencode', skillTool: 'skill', outputCap: 30000 },
 };
 const PREFIXES = ['sai', 'commands', 'skills'];
 const USAGE = 'Usage: node fetch.js --harness claude|opencode <subpath> [<subpath> ...]';
@@ -82,48 +86,38 @@ function toSlashes(file) {
   return file.replace(/\\/g, '/');
 }
 
-// The config directory `opencode debug paths` prints on its `config` line, or null.
-function opencodeConfigDir(run) {
+// The readable file at `file`, or null when no file is there. A file that exists but cannot be read is a
+// declared error, so no stack trace ever reaches the caller.
+function readableFile(file, subpath) {
+  if (!isFile(file)) return null;
   try {
-    const result = run();
-    if (!result || result.status !== 0 || typeof result.stdout !== 'string') return null;
-    const line = result.stdout.split(/\r?\n/).find(item => /^config\s+/.test(item));
-    return line ? line.replace(/^config\s+/, '').trim() || null : null;
-  } catch {
-    return null;
+    fs.accessSync(file, fs.constants.R_OK);
+  } catch (error) {
+    throw new FetchError(`File cannot be read: ${subpath} (${toSlashes(file)}: ${error.code || error.message})`);
   }
+  return file;
 }
 
-function defaultRunOpencodePaths() {
-  return spawnSync('opencode', ['debug', 'paths'], { encoding: 'utf8', timeout: 10000, shell: process.platform === 'win32' });
-}
-
-function resolveSubpath({ harness, subpath, cwd, home, runOpencodePaths = defaultRunOpencodePaths, segments = checkSubpath(subpath, harness) }) {
+function resolveSubpath({ harness, subpath, cwd, home, env = process.env, runOpencodePaths = defaultRunOpencodePaths, segments = checkSubpath(subpath, harness) }) {
   const config = HARNESSES[harness];
-  const roots = [
-    { root: 'project', base: path.resolve(cwd, config.local) },
-    { root: 'global', base: path.join(home, ...config.global) },
-  ];
   const tried = [];
-  for (const { root, base } of roots) {
-    const candidate = path.join(base, ...segments);
-    tried.push(toSlashes(candidate));
-    if (isFile(candidate)) return { file: candidate, root };
-  }
-  if (harness === 'opencode') {
-    const dir = opencodeConfigDir(runOpencodePaths);
-    if (dir) {
-      const candidate = path.join(path.resolve(dir), ...segments);
-      tried.push(toSlashes(candidate));
-      if (isFile(candidate)) return { file: candidate, root: 'global' };
-    }
-  }
+  const projectCandidate = path.join(path.resolve(cwd, config.local), ...segments);
+  tried.push(toSlashes(projectCandidate));
+  if (readableFile(projectCandidate, subpath)) return { file: projectCandidate, root: 'project' };
+  const globalCandidate = path.join(resolveGlobalRoot(harness, { home, env, runOpencodePaths }), ...segments);
+  tried.push(toSlashes(globalCandidate));
+  if (readableFile(globalCandidate, subpath)) return { file: globalCandidate, root: 'global' };
   throw new FetchError(`File not found: ${subpath} (tried ${tried.join(', ')})`);
 }
 
 function render({ file, root }, harness) {
   const header = `path: ${toSlashes(path.resolve(file))}\nroot: ${root}\n`;
-  const content = fs.readFileSync(file, 'utf8');
+  let content;
+  try {
+    content = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    throw new FetchError(`File cannot be read: ${toSlashes(file)} (${error.code || error.message})`);
+  }
   const cap = HARNESSES[harness].outputCap;
   if (header.length + 1 + content.length > cap) {
     return `${header}too-large: the file has ${content.length} characters, above the ${cap}-character output cap; read the path above with Read.\n`;
@@ -134,10 +128,10 @@ function render({ file, root }, harness) {
 // Runs `run` at most once and replays its outcome, so a batch asks `opencode debug paths` once.
 function once(run) {
   let outcome;
-  return () => {
+  return (...args) => {
     if (!outcome) {
       try {
-        outcome = { value: run() };
+        outcome = { value: run(...args) };
       } catch (error) {
         outcome = { error };
       }
@@ -149,7 +143,7 @@ function once(run) {
 
 // Path mode: one block per subpath argument, in argument order, never file content. Every subpath
 // passes the scope check before any of them touches the filesystem.
-function renderBatch({ harness, subpaths, cwd, home, runOpencodePaths }) {
+function renderBatch({ harness, subpaths, cwd, home, env, runOpencodePaths }) {
   const checked = subpaths.map(subpath => {
     try {
       return { subpath, segments: checkSubpath(subpath, harness) };
@@ -163,7 +157,7 @@ function renderBatch({ harness, subpaths, cwd, home, runOpencodePaths }) {
   for (const { subpath, segments, error: scopeError } of checked) {
     try {
       if (scopeError) throw scopeError;
-      const { file, root } = resolveSubpath({ harness, subpath, cwd, home, runOpencodePaths, segments });
+      const { file, root } = resolveSubpath({ harness, subpath, cwd, home, env, runOpencodePaths, segments });
       blocks.push(`subpath: ${subpath}\npath: ${toSlashes(path.resolve(file))}\nroot: ${root}\n`);
     } catch (error) {
       if (!(error instanceof FetchError)) throw error;
@@ -174,15 +168,15 @@ function renderBatch({ harness, subpaths, cwd, home, runOpencodePaths }) {
   return { text: blocks.join('\n'), code: failed ? 1 : 0 };
 }
 
-function main(argv, { cwd = process.cwd(), home = os.homedir(), runOpencodePaths = defaultRunOpencodePaths, stdout = process.stdout, stderr = process.stderr } = {}) {
+function main(argv, { cwd = process.cwd(), home = os.homedir(), env = process.env, runOpencodePaths = defaultRunOpencodePaths, stdout = process.stdout, stderr = process.stderr } = {}) {
   try {
     const { harness, subpaths } = parseArgs(argv);
     if (subpaths.length === 1) {
-      const resolved = resolveSubpath({ harness, subpath: subpaths[0], cwd, home, runOpencodePaths });
+      const resolved = resolveSubpath({ harness, subpath: subpaths[0], cwd, home, env, runOpencodePaths });
       stdout.write(render(resolved, harness));
       return 0;
     }
-    const batch = renderBatch({ harness, subpaths, cwd, home, runOpencodePaths: once(runOpencodePaths) });
+    const batch = renderBatch({ harness, subpaths, cwd, home, env, runOpencodePaths: once(runOpencodePaths) });
     stdout.write(batch.text);
     return batch.code;
   } catch (error) {
