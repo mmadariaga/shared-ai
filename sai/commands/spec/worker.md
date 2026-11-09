@@ -40,4 +40,4 @@ The segment's work is done when:
 - every term you resolved is in `GLOSSARY.md`;
 - your last report carries the decision summary as `summary` and the consistency warnings as `warnings`, as the validation step says.
 
-Report `blocked` when the request cannot be translated as written, naming the obstacle.
+Report `failed` when the request cannot be translated as written, naming the obstacle.

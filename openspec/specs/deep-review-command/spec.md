@@ -16,11 +16,11 @@ Define `/sai-deep-review`, the composition that reviews a change with `/sai-4-re
 
 ### Requirement: An empty diff stops the run cleanly
 
-When the review segment finds no changes against the parent branch, `/sai-deep-review` SHALL run no audit, no Assessment pass, and no fix segment, even with `--full` or `--path`, SHALL say that no review ran because there was nothing to review, SHALL print the unused-options lines, and SHALL end with exactly `Deep review done.`.
+When the review segment's accepted report carries `outcome: no-changes`, `/sai-deep-review` SHALL run no triage, no audit, no Assessment pass, and no fix segment, even with `--full` or `--path`, SHALL say that no review ran because there was nothing to review, SHALL print the unused-options lines, and SHALL end with exactly `Deep review done.`. It SHALL read the empty-diff case from that `outcome` field, never from the summary text, and the Error close for a missing or illegible `review.md` SHALL NOT apply to it.
 
 #### Scenario: No changes against the parent branch
 
-- **WHEN** the review segment finds no changes against the parent branch
+- **WHEN** the review segment's accepted report is `completed` with `outcome: no-changes`
 - **THEN** the run activates no audit, runs no Assessment pass, starts no fix segment, and ends with `Deep review done.`
 
 ### Requirement: Recommended audits run after the review

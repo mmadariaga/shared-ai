@@ -26,12 +26,12 @@ The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the
 
 ### Requirement: Segment workers are standalone and report through a file
 
-Each segment SHALL create its worker once, with the ready handshake: the creation dispatch carries only the ready prompt, the worker returns `event: ready`, and the task arrives in the next message to the same worker. The worker SHALL be continued with `SendMessage` on Claude Code and with `subagent` carrying the same `agent` used at creation, the captured `sessionID`, and `background: true` on opencode. The spec worker SHALL be `sai-1-spec-proposal-worker` and the design worker SHALL be `sai-2-design-worker`, with bindings rendered from the standalone binding template. The worker SHALL write its report to `reports/{segment}-{k}.yaml` in the run directory and return that path, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and the coordinator SHALL keep that `warming` value per `cache-warming.md`. The worker SHALL run no git command that changes the repository.
+Each segment SHALL create its worker once, with the ready handshake: the creation dispatch carries only the ready prompt, the worker returns `event: ready`, and the task arrives in the next message to the same worker. The worker SHALL be continued with `SendMessage` on Claude Code and with `subagent` carrying the same `agent` used at creation, the captured `sessionID`, and `background: true` on opencode. The spec worker SHALL be `sai-1-spec-proposal-worker` and the design worker SHALL be `sai-2-design-worker`, with bindings rendered from the standalone binding template. Both workers SHALL follow the author side of `sai/policies/worker-report-transport.md`: each message names a new report name `{segment}-{k}.yaml`, and the worker SHALL save every response, a question included, as a new report file in the run's report directory with `transfer.js put` and return only the `{path, sha256}` reference that `put` prints, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it; the coordinator SHALL keep that `warming` value per `cache-warming.md`. For every response after ready, the coordinator SHALL run `worker-report-validator.js validate --kind terminal --command <spec|design>` on the reference before it reads any field, SHALL act on the accepted payload without reading the file again, and SHALL record the accepted path. A message that carries its result inline SHALL be an invalid report. When the validator cannot be resolved, the run SHALL stop on that obstacle without interpreting the report. The worker SHALL run no git command that changes the repository.
 
 #### Scenario: the worker returns only its report path
 
 - **WHEN** a segment worker completes a step
-- **THEN** it writes the report file the message names and returns that path with no report content, plus its warming line when one reached it, and the coordinator records the path and reads the file
+- **THEN** it saves the report under the name the message gives in the report directory and returns only its `{path, sha256}` reference with no report content, plus its warming line when one reached it, and the coordinator validates the reference, acts on the accepted payload, and records the path
 
 ### Requirement: The coordinator answers worker questions as assumptions
 
@@ -76,12 +76,17 @@ Each segment SHALL check every commit path with `git check-ignore -q`, stage onl
 
 ### Requirement: Obstacles spend a budget of three attempts and then escalate
 
-An obstacle (a failing check, an unreadable report, a silent or drifting worker, a failing tool) SHALL have a budget of 3 attempts, each with an approach different from the previous one: a corrected instruction, a mechanical repair that adds, removes, or rewrites no content, or a new worker that receives a hand-over file `handover-{segment}-{k}.md` in the run directory instead of the old worker's history. A hung, drifting, or unreadable worker SHALL be asked again first and then replaced, each counting as an attempt. An exhausted budget, an unanswerable artifact-changing question, an operation that needs human authorization, or foreign work in a commit path SHALL escalate at once through the native picker with coordinator-written options, one of which stops the run; a `continue` answer SHALL reset that obstacle's counter.
+An obstacle (a failing check, a report that does not validate or cannot be read, a silent or drifting worker, a failing tool) SHALL have a budget of 3 attempts, each with an approach different from the previous one: a corrected instruction, a mechanical repair that adds, removes, or rewrites no content, or a new worker that receives a hand-over file `handover-{segment}-{k}.md` in the run directory instead of the old worker's history. A report that does not validate SHALL be the obstacle `report-{k}`: the first invalid report SHALL go back to the same worker with the validator's errors, and a second consecutive invalid report from that worker SHALL replace it. A hung, drifting, or unreadable worker SHALL be asked again first and then replaced, each counting as an attempt. An exhausted budget, an unanswerable artifact-changing question, an operation that needs human authorization, or foreign work in a commit path SHALL escalate at once through the native picker with coordinator-written options, one of which stops the run; a `continue` answer SHALL reset that obstacle's counter.
 
 #### Scenario: an unreadable report leads to a replacement worker
 
 - **WHEN** a worker's report stays unreadable after it was asked again
 - **THEN** the coordinator replaces it with a new worker that receives a hand-over file, and both responses count as attempts of the obstacle
+
+#### Scenario: a second consecutive invalid report replaces the worker
+
+- **WHEN** a spec worker's report fails validation, the coordinator returns the validator's errors to it, and its next report fails validation too
+- **THEN** the coordinator replaces the worker with a new one whose first task message opens with the recorded `--report-dir` line, and both reports count as attempts of the `report-{k}` obstacle
 
 ### Requirement: An interrupted plan run resumes from the store or the disk
 
@@ -114,3 +119,41 @@ At close, a completed run SHALL remove its run directory with `temp-root.js remo
 
 - **WHEN** the surface enumeration of `sai/policies/artifact-review-contract.md` is read
 - **THEN** it names the manual Review Engine and the plan coordinators' incremental review rounds, and no worker-owned loop or supervised round
+
+### Requirement: The plan run opens one report directory and reuses it
+
+The segment cycle SHALL open the report directory of a fresh run with `transfer.js open --harness <claude|opencode>` after creating its run directory and SHALL record the returned path in `plan-run@1` as a `record` of kind `report-dir`; the `plan-run@1` machine SHALL admit that record kind. When the directory cannot be opened, the run SHALL print the tool's error and end before any dispatch, after removing the run directory. The first task message to a worker, a replacement included, SHALL open with the line `--report-dir <report directory>`, and no later message to that worker SHALL carry it. A replacement worker and a resumed run SHALL reuse the recorded report directory while it still exists, and SHALL open and record a new one when it is gone. A completed run SHALL close the report directory with `transfer.js close` after the last report is validated and handled; a stopped run, a blocked run, and an unanswered escalation SHALL keep it.
+
+#### Scenario: a fresh run records its report directory
+
+- **WHEN** `/sai-1-spec` starts a fresh run of a change
+- **THEN** it opens a report directory with `transfer.js open`, emits `record` (`report-dir`) with the returned path, and the first task message to the spec worker opens with `--report-dir <that path>`
+
+#### Scenario: a replacement worker reuses the report directory
+
+- **WHEN** the coordinator replaces a design worker during a run whose report directory still exists
+- **THEN** the replacement's first task message opens with the same `--report-dir` line the run recorded
+
+#### Scenario: a stopped run keeps its report directory
+
+- **WHEN** a plan run stops on an exhausted obstacle budget
+- **THEN** the run keeps both its run directory and its report directory
+
+### Requirement: Spec and design reports use the unified status schema
+
+The spec and design workers SHALL report with a `status` of `completed`, `needs_input`, `failed`, or `cancelled`, and SHALL keep `step_ids`, `warnings`, and `notes` as role fields; a `needs_input` report SHALL add `question` and `options`. `done` and `blocked` SHALL be invalid statuses. A step that cannot finish, a spec defect the design worker cannot patch, a failed artifact write or verification, and a failed overview generation SHALL report `failed` with the reason. The coordinator SHALL advance the segment's step machine only from the `step_ids` of an accepted report.
+
+#### Scenario: a done status is invalid
+
+- **WHEN** a spec worker saves a report with `status: done`
+- **THEN** the validator rejects it with `--command spec` and the coordinator reads no field of it
+
+#### Scenario: a spec defect the design worker cannot patch reports failed
+
+- **WHEN** the design worker meets a contradiction in `proposal.md` or `specs/**` whose correct amendment it cannot determine
+- **THEN** it reports `failed`, naming the defect, its location, and that the correction belongs to `/sai-1-spec`
+
+#### Scenario: accepted step ids advance the machine
+
+- **WHEN** the coordinator accepts a design report whose `step_ids` is not empty
+- **THEN** it emits those ids, copied from the accepted payload, to `design-steps@1` and sends the next pointer from the response

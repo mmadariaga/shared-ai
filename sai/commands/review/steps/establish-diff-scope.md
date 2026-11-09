@@ -1,9 +1,9 @@
 # Review Step — Establish Diff Scope
 
-Active step: establish-diff-scope. The step is done when the parent branch, the diff's file list, totals, and commit map are known and the review mode is chosen; then return `step-done` with `step_id: establish-diff-scope`.
+Active step: establish-diff-scope. The step is done when the parent branch, the diff's file list, totals, and commit map are known and the review mode is chosen; then save a progress report with `step_ids: [review-intake, establish-diff-scope]` and return its reference, as `worker.md` § Results says.
 
 1. **Parent branch.** Take the first candidate that `git rev-parse --verify <branch>` accepts: the `--parent-branch` value; else the repo default from `git symbolic-ref --short refs/remotes/origin/HEAD` with the `origin/` prefix stripped; else `master`; else `main`. When no candidate verifies, return `failed` naming the candidates tried.
-2. **File list.** Run `git diff --name-status {parent-branch}...HEAD`. When it is empty, return `no-changes` with exactly `No changes detected against {parent-branch}. Nothing to review.`, and write nothing.
+2. **File list.** Run `git diff --name-status {parent-branch}...HEAD`. When it is empty, save a `completed` report with `outcome: no-changes`, `changed_files: []`, and a `summary` of exactly `No changes detected against {parent-branch}. Nothing to review.`, return its reference, and write nothing else.
 3. **Totals and commits.** Run `git diff --stat {parent-branch}...HEAD` for line totals only, and `git log {parent-branch}..HEAD --oneline` for the commit map.
 4. **Change artifacts.** Read them per `common.md` § Change artifacts and extract the feature goal, the accepted and discarded decisions, the architecture decisions and trade-offs, the per-capability acceptance criteria, the technologies, standards, and quality bar in scope.
 5. **Review mode.**
