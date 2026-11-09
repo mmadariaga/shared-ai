@@ -7,10 +7,10 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: One transfer directory per backfill invocation
 
-The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transfer.js open --harness <claude|opencode>` before the first backfill worker dispatch and retain its returned directory as invocation-scoped state. Exit 2 SHALL report the verbatim error and stop before dispatch or final writes. Ordinary backfill SHALL retain its invocation-close cleanup and close only its named directory on completed, failed, or cancelled closure. Direct Build SHALL retain its separate draft directory through archive, corrections, validation, recovery, interruption, and exhausted or otherwise unresolved closure. Its report and draft evidence SHALL be cleaned up only after accepted route closure when no continuation or recovery needs them.
+The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transfer.js open --harness <claude|opencode>` before the first backfill worker dispatch and retain its returned directory as invocation-scoped state for drafts. The report directory SHALL be a second, separate directory: standalone `/sai-backfill` SHALL open it with another `transfer.js open` call before the first dispatch, and Direct Build SHALL keep sending its own; reports and drafts SHALL never share one directory. Exit 2 of either call SHALL report the verbatim error and stop before dispatch or final writes. Ordinary backfill SHALL retain its invocation-close cleanup and close only its named transfer directory on completed, failed, or cancelled closure, and SHALL close its report directory the same way unless the run stopped on an unresolved obstacle, which keeps it. Direct Build SHALL retain its separate draft directory through archive, corrections, validation, recovery, interruption, and exhausted or otherwise unresolved closure. Its report and draft evidence SHALL be cleaned up only after accepted route closure when no continuation or recovery needs them.
 
 #### Scenario: A missing temp root stops before dispatch
-- **WHEN** `open` exits 2 at backfill invocation start
+- **WHEN** `open` exits 2 at backfill invocation start, for the transfer directory or the report directory
 - **THEN** the coordinator reports the verbatim error and dispatches no worker and writes no file
 
 #### Scenario: The directory survives until close
@@ -23,24 +23,24 @@ The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transf
 
 ### Requirement: Transfer directory disclosed only in task disclosure
 
-The coordinator SHALL deliver the transfer directory to the backfill worker only in the task-disclosure continuation through `--transfer-dir <dir>` ahead of the envelope, never in the initial dispatch; `original_envelope` SHALL remain exactly `arguments_value`. For ordinary backfill that line SHALL be first. For the full Direct Build route the outermost `--report-dir <absolute path>` line SHALL precede it; the worker SHALL strip the report line first, then the transfer line, and keep both paths as invocation-scoped state outside `$ARGUMENTS`. A dispatch needing the transfer line and lacking it SHALL return `failed` with no changes and a summary naming the missing line, with no inline draft-content fallback. Full-route reports SHALL use private report references, with draft references retained inside the report and their own separate directory. The archive `--fix-delta-headers` envelope SHALL carry no transfer line and SHALL keep its inline contract.
+The coordinator SHALL deliver the transfer directory to the backfill worker only in the task-disclosure continuation through `--transfer-dir <dir>` ahead of the envelope, never in the initial dispatch; `original_envelope` SHALL remain exactly `arguments_value`. On every route, ordinary and full Direct Build alike, the outermost `--report-dir <absolute path>` line SHALL precede it; the worker SHALL strip the report line first, then the transfer line, and keep both paths as invocation-scoped state outside `$ARGUMENTS`. A dispatch needing the transfer line and lacking it SHALL return `failed` with no changes and a summary naming the missing line, with no inline draft-content fallback. Reports SHALL use private report references on every route, with draft references retained inside the report and their own separate directory. The archive `--fix-delta-headers` envelope SHALL carry the report line and no transfer line, and SHALL return its corrected content in the `corrected_specs` field of a report.
 
 #### Scenario: A missing transfer line fails closed
 - **WHEN** an ordinary or Direct Build backfill task disclosure lacks the `--transfer-dir` line
-- **THEN** the worker reports failed naming the missing line, performs no draft writes, and returns no draft content, using full-route private report transport only when that mode applies
+- **THEN** the worker reports failed in a saved report naming the missing line, performs no draft writes, and returns no draft content
 
 #### Scenario: Full Direct Build has two separate directory lines
 - **WHEN** full Direct Build discloses the backfill task after ready
-- **THEN** report-dir is outermost, transfer-dir follows it, and both are stripped before ordinary envelope parsing without changing standalone behavior
+- **THEN** report-dir is outermost, transfer-dir follows it, and both are stripped before ordinary envelope parsing, exactly as on the standalone route
 
 ### Requirement: Worker hands drafts over as references
 
-After composing its drafts, the backfill worker SHALL write each draft with `transfer.js put` at the path that mirrors its destination relative to `openspec/changes/{name}/` (`.openspec.yaml`, `proposal.md`, `specs/<capability>/spec.md`) and SHALL return its terminal `completed` payload with a `draft_references` list carrying exactly one `{path, sha256, destination}` entry per draft and no draft content. The worker SHALL NOT write transfer files through any other tool and SHALL NOT write any repository file on the ordinary route or the prepare stretch. When the helper is unavailable or its invocation is denied, the worker SHALL return `failed` naming the blocked operation and SHALL NOT fall back to inline content.
+After composing its drafts, the backfill worker SHALL write each draft with `transfer.js put` at the path that mirrors its destination relative to `openspec/changes/{name}/` (`.openspec.yaml`, `proposal.md`, `specs/<capability>/spec.md`) and SHALL return its terminal `completed` report, saved in the report directory, with a `draft_references` field: a list carrying exactly one `{path, sha256, destination}` entry per draft and no draft content. The worker SHALL NOT write transfer files through any other tool and SHALL NOT write any repository file on the ordinary route or the prepare stretch. When the helper is unavailable or its invocation is denied, the worker SHALL return `failed` naming the blocked operation and SHALL NOT fall back to inline content.
 
 #### Scenario: Completed payload carries references only
 
 - **WHEN** the worker completes draft composition
-- **THEN** its terminal payload lists one reference per draft with its absolute transfer path, sha256, and final destination, and contains no draft text
+- **THEN** the accepted payload of its terminal report lists one reference per draft with its absolute transfer path, sha256, and final destination, and contains no draft text
 
 #### Scenario: A denied helper fails without inline content
 
@@ -96,12 +96,12 @@ The Direct Build execute order SHALL contain the confirmed change name, exact la
 
 ### Requirement: Transfer helper grants on command profiles
 
-`sai/install-manifest.json` SHALL add the shell grant `node {sai}/tools/transfer.js *` to the `archive-command` and `backfill-command` profiles alongside their existing grants, and SHALL add no new tool for either harness. The `merge-command` profile SHALL carry no `transfer.js` grant, because `/sai-merge` no longer uses transfer files.
+`sai/install-manifest.json` SHALL add the shell grant `node {sai}/tools/transfer.js *` to the `archive-command` and `backfill-command` profiles alongside their existing grants, and SHALL add no new tool for either harness. The `merge-command` profile SHALL carry no `transfer.js` grant of its own: `/sai-merge` uses no draft transfer files and opens its report directory through the `node {sai}/tools/transfer.js open *` grant it inherits from `coordinator`.
 
 #### Scenario: Command profiles carry the transfer grant
 
 - **WHEN** the archive, backfill, and merge command profiles are read from the install manifest
-- **THEN** the archive and backfill shell grant lists contain `node {sai}/tools/transfer.js *` and the merge profile has no such grant
+- **THEN** the archive and backfill shell grant lists contain `node {sai}/tools/transfer.js *` and the merge profile has no such grant of its own
 
 ### Requirement: Direct Build corrections are verified before rewriting drafts
 
@@ -121,8 +121,8 @@ After an archive failure, the same backfill worker SHALL recompose only named dr
 
 ### Requirement: The backfill worker contract states its reference-only payload
 
-The worker contract SHALL return draft_references to transfer files and never draft content on ordinary or Direct Build paths. It SHALL retire scenario_exception_reference and temporary exception metadata. The archive header-fix continuation SHALL remain the sole content-returning exception.
+The worker contract SHALL return draft_references to transfer files and never draft content on ordinary or Direct Build paths. It SHALL retire scenario_exception_reference and temporary exception metadata. The archive header-fix continuation SHALL remain the sole content-returning exception, returning its corrected specs in the `corrected_specs` field of a saved report, a list of `{destination, content}` entries, which the archive coordinator validates with `--command backfill` before reading.
 
 #### Scenario: The worker contract names its content exception
 - **WHEN** the backfill worker contract is read
-- **THEN** Draft transfer returns draft references only, no scenario-exception reference, and Delta header fix remains the sole corrected-content payload
+- **THEN** Draft transfer returns draft references only, no scenario-exception reference, and Delta header fix remains the sole corrected-content payload, carried in the `corrected_specs` report field

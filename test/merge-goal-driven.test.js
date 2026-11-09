@@ -234,7 +234,7 @@ test('the worker contract: one standalone worker, steps by pointer, writes only 
   assert.match(worker, /Run only read-only git commands \(`status`, `rev-parse`, `branch`, `diff`, `show`, `log`, `ls-files`, `merge-base`, `cat-file`\)/);
   assert.match(worker, /never rename a file/);
   assert.match(worker, /Dispatch no subagent/);
-  assert.match(worker, /return that path as your final message, with the `warming: true\|false` line/);
+  assert.match(worker, /return only the `\{path, sha256\}` that `put` prints as your final message, with the `warming: true\|false` line/);
   assert.doesNotMatch(worker, /sai-state|merge-run@1|emit /, 'a worker card names no machine and no store command');
   for (const step of STEPS) {
     assert.ok(exists(`sai/commands/merge/steps/${step}.md`), step);
@@ -314,8 +314,8 @@ test('the run state, review, and report: merge-run@1, review-delta, and the goal
   assert.match(card, /The `merge-run@1` machine in `sai-state` is your memory outside the conversation/);
   assert.match(card, /key `merge-\{branch\}`/);
   assert.match(card, /`temp-root\.js mkdtemp --harness <claude\|opencode> --prefix merge-`/);
-  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>` only when the run completed/);
-  assert.match(card, /A stopped, escalated, or unanswered run keeps it/);
+  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, and close the report directory with `transfer\.js close --dir <report directory>`, only when the run completed/);
+  assert.match(card, /A stopped, escalated, or unanswered run keeps both directories/);
   assert.match(card, /A run that finalized the integration ends with exactly `Merge done\.`/);
   const close = section(card, '## Close', null);
   for (const fact of ['the method, the target and source branches', 'the conflicts resolved per stop', 'the verification against the baseline',

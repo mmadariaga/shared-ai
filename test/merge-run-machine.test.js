@@ -95,6 +95,12 @@ test('obstacles, findings, and assumptions are recorded as paths without duplica
   assert.equal(machine.transition(result.state, { kind: 'record', ref: 'report', path: '/x' }).rejected, 'unknown reference kind');
 });
 
+test('the report directory is recorded as a path and kept for a replacement worker and a resumed run', () => {
+  const dir = '/tmp/claude-1000/sai/sai-transfer-abc123';
+  const result = run(start, { kind: 'record', ref: 'report-dir', path: dir }, { kind: 'record', ref: 'report-dir', path: dir });
+  assert.deepEqual(result.run.report_dirs, [dir]);
+});
+
 test('a finished run does not block the next start; an interrupted one still resumes', () => {
   const next = { kind: 'start', dir: '/tmp/claude-1000/sai/merge-3c4d' };
   const finished = run(start, launch, { kind: 'stop', stop: 1 }, { kind: 'close', outcome: 'completed' });

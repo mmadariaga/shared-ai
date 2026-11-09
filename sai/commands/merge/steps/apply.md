@@ -29,7 +29,7 @@ When the brief names a correction snapshot (a test correction or a final-tree co
 
 ## Result
 
-Write the result as a JSON file with exactly these keys, which `merge.js resolution` reads:
+Save the result as a JSON report with exactly these keys, which `merge.js resolution` reads from the saved file:
 
 ```json
 {
