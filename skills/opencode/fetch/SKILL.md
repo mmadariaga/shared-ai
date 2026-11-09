@@ -15,7 +15,7 @@ metadata:
 
 Active harness identity: `opencode`.
 
-Resolve project-local `.opencode/` before user-global `~/.config/opencode/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
+Resolve project-local `.opencode/` before the user-global root: the config directory `opencode debug paths` reports, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
@@ -40,7 +40,7 @@ The tool sits in this skill's base directory, which the harness reports when it 
 node "<base directory>/fetch.js" --harness opencode <subpath> [<subpath> ...]
 ```
 
-The tool looks in `.opencode/` of the working directory (a worktree included) and then in `~/.config/opencode/`, checks each subpath on every call, and uses the first file that exists. A call with one subpath prints a header, one blank line, and the unchanged content:
+The tool looks in `.opencode/` of the working directory (a worktree included) and then in the user-global root (the `config` directory that `opencode debug paths` prints, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode/`), checks each subpath on every call, and uses the first file that exists. A root or a file reached through a symbolic link resolves like any other, and the scope rule below is lexical only. A file that exists but cannot be read is an error of that subpath alone. A call with one subpath prints a header, one blank line, and the unchanged content:
 
 ```
 path: <absolute resolved path>

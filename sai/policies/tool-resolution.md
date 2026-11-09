@@ -5,59 +5,52 @@ Single source for tool-location resolution. Every command that runs
 restate the order inline — commands only reference it with a filename
 substitution, to avoid drift between copies.
 
-Use the copy that lives beside the referencing policy file: a copy under a
-different root is a different version. Do **not** build its path by joining a
-root string to a suffix — composed absolute paths are known to drop a segment
-(a worker in a worktree produced a path without its repository folder), while
-relative paths and paths a tool returned resolved correctly. Inside the project
-write paths relative to the working directory; outside it use a path exactly as a
-tool returned it, with backslashes turned into forward slashes and nothing else.
-Take the **first
-candidate below that exists**, checking each with a tool that returns the path
-it found (`Glob` on Claude Code and opencode, or a shell existence check).
+Resolve a tool with the fetch tool in path mode, the same tool that resolves
+every `Fetch @` directive (`@skills/fetch/SKILL.md` states how to run it on your
+harness). It looks in the project-local root of the working directory and then in
+the one user-global root of your harness, which it resolves itself:
+`CLAUDE_CONFIG_DIR` (default `~/.claude`) on Claude Code, and on opencode the
+`config` directory that `opencode debug paths` prints, else
+`$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`. This file lists no root
+candidates of its own: the first copy the fetch tool returns is the copy to run,
+and it defines the version.
 
-Run a path a tool returned, never a path you composed:
+Pass the tool's subpath, never a path you composed. Path mode (resolution blocks
+only, no file content) starts at two subpaths in one call: name every tool the
+step needs together, and when it needs one, name that subpath twice, because a
+one-subpath call prints the whole file after its header. A subpath names one file under the root and
+begins with `sai/`, `commands/`, or `skills/`: a bare `bin/...` subpath is
+rejected by the fetch scope.
 
-- A project-local candidate (`.claude/...`, `.opencode/...`) is run exactly as
-  written, relative to the working directory.
-- A global candidate (`~/...`) is run as the absolute path the existence check
-  returned for it, with backslashes turned into forward slashes and the whole
-  path double-quoted: `node "<absolute path>"`. PowerShell does not expand `~`
-  in the arguments of a native executable, so the `~` text itself never reaches
-  the shell. Forward slashes and the quotes keep the command text identical
-  across Bash and PowerShell, and a home path with spaces stays one argument.
-  On Windows the path reads `C:/Users/<user>/.claude/sai/tools/<name>`, on Linux
-  `/home/<user>/...`, on macOS `/Users/<user>/...`.
+- `sai/tools/<name>` for a tool of `sai/tools/` (substitute the concrete file
+  name for `<name>`, for example `prereqs.js`, `change-picker.js`, `commit.js`,
+  `check-delta-headers.js`, `worker-report-validator.js`, `to-pr.js`,
+  `file-manifest.js`, `transfer.js`, `temp-root.js`, `change-telemetry.js`,
+  `dispose-shells.js`).
+- `sai/bin/sai-state.js` for the state CLI.
+- `skills/sai-cache-warmer/wait.js` for the cache-warm wait tool.
 
-## `sai/tools/*.js` copies
+```
+node "<fetch tool>" --harness <claude|opencode> sai/tools/<name> sai/tools/<name>
+```
 
-Substitute the concrete file name (for example `prereqs.js`,
-`change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`, `temp-root.js`, `change-telemetry.js`, `dispose-shells.js`) for `<name>` below.
+Each resolution block prints `path:` (absolute, `/` separators) and `root:`.
+Run the tool as follows, the same way on both harnesses:
 
-On **Claude Code**, in this order:
+- `root: project`: run the project-local form exactly as written, relative to the
+  working directory (`node .claude/sai/tools/<name>` on Claude Code,
+  `node .opencode/sai/tools/<name>` on opencode).
+- `root: global`: run the `path:` the block printed, double-quoted:
+  `node "<absolute path>"`. PowerShell does not expand `~` in the arguments of a
+  native executable, so no `~` text ever reaches the shell. Forward slashes and
+  the quotes keep the command text identical across Bash and PowerShell, and a
+  home path with spaces stays one argument. On Windows the path reads
+  `C:/Users/<user>/.claude/sai/tools/<name>`, on Linux `/home/<user>/...`, on
+  macOS `/Users/<user>/...`; a `CLAUDE_CONFIG_DIR` or an opencode config
+  directory elsewhere shows up in the printed path and nowhere else.
 
-1. `.claude/sai/tools/<name>` — the project-local root, relative to the working directory.
-2. `~/.claude/sai/tools/<name>` — the user-global root.
-
-On **opencode**, in this order:
-
-1. `.opencode/sai/tools/<name>` — the project-local root, relative to the working directory.
-2. `~/.config/opencode/sai/tools/<name>` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/<name>` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed. Run it as the absolute path, double-quoted, like any global candidate.
-
-## `bin/sai-state.js` copy
-
-On **Claude Code**, in this order:
-
-1. `.claude/sai/bin/sai-state.js` — the project-local root, relative to the working directory.
-2. `~/.claude/sai/bin/sai-state.js` — the user-global root.
-
-On **opencode**, in this order:
-
-1. `.opencode/sai/bin/sai-state.js` — the project-local root, relative to the working directory.
-2. `~/.config/opencode/sai/bin/sai-state.js` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/bin/sai-state.js` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed.
+A call whose block carries `error:` for a subpath resolved nothing for it: the
+message names the paths tried, and that subpath is unresolved.
 
 ## Invocation
 
@@ -81,12 +74,12 @@ with `transfer.js close --dir <dir>` when the work no longer needs it. Every
 command profile that hands structured input to a tool can write there: its
 native write is limited to the SAI temp root.
 
-Whichever candidate wins, the invocation keeps one form within one harness, so
+Whichever root answers, the invocation keeps one form within one harness, so
 the installed permission rules cover it: a rule per root exists for the
 project-local form, the `~` form, and the absolute form of this install. Keep each
 tool's own accepted flag set; do not change invocation semantics beyond path
-resolution. `<name>` below is the filename placeholder from the candidate
-lists; `<change-name>` is the separate CLI positional argument where a tool
+resolution. `<name>` below is the filename placeholder of the subpaths
+above; `<change-name>` is the separate CLI positional argument where a tool
 takes one — never substitute one for the other.
 
 - `commit.js`: `node <tool-path> <subcommand> --json --cwd <project-root>`
@@ -135,9 +128,9 @@ takes one — never substitute one for the other.
   `--progress --input-file <path>`) loads the validator module
   itself, relative to the resolved `sai-state.js`, so it needs no separate
   `worker-report-validator.js` resolution and stays byte-identical whichever
-  `sai-state.js` candidate wins.
+  `sai-state.js` copy the fetch tool returns.
 
-If no candidate exists, say so — name the candidates you tried — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
+If the fetch tool resolves no copy, say so — name the paths its error block lists — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
 skips validation: resolve `worker-report-validator.js` on every turn that runs
 a separate `validate` call and stop the same way when unresolvable, never
 interpreting a worker report by reading it (`@sai/policies/worker-report-transport.md`); a progress

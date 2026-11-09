@@ -46,11 +46,11 @@ When a `Fetch @` directive's subpath does not begin with `sai/`, `commands/`, or
 
 ### Requirement: Opencode resolution mirrors the Claude rule without restating it
 
-The opencode resolution rule SHALL match the Claude Code rule owned by `claude-fetch-resolution`. Both SHALL run the same fetch tool, with the same invocation forms (including the multi-subpath form), output header, `too-large` handling, path-mode blocks, batching and parallel-read rule, stop rules, and no-broad-search constraint. They SHALL differ only in the harness name passed to `--harness`, the harness root paths (`.opencode` / `~/.config/opencode` vs `.claude` / `~/.claude`), the skill tool name, the read tool name (`read` vs `Read`), and the opencode `opencode debug paths` fallback. This capability SHALL NOT restate the Claude Code mechanics; `claude-fetch-resolution` remains their sole normative owner. A divergence between the two harness rules SHALL be treated as a defect.
+The opencode resolution rule SHALL match the Claude Code rule owned by `claude-fetch-resolution`. Both SHALL run the same fetch tool, with the same invocation forms (including the multi-subpath form), output header, `too-large` handling, path-mode blocks, batching and parallel-read rule, stop rules, and no-broad-search constraint. They SHALL differ only in the harness name passed to `--harness`, the harness root paths (`.opencode` and the resolved opencode config root vs `.claude` and the resolved Claude Code root), the skill tool name, and the read tool name (`read` vs `Read`). Both user-global roots SHALL come from the one shared resolver `skills/universal/fetch/harness-root.js`: `CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the directory `opencode debug paths` reports, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode. This capability SHALL NOT restate the Claude Code mechanics; `claude-fetch-resolution` remains their sole normative owner. A divergence between the two harness rules SHALL be treated as a defect.
 
 #### Scenario: the opencode rule mirrors the Claude rule
 - **WHEN** the opencode resolution rule is compared with the `claude-fetch-resolution` requirement, element by element: (1) the fetch tool invocation forms (project-local relative, otherwise the reported base directory with forward slashes, double-quoted, each with `<subpath> [<subpath> ...]`), (2) the no-probe constraint (no Glob/LS/directory-based existence check), (3) the positive invariant sentence (resolved paths begin with `sai/`, `commands/`, or `skills/`; the root is never named; the tool enforces it), (4) the stop rules (a tool error is reported; an error block stops only its directive; a failed read of a returned path stops that directive with no composed path; a tool that cannot run stops the directive with a remediation and no prose fallback), and (5) the batching rule (unconditional directives in one call, skill directives in the same turn, returned paths read in parallel in one turn, nested directives forming the next batch)
-- **THEN** each compared element is identical between the two harness rules, differing only in the harness name, the harness-specific root paths (`.opencode` / `~/.config/opencode` vs `.claude` / `~/.claude`), the skill tool name, and the read tool name
+- **THEN** each compared element is identical between the two harness rules, differing only in the harness name, the harness-specific root paths (`.opencode` and the resolved opencode config root vs `.claude` and the resolved Claude Code root), the skill tool name, and the read tool name
 - **AND** the comparison is performed as a direct structural read of the two harness skill files against each other, and of the opencode rule against the `claude-fetch-resolution` requirement text — the Claude Code mechanics appear only in `claude-fetch-resolution`, never in a restated copy here
 - **AND** a divergence in any compared element is a defect
 
@@ -73,38 +73,42 @@ When the opencode fetch skill encounters `Fetch @skills/<name>/SKILL.md` — wit
 
 ### Requirement: Opencode fetch resolution runs the same deterministic tool
 
-The opencode fetch skill SHALL resolve every `Fetch @<subpath>` directive that does not have the form `skills/<name>/SKILL.md` by running the same fetch tool `fetch.js` as Claude Code, with `--harness opencode` and the subpaths of the current batch, batching unconditional directives into one call as the Claude Code rule defines, except a directive that the `fetch-loaded-copy-reuse` capability lets the agent follow from a complete copy it already loaded in this conversation. When the skill's base directory is the project-local copy `.opencode/skills/fetch` under the working directory, the skill SHALL run `node .opencode/skills/fetch/fetch.js --harness opencode <subpath> [<subpath> ...]` relative to the working directory as written. Otherwise it SHALL run `node "<base directory>/fetch.js" --harness opencode <subpath> [<subpath> ...]`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted. One source file, `skills/universal/fetch/fetch.js`, SHALL be installed beside the fetch `SKILL.md` of both harnesses by the `fetch-tool` projection of `sai/install-manifest.json`, as a managed, content-tracked file covered by `doctor` and `uninstall`.
+The opencode fetch skill SHALL resolve every `Fetch @<subpath>` directive that does not have the form `skills/<name>/SKILL.md` by running the same fetch tool `fetch.js` as Claude Code, with `--harness opencode` and the subpaths of the current batch, batching unconditional directives into one call as the Claude Code rule defines, except a directive that the `fetch-loaded-copy-reuse` capability lets the agent follow from a complete copy it already loaded in this conversation. When the skill's base directory is the project-local copy `.opencode/skills/fetch` under the working directory, the skill SHALL run `node .opencode/skills/fetch/fetch.js --harness opencode <subpath> [<subpath> ...]` relative to the working directory as written. Otherwise it SHALL run `node "<base directory>/fetch.js" --harness opencode <subpath> [<subpath> ...]`, with the base directory the harness reported, its backslashes turned into forward slashes and nothing else, double-quoted. One source file, `skills/universal/fetch/fetch.js`, SHALL be installed beside the fetch `SKILL.md` of both harnesses by the `fetch-tool` projection of `sai/install-manifest.json`, together with the shared resolver `skills/universal/fetch/harness-root.js`, both as managed, content-tracked files covered by `doctor` and `uninstall`.
 
-The tool SHALL check `.opencode/<subpath>` under the working directory and then `~/.config/opencode/<subpath>`, on every call and with no session memory, and SHALL use the first file that exists. When neither holds the file, it SHALL run `opencode debug paths` and check the subpath under the directory printed on its `config` line. The tool SHALL run `opencode debug paths` at most once per call and reuse its outcome for every subpath of that call that reaches the fallback. When that command fails or the file is not there, a one-subpath call SHALL exit with code 1 and `File not found: <subpath> (tried <paths>)`, naming every path it tried, and a multi-subpath call SHALL print that message in the subpath's error block. Its output header, its path-mode blocks, its `too-large` handling, the agent's use of the returned path, and the stop on an error or on a tool that cannot run SHALL match the Claude Code rule, with no prose fallback. The opencode output cap SHALL be 30000 characters until a measured value replaces it. The resolution SHALL NOT use Glob, LS, or any directory listing.
+The tool SHALL check `.opencode/<subpath>` under the working directory and then `<subpath>` under the one user-global root the shared resolver returns, on every call and with no session memory, and SHALL use the first file that exists. That root SHALL be the directory printed on the `config` line of `opencode debug paths`; when that command is absent, fails, or prints no `config` line, it SHALL be `$XDG_CONFIG_HOME/opencode` when `XDG_CONFIG_HOME` is set and not blank, and `~/.config/opencode` otherwise. The tool SHALL run `opencode debug paths` at most once per call and reuse its outcome for every subpath of that call. A file that exists but cannot be read SHALL be a declared error of that subpath. When no root holds the file, a one-subpath call SHALL exit with code 1 and `File not found: <subpath> (tried <paths>)`, naming every path it tried, and a multi-subpath call SHALL print that message in the subpath's error block. Its output header, its path-mode blocks, its `too-large` handling, its handling of symbolic links and unreadable files, the agent's use of the returned path, and the stop on an error or on a tool that cannot run SHALL match the Claude Code rule, with no prose fallback. The opencode output cap SHALL be 30000 characters until a measured value replaces it. The resolution SHALL NOT use Glob, LS, or any directory listing.
 
 #### Scenario: project-local file exists
 - **WHEN** `Fetch @sai/policies/prereqs.md` is executed and `.opencode/sai/policies/prereqs.md` exists under the working directory
 - **THEN** the fetch tool prints that file's absolute path with `root: project` and its content, with no read of the user-global path
 
 #### Scenario: global file exists
-- **WHEN** `Fetch @sai/policies/prereqs.md` is executed, the project-local file is absent, and `~/.config/opencode/sai/policies/prereqs.md` exists
+- **WHEN** `Fetch @sai/policies/prereqs.md` is executed, the project-local file is absent, `opencode debug paths` reports no `config` directory, `XDG_CONFIG_HOME` is unset, and `~/.config/opencode/sai/policies/prereqs.md` exists
 - **THEN** the fetch tool prints the global file's absolute path with `root: global` and its content
 
 #### Scenario: config directory from opencode debug paths
-- **WHEN** neither `.opencode/<subpath>` nor `~/.config/opencode/<subpath>` exists and `opencode debug paths` prints a `config` directory that holds the subpath
-- **THEN** the fetch tool prints that file's absolute path with `root: global` and its content
+- **WHEN** the project-local file is absent and `opencode debug paths` prints a `config` directory that holds the subpath
+- **THEN** the fetch tool prints that file's absolute path with `root: global` and its content, and does not consult `~/.config/opencode`
 
 #### Scenario: file missing everywhere
-- **WHEN** no root holds the file, and `opencode debug paths` fails or its config directory does not hold the subpath either
+- **WHEN** neither the project-local root nor the resolved user-global root holds the file
 - **THEN** the fetch tool exits with code 1 and a `File not found` message that names the subpath and every path it tried
 - **AND** the agent stops the directive and reports that message
 
 #### Scenario: fetch tool installed for both harnesses
 - **WHEN** the installer projects the `fetch-tool` entry for Claude Code and opencode
-- **THEN** `fetch.js` sits beside `skills/fetch/SKILL.md` under each harness root, and `doctor` reports it when missing or drifted
+- **THEN** `fetch.js` and `harness-root.js` sit beside `skills/fetch/SKILL.md` under each harness root, and `doctor` reports them when missing or drifted
 
 #### Scenario: already-loaded subpath is followed without a tool run
 - **WHEN** an opencode agent meets `Fetch @sai/policies/cache-warming.md` after the fetch tool already returned that subpath's complete content in this conversation, still in its context
 - **THEN** the agent follows the loaded copy and runs no fetch tool for that directive
 
 #### Scenario: opencode debug paths runs once per call
-- **WHEN** a multi-subpath call with `--harness opencode` holds several subpaths that neither `.opencode/` nor `~/.config/opencode/` holds
-- **THEN** the fetch tool runs `opencode debug paths` once and checks every one of those subpaths under the printed config directory
+- **WHEN** a multi-subpath call with `--harness opencode` holds several subpaths that `.opencode/` does not hold
+- **THEN** the fetch tool runs `opencode debug paths` once and checks every one of those subpaths under the one resolved user-global root
+
+#### Scenario: XDG config root without a reported directory
+- **WHEN** `opencode debug paths` reports no `config` directory and `XDG_CONFIG_HOME` is set
+- **THEN** the fetch tool looks for the subpath under `$XDG_CONFIG_HOME/opencode`
 
 ### Requirement: The fetch tool enforces the path scope before any filesystem access
 

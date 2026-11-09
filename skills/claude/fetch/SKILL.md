@@ -15,7 +15,7 @@ metadata:
 
 Active harness identity: `claude`.
 
-Resolve project-local `.claude/` before user-global `~/.claude/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
+Resolve project-local `.claude/` before the user-global root, which is the directory `CLAUDE_CONFIG_DIR` names when that variable is set and `~/.claude/` otherwise. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
@@ -40,7 +40,7 @@ The tool sits in this skill's base directory, which the harness reports when it 
 node "<base directory>/fetch.js" --harness claude <subpath> [<subpath> ...]
 ```
 
-The tool looks in `.claude/` of the working directory (a worktree included) and then in `~/.claude/`, checks each subpath on every call, and uses the first file that exists. A call with one subpath prints a header, one blank line, and the unchanged content:
+The tool looks in `.claude/` of the working directory (a worktree included) and then in the user-global root (`CLAUDE_CONFIG_DIR`, else `~/.claude/`), checks each subpath on every call, and uses the first file that exists. A root or a file reached through a symbolic link resolves like any other, and the scope rule below is lexical only. A file that exists but cannot be read is an error of that subpath alone. A call with one subpath prints a header, one blank line, and the unchanged content:
 
 ```
 path: <absolute resolved path>

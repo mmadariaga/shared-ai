@@ -7,27 +7,32 @@ Keep SAI tool-copy selection deterministic across Claude Code and opencode while
 
 ### Requirement: Shared tool resolution order
 
-The system SHALL resolve every `sai/tools/*.js` copy by taking the first existing candidate per harness, checked with a tool that returns the path it found and never composed from a root string, with the opencode XDG fallback only when neither listed candidate exists. The first existing copy wins and defines the version. A project-local candidate SHALL run exactly as written, relative to the working directory. A global candidate, including the opencode XDG fallback, SHALL run as the absolute path the existence check returned, with backslashes turned into forward slashes and the whole path double-quoted (`node "<absolute path>"`), so the `~` text never reaches the shell. The installed instruction files SHALL keep their `~` candidate lists. The same rule SHALL apply to `prereqs.js` in `sai/policies/prereqs-check.md` and to the cache-warming `<wait-path>` in `sai/policies/cache-warming.md`. If no candidate exists the system SHALL name the tried candidates and stop with no prose fallback, except when the consuming instruction explicitly declares its gate optional on a missing tool; then only that gate is skipped, without replacing the check in prose.
+The system SHALL resolve every installed tool copy with the fetch tool in path mode, the same tool that resolves every `Fetch @` directive, passing the tool's subpath and never a path composed from a root string: `sai/tools/<name>` for a tool of `sai/tools/`, `sai/bin/sai-state.js` for the state CLI, and `skills/sai-cache-warmer/wait.js` for the cache-warm wait tool. A step that needs one tool SHALL name its subpath twice in one call, so the call prints resolution blocks only. The fetch tool looks in the project-local root of the working directory and then in the one user-global root it resolves itself (`CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the reported opencode config directory, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode); the first copy it returns wins and defines the version. The installed instruction files SHALL list no home-directory root candidates of their own. A `root: project` result SHALL run as the project-local form exactly as written, relative to the working directory. A `root: global` result SHALL run as the `path:` the block printed, double-quoted (`node "<absolute path>"`), so no `~` text reaches the shell. The same rule SHALL apply to `prereqs.js` in `sai/policies/prereqs-check.md` and to the cache-warming `<wait-path>` in `sai/policies/cache-warming.md`. If the fetch tool resolves no copy, the system SHALL name the paths its error block lists and stop with no prose fallback, except when the consuming instruction explicitly declares its gate optional on a missing tool; then only that gate is skipped, without replacing the check in prose.
 
 #### Scenario: Resolve tool copy
 
 - **WHEN** a command needs `sai/tools/<name>`
-- **THEN** it uses the first existing per-harness candidate and stops with named candidates when none exists, unless the consuming instruction explicitly declares the missing-tool exception for that gate
+- **THEN** it uses the copy the fetch tool returns in path mode and stops naming the paths tried when it returns none, unless the consuming instruction explicitly declares the missing-tool exception for that gate
 
 #### Scenario: Optional gate declares a missing-tool exception
 
-- **WHEN** an instruction explicitly permits skipping its named gate if no tool candidate exists
-- **THEN** it names the tried candidates, skips only that gate, and performs no prose replacement check
+- **WHEN** an instruction explicitly permits skipping its named gate if no tool copy resolves
+- **THEN** it names the paths tried, skips only that gate, and performs no prose replacement check
 
 #### Scenario: Global candidate runs from the returned absolute path
 
-- **WHEN** the first existing candidate is a global `~/...` candidate on Claude Code or opencode
-- **THEN** the agent runs `node "<absolute path>"` with the path the existence check returned and its backslashes turned into forward slashes, in Bash and PowerShell 7 alike
+- **WHEN** the fetch tool returns a `root: global` block on Claude Code or opencode
+- **THEN** the agent runs `node "<absolute path>"` with the path that block printed, in Bash and PowerShell 7 alike
 
 #### Scenario: Project-local candidate runs as written
 
-- **WHEN** the first existing candidate is `.claude/sai/tools/<name>` or `.opencode/sai/tools/<name>`
-- **THEN** the agent runs it exactly as written, relative to the working directory
+- **WHEN** the fetch tool returns a `root: project` block
+- **THEN** the agent runs `.claude/sai/tools/<name>` or `.opencode/sai/tools/<name>` exactly as written, relative to the working directory
+
+#### Scenario: Bare bin subpath is out of scope
+
+- **WHEN** an agent passes `bin/sai-state.js` as the subpath
+- **THEN** the fetch scope rejects it, and the state CLI resolves through `sai/bin/sai-state.js`
 
 ### Requirement: Byte-identical invocation after resolution
 

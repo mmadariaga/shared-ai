@@ -4,18 +4,7 @@
 
 ## Locate the tool
 
-Take the first candidate that exists, listed exactly as written below; never build the path by joining a root string to a suffix. Run a global candidate as the absolute path its existence check returned, with backslashes turned into forward slashes and double-quoted: `node "<absolute path>"` (`@sai/policies/tool-resolution.md` states the rule); run a project-local candidate as written. The first existing copy defines the version. (The order mirrors `@sai/policies/tool-resolution.md`.)
-
-On **Claude Code**:
-
-1. `.claude/sai/tools/prereqs.js` — the project-local root, relative to the working directory.
-2. `~/.claude/sai/tools/prereqs.js` — the user-global root.
-
-On **opencode**:
-
-1. `.opencode/sai/tools/prereqs.js` — the project-local root, relative to the working directory.
-2. `~/.config/opencode/sai/tools/prereqs.js` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths` and use `sai/tools/prereqs.js` inside the config directory exactly as that command prints it.
+Resolve `sai/tools/prereqs.js` with the fetch tool in path mode, per `@sai/policies/tool-resolution.md`: name the subpath `sai/tools/prereqs.js` twice in one call (a one-subpath call prints the file), and run the copy it returns as that policy states. The first copy it returns defines the version.
 
 ## Run it
 
@@ -28,7 +17,7 @@ Pass the project root the command was invoked from and the harness you are runni
 
 - **exit 0**, `verdict: pass`: every check holds; continue.
 - **exit 1**, `verdict: halt`: STOP, print the literal mapped to `failed_check` below with no prefix, suffix, summary, or rephrasing, and create or modify no file.
-- **exit 2**, a usage or IO error on stderr; or no candidate exists; or the payload does not parse: the check is **incomplete**. Report exactly that (the stderr text, the candidates tried, or the unparseable payload), print no remediation literal, and stop.
+- **exit 2**, a usage or IO error on stderr; or the fetch tool resolves no copy; or the payload does not parse: the check is **incomplete**. Report exactly that (the stderr text, the paths tried, or the unparseable payload), print no remediation literal, and stop.
 
 `failed_check` literals:
 

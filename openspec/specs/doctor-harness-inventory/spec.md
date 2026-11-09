@@ -5,12 +5,13 @@
 Defines how `doctor` detects the installed harnesses and classifies each detected harness's expected files as present, missing, or unexpected.
 
 ## Requirements
+
 ### Requirement: harness auto-detection
 
-The doctor SHALL auto-detect which of the two supported harnesses (Claude Code, opencode) are installed by testing whether each harness's user-global dir is present, using the same OS-aware base paths the installer computes (`~/.claude` and `~/.config/opencode`). It SHALL NOT require a `--harness` flag. A harness whose user-global dir is absent SHALL be reported as not installed rather than emitting missing-file errors for it.
+The doctor SHALL auto-detect which of the two supported harnesses (Claude Code, opencode) are installed by testing whether each harness's user-global dir is present, using the same global roots the installer resolves through the shared resolver (`CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the directory `opencode debug paths` reports, else `XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode). It SHALL NOT require a `--harness` flag. A harness whose user-global dir is absent SHALL be reported as not installed rather than emitting missing-file errors for it.
 
 #### Scenario: only installed harnesses get sections
-- **WHEN** the user has a `~/.claude` dir but no opencode user-global dir
+- **WHEN** the user has a resolved Claude Code dir (`~/.claude` when `CLAUDE_CONFIG_DIR` is unset) but no opencode user-global dir
 - **THEN** the doctor emits a Claude Code section and reports opencode as not installed, without flagging their expected files as missing
 
 #### Scenario: both harnesses detected

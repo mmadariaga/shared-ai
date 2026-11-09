@@ -29,7 +29,8 @@ class InputFileError extends Error {
 /**
  * Split `--input-file <path>` (or `--input-file=<path>`) out of an argument
  * list. Returns the remaining arguments in order and the path, or null when the
- * flag is absent.
+ * flag is absent. A separate value that starts with `--` is a usage error (the
+ * flag was given no path); `--input-file=<path>` accepts any path.
  */
 function extractInputFile(argv) {
   const rest = [];
@@ -38,6 +39,8 @@ function extractInputFile(argv) {
     const arg = argv[i];
     let value;
     if (arg === FLAG) {
+      // A value that starts with `--` is the next option, never a path: the `=` form names such a path.
+      if (i + 1 < argv.length && argv[i + 1].startsWith('--')) throw new InputFileError(`${FLAG} requires a path, not the option ${argv[i + 1]}; use ${FLAG}=<path> for a path that starts with --`);
       value = i + 1 < argv.length ? argv[i + 1] : '';
       i += 1;
     } else if (arg.startsWith(`${FLAG}=`)) {

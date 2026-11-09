@@ -32,14 +32,14 @@ For a rename citation (`R <src> -> <dst>`) the checker SHALL require the origin 
 - **THEN** the checker reports the origin violation with candidates and exits 1 without writing
 
 ### Requirement: Spec validation gate blocks on missing evidence paths
-The `sai-1` validation step SHALL resolve `check-cited-paths.js` by the first existing candidate verbatim and run `node <tool> sai-1 <change-name> --cwd <project-root>` before completion. A non-zero exit SHALL block completion until every cited evidence path in `proposal.md` (including every path in its `**Local files**:` field) and `specs/**` exists.
+The `sai-1` validation step SHALL resolve `check-cited-paths.js` through the fetch tool in path mode, per the shared tool-resolution policy, and run `node <tool> sai-1 <change-name> --cwd <project-root>` before completion. A non-zero exit SHALL block completion until every cited evidence path in `proposal.md` (including every path in its `**Local files**:` field) and `specs/**` exists.
 
 #### Scenario: Spec step with bad evidence path cannot complete
 - **WHEN** the `sai-1` gate reports a missing evidence path, including one listed in the `**Local files**:` field
 - **THEN** the worker fixes the cited entries using suggestions only and re-runs until exit 0
 
 ### Requirement: Design interfaces gate blocks on missing planned paths
-The `sai-2` interfaces step SHALL run `node <tool> sai-2 <change-name> --cwd <project-root>` after `interfaces.md` verifies and before the `interfaces` progress event, resolving the tool by the same first-candidate rule. A non-zero exit SHALL block until every `M`/`D`/`R` path in `tasks.md` and every path in `interfaces.md` exists.
+The `sai-2` interfaces step SHALL run `node <tool> sai-2 <change-name> --cwd <project-root>` after `interfaces.md` verifies and before the `interfaces` progress event, resolving the tool through the fetch tool in path mode, as for the `sai-1` gate. A non-zero exit SHALL block until every `M`/`D`/`R` path in `tasks.md` and every path in `interfaces.md` exists.
 
 #### Scenario: Design plan with missing modified path cannot advance
 - **WHEN** `tasks.md` lists an `M` path that does not exist on disk
