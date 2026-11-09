@@ -148,7 +148,7 @@ test('the audit coordinator sends the first filed pointer with the task disclosu
   const coordinator = readRepo('sai/commands/audit/coordinator.md');
   assert.match(coordinator, /`reset` `\{audit\}-steps@1`/);
   assert.match(coordinator, /The `reset` response names the first pointer/);
-  assert.match(coordinator, /The task message opens with the first pointer line, `Active step: <stage> — follow <pointer>`/);
+  assert.match(coordinator, /The task message opens with the line `--report-dir <report directory>`[^\n]*then the first pointer line, `Active step: <stage> — follow <pointer>`/);
   for (const audit of ['security', 'performance', 'accessibility']) {
     const second = registry.get(`${audit}-steps@1`).firstFiled().stage;
     assert.ok(fs.existsSync(path.join(__dirname, '..', `sai/commands/${audit}/steps/${second}.md`)), `${audit} first filed step ${second} has its step file`);

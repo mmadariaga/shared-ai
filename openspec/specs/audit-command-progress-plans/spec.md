@@ -48,12 +48,12 @@ Plans SHALL NOT add passes, tools, severities, or delegation units as steps. The
 
 ### Requirement: audit-workers-report-completed-milestones
 
-Each worker SHALL return a `step-done` result after its steps complete, carrying every newly completed id in plan order. The first pointer SHALL arrive with the task message, and the first batch SHALL report the fileless scope step with the first filed step. A step the worker skips because it does not apply SHALL be reported in the batch of the step that decided the skip. When security discovery decides the audit does not apply (an empty diff is this case), the first batch SHALL also carry `resolve-sast-analysis` and `resolve-sca`; when performance mapping decides it does not apply, the first batch SHALL also carry `audit-performance-tiers` and `resolve-diagnostics`; when accessibility mapping finds no UI file, the first batch SHALL also carry `resolve-static-audit` and `resolve-runtime-audit`; each then writes the Not Applicable report and returns `completed`. Steps SHALL remain distinct and delivered just-in-time; workers SHALL NOT prefetch or own machine state.
+Each worker SHALL save a progress report after its steps complete, as a new file named with the `progress-` prefix in the report directory, carrying `event: progress`, every newly completed id in plan order as `step_ids`, and empty `changed_files`, and SHALL return only its `{path, sha256}` reference. The first pointer SHALL arrive with the task message, and the first progress report SHALL report the fileless scope step with the first filed step. A step the worker skips because it does not apply SHALL be reported in the progress report of the step that decided the skip. When security discovery decides the audit does not apply (an empty diff is this case), the first progress report SHALL also carry `resolve-sast-analysis` and `resolve-sca`; when performance mapping decides it does not apply, the first progress report SHALL also carry `audit-performance-tiers` and `resolve-diagnostics`; when accessibility mapping finds no UI file, the first progress report SHALL also carry `resolve-static-audit` and `resolve-runtime-audit`; each then writes the Not Applicable report and saves a `completed` report. Steps SHALL remain distinct and delivered just-in-time; workers SHALL NOT prefetch or own machine state.
 
 #### Scenario: audit worker reports a completed batch
 - **WHEN** an audit worker completes one or more steps
-- **THEN** it returns `step-done` with their canonical ids in plan order
-- **AND** the coordinator emits them to the audit's step machine and sends the next pointer, without treating the batch as user input
+- **THEN** it saves a `progress-` report carrying their canonical ids in plan order and returns its reference
+- **AND** the coordinator validates it with `--kind progress`, passes the same file to `sai-state emit <id> {audit}-steps@1 --progress --input-file <report file>`, and sends the next pointer, without treating the report as user input
 
 #### Scenario: audit workers continue under step-gated instruction delivery
 - **WHEN** a security, performance, or accessibility worker continues between steps
@@ -62,8 +62,8 @@ Each worker SHALL return a `step-done` result after its steps complete, carrying
 
 #### Scenario: security empty diff reports the not-applicable batch
 - **WHEN** the security selected diff is empty
-- **THEN** the first `step-done` batch carries `resolve-security-scope`, `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca`
-- **AND** the worker writes the Not Applicable report and returns `completed`
+- **THEN** the first progress report carries `resolve-security-scope`, `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca`
+- **AND** the worker writes the Not Applicable report and saves a `completed` report
 
 ### Requirement: optional-audit-milestones-reconcile-at-applicability
 

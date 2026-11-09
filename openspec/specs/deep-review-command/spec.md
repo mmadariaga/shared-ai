@@ -75,16 +75,16 @@ When accessibility is activated, the run has `--runtime`, and the run has no `--
 
 ### Requirement: An unanswerable audit question pauses only its own audit
 
-The coordinator SHALL answer an audit worker `question` itself when the change, its artifacts, or the repository answer it, and keep the answer as an assumption for the close. When nothing answers it and the answer would change the report, it SHALL put the question to the user through the native picker with options that each name a different way forward, and only that audit's cycle SHALL wait while the other cycles keep running. Several pending questions SHALL be asked one at a time in the fixed order security, performance, accessibility. A question whose answer would not change the report SHALL be answered with the coordinator's best reading and kept as an assumption.
+The coordinator SHALL answer an audit worker `needs_input` report's `question` itself when the change, its artifacts, or the repository answer it, and keep the answer as an assumption for the close. When nothing answers it and the answer would change the report, it SHALL put the question to the user through the native picker with options that each name a different way forward, and only that audit's cycle SHALL wait while the other cycles keep running. Several pending questions SHALL be asked one at a time in the fixed order security, performance, accessibility. A question whose answer would not change the report SHALL be answered with the coordinator's best reading and kept as an assumption.
 
 #### Scenario: A report-changing question escalates
 
-- **WHEN** the security worker asks a question that nothing in the change or repository answers and whose answer would change its report, while performance is also running
+- **WHEN** the security worker returns a `needs_input` report whose question nothing in the change or repository answers and whose answer would change its report, while performance is also running
 - **THEN** the question reaches the user through the native picker and only the security cycle waits for the answer
 
 ### Requirement: A failed audit does not close the run
 
-An audit whose worker returns `failed`, or whose obstacle budget of 3 attempts is exhausted, SHALL NOT close the run and SHALL NOT escalate: the coordinator SHALL record it as `failed` with its summary or last obstacle, commit nothing for it, leave any earlier report of that audit as it was, and let the other audits finish. A failed audit's findings SHALL never enter the Assessment pass or the fix segment.
+An audit whose worker returns an accepted `failed` report, or whose obstacle budget of 3 attempts is exhausted (a report that does not validate included), SHALL NOT close the run and SHALL NOT escalate: the coordinator SHALL record it as `failed` with its summary or last obstacle, commit nothing for it, leave any earlier report of that audit as it was, and let the other audits finish. A failed audit's findings SHALL never enter the Assessment pass or the fix segment.
 
 #### Scenario: One audit fails
 
@@ -146,3 +146,17 @@ After the last segment that ran, the coordinator SHALL re-read `review.md` and p
 
 - **WHEN** a run completes its review, audits, Assessment pass, and fix segment
 - **THEN** the close lists the audits, fixed and excluded findings, and ends with exactly `Deep review done.`, with no `Review done.`, `{Audit} audit done.`, or `Implement done.` line
+
+### Requirement: Audit cycles of /sai-deep-review validate their reports through the shared transport
+
+`/sai-deep-review` SHALL follow the receiver side of `sai/policies/worker-report-transport.md` for every audit report. Each activated audit cycle SHALL open its own report directory with `transfer.js open` before its worker exists, and its task message SHALL open with that directory's `--report-dir` line. The driving session SHALL validate every audit report against its own cycle's report directory and with the `--command` of its own audit before reading any field, and SHALL pass each accepted progress report file unchanged to `sai-state emit <id> {audit}-steps@1 --progress --input-file <report file>`, issuing these calls one at a time in the fixed order security, performance, accessibility among the reports that are ready. A cycle that ends with its report verified and committed or left on disk SHALL close its report directory; a cycle recorded as `failed` SHALL keep it. Claude Code and opencode SHALL behave identically.
+
+#### Scenario: Parallel audits each use their own report directory
+
+- **WHEN** security and accessibility are activated and their workers run in parallel
+- **THEN** each task message opens with the `--report-dir` line of its own cycle, and the driving session validates the security report with `--command security` and the accessibility report with `--command accessibility`, one at a time
+
+#### Scenario: A failed cycle keeps its report directory
+
+- **WHEN** the performance cycle is recorded as `failed`
+- **THEN** its report directory stays on disk while the completed cycles close theirs

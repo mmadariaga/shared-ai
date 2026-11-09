@@ -1,6 +1,6 @@
 # Accessibility Step — Resolve Runtime-Audit Gate
 
-Active step: resolve-runtime-audit. The step is done when every applicable runtime check has run or is recorded as unavailable or pending, and `step-done` is reported for `resolve-runtime-audit`.
+Active step: resolve-runtime-audit. The step is done when every applicable runtime check has run or is recorded as unavailable or pending, and a progress report for `resolve-runtime-audit` is saved and returned, as `sai/commands/audit/worker-common.md` § Results says.
 
 ### Phase 9: Optional Runtime Audit (`--runtime` mode only)
 

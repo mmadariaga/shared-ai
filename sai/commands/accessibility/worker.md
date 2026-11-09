@@ -7,7 +7,7 @@ Fetch `@sai/commands/accessibility/steps/common.md` and keep it in force for the
 
 ## Steps
 
-The plan has these step ids, in order. Each is reported in a `step-done` batch, as `worker-common.md` says.
+The plan has these step ids, in order. Each is reported in a progress report, as `worker-common.md` says.
 
 - `resolve-accessibility-scope` — no file; run inline from the brief and `common.md`: read the change artifacts, resolve the selected scope, the runtime mode, the dev-server URL, and the parent branch, and filter the scope to UI files. It reports together with `map-ui-framework`.
 - `map-ui-framework` — maps UI files, frameworks, component types, and design tokens. When the scope holds no UI file, the audit does not apply, even with `--runtime`: the first batch also carries `resolve-static-audit` and `resolve-runtime-audit`, no scanner runs, and `close-accessibility-outcome` writes the Not Applicable report.

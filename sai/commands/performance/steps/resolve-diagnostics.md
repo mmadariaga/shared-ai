@@ -1,6 +1,6 @@
 # Performance Step — Resolve Diagnostics Gate
 
-Active step: resolve-diagnostics. The step is done when every diagnostic that firms up a finding has run or is recorded as unavailable, and `step-done` is reported for `resolve-diagnostics`.
+Active step: resolve-diagnostics. The step is done when every diagnostic that firms up a finding has run or is recorded as unavailable, and a progress report for `resolve-diagnostics` is saved and returned, as `sai/commands/audit/worker-common.md` § Results says.
 
 This step runs only with `--runtime`; without it the gate is resolved with no diagnostic, and the findings keep their numbers marked as estimated. `--runtime` is the whole authorization: ask no question, and never wait for an answer. Diagnostics are read-only measurements (`EXPLAIN`, `EXPLAIN ANALYZE` inside a rolled-back transaction, `lighthouse`, bundle analyzers, profilers in measurement mode), run in bounded measurement mode against a local or development target the repository configuration names, never against a production target.
 

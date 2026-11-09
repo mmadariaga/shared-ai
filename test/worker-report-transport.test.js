@@ -260,7 +260,7 @@ test('the policy covers the plan and review workers, the progress kind, and the 
   const policy = read(POLICY);
   assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
   assert.match(policy, /spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`/);
-  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review` and Direct Build/);
+  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, and Direct Build/);
   assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
   const progress = policy.slice(policy.indexOf('### Progress reports'), policy.indexOf('## Author boundary'));
   assert.match(progress, /event: progress\nstep_ids: string\[\]\nchanged_files: string\[\]/);
@@ -402,4 +402,85 @@ test('the spec, design, and review workers and their coordinators have the repor
     assert.ok(grants('transfer.js open *'), `${command} may open the report directory`);
     assert.ok(grants('worker-report-validator.js *'), `${command} may validate a report`);
   }
+});
+
+// ─── Audit workers ───────────────────────────────────────────────────────────
+
+test('the audit workers report progress, questions, and results as files through the policy', () => {
+  const policy = read(POLICY);
+  assert.match(policy, /the audit workers of `\/sai-5-security`, `\/sai-6-performance`, and `\/sai-7-accessibility`/);
+  assert.match(policy, /`security`, `performance`, or `accessibility` for the audit worker of that audit/);
+  const common = read('sai/commands/audit/worker-common.md');
+  assert.match(common, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(common, /preceded by the line `--report-dir <path>`/);
+  assert.match(common, /Its file name starts with `progress-`/);
+  assert.match(common, /event: progress\nstep_ids: string\[\]\nchanged_files: \[\]/);
+  assert.match(common, /status: needs_input[\s\S]*question: string\noptions: \{label: string, value: string\}\[\]/);
+  assert.match(common, /status: completed\nsummary: string\nchanged_files: string\[\]\nreport_path: string/);
+  assert.match(common, /A message that carries the result inline is an invalid report/);
+  assert.doesNotMatch(common, /event: step-done|event: question\n/);
+  for (const audit of ['security', 'performance', 'accessibility']) {
+    assert.doesNotMatch(read(`sai/commands/${audit}/worker.md`), /`step-done`/, audit);
+    for (const file of fs.readdirSync(path.join(__dirname, '..', 'sai/commands', audit, 'steps'))) {
+      assert.doesNotMatch(read(`sai/commands/${audit}/steps/${file}`), /`step-done`/, `${audit}/steps/${file}`);
+    }
+  }
+});
+
+test('the audit coordinator opens a report directory per cycle, validates every report, and feeds progress to the machine', () => {
+  const card = read('sai/commands/audit/coordinator.md');
+  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Open the report directory of the cycle with `transfer\.js open --harness <claude\|opencode>`/);
+  assert.match(card, /opens with the line `--report-dir <report directory>`/);
+  assert.match(card, /validated with `validate --kind progress --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
+  assert.match(card, /validate --kind terminal --command \{audit\} --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(card, /including the retired `event: step-done` and `event: question`, is an invalid report/);
+  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /never rewriting the payload/);
+  assert.match(card, /second consecutive invalid report from that worker replaces it/);
+  assert.match(card, /transfer\.js close --dir <report directory>/);
+  assert.doesNotMatch(card, /emit its `step_ids` to the machine as/);
+});
+
+test('deep-review opens a report directory per audit cycle and validates and emits audit reports one at a time', () => {
+  const card = read('sai/commands/deep-review/coordinator.md');
+  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /its steps 5 and 6 of Start/);
+  assert.match(card, /Each activated audit cycle opens its own report directory/);
+  assert.match(card, /You validate every audit report[^\n]*and issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility/);
+  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /A worker `needs_input` report is answered by you/);
+  assert.match(card, /a cycle recorded as `failed` keeps it/);
+});
+
+test('the audit workers and commands have the report grants on both harnesses', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const { resolveProfile } = require('../bin/capabilities');
+  const agents = manifest.capabilities.assignments.agents;
+  for (const worker of ['sai-5-security-worker', 'sai-6-performance-worker', 'sai-7-accessibility-worker']) {
+    const shell = resolveProfile(manifest.capabilities, agents[worker]).shell;
+    assert.ok(shell.includes('node {sai}/tools/transfer.js put *'), `${worker} may save a report`);
+  }
+  const commands = manifest.capabilities.assignments.commands;
+  for (const command of ['sai-5-security', 'sai-6-performance', 'sai-7-accessibility', 'sai-deep-review']) {
+    const shell = resolveProfile(manifest.capabilities, commands[command]).shell;
+    const grants = tool => shell.includes('*') || shell.includes(`node {sai}/tools/${tool}`);
+    assert.ok(grants('transfer.js open *'), `${command} may open the report directory`);
+    assert.ok(grants('worker-report-validator.js *'), `${command} may validate a report`);
+  }
+});
+
+test('the audit progress report advances the step machine through the progress emit', t => {
+  const payload = { event: 'progress', step_ids: ['resolve-security-scope', 'discover-module-map'], changed_files: [] };
+  const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(payload)));
+  const accepted = validateFile(dir, reference, 'progress');
+  assert.equal(accepted.outcome, 'accepted');
+  const completed = { status: 'completed', summary: 'Wrote security.md.', changed_files: ['openspec/changes/x/security.md'],
+    report_path: 'openspec/changes/x/security.md', counts: { critical: 0, high: 1, medium: 0, low: 0 } };
+  const done = transfer.put(dir, 'completed.json', Buffer.from(JSON.stringify(completed)));
+  for (const command of ['security', 'performance', 'accessibility']) {
+    assert.equal(validateFile(dir, done, 'terminal', { command }).outcome, 'accepted', command);
+  }
+  const legacy = transfer.put(dir, 'legacy-question.json', Buffer.from(JSON.stringify({ event: 'question', question: 'Which scope?' })));
+  assert.equal(validateFile(dir, legacy, 'terminal', { command: 'security' }).outcome, 'report-invalid');
 });

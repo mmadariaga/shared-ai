@@ -21,9 +21,9 @@ file per non-fileless plan step (`map-ui-framework`,
 
 ### Requirement: Accessibility Worker Active Step Execution
 
-The accessibility worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-accessibility-scope` step from the brief and that surface before following the first pointer, which arrives as the first line of the task message before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-accessibility-scope` and `map-ui-framework` together in its first `step-done` batch. A runtime-audit stage that does not apply (no `--runtime`, or no UI file in scope) SHALL be reported in the batch of the step that decided the skip, so the next pointer lands on the step that still has work.
+The accessibility worker SHALL load `sai/commands/audit/worker-common.md` and `steps/common.md` at creation as its initial surface. It SHALL run the fileless `resolve-accessibility-scope` step from the brief and that surface before following the first pointer, which arrives in the task message right after the `--report-dir` line and before the brief. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file; a message without a pointer line SHALL leave the active step unchanged. It SHALL report `resolve-accessibility-scope` and `map-ui-framework` together in its first progress report. A runtime-audit stage that does not apply (no `--runtime`, or no UI file in scope) SHALL be reported in the progress report of the step that decided the skip, so the next pointer lands on the step that still has work.
 
 #### Scenario: Runtime gate skip advances the pointer
 
 - **WHEN** the run has no `--runtime` and the static audit completes
-- **THEN** the worker reports `resolve-runtime-audit` in the `resolve-static-audit` `step-done` batch and the next delivered pointer names `close-accessibility-outcome`
+- **THEN** the worker reports `resolve-runtime-audit` in the `resolve-static-audit` progress report and the next delivered pointer names `close-accessibility-outcome`
