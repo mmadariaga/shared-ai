@@ -398,11 +398,11 @@ test('Step 3 audit worker results accept only the closed fields', () => {
   const shared = artifact('sai/commands/audit/worker-common.md');
   const worker = artifact('sai/commands/accessibility/worker.md');
   assert.match(worker, /Accessibility Worker/);
-  for (const field of ['event: step-done', 'step_ids', 'event: question', 'status: completed', 'status: failed', 'changed_files', 'summary', 'report_path', 'counts']) {
+  for (const field of ['event: progress', 'step_ids', 'status: needs_input', 'status: completed', 'status: failed', 'changed_files', 'summary', 'report_path', 'counts']) {
     assert.ok(shared.includes(field), `the worker result should expose ${field}`);
   }
   assert.match(shared, /A result carries no time field and no artifact contents/);
-  assert.doesNotMatch(shared, /needs_input|cancelled|continuation identifier/);
+  assert.doesNotMatch(shared, /event: step-done|event: question|status: cancelled|continuation identifier/);
 });
 
 // ─── Step 5: accessibility-phase progress surfaces ──────────────────────────

@@ -89,7 +89,7 @@ For each post-ready response that travels as a report reference, the coordinator
 
 ### Requirement: One shared worker report policy
 
-`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. The policy SHALL name the role fields of each family (spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`), and the run state that keeps the report directory (`plan-run@1` for the plan commands, the conversation for `/sai-4-review`). `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
+`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, the audit workers of `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. The policy SHALL name the role fields of each family (spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`; audits: `report_path` and `counts`), the run state that keeps the report directory (`plan-run@1` for the plan commands, the conversation for `/sai-4-review` and the audit cycles), and the validator command of each audit worker (`security`, `performance`, or `accessibility`). `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
 
 #### Scenario: The retired policy leaves the installation
 
@@ -98,13 +98,18 @@ For each post-ready response that travels as a report reference, the coordinator
 
 #### Scenario: A worker family outside the slice keeps its dialect
 
-- **WHEN** a worker whose contract does not fetch `worker-report-transport.md`, such as an audit, commit, archive, backfill, or merge worker outside the full Direct Build route, returns a result
+- **WHEN** a worker whose contract does not fetch `worker-report-transport.md`, such as a commit, archive, backfill, or merge worker outside the full Direct Build route, returns a result
 - **THEN** its coordinator receives it in that family's present report form
 
 #### Scenario: The plan and review workers follow the policy
 
 - **WHEN** the spec, design, or review worker returns a result
 - **THEN** it returns a report reference that its coordinator validates with `--command spec`, `--command design`, or `--command review` before reading any field
+
+#### Scenario: The audit workers follow the policy
+
+- **WHEN** the security, performance, or accessibility worker returns a result
+- **THEN** it returns a report reference that its coordinator validates with `--command security`, `--command performance`, or `--command accessibility` before reading any field
 
 ### Requirement: Reports follow one closed schema
 

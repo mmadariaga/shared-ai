@@ -15,7 +15,7 @@ The Claude Code and opencode accessibility-worker bindings SHALL render from the
 - **AND** the binding does not substitute a different phase worker or inline technical workflow
 
 #### Scenario: Same-worker continuation succeeds
-- **WHEN** the worker returns a `question` and the coordinator answers it
+- **WHEN** the worker returns the reference of a `needs_input` report and the coordinator answers its question
 - **THEN** the answer is sent to the same worker through the binding's continue call
 - **AND** no replacement worker is created
 
@@ -54,10 +54,10 @@ When the audit coordinator replaces an accessibility worker after runtime comman
 
 ### Requirement: Worker result payloads remain lifecycle-compatible
 
-The bindings SHALL return only the worker's closed results `step-done`, `question`, `completed`, and `failed` to the coordinator, preserving `step_ids`, `question`, `summary`, `changed_files`, `report_path`, and `counts`. They SHALL not add continuation identifiers, binding metadata, runtime command payloads, report contents, or other technical fields to worker-authored results. Bindings SHALL be limited to Claude Code and opencode and SHALL not add a compatibility caller or binding.
+The bindings SHALL return only the worker's report references (`{path, sha256}` of its progress, `needs_input`, `completed`, and `failed` report files) to the coordinator, whose validated payloads preserve `step_ids`, `question`, `options`, `summary`, `changed_files`, `report_path`, and `counts`. They SHALL not add continuation identifiers, binding metadata, runtime command payloads, report contents, or other technical fields to worker-authored results. Bindings SHALL be limited to Claude Code and opencode and SHALL not add a compatibility caller or binding.
 
 #### Scenario: Worker returns a malformed outcome
-- **WHEN** an accessibility worker result is none of the closed results or has an invalid field shape
+- **WHEN** an accessibility worker report does not validate, uses none of the closed report shapes, or arrives inline instead of as a reference
 - **THEN** the coordinator treats it as an obstacle of the run without inventing missing data
 - **AND** the binding executes no technical recovery of its own
 

@@ -35,9 +35,9 @@ The bindings SHALL authorize read-only `explore` research with the existing secu
 
 ### Requirement: Security binding results stay closed and unchanged
 
-The bindings SHALL return the worker's closed results — `step-done`, `question`, `completed`, and `failed` — to the coordinator unchanged, with worker-authored summaries, questions, `report_path`, `counts`, and `changed_files` intact. The security worker SHALL NOT ask the user to select a change, because the coordinator resolves the change before creating it. GitHub Copilot SHALL remain outside these bindings.
+The bindings SHALL return the worker's report references — `{path, sha256}` of its progress, `needs_input`, `completed`, and `failed` report files — to the coordinator unchanged, so that the coordinator validates each report and receives the worker-authored summaries, questions, `report_path`, `counts`, and `changed_files` intact. The security worker SHALL NOT ask the user to select a change, because the coordinator resolves the change before creating it. GitHub Copilot SHALL remain outside these bindings.
 
 #### Scenario: Worker completes after resolution
-- **WHEN** the security worker returns `completed`
-- **THEN** the coordinator receives the worker-authored summary, the report path, the counts, and the changed-file paths unchanged
+- **WHEN** the security worker returns the reference of a `completed` report
+- **THEN** the coordinator validates it and receives the worker-authored summary, the report path, the counts, and the changed-file paths unchanged
 - **AND** no Copilot binding is involved

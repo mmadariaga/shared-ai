@@ -33,6 +33,7 @@ test('the audit coordinator loads only the cross-cutting policies that never sto
     'sai/policies/obstacle-escalation.md',
     'sai/policies/finding-state.md',
     'sai/policies/cache-warming.md',
+    'sai/policies/worker-report-transport.md',
     'sai/orchestration/workers/bindings/{audit}-worker.md',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition', 'prereqs']) {
@@ -49,7 +50,7 @@ test('the audit coordinator states goals and completion criteria, with no case t
 
 test('the audit coordinator runs one cycle per worker, so /sai-deep-review can drive several at once', () => {
   const coordinator = read('sai/commands/audit/coordinator.md');
-  assert.match(coordinator, /The run is a cycle for one worker: create it, disclose the task, process its `step-done` events, verify the report, commit it/);
+  assert.match(coordinator, /The run is a cycle for one worker: create it, disclose the task, process its progress reports, verify the report, commit it/);
   assert.match(coordinator, /Each cycle keeps its own session key, and the driving session issues every `sai-state` call and every commit one at a time/);
   assert.match(coordinator, /key: `\{audit\}-\{name\}`/);
   assert.doesNotMatch(coordinator, /exclusive/i);
@@ -65,7 +66,7 @@ test('E1 to E9: the coordinator verifies, commits only the report, never pushes,
   assert.match(coordinator, /a question dismissed without an answer, ends the run with the report so far and no closing line/);
   assert.match(coordinator, /A scope the audit does not apply to still ends this way: the report is the Not Applicable form/);
   assert.match(coordinator, /silently: the command already runs with no human in the loop/);
-  assert.match(coordinator, /A `question` is answered by you when the change, its artifacts, or the repository answer it/);
+  assert.match(coordinator, /A `needs_input` report is answered by you when the change, its artifacts, or the repository answer its `question`/);
   assert.match(coordinator, /an interrupted run is not resumed/);
 });
 
@@ -108,7 +109,7 @@ test('the audit workers keep what is specific to their audit and share the rest'
   }
 });
 
-test('the audit step files report step-done and keep E2 to E5 in their own steps', () => {
+test('the audit step files report progress and keep E2 to E5 in their own steps', () => {
   assert.match(read('sai/commands/security/steps/resolve-sca.md'), /the report says SCA did not run and why/);
   assert.match(read('sai/commands/security/security-report.template.md'), /\*\*SCA:\*\* \{ran on \{manifests\} \| did not run — /);
   assert.match(read('sai/commands/accessibility/steps/map-ui-framework.md'), /even when `--runtime` was passed: no scanner runs/);
@@ -117,7 +118,7 @@ test('the audit step files report step-done and keep E2 to E5 in their own steps
   assert.match(read('openspec/schemas/sai-workflow/templates/accessibility.md'), /^## Pending Manual Checks$/m);
   for (const audit of AUDITS) {
     for (const file of fs.readdirSync(path.join(repoRoot, 'sai/commands', audit, 'steps'))) {
-      assert.doesNotMatch(read(`sai/commands/${audit}/steps/${file}`), /progress event/, `${audit}/steps/${file} reports step-done`);
+      assert.doesNotMatch(read(`sai/commands/${audit}/steps/${file}`), /progress event/, `${audit}/steps/${file} reports progress`);
     }
   }
 });

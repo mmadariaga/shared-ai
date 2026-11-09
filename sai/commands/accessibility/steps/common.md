@@ -1,6 +1,6 @@
 # Accessibility Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, hard rules, and standing reminders. Step delivery follows `sai/commands/audit/worker-common.md`; `resolve-accessibility-scope` has no step file of its own and runs from the brief plus this file. The first pointer arrives as the first line of the task message: run `resolve-accessibility-scope` inline, then follow that pointer, and report `resolve-accessibility-scope` and `map-ui-framework` together in the first `step-done`.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, operating principles, hard rules, and standing reminders. Step delivery follows `sai/commands/audit/worker-common.md`; `resolve-accessibility-scope` has no step file of its own and runs from the brief plus this file. The first pointer arrives as the first line of the task message: run `resolve-accessibility-scope` inline, then follow that pointer, and report `resolve-accessibility-scope` and `map-ui-framework` together in the first progress report.
 
 Fetch `@skills/budget-ro/SKILL.md` and use it
 Fetch `@sai/policies/remember.md`

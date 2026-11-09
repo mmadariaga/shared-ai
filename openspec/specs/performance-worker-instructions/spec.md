@@ -19,7 +19,7 @@ Every performance step file SHALL open with a checkable "The step is done when â
 
 #### Scenario: Mapping cannot close on one hot path
 - **WHEN** the mapping step has identified one hot path but some files of the selected scope are not yet classified
-- **THEN** the step is not done and reports no `map-stack-hot-paths` `step-done`
+- **THEN** the step is not done and saves no progress report for `map-stack-hot-paths`
 
 ### Requirement: Mapping step owns the delegation limits
 
@@ -39,8 +39,8 @@ The close step SHALL define the `completed` summary: severity counts, up to thre
 
 ### Requirement: Performance worker card lists only its step batches
 
-`sai/commands/performance/worker.md` SHALL load `sai/commands/audit/worker-common.md` and `sai/commands/performance/steps/common.md` and SHALL carry one `## Steps` section that lists the canonical step ids in order with the `step-done` batch that reports each one. It SHALL carry no change-resolution, proposal-gate, or continuation-and-reconstruction section: the shared audit coordinator resolves the change and verifies `proposal.md` before creating the worker, and it owns worker replacement.
+`sai/commands/performance/worker.md` SHALL load `sai/commands/audit/worker-common.md` and `sai/commands/performance/steps/common.md` and SHALL carry one `## Steps` section that lists the canonical step ids in order with the progress report that reports each one. It SHALL carry no change-resolution, proposal-gate, or continuation-and-reconstruction section: the shared audit coordinator resolves the change and verifies `proposal.md` before creating the worker, and it owns worker replacement.
 
 #### Scenario: Worker card lists the step batches
 - **WHEN** the performance worker card is read
-- **THEN** its `## Steps` section lists `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, `resolve-diagnostics`, and `close-performance-outcome` in order with the batch that reports each
+- **THEN** its `## Steps` section lists `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, `resolve-diagnostics`, and `close-performance-outcome` in order with the progress report that reports each
