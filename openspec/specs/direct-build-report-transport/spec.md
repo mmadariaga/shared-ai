@@ -89,7 +89,7 @@ For each post-ready response that travels as a report reference, the coordinator
 
 ### Requirement: One shared worker report policy
 
-`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement` and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
+`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. The policy SHALL name the role fields of each family (spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`), and the run state that keeps the report directory (`plan-run@1` for the plan commands, the conversation for `/sai-4-review`). `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
 
 #### Scenario: The retired policy leaves the installation
 
@@ -98,8 +98,13 @@ For each post-ready response that travels as a report reference, the coordinator
 
 #### Scenario: A worker family outside the slice keeps its dialect
 
-- **WHEN** a worker whose contract does not fetch `worker-report-transport.md` returns a result
+- **WHEN** a worker whose contract does not fetch `worker-report-transport.md`, such as an audit, commit, archive, backfill, or merge worker outside the full Direct Build route, returns a result
 - **THEN** its coordinator receives it in that family's present report form
+
+#### Scenario: The plan and review workers follow the policy
+
+- **WHEN** the spec, design, or review worker returns a result
+- **THEN** it returns a report reference that its coordinator validates with `--command spec`, `--command design`, or `--command review` before reading any field
 
 ### Requirement: Reports follow one closed schema
 
@@ -132,3 +137,12 @@ An invalid report SHALL be an obstacle of the step under `sai/policies/obstacle-
 
 - **WHEN** a worker's report is invalid and its corrected report is invalid again
 - **THEN** the coordinator first returns the validator's errors to the same worker, then replaces it, spending one obstacle attempt each time
+
+### Requirement: Progress reports carry completed plan steps
+
+`sai/policies/worker-report-transport.md` SHALL define a progress report: YAML with exactly `event: progress`, `step_ids` (the plan ids the message completed, in plan order), and `changed_files`, never a terminal result. A worker SHALL save a progress report like any other report, in a file whose name starts with `progress-`. The coordinator SHALL read the kind from the file name, never from the content: a `progress-` file SHALL be validated with `validate --kind progress`, which takes no `--command`, and any other report with `validate --kind terminal`. A report whose content does not fit the kind its name announces SHALL be invalid. An accepted progress report SHALL advance the worker's step machine through `sai-state emit <id> <machine> --progress --input-file <report file>` with the same report file.
+
+#### Scenario: A terminal shape in a progress file is invalid
+
+- **WHEN** a file named `progress-1.yaml` carries a terminal `status`
+- **THEN** validation with `--kind progress` rejects it and the coordinator reads no field of it

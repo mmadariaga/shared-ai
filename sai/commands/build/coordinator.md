@@ -31,7 +31,7 @@ The assessment keeps no memory: a rerun regenerates `review.md` without earlier 
 
 ## Close
 
-**Decision records.** After the last segment that ran ends and before the report, Fetch `@sai/policies/decision-record-creation.md` and create the decision records when every segment that ran completed (a segment 2 that found no changes counts as completed). Work from the final code and the deviations that the closing reports of segments 1 and 3 list, which are the only record of them once those runs end, and add the records to the report as that policy says. Its one local commit falls under the commit authorization the invocation gives. When a segment failed, was stopped, or ended blocked, create none.
+**Decision records.** After the last segment that ran ends and before the report, Fetch `@sai/policies/decision-record-creation.md` and create the decision records when every segment that ran completed (a segment 2 whose accepted report carries `outcome: no-changes` counts as completed). Work from the final code and the deviations that the closing reports of segments 1 and 3 list, which are the only record of them once those runs end, and add the records to the report as that policy says. Its one local commit falls under the commit authorization the invocation gives. When a segment failed, was stopped, or ended blocked, create none.
 
 **Telemetry.** After the decision records and before the report, record the change telemetry as `change-telemetry.md` says, with `--command sai-build` and no `--run-dir`; its one line, when it has one, goes into the report.
 
@@ -44,5 +44,5 @@ After the last segment that ran ends, print the report of each segment. A segmen
   - **Questions**: say that Questions stay open until the user answers them, because the fix segment applies only fixable findings.
   - With zero findings, report the zero counts and print none of these lists.
   - End with exactly `Build done.`
-- **Segment 2 found no changes against the parent branch**: say that no review ran, because there was nothing to review, and end with exactly `Build done.`
+- **Segment 2 found no changes against the parent branch** (its accepted report carries `outcome: no-changes`; read the field, never the summary text): say that no review ran, because there was nothing to review, and end with exactly `Build done.`
 - **Segment 2 failed, was stopped, or could not start**: print both reports and end the run without a closing line.

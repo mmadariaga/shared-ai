@@ -649,9 +649,9 @@ test('failed first materialization suppresses the success report', () => {
   const overview = artifact('sai/commands/design/steps/overview.md');
 
   assert.match(coordinator, /A failed overview is an obstacle \(identifier `overview`\)/, 'the coordinator should treat a failed overview as an obstacle');
-  assert.match(overview, /never report `done` for a failed first materialization or failed regeneration/i,
-    'the worker should never report done for a failed materialization');
-  assert.match(overview, /reports `blocked`/, 'a failed generation should report blocked');
+  assert.match(overview, /never report `completed` for a failed first materialization or failed regeneration/i,
+    'the worker should never report completed for a failed materialization');
+  assert.match(overview, /reports `failed`/, 'a failed generation should report failed');
 });
 
 test('an unopted run materializes nothing while permitting an existing stale overview', () => {
@@ -911,10 +911,10 @@ test('closure stops at crystallization and discard and preserves terminal paths'
 
 // ─── Step 3: spec-design-review-progress-step (overview progress evidence) ──
 
-test('Step 3: successful overview materialization or regeneration reports done with both changed files', () => {
+test('Step 3: successful overview materialization or regeneration reports completed with both changed files', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
-  assert.match(worker, /report `status: done` only after a generator success/i, 'generator success should report done');
+  assert.match(worker, /report `status: completed` only after a generator success/i, 'generator success should report completed');
   assert.match(
     worker,
     /overview\.state[\s\S]{0,160}current[\s\S]{0,240}report|report[\s\S]{0,240}overview\.state[\s\S]{0,160}current/i,
@@ -927,7 +927,7 @@ test('Step 3: successful overview materialization or regeneration reports done w
   );
 });
 
-test('Step 3: any overview generation failure reports blocked and preserves existing diagnostics', () => {
+test('Step 3: any overview generation failure reports failed and preserves existing diagnostics', () => {
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   for (const failure of ['dispatch', 'process loss', 'malformed', 'empty envelope', 'validation', 'contradiction', 'generation']) {
@@ -936,8 +936,8 @@ test('Step 3: any overview generation failure reports blocked and preserves exis
   }
   assert.match(
     worker,
-    /(?:dispatch failure|process loss|malformed or empty envelope|blocking contradiction|validation failure|generation error)[\s\S]{0,400}reports `blocked`/i,
-    'every failure route should report blocked'
+    /(?:dispatch failure|process loss|malformed or empty envelope|blocking contradiction|validation failure|generation error)[\s\S]{0,400}reports `failed`/i,
+    'every failure route should report failed'
   );
   assert.match(
     worker,

@@ -14,7 +14,7 @@ Every other problem is a spec defect and takes the clarity path:
   - If the answer is **in-place**: apply exactly the presented patch, then write `approval.specs.amendment.{at, notes}` to `openspec/changes/{resolved_change_name}/.openspec.yaml`, merging into the existing file content and preserving all prior top-level keys (including `schema:`, `created:`, `approval.specs.approved_at`, and `approval.specs.notes`) verbatim — do NOT truncate or rewrite the whole file. Then continue generating design artifacts from the amended specs.
   - If the answer is **route** (or anything other than in-place): do NOT modify `proposal.md` or `specs/**`, do NOT write an amendment audit entry, continue generating design artifacts from the specs as approved, and name the correction in `notes` so that the closing report can send the user to `/sai-1-spec`.
 
-- **Clarity absent** — you cannot determine the correct amendment (for example, a spec-vs-codebase contradiction where you cannot tell which side is stale, or a fundamentally wrong spec you cannot safely patch). Report `blocked`, name the defect and where it is, and say that the correction belongs to `/sai-1-spec`. Do NOT offer an in-place amendment and do NOT modify `proposal.md` or `specs/**`.
+- **Clarity absent** — you cannot determine the correct amendment (for example, a spec-vs-codebase contradiction where you cannot tell which side is stale, or a fundamentally wrong spec you cannot safely patch). Report `failed`, name the defect and where it is, and say that the correction belongs to `/sai-1-spec`. Do NOT offer an in-place amendment and do NOT modify `proposal.md` or `specs/**`.
 
 ## Generate design.md
 

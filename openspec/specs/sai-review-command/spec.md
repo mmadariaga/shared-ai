@@ -72,14 +72,14 @@ Each segment envelope SHALL carry the change name plus only the options the segm
 
 ### Requirement: --full or --path runs the three audits without the triage
 
-When `--full` or `--path` is given and the review segment completes successfully, `/sai-deep-review` SHALL activate the security, performance, and accessibility audits without the triage parse. The Error close for a missing or illegible `review.md` SHALL NOT apply.
+When `--full` or `--path` is given and the review segment completes successfully with a report that carries no `outcome`, `/sai-deep-review` SHALL activate the security, performance, and accessibility audits without the triage parse. The Error close for a missing or illegible `review.md` SHALL NOT apply.
 
 #### Scenario: Full scope skips the triage
 - **WHEN** `/sai-deep-review my-change --full` runs and the review completes with every triage value `No`
 - **THEN** all three audits activate, each with `--full` in its envelope
 
 #### Scenario: Empty diff still ends with no audits
-- **WHEN** `/sai-deep-review my-change --path src` runs and the review returns `no-changes` on an empty diff
+- **WHEN** `/sai-deep-review my-change --path src` runs and the review's accepted report is `completed` with `outcome: no-changes` on an empty diff
 - **THEN** the run closes with no audit dispatched
 
 ### Requirement: Options aimed at segments that did not run are reported

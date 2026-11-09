@@ -1,8 +1,8 @@
 # Worker Report Transport
 
-Single source for how a routed worker returns its result and how its coordinator receives it: one closed report schema, one file-plus-hash transport, and one validator that decides whether a report is usable before the coordinator reads any field. It applies to the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement` and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. A worker family whose contract does not fetch this policy keeps its present report dialect until its own slice. The initial `event: ready` return is unchanged for every worker. The `--no-specs` POC and the standalone backfill and archive commands keep their existing transport. Claude Code and opencode produce, validate, and recover reports identically.
+Single source for how a routed worker returns its result and how its coordinator receives it: one closed report schema, one file-plus-hash transport, and one validator that decides whether a report is usable before the coordinator reads any field. It applies to the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement`, the spec and design workers of the plan commands, the review worker of `/sai-4-review`, and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. A worker family whose contract does not fetch this policy keeps its present report dialect until its own slice. The initial `event: ready` return is unchanged for every worker. The `--no-specs` POC and the standalone backfill and archive commands keep their existing transport. Claude Code and opencode produce, validate, and recover reports identically.
 
-Terms. **Report file**: the file a worker writes in the run's report directory, holding its complete message. **Report reference**: the report file's path plus its sha256, which the worker returns to its coordinator. **Outcome**: a field of a `completed` report that distinguishes successful results; the validator restricts it to the values each command admits.
+Terms. **Report file**: the file a worker writes in the run's report directory, holding its complete message. **Report reference**: the report file's path plus its sha256, which the worker returns to its coordinator. **Outcome**: a field of a `completed` report that distinguishes successful results; the validator restricts it to the values each command admits. **Progress report**: a report file that carries `event: progress` instead of a terminal `status`; it tells the coordinator which plan steps the worker completed.
 
 ## Report schema
 
@@ -23,9 +23,23 @@ options: {label: string, value: string}[]
 ```
 
 - A `completed` report may carry `outcome`. `worker-report-validator.js` is the single source of the values each command admits (`--command <name>`), so a coordinator decides on that field, never on summary text. A command that lists no value admits no `outcome`.
-- A worker contract adds its own role fields to these shapes (RED and GREEN: `test_command` and `notes`; Direct Build: `resolved_change_name` and the fields of § Direct Build role fields). A role field never replaces a field above.
+- A worker contract adds its own role fields to these shapes (RED and GREEN: `test_command` and `notes`; spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`; Direct Build: `resolved_change_name` and the fields of § Direct Build role fields). A role field never replaces a field above.
 - A step that cannot finish reports `failed` with its reason in `summary`. The retired `done`, `blocked`, `step-done`, `question`, `notice`, and `conflict_detected` vocabularies are outside the schema, and a report that uses them is invalid.
 - A `needs_input` question is shaped per `@sai/policies/question-context.md` at its source.
+
+### Progress reports
+
+A worker whose plan has several steps may report the steps it completed between terminal reports. A progress report is YAML with exactly these fields, and it is never a terminal result:
+
+```yaml
+event: progress
+step_ids: string[]
+changed_files: string[]
+```
+
+- `step_ids` lists the plan ids the message completed, in plan order. `changed_files` follows the rule of the terminal report.
+- The worker saves a progress report like any other report, and names its file with the prefix `progress-`. The coordinator reads the kind from that name, never from the content: a file named `progress-…` is validated with `--kind progress`, and any other report with `--kind terminal`. A report whose content does not fit the kind its name announces is invalid.
+- An accepted progress report advances the worker's step machine: the coordinator passes the same report file to `sai-state emit <id> <machine> --progress --input-file <report file>`, which validates it again and derives the machine event itself.
 
 ## Author boundary
 
@@ -54,7 +68,7 @@ unrecoverable: boolean
 
 ## Receiver boundary
 
-Before the first task disclosure of the run, create one private report directory with `transfer.js open --harness <claude|opencode>`. Supply its returned `dir` as the first task-disclosure line `--report-dir <path>` to every worker of the run, and keep it as a path in the run state (`implement-run@1` for `/sai-3-implement`, the conversation for Direct Build), so a replacement worker and a resumed run reuse it. Retain this authorized directory separately from draft storage, with all returned references and validation evidence. When the directory cannot be opened, stop before any dispatch with the verbatim error.
+Before the first task disclosure of the run, create one private report directory with `transfer.js open --harness <claude|opencode>`. Supply its returned `dir` as the first task-disclosure line `--report-dir <path>` to every worker of the run, and keep it as a path in the run state (`implement-run@1` for `/sai-3-implement`, `plan-run@1` for the plan commands, the conversation for `/sai-4-review` and Direct Build), so a replacement worker and a resumed run reuse it. Retain this authorized directory separately from draft storage, with all returned references and validation evidence. When the directory cannot be opened, stop before any dispatch with the verbatim error.
 
 Task messages and step pointers from the coordinator to the worker stay inline.
 
@@ -64,11 +78,11 @@ For each response after ready, resolve `worker-report-validator.js` and run:
 node <tool-path> validate --kind terminal --command <command> --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>
 ```
 
-`<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `direct-build`, `backfill`, or `archive` for the Direct Build worker of that role). Pass reference values only. The validator uses `transfer.js verify` to read once, check the hash, and validate those same bytes. It returns `outcome` as `accepted`, `delivery-failed`, or `report-invalid`; only acceptance includes the parsed `payload`, and the coordinator acts on that payload without another file read. Preserve the report bytes, including unsupported content; never copy them into a coordinator-authored shell command, normalize them, or silently fix them. A missing reference or helper failure is failed delivery, not a rejected report. A call that returns no response establishes neither acceptance nor rejection.
+`<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `spec` or `design` for the plan workers; `review` for the review worker; `direct-build`, `backfill`, or `archive` for the Direct Build worker of that role). A progress report runs `validate --kind progress --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>` and takes no `--command`. Pass reference values only. The validator uses `transfer.js verify` to read once, check the hash, and validate those same bytes. It returns `outcome` as `accepted`, `delivery-failed`, or `report-invalid`; only acceptance includes the parsed `payload`, and the coordinator acts on that payload without another file read. Preserve the report bytes, including unsupported content; never copy them into a coordinator-authored shell command, normalize them, or silently fix them. A missing reference or helper failure is failed delivery, not a rejected report. A call that returns no response establishes neither acceptance nor rejection.
 
 The coordinator validates every report before it reads any field. When the validator cannot be resolved per `@sai/policies/tool-resolution.md`, the run stops on that obstacle: it never interprets a report by reading it.
 
-A report is invalid when its file is missing or unreadable, lies outside the report directory, does not match its sha256, carries a status outside the closed schema, or arrives inline instead of as a reference.
+A report is invalid when its file is missing or unreadable, lies outside the report directory, does not match its sha256, carries a status outside the closed schema (or an `outcome` its command does not admit), does not fit the kind its file name announces, or arrives inline instead of as a reference.
 
 ## Invalid reports
 
