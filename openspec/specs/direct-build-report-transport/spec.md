@@ -122,7 +122,7 @@ For each post-ready response that travels as a report reference, the coordinator
 
 ### Requirement: Reports follow one closed schema
 
-A report SHALL be YAML or JSON closed to a `status` of `completed`, `failed`, or `cancelled` with `summary` and `changed_files`, or a `status` of `needs_input` that also carries `question` and `options` (`{label, value}` items). A `completed` report MAY carry an `outcome`, restricted to the values the validator admits for the named command. A worker contract MAY add its own role fields, and a role field SHALL NOT replace a schema field. A step that cannot finish SHALL report `failed` with its reason. A report using the retired `done`, `blocked`, `step-done`, `question`, `notice`, or `conflict_detected` vocabularies, and a worker message that carries its result inline instead of as a report reference, SHALL be an invalid report. Messages outside the schema SHALL keep their form: the `event: ready` handshake reply, the wake `ok`, the `warming:` line beside the reference, and every `budget-*` helper result.
+A report SHALL be YAML or JSON closed to a `status` of `completed`, `failed`, or `cancelled` with `summary` and `changed_files`, or a `status` of `needs_input` that also carries one `question` and its `options` (`{label, value}` items). A `completed` report MAY carry an `outcome`, restricted to the values the validator admits for the named command. A terminal report MAY carry only the role fields its command's row of the role-field table lists, each with its declared type, and SHALL carry every role field that row requires on its status; a role field SHALL NOT replace a schema field. A key that is neither a schema field nor a role field of the command, and a key of the other report kind (`event` in a terminal report, `status` in a progress report), SHALL make the report invalid. The batch `questions` form of `needs_input` SHALL NOT exist, while the integer `counts.questions` of a review report stays valid. A step that cannot finish SHALL report `failed` with its reason. A report using the retired `done`, `blocked`, `step-done`, `question`, `notice`, or `conflict_detected` vocabularies, and a worker message that carries its result inline instead of as a report reference, SHALL be an invalid report. Messages outside the schema SHALL keep their form: the `event: ready` handshake reply, the wake `ok`, the `warming:` line beside the reference, and every `budget-*` helper result.
 
 #### Scenario: A retired status is invalid
 
@@ -133,6 +133,21 @@ A report SHALL be YAML or JSON closed to a `status` of `completed`, `failed`, or
 
 - **WHEN** a worker returns its result inline instead of a `{path, sha256}` reference
 - **THEN** the coordinator treats the message as an invalid report
+
+#### Scenario: A role field of the wrong type is invalid
+
+- **WHEN** a `completed` report validated with `--command review` carries `review_path: 42` or `counts: nope`
+- **THEN** the validator rejects it and the coordinator reads no field from it
+
+#### Scenario: An unknown or cross-kind key is invalid
+
+- **WHEN** a terminal report carries a key absent from its command's row, or carries `event`
+- **THEN** the validator rejects it and the coordinator handles it with the invalid-report recovery
+
+#### Scenario: The batch questions form is invalid
+
+- **WHEN** a `needs_input` report carries a `questions` list
+- **THEN** the validator rejects it as an unknown key
 
 ### Requirement: The coordinator validates every report before reading it
 
@@ -154,9 +169,42 @@ An invalid report SHALL be an obstacle of the step under `sai/policies/obstacle-
 
 ### Requirement: Progress reports carry completed plan steps
 
-`sai/policies/worker-report-transport.md` SHALL define a progress report: YAML with exactly `event: progress`, `step_ids` (the plan ids the message completed, in plan order), and `changed_files`, never a terminal result. A worker SHALL save a progress report like any other report, in a file whose name starts with `progress-`. The coordinator SHALL read the kind from the file name, never from the content: a `progress-` file SHALL be validated with `validate --kind progress`, which takes no `--command`, and any other report with `validate --kind terminal`. A report whose content does not fit the kind its name announces SHALL be invalid. An accepted progress report SHALL advance the worker's step machine through `sai-state emit <id> <machine> --progress --input-file <report file>` with the same report file.
+`sai/policies/worker-report-transport.md` SHALL define a progress report: YAML with exactly `event: progress`, `step_ids` (the plan ids the message completed, in plan order), and `changed_files`, never a terminal result; any other key, `status` included, SHALL make it invalid. A worker SHALL save a progress report like any other report, in a file whose name starts with `progress-`. The coordinator SHALL read the kind from the file name, never from the content: a `progress-` file SHALL be validated as a progress report, with `validate --kind progress` (which takes no `--command`) or by the reference mode of `sai-state emit --progress`, and any other report with `validate --kind terminal --command <command>`. A report whose content does not fit the kind its name announces SHALL be invalid. A progress report SHALL advance the worker's step machine through `sai-state emit <id> <machine> --progress --report-dir <report-dir> --report-file <path> --report-hash <sha256>`, which verifies and validates the reference itself, so no separate validation call precedes it.
 
 #### Scenario: A terminal shape in a progress file is invalid
 
 - **WHEN** a file named `progress-1.yaml` carries a terminal `status`
 - **THEN** validation with `--kind progress` rejects it and the coordinator reads no field of it
+
+#### Scenario: A progress reference advances the machine without a separate validation
+
+- **WHEN** the review or audit coordinator receives a progress report reference
+- **THEN** it passes the reference to `sai-state emit --progress` in reference mode and runs no `validate --kind progress` call before it
+
+### Requirement: Terminal validation names its command
+
+`worker-report-validator.js validate --kind terminal` SHALL require `--command <command>`, whose role-field table closes the report's shape; without it, or with an unknown command, the call SHALL be a usage error (exit 2). `validate --kind progress` SHALL take no `--command`.
+
+#### Scenario: A terminal validation without a command
+
+- **WHEN** a caller runs `validate --kind terminal` with no `--command`
+- **THEN** the validator exits 2 as a usage error
+
+#### Scenario: A progress validation without a command
+
+- **WHEN** a caller runs `validate --kind progress` with no `--command`
+- **THEN** the validator validates the report normally
+
+### Requirement: The role-field table is single-sourced and mirrored
+
+`sai/tools/worker-report-validator.js` SHALL hold the per-command role-field table (`COMMAND_FIELDS`, beside `COMMAND_OUTCOMES`) for every `--command` value, `direct-build` and `merge` included, with each field's type and the statuses that must or may carry it. The failure fields `failure_class` and `unrecoverable` SHALL exist only on the `failed` reports of `archive`, `backfill`, and `direct-build`, and SHALL be required there when the report carries `resolved_change_name`. `sai/policies/worker-report-transport.md` § Role fields SHALL list the same fields per command, merge role fields included, and a test SHALL check the table against that list.
+
+#### Scenario: The policy and the table agree
+
+- **WHEN** the test suite runs
+- **THEN** the parity test fails if a role field appears in `COMMAND_FIELDS` but not in the policy's table, or the other way round
+
+#### Scenario: Failure fields outside a failed report are invalid
+
+- **WHEN** a `completed` backfill report carries `failure_class`
+- **THEN** the validator rejects it

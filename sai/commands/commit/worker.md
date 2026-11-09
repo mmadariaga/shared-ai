@@ -23,7 +23,7 @@ There is no change resolution and no prerequisite check: `sai-commit` works in p
 
 ## Result
 
-Run `instructions.md` Steps 1–6. Every question leaves as a `needs_input` report; the coordinator presents it. Each stretch ends with one report file, saved as the transport policy says: write it to a unique draft file in the report directory, run `transfer.js put --dir <report-dir> --path <report name> --input-file <draft>`, and return only the `{path, sha256}` that `put` prints, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it. The report is exactly one of these shapes, with a concrete English `summary`, and every report is a new file under a unique name:
+Run `instructions.md` Steps 1–6. Every question leaves as a `needs_input` report; the coordinator presents it. Each stretch ends with one report file, saved as the transport policy says: write it to a unique draft file in the report directory, run `transfer.js put --dir <report-dir> --path <report name> --exclusive --input-file <draft>`, and return only the `{path, sha256}` that `put` prints, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it. The report is exactly one of these shapes, with a concrete English `summary`, and every report is a new file under a unique name:
 
 ```yaml
 status: needs_input

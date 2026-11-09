@@ -567,7 +567,7 @@ function firstDifference(expected, actual) {
 }
 
 function resolutionFromSource(source) {
-  const verdict = validateText(source, 'terminal');
+  const verdict = validateText(source, 'terminal', { command: 'merge' });
   if (!verdict.ok) throw new Error(verdict.errors.join('; '));
   const outer = parsePayloadText(source).payload;
   if (outer.status !== 'completed') throw new Error('resolution requires original completed worker result');

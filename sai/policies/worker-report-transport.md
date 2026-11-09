@@ -23,9 +23,30 @@ options: {label: string, value: string}[]
 ```
 
 - A `completed` report may carry `outcome`. `worker-report-validator.js` is the single source of the values each command admits (`--command <name>`), so a coordinator decides on that field, never on summary text. A command that lists no value admits no `outcome`.
-- A worker contract adds its own role fields to these shapes (RED and GREEN: `test_command` and `notes`; spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`; audits: `report_path` and `counts`; commit: none; archive: `resolved_change_name`; backfill: `resolved_change_name`, `draft_references`, and `corrected_specs`; merge: the fields its step files name; Direct Build: `resolved_change_name` and the fields of § Direct Build role fields). A role field never replaces a field above.
+- A worker contract adds its own role fields to these shapes, listed per command in § Role fields. A role field never replaces a field above.
 - A step that cannot finish reports `failed` with its reason in `summary`. The retired `done`, `blocked`, `step-done`, `question`, `notice`, and `conflict_detected` vocabularies are outside the schema, and a report that uses them is invalid.
 - A `needs_input` question is shaped per `@sai/policies/question-context.md` at its source.
+
+### Role fields
+
+The validator closes each terminal report to its command's role fields (`COMMAND_FIELDS` in `sai/tools/worker-report-validator.js`, the single source this table mirrors; a test keeps the two in step). A key that is neither a base field above nor in the command's row is rejected, and so is a key of the other kind (`event` in a terminal report, `status` in a progress report). A field the table marks required must be present with its type on the statuses named; every other listed field is optional and typed when present. `--command` is mandatory for a terminal report.
+
+| `--command` | Workers | Role fields | Shape |
+|---|---|---|---|
+| `implement` | RED, GREEN | `test_command`, `notes` | strings; both required on completed |
+| `spec` | spec | `step_ids`, `warnings`, `notes` | string list, list of {spec_assertion, other_side, disagreement} strings, string; all required on completed |
+| `design` | design | `step_ids`, `warnings`, `notes` | as spec |
+| `review` | review | `review_path`, `counts`, `recommended_audits` | string, counts {critical, high, medium, low, questions}, string; all required on completed without outcome |
+| `security` | security | `report_path`, `counts` | string, counts {critical, high, medium, low}; both required on completed |
+| `performance` | performance | `report_path`, `counts` | string, counts {critical, high, medium, low, informational}; both required on completed |
+| `accessibility` | accessibility | `report_path`, `counts` | as performance |
+| `commit` | commit | none | no role field |
+| `archive` | archive | `resolved_change_name`, `failure_class`, `unrecoverable` | string required on completed and needs_input; failure fields per § Direct Build role fields |
+| `backfill` | backfill | `resolved_change_name`, `draft_references`, `corrected_specs`, `failure_class`, `unrecoverable` | optional string; list of {path, sha256, destination} and list of {destination, content}, completed only; failure fields per § Direct Build role fields |
+| `merge` | merge | `strategy`, `decisions`, `escalations`, `analysis`, `corrections`, `applicability`, `renames`, `reference_updates` | all optional: the strategy step names strategy, decisions, and escalations; test-correction names analysis and corrections; renumbering-plan names applicability, renames, reference_updates, and escalations; apply names none |
+| `direct-build` | Direct Build implementer | `resolved_change_name`, `failure_class`, `unrecoverable` | optional string once the block has verified; failure fields per § Direct Build role fields |
+
+A `completed` review report that carries `outcome: no-changes` owes no role field. The counts of a Not Applicable audit report are all zero. The batch `questions` form of `needs_input` does not exist: a `needs_input` report carries one `question` and its `options`, and the integer `counts.questions` of a review report is a count, not a question list.
 
 ### Progress reports
 
@@ -38,14 +59,14 @@ changed_files: string[]
 ```
 
 - `step_ids` lists the plan ids the message completed, in plan order. `changed_files` follows the rule of the terminal report.
-- The worker saves a progress report like any other report, and names its file with the prefix `progress-`. The coordinator reads the kind from that name, never from the content: a file named `progress-…` is validated with `--kind progress`, and any other report with `--kind terminal`. A report whose content does not fit the kind its name announces is invalid.
-- An accepted progress report advances the worker's step machine: the coordinator passes the same report file to `sai-state emit <id> <machine> --progress --input-file <report file>`, which validates it again and derives the machine event itself.
+- The worker saves a progress report like any other report, and names its file with the prefix `progress-`. The coordinator reads the kind from that name, never from the content: a file named `progress-…` is a progress report (validated with `--kind progress`, or by the `emit --progress` reference mode below), and any other report is validated with `--kind terminal --command <command>`. A report whose content does not fit the kind its name announces is invalid.
+- A progress report advances the worker's step machine without a separate validation call: the coordinator passes its reference to `sai-state emit <id> <machine> --progress --report-dir <report-dir> --report-file <path> --report-hash <sha256>`, which verifies the reference once (directory, containment, sha256), validates those same bytes with `--kind progress`, and derives the machine event from them. A report outside the directory or with a different hash is refused and the machine does not advance. `--input-file <report file>` and stdin stay accepted for a hand-composed payload and carry no hash check.
 
 ## Author boundary
 
 The first task-disclosure line is `--report-dir <absolute path>`, supplied by the coordinator after ready. Strip it before parsing the invocation envelope (including backfill's `--transfer-dir` line), and retain it through all same-worker continuations. A task without this directory cannot proceed; report the missing transport to the coordinator without work.
 
-Compose the report of the worker's contract. Write its complete YAML or JSON unchanged with the native file-write tool to a unique file in the SAI temp root (for example `<report-dir>/<unique-role-and-stretch-name>.draft.json`), then save it with `transfer.js put --dir <report-dir> --path <unique-role-and-stretch-name>.json --input-file <that file>`, resolving the helper per `@sai/policies/tool-resolution.md`. Each response, including `needs_input` and failures, uses a new file; previous reports remain available. Return only `{path, sha256}`, exactly as printed by `put`, plus the `warming: true|false` line of `@sai/policies/cache-warming.md` § Warming diagnostic beside it, never inside the saved file. A message that carries its result inline is an invalid report.
+Compose the report of the worker's contract. Write its complete YAML or JSON unchanged with the native file-write tool to a unique file in the SAI temp root (for example `<report-dir>/<unique-role-and-stretch-name>.draft.json`), then save it with `transfer.js put --dir <report-dir> --path <unique-role-and-stretch-name>.json --exclusive --input-file <that file>`, resolving the helper per `@sai/policies/tool-resolution.md`. Each response, including `needs_input` and failures, uses a new file; previous reports remain available. `--exclusive` creates the file with an exclusive-create open, so a name that already exists fails and leaves the earlier report and its hash unchanged; a failed save is retried under a new name, never over the old one. Return only `{path, sha256}`, exactly as printed by `put`, plus the `warming: true|false` line of `@sai/policies/cache-warming.md` § Warming diagnostic beside it, never inside the saved file. A message that carries its result inline is an invalid report.
 
 Messages outside the schema keep their current form: the `event: ready` handshake reply, the wake `ok`, the `warming:` line beside the reference, and every `budget-*` helper result.
 
@@ -78,11 +99,11 @@ For each response after ready, resolve `worker-report-validator.js` and run:
 node <tool-path> validate --kind terminal --command <command> --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>
 ```
 
-`<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `spec` or `design` for the plan workers; `review` for the review worker; `security`, `performance`, or `accessibility` for the audit worker of that audit; `commit`, `archive`, `backfill`, or `merge` for the worker of that command, standalone or, for `archive` and `backfill`, in Direct Build; `direct-build` for the Direct Build implementer). A progress report runs `validate --kind progress --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>` and takes no `--command`. Pass reference values only. The validator uses `transfer.js verify` to read once, check the hash, and validate those same bytes. It returns `outcome` as `accepted`, `delivery-failed`, or `report-invalid`; only acceptance includes the parsed `payload`, and the coordinator acts on that payload without another file read. Preserve the report bytes, including unsupported content; never copy them into a coordinator-authored shell command, normalize them, or silently fix them. A missing reference or helper failure is failed delivery, not a rejected report. A call that returns no response establishes neither acceptance nor rejection.
+`<command>` names the command whose role fields and outcome values close the report (`implement` for RED and GREEN; `spec` or `design` for the plan workers; `review` for the review worker; `security`, `performance`, or `accessibility` for the audit worker of that audit; `commit`, `archive`, `backfill`, or `merge` for the worker of that command, standalone or, for `archive` and `backfill`, in Direct Build; `direct-build` for the Direct Build implementer). A progress report that a step machine consumes goes straight to `sai-state emit … --progress` with the reference (§ Progress reports) and runs no `validate` call of its own; any other progress report runs `validate --kind progress --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>` and takes no `--command`. A terminal report without `--command` is a usage error. Pass reference values only. The validator uses `transfer.js verify` to read once, check the hash, and validate those same bytes. It returns `outcome` as `accepted`, `delivery-failed`, or `report-invalid`; only acceptance includes the parsed `payload`, and the coordinator acts on that payload without another file read. Preserve the report bytes, including unsupported content; never copy them into a coordinator-authored shell command, normalize them, or silently fix them. A missing reference or helper failure is failed delivery, not a rejected report. A call that returns no response establishes neither acceptance nor rejection.
 
 The coordinator validates every report before it reads any field. When the validator cannot be resolved per `@sai/policies/tool-resolution.md`, the run stops on that obstacle: it never interprets a report by reading it.
 
-A report is invalid when its file is missing or unreadable, lies outside the report directory, does not match its sha256, carries a status outside the closed schema (or an `outcome` its command does not admit), does not fit the kind its file name announces, or arrives inline instead of as a reference.
+A report is invalid when its file is missing or unreadable, lies outside the report directory, does not match its sha256, carries a status outside the closed schema (or an `outcome` its command does not admit), carries a key outside its command's shape or a key of the other kind, lacks a required role field or gives one the wrong type, does not fit the kind its file name announces, or arrives inline instead of as a reference.
 
 ## Invalid reports
 

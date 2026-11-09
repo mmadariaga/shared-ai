@@ -15,9 +15,13 @@
  *   open --harness <claude|opencode>
  *       Create one unique private directory (mode 0700 on POSIX) under the SAI
  *       temp root and return its absolute path as `dir`.
- *   put --dir <dir> --path <relative> [--input-file <path>]   (content in the input file, else on stdin)
+ *   put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]   (content in the input file, else on stdin)
  *       Write the input file's bytes (else stdin) to `<relative>` inside `<dir>`; return {path, sha256} with
- *       the absolute path. Writing the same path again replaces the file.
+ *       the absolute path. Writing the same path again replaces the file, unless
+ *       `--exclusive` is given: then the file is created with an exclusive-create open,
+ *       an existing name fails (exit 1) and leaves the existing file and its sha256
+ *       unchanged. Every worker report is saved with `--exclusive`; block export and
+ *       backfill drafts keep the replacing default.
  *   verify --dir <dir> --path <absolute> --sha256 <hex>
  *       Confirm the path lies inside `<dir>`, is a regular file reached
  *       through no symbolic link, and matches the sha256.
@@ -113,8 +117,12 @@ function relativeSegments(value) {
   return segments;
 }
 
-/** Write stdin bytes to a relative path inside the transfer directory. */
-function put(dir, relative, bytes, { io = fs } = {}) {
+/**
+ * Write bytes to a relative path inside the transfer directory. With `exclusive`
+ * the file is created by one exclusive-create open, so an existing name (a file, a
+ * symbolic link, anything) fails atomically and nothing is replaced.
+ */
+function put(dir, relative, bytes, { io = fs, exclusive = false } = {}) {
   const root = checkTransferDir(dir, { io });
   const segments = relativeSegments(relative);
   let current = root;
@@ -127,7 +135,25 @@ function put(dir, relative, bytes, { io = fs } = {}) {
   const target = path.join(current, segments[segments.length - 1]);
   const existing = lstatOrNull(target, io);
   if (existing && (!existing.isFile() || existing.isSymbolicLink())) throw new CheckError('Target inside the transfer directory is not a regular file');
-  io.writeFileSync(target, bytes, { mode: 0o600 });
+  if (exclusive) {
+    let fd;
+    try {
+      fd = io.openSync(target, 'wx', 0o600);
+    } catch (error) {
+      if (error.code === 'EEXIST') throw new CheckError('Target already exists: put --exclusive never replaces a file');
+      throw error;
+    }
+    try {
+      io.writeFileSync(fd, bytes);
+    } catch (error) {
+      try { io.closeSync(fd); } catch (closeError) { /* the write error is the one reported */ }
+      try { io.unlinkSync(target); } catch (unlinkError) { /* best effort: the file this call created */ }
+      throw error;
+    }
+    io.closeSync(fd);
+  } else {
+    io.writeFileSync(target, bytes, { mode: 0o600 });
+  }
   return { path: target, sha256: sha256Of(bytes) };
 }
 
@@ -194,7 +220,7 @@ function usage() {
   return [
     'Usage:',
     '  node transfer.js open --harness <claude|opencode>',
-    '  node transfer.js put --dir <dir> --path <relative> [--input-file <path>]   (content in the input file, else on stdin)',
+    '  node transfer.js put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]   (content in the input file, else on stdin)',
     '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
     '  node transfer.js close --dir <dir>',
@@ -210,6 +236,10 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') return { help: true };
+    if (arg === '--exclusive') {
+      opts.exclusive = true;
+      continue;
+    }
     if (FLAGS[arg]) {
       if (i + 1 >= argv.length) return { error: `missing value for ${arg}` };
       opts[FLAGS[arg]] = argv[++i];
@@ -240,7 +270,7 @@ function execute(opts) {
       return open(opts.harness);
     case 'put':
       require_(opts, ['dir', 'path']);
-      return put(opts.dir, opts.path, opts.inputFile ? readInputBytes(opts.inputFile) : readStdin());
+      return put(opts.dir, opts.path, opts.inputFile ? readInputBytes(opts.inputFile) : readStdin(), { exclusive: opts.exclusive === true });
     case 'verify': {
       require_(opts, ['dir', 'path', 'sha256']);
       const { path: verified, sha256 } = verify(opts.dir, { path: opts.path, sha256: opts.sha256 });

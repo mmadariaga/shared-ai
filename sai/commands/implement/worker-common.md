@@ -33,7 +33,7 @@ An override in the brief takes precedence over the plan. The plan is a plan: whe
 
 ## Report
 
-Save the report as the transport policy says: write it to a unique draft file in the run directory, then run `transfer.js put --dir <report-dir> --path <report name>.yaml --input-file <draft>`. Return only the `{path, sha256}` that `put` prints as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you: no raw output, file contents, logs, or inline result. A message that carries the result inline is an invalid report. The coordinator validates the reference and then acts on it, so the report survives a long conversation and a replacement. Every response, a question included, is a new report file under a new report name.
+Save the report as the transport policy says: write it to a unique draft file in the run directory, then run `transfer.js put --dir <report-dir> --path <report name>.yaml --exclusive --input-file <draft>`. Return only the `{path, sha256}` that `put` prints as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you: no raw output, file contents, logs, or inline result. A message that carries the result inline is an invalid report. The coordinator validates the reference and then acts on it, so the report survives a long conversation and a replacement. Every response, a question included, is a new report file under a new report name.
 
 ```yaml
 status: completed | needs_input | failed | cancelled

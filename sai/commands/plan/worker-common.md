@@ -34,7 +34,7 @@ When you cannot settle a decision and its answer would change a normative statem
 
 ## Report
 
-Save the report as the transport policy says: write it to a unique draft file in the run directory, then run `transfer.js put --dir <report-dir> --path <report name> --input-file <draft>`. Return only the `{path, sha256}` that `put` prints as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you: no raw output, file contents, logs, or inline result. A message that carries the result inline is an invalid report. The coordinator validates the reference and then acts on it, so the report survives a long conversation and a replacement. Every response, a question included, is a new report file under a new report name that the message names.
+Save the report as the transport policy says: write it to a unique draft file in the run directory, then run `transfer.js put --dir <report-dir> --path <report name> --exclusive --input-file <draft>`. Return only the `{path, sha256}` that `put` prints as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you: no raw output, file contents, logs, or inline result. A message that carries the result inline is an invalid report. The coordinator validates the reference and then acts on it, so the report survives a long conversation and a replacement. Every response, a question included, is a new report file under a new report name that the message names.
 
 ```yaml
 status: completed | needs_input | failed | cancelled
