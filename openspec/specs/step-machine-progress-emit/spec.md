@@ -58,7 +58,7 @@ Every `bin/sai-state.js` verb (`spawn`, `emit`, `emit --progress`, `reset`, `clo
 - **THEN** it loads `sai/tools/worker-report-validator.js` and validates the payload
 
 ### Requirement: Progress mode accepts only progress payloads and leaves event emits unchanged
-A terminal, notice, `needs_input`, or `conflict_detected` payload piped to a progress emit SHALL return `validation.ok: false`. Those kinds SHALL keep validating through `worker-report-validator.js validate --kind <kind>`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every machine, including `explore-idea`, `explore-slice`, and `recovery-ledger`.
+A terminal or `needs_input` payload, or a retired `notice` or `conflict_detected` payload, piped to a progress emit SHALL return `validation.ok: false`. Terminal payloads SHALL keep validating through `worker-report-validator.js validate --kind terminal`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every machine, including `explore-idea`, `explore-slice`, and `recovery-ledger`.
 
 #### Scenario: Non-progress kind is rejected
 - **WHEN** a terminal `completed` payload is piped to a progress emit

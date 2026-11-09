@@ -6,10 +6,10 @@ TBD - created by archiving change replace-emitted-on-with-validated-at. Update P
 ## Requirements
 
 ### Requirement: Verdicts are timeless
-`validateText(text, kind)` in `sai/tools/worker-report-validator.js` SHALL be a pure function that returns exactly `{ok, action, kind, errors}` for valid and invalid results of every kind, with no time field. The payload SHALL never be rewritten, and exit codes and `ok`/`errors` semantics SHALL be unchanged.
+`validateText(text, kind, options)` in `sai/tools/worker-report-validator.js` SHALL be a pure function that returns exactly `{ok, action, kind, errors}` for valid and invalid results of both kinds, `terminal` and `progress`, with no time field. The payload SHALL never be rewritten, and exit codes and `ok`/`errors` semantics SHALL be unchanged.
 
 #### Scenario: A valid payload yields a timeless verdict
-- **WHEN** `validateText` validates a valid payload of kind terminal, notice, progress or conflict_detected
+- **WHEN** `validateText` validates a valid payload of kind terminal or progress
 - **THEN** it returns `{ok: true, action: "validate", kind, errors: []}` with no `received_at` or `validated_at` field
 
 #### Scenario: An invalid payload yields a timeless verdict
@@ -18,7 +18,7 @@ TBD - created by archiving change replace-emitted-on-with-validated-at. Update P
 
 ### Requirement: The validate response carries received_at as its first key
 
-`worker-report-validator.js validate --json` SHALL read the time once per invocation and place `received_at` first for valid and invalid verdicts of all four kinds. Legacy stdin mode SHALL retain exactly `{received_at, ok, action, kind, errors}`. File mode SHALL additionally return `outcome` as accepted, delivery-failed, or report-invalid and SHALL include the parsed `payload` only on acceptance. File-mode delivery or report failures SHALL exit 1 with their verdict. In text mode the valid line SHALL read `valid (<kind>) received_at <ts>` and the invalid line SHALL be unchanged and carry no time. Usage errors, uncaught IO errors and exceptions SHALL go to stderr with exit 2 and carry no time. `validated_at` SHALL NOT be emitted, with no alias or dual emission.
+`worker-report-validator.js validate --json` SHALL read the time once per invocation and place `received_at` first for valid and invalid verdicts of both kinds. Input-file mode, and the legacy stdin mode, SHALL retain exactly `{received_at, ok, action, kind, errors}`. File mode SHALL additionally return `outcome` as accepted, delivery-failed, or report-invalid and SHALL include the parsed `payload` only on acceptance. File-mode delivery or report failures SHALL exit 1 with their verdict. In text mode the valid line SHALL read `valid (<kind>) received_at <ts>` and the invalid line SHALL be unchanged and carry no time. Usage errors, uncaught IO errors and exceptions SHALL go to stderr with exit 2 and carry no time. `validated_at` SHALL NOT be emitted, with no alias or dual emission.
 
 #### Scenario: JSON response puts received_at first
 - **WHEN** a payload of any kind, valid or invalid, is piped to `validate --kind <kind> --json`

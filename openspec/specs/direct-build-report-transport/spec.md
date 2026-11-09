@@ -63,7 +63,7 @@ Each full-route worker SHALL compose its ordinary closed report, including role-
 
 ### Requirement: Receiver consumes only accepted verified payloads
 
-For each post-ready full-route response, the coordinator SHALL pass only its reference values to the resolved validator and use the accepted parsed payload without another file read. It SHALL preserve report bytes without copying, normalizing, or silently repairing them. A missing reference or helper failure SHALL be failed delivery, not report rejection. A call returning no response SHALL establish neither acceptance nor rejection. An unaccepted report SHALL grant no lifecycle status or changed-path claim.
+For each post-ready response that travels as a report reference, the coordinator SHALL pass only its reference values to the resolved validator as `validate --kind terminal --command <command> --json --report-dir <report-dir> --report-file <path> --report-hash <sha256>`, where `<command>` names the command whose outcome values the report may carry (`implement` for RED and GREEN; `direct-build`, `backfill`, or `archive` for the Direct Build worker of that role), and use the accepted parsed payload without another file read. It SHALL preserve report bytes without copying, normalizing, or silently repairing them. A missing reference or helper failure SHALL be failed delivery, not report rejection. A call returning no response SHALL establish neither acceptance nor rejection. An unaccepted report SHALL grant no lifecycle status or changed-path claim.
 
 #### Scenario: Accepted report drives ordinary handling
 - **WHEN** reference validation returns accepted
@@ -75,7 +75,7 @@ For each post-ready full-route response, the coordinator SHALL pass only its ref
 
 ### Requirement: Full-route failed reports carry the failure fields
 
-`sai/policies/direct-build-report-transport.md` SHALL define, in a `Failed reports` section, that a full-route `failed` report carrying `resolved_change_name` also carries `failure_class` (one of `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, or `unclassified-worker-fault`) and a boolean `unrecoverable`. Each worker SHALL compose the ordinary closed report of its own contract with these fields. `failure_class` SHALL be worker-authored evidence, not an eligibility gate: the coordinator SHALL decide the response under `sai/policies/obstacle-escalation.md`. A worker SHALL set `unrecoverable: true` only when its own evidence shows that continuing is unsafe, and neither field SHALL be written into a repository artifact. Report delivery and validity recovery SHALL be handled as an obstacle under the same policy.
+`sai/policies/worker-report-transport.md` SHALL define, in a `Direct Build role fields` section, that a full-route `failed` report carrying `resolved_change_name` also carries `failure_class` (one of `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, or `unclassified-worker-fault`) and a boolean `unrecoverable`, as role fields of Direct Build that no other worker carries. Each Direct Build worker SHALL compose the report of its own contract with these fields. `failure_class` SHALL be worker-authored evidence, not an eligibility gate: the coordinator SHALL decide the response under `sai/policies/obstacle-escalation.md`. A worker SHALL set `unrecoverable: true` only when its own evidence shows that continuing is unsafe, and neither field SHALL be written into a repository artifact. Report delivery and validity recovery SHALL be handled as an obstacle under the same policy.
 
 #### Scenario: A failed full-route report carries the failure fields
 
@@ -86,3 +86,49 @@ For each post-ready full-route response, the coordinator SHALL pass only its ref
 
 - **WHEN** the coordinator receives a failed report with `unrecoverable: false`
 - **THEN** it decides the response under `sai/policies/obstacle-escalation.md` and treats the fields as evidence only
+
+### Requirement: One shared worker report policy
+
+`sai/policies/worker-report-transport.md` SHALL be the single source for how a routed worker returns its result and how its coordinator receives it, for the workers whose contract fetches it: the RED and GREEN workers of `/sai-3-implement` and the implementation, backfill, and archive workers of the full Direct Build - Unattended route. `sai/policies/direct-build-report-transport.md` SHALL be retired: `sai/install-manifest.json` SHALL declare it a retired path for Claude Code and opencode, and `sai/policies/tool-resolution.md` and the worker and coordinator contracts SHALL point at the shared policy. A worker family whose contract does not fetch the policy SHALL keep its present report dialect. Claude Code and opencode SHALL produce, validate, and recover reports identically.
+
+#### Scenario: The retired policy leaves the installation
+
+- **WHEN** install or project refresh runs on Claude Code or opencode
+- **THEN** the installed `sai/policies/direct-build-report-transport.md` copy is deleted as a manifest-declared retired path
+
+#### Scenario: A worker family outside the slice keeps its dialect
+
+- **WHEN** a worker whose contract does not fetch `worker-report-transport.md` returns a result
+- **THEN** its coordinator receives it in that family's present report form
+
+### Requirement: Reports follow one closed schema
+
+A report SHALL be YAML or JSON closed to a `status` of `completed`, `failed`, or `cancelled` with `summary` and `changed_files`, or a `status` of `needs_input` that also carries `question` and `options` (`{label, value}` items). A `completed` report MAY carry an `outcome`, restricted to the values the validator admits for the named command. A worker contract MAY add its own role fields, and a role field SHALL NOT replace a schema field. A step that cannot finish SHALL report `failed` with its reason. A report using the retired `done`, `blocked`, `step-done`, `question`, `notice`, or `conflict_detected` vocabularies, and a worker message that carries its result inline instead of as a report reference, SHALL be an invalid report. Messages outside the schema SHALL keep their form: the `event: ready` handshake reply, the wake `ok`, the `warming:` line beside the reference, and every `budget-*` helper result.
+
+#### Scenario: A retired status is invalid
+
+- **WHEN** a worker saves a report with `status: blocked`
+- **THEN** the validator rejects it as `report-invalid` and the coordinator does not act on any of its fields
+
+#### Scenario: An inline result is invalid
+
+- **WHEN** a worker returns its result inline instead of a `{path, sha256}` reference
+- **THEN** the coordinator treats the message as an invalid report
+
+### Requirement: The coordinator validates every report before reading it
+
+The coordinator SHALL validate every report with `worker-report-validator.js` before it reads any field. When the validator cannot be resolved per `sai/policies/tool-resolution.md`, the run SHALL stop on that obstacle and the coordinator SHALL NOT interpret the report by reading it.
+
+#### Scenario: The validator cannot be resolved
+
+- **WHEN** no `worker-report-validator.js` candidate exists for a report that arrived
+- **THEN** the run stops on that obstacle without reading the report file
+
+### Requirement: Invalid reports reuse the obstacle budget
+
+An invalid report SHALL be an obstacle of the step under `sai/policies/obstacle-escalation.md`, with its budget of 3 attempts and no new budget. The first invalid report SHALL go back to the same worker with the validator's errors, as a request for a corrected report that performs no work again; a second consecutive invalid report from that worker SHALL replace it with a coordinator-written hand-over. Each SHALL count as one attempt, and the exhausted budget SHALL escalate as that policy says.
+
+#### Scenario: Two consecutive invalid reports
+
+- **WHEN** a worker's report is invalid and its corrected report is invalid again
+- **THEN** the coordinator first returns the validator's errors to the same worker, then replaces it, spending one obstacle attempt each time

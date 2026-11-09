@@ -24,13 +24,13 @@ The command cards SHALL retain a separate design-worker contract (`sai/commands/
 
 ### Requirement: Stateless worker payload validation
 
-The repository SHALL keep a deterministic, stateless tool at `sai/tools/worker-report-validator.js` that validates closed worker payload shapes. Existing stdin mode SHALL accept the payload with `--kind`, enumerate required fields and types, and return a timeless verdict containing `ok` and `errors` through exported pure `validateText`. The `validate` JSON response SHALL carry `received_at` in ISO-8601 with a numeric offset, never Z, as its first key. Exported `generateReceivedAt` SHALL remain the only clock for validate and `bin/sai-state.js`. The validator SHALL never repair, infer, or reformat payload values.
+The repository SHALL keep a deterministic, stateless tool at `sai/tools/worker-report-validator.js` that validates closed worker payload shapes. Input-file mode (with stdin as the legacy fallback) SHALL accept the payload with `--kind` (`terminal` or `progress`) and an optional `--command`, enumerate required fields and types, and return a timeless verdict containing `ok` and `errors` through exported pure `validateText`. The `validate` JSON response SHALL carry `received_at` in ISO-8601 with a numeric offset, never Z, as its first key. Exported `generateReceivedAt` SHALL remain the only clock for validate and `bin/sai-state.js`. The validator SHALL never repair, infer, or reformat payload values.
 
-A coordinator that validates worker reports SHALL consume tool verdicts rather than re-derive validation. For a `step_machine` progress payload, the same validator module SHALL run inside `sai-state emit <id> <machineId> --progress -`, and its validation block SHALL replace a separate validate call. For full Direct Build only, post-ready implementation, backfill, and archive reports SHALL instead arrive as private path/hash references. The resolved validator SHALL verify the reference and validate the same single-read bytes, returning an accepted parsed payload only on success. Delivery failure, invalid report content, and a call with no response SHALL remain distinct; report acceptance SHALL not be inferred from completed repository effects or from a missing response.
+A coordinator that validates worker reports SHALL consume tool verdicts rather than re-derive validation. For a `step_machine` progress payload, the same validator module SHALL run inside `sai-state emit <id> <machineId> --progress -`, and its validation block SHALL replace a separate validate call. Post-ready reports of the workers that follow `sai/policies/worker-report-transport.md` (the `/sai-3-implement` RED and GREEN workers and the full Direct Build implementation, backfill, and archive workers) SHALL instead arrive as private path/hash references. The resolved validator SHALL verify the reference and validate the same single-read bytes, returning an accepted parsed payload only on success. Delivery failure, invalid report content, and a call with no response SHALL remain distinct; report acceptance SHALL not be inferred from completed repository effects or from a missing response.
 
 #### Scenario: Validator accepts closed terminal payloads
 - **WHEN** the coordinator receives a terminal payload (status: completed, needs_input, failed, or cancelled)
-- **THEN** it invokes validate with kind terminal using legacy stdin or the full Direct Build reference-based exception, requires status, summary, and changed_files, and consumes the valid verdict or concrete validation errors
+- **THEN** it invokes validate with kind terminal using the input file or, for a worker that follows the shared report transport, its reference, requires status, summary, and changed_files, and consumes the valid verdict or concrete validation errors
 
 #### Scenario: validated_at uses a numeric offset without Z
 - **WHEN** a CLI emits `received_at` on a JSON response
@@ -41,8 +41,8 @@ A coordinator that validates worker reports SHALL consume tool verdicts rather t
 - **THEN** the validator returns errors without correction, and the coordinator does not process it as an accepted report
 
 #### Scenario: Validator checks notice, progress, and conflict_detected kinds
-- **WHEN** a notice, progress, or conflict_detected payload is validated
-- **THEN** the validator checks it through the corresponding kind, using the same module inside the progress emit for a step_machine progress payload
+- **WHEN** a progress payload is validated, or `validate` is called with the retired `--kind notice` or `--kind conflict_detected`
+- **THEN** the validator checks the progress payload through the progress kind, using the same module inside the progress emit for a step_machine progress payload, and rejects a retired kind as a usage error
 
 #### Scenario: Coordinator consumes verdict instead of prose validation
 - **WHEN** a coordinator that validates worker reports receives a payload

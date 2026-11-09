@@ -84,8 +84,8 @@ test('I8: the direct-build, backfill, and archive workers no longer load worker-
     assert.ok(source.includes('Fetch `@sai/policies/public-chat.md` and follow it exactly.'));
     assert.match(source, /event: ready\nchanged_files: \[\]/, `${file} carries its own ready handshake`);
   }
-  const transport = read('sai/policies/direct-build-report-transport.md');
-  assert.match(transport, /## Failed reports/);
+  const transport = read('sai/policies/worker-report-transport.md');
+  assert.match(transport, /## Direct Build role fields/);
   assert.match(transport, /failure_class: blocking-contradiction\|validation-failed\|generation-error\|dispatch-failed\|envelope-contract-violation\|unclassified-worker-fault/);
   assert.doesNotMatch(transport, /worker-core|unattended-runtime-recovery/);
 });

@@ -25,12 +25,12 @@ Each worker role SHALL have its own linear step machine, `red-steps@1` and `gree
 
 ### Requirement: Worker report shape
 
-Each worker SHALL write a report with `status` (`done` or `blocked`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes` to the report path the brief names, `reports/step-{n}-{role}-{k}.yaml` in the run directory the brief names, which lies outside the repository under the SAI temp root, creating its directory when needed, and SHALL return that path as its final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and with no raw output, file contents, or logs. The report file SHALL be the worker's only write in the run directory and SHALL NOT be listed in `changed_files`. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The coordinator SHALL emit `record` for the report path, keep the worker's `warming` value per `cache-warming.md`, and then read the file.
+Each worker SHALL compose a report with `status` (`completed`, `needs_input`, `failed`, or `cancelled`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes`, and a `needs_input` report SHALL add `question` and `options` (`{label, value}` items). The worker SHALL write the report to a unique draft file in the run directory the brief names, which lies outside the repository under the SAI temp root, save it with `transfer.js put --dir <report-dir> --path <report name>.yaml --input-file <draft>` in the report directory its first task message named, and SHALL return only the `{path, sha256}` that `put` prints as its final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when a warming line reached it, and with no raw output, file contents, logs, or inline result. Scratch and the report draft SHALL stay in the run directory, and neither the draft nor the saved report SHALL be listed in `changed_files`. The retired `done` and `blocked` statuses SHALL NOT be used. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The `worker-write` capability profile SHALL grant the `transfer.js put` call on both Claude Code and opencode.
 
 #### Scenario: Blocked report
 
-- **WHEN** a worker cannot complete its step within its allowed files
-- **THEN** it writes a report with `status: blocked` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix, and returns the report path with no report content.
+- **WHEN** a worker cannot complete its step within its allowed files because only the coordinator can settle a decision the step depends on
+- **THEN** it saves a report with `status: needs_input` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix, with the ways forward as `options`, and returns only the report reference with no report content.
 
 ### Requirement: RED and GREEN write surfaces
 
@@ -39,7 +39,7 @@ The RED worker SHALL write only the step's test files, the fixtures and helpers 
 #### Scenario: GREEN believes a test is wrong
 
 - **WHEN** passing a step's test would require changing the test
-- **THEN** the GREEN worker leaves the test untouched and reports `blocked` with the failing test and the contradiction, and the coordinator arbitrates.
+- **THEN** the GREEN worker leaves the test untouched and reports `needs_input` with the failing test and the contradiction, and the coordinator arbitrates.
 
 #### Scenario: GREEN fixes an audit finding
 
@@ -54,3 +54,26 @@ A step brief MAY carry audit findings to fix in place of plan references. When t
 
 - **WHEN** a RED brief carries an audit finding instead of tasks
 - **THEN** RED writes a test named with the finding's identifier that fails by assertion on the current code
+
+### Requirement: The implement coordinator receives RED and GREEN reports through the shared transport
+
+The `/sai-3-implement` coordinator SHALL open one report directory per run with `transfer.js open --harness <claude|opencode>` and SHALL record it in `implement-run@1` with the `record` kind `report-dir`; when it cannot be opened, the run SHALL end writing nothing more. The first task message to each RED and GREEN worker, a replacement included, SHALL open with the line `--report-dir <report directory>`, and later messages to that worker SHALL leave it out. For every response after ready, the coordinator SHALL run `worker-report-validator.js validate --kind terminal --command implement --json --report-dir <report directory> --report-file <path> --report-hash <sha256>` before reading any field and SHALL act on the accepted payload without reading the file again. A resumed run SHALL reuse the report directory the store names, opening a new one when it is gone. A completed run SHALL close the report directory with `transfer.js close` together with the run directory removal; a stopped, blocked, or unanswered run SHALL keep it.
+
+#### Scenario: A replacement worker reuses the report directory
+
+- **WHEN** the coordinator replaces a RED or GREEN worker during a run
+- **THEN** the replacement's first task message opens with the same `--report-dir` line the run recorded
+
+#### Scenario: A report is validated before use
+
+- **WHEN** a RED or GREEN worker returns a report reference
+- **THEN** the coordinator validates it with `--command implement` and reads no field of a report the validator did not accept
+
+### Requirement: The implement coordinator answers RED and GREEN questions
+
+The implement coordinator SHALL treat a `completed` report as the close of the worker's stretch, and a `failed` or `cancelled` report as an obstacle of the step. It SHALL answer a `needs_input` report without a human in the loop: from the change's artifacts or the repository when they answer it, otherwise with the most conservative reading when the answer would not change the code, appending the question, the answer, and its source to `deviations.md` and continuing the same worker with the answer on the step's pointer line and a new report name. When nothing answers it and the answer would change the code, the question SHALL be force majeure and SHALL escalate through the native picker with the worker's options. A question the answer settles SHALL spend no attempt.
+
+#### Scenario: A question the plan answers
+
+- **WHEN** RED reports `needs_input` about a contradiction that `interfaces.md` resolves
+- **THEN** the coordinator answers from `interfaces.md`, records the answer as a deviation, and continues the same worker without escalating or spending an attempt
