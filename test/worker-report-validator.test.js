@@ -230,37 +230,6 @@ test('validate terminal payload - invalid failure_class', () => {
   assert.ok(result.payload.errors.some((e) => e.includes('failure_class must be one of')));
 });
 
-test('validate notice payload (valid)', () => {
-  const payload = {
-    event: 'notice',
-    message: 'This is a notice',
-    changed_files: ['file1.js'],
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'notice', '--json']);
-  assertValidSidecar(result, 'notice');
-});
-
-test('validate notice payload - missing event field', () => {
-  const payload = {
-    message: 'This is a notice',
-    changed_files: [],
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'notice', '--json']);
-  assertInvalidNoSidecar(result);
-  assert.ok(result.payload.errors.some((e) => e.includes('event is missing')));
-});
-
-test('validate notice payload - wrong event value', () => {
-  const payload = {
-    event: 'progress',
-    message: 'This is a notice',
-    changed_files: [],
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'notice', '--json']);
-  assertInvalidNoSidecar(result);
-  assert.ok(result.payload.errors.some((e) => e.includes('event must be "notice"')));
-});
-
 test('validate progress payload (valid)', () => {
   const payload = {
     event: 'progress',
@@ -279,31 +248,6 @@ test('validate progress payload - missing step_ids', () => {
   const result = tool(JSON.stringify(payload), ['validate', '--kind', 'progress', '--json']);
   assertInvalidNoSidecar(result);
   assert.ok(result.payload.errors.some((e) => e.includes('step_ids is missing')));
-});
-
-test('validate conflict_detected payload (valid)', () => {
-  const payload = {
-    event: 'conflict_detected',
-    summary: 'Conflict detected',
-    changed_files: ['file1.js'],
-    affected_files: ['file1.js'],
-    continuation_state: 'language-selection',
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'conflict_detected', '--json']);
-  assertValidSidecar(result, 'conflict_detected');
-});
-
-test('validate conflict_detected payload - invalid continuation_state', () => {
-  const payload = {
-    event: 'conflict_detected',
-    summary: 'Conflict detected',
-    changed_files: [],
-    affected_files: [],
-    continuation_state: 'invalid-state',
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'conflict_detected', '--json']);
-  assertInvalidNoSidecar(result);
-  assert.ok(result.payload.errors.some((e) => e.includes('continuation_state must be one of')));
 });
 
 test('validate with missing --kind flag', () => {
@@ -469,21 +413,10 @@ test('validate all valid failure classes', () => {
   }
 });
 
-test('received_at applies to all four kinds', () => {
+test('received_at applies to both kinds', () => {
   const cases = [
     [{ status: 'completed', summary: 'ok', changed_files: [] }, 'terminal'],
-    [{ event: 'notice', message: 'hi', changed_files: [] }, 'notice'],
     [{ event: 'progress', step_ids: ['a'], changed_files: [] }, 'progress'],
-    [
-      {
-        event: 'conflict_detected',
-        summary: 'c',
-        changed_files: [],
-        affected_files: [],
-        continuation_state: 'language-selection',
-      },
-      'conflict_detected',
-    ],
   ];
   for (const [payload, kind] of cases) {
     const result = tool(JSON.stringify(payload), ['validate', '--kind', kind, '--json']);
@@ -491,16 +424,54 @@ test('received_at applies to all four kinds', () => {
   }
 });
 
-test('validate conflict_detected with strategy-analysis state', () => {
-  const payload = {
-    event: 'conflict_detected',
-    summary: 'Conflict detected',
-    changed_files: [],
-    affected_files: ['file1.js', 'file2.js'],
-    continuation_state: 'strategy-analysis',
-  };
-  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'conflict_detected', '--json']);
-  assertValidSidecar(result, 'conflict_detected');
+test('the retired notice and conflict_detected kinds are usage errors', () => {
+  for (const kind of ['notice', 'conflict_detected']) {
+    const result = tool(JSON.stringify({ event: kind }), ['validate', '--kind', kind, '--json']);
+    assert.equal(result.status, 2, kind);
+    assert.match(result.stderr, new RegExp(`invalid --kind value: ${kind}`));
+  }
+  const validator = require('../sai/tools/worker-report-validator.js');
+  assert.deepEqual(validator.VALID_KINDS, ['terminal', 'progress']);
+  for (const retired of ['validateNotice', 'validateConflictDetected', 'VALID_EVENTS', 'VALID_CONTINUATION_STATES']) {
+    assert.equal(validator[retired], undefined, `${retired} is retired`);
+  }
+});
+
+test('the retired status vocabularies are rejected by the terminal kind', () => {
+  for (const status of ['done', 'blocked', 'step-done', 'question', 'no-changes']) {
+    const result = tool(JSON.stringify({ status, summary: 's', changed_files: [] }), ['validate', '--kind', 'terminal', '--json']);
+    assertInvalidNoSidecar(result);
+    assert.ok(result.payload.errors.some((e) => e.includes('status must be one of')), status);
+  }
+});
+
+test('--command selects the outcome values a completed report may carry', () => {
+  const completed = (extra = {}) => JSON.stringify({ status: 'completed', summary: 'ok', changed_files: [], ...extra });
+  assertValidSidecar(tool(completed({ outcome: 'no-changes' }), ['validate', '--kind', 'terminal', '--command', 'review', '--json']), 'terminal');
+  assertValidSidecar(tool(completed(), ['validate', '--kind', 'terminal', '--command', 'review', '--json']), 'terminal');
+  const other = tool(completed({ outcome: 'something-else' }), ['validate', '--kind', 'terminal', '--command', 'review', '--json']);
+  assertInvalidNoSidecar(other);
+  assert.ok(other.payload.errors.some((e) => e.includes('outcome must be one of [no-changes] for review')));
+  const notAdmitted = tool(completed({ outcome: 'no-changes' }), ['validate', '--kind', 'terminal', '--command', 'implement', '--json']);
+  assertInvalidNoSidecar(notAdmitted);
+  assert.ok(notAdmitted.payload.errors.some((e) => e.includes('outcome is not admitted by implement')));
+  const noCommand = tool(completed({ outcome: 'no-changes' }), ['validate', '--kind', 'terminal', '--json']);
+  assertInvalidNoSidecar(noCommand);
+  assert.ok(noCommand.payload.errors.some((e) => e.includes('--command')));
+  const notCompleted = tool(JSON.stringify({ status: 'failed', summary: 'x', changed_files: [], outcome: 'no-changes' }),
+    ['validate', '--kind', 'terminal', '--command', 'review', '--json']);
+  assertInvalidNoSidecar(notCompleted);
+  assert.ok(notCompleted.payload.errors.some((e) => e.includes('only on a completed report')));
+});
+
+test('the outcome table is the validator\'s own and an unknown command is a usage error', () => {
+  const { COMMAND_OUTCOMES } = require('../sai/tools/worker-report-validator.js');
+  assert.deepEqual(COMMAND_OUTCOMES.review, ['no-changes']);
+  for (const command of ['implement', 'direct-build', 'spec', 'design', 'merge']) assert.deepEqual(COMMAND_OUTCOMES[command], [], command);
+  const result = tool(JSON.stringify({ status: 'completed', summary: 'ok', changed_files: [] }),
+    ['validate', '--kind', 'terminal', '--command', 'nonsense', '--json']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /invalid --command value: nonsense/);
 });
 
 test('validate terminal payload - needs_input batch v1 (valid)', () => {
@@ -565,7 +536,6 @@ test('validate accepts the YAML payload shapes workers return', () => {
     ['terminal', 'status: completed\nsummary: |\n  line one\n  line two\nchanged_files: []\nresolved_change_name: x\n'],
     ['terminal', 'status: needs_input\nsummary: ask\nchanged_files: []\nquestion: Which?\noptions:\n  - label: A\n    value: a\n  - label: B\n    value: b\n'],
     ['terminal', "status: needs_input\nsummary: ask\nchanged_files: []\nquestion: 'It''s?'\noptions: [{label: A, value: a}]\n"],
-    ['notice', 'event: notice\nmessage: hello # comment\nchanged_files: []\n'],
     ['progress', 'event: progress\nstep_ids:\n  - prereqs-and-change\n  - scope\nchanged_files:\n  - x.md\n'],
     ['progress', 'event: progress\nstep_ids: []\nchanged_files: []\n'],
   ];

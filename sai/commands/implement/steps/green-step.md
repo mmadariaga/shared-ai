@@ -7,4 +7,4 @@ Write the production code that makes the step's tests pass.
 3. Run `test_command` and iterate on production files until it passes, within the limits of your card.
 4. Return the report. When the brief names `SAI_LEARNINGS.md`, put in `notes` each file outside the change whose code contradicts an entry (its path and the entry's key) and each entry that failed on execution (its key and the failure), or nothing about the file when neither happened.
 
-A step with no tests, such as documentation or declarative configuration, is GREEN only: write what the brief lists and return `done`.
+A step with no tests, such as documentation or declarative configuration, is GREEN only: write what the brief lists and return `completed`.

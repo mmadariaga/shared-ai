@@ -22,6 +22,6 @@ The step's RED is done when:
 
 You may run `test_command` to check your own work. The coordinator's run is the verdict.
 
-## Blocked
+## Needs input
 
-Report `blocked` when the behaviors cannot be tested without a production change beyond a stub, or when the brief and the interfaces contradict each other. Authorize no GREEN work and write no implementation to demonstrate a test.
+Report `needs_input` when the behaviors cannot be tested without a production change beyond a stub, or when the brief and the interfaces contradict each other. Name the contradiction in `summary` and offer the coordinator the ways forward as `options`. Authorize no GREEN work and write no implementation to demonstrate a test.

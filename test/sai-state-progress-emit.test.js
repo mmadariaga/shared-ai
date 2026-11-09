@@ -147,7 +147,7 @@ test('progress emit (E3): validation runs before any session read, so a corrupt 
   const id = spawnSession('progress-order');
   try {
     fs.writeFileSync(sessionFile(id), '{not valid json');
-    const result = progressEmit(id, 'spec-steps@1', progress(['x'], { event: 'notice' }));
+    const result = progressEmit(id, 'spec-steps@1', progress(['x'], { event: 'step-done' }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
@@ -287,9 +287,7 @@ test('progress emit (E10): non-progress payload kinds return validation.ok false
   try {
     const payloads = [
       { status: 'completed', summary: 's', changed_files: [], resolved_change_name: 'c' },
-      { event: 'notice', message: 'm', changed_files: [] },
       { status: 'needs_input', summary: 's', changed_files: [], question: 'q', options: [] },
-      { event: 'conflict_detected', summary: 's', changed_files: [], affected_files: [], continuation_state: 'language-selection' },
     ];
     for (const payload of payloads) {
       const result = progressEmit(id, 'spec-steps@1', JSON.stringify(payload));

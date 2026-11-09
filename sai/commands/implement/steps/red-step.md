@@ -10,4 +10,4 @@ Write the failing tests for the step in your brief.
 
 When the brief carries audit findings instead of tasks, the code already exists and each finding names a defect in it. Write one test per finding that asserts the corrected behavior the finding describes, so that it fails by assertion on the current code; name the finding's identifier in the test name.
 
-A step with no meaningful test, such as documentation or declarative configuration, gets no test. Return `done` with an empty `changed_files` and say so in `notes`.
+A step with no meaningful test, such as documentation or declarative configuration, gets no test. Return `completed` with an empty `changed_files` and say so in `notes`.

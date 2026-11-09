@@ -102,11 +102,12 @@ takes one — never substitute one for the other.
   <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
   <project-root> --fingerprint <hash>`, with the complete reference set in
   `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
-- `worker-report-validator.js`: `node <tool-path> validate --kind <kind>
+- `worker-report-validator.js`: `node <tool-path> validate --kind <terminal|progress>
   --input-file <path>` with the payload in the input file (plus `--json --cwd` where the tool accepts
-  them). Full Direct Build uses `--report-dir <authorized-dir> --report-file
-  <path> --report-hash <sha256> --json` instead of the input file, per
-  `@sai/policies/direct-build-report-transport.md`.
+  them). A worker report that travels as a report reference uses `--kind terminal
+  --command <command> --report-dir <authorized-dir> --report-file <path>
+  --report-hash <sha256> --json` instead of the input file, per
+  `@sai/policies/worker-report-transport.md`.
 - `risk-signals.js`: `node <tool-path> compute --parent <branch> [--cwd
   <project-root>]`, and `node <tool-path> validate --parent <branch> --file
   <review.md> [--cwd <project-root>]`. It always prints one JSON object
@@ -137,7 +138,8 @@ takes one — never substitute one for the other.
 
 If no candidate exists, say so — name the candidates you tried — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
 skips validation: resolve `worker-report-validator.js` on every turn that runs
-a separate `validate` call and stop the same way when unresolvable; a progress
+a separate `validate` call and stop the same way when unresolvable, never
+interpreting a worker report by reading it (`@sai/policies/worker-report-transport.md`); a progress
 emit loads the validator itself and, when it is missing, exits 2 naming the
 tried paths. A missing `sai-state.js` is a store failure: a card that declares
 its own store fallback (the goal-driven coordinators carry on from their static
