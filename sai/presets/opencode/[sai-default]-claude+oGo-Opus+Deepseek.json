@@ -32,8 +32,8 @@
     "variant": "max"
   },
   "command:sai-plan": {
-    "model": "opencode-go/deepseek-v4.1-flash",
-    "variant": "max"
+    "model": "claude-agent/opus",
+    "variant": "medium"
   },
   "worker:sai-2-design-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
