@@ -11,6 +11,7 @@ const { loadInstallManifest, expandInstallManifest, matrixRenderFor } = require(
 const flow = require('../bin/install-flow');
 const uninstall = require('../bin/uninstall-flow');
 const doctor = require('../bin/doctor');
+const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 
 const repoRoot = path.join(__dirname, '..');
 const manifest = loadInstallManifest(repoRoot);
@@ -63,7 +64,7 @@ test('skills-rooted patterns gain the absolute form as well', () => {
 
 test('without an install root the installer resolves the roots itself and still emits the quoted absolute form', () => {
   const claude = claudeAllowed('status-command');
-  const home = normalizeInstallRoot(path.join(os.homedir(), '.claude'));
+  const home = normalizeInstallRoot(resolveGlobalRoot('claude'));
   assert.ok(claude.includes(`Bash(node "${home}/sai/tools/status.js":*)`));
   assert.ok(opencodeShellRules('status-command').some(rule => /^node "\/?[^"]*\/sai\/tools\/status\.js" \*$/.test(rule)));
 });
@@ -78,7 +79,9 @@ test('an XDG override moves the opencode config directory of the resolved absolu
     encoding: 'utf8', env: { ...process.env, XDG_CONFIG_HOME: '/xdg override', PATH: '/nonexistent' },
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.ok(JSON.parse(result.stdout).includes('node "/xdg override/opencode/sai/tools/status.js" *'));
+  // path.resolve qualifies a drive-less XDG_CONFIG_HOME with the current drive on Windows, so the expectation does too.
+  const root = normalizeInstallRoot(path.join(path.resolve('/xdg override'), 'opencode'));
+  assert.ok(JSON.parse(result.stdout).includes(`node "${root}/sai/tools/status.js" *`), result.stdout);
   void key;
 });
 
@@ -102,7 +105,7 @@ test('expanded permission projections hold the install root while instruction pr
     assert.ok(profile.sourceText.includes(posixBase));
     const policy = projections.find(projection => projection.destinationPath === path.join(base, 'sai', 'policies', 'tool-resolution.md'));
     assert.equal(policy.sourceText, undefined, 'instruction files are copied from their source untouched');
-    assert.ok(fs.readFileSync(policy.sourcePath, 'utf8').includes('~/.claude/sai/tools/<name>'));
+    assert.ok(fs.readFileSync(policy.sourcePath, 'utf8').includes('`sai/tools/<name>`'));
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
@@ -166,14 +169,13 @@ test('a project-local refresh names the global install root, not the project roo
   }
 });
 
-test('the instructions tell the agent to run the global candidate as the absolute path its check returned', () => {
+test('the instructions tell the agent to run the global copy as the absolute path the fetch tool returned', () => {
   const read = file => fs.readFileSync(path.join(repoRoot, file), 'utf8');
-  for (const file of ['sai/policies/tool-resolution.md', 'sai/policies/prereqs-check.md']) {
-    const text = read(file);
-    assert.match(text, /absolute path/, file);
-    assert.match(text, /node "<absolute path>"/, file);
-  }
+  const resolution = read('sai/policies/tool-resolution.md');
+  assert.match(resolution, /absolute path/);
+  assert.match(resolution, /node "<absolute path>"/);
+  assert.match(read('sai/policies/prereqs-check.md'), /@sai\/policies\/tool-resolution\.md/);
   assert.match(read('sai/policies/tool-resolution.md'), /never a path you composed/);
-  assert.match(read('sai/policies/cache-warming.md'), /absolute path its existence check returned/);
-  assert.match(read('sai/policies/tool-resolution.md'), /`~\/\.claude\/sai\/tools\/<name>`/, 'the ~ candidate lists stay');
+  assert.match(read('sai/policies/cache-warming.md'), /absolute path its block printed/);
+  assert.match(read('sai/policies/tool-resolution.md'), /fetch tool in path mode/, 'tools resolve through the fetch tool, with no ~ candidate list');
 });

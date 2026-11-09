@@ -33,7 +33,7 @@ The `uninstall` subcommand SHALL recognize exactly two flags — `--dry-run` and
 - **THEN** the flow prints an error naming the unrecognized flag, deletes nothing, and exits non-zero
 
 ### Requirement: symmetric deletion-set enumeration
-The uninstall deletion set SHALL be derived by symmetric enumeration from the same source-to-destination logic that produces the Claude Code and opencode install copy lists, computed against the same OS-aware base paths. It SHALL contain exactly the destinations those two install functions write and SHALL not enumerate or resolve a Copilot installation surface.
+The uninstall deletion set SHALL be derived by symmetric enumeration from the same source-to-destination logic that produces the Claude Code and opencode install copy lists, computed against the same global harness roots the installer uses, as resolved by the shared resolver `skills/universal/fetch/harness-root.js` when no explicit base is passed (`CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the reported opencode config directory, else `XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode). It SHALL contain exactly the destinations those two install functions write and SHALL not enumerate or resolve a Copilot installation surface. It SHALL NOT enumerate a root other than the resolved one.
 #### Scenario: deletion set mirrors surviving install destinations
 - **WHEN** the uninstall flow computes its deletion set for a given editor target
 - **THEN** it contains the exact Claude Code and opencode destinations produced by their install functions
@@ -43,6 +43,10 @@ The uninstall deletion set SHALL be derived by symmetric enumeration from the sa
 - **WHEN** uninstall runs after this change
 - **THEN** no `enumerateCopilot` function or Copilot base-path resolver participates in enumeration
 - **AND** the flow does not attempt to clean up orphaned Copilot files
+
+#### Scenario: uninstall enumerates only the resolved Claude Code root
+- **WHEN** `CLAUDE_CONFIG_DIR` is set and uninstall runs with no explicit base
+- **THEN** every Claude Code destination in the deletion set lies under the directory `CLAUDE_CONFIG_DIR` names, and none under `~/.claude`
 
 ### Requirement: Copilot retirement is not a cleanup-only uninstall path
 

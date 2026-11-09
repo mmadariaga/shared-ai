@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
+const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { runProjectSettingsScreen } = require('./project-settings-screen.js');
 const { runWarmingSetup, HARNESS_OPTIONS } = require('./warming-setup.js');
 const {
@@ -79,19 +80,18 @@ const TARGET_PROFILE = Object.freeze({
 });
 const UNKNOWN_PROFILE_VALUE = 'Unknown';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
-const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
-const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
-const DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.claude', 'commands');
-const DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.config', 'opencode', 'commands');
+// The Claude Code global roots follow the shared resolver (`CLAUDE_CONFIG_DIR`, else `~/.claude`).
+const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(resolveGlobalRoot('claude'), 'agents');
+const DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT = path.join(resolveGlobalRoot('claude'), 'commands');
 
 function resolveOpencodeBaseForCustomization() {
   try {
     const flow = require('./install-flow.js');
     if (flow && typeof flow.resolveOpencodeBase === 'function') return flow.resolveOpencodeBase();
   } catch {
-    // Fall through to the hardcoded default when the shared resolver is unavailable.
+    // Fall through to the shared resolver when the installer's wrapper is unavailable.
   }
-  return path.join(os.homedir(), '.config', 'opencode');
+  return resolveGlobalRoot('opencode');
 }
 
 function defaultOpencodeGlobalAgentRoot() {

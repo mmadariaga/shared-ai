@@ -35,8 +35,8 @@ Nothing is required beyond staged changes. Optional flags in `$ARGUMENTS`:
 ### Step 1: Collect Staged State
 
 Resolve the tool path per `@sai/policies/tool-resolution.md`, substituting
-`commit.js` for `<name>` (first existing candidate per harness, copied
-verbatim; when none exists, name the tried candidates and stop). Run
+`commit.js` for `<name>` (the copy the fetch tool returns; when it
+returns none, name the paths it tried and stop). Run
 `node <tool-path> collect --json --cwd <repo>`, adding `--amend` when the flag
 was passed. The JSON carries:
 

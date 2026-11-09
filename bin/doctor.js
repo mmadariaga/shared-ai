@@ -10,6 +10,7 @@ const https = require('https');
 
 const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
+const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
@@ -579,7 +580,7 @@ async function main(options = {}) {
   const {
     argv = process.argv.slice(2),
     projectRoot = process.cwd(),
-    claudeBase = flow.CLAUDE_BASE,
+    claudeBase = resolveGlobalRoot('claude'),
     opencodeBase,
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
@@ -587,7 +588,7 @@ async function main(options = {}) {
     out = process.stdout,
     fetchLatestVersion = defaultFetchLatestVersion,
   } = options;
-  const resolvedOpencodeBase = opencodeBase !== undefined ? opencodeBase : (typeof flow.resolveOpencodeBase === 'function' ? flow.resolveOpencodeBase() : flow.OPENCODE_BASE);
+  const resolvedOpencodeBase = opencodeBase !== undefined ? opencodeBase : resolveGlobalRoot('opencode');
   const effectiveOpencodeBase = resolvedOpencodeBase;
   const json = argv.includes('--json');
 

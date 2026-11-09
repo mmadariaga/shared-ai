@@ -58,17 +58,19 @@ The installer MUST support `--help` flag. When passed, it prints usage instructi
 ---
 
 ### Requirement: os-aware-destination-resolution
-The installer MUST resolve destination base paths using `os.homedir()`. On Windows (`process.platform === 'win32'`) the Claude base is `<home>\.claude\` and Opencode base is `<home>\.config\opencode\`. On Unix the paths are `~/.claude/` and `~/.config/opencode/` respectively.
+The installer MUST resolve destination base paths through the shared resolver `skills/universal/fetch/harness-root.js`, which builds every default path under `os.homedir()` with `path.join`. The Claude base is the directory `CLAUDE_CONFIG_DIR` names when that variable is set and not blank, and otherwise `<home>\.claude\` on Windows (`process.platform === 'win32'`) and `~/.claude/` on Unix. The Opencode base is the directory `opencode debug paths` reports, else `XDG_CONFIG_HOME/opencode`, and otherwise `<home>\.config\opencode\` on Windows and `~/.config/opencode/` on Unix.
 
 #### Scenario: windows path resolution
-- **WHEN** `process.platform === 'win32'`
+- **WHEN** `process.platform === 'win32'` and no root override applies
 - **THEN** all destination paths are constructed under `os.homedir()` using `path.join` with backslash-compatible segments
 
 #### Scenario: unix path resolution
-- **WHEN** `process.platform !== 'win32'`
+- **WHEN** `process.platform !== 'win32'` and no root override applies
 - **THEN** all destination paths are constructed under `os.homedir()` using `path.join`
 
----
+#### Scenario: CLAUDE_CONFIG_DIR overrides the Claude base
+- **WHEN** `CLAUDE_CONFIG_DIR` is set
+- **THEN** every Claude Code destination path is constructed under that directory
 
 ### Requirement: source-path-resolution
 All source file paths MUST be resolved relative to `bin/install.js` using `path.join(__dirname, '..', '<source-dir>')` so the script works regardless of cwd.
@@ -142,7 +144,7 @@ or, if the file does not exist:
 ### Requirement: claude-file-map
 When Claude Code is selected, the installer MUST copy:
 
-    Source                                             Destination (relative to ~/.claude/)
+    Source                                             Destination (relative to the resolved Claude Code root)
     commands/claude/*.md                          →    commands/
     sai/commands/*.md                             →    sai/commands/
     sai/instructions/*.md                         →    sai/instructions/
@@ -154,14 +156,12 @@ When Claude Code is selected, the installer MUST copy:
 
 #### Scenario: claude install copies all mapped files
 - **WHEN** Claude Code is selected
-- **THEN** all eight source paths (glob-expanded where wildcards used) are copied to the correct destinations under `~/.claude/`
-
----
+- **THEN** all eight source paths (glob-expanded where wildcards used) are copied to the correct destinations under the resolved Claude Code root (`CLAUDE_CONFIG_DIR`, else `~/.claude/`)
 
 ### Requirement: opencode-file-map
 When Opencode is selected, the installer MUST copy:
 
-    Source                                             Destination (relative to ~/.config/opencode/)
+    Source                                             Destination (relative to the resolved opencode root)
     commands/opencode/*.md                        →    commands/
     sai/commands/*.md                             →    sai/commands/
     sai/instructions/*.md                         →    sai/instructions/
@@ -174,9 +174,7 @@ When Opencode is selected, the installer MUST copy:
 
 #### Scenario: opencode install copies all mapped files
 - **WHEN** Opencode is selected
-- **THEN** all nine source paths are processed per their copy rules under `~/.config/opencode/`
-
----
+- **THEN** all nine source paths are processed per their copy rules under the resolved opencode root (the reported config directory, else `XDG_CONFIG_HOME/opencode`, else `~/.config/opencode/`)
 
 ### Requirement: post-install-reminder
 After all copies complete, the installer MUST print:

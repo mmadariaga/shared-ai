@@ -122,7 +122,7 @@ It SHALL fail the same way when `tasks.md` has neither affected entries nor reco
 #### Scenario: the tool resolves from either harness root
 
 - **WHEN** a design step needs `file-manifest.js` on Claude Code or opencode
-- **THEN** it uses the first existing per-harness candidate from `sai/policies/tool-resolution.md` verbatim and invokes it in the listed form
+- **THEN** it uses the copy the fetch tool returns in path mode for the subpath `sai/tools/file-manifest.js`, as `sai/policies/tool-resolution.md` states, and invokes it in the listed form
 
 #### Scenario: projection needs no new manifest entry
 
