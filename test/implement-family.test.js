@@ -86,6 +86,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/commands/review/coordinator.md',
     '@sai/commands/review/options.md',
     '@sai/policies/cache-warming.md',
+    '@sai/policies/worker-report-transport.md',
   ];
   for (const file of COORDINATORS) {
     for (const line of fetches(read(file))) {
@@ -343,9 +344,9 @@ test('the coordinator carries the resilience contract: attempt budget, escalatio
   assert.match(close, /closing report is the only record/);
 });
 
-test('workers return the path of a report file and the store event keeps free text out', () => {
+test('workers return the reference of a report file and the store event keeps free text out', () => {
   const common = read('sai/commands/implement/worker-common.md');
-  assert.match(common, /return that path as your final message/);
+  assert.match(common, /Return only the `\{path, sha256\}` that `put` prints as your final message/);
   assert.match(common, /hand-over summary/);
   assert.doesNotMatch(common, /\.tmp\//);
   assert.match(common, /run directory the brief names, outside the repository/);

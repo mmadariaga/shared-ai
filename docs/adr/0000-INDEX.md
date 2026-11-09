@@ -259,6 +259,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0194 — `/sai-3-implement-new` runs outside the shared orchestration](./0194-implement-new-runs-outside-the-shared-orchestration.md) — **Amends** 0188, Refs 0163, Refs 0187
 - [0195 — `/sai-4-review-new` is a review-only command of the `-new` family](./0195-review-new-is-a-review-only-command-of-the-new-family.md) — **Amends** 0194
 - [0198 — `/sai-build-new` selects and fixes the findings of its own review](./0198-build-new-selects-and-fixes-findings-after-its-review.md) — **Amends** 0195
+- [0214 — Routed workers report through one validated file transport](./0214-routed-workers-report-through-one-validated-file-transport.md) — **Amends** 0194
 
 ### `/sai-plan`, `/sai-1-spec`, and `/sai-2-design`
 
@@ -685,6 +686,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0210](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) | amends | [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) |
 | [0212](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) | amends | [0202](./0202-explorer-is-live-per-coordinator-and-agents-self-warm.md) |
 | [0213](./0213-opencode-dispose-removes-the-workers-shells.md) | amends | [0210](./0210-workers-are-disposed-unconditionally-by-the-worker-lifecycle.md) |
+| [0214](./0214-routed-workers-report-through-one-validated-file-transport.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

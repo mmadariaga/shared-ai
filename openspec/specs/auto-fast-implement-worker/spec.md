@@ -72,7 +72,7 @@ When explore continues the same worker instance with an ordered finding list, th
 
 ### Requirement: Failure honesty
 
-The implementer worker SHALL return `failed` with a concrete cause in its `summary` when the block cannot be implemented as written; on the full route, a `failed` result after the block verified SHALL also carry the failure fields of `sai/policies/direct-build-report-transport.md` § Failed reports. It MUST NEVER silently substitute a different feature.
+The implementer worker SHALL return `failed` with a concrete cause in its `summary` when the block cannot be implemented as written; on the full route, a `failed` result after the block verified SHALL also carry the failure fields of `sai/policies/worker-report-transport.md` § Direct Build role fields. It MUST NEVER silently substitute a different feature.
 
 #### Scenario: Unimplementable block
 

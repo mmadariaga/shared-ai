@@ -15,7 +15,7 @@
 //   attempt    {obstacle}                spends one of the obstacle's attempts
 //   escalate   {obstacle}                the run waits for the user's answer
 //   answer     {obstacle, choice}        `continue` resets the obstacle, `stop` stops the run
-//   record     {ref, path}               ref: deviation | override | report | finding | baseline
+//   record     {ref, path}               ref: deviation | override | report | report-dir | finding | baseline
 //   close      {outcome}                 outcome: completed | escalated | stopped
 //   status     {}                        changes nothing; returns the run state
 
@@ -27,6 +27,7 @@ const REFS = Object.freeze({
   deviation: 'deviations',
   override: 'overrides',
   report: 'reports',
+  'report-dir': 'report_dirs',
   finding: 'findings',
   baseline: 'baselines',
 });

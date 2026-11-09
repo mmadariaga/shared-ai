@@ -9,9 +9,10 @@ Apply it within the crystallized block's scope and this worker's role restrictio
 
 ## Invocation Envelope
 
-For the full Direct Build route, Fetch `@sai/policies/direct-build-report-transport.md`
-and use its outermost task-disclosure line and file-reference returns. The
-initial ready handshake and the `--no-specs` POC remain unchanged.
+For the full Direct Build route, Fetch `@sai/policies/worker-report-transport.md`
+and use its outermost task-disclosure line, its closed report schema, and its
+file-reference returns. The initial ready handshake and the `--no-specs` POC
+remain unchanged.
 
 The worker receives exactly one opaque string: `arguments_value`. Under
 strict-zero two-phase startup the initial dispatch carries only the ready
@@ -126,7 +127,10 @@ changed_files: []
 
 Every stretch closes with exactly one terminal result, with a concrete English
 `summary` and an ordered duplicate-free `changed_files` union of every path
-created or modified across all rounds of this worker instance:
+created or modified across all rounds of this worker instance. On the full route
+the terminal result is the report file of `@sai/policies/worker-report-transport.md`,
+and the message returns only its reference; the shapes below are the report's
+content:
 
 ```yaml
 status: completed|failed|cancelled
@@ -153,6 +157,6 @@ verified; a result before that point, and every `--no-specs` result, omits it.
 Results carry no time field and no continuation identifier: you never read a
 clock and never write a timestamp. On the full route, a `failed` result after
 the block verified also carries the failure fields that
-`@sai/policies/direct-build-report-transport.md` § Failed reports defines.
+`@sai/policies/worker-report-transport.md` § Direct Build role fields defines.
 Return `failed` with a concrete cause in `summary` when the block cannot be
 implemented as written; never silently substitute a different feature.
