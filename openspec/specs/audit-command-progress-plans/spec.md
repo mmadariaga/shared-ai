@@ -53,7 +53,7 @@ Each worker SHALL save a progress report after its steps complete, as a new file
 #### Scenario: audit worker reports a completed batch
 - **WHEN** an audit worker completes one or more steps
 - **THEN** it saves a `progress-` report carrying their canonical ids in plan order and returns its reference
-- **AND** the coordinator validates it with `--kind progress`, passes the same file to `sai-state emit <id> {audit}-steps@1 --progress --input-file <report file>`, and sends the next pointer, without treating the report as user input
+- **AND** the coordinator passes its reference to `sai-state emit <id> {audit}-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`, which verifies and validates it, and sends the next pointer, without treating the report as user input
 
 #### Scenario: audit workers continue under step-gated instruction delivery
 - **WHEN** a security, performance, or accessibility worker continues between steps

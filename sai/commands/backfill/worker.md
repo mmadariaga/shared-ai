@@ -77,7 +77,7 @@ changed_files: []
 ```
 
 Every stretch closes with exactly one terminal report file, saved with
-`transfer.js put` in the report directory, with a concrete English `summary`
+`transfer.js put --exclusive` in the report directory, with a concrete English `summary`
 and an ordered duplicate-free `changed_files`; the message returns only the
 reference `{path, sha256}` and the `warming` line. A report carries no time
 field and no continuation identifier, and a result carried inline is an
