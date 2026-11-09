@@ -155,7 +155,7 @@ test('Direct Build contracts bind all three workers while preserving other route
   }
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch `@sai\/policies\/worker-report-transport.md`/);
   for (const evidence of [/Claude Code and opencode/, /initial `event: ready` return is unchanged/,
-    /standalone backfill and archive commands keep their existing transport/,
+    /The `--no-specs` POC keeps its existing transport/,
     /call that returns no response establishes neither/, /never resends an execute order/,
     /Stop at the existing exhausted budget/, /interruption, and an exhausted/]) assert.match(policy, evidence);
 });
@@ -260,7 +260,7 @@ test('the policy covers the plan and review workers, the progress kind, and the 
   const policy = read(POLICY);
   assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
   assert.match(policy, /spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`/);
-  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, and Direct Build/);
+  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and Direct Build, and `merge-run@1` for `\/sai-merge`/);
   assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
   const progress = policy.slice(policy.indexOf('### Progress reports'), policy.indexOf('## Author boundary'));
   assert.match(progress, /event: progress\nstep_ids: string\[\]\nchanged_files: string\[\]/);
@@ -483,4 +483,84 @@ test('the audit progress report advances the step machine through the progress e
   }
   const legacy = transfer.put(dir, 'legacy-question.json', Buffer.from(JSON.stringify({ event: 'question', question: 'Which scope?' })));
   assert.equal(validateFile(dir, legacy, 'terminal', { command: 'security' }).outcome, 'report-invalid');
+});
+
+// ─── Commit, archive, backfill, and merge workers ────────────────────────────
+
+test('the policy covers the commit, archive, backfill, and merge workers on their standalone routes', () => {
+  const policy = read(POLICY);
+  assert.match(policy, /the commit, archive, backfill, and merge workers of `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and `\/sai-merge`/);
+  assert.match(policy, /`commit`, `archive`, `backfill`, or `merge` for the worker of that command/);
+  assert.match(policy, /backfill: `resolved_change_name`, `draft_references`, and `corrected_specs`/);
+  assert.doesNotMatch(policy, /standalone backfill and archive commands keep their existing transport/);
+});
+
+test('the commit, archive, and backfill workers report as files and their coordinators validate before reading', () => {
+  const commands = { commit: 'commit', archive: 'archive', backfill: 'backfill' };
+  for (const command of Object.keys(commands)) {
+    const worker = read(`sai/commands/${command}/worker.md`);
+    assert.match(worker, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side for every report/, command);
+    assert.match(worker, /--report-dir/, command);
+    assert.match(worker, /a result carried inline is an\s+invalid report|message that carries the result inline is an invalid report/, command);
+    assert.doesNotMatch(worker, /final message, in the shape|The coordinator reads only your final message/, command);
+    const coordinator = read(`sai/commands/${command}/coordinator.md`);
+    assert.match(coordinator, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/, command);
+    assert.match(coordinator, new RegExp(`validate --kind terminal --command ${commands[command]} --json --report-dir`), command);
+    assert.match(coordinator, /transfer\.js (open|close)|`node <tool-path> open --harness|--report-dir <report directory>/, command);
+    assert.match(coordinator, /second consecutive invalid report from that worker replaces it/, command);
+  }
+  assert.match(read('sai/commands/commit/worker.md'), /status: needs_input\nsummary: string\nchanged_files: \[\]\nquestion: string/);
+  assert.match(read('sai/commands/backfill/worker.md'), /`--report-dir <absolute path>`[\s\S]*`--transfer-dir <absolute path>`/);
+  assert.match(read('sai/commands/backfill/worker.md'), /`draft_references` field/);
+  assert.match(read('sai/commands/backfill/coordinator.md'), /`--report-dir <report dir>` and `--transfer-dir <transfer dir>`, in that order/);
+  assert.match(read('sai/commands/archive/coordinator.md'), /`corrected_specs` field of a report you validate with `--command backfill`/);
+  assert.match(read('sai/commands/archive/worker.md'), /on\severy route/);
+});
+
+test('the merge worker reports failed instead of blocked and its coordinator validates every report', () => {
+  const worker = read('sai/commands/merge/worker.md');
+  assert.match(worker, /return a `failed` report with the blocker and the affected path in `summary`/);
+  assert.match(worker, /`blocked`, `done`, and `escalate` are outside the schema/);
+  assert.doesNotMatch(worker, /`status` is `blocked`/);
+  for (const step of ['strategy', 'test-correction', 'renumbering-plan']) {
+    const text = read(`sai/commands/merge/steps/${step}.md`);
+    assert.match(text, /status: completed \| failed/, step);
+    assert.doesNotMatch(text, /status: done|\| blocked|`blocked`/, step);
+  }
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  assert.match(coordinator, /validate --kind terminal --command merge --json --report-dir/);
+  assert.match(coordinator, /emit `record` \(`report-dir`\)/);
+  assert.match(coordinator, /`--report-dir <report directory>`/);
+  assert.doesNotMatch(coordinator, /reports\/stop-/);
+  assert.match(read('sai/tools/merge.js'), /validateText\(source, 'terminal'\)/);
+});
+
+test('a blocked merge report is invalid and a failed one is accepted', t => {
+  const failed = { status: 'failed', summary: 'The bundle cannot be read: src/a.js', changed_files: [] };
+  const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(failed)));
+  assert.equal(validateFile(dir, reference, 'terminal', { command: 'merge' }).outcome, 'accepted');
+  const blocked = transfer.put(dir, 'blocked.json', Buffer.from(JSON.stringify({ ...failed, status: 'blocked' })));
+  assert.equal(validateFile(dir, blocked, 'terminal', { command: 'merge' }).outcome, 'report-invalid');
+  const escalate = transfer.put(dir, 'escalate.json', Buffer.from(JSON.stringify({ ...failed, status: 'escalate' })));
+  assert.equal(validateFile(dir, escalate, 'terminal', { command: 'merge' }).outcome, 'report-invalid');
+  const commit = transfer.put(dir, 'commit.json', Buffer.from(JSON.stringify({ status: 'needs_input', summary: 'Staged files.',
+    changed_files: [], question: 'Commit?', options: [{ label: 'Yes', value: 'yes' }] })));
+  assert.equal(validateFile(dir, commit, 'terminal', { command: 'commit' }).outcome, 'accepted');
+});
+
+test('the commit, archive, backfill, and merge workers and commands have the report grants', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const { resolveProfile } = require('../bin/capabilities');
+  const agents = manifest.capabilities.assignments.agents;
+  for (const worker of ['sai-commit-worker', 'sai-archive-worker', 'sai-backfill-worker', 'sai-merge-worker']) {
+    const shell = resolveProfile(manifest.capabilities, agents[worker]).shell;
+    assert.ok(shell.includes('*') || shell.includes('node {sai}/tools/transfer.js put *'), `${worker} may save a report`);
+  }
+  const commands = manifest.capabilities.assignments.commands;
+  for (const command of ['sai-commit', 'sai-archive', 'sai-backfill', 'sai-merge']) {
+    const shell = resolveProfile(manifest.capabilities, commands[command]).shell;
+    const grants = tool => shell.includes('*') || shell.includes(`node {sai}/tools/${tool}`);
+    assert.ok(grants('transfer.js open *'), `${command} may open the report directory`);
+    assert.ok(grants('worker-report-validator.js *'), `${command} may validate a report`);
+  }
 });

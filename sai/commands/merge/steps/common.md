@@ -41,4 +41,4 @@ Read more of a file, a governing rule, or a related change when a region's inten
 
 ## Reports
 
-Write the report to the path in the brief return that path as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you. Never put file contents, raw output, or logs in the final message.
+Save the report in the report directory, as `sai/commands/merge/worker.md` says (a draft file in the run directory, then `transfer.js put`), and return the `{path, sha256}` that `put` prints as your final message, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you. Never put file contents, raw output, or logs in the final message.

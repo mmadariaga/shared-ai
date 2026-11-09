@@ -112,7 +112,7 @@ test('E12: standalone archive and backfill keep their gates after leaving worker
   assert.match(archive, /--direct-build-execute/);
   assert.match(archive, /status: needs_input[\s\S]*resolved_change_name: string\nquestion: string/);
   assert.match(backfill, /status: needs_input\nsummary: string\nchanged_files: string\[\]\nquestion: string/);
-  assert.match(backfill, /Once the user confirms the derived change name, every result also carries\n`resolved_change_name`/);
+  assert.match(backfill, /Once the user confirms the derived change name, every report also carries\n`resolved_change_name`/);
   assert.match(read('sai/commands/archive/coordinator.md'), /exactly `Archive done\.`/);
   assert.match(read('sai/commands/backfill/coordinator.md'), /Backfill complete in openspec\/changes\/\{name\}\//);
 });

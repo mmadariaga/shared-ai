@@ -7,7 +7,7 @@ TBD - created by archiving change sai-merge-runs-goal-driven. Update Purpose aft
 
 ### Requirement: merge-run machine holds identifiers only
 
-The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, and `assumption` as paths without duplicates. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
+The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, `assumption`, and `report-dir` as paths without duplicates, the `report-dir` reference listed in the run view as `report_dirs`. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
 
 #### Scenario: Launch records the run identifiers
 
@@ -24,19 +24,24 @@ The `sai-state` registry SHALL register a `merge-run@1` machine built on the sha
 - **WHEN** an obstacle has spent three attempts
 - **THEN** a further `attempt` for that obstacle is rejected as exhaustion
 
+#### Scenario: The report directory is recorded once
+
+- **WHEN** a running run receives `record` with ref `report-dir` and the same path twice
+- **THEN** the run view lists that path once under `report_dirs`
+
 ### Requirement: Merge run session and run directory
 
-The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{branch}` and SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, worker reports, reviews, hand-over files, the obstacle, finding, and assumption files, and every diagnostic scratch file the run writes. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove` only when the run completed, and the removal SHALL target only this run's own directory, the `dir` of its `start` event; no other directory of the SAI temp root SHALL be removed, and the directory of an earlier stopped run SHALL stay. A stopped, escalated, or unanswered run SHALL keep its directory and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue.
+The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{branch}` and SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, reviews, hand-over files, the worker's report drafts, the obstacle, finding, and assumption files, and every diagnostic scratch file the run writes. Right after `start`, it SHALL open one report directory for the worker's saved reports with `transfer.js open --harness <claude|opencode>` and emit `record` (`report-dir`) with the returned directory, so a replacement worker and a resumed run reuse it; when either tool reports an error the coordinator SHALL print it, emit `close` with outcome `stopped` once the run has started, and end the run before anything is launched. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove`, and the report directory closed with `transfer.js close`, only when the run completed, and the removal SHALL target only this run's own directory, the `dir` of its `start` event; no other directory of the SAI temp root SHALL be removed, and the directory of an earlier stopped run SHALL stay. A stopped, escalated, or unanswered run SHALL keep both directories and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue.
 
 #### Scenario: Completed run removes its directory
 
 - **WHEN** a run closes `completed`
-- **THEN** its run directory is removed, and a failed removal only adds a line naming the kept path
+- **THEN** its run directory is removed and its report directory closed, and a failed removal only adds a line naming the kept path
 
 #### Scenario: Escalated run keeps its directory
 
 - **WHEN** a run closes `escalated`
-- **THEN** its run directory is kept and the closing report names its path
+- **THEN** its run directory and report directory are kept and the closing report names their paths
 
 #### Scenario: Earlier stopped run directory stays
 
@@ -45,7 +50,7 @@ The merge coordinator SHALL keep one `sai-state` session per run under the key `
 
 ### Requirement: Interrupted merge run resumes from the store and the git state
 
-After a context compaction, or when the start finds a run of the named branch in progress, the coordinator SHALL emit `status`, read the files the state references, and compare them with the git state (`MERGE_HEAD` or the rebase directory, unmerged and staged paths, and `git log`); the git state SHALL win over the store. It SHALL continue at the first unfinished part of the stop: a written but unstaged resolution is reviewed as it stands, an unwritten stop starts at the strategy, and an operation with nothing left to resolve goes to final verification. Without the store, it SHALL rebuild from the git state and the newest `merge-*` run directory holding `provenance.json` for the branch, and a missing run directory SHALL leave the baseline unavailable. A `running` or `escalated` stored run whose git state shows no merge or rebase in progress SHALL be closed `stopped` and reported as ended outside the run. A lost worker handle SHALL be replaced by a new worker, spending no attempt, that receives a hand-over file, and an `escalated` stage SHALL ask its question again.
+After a context compaction, or when the start finds a run of the named branch in progress, the coordinator SHALL emit `status`, read the files the state references, and compare them with the git state (`MERGE_HEAD` or the rebase directory, unmerged and staged paths, and `git log`); the git state SHALL win over the store. It SHALL continue at the first unfinished part of the stop: a written but unstaged resolution is reviewed as it stands, an unwritten stop starts at the strategy, and an operation with nothing left to resolve goes to final verification. Without the store, it SHALL rebuild from the git state and the newest `merge-*` run directory holding `provenance.json` for the branch, and a missing run directory SHALL leave the baseline unavailable. A `running` or `escalated` stored run whose git state shows no merge or rebase in progress SHALL be closed `stopped` and reported as ended outside the run. A lost worker handle SHALL be replaced by a new worker, spending no attempt, that receives a hand-over file and the report directory recorded in the store (a new one opened when the store is unavailable), and an `escalated` stage SHALL ask its question again.
 
 #### Scenario: Operation ended outside the run
 
@@ -56,6 +61,11 @@ After a context compaction, or when the start finds a run of the named branch in
 
 - **WHEN** the store and the git state disagree about the current stop
 - **THEN** the coordinator continues from the git state
+
+#### Scenario: A resumed run reuses its report directory
+
+- **WHEN** a resumed run creates a new worker after its handle was lost
+- **THEN** the new worker's first message opens with the `--report-dir` line naming the directory that `status` lists
 
 ### Requirement: Merge coordinator states the merge-run event shape
 

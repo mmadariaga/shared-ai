@@ -12,10 +12,10 @@ Read the bundle of the snapshot in the brief. For every affected file and region
 
 When commit intent cannot decide between two sides (they change the same behavior incompatibly and no rule or evidence prefers one), do not pick. Report the conflict as an escalation with what each side does, what each choice gives up, and what you would recommend.
 
-Write the report as a YAML file:
+Save the report as a YAML file:
 
 ```yaml
-status: done | escalate | blocked
+status: completed | failed
 summary: string
 changed_files: []
 strategy: string
@@ -25,6 +25,6 @@ escalations: {conflict_id: string, sides: string, recommendation: string}[]
 
 - `strategy`: Markdown covering every affected file in order. Per file: its category, the outcome per region with the rule or pattern that settles an obvious one, and for a semantic one the objectives of both sides, the facts and inferences, what the outcome keeps and gives up, and the risks.
 - `decisions`: one entry per semantic region, and one per whole-side file. `ours` and `theirs` are git stages (see Sides).
-- `status`: `escalate` when any escalation exists, `blocked` when the bundle or snapshot cannot be read, `done` otherwise. You write nothing to the repository in this step, so `changed_files` is empty.
+- `status`: `failed` when the bundle or snapshot cannot be read, with the blocker and the affected path in `summary` and no `strategy`, `decisions`, or `escalations`; `completed` otherwise, with a non-empty `escalations` when any escalation exists. You write nothing to the repository in this step, so `changed_files` is empty.
 
 When a later message gives new evidence, a review finding, or a corrected snapshot, rebuild the strategy from what you already retained and the new input, and report again.
