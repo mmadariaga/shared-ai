@@ -5,6 +5,7 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
+Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every commit worker report.
 Fetch `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/command-execution.md` and follow it exactly.
 Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-commit-worker` stretch.
@@ -19,12 +20,13 @@ Commit the staged changes with a Conventional Commits message that the user auth
 ## Start
 
 1. Keep `arguments_value` byte-for-byte and hand it to the worker unchanged. The only fact you read from it yourself is whether the user typed `--allow-attribution`.
-2. Create the worker: `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.` The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and `arguments_value` goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles).
-3. Open the guard window: take a `snapshot` and hold the returned SHA as `guard_base` for the invocation.
+2. Open the report directory of the run with `transfer.js open --harness <claude|opencode>` (resolved per `tool-resolution.md`) and keep the `dir` it returns in the conversation, as the run's only memory of it. When the tool cannot open the directory, print its error and end the run before any dispatch, with the staged changes untouched.
+3. Create the worker: `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.` The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and `arguments_value` goes to the same worker in the next message, which opens with the line `--report-dir <report directory>`. A worker that returns no ready is an obstacle (see Obstacles).
+4. Open the guard window: take a `snapshot` and hold the returned SHA as `guard_base` for the invocation.
 
 ## The run
 
-The worker returns its result as its final message, in the shape its card defines: `status: needs_input` with `summary`, `question`, and ordered `options`; or `status: completed`, `failed`, or `cancelled` with `summary`. Read each result before acting on it. A result in another shape is an obstacle.
+The worker saves each report as a new file in the report directory and returns only the reference `{path, sha256}` and its `warming` line. Before you read any field, validate every response after ready with `worker-report-validator.js` (resolved per `tool-resolution.md`), as `worker-report-transport.md` says: `validate --kind terminal --command commit --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`, and act on the `payload` of an accepted verdict without reading the file again. When the validator cannot be resolved, the run stops on that obstacle: you never interpret a report by reading it. An accepted report is `status: needs_input` with `summary`, `question`, and ordered `options`, or `status: completed`, `failed`, or `cancelled` with `summary`. A report that does not validate, including a result carried inline, is an obstacle.
 
 **Guard.** `verify` the window against `guard_base` before each boundary of `no-commit-guard.md`: before presenting a `needs_input` result, and before you run `apply`. On a `violation` verdict, remediate exactly as the policy prescribes, then continue. Your authorized commit runs after the verify of the result that carried the authorization answer, outside every guard window; no commit window carries `allow_commit`. A new stretch of the worker after an answer opens a new window with a fresh `snapshot`.
 
@@ -46,10 +48,10 @@ On the worker's `completed` result after `yes` or `Allow on this session`, run `
 
 ## Obstacles
 
-Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. This command has no run state: keep the attempt count in the conversation, and name each obstacle `worker` or `commit-tool`. An obstacle here is a worker that returns no ready, returns no readable result, stays silent, or drifts from its instruction; or a `commit.js` call that fails for a reason other than the planned stops above. The pushed-amend confirmation, the sensitive-file confirmation, the authorization question, a declined answer, and the validation violations are planned stops, not obstacles. When escalating, the options carry no retry of `apply` that the user did not choose, and one option leaves the staged changes exactly as they are.
+Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai/policies/obstacle-escalation.md`. This command has no run state: keep the attempt count in the conversation, and name each obstacle `worker` or `commit-tool`. An obstacle here is a worker that returns no ready, returns no readable or valid report, stays silent, or drifts from its instruction; or a `commit.js` call that fails for a reason other than the planned stops above. The pushed-amend confirmation, the sensitive-file confirmation, the authorization question, a declined answer, and the validation violations are planned stops, not obstacles. When escalating, the options carry no retry of `apply` that the user did not choose, and one option leaves the staged changes exactly as they are.
 
-Dispose the replaced worker first, as `worker-lifecycle.md` says. A replacement worker receives a hand-over written by you: the original `arguments_value`, the questions already answered with their answer values, and the symptom. It starts again from the ready handshake.
+The first invalid report goes back to the same worker with the validator's errors, as a request for a corrected report that performs no work again, and a second consecutive invalid report from that worker replaces it; each counts as one attempt of the `worker` obstacle. Dispose the replaced worker first, as `worker-lifecycle.md` says. A replacement worker receives a hand-over written by you: the original `arguments_value`, the questions already answered with their answer values, and the symptom. It starts again from the ready handshake, and the first message after it opens with the same `--report-dir` line.
 
 ## Close
 
-The run closes when the goal is met, when a stop printed, or when the user chose to stop or dismissed an escalation. Dispose the worker first, as `worker-lifecycle.md` says, so that no tool call follows the closing text: its last use is the result that carried the authorization answer, and the executed commit ends its stretch. After an executed commit, print the worker-authored summary verbatim, then exactly `Commit done.`, and stop. Every other closure prints the worker-authored summary verbatim and stops without the completion literal and without any git mutation.
+The run closes when the goal is met, when a stop printed, or when the user chose to stop or dismissed an escalation. Dispose the worker first, as `worker-lifecycle.md` says, so that no tool call follows the closing text: its last use is the result that carried the authorization answer, and the executed commit ends its stretch. Then close the report directory with `transfer.js close --dir <report directory>`, unless the run stopped on an unresolved obstacle, which keeps it. After an executed commit, print the worker-authored summary verbatim, then exactly `Commit done.`, and stop. Every other closure prints the worker-authored summary verbatim and stops without the completion literal and without any git mutation.

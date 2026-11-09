@@ -30,10 +30,10 @@ Search the repository, including outside `docs/`, for the old identifiers of ren
 
 ## Report
 
-Write the report as a YAML file:
+Save the report as a YAML file:
 
 ```yaml
-status: done | blocked
+status: completed | failed
 summary: string
 changed_files: []
 applicability: not-applicable | no-collision | repair-required | escalation-required
