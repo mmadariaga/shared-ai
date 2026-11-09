@@ -85,3 +85,12 @@ When segment 2 completes, `/sai-build` SHALL read `openspec/changes/{name}/revie
 
 - **WHEN** segment 2 completes with a `review.md` whose tally lists no findings
 - **THEN** the close prints the zero counts, prints none of the lists, and ends with `Build done.`
+
+### Requirement: /sai-build reads the empty diff from the review report outcome
+
+`/sai-build` SHALL treat segment 2 as having found no changes against the parent branch only when segment 2's accepted review report carries `outcome: no-changes`, and SHALL never decide it from the summary text. Such a segment 2 SHALL count as completed for the decision records, and the run SHALL say that no review ran because there was nothing to review and end with exactly `Build done.`.
+
+#### Scenario: Segment 2 reports no changes
+
+- **WHEN** segment 2's accepted review report is `completed` with `outcome: no-changes`
+- **THEN** `/sai-build` says that no review ran because there was nothing to review and ends with exactly `Build done.`

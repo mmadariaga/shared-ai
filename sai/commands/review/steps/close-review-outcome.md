@@ -1,6 +1,6 @@
 # Review Step — Close Review Outcome
 
-Active step: close-review-outcome. The step is done when `review.md` is saved, passes the verification in step 4, and the `completed` result below is returned.
+Active step: close-review-outcome. The step is done when `review.md` is saved, passes the verification in step 4, and the `completed` report below is saved and its reference returned.
 
 Fetch `@sai/commands/review/review-report.template.md`
 
@@ -26,7 +26,7 @@ You have the last word: accept or reject each verdict on its own. The report sho
 
 ## 4. Save and return
 
-Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Before returning `completed`, verify that `review.md` exists, is non-empty, and carries an identifier on every finding, the three `Surface touched` lines, and a closing `Summary:` tally whose counts match its findings. Then return `completed`: `review_path` is the report path, `counts` the severity counts of the `Summary:` tally, `changed_files` the report path alone, and `summary` carries the severity counts, the top three Critical findings when present, the report path, and the parent-branch statement. `recommended_audits` carries this block verbatim, with every line resolved from the triage passes:
+Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Before returning `completed`, verify that `review.md` exists, is non-empty, and carries an identifier on every finding, the three `Surface touched` lines, and a closing `Summary:` tally whose counts match its findings. Then save the `completed` report and return its reference, as `worker.md` § Results says: `review_path` is the report path, `counts` the severity counts of the `Summary:` tally, `changed_files` the report path alone, and `summary` carries the severity counts, the top three Critical findings when present, the report path, and the parent-branch statement. `recommended_audits` carries this block verbatim, with every line resolved from the triage passes:
 
 ```
 ## Recommended Audits

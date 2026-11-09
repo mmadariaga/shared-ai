@@ -36,6 +36,8 @@ Report the options aimed only at an audit and given to a run in which that audit
 
 ## Triage
 
+When segment 1's accepted report carries `outcome: no-changes`, the diff is empty: run no triage, no audit, no Assessment pass, and no fix segment, even with `--full` or `--path`, and go to the Close. The Error close below does not apply to it.
+
 With `--full` or `--path`, no triage runs: all three audits are activated, because those options ask to look beyond the diff, and the Error close below does not apply.
 
 Otherwise, after segment 1 completes, read exactly three values from `openspec/changes/{name}/review.md`: the `**Surface touched:**` field under each of `## Security Surface Triage`, `## Performance Surface Triage`, and `## Accessibility Surface Triage`. A value of exactly `Yes` activates the matching audit. A value of exactly `No` leaves it inactive. Any other value is illegible: that audit does not run, and the Close carries a warning line naming it. An illegible value gives no authority to correct it.
@@ -104,7 +106,7 @@ After the last segment that ran ends, print the report of each segment. A segmen
   - With zero findings, report the zero counts and print none of the finding lists.
   - When the startable check failed, print `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`
   - End with exactly `Deep review done.`
-- **Segment 1 found no changes against the parent branch**: say that no review ran, because there was nothing to review, and that no audit, Assessment pass, or fix ran even with `--full` or `--path`. Print the unused-options lines for every option given that only an audit declares, then end with exactly `Deep review done.`
+- **Segment 1 found no changes against the parent branch** (its accepted report carries `outcome: no-changes`; read the field, never the summary text): say that no review ran, because there was nothing to review, and that no audit, Assessment pass, or fix ran even with `--full` or `--path`. Print the unused-options lines for every option given that only an audit declares, then end with exactly `Deep review done.`
 - **Segment 1 failed, was stopped, or could not start**: print its report and end the run without a closing line.
 - **Error close**: it ended the run already, without a closing line.
 
