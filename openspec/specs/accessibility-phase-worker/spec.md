@@ -71,16 +71,16 @@ The worker SHALL write and verify only `openspec/changes/{change-name}/accessibi
 
 ### Requirement: Accessibility lifecycle results carry no time field
 
-The accessibility worker SHALL return `step-done`, `question`, and terminal results with no time field, while retaining static review, runtime, and report-only write boundaries.
+The accessibility worker SHALL save progress reports (named with the `progress-` prefix, carrying `step_ids`), `needs_input` reports, and terminal `completed` and `failed` reports as files in the report directory, return each as a `{path, sha256}` reference, and carry no time field in any report, while retaining static review, runtime, and report-only write boundaries.
 
 #### Scenario: Accessibility reports a milestone
 - **WHEN** an accessibility step completes
-- **THEN** its `step-done` result carries the step ids and no time field.
+- **THEN** its progress report carries the step ids and no time field, and the worker returns only its reference.
 
 #### Scenario: Report generation would modify production files
 - **WHEN** a proposed audit action would modify production code, components, styles, configuration, or runtime state
 - **THEN** the worker rejects that action
-- **AND** it continues to restrict writes to `accessibility.md`
+- **AND** it continues to restrict writes to `accessibility.md` and its reports in the report directory
 
 ### Requirement: Accessibility findings carry severity-prefixed identifiers and a closing summary tally
 

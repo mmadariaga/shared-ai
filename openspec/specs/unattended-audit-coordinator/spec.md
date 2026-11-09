@@ -32,11 +32,11 @@ The coordinator SHALL drop every `--fast-track` token silently, with no banner. 
 
 ### Requirement: The audit coordinator runs one worker cycle per audit
 
-The coordinator SHALL run each audit as a cycle for one worker: spawn a `sai-state` session keyed `{audit}-{name}`, `reset` the `{audit}-steps@1` machine, create the audit's named worker with a ready-only dispatch, send the task in the next message opening with `Active step: <stage> — follow <pointer>` and naming the change, the options as given, and `openspec/changes/{name}/{audit}.md`, emit every `step-done` batch to the machine, and send the next pointer from the response. When the store fails, it SHALL send pointers from the static step order the worker card lists. The cycle SHALL hold no state outside its own session, so that another command can drive several cycles at once while issuing every `sai-state` call and every commit one at a time. The coordinator SHALL `close` the session before ending in any outcome.
+The coordinator SHALL run each audit as a cycle for one worker: spawn a `sai-state` session keyed `{audit}-{name}`, `reset` the `{audit}-steps@1` machine, open the cycle's report directory, create the audit's named worker with a ready-only dispatch, send the task in the next message opening with `--report-dir <report directory>` and then `Active step: <stage> — follow <pointer>` and naming the change, the options as given, and `openspec/changes/{name}/{audit}.md`, pass every accepted progress report file unchanged to `sai-state emit <id> {audit}-steps@1 --progress --input-file <report file>`, never rewriting the payload, and send the next pointer from the response. When the store fails, it SHALL send pointers from the static step order the worker card lists. The cycle SHALL hold no state outside its own session and the report directory path kept in the conversation, so that another command can drive several cycles at once while issuing every `sai-state` call and every commit one at a time. The coordinator SHALL `close` the session before ending in any outcome.
 
 #### Scenario: A skip batch advances the machine
-- **WHEN** the worker returns `step-done` with several step ids because it skipped a stage
-- **THEN** the coordinator emits all of them to `{audit}-steps@1` and sends the pointer of the next step that still has work
+- **WHEN** the worker returns a progress report with several step ids because it skipped a stage
+- **THEN** the coordinator validates it, passes the same report file to the progress emit of `{audit}-steps@1`, and sends the pointer of the next step that still has work
 
 #### Scenario: The store fails
 - **WHEN** a `sai-state` emit fails
@@ -44,18 +44,22 @@ The coordinator SHALL run each audit as a cycle for one worker: spawn a `sai-sta
 
 ### Requirement: Audit workers share one worker-common contract
 
-`sai-5-security-worker`, `sai-6-performance-worker`, and `sai-7-accessibility-worker` SHALL load `sai/commands/audit/worker-common.md`, which defines the `event: ready` handshake, the closed results `step-done`, `question`, `completed` (with `report_path` and `counts`), and `failed`, and the boundaries: write only `openspec/changes/{change-name}/{audit}.md`, fix no finding, run no repository-changing git command and no `openspec` command, and dispatch only `budget-explorer`. Each worker card SHALL keep only its audit's plan of step ids and batching rules. The security `counts` SHALL carry no `informational` key, and a Not Applicable report SHALL carry all-zero counts. The worker bindings SHALL render from the standalone worker template with only the create and continue calls.
+`sai-5-security-worker`, `sai-6-performance-worker`, and `sai-7-accessibility-worker` SHALL load `sai/commands/audit/worker-common.md`, which defines the `event: ready` handshake, follows the author side of `sai/policies/worker-report-transport.md`, and defines the reports: a progress report named with the `progress-` prefix carrying `event: progress`, `step_ids`, and empty `changed_files`; a `needs_input` report carrying `question` and `options`; a `completed` report carrying `report_path` and `counts`; and a `failed` report. The worker SHALL strip the `--report-dir` line of its first task message, save every report as a new file in that directory with `transfer.js put`, and return only the `{path, sha256}` reference with its `warming` line; a message that carries its result inline, and the retired `step-done` and `question` events, SHALL be invalid reports. The boundaries SHALL be: write only `openspec/changes/{change-name}/{audit}.md` plus the report drafts and saved reports in the report directory, fix no finding, run no repository-changing git command and no `openspec` command, and dispatch only `budget-explorer`. Each worker card SHALL keep only its audit's plan of step ids and batching rules. The security `counts` SHALL carry no `informational` key, and a Not Applicable report SHALL carry all-zero counts. The worker bindings SHALL render from the standalone worker template with only the create and continue calls.
 
 #### Scenario: A worker writes outside its report
 - **WHEN** an audit worker would need to edit production code to fix a finding
 - **THEN** it records the finding in the report and changes no other file
 
+#### Scenario: A worker returns a report reference
+- **WHEN** an audit worker completes a step
+- **THEN** it saves a new `progress-` report file in the report directory and returns only the `{path, sha256}` printed by `transfer.js put`
+
 ### Requirement: Worker questions become assumptions unless they change the report
 
-The coordinator SHALL answer a worker `question` when the change, its artifacts, or the repository answer it, and SHALL record that answer as an assumption in the closing report. A question whose answer would not change the report SHALL be answered with the coordinator's best reading and recorded as an assumption. Only a question that nothing answers and whose answer would change the report SHALL be escalated to the user through the native picker.
+The coordinator SHALL answer a worker `needs_input` report's `question` when the change, its artifacts, or the repository answer it, and SHALL record that answer as an assumption in the closing report. A question whose answer would not change the report SHALL be answered with the coordinator's best reading and recorded as an assumption. Only a question that nothing answers and whose answer would change the report SHALL be escalated to the user through the native picker, with the worker's `options` or options the coordinator writes that each name a different way forward.
 
 #### Scenario: The repository answers a question
-- **WHEN** the worker asks which parent branch to diff against and the repository configuration answers it
+- **WHEN** the worker returns a `needs_input` report asking which parent branch to diff against and the repository configuration answers it
 - **THEN** the coordinator answers the worker and lists the answer as an assumption in the closing report, asking the user nothing
 
 ### Requirement: Each audit verifies and commits only its report
@@ -76,7 +80,7 @@ On a `completed` result the coordinator SHALL verify the report before committin
 
 ### Requirement: Audit obstacles have a bounded attempt budget
 
-The coordinator SHALL treat an invalid or unreadable report, a worker that returns no ready, a silent worker, and a drifting worker as obstacles, each with a budget of 3 attempts, where an attempt is a response with an approach different from the previous one: a corrected instruction to the same worker naming the defect, a replacement worker that receives a hand-over note and no prior history and audits from the first step, or a mechanical repair that never adds, removes, or rewrites a finding. An exhausted budget SHALL escalate through the native picker with options that each name a different way forward and one that stops the run; a stop or a dismissed question SHALL end the run with nothing committed.
+The coordinator SHALL treat a worker report that does not validate, an invalid or unreadable audit report (the Verify check failing), a worker that returns no ready, a silent worker, and a drifting worker as obstacles, each with a budget of 3 attempts, where an attempt is a response with an approach different from the previous one: a corrected instruction to the same worker naming the defect, a replacement worker that receives a hand-over note and no prior history, opens its first task message with the same `--report-dir` line, and audits from the first step, or a mechanical repair that never adds, removes, or rewrites a finding. The first invalid worker report SHALL go back to the same worker with the validator's errors, and a second consecutive invalid report from that worker SHALL replace it, each counting as one attempt. An exhausted budget SHALL escalate through the native picker with options that each name a different way forward and one that stops the run; a stop or a dismissed question SHALL end the run with nothing committed.
 
 #### Scenario: A tally mismatch is repaired
 - **WHEN** the `audit-report` check fails only because the `Summary:` tally miscounts the findings
@@ -85,6 +89,10 @@ The coordinator SHALL treat an invalid or unreadable report, a worker that retur
 #### Scenario: The budget is exhausted
 - **WHEN** three different approaches fail to produce a valid report
 - **THEN** the coordinator states what happened and what it tried, commits nothing, and asks the user through the picker how to continue or stop
+
+#### Scenario: Two consecutive invalid reports replace the worker
+- **WHEN** the same audit worker returns a second consecutive report that does not validate
+- **THEN** the coordinator disposes it and creates a replacement whose first task message opens with the same `--report-dir` line, counting each invalid report as one attempt
 
 ### Requirement: An audit run regenerates its report from scratch
 
@@ -101,3 +109,27 @@ A new audit run SHALL regenerate the report completely and SHALL NOT resume an i
 #### Scenario: Reset names the first filed step
 - **WHEN** the coordinator resets `security-steps@1`
 - **THEN** the response points at `sai/commands/security/steps/discover-module-map.md` and the worker runs `resolve-security-scope` inline before it
+
+### Requirement: The audit coordinator validates every audit report before acting
+
+The audit coordinator SHALL follow the receiver side of `sai/policies/worker-report-transport.md`. Before any dispatch of a cycle it SHALL open one report directory with `transfer.js open --harness <claude|opencode>` and keep the returned path in the conversation; when the directory cannot be opened it SHALL print the error and end the run before any dispatch, writing nothing. The task message, and the first message of a replacement worker, SHALL open with the line `--report-dir <report directory>`, and no later message SHALL carry it. Before it reads any field of a response after ready, the coordinator SHALL validate the returned reference with `worker-report-validator.js`: a file whose name starts with `progress-` with `--kind progress`, and any other file with `--kind terminal --command security|performance|accessibility` for its audit, both against the cycle's report directory. It SHALL act only on the `payload` of an accepted verdict, without reading the file again. When the validator cannot be resolved, the run SHALL stop on that obstacle without interpreting the report. A `cancelled` report SHALL be an obstacle of the run. The coordinator SHALL close the report directory with `transfer.js close` when the run closes with its report verified, and a failed, stopped, or unanswered run SHALL keep it. Claude Code and opencode SHALL behave identically.
+
+#### Scenario: The task message carries the report directory
+
+- **WHEN** the coordinator sends the task message to a newly created audit worker
+- **THEN** the message opens with `--report-dir <report directory>`, followed by the `Active step:` pointer line, the change, the options, and the report path
+
+#### Scenario: The report directory cannot be opened
+
+- **WHEN** `transfer.js open` fails at the start of an audit run
+- **THEN** the coordinator prints its error and ends the run before creating the worker, writing nothing
+
+#### Scenario: A terminal report is validated with its audit command
+
+- **WHEN** the performance worker returns the reference of a `completed` report
+- **THEN** the coordinator validates it with `--kind terminal --command performance` before it reads `report_path` or `counts`, and runs the Verify check only after acceptance
+
+#### Scenario: A retired inline event is an invalid report
+
+- **WHEN** an audit worker returns `event: step-done` or `event: question` inline instead of a report reference
+- **THEN** the coordinator treats the message as an invalid report and does not advance the step machine

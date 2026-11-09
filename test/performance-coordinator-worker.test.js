@@ -184,7 +184,7 @@ test('performance transport: the audit coordinator carries arguments_value and t
   const bindings = [matrixBinding('claude', 'performance'), matrixBinding('opencode', 'performance')];
 
   assert.match(coordinator, /one string, `arguments_value`/);
-  assert.match(coordinator, /The task message opens with the first pointer line/);
+  assert.match(coordinator, /then the first pointer line, `Active step: <stage> — follow <pointer>`/);
   assert.doesNotMatch(worker, /arguments_value/, 'the worker receives a brief, not the raw argument string');
   for (const source of [coordinator, worker, ...bindings]) {
     assert.doesNotMatch(source, /wrapper_echo_value/,
