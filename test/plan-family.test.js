@@ -123,7 +123,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     ],
     'sai/commands/plan/cycle.md': [
       '@sai/commands/plan/worker-common.md', '@sai/policies/incremental-review.md', '@sai/policies/artifact-review-contract.md',
-      '@sai/policies/obstacle-escalation.md', '@sai/policies/cache-warming.md',
+      '@sai/policies/obstacle-escalation.md', '@sai/policies/cache-warming.md', '@sai/policies/worker-report-transport.md',
     ],
   };
   for (const [file, targets] of Object.entries(allowed)) {
@@ -222,8 +222,8 @@ test('the shared cycle owns the goal-driven rules for questions, checks, review,
 test('the worker cards own their write surfaces and never ask the user or run git', () => {
   const common = read('sai/commands/plan/worker-common.md');
   assert.match(common, /event: ready/);
-  assert.match(common, /status: done \| needs_input \| blocked/);
-  assert.match(common, /return that path as your final message, with the `warming: true\|false` line/);
+  assert.match(common, /status: completed \| needs_input \| failed \| cancelled/);
+  assert.match(common, /Return only the `\{path, sha256\}` that `put` prints as your final message, with the `warming: true\|false` line/);
   assert.match(common, /Run no git command that changes the repository, and create no commit/);
   assert.match(common, /ask nothing of the user, because nobody is there to answer/);
 

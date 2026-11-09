@@ -45,4 +45,4 @@ The segment's work is done when:
 - every Open Question is answered or recorded as the step says;
 - your last report lists every path you wrote in `changed_files`.
 
-A failure to write, read back, or verify any of the three is `blocked`, naming the artifact, the condition that failed, and the resulting incomplete state. A contradiction in `proposal.md` or `specs/**` that you cannot settle under the design step's spec-problem handling is `blocked` too, naming the dependency and the affected design decision.
+A failure to write, read back, or verify any of the three is `failed`, naming the artifact, the condition that failed, and the resulting incomplete state. A contradiction in `proposal.md` or `specs/**` that you cannot settle under the design step's spec-problem handling is `failed` too, naming the dependency and the affected design decision.

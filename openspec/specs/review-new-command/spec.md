@@ -43,11 +43,11 @@ When the change name is empty, `/sai-4-review` SHALL take the only change direct
 
 ### Requirement: Fresh review worker guided by a step machine
 
-The coordinator SHALL create `sai-4-review-worker` once per run, through a binding rendered from the review role's binding template, with a creation dispatch that carries only the ready prompt; the worker SHALL return `event: ready` with empty `changed_files`, and the task SHALL arrive in the next message to the same worker. The worker's steps SHALL be delivered by pointer from the `review-steps@1` linear step machine, registered in `sai-state/registry.js`, whose steps are the fileless `review-intake` followed by `establish-diff-scope`, `resolve-review-analysis`, and `close-review-outcome`, each at `sai/commands/review/steps/{step}.md`. When the `sai-state` store fails, the coordinator SHALL send the pointers from that static order. The worker MAY dispatch only `budget-explorer`, with a shared cap of eight dispatches per review.
+The coordinator SHALL create `sai-4-review-worker` once per run, through a binding rendered from the review role's binding template, with a creation dispatch that carries only the ready prompt; the worker SHALL return `event: ready` with empty `changed_files`, and the task SHALL arrive in the next message to the same worker. The worker's steps SHALL be delivered by pointer from the `review-steps@1` linear step machine, registered in `sai-state/registry.js`, whose steps are the fileless `review-intake` followed by `establish-diff-scope`, `resolve-review-analysis`, and `close-review-outcome`, each at `sai/commands/review/steps/{step}.md`. The worker SHALL report each completed step as a `progress-` report file, which the coordinator validates and passes to the machine with `sai-state emit <id> review-steps@1 --progress --input-file <report file>`. When the `sai-state` store fails, the coordinator SHALL send the pointers from that static order. The worker MAY dispatch only `budget-explorer`, with a shared cap of eight dispatches per review.
 
 #### Scenario: Store failure falls back to the static order
 
-- **WHEN** the `sai-state` emit for `review-steps@1` fails after the worker returns `step-done` for `establish-diff-scope`
+- **WHEN** the `sai-state` emit for `review-steps@1` fails after the coordinator accepts the worker's progress report for `establish-diff-scope`
 - **THEN** the coordinator sends `Active step: resolve-review-analysis` with the pointer to `sai/commands/review/steps/resolve-review-analysis.md` and the run continues.
 
 ### Requirement: Parent branch and empty diff
@@ -79,12 +79,17 @@ The worker SHALL write `review.md` in the format of `sai/commands/review/review-
 
 ### Requirement: Coordinator verification and bounded obstacle handling
 
-The coordinator SHALL verify the returned `review.md` itself, in place of the worker-report validator: the file exists and is non-empty, every finding heading carries an identifier whose letter matches its severity heading, the three `Surface touched` lines are present, the `Summary:` tally matches the findings under each severity heading, and the worker's `counts` agree with the tally. An invalid report, a worker that returns no ready, or a silent or drifting worker SHALL be an obstacle with a budget of 3 attempts, each with a different approach (a corrected instruction, a new worker with a hand-over note, or a mechanical repair that adds, removes, or rewrites no finding). An exhausted budget SHALL escalate at once through the native picker with coordinator-written options that include stopping the run; a stop or an unanswered question SHALL end the run without a closing line and without a commit.
+After `worker-report-validator.js` accepts the worker's `completed` report, the coordinator SHALL verify the returned `review.md` itself: the file exists and is non-empty, every finding heading carries an identifier whose letter matches its severity heading, the three `Surface touched` lines are present, the `Summary:` tally matches the findings under each severity heading, and the worker's `counts` agree with the tally. A report that does not validate (identifier `review-report`), an invalid `review.md`, a worker that returns no ready, or a silent or drifting worker SHALL be an obstacle with a budget of 3 attempts, each with a different approach (a corrected instruction, a new worker with a hand-over note, or a mechanical repair that adds, removes, or rewrites no finding). The first invalid report SHALL go back to the same worker with the validator's errors, and a second consecutive invalid report from that worker SHALL replace it. An exhausted budget SHALL escalate at once through the native picker with coordinator-written options that include stopping the run; a stop or an unanswered question SHALL end the run without a closing line and without a commit.
 
 #### Scenario: Tally mismatch is repaired
 
 - **WHEN** the worker returns a `review.md` whose `Summary:` tally miscounts its findings
 - **THEN** the coordinator treats it as an obstacle and corrects it within at most 3 attempts before committing anything.
+
+#### Scenario: An invalid report goes back to the same worker first
+
+- **WHEN** the review worker's report fails validation for the first time
+- **THEN** the coordinator sends the validator's errors to the same worker as a corrected instruction, counted as an attempt of the `review-report` obstacle
 
 ### Requirement: Review report commit
 

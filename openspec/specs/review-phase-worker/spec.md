@@ -86,17 +86,17 @@ The worker SHALL execute passes 1–11 against the full diff and change artifact
 
 ### Requirement: Worker writes and verifies only the review artifact
 
-The worker SHALL write only `openspec/changes/{change-name}/review.md` using the command-owned template. The report SHALL carry one provenance line with the parent branch, commit range and date, the three surface-triage sections each with its `**Surface touched:**` line, the findings with severity-prefixed identifiers and titles in their headings, and the closing `Summary:` tally. It SHALL carry no Summary paragraph, Verdict, Findings count, Coverage Notes section, or `Resilience:` line. The close step SHALL be the single home of the verification before `completed`: it SHALL verify that `review.md` exists, is non-empty, carries an identifier on every finding, carries the three `Surface touched` lines, and closes with a `Summary:` tally whose counts match its findings. The worker card SHALL NOT list a separate verification. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines. The worker SHALL NOT modify production code or any other artifact. `changed_files` SHALL contain only the report path.
+The worker SHALL write only `openspec/changes/{change-name}/review.md` using the command-owned template, besides the report drafts and saved reports in the report directory outside the repository. The report SHALL carry one provenance line with the parent branch, commit range and date, the three surface-triage sections each with its `**Surface touched:**` line, the findings with severity-prefixed identifiers and titles in their headings, and the closing `Summary:` tally. It SHALL carry no Summary paragraph, Verdict, Findings count, Coverage Notes section, or `Resilience:` line. The close step SHALL be the single home of the verification before `completed`: it SHALL verify that `review.md` exists, is non-empty, carries an identifier on every finding, carries the three `Surface touched` lines, and closes with a `Summary:` tally whose counts match its findings. The worker card SHALL NOT list a separate verification. The worker SHALL then save the `completed` report, carrying the role fields `review_path`, `counts`, and `recommended_audits` beside the common fields, and return its reference. The completed report's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines. The worker SHALL NOT modify production code or any other artifact. `changed_files` SHALL contain only the report path.
 
 #### Scenario: Review report is generated
 - **WHEN** review passes 1–11 are complete
 - **THEN** `review.md` exists, is non-empty, and contains the provenance line, the three `Surface touched` lines, the finding identifiers, and the closing summary tally
-- **AND** the completed payload reports the canonical change name and only the report path
+- **AND** the completed report names the canonical change name and lists only the report path in `changed_files`
 
 #### Scenario: Worker returns completion
 - **WHEN** `review.md` is verified from disk
-- **THEN** the worker returns `completed` with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
-- **AND** it returns no report contents in the lifecycle payload
+- **THEN** the worker saves a `completed` report with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
+- **AND** it returns only the report's `{path, sha256}` reference, with no report contents in the message
 
 #### Scenario: Review with no findings writes a valid report
 - **WHEN** the review produces no findings
@@ -109,11 +109,11 @@ The worker SHALL write only `openspec/changes/{change-name}/review.md` using the
 
 ### Requirement: Review lifecycle results carry no time field
 
-The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining passes 1–11, report generation, and triage ownership; the CLI response's `received_at` is the only observed time.
+The review worker SHALL save progress and terminal reports with no time field, while retaining passes 1–11, report generation, and triage ownership; the CLI response's `received_at` is the only observed time.
 
 #### Scenario: Review reports a milestone
 - **WHEN** a review milestone completes
-- **THEN** its progress result carries the step ids and changed paths and no time field.
+- **THEN** its progress report carries the step ids and changed paths and no time field.
 
 ### Requirement: Review findings use the shared audit severity vocabulary
 
@@ -228,3 +228,17 @@ The review worker contract `sai/commands/review/worker.md` SHALL state the activ
 #### Scenario: Common file carries no worker rule
 - **WHEN** `sai/commands/review/steps/common.md` is read
 - **THEN** it contains no step-delivery pointer rule, no joint first progress event rule, and no write-scope statement
+
+### Requirement: Review worker reports through the shared report transport
+
+The review worker SHALL follow the author side of `sai/policies/worker-report-transport.md`. Its first task message SHALL open with the line `--report-dir <path>`, which the worker strips and keeps for the whole run. The worker SHALL save every report as a new file under a unique name in that report directory with `transfer.js put` and return only the `{path, sha256}` reference that `put` prints, with its warming line beside it when the warming switch reached it. After `establish-diff-scope` and after `resolve-review-analysis` it SHALL save a progress report whose file name starts with `progress-`, carrying `event: progress`, `step_ids`, and an empty `changed_files`: `[review-intake, establish-diff-scope]` in the first and `[resolve-review-analysis]` in the second. When the diff is empty, it SHALL save a `completed` report with `outcome: no-changes`, `changed_files: []`, and the summary `No changes detected against {parent-branch}. Nothing to review.`, and write nothing else. A result carried inline, the retired `event: step-done`, and `no-changes` used as a status SHALL be invalid reports.
+
+#### Scenario: The worker reports step progress as a file
+
+- **WHEN** the review worker finishes `establish-diff-scope` on a non-empty diff
+- **THEN** it saves a `progress-` report with `step_ids: [review-intake, establish-diff-scope]` and `changed_files: []` and returns only its reference
+
+#### Scenario: An empty diff is a completed report with an outcome
+
+- **WHEN** `git diff --name-status {parent-branch}...HEAD` is empty
+- **THEN** the worker saves a `completed` report with `outcome: no-changes`, `changed_files: []`, and the summary `No changes detected against {parent-branch}. Nothing to review.`, returns its reference, and writes no `review.md`

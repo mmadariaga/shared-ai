@@ -1,6 +1,6 @@
 # Design Step — Overview
 
-Overview continuation. This file fires only when the coordinator sends the overview continuation, which it does only when `--overview-lang` carried a valid language; without that option no continuation is sent and this file is never loaded. It is not a step of the `design-steps@1` machine: the continuation names this file explicitly, the change name, the language, and the report path. This file is the normative home of the overview lifecycle. The worker card keeps only the rules that fire during any source write: Stale-before-first-write and the run-start no-effective-change capture.
+Overview continuation. This file fires only when the coordinator sends the overview continuation, which it does only when `--overview-lang` carried a valid language; without that option no continuation is sent and this file is never loaded. It is not a step of the `design-steps@1` machine: the continuation names this file explicitly, the change name, the language, and the report name. This file is the normative home of the overview lifecycle. The worker card keeps only the rules that fire during any source write: Stale-before-first-write and the run-start no-effective-change capture.
 
 The generator receives the Fetch directive for `@sai/commands/design/change-overview.md` in its dispatch prompt and loads the contract itself. The worker derives `overview_language` from raw `arguments_value` and supplies it as invocation-scoped state to the generator.
 
@@ -33,7 +33,7 @@ The worker owns the change's overview lifecycle for `change-overview.md`:
 - The parent SHALL NOT use `failure_kind: dispatch-failed` for this route — the dispatch itself succeeded; only the contract load failed.
 - `dispatch-failed` applies only to a dispatch that never ran.
 - Commit `overview.state: current` only after a successful closed result envelope.
-- A coherent generator failure writes its generator-owned failure record, persists the exact non-empty `failure_kind` and `failure_details`, reports the overview path plus `.openspec.yaml` in `changed_files`, sets `overview.state: failed`, and reports `blocked`.
+- A coherent generator failure writes its generator-owned failure record, persists the exact non-empty `failure_kind` and `failure_details`, reports the overview path plus `.openspec.yaml` in `changed_files`, sets `overview.state: failed`, and reports `failed`.
 - A failed first materialization is diagnostic state and is retryable by a later invocation.
 - For a later source-modifying transaction, identify the first effective source-artifact write and record its conservative state immediately before that write.
 - **Parent-authored first-materialization failures** — a dispatch failure before acknowledgement is represented with the exact five fields `status: failed`, `changed_files: []`, `validation: not-performed`, `failure_details` containing the dispatch operation, reason, and location, and `failure_kind: dispatch-failed`.
@@ -47,8 +47,8 @@ The worker owns the change's overview lifecycle for `change-overview.md`:
 - A dispatch failure preserves the prior file, persists `dispatch-failed` and its diagnostic, reports only the state carrier in addition to the required changed-file union, and sets `stale`.
 - Process loss and malformed or empty envelopes preserve whatever file state exists, report the potentially affected overview path and `.openspec.yaml`, and set `stale`. Persist the parent-authored diagnostic as `generation-error` for process loss or `envelope-contract-violation` for a malformed or empty envelope.
 - The parent never writes, deletes, or edits `change-overview.md` in any failure mode.
-- **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, report `blocked` with the applicable non-empty `failure_details` and the `failure_kind` in `summary` and `notes`, identifying the source, artifact, dispatch, envelope, worker, or file location.
-- Do not report only the state or a generic failure sentence, and never report `done` for a failed first materialization or failed regeneration.
+- **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, report `failed` with the applicable non-empty `failure_details` and the `failure_kind` in `summary` and `notes`, identifying the source, artifact, dispatch, envelope, worker, or file location.
+- Do not report only the state or a generic failure sentence, and never report `completed` for a failed first materialization or failed regeneration.
 - **No-effective-change protocol** — the run-start byte capture of the five source sets is in the worker card's § Overview lifecycle guard.
 - Compare the final source set byte-for-byte after edits; this byte-exact comparison is the effective-change gate.
 - Byte-identical sources mean no effective change and do not dispatch generation: verify the existing overview against the captured sources and restore `overview.state: current` only when complete and consistent, clearing both diagnostics.
@@ -63,13 +63,13 @@ The worker owns the change's overview lifecycle for `change-overview.md`:
 - Malformed or empty nested envelopes keep the parent-authored five-field result at `validation: not-performed`, naming the verbatim offending value or `missing` field, and classify the failure as `envelope-contract-violation`, never as `generation-error`.
 - The parent-authored malformed-envelope shape is `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty `failure_details`, and `failure_kind: envelope-contract-violation`.
 - Persist the parent-authored diagnostic and set the materialization-history-dependent state without modifying `change-overview.md`.
-- **Overview report evidence** — report `status: done` only after a generator success.
+- **Overview report evidence** — report `status: completed` only after a generator success.
 - A successful first materialization, regeneration, or interrupted reconciliation has written/verified `change-overview.md` and committed `overview.state: current`.
 - That report's `changed_files` includes `openspec/changes/{change-name}/change-overview.md` and `openspec/changes/{change-name}/.openspec.yaml`.
-- A dispatch failure, process loss, malformed or empty envelope, blocking contradiction, validation failure, generation error, or any other path that does not commit `overview.state: current` reports `blocked`.
+- A dispatch failure, process loss, malformed or empty envelope, blocking contradiction, validation failure, generation error, or any other path that does not commit `overview.state: current` reports `failed`.
 - A non-empty failure classification and details are authoritative.
 - **Repair (coordinator-driven)** — a failed overview returns to you as a corrected instruction or a new worker, within the coordinator's budget of 3 attempts for the obstacle. A repair safely re-dispatches the overview generator for validation, generation, or dispatch failures, never opens a second regeneration allowance, and commits `overview.state: current`, clears `overview.failure_kind` and `overview.failure_details`, and reports `.openspec.yaml` only after the overview and its source relationship verify.
-- Before the first `blocked` report for an envelope-contract-violation, verify the existing overview for soundness, and say in `notes` whether it is sound.
+- Before the first `failed` report for an envelope-contract-violation, verify the existing overview for soundness, and say in `notes` whether it is sound.
 - When repair does not complete, a first materialization keeps its `failed` state and a regeneration keeps its `stale` state, both preserving the current diagnostics, and the report names the failure kind and the stopping reason.
 
 ## Compact contract tables

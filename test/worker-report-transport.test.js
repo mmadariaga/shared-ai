@@ -253,3 +253,153 @@ test('the worker profiles grant the transfer put call and no retired kind surviv
   }
   assert.doesNotMatch(read('AGENTS.md'), /terminal\\\|notice\\\|progress\\\|conflict_detected/);
 });
+
+// ─── Plan and review workers ─────────────────────────────────────────────────
+
+test('the policy covers the plan and review workers, the progress kind, and the file-name rule', () => {
+  const policy = read(POLICY);
+  assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
+  assert.match(policy, /spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`/);
+  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review` and Direct Build/);
+  assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
+  const progress = policy.slice(policy.indexOf('### Progress reports'), policy.indexOf('## Author boundary'));
+  assert.match(progress, /event: progress\nstep_ids: string\[\]\nchanged_files: string\[\]/);
+  assert.match(progress, /names its file with the prefix `progress-`/);
+  assert.match(progress, /validated with `--kind progress`, and any other report with `--kind terminal`/);
+  assert.match(progress, /sai-state emit <id> <machine> --progress --input-file <report file>/);
+});
+
+test('a progress report travels through the file transport and is validated with the progress kind', t => {
+  const payload = { event: 'progress', step_ids: ['review-intake', 'establish-diff-scope'], changed_files: [] };
+  const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(payload)));
+  const accepted = validateFile(dir, reference, 'progress');
+  assert.equal(accepted.outcome, 'accepted');
+  assert.deepEqual(accepted.payload, payload);
+  assert.equal(validateFile(dir, reference, 'terminal', { command: 'review' }).outcome, 'report-invalid',
+    'a progress report is not a terminal report');
+  const legacy = transfer.put(dir, 'legacy.json', Buffer.from(JSON.stringify({ event: 'step-done', step_id: 'establish-diff-scope' })));
+  assert.equal(validateFile(dir, legacy, 'progress').outcome, 'report-invalid', 'the retired step-done is invalid');
+});
+
+test('spec and design reports are validated per command; done and blocked are invalid', t => {
+  const completed = { status: 'completed', summary: 'Wrote the proposal.', changed_files: ['openspec/changes/x/proposal.md'],
+    step_ids: ['spec-intake', 'research'], warnings: [], notes: '' };
+  const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(completed)));
+  for (const command of ['spec', 'design']) {
+    const verdict = validateFile(dir, reference, 'terminal', { command });
+    assert.equal(verdict.outcome, 'accepted', command);
+    assert.deepEqual(verdict.payload.step_ids, completed.step_ids);
+  }
+  for (const status of ['done', 'blocked']) {
+    const stale = transfer.put(dir, `${status}.json`, Buffer.from(JSON.stringify({ ...completed, status })));
+    assert.equal(validateFile(dir, stale, 'terminal', { command: 'spec' }).outcome, 'report-invalid', status);
+  }
+  const outcome = transfer.put(dir, 'outcome.json', Buffer.from(JSON.stringify({ ...completed, outcome: 'no-changes' })));
+  assert.equal(validateFile(dir, outcome, 'terminal', { command: 'design' }).outcome, 'report-invalid',
+    'spec and design admit no outcome');
+});
+
+test('the plan workers report through the policy in the unified schema', () => {
+  const common = read('sai/commands/plan/worker-common.md');
+  assert.match(common, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(common, /opens with the line `--report-dir <path>`/);
+  assert.match(common, /status: completed \| needs_input \| failed \| cancelled/);
+  assert.match(common, /`done` and `blocked` are retired/);
+  assert.match(common, /step_ids: string\[\]/);
+  assert.match(common, /A message that carries the result inline is an invalid report/);
+  assert.doesNotMatch(common, /status: done \| needs_input \| blocked/);
+  for (const file of ['sai/commands/spec/worker.md', 'sai/commands/design/worker.md', 'sai/commands/design/steps/design.md',
+    'sai/commands/design/steps/overview.md', 'sai/commands/design/coordinator.md']) {
+    const card = read(file);
+    assert.doesNotMatch(card, /`blocked`|status: done|never report `done`/, `${file} keeps no retired status`);
+  }
+  assert.match(read('sai/commands/spec/worker.md'), /Report `failed` when the request cannot be translated/);
+  assert.match(read('sai/commands/design/worker.md'), /is `failed`, naming the artifact/);
+  assert.match(read('sai/commands/design/coordinator.md'), /A `failed` report that names a spec defect/);
+});
+
+test('the plan cycle opens and records the report directory, validates every report, and reuses it on resume', () => {
+  const cycle = read('sai/commands/plan/cycle.md');
+  assert.match(cycle, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(cycle, /`transfer\.js open --harness <claude\|opencode>`[^\n]*emits `record` \(`report-dir`\)/);
+  assert.match(cycle, /opens with the line `--report-dir <report directory>`/);
+  assert.match(cycle, /validate --kind terminal --command <spec\|design> --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(cycle, /before you read any field/);
+  assert.match(cycle, /you never interpret a report by reading it/);
+  assert.match(cycle, /second consecutive invalid report from that worker replaces it/);
+  assert.match(cycle, /Its first task message opens with the same `--report-dir` line the run recorded/);
+  assert.match(cycle, /The report directory in `report_dirs` is reused/);
+  assert.match(cycle, /transfer\.js close --dir \{report directory\}/);
+  assert.match(cycle, /emit `\{"step_ids": \[\.\.\.\]\}` to the machine, with the ids copied from its payload/);
+  for (const name of ['spec', 'design']) {
+    assert.match(read(`sai/commands/${name}/coordinator.md`), /opens with the `--report-dir` line the cycle's Reports names/);
+  }
+  const machine = require('../sai-state/machines/plan-run.js');
+  const started = machine.transition(machine.initialState, { kind: 'start', dir: '/tmp/claude-1000/sai/plan-demo-1a2b' });
+  const recorded = machine.transition(started.state, { kind: 'record', ref: 'report-dir', path: '/tmp/claude-1000/sai/sai-transfer-abc' });
+  assert.equal(recorded.rejected, undefined);
+  assert.deepEqual(recorded.state.report_dirs, ['/tmp/claude-1000/sai/sai-transfer-abc']);
+  assert.deepEqual(machine.transition(machine.initialState, { kind: 'status' }).state.report_dirs, []);
+});
+
+test('the review worker reports progress and its terminal result as files, with no-changes as an outcome', () => {
+  const worker = read('sai/commands/review/worker.md');
+  assert.match(worker, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(worker, /opens with the line `--report-dir <path>`/);
+  assert.match(worker, /event: progress\nstep_ids: string\[\]/);
+  assert.match(worker, /Its file name starts with `progress-`/);
+  assert.match(worker, /`\[review-intake, establish-diff-scope\]` in the first progress report and `\[resolve-review-analysis\]` in the second/);
+  assert.match(worker, /status: completed\noutcome: no-changes/);
+  assert.match(worker, /review_path: string\ncounts: \{critical: n, high: n, medium: n, low: n, questions: n\}\nrecommended_audits: string/);
+  assert.doesNotMatch(worker, /event: step-done|status: no-changes/);
+  assert.match(worker, /`no-changes` is an `outcome` of a `completed` report, never a status/);
+  assert.match(read('sai/commands/review/steps/establish-diff-scope.md'), /save a `completed` report with `outcome: no-changes`/);
+  assert.match(read('sai/commands/review/steps/establish-diff-scope.md'), /`step_ids: \[review-intake, establish-diff-scope\]`/);
+  assert.match(read('sai/commands/review/steps/resolve-review-analysis.md'), /`step_ids: \[resolve-review-analysis\]`/);
+  for (const step of ['establish-diff-scope', 'resolve-review-analysis', 'close-review-outcome']) {
+    assert.doesNotMatch(read(`sai/commands/review/steps/${step}.md`), /`step-done`/, step);
+  }
+});
+
+test('the review coordinator validates every report and feeds progress reports to the step machine', () => {
+  const card = read('sai/commands/review/coordinator.md');
+  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Open the report directory of the run with `transfer\.js open --harness <claude\|opencode>`/);
+  assert.match(card, /opens with the line `--report-dir <report directory>`/);
+  assert.match(card, /a name that starts with `progress-` is a progress report, validated with `validate --kind progress --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
+  assert.match(card, /validate --kind terminal --command review --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(card, /Before you read any field/);
+  assert.match(card, /including the retired `event: step-done`, is an invalid report/);
+  assert.match(card, /`sai-state emit <id> review-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /the first progress report carries `review-intake` and `establish-diff-scope`/);
+  assert.match(card, /when the emit fails, send the next pointer from the static order/);
+  assert.match(card, /- `completed` with `outcome: no-changes`: print the worker's `summary`, which is exactly `No changes detected against \{parent-branch\}\. Nothing to review\.`, write no `review\.md`, commit nothing, and end the run with `Review done\.`/);
+  assert.match(card, /`needs_input` or `cancelled` report is an obstacle/);
+  assert.match(card, /transfer\.js close --dir <report directory>/);
+  assert.doesNotMatch(card, /status: no-changes \| failed|event: step-done\nstep_id/);
+});
+
+test('build and deep-review read the empty diff from the accepted outcome', () => {
+  assert.match(read('sai/commands/build/coordinator.md'), /Segment 2 found no changes against the parent branch\*\* \(its accepted report carries `outcome: no-changes`/);
+  assert.match(read('sai/commands/build/coordinator.md'), /a segment 2 whose accepted report carries `outcome: no-changes` counts as completed/);
+  const deep = read('sai/commands/deep-review/coordinator.md');
+  assert.match(deep, /Segment 1 found no changes against the parent branch\*\* \(its accepted report carries `outcome: no-changes`/);
+  assert.match(deep, /When segment 1's accepted report carries `outcome: no-changes`, the diff is empty: run no triage, no audit, no Assessment pass, and no fix segment/);
+});
+
+test('the spec, design, and review workers and their coordinators have the report grants on both harnesses', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const { resolveProfile } = require('../bin/capabilities');
+  const agents = manifest.capabilities.assignments.agents;
+  for (const worker of ['sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-4-review-worker']) {
+    const shell = resolveProfile(manifest.capabilities, agents[worker]).shell;
+    assert.ok(shell.includes('node {sai}/tools/transfer.js put *'), `${worker} may save a report`);
+  }
+  const commands = manifest.capabilities.assignments.commands;
+  for (const command of ['sai-1-spec', 'sai-2-design', 'sai-plan', 'sai-4-review', 'sai-build', 'sai-deep-review']) {
+    const shell = resolveProfile(manifest.capabilities, commands[command]).shell;
+    const grants = tool => shell.includes('*') || shell.includes(`node {sai}/tools/${tool}`);
+    assert.ok(grants('transfer.js open *'), `${command} may open the report directory`);
+    assert.ok(grants('worker-report-validator.js *'), `${command} may validate a report`);
+  }
+});
