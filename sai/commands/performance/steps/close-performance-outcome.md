@@ -1,6 +1,6 @@
 # Performance Step — Close Performance Outcome
 
-Active step: close-performance-outcome. The step is done when `performance.md` is saved, verified in its form, and `completed` is returned with the summary defined below.
+Active step: close-performance-outcome. The step is done when `performance.md` is saved, verified in its form, and the `completed` report with the summary defined below is saved and its reference returned.
 
 Fetch `@sai/commands/performance/performance-report.template.md`
 
@@ -37,4 +37,4 @@ Save the report to `openspec/changes/{change-name}/performance.md`; a normal rep
 - **Normal report** — the file exists and is non-empty, carries the provenance line, every finding heading leads with its severity-prefixed identifier, and the `Summary:` tally matches the report's findings.
 - **Not Applicable report** — the file carries the provenance line and the `## Not Applicable` section with its justification.
 
-Then return `completed`. The payload carries the summary; the report stays in `performance.md`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch in diff mode; for a Not Applicable report the justification replaces the counts and findings. `report_path` and `changed_files` name `openspec/changes/{change-name}/performance.md`, and `counts` are the tally of the kept findings (all zero for a Not Applicable report). The coordinator verifies and commits the report, and owns everything the user sees after that return, including any fix of these findings.
+Then save the `completed` report and return its reference. The payload carries the summary; the report stays in `performance.md`. The summary holds the severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch in diff mode; for a Not Applicable report the justification replaces the counts and findings. `report_path` and `changed_files` name `openspec/changes/{change-name}/performance.md`, and `counts` are the tally of the kept findings (all zero for a Not Applicable report). The coordinator verifies and commits the report, and owns everything the user sees after that return, including any fix of these findings.

@@ -74,11 +74,11 @@ The security instruction and report contract SHALL assign every finding a severi
 
 ### Requirement: Security lifecycle results carry no time field
 
-The security worker SHALL return `step-done`, `question`, and terminal results with no time field, while retaining SAST, SCA, report, and no-production-write boundaries.
+The security worker SHALL save progress reports (named with the `progress-` prefix, carrying `step_ids`), `needs_input` reports, and terminal `completed` and `failed` reports as files in the report directory, return each as a `{path, sha256}` reference, and carry no time field in any report, while retaining SAST, SCA, report, and no-production-write boundaries.
 
 #### Scenario: Security reports a milestone
 - **WHEN** a security step completes
-- **THEN** its `step-done` result carries the step ids and no time field.
+- **THEN** its progress report carries the step ids and no time field, and the worker returns only its reference.
 
 #### Scenario: Severity floor is unchanged
 
@@ -94,24 +94,24 @@ The security close step SHALL challenge the in-memory draft before saving to dis
 
 ### Requirement: Security discovery decides the SCA gate and the not-applicable outcome
 
-The `discover-module-map` step SHALL be the single place that decides the SCA gate — admitting each dependency manifest the diff introduces or modifies in diff mode, or that the selected scope contains in `--full` or `--path` mode — and the not-applicable outcome. When the selected scope has no attack surface (external input source, entry point, or trust boundary) and the gate admits no manifest, the worker SHALL report `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` together in that step's `step-done` batch, and `close-security-outcome` SHALL write a Not Applicable report holding only the title, the provenance line, and `## Not Applicable` with its justification. When the gate admits no manifest and the audit applies, the SAST `step-done` batch SHALL also carry `resolve-sca`, and the report SHALL say that SCA did not run and why.
+The `discover-module-map` step SHALL be the single place that decides the SCA gate — admitting each dependency manifest the diff introduces or modifies in diff mode, or that the selected scope contains in `--full` or `--path` mode — and the not-applicable outcome. When the selected scope has no attack surface (external input source, entry point, or trust boundary) and the gate admits no manifest, the worker SHALL report `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` together in that step's progress report, and `close-security-outcome` SHALL write a Not Applicable report holding only the title, the provenance line, and `## Not Applicable` with its justification. When the gate admits no manifest and the audit applies, the SAST progress report SHALL also carry `resolve-sca`, and the report SHALL say that SCA did not run and why.
 
 #### Scenario: Scope has no attack surface and no admitted manifest
 - **WHEN** discovery finds no attack surface in the selected scope and the SCA gate admits no manifest
-- **THEN** the worker reports `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` in one `step-done` batch
-- **AND** `close-security-outcome` writes the Not Applicable report and the worker returns `completed`
+- **THEN** the worker reports `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` in one progress report
+- **AND** `close-security-outcome` writes the Not Applicable report and the worker saves a `completed` report and returns its reference
 
 #### Scenario: Gate admits no manifest on an applicable audit
 - **WHEN** the audit applies and the SCA gate admits no manifest
-- **THEN** the SAST `step-done` batch carries both `resolve-sast-analysis` and `resolve-sca`
+- **THEN** the SAST progress report carries both `resolve-sast-analysis` and `resolve-sca`
 
 ### Requirement: Security steps state observable completion criteria
 
-Each filed security step SHALL state an observable completion criterion. `discover-module-map` SHALL be done when every file in the selected scope is assigned to a module and every dependency manifest has its SCA gate decision. `resolve-sast-analysis` SHALL be done when every file in the selected scope has been checked against every flaw category, every external input source is traced to its sinks, and every flaw is recorded with its fields; the report SHALL gain no per-category record. `resolve-sca` SHALL be done when every admitted manifest is audited and every vulnerable dependency is recorded. `close-security-outcome` SHALL be done when `security.md` is saved, verified in its form, and `completed` is returned.
+Each filed security step SHALL state an observable completion criterion. `discover-module-map` SHALL be done when every file in the selected scope is assigned to a module and every dependency manifest has its SCA gate decision. `resolve-sast-analysis` SHALL be done when every file in the selected scope has been checked against every flaw category, every external input source is traced to its sinks, and every flaw is recorded with its fields; the report SHALL gain no per-category record. `resolve-sca` SHALL be done when every admitted manifest is audited and every vulnerable dependency is recorded. `close-security-outcome` SHALL be done when `security.md` is saved, verified in its form, and the `completed` report is saved and its reference returned.
 
 #### Scenario: SAST step completes
 - **WHEN** the worker finishes `resolve-sast-analysis`
-- **THEN** every in-scope file has been checked against every flaw category and every external input source has been traced to its sinks before `step-done` is returned
+- **THEN** every in-scope file has been checked against every flaw category and every external input source has been traced to its sinks before its progress report is saved
 
 ### Requirement: Security instruction rules are stated once
 

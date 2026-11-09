@@ -1,6 +1,6 @@
 # Accessibility Step — Map UI Components and Framework
 
-Active step: map-ui-framework. Discover the UI files, frameworks, component types, and design tokens in scope. The step is done when it has recorded five results: `UI files in scope`, `frameworks detected`, `component types`, `design tokens`, and `accepted trade-offs`, each as a list or `none`. Then report `step-done` for `map-ui-framework`.
+Active step: map-ui-framework. Discover the UI files, frameworks, component types, and design tokens in scope. The step is done when it has recorded five results: `UI files in scope`, `frameworks detected`, `component types`, `design tokens`, and `accepted trade-offs`, each as a list or `none`. Then save a progress report for `map-ui-framework` and return its reference, as `sai/commands/audit/worker-common.md` § Results says.
 
 ### Phase 1: Discovery & Component Mapping
 
@@ -30,4 +30,4 @@ Use **`budget-explorer`** subagents in parallel when independent component areas
 
 ### Not applicable
 
-When the scope holds no UI file, the audit does not apply, even when `--runtime` was passed: no scanner runs. Report `resolve-accessibility-scope`, `map-ui-framework`, `resolve-static-audit`, and `resolve-runtime-audit` together in this step's `step-done` batch; `close-accessibility-outcome` then writes the Not Applicable report.
+When the scope holds no UI file, the audit does not apply, even when `--runtime` was passed: no scanner runs. Report `resolve-accessibility-scope`, `map-ui-framework`, `resolve-static-audit`, and `resolve-runtime-audit` together in this step's progress report; `close-accessibility-outcome` then writes the Not Applicable report.

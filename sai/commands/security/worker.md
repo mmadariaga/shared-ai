@@ -7,7 +7,7 @@ Fetch `@sai/commands/security/steps/common.md` and keep it in force for the enti
 
 ## Steps
 
-The plan has these step ids, in order. Each is reported in a `step-done` batch, as `worker-common.md` says.
+The plan has these step ids, in order. Each is reported in a progress report, as `worker-common.md` says.
 
 - `resolve-security-scope` — no file; run inline from the brief and `common.md`: read the change artifacts, resolve the selected scope and the parent branch. It reports together with `discover-module-map`.
 - `discover-module-map` — maps modules, trust boundaries, and the SCA gate. When the audit does not apply (an empty diff is this case), the batch also carries `resolve-sast-analysis` and `resolve-sca`, and `close-security-outcome` writes the Not Applicable report.
