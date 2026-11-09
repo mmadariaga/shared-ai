@@ -38,7 +38,13 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   working; event JSON passed as an argument is a usage error (exit 2). A
   missing, unreadable, or empty input file exits 2 naming the path and changes
   no state.
-- **Progress emit**: `sai-state emit <id> <machineId> --progress --input-file <path>`
+- **Progress emit**: `sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`
+  takes the worker's progress report as a reference: it verifies the reference
+  once (directory, containment, symbolic links, sha256), validates those same
+  bytes, and advances the machine from them, so a report outside the directory
+  or with a different hash is refused (`validation.outcome` `delivery-failed`)
+  and the machine does not advance; the coordinator runs no separate
+  `validate`. `sai-state emit <id> <machineId> --progress --input-file <path>`
   reads one worker progress payload
   (`{event: "progress", step_ids, changed_files}`) as JSON from the input file
   (or from stdin with `-`) instead
@@ -47,8 +53,9 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   registry read,
   then derives the machine event `{"step_ids": [...]}` from the valid payload
   and advances the machine. It always returns an object carrying
-  `received_at` and `validation: {ok, action, kind, errors}` — the same
-  timeless verdict `worker-report-validator.js validate --kind progress` prints
+  `received_at` and `validation: {ok, action, kind, errors}` (the reference mode
+  adds `outcome`) — the same timeless verdict
+  `worker-report-validator.js validate --kind progress` prints
   without its `received_at` — and, only on a
   valid verdict, the ordinary emit fields above. An invalid verdict never
   reaches the machine; non-JSON input is an invalid verdict, not

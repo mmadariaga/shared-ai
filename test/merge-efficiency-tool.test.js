@@ -59,7 +59,7 @@ function resolution(snapshot, source = 'authored', text = 'value=resolved\n', se
   const payload = { selected_contextual_decisions: decisions, files: [{ path: file.path, category: file.category,
     source, regions: source === 'authored' ? file.regions.map(region => ({ conflict_id: region.conflict_id, text })) : [], decisions }] };
   return { decisions, payload, original: JSON.stringify({ status: 'completed', changed_files: source === 'authored' ? [file.path] : [],
-    summary: `Applied strategy 1.\n## Complete resolution payload\n\`\`\`json\n${JSON.stringify(payload)}\n\`\`\`\n`, original_evidence: 'retain this field' }) };
+    summary: `Applied strategy 1.\n## Complete resolution payload\n\`\`\`json\n${JSON.stringify(payload)}\n\`\`\`\n` }) };
 }
 
 function writeAuthored(cwd, snapshot, text = 'value=resolved\n') {

@@ -62,7 +62,7 @@ The worker-report validator SHALL parse a payload as JSON or as a closed subset 
 
 ### Requirement: A completed report carries only command-admitted outcomes
 
-The validator SHALL accept a `--command <name>` option and SHALL be the single source of the `outcome` values each command admits, in its `COMMAND_OUTCOMES` table, where `review` admits `no-changes` and every other command admits none. A terminal report SHALL be invalid when it carries an `outcome` and its status is not `completed`, the outcome is not a string, no `--command` was given, or the outcome is not among the values the named command admits. An unknown `--command` value SHALL be a usage error with exit code 2.
+The validator SHALL accept a `--command <name>` option and SHALL be the single source of the `outcome` values each command admits, in its `COMMAND_OUTCOMES` table, where `review` admits `no-changes` and every other command admits none. A terminal report SHALL be invalid when it carries an `outcome` and its status is not `completed`, the outcome is not a string, no `--command` was given, or the outcome is not among the values the named command admits. An unknown `--command` value, and `validate --kind terminal` without `--command`, SHALL be a usage error with exit code 2.
 
 #### Scenario: An admitted outcome is accepted
 
@@ -77,4 +77,4 @@ The validator SHALL accept a `--command <name>` option and SHALL be the single s
 #### Scenario: An outcome without a command is rejected
 
 - **WHEN** a `completed` report carries an `outcome` and no `--command` is given
-- **THEN** the validator rejects it, stating that the outcome needs the command that admits it
+- **THEN** the validator does not accept it: `validate --kind terminal` exits 2 as a usage error, and the module's `validateText` rejects it stating that the outcome needs the command that admits it

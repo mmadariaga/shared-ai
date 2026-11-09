@@ -77,3 +77,27 @@ In this change, the design, spec-proposal, implementation-planning, review, secu
 - **WHEN** a planning or audit worker has not passed prerequisites or completed its required resolution gate
 - **THEN** it SHALL NOT emit a progress event
 - **AND** its existing `needs_input`, `failed`, or `cancelled` behavior SHALL remain available
+
+### Requirement: progress-emit-verified-reference
+
+`sai-state emit <id> <machineId> --progress` SHALL accept a progress report reference given as `--report-dir <dir>`, `--report-file <path>`, and `--report-hash <sha256>`, all three together and never beside `--input-file` or stdin. In that reference mode it SHALL verify the reference once (directory, containment, symbolic links, sha256), validate those same bytes as a progress report, and advance the machine from the step ids of those verified bytes, never from a second read of the file. A report outside the directory, a sha256 that differs from `--report-hash`, or content outside the progress shape SHALL be refused, and the machine SHALL NOT advance. The `--input-file` and stdin forms SHALL keep their behavior, with no hash check. The review and audit coordinators SHALL pass each progress report to the machine in reference mode and SHALL NOT run a separate `validate --kind progress` call before it.
+
+#### Scenario: A verified reference advances the machine
+
+- **WHEN** a coordinator runs `emit --progress` with the report directory, file, and sha256 of a valid progress report
+- **THEN** the machine advances by the step ids of the verified bytes and the response carries `validation.ok: true`
+
+#### Scenario: A foreign directory or a wrong hash is refused
+
+- **WHEN** `emit --progress` in reference mode names a report file outside `--report-dir`, or a sha256 that differs from the file's
+- **THEN** the response carries `validation.ok: false` and the machine does not advance
+
+#### Scenario: The input forms keep their behavior
+
+- **WHEN** `emit --progress` receives the payload through `--input-file` or stdin
+- **THEN** it validates the text with no hash check and advances the machine as before
+
+#### Scenario: Reference flags come together
+
+- **WHEN** `emit --progress` receives only some of the three reference flags, or a reference flag beside `--input-file`
+- **THEN** it exits 2 as a usage error and changes no state

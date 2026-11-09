@@ -118,7 +118,7 @@ function sessionDir() {
 }
 
 const EMIT_STDIN_FORM = "node <tool-path> emit <id> <machineId> --input-file <path> (event JSON in the input file; stdin `-` is still accepted)";
-const EMIT_PROGRESS_FORM = "node <tool-path> emit <id> <machineId> --progress --input-file <path> (worker progress payload JSON in the input file; stdin `-` is still accepted)";
+const EMIT_PROGRESS_FORM = "node <tool-path> emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256> (the worker's progress report reference, verified and validated here), or --progress --input-file <path> (worker progress payload JSON in the input file; stdin `-` is still accepted)";
 const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --input-file <path> (Ready to Propose block set in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
 
 const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path> (one Ready to Propose block in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
@@ -550,33 +550,67 @@ function commandEmit(id, machineIdArg, eventSource, extraArgs, inputFile) {
   process.exitCode = outcome.code;
 }
 
-// Progress emit: validates the worker progress payload read from stdin through
-// the validator module BEFORE any session, machine, or registry read, then
-// derives the machine event `{ step_ids }` from the valid payload and advances
-// the machine. Output is always an object carrying `validation` (the verdict);
-// a valid verdict adds the ordinary emit fields unchanged. Exit 1 covers both an
-// invalid verdict and a machine error; callers discriminate by `validation.ok`.
-function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile) {
-  if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
+// Progress emit: validates the worker progress payload through the validator
+// module BEFORE any session, machine, or registry read, then derives the machine
+// event `{ step_ids }` from the valid payload and advances the machine. Two input
+// modes:
+//   - reference mode (`--report-dir`, `--report-file`, `--report-hash`, all three):
+//     the worker's report reference is verified once (directory, path, sha256) and
+//     the machine advances from those same verified bytes, never from a second read
+//     of the file; a coordinator does not validate the report beforehand.
+//   - input mode (`--input-file`, or stdin `-`): the raw text goes to the validator
+//     unmodified, with no hash check.
+// Output is always an object carrying `validation` (the verdict); a valid verdict
+// adds the ordinary emit fields unchanged. Exit 1 covers both an invalid verdict
+// and a machine error; callers discriminate by `validation.ok`.
+const PROGRESS_REFERENCE_FLAGS = ['report-dir', 'report-file', 'report-hash'];
+
+function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile, reference = {}) {
+  const referenceMode = PROGRESS_REFERENCE_FLAGS.some((flag) => reference[flag] !== undefined);
+  const referenceComplete = PROGRESS_REFERENCE_FLAGS.every((flag) => typeof reference[flag] === 'string' && reference[flag] !== '' && !reference[flag].startsWith('--'));
+  if (referenceMode) {
+    if (!referenceComplete || inputFile || eventSource !== undefined || (extraArgs && extraArgs.length > 0)) {
+      process.stderr.write('emit --progress takes either a report reference (all of --report-dir, --report-file, and --report-hash, with no --input-file) or an input file: ' + EMIT_PROGRESS_FORM + '\n');
+      process.exitCode = 2;
+      return;
+    }
+  } else if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
     process.stderr.write('emit --progress requires <id> <machineId> --progress and reads the worker progress payload JSON from an input file: ' + EMIT_PROGRESS_FORM + '\n');
+    process.exitCode = 2;
+    return;
+  }
+  if (!id || !machineIdArg) {
+    process.stderr.write('emit --progress requires <id> <machineId>: ' + EMIT_PROGRESS_FORM + '\n');
     process.exitCode = 2;
     return;
   }
 
   const validator = loadValidator();
 
-  // The raw stdin text goes to the validator unmodified, so the verdict is
-  // byte-identical to `worker-report-validator.js validate --kind progress`.
-  let text = '';
-  try { text = readEmitInput(inputFile).text; } catch (error) { inputFileFailure(error); return; }
-  const validation = validator.validateText(text, 'progress');
+  let validation;
+  let progress;
+  if (referenceMode) {
+    // Verified once: the validator reads the bytes through `transfer.js verify`
+    // (report directory, containment, symbolic links, sha256) and validates exactly
+    // those bytes, so the step ids below come from the bytes that were checked.
+    const verdict = validator.validateFile(reference['report-dir'], { path: reference['report-file'], sha256: reference['report-hash'] }, 'progress');
+    const { payload, ...rest } = verdict;
+    validation = rest;
+    progress = payload;
+  } else {
+    // The raw text goes to the validator unmodified, so the verdict is
+    // byte-identical to `worker-report-validator.js validate --kind progress`.
+    let text = '';
+    try { text = readEmitInput(inputFile).text; } catch (error) { inputFileFailure(error); return; }
+    validation = validator.validateText(text, 'progress');
+    if (validation.ok) progress = validator.parsePayloadText(text).payload;
+  }
   if (!validation.ok) {
     writeResponse({ validation });
     process.exitCode = 1;
     return;
   }
 
-  const progress = validator.parsePayloadText(text).payload;
   const event = { step_ids: progress.step_ids };
 
   const outcome = runEmit(id, machineIdArg, () => ({ event }));
@@ -1052,7 +1086,11 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
-    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['input-file']);
+    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['input-file'], {
+      'report-dir': parsed.named['report-dir'],
+      'report-file': parsed.named['report-file'],
+      'report-hash': parsed.named['report-hash'],
+    });
     return;
   }
   if (parsed.command === 'emit') {
@@ -1078,6 +1116,7 @@ function main(argv) {
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> --input-file <path>   (event JSON in the input file; `-` reads stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>   (the worker progress report reference, verified and validated)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress --input-file <path>   (worker progress payload JSON in the input file; `-` reads stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --input-file <path>   (Ready to Propose block set in the input file; `-` reads stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path>   (one amended block in the input file; `-` reads stdin)\n');
