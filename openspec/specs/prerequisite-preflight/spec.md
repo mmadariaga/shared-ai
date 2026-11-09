@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change extract-prereqs-preflight-tool. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Deterministic prerequisite preflight tool
 
 A deterministic Node tool at `sai/tools/prereqs.js` SHALL evaluate the three OpenSpec preconditions — the `openspec` binary availability check (`cli`), the `openspec/` directory existence check (`dir`), and the `openspec/config.yaml` `schema: sai-workflow` check (`schema`) — and report a structured verdict. It SHALL expose exactly one sub-command, `check`, accept `--json` and `--cwd <dir>`, and MUST NOT require any consumer to re-derive a check from prose.
@@ -48,7 +50,7 @@ On `win32` the `openspec --version` probe SHALL run through a shell, because an 
 - **THEN** the probe executes through a shell and the check passes, rather than failing with a spawn `ENOENT`
 
 ### Requirement: Policy and delegation prompt run the tool instead of the checks
-`sai/commands/explore/body.md` SHALL run one direct invocation of `sai/tools/prereqs.js` `check` inline in the main session with no subagent and no deferral condition, using the first existing verbatim tool-path candidate and the byte-identical literal `node <tool-path> check --json --cwd <project-root> --require-openspec-skills <harness>`. It SHALL report what the tool returned without re-deriving, second-guessing, or repairing a check and without self-correcting a non-zero failure. Exit 0 SHALL be relayed as `verdict: pass`, exit 1 as `verdict: halt` with the tool's `failed_check` and the matching verbatim literal, and exit 2, unlocatable tool, or unparseable payload SHALL be reported as an incomplete check with no literal, never as `verdict: pass` and never as a halt with an invented literal.
+`sai/commands/explore/body.md` SHALL run one direct invocation of `sai/tools/prereqs.js` `check` inline in the main session with no subagent and no deferral condition, using the copy the fetch tool returns in path mode for the subpath `sai/tools/prereqs.js`, as `sai/policies/prereqs-check.md` states, and the byte-identical literal `node <tool-path> check --json --cwd <project-root> --require-openspec-skills <harness>`. It SHALL report what the tool returned without re-deriving, second-guessing, or repairing a check and without self-correcting a non-zero failure. Exit 0 SHALL be relayed as `verdict: pass`, exit 1 as `verdict: halt` with the tool's `failed_check` and the matching verbatim literal, and exit 2, unlocatable tool, or unparseable payload SHALL be reported as an incomplete check with no literal, never as `verdict: pass` and never as a halt with an invented literal.
 
 #### Scenario: inline tool run replaces delegated run
 - **WHEN** the explore prerequisite preflight executes after the change
@@ -61,4 +63,3 @@ On `win32` the `openspec --version` probe SHALL run through a shell, because an 
 #### Scenario: the policy names the tool rather than the mechanics
 - **WHEN** sai/policies/prereqs-check.md is read
 - **THEN** it directs the reader to run the byte-identical inline tool invocation and print the mapped literal, and instructs them not to run the checks themselves, not to second-guess a verdict, and not to repair one
-

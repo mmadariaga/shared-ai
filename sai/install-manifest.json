@@ -584,7 +584,7 @@
       "harnesses": ["claude", "opencode"],
       "strategy": "copy",
       "recursive": true,
-      "include": ["fetch.js"],
+      "include": ["fetch.js", "harness-root.js"],
       "ownership": "managed",
       "drift": "content"
     },

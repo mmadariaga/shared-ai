@@ -220,8 +220,9 @@ test('the check policy delegates to the tool and keeps the literals byte-identic
   }
   assert.match(policy, /node <tool-path> check --json --cwd <project-root> --require-openspec-skills claude/);
   assert.match(policy, /node <tool-path> check --json --cwd <project-root> --require-openspec-skills opencode/);
-  assert.ok(policy.includes('.claude/sai/tools/prereqs.js'));
-  assert.ok(policy.includes('~/.config/opencode/sai/tools/prereqs.js'));
+  assert.ok(policy.includes('`sai/tools/prereqs.js`'));
+  assert.match(policy, /fetch tool in path mode/);
+  assert.ok(!policy.includes('~/.claude/sai/tools/prereqs.js'), 'the policy lists no fixed home candidate');
   for (const failed of ['cli', 'dir', 'schema', 'skills']) {
     assert.ok(policy.includes(`\`${failed}\``), `the policy must map the ${failed} check to its literal`);
   }

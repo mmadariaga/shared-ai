@@ -325,6 +325,18 @@ unlinking a retired file symlink leaves its target untouched. A linked global
 harness root is still cleaned, but a linked project `.claude` or `.opencode`
 root is skipped entirely.
 
+The global harness root is resolved the same way by the installer, `doctor`,
+uninstall, the generated permission rules, and the fetch tool. On Claude Code it
+is `CLAUDE_CONFIG_DIR` when that variable is set, and `~/.claude` otherwise. On
+opencode it is the directory `opencode debug paths` reports, then
+`XDG_CONFIG_HOME/opencode`, then `~/.config/opencode`. When the resolved root
+changes (for example `CLAUDE_CONFIG_DIR` is set after an install in `~/.claude`),
+every component works only on the new root: the old copy is neither migrated nor
+removed, `doctor` reports the files missing from the new root, and a reinstall
+regenerates the permission rules with its absolute path. The fetch tool follows
+symbolic links, so a linked install root is a supported layout; its scope check
+is lexical and does not compare real paths.
+
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
 **Project behavior settings**. See [project settings](docs/project-settings.md).
 

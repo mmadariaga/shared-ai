@@ -7,7 +7,7 @@ TBD - created by archiving change shared-tool-resolution-rule. Update Purpose af
 
 ### Requirement: Delta header tool path resolution
 
-The system SHALL resolve `check-delta-headers.js` by the shared tool-resolution policy, taking the first existing harness candidate verbatim and reporting tried candidates without a prose fallback when none exists. Temporary checks SHALL invoke `node <tool-path> <change-name> --delta-dir <dir>/specs`, with the confirmed name and transfer or correction directory. Accepted flags SHALL remain `--json`, `--root`, `--delta-dir`, and `--specs-dir`, never `--cwd` or the retired `--scenario-exceptions`. Main specs SHALL resolve from the project root. Claude Code and opencode SHALL share these validation semantics.
+The system SHALL resolve `check-delta-headers.js` by the shared tool-resolution policy, taking the copy the fetch tool returns in path mode and reporting the paths it tried without a prose fallback when it returns none. Temporary checks SHALL invoke `node <tool-path> <change-name> --delta-dir <dir>/specs`, with the confirmed name and transfer or correction directory. Accepted flags SHALL remain `--json`, `--root`, `--delta-dir`, and `--specs-dir`, never `--cwd` or the retired `--scenario-exceptions`. Main specs SHALL resolve from the project root. Claude Code and opencode SHALL share these validation semantics.
 
 #### Scenario: Preflight via resolved copy
 - **WHEN** backfill or archive runs header preflight

@@ -17,7 +17,7 @@ A dispatcher that disposes an agent turns its warming on by ending the task mess
 
 ## Begin
 
-The first response of an agent that received the switch (or of a main session that runs a command) starts with `begin`, in the foreground, before the first arm. `<wait-path>` is the installed `skills/sai-cache-warmer/wait.js`: on Claude Code `.claude/skills/sai-cache-warmer/wait.js`, then `~/.claude/skills/sai-cache-warmer/wait.js`; on opencode `.opencode/skills/sai-cache-warmer/wait.js`, then `~/.config/opencode/skills/sai-cache-warmer/wait.js`. A global `<wait-path>` is the absolute path its existence check returned, with backslashes turned into forward slashes (a path a tool returned, never one you composed).
+The first response of an agent that received the switch (or of a main session that runs a command) starts with `begin`, in the foreground, before the first arm. `<wait-path>` is the installed `skills/sai-cache-warmer/wait.js`, resolved with the fetch tool in path mode per `@sai/policies/tool-resolution.md` (name the subpath `skills/sai-cache-warmer/wait.js` twice in one call) and run as that policy states: a project-local result as written, a global result as the absolute path its block printed, with backslashes turned into forward slashes (a path a tool returned, never one you composed).
 
 - **Subagent**: `node "<wait-path>" begin --agent <agent> --harness <claude|opencode>`, with the agent name the switch names. The tool reads the `model` of the installed agent file.
 - **Main session**: `node "<wait-path>" begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode>`, with the provider and model of the running session as the harness states them (omit `--model` when it states none).

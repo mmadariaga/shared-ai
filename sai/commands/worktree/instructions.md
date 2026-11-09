@@ -28,9 +28,9 @@ question re-presented.
 ## The worktree tool
 
 Resolve the tool path per `@sai/policies/tool-resolution.md` § `sai/tools/*.js`
-copies, substituting `worktree.js` for `<name>`: the first existing candidate,
-copied verbatim, never composed from a root string. When none exists, name the
-candidates tried and stop. Every invocation has the same shape:
+copies, substituting `worktree.js` for `<name>`: the copy the fetch tool
+returns, never composed from a root string. When it returns none, name the paths
+it tried and stop. Every invocation has the same shape:
 
 ```
 node <tool-path> <sub-command> [arguments] --json --cwd <invoking-directory>

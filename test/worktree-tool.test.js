@@ -289,10 +289,12 @@ test('the worktree instructions drive the tool instead of re-deriving its checks
   assert.match(instructions, /`@sai\/policies\/tool-resolution\.md` § `sai\/tools\/\*\.js`\s+copies, substituting `worktree\.js` for `<name>`/);
   assert.match(instructions, /never composed from a root string/);
   const resolution = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'policies', 'tool-resolution.md'), 'utf8');
-  for (const candidate of ['`.claude/sai/tools/<name>`', '`~/.claude/sai/tools/<name>`', '`.opencode/sai/tools/<name>`', '`~/.config/opencode/sai/tools/<name>`']) {
-    assert.ok(resolution.includes(candidate), `tool-resolution must list ${candidate} verbatim`);
-  }
+  // The policy resolves tools through the fetch tool's path mode and lists no fixed home candidate.
+  assert.ok(resolution.includes('`sai/tools/<name>`'), 'tool-resolution must name the sai/tools/<name> subpath');
+  assert.match(resolution, /fetch tool in path mode/);
+  assert.match(resolution, /CLAUDE_CONFIG_DIR/);
   assert.match(resolution, /opencode debug paths/);
+  assert.ok(!resolution.includes('`~/.claude/sai/tools/<name>`'), 'no fixed ~/.claude candidate is listed');
   // The Create flow announces the indexing pass before running it, and only there.
   const createStep = instructions.slice(instructions.indexOf('### Step 3'), instructions.indexOf('### Step 4'));
   const deleteStep = instructions.slice(instructions.indexOf('### Step 4'));

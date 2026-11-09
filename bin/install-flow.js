@@ -20,6 +20,9 @@ try {
 const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
 const { splitCustomizations, preserveCustomizations } = require('./managed-customizations');
+const { resolveGlobalRoot, parseOpencodeConfigLine } = require('../skills/universal/fetch/harness-root');
+
+const parseOpencodeDebugPathsOutput = parseOpencodeConfigLine;
 
 const TUNABLE_SCALAR = /^([A-Za-z0-9_-]+):\s*(.*)$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
@@ -521,34 +524,20 @@ function writeVersionMarker(baseDir) {
   fs.writeFileSync(path.join(baseDir, '.version'), PACKAGE_VERSION);
 }
 
-const CLAUDE_BASE = path.join(os.homedir(), '.claude');
+// The Claude Code root of this process (`CLAUDE_CONFIG_DIR`, else `~/.claude`), through the shared resolver.
+const CLAUDE_BASE = resolveGlobalRoot('claude');
+// The default opencode location only. The root an install uses comes from `resolveOpencodeBase`; this value
+// is what `isDefaultOpencodeBase` compares against to keep the `~/.config/opencode` display form.
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
 const OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK = '~/.config/opencode/sai/**';
 
-function parseOpencodeDebugPathsOutput(stdout) {
-  if (typeof stdout !== 'string') return null;
-  for (const rawLine of stdout.split('\n')) {
-    const line = rawLine.trim();
-    if (line === '') continue;
-    const match = /^config\s+(.+?)\s*$/.exec(line);
-    if (match) {
-      const value = match[1].trim();
-      if (value !== '') return value;
-    }
-  }
-  return null;
-}
-
+// The opencode root: the directory `opencode debug paths` reports, else `XDG_CONFIG_HOME/opencode`, else the
+// default location, resolved by the shared resolver. `spawnSync` and `env` let a caller supply its own probe.
 function resolveOpencodeBase({ spawnSync: spawnFn = childProcess.spawnSync, env: runEnv = process.env } = {}) {
-  try {
-    const result = spawnFn('opencode debug paths', { shell: true, encoding: 'utf8', env: runEnv });
-    if (!result || result.error || result.status !== 0 || typeof result.stdout !== 'string') return OPENCODE_BASE;
-    const parsed = parseOpencodeDebugPathsOutput(result.stdout);
-    if (!parsed) return OPENCODE_BASE;
-    return parsed;
-  } catch {
-    return OPENCODE_BASE;
-  }
+  return resolveGlobalRoot('opencode', {
+    env: runEnv,
+    runOpencodePaths: probeEnv => spawnFn('opencode debug paths', { shell: true, encoding: 'utf8', env: probeEnv }),
+  });
 }
 
 function toPosixOpencodePath(value) {

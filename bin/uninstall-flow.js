@@ -9,11 +9,9 @@ const crypto = require('crypto');
 const {
   listMdFiles,
   listMdFilesRecursive,
-  CLAUDE_BASE,
-  OPENCODE_BASE,
-  resolveOpencodeBase,
   promptYesNoReadline,
 } = require('./install-flow.js');
+const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const flow = require('./install-flow.js');
 const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
 
@@ -119,13 +117,13 @@ function manifestEntries(harness, destinationRoot, editorBase) {
 }
 
 function enumerateClaude(destBase) {
-  const targetPath = destBase || CLAUDE_BASE;
+  const targetPath = destBase || resolveGlobalRoot('claude');
   const entries = manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath, root: targetPath }, targetPath);
   return entries;
 }
 
 function enumerateOpencode(destBase) {
-  const targetPath = destBase || (typeof resolveOpencodeBase === 'function' ? resolveOpencodeBase() : OPENCODE_BASE);
+  const targetPath = destBase || resolveGlobalRoot('opencode');
   return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath, root: targetPath }, targetPath);
 }
 

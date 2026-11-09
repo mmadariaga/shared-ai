@@ -2,9 +2,8 @@
 
 // Capability grants describe access, not operation or file-write authorization.
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const childProcess = require('child_process');
+const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { harnessRoot, SAI_DIR } = require('../sai/tools/temp-root');
 const FLAGS = ['read', 'search', 'write', 'webfetch', 'websearch', 'codegraph', 'question', 'panel', 'message', 'stopTask'];
 const LISTS = ['shell', 'skills', 'delegate'];
@@ -87,27 +86,14 @@ function quoteCommandPath(pattern) {
   return pattern.replace(/^(node )(\S+)/, (_, command, token) => `${command}"${token}${token.endsWith('*') ? '' : '"'}`);
 }
 
-// The config directory `opencode debug paths` prints on its `config` line, or undefined when it cannot be read.
-function opencodeReportedConfig() {
-  try {
-    const result = childProcess.spawnSync('opencode debug paths', { shell: true, encoding: 'utf8', timeout: 15000 });
-    if (!result || result.error || result.status !== 0 || typeof result.stdout !== 'string') return undefined;
-    return /^config\s+(.+?)\s*$/m.exec(result.stdout)?.[1];
-  } catch {
-    return undefined;
-  }
-}
-
 const defaultRoots = new Map();
 
-// The install root a caller did not pass: Claude Code's `~/.claude`; opencode's reported config directory,
-// else the XDG location, else `~/.config/opencode`. Resolved once per process and XDG setting.
+// The install root a caller did not pass, from the shared resolver: Claude Code's `CLAUDE_CONFIG_DIR` (else
+// `~/.claude`); opencode's reported config directory, else `XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`.
+// Resolved once per process and environment.
 function defaultInstallRoot(harness) {
-  const key = `${harness}:${process.env.XDG_CONFIG_HOME || ''}`;
-  if (!defaultRoots.has(key)) {
-    defaultRoots.set(key, harness === 'claude' ? path.join(os.homedir(), '.claude')
-      : opencodeReportedConfig() || path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'opencode'));
-  }
+  const key = `${harness}:${process.env.CLAUDE_CONFIG_DIR || ''}:${process.env.XDG_CONFIG_HOME || ''}`;
+  if (!defaultRoots.has(key)) defaultRoots.set(key, resolveGlobalRoot(harness));
   return defaultRoots.get(key);
 }
 
