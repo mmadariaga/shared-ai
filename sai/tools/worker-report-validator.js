@@ -12,8 +12,11 @@
  * the values each command admits.
  *
  * Worker payloads carry no time field. The validator checks closed-shape field
- * presence and types, ignores unknown fields with no explicit legacy handling,
- * and rejects malformed payloads without repair or inference.
+ * presence and types and rejects malformed payloads without repair or inference.
+ * Both kinds are closed: a key that is not part of the kind's shape (a terminal
+ * report's base keys plus the role fields its command's table lists, or a progress
+ * report's three keys) is rejected, and so is a key of the other kind. COMMAND_FIELDS
+ * below is the single source of the role fields each command's reports carry.
  *
  * The verdict is timeless. The `validate` CLI response carries received_at (CLI
  * reception time in YYYY-MM-DDTHH:MM:SS±HH:MM form, local wall-clock with numeric
@@ -29,12 +32,16 @@
  * Usage:
  *   node sai/tools/worker-report-validator.js validate --kind <kind> [--command <name>] --input-file <path> [--json] [--cwd <dir>]
  *
+ * A terminal report needs --command (the table that closes its shape); a progress
+ * report takes none.
+ *
  * Kinds:
  *   - terminal     Validate a terminal status payload (completed, needs_input, failed, cancelled)
  *   - progress     Validate a progress event payload
  *
  * Options:
- *   - --command <name>  The command whose `outcome` values a completed report may carry.
+ *   - --command <name>  The command whose role fields and `outcome` values a terminal report
+ *                       may carry. Mandatory for --kind terminal.
  *
  * Exit codes: 0 = validation passed; 1 = delivery or payload validation failed;
  * 2 = usage error or IO failure.
@@ -78,6 +85,85 @@ const COMMAND_OUTCOMES = Object.freeze({
   backfill: [],
   merge: [],
   'direct-build': [],
+});
+
+/** Keys every terminal report may carry, whatever its command. */
+const TERMINAL_BASE_KEYS = ['status', 'summary', 'changed_files', 'outcome', 'question', 'options'];
+
+/** Keys of a progress report. */
+const PROGRESS_KEYS = ['event', 'step_ids', 'changed_files'];
+
+const STRING = { kind: 'string' };
+const STRING_LIST = { kind: 'string[]' };
+const OBJECT_LIST = { kind: 'object[]' };
+const BOOLEAN = { kind: 'boolean' };
+const counts = (...keys) => ({ kind: 'counts', keys });
+const records = (...keys) => ({ kind: 'records', keys });
+const oneOf = (...values) => ({ kind: 'enum', values });
+
+/**
+ * The role fields of each command's terminal reports: the single source of the
+ * table, next to COMMAND_OUTCOMES. Each field has a type, the report statuses
+ * that must carry it (`required`; `completed` means a completed report without an
+ * `outcome`), and optionally the only statuses that may carry it (`only`). A key
+ * that is neither a base key nor listed for the command is rejected.
+ * `requiredWith` makes the field mandatory on a status when another key is present.
+ * `sai/policies/worker-report-transport.md` § Role fields lists the same fields,
+ * and a test keeps the two in step.
+ */
+const FAILURE_FIELDS = {
+  failure_class: { type: oneOf(...VALID_FAILURE_CLASSES), only: ['failed'], requiredWith: { status: 'failed', key: 'resolved_change_name' } },
+  unrecoverable: { type: BOOLEAN, only: ['failed'], requiredWith: { status: 'failed', key: 'resolved_change_name' } },
+};
+const PLAN_FIELDS = {
+  step_ids: { type: STRING_LIST, required: ['completed'] },
+  warnings: { type: records('spec_assertion', 'other_side', 'disagreement'), required: ['completed'] },
+  notes: { type: STRING, required: ['completed'] },
+};
+const auditFields = (...keys) => ({
+  report_path: { type: STRING, required: ['completed'] },
+  counts: { type: counts(...keys), required: ['completed'] },
+});
+const COMMAND_FIELDS = Object.freeze({
+  spec: PLAN_FIELDS,
+  design: PLAN_FIELDS,
+  implement: {
+    test_command: { type: STRING, required: ['completed'] },
+    notes: { type: STRING, required: ['completed'] },
+  },
+  review: {
+    review_path: { type: STRING, required: ['completed'] },
+    counts: { type: counts('critical', 'high', 'medium', 'low', 'questions'), required: ['completed'] },
+    recommended_audits: { type: STRING, required: ['completed'] },
+  },
+  security: auditFields('critical', 'high', 'medium', 'low'),
+  performance: auditFields('critical', 'high', 'medium', 'low', 'informational'),
+  accessibility: auditFields('critical', 'high', 'medium', 'low', 'informational'),
+  commit: {},
+  archive: {
+    resolved_change_name: { type: STRING, required: ['completed', 'needs_input'] },
+    ...FAILURE_FIELDS,
+  },
+  backfill: {
+    resolved_change_name: { type: STRING },
+    draft_references: { type: records('path', 'sha256', 'destination'), only: ['completed'] },
+    corrected_specs: { type: records('destination', 'content'), only: ['completed'] },
+    ...FAILURE_FIELDS,
+  },
+  merge: {
+    strategy: { type: STRING },
+    decisions: { type: OBJECT_LIST },
+    escalations: { type: OBJECT_LIST },
+    analysis: { type: STRING },
+    corrections: { type: OBJECT_LIST },
+    applicability: { type: oneOf('not-applicable', 'no-collision', 'repair-required', 'escalation-required') },
+    renames: { type: OBJECT_LIST },
+    reference_updates: { type: OBJECT_LIST },
+  },
+  'direct-build': {
+    resolved_change_name: { type: STRING },
+    ...FAILURE_FIELDS,
+  },
 });
 
 /**
@@ -158,20 +244,68 @@ function validateOptionObject(opt) {
   return null;
 }
 
+const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+const describe = (value) => (Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value);
+
 /**
- * Validate a terminal status payload.
- * Required fields: status, summary, changed_files. No time field is required;
- * unknown fields are ignored with no explicit legacy handling.
- * Additional validation based on status value.
- *
- * needs_input accepts two forms (dual validation, merge batch pilot):
- * - singular (backward compatible): question + options, no `questions` field.
- * - batch v1: `questions` present means batch; each item carries a stable `id`
- *   plus its own closed question + options. Only closed questions are allowed
- *   in a batch; open input stays in its own singular round.
+ * Check one value against a field type. Returns an error string or null.
+ */
+function checkType(name, value, type) {
+  switch (type.kind) {
+    case 'string':
+      return typeof value === 'string' ? null : `${name} must be a string, got ${describe(value)}`;
+    case 'boolean':
+      return typeof value === 'boolean' ? null : `${name} must be a boolean, got ${describe(value)}`;
+    case 'string[]':
+      if (!Array.isArray(value)) return `${name} must be an array, got ${describe(value)}`;
+      return value.every((v) => typeof v === 'string') ? null : `${name} must be an array of strings`;
+    case 'object[]':
+      if (!Array.isArray(value)) return `${name} must be an array, got ${describe(value)}`;
+      return value.every(isRecord) ? null : `${name} must be an array of objects`;
+    case 'enum':
+      return type.values.includes(value)
+        ? null
+        : `${name} must be one of [${type.values.join(', ')}], got "${value}"`;
+    case 'counts': {
+      if (!isRecord(value)) return `${name} must be an object, got ${describe(value)}`;
+      const keys = Object.keys(value);
+      if (keys.length !== type.keys.length || !type.keys.every((k) => keys.includes(k))) {
+        return `${name} must have exactly the keys [${type.keys.join(', ')}]`;
+      }
+      const bad = type.keys.find((k) => !Number.isInteger(value[k]) || value[k] < 0);
+      return bad ? `${name}.${bad} must be a non-negative integer` : null;
+    }
+    case 'records': {
+      if (!Array.isArray(value)) return `${name} must be an array, got ${describe(value)}`;
+      for (const [index, item] of value.entries()) {
+        if (!isRecord(item)) return `${name}[${index}] must be an object`;
+        const keys = Object.keys(item);
+        if (keys.length !== type.keys.length || !type.keys.every((k) => keys.includes(k))) {
+          return `${name}[${index}] must have exactly the keys [${type.keys.join(', ')}]`;
+        }
+        if (!type.keys.every((k) => typeof item[k] === 'string')) return `${name}[${index}] must have string values`;
+      }
+      return null;
+    }
+    default:
+      return `${name} has an unknown type`;
+  }
+}
+
+/**
+ * Validate a terminal status payload against the closed shape of its command.
+ * Base fields: status, summary, changed_files; `outcome` on a completed report;
+ * `question` and `options` on a needs_input report. Every other key must be a role
+ * field the command's COMMAND_FIELDS entry lists, with its type and, on the
+ * statuses it names, its presence. No time field exists, and a key of the
+ * progress kind (`event`) or an unlisted key is rejected without repair.
  */
 function validateTerminal(payload, options = {}) {
   const errors = [];
+  const { command } = options;
+  const fields = command && Object.hasOwn(COMMAND_FIELDS, command) ? COMMAND_FIELDS[command] : null;
+  if (!command) errors.push('a terminal report needs the command whose shape applies (--command)');
+  else if (!fields) errors.push(`unknown command: ${command}`);
 
   if (!('status' in payload)) {
     errors.push('status is missing');
@@ -184,95 +318,64 @@ function validateTerminal(payload, options = {}) {
 
   const { status } = payload;
 
-  // needs_input requires either the singular question/options pair (when
-  // `questions` is absent) or the batch v1 `questions` array (when present).
   if (status === 'needs_input') {
-    if ('questions' in payload) {
-      if (!Array.isArray(payload.questions)) {
-        errors.push(`questions must be an array, got ${typeof payload.questions}`);
-      } else if (payload.questions.length === 0) {
-        errors.push('questions must be a non-empty array');
-      } else {
-        const seenIds = new Set();
-        payload.questions.forEach((item, index) => {
-          const where = `questions[${index}]`;
-          if (typeof item !== 'object' || item === null) {
-            errors.push(`${where} must be an object`);
-            return;
-          }
-          if (!('id' in item) || typeof item.id !== 'string' || item.id.length === 0) {
-            errors.push(`${where}.id is missing (stable non-empty string id required)`);
-          } else if (seenIds.has(item.id)) {
-            errors.push(`${where}.id is duplicated ("${item.id}")`);
-          } else {
-            seenIds.add(item.id);
-          }
-          if (!('question' in item) || typeof item.question !== 'string') {
-            errors.push(`${where}.question is missing`);
-          }
-          if (!('options' in item)) {
-            errors.push(`${where}.options is missing`);
-          } else if (!Array.isArray(item.options)) {
-            errors.push(`${where}.options must be an array, got ${typeof item.options}`);
-          } else if (item.options.length === 0) {
-            errors.push(`${where}.options must be a non-empty array (batch v1 carries closed questions only)`);
-          } else {
-            for (const opt of item.options) {
-              const optionError = validateOptionObject(opt);
-              if (optionError) {
-                errors.push(`${where}.${optionError}`);
-                break;
-              }
-            }
-          }
-        });
-      }
+    validateStringField(payload, 'question', errors);
+    if (!('options' in payload)) {
+      errors.push('options is missing');
+    } else if (!Array.isArray(payload.options)) {
+      errors.push(`options must be an array, got ${typeof payload.options}`);
     } else {
-      validateStringField(payload, 'question', errors);
-      if (!('options' in payload)) {
-        errors.push('options is missing');
-      } else if (!Array.isArray(payload.options)) {
-        errors.push(`options must be an array, got ${typeof payload.options}`);
-      } else {
-        for (const opt of payload.options) {
-          const optionError = validateOptionObject(opt);
-          if (optionError) {
-            errors.push(optionError);
-            break;
-          }
+      for (const opt of payload.options) {
+        const optionError = validateOptionObject(opt);
+        if (optionError) {
+          errors.push(optionError);
+          break;
         }
       }
+    }
+  } else {
+    for (const key of ['question', 'options']) {
+      if (key in payload) errors.push(`${key} is allowed only on a needs_input report`);
     }
   }
 
   if ('outcome' in payload) {
-    const admitted = options.command ? COMMAND_OUTCOMES[options.command] : [];
+    const admitted = command ? COMMAND_OUTCOMES[command] || [] : [];
     if (status !== 'completed') {
       errors.push('outcome is allowed only on a completed report');
     } else if (typeof payload.outcome !== 'string') {
       errors.push(`outcome must be a string, got ${typeof payload.outcome}`);
-    } else if (!options.command) {
+    } else if (!command) {
       errors.push('outcome needs the command that admits it (--command)');
     } else if (!admitted.includes(payload.outcome)) {
       errors.push(admitted.length === 0
-        ? `outcome is not admitted by ${options.command}, got "${payload.outcome}"`
-        : `outcome must be one of [${admitted.join(', ')}] for ${options.command}, got "${payload.outcome}"`);
+        ? `outcome is not admitted by ${command}, got "${payload.outcome}"`
+        : `outcome must be one of [${admitted.join(', ')}] for ${command}, got "${payload.outcome}"`);
     }
   }
 
-  // Post-resolution failed payloads require failure_class and unrecoverable
-  if (status === 'failed' && 'resolved_change_name' in payload) {
-    if (!('failure_class' in payload)) {
-      errors.push('failure_class is missing (required for post-resolution failed)');
-    } else if (!VALID_FAILURE_CLASSES.includes(payload.failure_class)) {
-      errors.push(
-        `failure_class must be one of [${VALID_FAILURE_CLASSES.join(', ')}], got "${payload.failure_class}"`
-      );
+  // The reading status of `required`: a completed report that carries an outcome
+  // (for example review's no-changes) is a different shape and owes no role field.
+  const reading = status === 'completed' && 'outcome' in payload ? 'completed-with-outcome' : status;
+  for (const key of Object.keys(payload)) {
+    if (TERMINAL_BASE_KEYS.includes(key)) continue;
+    if (PROGRESS_KEYS.includes(key) && !(fields && key in fields)) {
+      errors.push(`${key} belongs to a progress report, not a terminal one`);
+    } else if (!fields || !(key in fields)) {
+      if (fields) errors.push(`${key} is not a field of a ${command} report`);
+    } else if (fields[key].only && !fields[key].only.includes(status)) {
+      errors.push(`${key} is allowed only on a ${fields[key].only.join(' or ')} report`);
+    } else {
+      const typeError = checkType(key, payload[key], fields[key].type);
+      if (typeError) errors.push(typeError);
     }
-    if (!('unrecoverable' in payload)) {
-      errors.push('unrecoverable is missing (required for post-resolution failed)');
-    } else if (typeof payload.unrecoverable !== 'boolean') {
-      errors.push(`unrecoverable must be a boolean, got ${typeof payload.unrecoverable}`);
+  }
+  for (const [key, spec] of Object.entries(fields || {})) {
+    if (key in payload) continue;
+    if (spec.required && spec.required.includes(reading)) {
+      errors.push(`${key} is missing`);
+    } else if (spec.requiredWith && status === spec.requiredWith.status && spec.requiredWith.key in payload) {
+      errors.push(`${key} is missing (required for post-resolution failed)`);
     }
   }
 
@@ -294,6 +397,13 @@ function validateProgress(payload) {
 
   validateStringArray(payload, 'step_ids', errors);
   validateStringArray(payload, 'changed_files', errors);
+
+  for (const key of Object.keys(payload)) {
+    if (PROGRESS_KEYS.includes(key)) continue;
+    errors.push(TERMINAL_BASE_KEYS.includes(key)
+      ? `${key} belongs to a terminal report, not a progress one`
+      : `${key} is not a field of a progress report`);
+  }
 
   return errors;
 }
@@ -680,9 +790,11 @@ function usage() {
     `                           One of: ${VALID_KINDS.join(', ')}.`,
     '                           Omitting the flag or passing an invalid kind is a usage',
     '                           error (exit 2).',
-    '  --command <name>         The command whose `outcome` values a completed report may carry.',
+    '  --command <name>         The command whose role fields and `outcome` values a terminal',
+    '                           report may carry; its shape is closed to them.',
     `                           One of: ${Object.keys(COMMAND_OUTCOMES).join(', ')}.`,
-    '                           Without it a report that carries `outcome` is invalid.',
+    '                           Mandatory for --kind terminal (usage error, exit 2, without it);',
+    '                           a progress report takes none.',
     '',
     '  --json                   Emit the report as JSON on stdout.',
     '  --cwd <dir>              Working directory (for symmetry with other tools; not',
@@ -765,6 +877,10 @@ async function main(argv) {
     process.stderr.write(`invalid --command value: ${opts.outcomeCommand}\n${usage()}\n`);
     return 2;
   }
+  if (kind === 'terminal' && opts.outcomeCommand === null) {
+    process.stderr.write(`validate --kind terminal requires --command with one of: ${Object.keys(COMMAND_OUTCOMES).join(', ')}\n${usage()}\n`);
+    return 2;
+  }
   const verdictOptions = opts.outcomeCommand === null ? {} : { command: opts.outcomeCommand };
 
   try {
@@ -811,5 +927,6 @@ module.exports = {
   VALID_FAILURE_CLASSES,
   VALID_KINDS,
   COMMAND_OUTCOMES,
+  COMMAND_FIELDS,
   RECEIVED_AT_PATTERN,
 };

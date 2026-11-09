@@ -103,8 +103,8 @@ takes one — never substitute one for the other.
   <project-root> --fingerprint <hash>`, with the complete reference set in
   `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <terminal|progress>
-  --input-file <path>` with the payload in the input file (plus `--json --cwd` where the tool accepts
-  them). A worker report that travels as a report reference uses `--kind terminal
+  [--command <command>] --input-file <path>` with the payload in the input file (plus `--json --cwd`
+  where the tool accepts them); a terminal payload needs `--command`, a progress one takes none. A worker report that travels as a report reference uses `--kind terminal
   --command <command> --report-dir <authorized-dir> --report-file <path>
   --report-hash <sha256> --json` instead of the input file, per
   `@sai/policies/worker-report-transport.md`.
@@ -131,7 +131,8 @@ takes one — never substitute one for the other.
 - `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
   `--json` nor `--cwd`. The progress emit (`emit <id> <machineId> --progress
-  --input-file <path>`) loads the validator module
+  --report-dir <dir> --report-file <path> --report-hash <sha256>`, or
+  `--progress --input-file <path>`) loads the validator module
   itself, relative to the resolved `sai-state.js`, so it needs no separate
   `worker-report-validator.js` resolution and stays byte-identical whichever
   `sai-state.js` candidate wins.

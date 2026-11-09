@@ -347,3 +347,133 @@ test('every sai-state verb writes received_at as the first stdout key and no tim
     cleanup(id);
   }
 });
+
+// ─── Reference mode: the emit verifies and validates the worker's report itself ───
+
+const transfer = require('../sai/tools/transfer');
+
+function referenceFixture(t, content, name = 'progress-1.json') {
+  const { dir } = transfer.open('claude');
+  t.after(() => transfer.close(dir));
+  const bytes = Buffer.from(typeof content === 'string' ? content : JSON.stringify(content));
+  return { dir, reference: transfer.put(dir, name, bytes, { exclusive: true }) };
+}
+
+function referenceEmit(id, machineId, dir, reference, extra = []) {
+  return runCli(['emit', id, machineId, '--progress', '--report-dir', dir, '--report-file', reference.path, '--report-hash', reference.sha256, ...extra]);
+}
+
+test('progress emit reference mode: a verified report advances the machine like the input forms do', t => {
+  const { dir, reference } = referenceFixture(t, { event: 'progress', step_ids: ['spec-intake'], changed_files: [] });
+  const id = spawnSession('progress-reference');
+  const inputId = spawnSession('progress-reference-input');
+  try {
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    assert.equal(runCli(['reset', inputId, 'spec-steps@1']).exitCode, 0);
+    const result = referenceEmit(id, 'spec-steps@1', dir, reference);
+    assert.equal(result.exitCode, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+    assert.equal(Object.keys(json)[0], 'received_at');
+    assert.equal(json.validation.ok, true);
+    assert.equal(json.validation.outcome, 'accepted');
+    assert.equal(json.validation.payload, undefined, 'the verdict carries no payload copy');
+    const viaInput = progressEmit(inputId, 'spec-steps@1', progress(['spec-intake']));
+    const inputJson = JSON.parse(viaInput.stdout);
+    assert.equal(json.stage, inputJson.stage);
+    assert.deepEqual(json.next, inputJson.next);
+  } finally {
+    cleanup(id);
+    cleanup(inputId);
+  }
+});
+
+test('progress emit reference mode (E4): a foreign directory, a wrong hash, and an altered file are refused and the machine does not advance', t => {
+  const { dir, reference } = referenceFixture(t, { event: 'progress', step_ids: ['spec-intake'], changed_files: [] });
+  const other = referenceFixture(t, { event: 'progress', step_ids: ['spec-intake'], changed_files: [] });
+  const id = spawnSession('progress-reference-refused');
+  try {
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const before = readRecord(id);
+    for (const [report, ref] of [
+      [other.dir, reference],
+      [dir, { ...reference, sha256: '0'.repeat(64) }],
+      [dir, { path: path.join(os.tmpdir(), 'outside.json'), sha256: reference.sha256 }],
+    ]) {
+      const result = referenceEmit(id, 'spec-steps@1', report, ref);
+      assert.equal(result.exitCode, 1, result.stdout);
+      const json = JSON.parse(result.stdout);
+      assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
+      assert.equal(json.validation.ok, false);
+      assert.equal(json.validation.outcome, 'delivery-failed');
+      assert.equal(readRecord(id), before);
+    }
+    fs.writeFileSync(reference.path, JSON.stringify({ event: 'progress', step_ids: ['design'], changed_files: [] }));
+    const altered = referenceEmit(id, 'spec-steps@1', dir, reference);
+    assert.equal(altered.exitCode, 1);
+    assert.equal(JSON.parse(altered.stdout).validation.outcome, 'delivery-failed');
+    assert.equal(readRecord(id), before, 'the bytes that changed after the hash never reach the machine');
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('progress emit reference mode: a report outside the progress shape is invalid, not delivered', t => {
+  const id = spawnSession('progress-reference-invalid');
+  try {
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const before = readRecord(id);
+    for (const content of [
+      { event: 'progress', step_ids: ['spec-intake'], changed_files: [], status: 'completed' },
+      { event: 'progress', changed_files: [] },
+      { status: 'completed', summary: 's', changed_files: [] },
+      'not: [valid',
+    ]) {
+      const { dir, reference } = referenceFixture(t, content);
+      const result = referenceEmit(id, 'spec-steps@1', dir, reference);
+      assert.equal(result.exitCode, 1, JSON.stringify(content));
+      const json = JSON.parse(result.stdout);
+      assert.equal(json.validation.ok, false);
+      assert.equal(json.validation.outcome, 'report-invalid');
+      assert.equal(readRecord(id), before);
+    }
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('progress emit reference mode: the three reference flags come together and never beside the input forms', t => {
+  const { dir, reference } = referenceFixture(t, { event: 'progress', step_ids: ['spec-intake'], changed_files: [] });
+  const id = spawnSession('progress-reference-usage');
+  try {
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const before = readRecord(id);
+    const partial = runCli(['emit', id, 'spec-steps@1', '--progress', '--report-dir', dir, '--report-file', reference.path]);
+    assert.equal(partial.exitCode, 2);
+    assert.match(partial.stderr, /all of --report-dir, --report-file, and --report-hash/);
+    const withInput = referenceEmit(id, 'spec-steps@1', dir, reference, ['--input-file', reference.path]);
+    assert.equal(withInput.exitCode, 2);
+    const withStdin = runCli(['emit', id, 'spec-steps@1', '--progress', '--report-dir', dir, '--report-file', reference.path, '--report-hash', reference.sha256, '-'], progress(['spec-intake']));
+    assert.equal(withStdin.exitCode, 2);
+    assert.equal(readRecord(id), before);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('progress emit: the input-file and stdin forms keep their behavior beside the reference mode', t => {
+  const id = spawnSession('progress-input-kept');
+  try {
+    const { dir } = transfer.open('claude');
+    t.after(() => transfer.close(dir));
+    const file = path.join(dir, 'event.json');
+    fs.writeFileSync(file, progress(['spec-intake']));
+    assert.equal(runCli(['reset', id, 'spec-steps@1']).exitCode, 0);
+    const viaFile = runCli(['emit', id, 'spec-steps@1', '--progress', '--input-file', file]);
+    assert.equal(viaFile.exitCode, 0, viaFile.stderr);
+    assert.equal(JSON.parse(viaFile.stdout).validation.ok, true);
+    assert.equal(JSON.parse(viaFile.stdout).validation.outcome, undefined);
+    assert.equal(progressEmit(id, 'spec-steps@1', progress([])).exitCode, 0);
+  } finally {
+    cleanup(id);
+  }
+});

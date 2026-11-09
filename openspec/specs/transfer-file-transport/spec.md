@@ -49,7 +49,7 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: Put writes standard input inside the transfer directory
 
-`transfer.js put --dir <dir> --path <relative> [--input-file <path>]` SHALL write the bytes read from the input file, or from standard input when no input file is given, to the forward-slash relative path inside the transfer directory, creating intermediate plain directories, and SHALL return the absolute `path` and the `sha256` of the written bytes. The input file SHALL be read through the shared input reader, so a missing, unreadable, or empty input file fails naming the path and writes nothing. Writing the same path again SHALL replace the file. An absolute path, a path with an empty, `.`, or `..` segment, a backslash or colon, or the reserved marker name SHALL be rejected, and an existing intermediate entry that is not a plain directory, or a target that is not a regular file, SHALL fail the check.
+`transfer.js put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]` SHALL write the bytes read from the input file, or from standard input when no input file is given, to the forward-slash relative path inside the transfer directory, creating intermediate plain directories, and SHALL return the absolute `path` and the `sha256` of the written bytes. The input file SHALL be read through the shared input reader, so a missing, unreadable, or empty input file fails naming the path and writes nothing. Without `--exclusive`, writing the same path again SHALL replace the file. With `--exclusive`, the file SHALL be created by one exclusive-create open, so an existing name (a file, a symbolic link, anything) fails atomically with exit 1 and leaves the existing entry and its sha256 unchanged, and a failed write leaves no partial file. An absolute path, a path with an empty, `.`, or `..` segment, a backslash or colon, or the reserved marker name SHALL be rejected, and an existing intermediate entry that is not a plain directory, or a target that is not a regular file, SHALL fail the check.
 
 #### Scenario: Put returns path and hash
 
@@ -60,6 +60,16 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 - **WHEN** `put` receives an absolute path, a `..` segment, a backslash, or the marker name
 - **THEN** it exits with a failure and writes nothing
+
+#### Scenario: An exclusive put never replaces a file
+
+- **WHEN** `put --exclusive` targets a name that already exists in the transfer directory
+- **THEN** it fails and the existing file and its sha256 stay unchanged
+
+#### Scenario: A put without the flag still replaces
+
+- **WHEN** `put` without `--exclusive` targets a name that already exists
+- **THEN** the file holds the new bytes and the result carries their sha256
 
 ### Requirement: Verify checks location, links, and hash
 
@@ -111,3 +121,12 @@ Every `transfer.js` call SHALL print one JSON object on standard output and SHAL
 
 - **WHEN** `transfer.js` runs with an unknown sub-command or a missing required flag
 - **THEN** it prints a JSON object with `ok: false` and exits 2
+
+### Requirement: Worker reports are saved exclusively
+
+Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/worker-report-transport.md` § Author boundary and every worker card that spells the report `put` command SHALL carry the flag. Block export and backfill drafts SHALL keep the replacing default.
+
+#### Scenario: Worker cards spell the exclusive save
+
+- **WHEN** a worker card or the transport policy spells the command that saves a worker report
+- **THEN** that command carries `--exclusive`

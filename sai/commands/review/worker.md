@@ -28,7 +28,7 @@ Your first task message opens with the line `--report-dir <path>`, the report di
 
 ## Results
 
-Return one report reference per message and end the turn. Save the report as the transport policy says: write it to a unique draft file in the report directory, then run `transfer.js put --dir <report-dir> --path <report name> --input-file <draft>`, and return only the `{path, sha256}` that `put` prints, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you. A message that carries the result inline is an invalid report. A report carries no time field and no artifact contents. Every report is a new file under a unique name of your choosing, so a replacement worker never overwrites an earlier reference.
+Return one report reference per message and end the turn. Save the report as the transport policy says: write it to a unique draft file in the report directory, then run `transfer.js put --dir <report-dir> --path <report name> --exclusive --input-file <draft>`, and return only the `{path, sha256}` that `put` prints, with the `warming: true|false` line of `@sai/policies/cache-warming.md` beside it when the warming switch reached you. A message that carries the result inline is an invalid report. A report carries no time field and no artifact contents. Every report is a new file under a unique name of your choosing, so a replacement worker never overwrites an earlier reference.
 
 After `establish-diff-scope` and after `resolve-review-analysis`, a progress report. Its file name starts with `progress-`:
 

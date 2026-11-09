@@ -18,7 +18,7 @@ function fixture(t, bytes = Buffer.from(JSON.stringify(report))) {
   return { dir, reference: transfer.put(dir, 'report.json', bytes), bytes };
 }
 function cli(dir, reference, extra = []) {
-  return spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--json',
+  return spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--command', 'direct-build', '--json',
     '--report-dir', dir, '--report-file', reference.path, '--report-hash', reference.sha256, ...extra],
   { encoding: 'utf8', input: 'must not be read as a report' });
 }
@@ -44,7 +44,7 @@ test('hash and validation share a single read even if the file changes afterward
     fs.writeFileSync(file, 'changed after read');
     return bytes;
   };
-  const verdict = validateFile(dir, reference, 'terminal', { io });
+  const verdict = validateFile(dir, reference, 'terminal', { io, command: 'direct-build' });
   assert.equal(reads, 1);
   assert.equal(verdict.outcome, 'accepted');
   assert.deepEqual(verdict.payload, report);
@@ -53,7 +53,7 @@ test('hash and validation share a single read even if the file changes afterward
 test('YAML and nested backfill references survive file validation without report rewriting', t => {
   const bytes = Buffer.from('status: completed\r\nsummary: "café and quotes"\r\nchanged_files: []\r\nresolved_change_name: example\r\ndraft_references:\r\n  - path: /private/draft\r\n    sha256: abc\r\n    destination: openspec/changes/example/proposal.md\r\n');
   const { dir, reference } = fixture(t, bytes);
-  const verdict = validateFile(dir, reference, 'terminal');
+  const verdict = validateFile(dir, reference, 'terminal', { command: 'backfill' });
   assert.equal(verdict.outcome, 'accepted');
   assert.equal(verdict.payload.draft_references[0].sha256, 'abc');
   assert.deepEqual(fs.readFileSync(reference.path), bytes);
@@ -68,7 +68,7 @@ test('input and failure reports use the same private transport as completion', t
     { ...report, summary: 'Escaped JSON preserves a NUL: \u0000' },
   ]) {
     const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(payload)));
-    assert.deepEqual(validateFile(dir, reference, 'terminal').payload, payload);
+    assert.deepEqual(validateFile(dir, reference, 'terminal', { command: 'direct-build' }).payload, payload);
   }
 });
 
@@ -79,14 +79,14 @@ test('missing, altered, foreign and symlink reports fail delivery, not report va
     { ...reference, path: path.join(dir, 'missing.json') },
     { ...reference, sha256: '0'.repeat(64) }, other.reference,
   ]) {
-    const verdict = validateFile(dir, ref, 'terminal');
+    const verdict = validateFile(dir, ref, 'terminal', { command: 'direct-build' });
     assert.equal(verdict.outcome, 'delivery-failed');
     assert.equal(verdict.payload, undefined);
   }
   await t.test('a linked report file', st => {
     const link = path.join(dir, 'link.json');
     if (!linkFile(st, reference.path, link)) return;
-    assert.equal(validateFile(dir, { ...reference, path: link }, 'terminal').outcome, 'delivery-failed');
+    assert.equal(validateFile(dir, { ...reference, path: link }, 'terminal', { command: 'direct-build' }).outcome, 'delivery-failed');
   });
   fs.writeFileSync(reference.path, 'changed');
   assert.equal(cli(dir, reference).status, 1);
@@ -96,7 +96,7 @@ test('unsupported bytes and malformed reports are rejected explicitly and retain
   for (const bytes of [Buffer.from('status: completed\nsummary: null\0byte\nchanged_files: []'),
     Buffer.from([0xff]), Buffer.from('{bad JSON'), Buffer.from('{"status":"completed"}')]) {
     const { dir, reference } = fixture(t, bytes);
-    const verdict = validateFile(dir, reference, 'terminal');
+    const verdict = validateFile(dir, reference, 'terminal', { command: 'direct-build' });
     assert.equal(verdict.outcome, 'report-invalid');
     assert.equal(verdict.ok, false);
     assert.equal(verdict.payload, undefined);
@@ -108,11 +108,11 @@ test('unreadable report is a delivery failure and an interrupted call leaves evi
   const { dir, reference, bytes } = fixture(t);
   const io = Object.create(fs);
   io.readFileSync = () => { throw Object.assign(new Error('unreadable'), { code: 'EACCES' }); };
-  assert.equal(validateFile(dir, reference, 'terminal', { io }).outcome, 'delivery-failed');
+  assert.equal(validateFile(dir, reference, 'terminal', { io, command: 'direct-build' }).outcome, 'delivery-failed');
   const interrupted = spawnSync(process.execPath, ['-e', 'process.kill(process.pid, "SIGTERM")']);
   assert.notEqual(interrupted.status, 0);
   assert.deepEqual(fs.readFileSync(reference.path), bytes);
-  assert.equal(validateFile(dir, reference, 'terminal').outcome, 'accepted');
+  assert.equal(validateFile(dir, reference, 'terminal', { command: 'direct-build' }).outcome, 'accepted');
 });
 
 test('report-only recovery after completed operations has no repository effects', t => {
@@ -122,16 +122,16 @@ test('report-only recovery after completed operations has no repository effects'
   fs.mkdirSync(archive);
   fs.writeFileSync(path.join(archive, 'commit'), commit);
   const invalid = { ...reference, sha256: '0'.repeat(64) };
-  assert.equal(validateFile(dir, invalid, 'terminal').outcome, 'delivery-failed');
-  for (let attempt = 0; attempt < 3; attempt++) assert.equal(validateFile(dir, reference, 'terminal').ok, true);
+  assert.equal(validateFile(dir, invalid, 'terminal', { command: 'direct-build' }).outcome, 'delivery-failed');
+  for (let attempt = 0; attempt < 3; attempt++) assert.equal(validateFile(dir, reference, 'terminal', { command: 'direct-build' }).ok, true);
   assert.equal(fs.readFileSync(path.join(archive, 'commit'), 'utf8'), commit);
   assert.ok(fs.existsSync(reference.path));
 });
 
 test('legacy stdin and pure validation retain their result shapes', () => {
   const expected = { ok: true, action: 'validate', kind: 'terminal', errors: [] };
-  assert.deepEqual(validateText(JSON.stringify(report), 'terminal'), expected);
-  const result = spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--json'],
+  assert.deepEqual(validateText(JSON.stringify(report), 'terminal', { command: 'direct-build' }), expected);
+  const result = spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--command', 'direct-build', '--json'],
     { input: JSON.stringify(report), encoding: 'utf8' });
   const { received_at, ...verdict } = JSON.parse(result.stdout);
   assert.ok(received_at);
@@ -139,7 +139,7 @@ test('legacy stdin and pure validation retain their result shapes', () => {
 });
 
 test('partial file options are usage errors, never a fallback to stdin', () => {
-  const result = spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--report-file', '/missing'],
+  const result = spawnSync(process.execPath, [tool, 'validate', '--kind', 'terminal', '--command', 'direct-build', '--report-file', '/missing'],
     { input: JSON.stringify(report), encoding: 'utf8' });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /requires --report-dir/);
@@ -205,7 +205,7 @@ test('a completed review report carries its outcome through the file transport',
   const rejected = validateFile(dir, reference, 'terminal', { command: 'implement' });
   assert.equal(rejected.outcome, 'report-invalid');
   assert.equal(rejected.payload, undefined);
-  assert.equal(cli(dir, reference).status, 1, 'an outcome with no command is not admitted');
+  assert.equal(cli(dir, reference).status, 1, 'an outcome the command does not admit is invalid');
 });
 
 test('RED, GREEN, and the Direct Build worker report through the policy in the unified schema', () => {
@@ -259,14 +259,16 @@ test('the worker profiles grant the transfer put call and no retired kind surviv
 test('the policy covers the plan and review workers, the progress kind, and the file-name rule', () => {
   const policy = read(POLICY);
   assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
-  assert.match(policy, /spec and design: `step_ids`, `warnings`, and `notes`; review: `review_path`, `counts`, and `recommended_audits`/);
+  assert.match(policy, /\| `spec` \| spec \| `step_ids`, `warnings`, `notes` \|/);
+  assert.match(policy, /\| `review` \| review \| `review_path`, `counts`, `recommended_audits` \|/);
   assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and Direct Build, and `merge-run@1` for `\/sai-merge`/);
   assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
   const progress = policy.slice(policy.indexOf('### Progress reports'), policy.indexOf('## Author boundary'));
   assert.match(progress, /event: progress\nstep_ids: string\[\]\nchanged_files: string\[\]/);
   assert.match(progress, /names its file with the prefix `progress-`/);
-  assert.match(progress, /validated with `--kind progress`, and any other report with `--kind terminal`/);
-  assert.match(progress, /sai-state emit <id> <machine> --progress --input-file <report file>/);
+  assert.match(progress, /validated with `--kind progress`, or by the `emit --progress` reference mode below\), and any other report is validated with `--kind terminal --command <command>`/);
+  assert.match(progress, /sai-state emit <id> <machine> --progress --report-dir <report-dir> --report-file <path> --report-hash <sha256>/);
+  assert.match(progress, /`--input-file <report file>` and stdin stay accepted for a hand-composed payload and carry no hash check/);
 });
 
 test('a progress report travels through the file transport and is validated with the progress kind', t => {
@@ -366,11 +368,11 @@ test('the review coordinator validates every report and feeds progress reports t
   assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the run with `transfer\.js open --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
-  assert.match(card, /a name that starts with `progress-` is a progress report, validated with `validate --kind progress --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
+  assert.match(card, /a name that starts with `progress-` is a progress report, which the machine emit below verifies and validates itself, so you run no `validate` call for it/);
   assert.match(card, /validate --kind terminal --command review --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
   assert.match(card, /Before you read any field/);
   assert.match(card, /including the retired `event: step-done`, is an invalid report/);
-  assert.match(card, /`sai-state emit <id> review-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /`sai-state emit <id> review-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
   assert.match(card, /the first progress report carries `review-intake` and `establish-diff-scope`/);
   assert.match(card, /when the emit fails, send the next pointer from the static order/);
   assert.match(card, /- `completed` with `outcome: no-changes`: print the worker's `summary`, which is exactly `No changes detected against \{parent-branch\}\. Nothing to review\.`, write no `review\.md`, commit nothing, and end the run with `Review done\.`/);
@@ -432,10 +434,10 @@ test('the audit coordinator opens a report directory per cycle, validates every 
   assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the cycle with `transfer\.js open --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
-  assert.match(card, /validated with `validate --kind progress --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
+  assert.match(card, /a progress report, which the machine emit below verifies and validates itself, so you run no `validate` call for it/);
   assert.match(card, /validate --kind terminal --command \{audit\} --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
   assert.match(card, /including the retired `event: step-done` and `event: question`, is an invalid report/);
-  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
   assert.match(card, /never rewriting the payload/);
   assert.match(card, /second consecutive invalid report from that worker replaces it/);
   assert.match(card, /transfer\.js close --dir <report directory>/);
@@ -448,7 +450,7 @@ test('deep-review opens a report directory per audit cycle and validates and emi
   assert.match(card, /its steps 5 and 6 of Start/);
   assert.match(card, /Each activated audit cycle opens its own report directory/);
   assert.match(card, /You validate every audit report[^\n]*and issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility/);
-  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --input-file <report file>`/);
+  assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
   assert.match(card, /A worker `needs_input` report is answered by you/);
   assert.match(card, /a cycle recorded as `failed` keeps it/);
 });
@@ -477,10 +479,14 @@ test('the audit progress report advances the step machine through the progress e
   assert.equal(accepted.outcome, 'accepted');
   const completed = { status: 'completed', summary: 'Wrote security.md.', changed_files: ['openspec/changes/x/security.md'],
     report_path: 'openspec/changes/x/security.md', counts: { critical: 0, high: 1, medium: 0, low: 0 } };
-  const done = transfer.put(dir, 'completed.json', Buffer.from(JSON.stringify(completed)));
   for (const command of ['security', 'performance', 'accessibility']) {
+    // The security audit has no informational count; the other two carry one.
+    const counts = command === 'security' ? completed.counts : { ...completed.counts, informational: 0 };
+    const done = transfer.put(dir, `completed-${command}.json`, Buffer.from(JSON.stringify({ ...completed, counts })));
     assert.equal(validateFile(dir, done, 'terminal', { command }).outcome, 'accepted', command);
   }
+  const mismatched = transfer.put(dir, 'completed-mismatch.json', Buffer.from(JSON.stringify(completed)));
+  assert.equal(validateFile(dir, mismatched, 'terminal', { command: 'performance' }).outcome, 'report-invalid', 'counts follow the audit');
   const legacy = transfer.put(dir, 'legacy-question.json', Buffer.from(JSON.stringify({ event: 'question', question: 'Which scope?' })));
   assert.equal(validateFile(dir, legacy, 'terminal', { command: 'security' }).outcome, 'report-invalid');
 });
@@ -491,7 +497,8 @@ test('the policy covers the commit, archive, backfill, and merge workers on thei
   const policy = read(POLICY);
   assert.match(policy, /the commit, archive, backfill, and merge workers of `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and `\/sai-merge`/);
   assert.match(policy, /`commit`, `archive`, `backfill`, or `merge` for the worker of that command/);
-  assert.match(policy, /backfill: `resolved_change_name`, `draft_references`, and `corrected_specs`/);
+  assert.match(policy, /\| `backfill` \| backfill \| `resolved_change_name`, `draft_references`, `corrected_specs`, `failure_class`, `unrecoverable` \|/);
+  assert.match(policy, /\| `merge` \| merge \| `strategy`, `decisions`, `escalations`, `analysis`, `corrections`, `applicability`, `renames`, `reference_updates` \|/);
   assert.doesNotMatch(policy, /standalone backfill and archive commands keep their existing transport/);
 });
 
@@ -532,7 +539,7 @@ test('the merge worker reports failed instead of blocked and its coordinator val
   assert.match(coordinator, /emit `record` \(`report-dir`\)/);
   assert.match(coordinator, /`--report-dir <report directory>`/);
   assert.doesNotMatch(coordinator, /reports\/stop-/);
-  assert.match(read('sai/tools/merge.js'), /validateText\(source, 'terminal'\)/);
+  assert.match(read('sai/tools/merge.js'), /validateText\(source, 'terminal', \{ command: 'merge' \}\)/);
 });
 
 test('a blocked merge report is invalid and a failed one is accepted', t => {

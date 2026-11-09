@@ -54,7 +54,7 @@ changed_files: []
 ```
 
 Emit no progress events and no notice. Every stretch closes with exactly one
-terminal report file, saved with `transfer.js put` in the report directory,
+terminal report file, saved with `transfer.js put --exclusive` in the report directory,
 with a concrete English `summary`, an ordered duplicate-free `changed_files`,
 and `resolved_change_name`; the message returns only the reference
 `{path, sha256}` and the `warming` line. A report carries no time field and

@@ -21,14 +21,14 @@ TBD - created by archiving change emit-validates-progress. Update Purpose after 
 - **THEN** the output reports only `received_at` and the invalid `validation` block, with no `SESSION_FILE_CORRUPT` warning and no `VERSION_MISMATCH` error
 
 ### Requirement: Progress verdict parity and single clock
-`sai/tools/worker-report-validator.js` SHALL export a pure `validateText(text, kind)` function that builds the closed, timeless verdict (`ok`, `action`, `kind`, `errors`) from stdin text, and SHALL export `generateReceivedAt` as the only clock. Both the `validate` CLI and the progress emit SHALL obtain their verdict from `validateText` and their time from `generateReceivedAt`, each reading it once per invocation, so the verdict shape and the clock stay single-sourced. The progress emit SHALL return a `validation` block byte-identical to what `worker-report-validator.js validate --kind progress --json` returns for the same stdin bytes without its `received_at` key, for valid and invalid verdicts. `validate --kind progress` SHALL remain available.
+`sai/tools/worker-report-validator.js` SHALL export a pure `validateText(text, kind, options)` function that builds the closed, timeless verdict (`ok`, `action`, `kind`, `errors`) from stdin text, and SHALL export `generateReceivedAt` as the only clock. Both the `validate` CLI and the progress emit (in its reference mode through `validateFile`, which validates the verified bytes with `validateText`) SHALL obtain their verdict from `validateText` and their time from `generateReceivedAt`, each reading it once per invocation, so the verdict shape and the clock stay single-sourced. The progress emit SHALL return a `validation` block byte-identical to what `worker-report-validator.js validate --kind progress --json` returns for the same stdin bytes without its `received_at` key, for valid and invalid verdicts. `validate --kind progress` SHALL remain available.
 
 #### Scenario: BOM-prefixed and padded payloads get the same verdict
 - **WHEN** the same BOM-prefixed or whitespace-padded progress payload is sent to both `validate --kind progress --json` and a progress emit
 - **THEN** the `ok` and `errors` of both verdicts are identical
 
 #### Scenario: Validator CLI output is unchanged
-- **WHEN** a payload of any kind is piped to `worker-report-validator.js validate --kind <kind>`
+- **WHEN** a payload of any kind is piped to `worker-report-validator.js validate --kind <kind>`, with `--command` for a terminal payload
 - **THEN** the verdict shape, `received_at` format, and exit codes are the same as before the extraction, and the emit's `validation` block equals that response with `received_at` removed
 
 ### Requirement: Progress emit derives the event and returns the verdict with the routing

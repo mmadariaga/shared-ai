@@ -291,3 +291,82 @@ test('usage errors exit 2 with JSON', () => {
   assert.equal(cli(['open', '--harness', 'vscode']).status, 2);
   assert.equal(cli(['put', '--bogus']).status, 2);
 });
+
+test('put --exclusive creates a new file, refuses an existing name atomically, and leaves the first file untouched (E5)', () => {
+  const box = sandbox();
+  try {
+    const dir = open(box);
+    const first = cli(['put', '--dir', dir, '--path', 'report.json', '--exclusive'], { input: 'first\n' });
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(first.json.sha256, sha('first\n'));
+    if (POSIX) assert.equal(fs.statSync(first.json.path).mode & 0o777, 0o600);
+
+    const again = cli(['put', '--dir', dir, '--path', 'report.json', '--exclusive'], { input: 'second\n' });
+    assert.equal(again.status, 1);
+    assert.equal(again.json.ok, false);
+    assert.equal(again.json.check, 'failed');
+    assert.match(again.json.error, /already exists/);
+    assert.equal(fs.readFileSync(first.json.path, 'utf8'), 'first\n');
+    assert.equal(sha(fs.readFileSync(first.json.path)), first.json.sha256);
+
+    // Without the flag the default replaces, as block export and backfill drafts rely on.
+    const replaced = cli(['put', '--dir', dir, '--path', 'report.json'], { input: 'third\n' });
+    assert.equal(replaced.status, 0, replaced.stderr);
+    assert.equal(fs.readFileSync(first.json.path, 'utf8'), 'third\n');
+  } finally {
+    box.cleanup();
+  }
+});
+
+test('put --exclusive uses one exclusive-create open and leaves no partial file when the write fails', () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const calls = [];
+    const io = Object.create(fs);
+    io.openSync = (target, flag, mode) => { calls.push(flag); return fs.openSync(target, flag, mode); };
+    transfer.put(dir, 'a.json', Buffer.from('a'), { io, exclusive: true });
+    assert.deepEqual(calls, ['wx']);
+    assert.throws(() => transfer.put(dir, 'a.json', Buffer.from('b'), { io, exclusive: true }), /already exists/);
+    assert.equal(fs.readFileSync(path.join(dir, 'a.json'), 'utf8'), 'a');
+
+    const failing = Object.create(fs);
+    failing.writeFileSync = (target, ...rest) => {
+      if (typeof target === 'number') throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+      return fs.writeFileSync(target, ...rest);
+    };
+    assert.throws(() => transfer.put(dir, 'b.json', Buffer.from('b'), { io: failing, exclusive: true }), /disk full/);
+    assert.equal(fs.existsSync(path.join(dir, 'b.json')), false, 'a failed exclusive write leaves no partial file');
+    assert.equal(transfer.put(dir, 'b.json', Buffer.from('b'), { exclusive: true }).sha256, sha('b'));
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('put --exclusive refuses an existing symbolic link name instead of writing through it', { skip: !POSIX }, () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const outside = path.join(dir, 'real.json');
+    fs.writeFileSync(outside, 'real');
+    fs.symlinkSync(outside, path.join(dir, 'link.json'));
+    assert.throws(() => transfer.put(dir, 'link.json', Buffer.from('x'), { exclusive: true }), /not a regular file/);
+    assert.equal(fs.readFileSync(outside, 'utf8'), 'real');
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('every worker card that spells the report put command saves with --exclusive', () => {
+  const root = path.join(__dirname, '..');
+  const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+  for (const file of ['sai/policies/worker-report-transport.md', 'sai/commands/implement/worker-common.md',
+    'sai/commands/plan/worker-common.md', 'sai/commands/review/worker.md', 'sai/commands/audit/worker-common.md',
+    'sai/commands/commit/worker.md', 'sai/commands/merge/worker.md']) {
+    assert.match(read(file), /transfer\.js put --dir <report-dir> --path <[^>]+>(\.yaml|\.json)? --exclusive --input-file/, file);
+  }
+  for (const file of ['sai/commands/archive/worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/merge/steps/common.md']) {
+    assert.match(read(file), /transfer\.js put --exclusive/, file);
+  }
+  // Block export and backfill drafts keep the replacing default.
+  assert.doesNotMatch(read('sai/commands/backfill/worker.md'), /put --dir <transfer-dir>[^`]*--exclusive/);
+  assert.doesNotMatch(read('sai/policies/ready-to-propose-format.md'), /--exclusive/);
+});
