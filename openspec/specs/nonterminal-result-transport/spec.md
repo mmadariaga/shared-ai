@@ -26,20 +26,6 @@ Workers SHALL close their run with exactly one terminal lifecycle status, preced
 - **WHEN** a worker returns one or more progress events and later completes successfully
 - **THEN** the run SHALL still close with exactly one `completed` terminal result
 
-### Requirement: Closed conflict extensions pause workers
-
-A declared `event: conflict_detected` SHALL be transported as a closed nonterminal extension rather than a lifecycle status. The extension SHALL pause the worker, route its source to the coordinator handler, and resume only through the handler's same-worker continuation.
-
-#### Scenario: Conflict detection pauses analysis
-
-- **WHEN** a worker detects conflicted files
-- **THEN** it returns the closed extension and ends its current turn before semantic analysis
-
-#### Scenario: Extension resumes through the coordinator
-
-- **WHEN** the coordinator has completed the language handoff or recorded strategy re-entry
-- **THEN** it resumes the same worker with the coordinator-owned session state
-
 ### Requirement: Terminal result preservation
 
 A merge worker stretch SHALL still close with exactly one terminal lifecycle status after zero or more conflict extensions or user-input pauses.

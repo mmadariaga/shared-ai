@@ -16,6 +16,6 @@ The step's GREEN is done when running `test_command` passes and the production f
 
 You may run `test_command` to iterate on production files. The coordinator's run is the verdict. Stop iterating when passing would need a change to a test or an interface, or when repeated attempts make no progress.
 
-## Blocked
+## Needs input
 
-Report `blocked` with the failing test, the exact contradiction, and the production path involved. Leave every test file and `interfaces.md` untouched: the coordinator arbitrates.
+Report `needs_input` with the failing test, the exact contradiction, and the production path involved in `summary`, and the ways forward (for example correct the test, change the interface, override the plan) as `options`. Leave every test file and `interfaces.md` untouched: the coordinator arbitrates.

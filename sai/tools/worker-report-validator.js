@@ -5,9 +5,11 @@
 /**
  * worker-report-validator — deterministic validator for closed worker report payloads.
  *
- * Validates closed payload shapes that a coordinator receives from a worker:
- * terminal statuses (completed, needs_input, failed, cancelled), design notices,
- * progress events, and phase-defined nonterminal extensions (e.g., conflict_detected).
+ * Validates the closed payload shapes that a coordinator receives from a worker,
+ * two kinds in all: terminal statuses (completed, needs_input, failed, cancelled)
+ * and progress events. A `completed` report may carry an `outcome` that
+ * distinguishes successful results; COMMAND_OUTCOMES below is the single source of
+ * the values each command admits.
  *
  * Worker payloads carry no time field. The validator checks closed-shape field
  * presence and types, ignores unknown fields with no explicit legacy handling,
@@ -25,13 +27,14 @@
  *                              Verify a private reference and validate the same bytes.
  *
  * Usage:
- *   cat payload.json | node sai/tools/worker-report-validator.js validate --kind <kind> [--json] [--cwd <dir>]
+ *   node sai/tools/worker-report-validator.js validate --kind <kind> [--command <name>] --input-file <path> [--json] [--cwd <dir>]
  *
  * Kinds:
  *   - terminal     Validate a terminal status payload (completed, needs_input, failed, cancelled)
- *   - notice       Validate a design notice payload
  *   - progress     Validate a progress event payload
- *   - conflict_detected  Validate a conflict_detected extension payload
+ *
+ * Options:
+ *   - --command <name>  The command whose `outcome` values a completed report may carry.
  *
  * Exit codes: 0 = validation passed; 1 = delivery or payload validation failed;
  * 2 = usage error or IO failure.
@@ -55,11 +58,27 @@ const VALID_FAILURE_CLASSES = [
   'unclassified-worker-fault',
 ];
 
-/** Valid events for nonterminal extensions. */
-const VALID_EVENTS = ['notice', 'progress', 'conflict_detected'];
+/** Payload kinds the validator admits. */
+const VALID_KINDS = ['terminal', 'progress'];
 
-/** Valid continuation states for conflict_detected. */
-const VALID_CONTINUATION_STATES = ['language-selection', 'strategy-analysis'];
+/**
+ * The `outcome` values a `completed` report may carry, per command: the single
+ * source of the table. A command that lists no value admits no `outcome`.
+ */
+const COMMAND_OUTCOMES = Object.freeze({
+  spec: [],
+  design: [],
+  implement: [],
+  review: ['no-changes'],
+  security: [],
+  performance: [],
+  accessibility: [],
+  commit: [],
+  archive: [],
+  backfill: [],
+  merge: [],
+  'direct-build': [],
+});
 
 /**
  * Received-at wire form: YYYY-MM-DDTHH:MM:SS±HH:MM
@@ -151,7 +170,7 @@ function validateOptionObject(opt) {
  *   plus its own closed question + options. Only closed questions are allowed
  *   in a batch; open input stays in its own singular round.
  */
-function validateTerminal(payload) {
+function validateTerminal(payload, options = {}) {
   const errors = [];
 
   if (!('status' in payload)) {
@@ -226,6 +245,21 @@ function validateTerminal(payload) {
     }
   }
 
+  if ('outcome' in payload) {
+    const admitted = options.command ? COMMAND_OUTCOMES[options.command] : [];
+    if (status !== 'completed') {
+      errors.push('outcome is allowed only on a completed report');
+    } else if (typeof payload.outcome !== 'string') {
+      errors.push(`outcome must be a string, got ${typeof payload.outcome}`);
+    } else if (!options.command) {
+      errors.push('outcome needs the command that admits it (--command)');
+    } else if (!admitted.includes(payload.outcome)) {
+      errors.push(admitted.length === 0
+        ? `outcome is not admitted by ${options.command}, got "${payload.outcome}"`
+        : `outcome must be one of [${admitted.join(', ')}] for ${options.command}, got "${payload.outcome}"`);
+    }
+  }
+
   // Post-resolution failed payloads require failure_class and unrecoverable
   if (status === 'failed' && 'resolved_change_name' in payload) {
     if (!('failure_class' in payload)) {
@@ -241,25 +275,6 @@ function validateTerminal(payload) {
       errors.push(`unrecoverable must be a boolean, got ${typeof payload.unrecoverable}`);
     }
   }
-
-  return errors;
-}
-
-/**
- * Validate a design notice payload.
- * Required fields: event: "notice", message, changed_files. No time field.
- */
-function validateNotice(payload) {
-  const errors = [];
-
-  if (!('event' in payload)) {
-    errors.push('event is missing');
-  } else if (payload.event !== 'notice') {
-    errors.push(`event must be "notice" for a notice payload, got "${payload.event}"`);
-  }
-
-  validateStringField(payload, 'message', errors);
-  validateStringArray(payload, 'changed_files', errors);
 
   return errors;
 }
@@ -284,51 +299,18 @@ function validateProgress(payload) {
 }
 
 /**
- * Validate a conflict_detected extension payload.
- * Required fields: event: "conflict_detected", summary, changed_files,
- * affected_files, continuation_state. No time field.
- */
-function validateConflictDetected(payload) {
-  const errors = [];
-
-  if (!('event' in payload)) {
-    errors.push('event is missing');
-  } else if (payload.event !== 'conflict_detected') {
-    errors.push(`event must be "conflict_detected" for a conflict extension, got "${payload.event}"`);
-  }
-
-  validateStringField(payload, 'summary', errors);
-  validateStringArray(payload, 'changed_files', errors);
-  validateStringArray(payload, 'affected_files', errors);
-
-  if (!('continuation_state' in payload)) {
-    errors.push('continuation_state is missing');
-  } else if (!VALID_CONTINUATION_STATES.includes(payload.continuation_state)) {
-    errors.push(
-      `continuation_state must be one of [${VALID_CONTINUATION_STATES.join(', ')}], got "${payload.continuation_state}"`
-    );
-  }
-
-  return errors;
-}
-
-/**
  * Dispatch to the appropriate validator based on kind.
  */
-function validatePayload(payload, kind) {
+function validatePayload(payload, kind, options = {}) {
   if (!payload || typeof payload !== 'object') {
     return ['payload must be a mapping (JSON object or YAML)'];
   }
 
   switch (kind) {
     case 'terminal':
-      return validateTerminal(payload);
-    case 'notice':
-      return validateNotice(payload);
+      return validateTerminal(payload, options);
     case 'progress':
       return validateProgress(payload);
-    case 'conflict_detected':
-      return validateConflictDetected(payload);
     default:
       return [`unknown payload kind: ${kind}`];
   }
@@ -626,7 +608,7 @@ function parsePayloadText(text) {
  * validation verdict (JSON or YAML parse, validatePayload). It is pure and carries no
  * time; the `validate` CLI and `sai-state emit --progress` both consume it.
  */
-function validateText(text, kind) {
+function validateText(text, kind, options = {}) {
   const parsed = parsePayloadText(text);
   if (parsed.error) {
     return {
@@ -638,7 +620,7 @@ function validateText(text, kind) {
   }
   const payload = parsed.payload;
 
-  const errors = validatePayload(payload, kind);
+  const errors = validatePayload(payload, kind, options);
   if (errors.length !== 0) {
     return {
       ok: false,
@@ -655,16 +637,17 @@ function validateText(text, kind) {
   };
 }
 
-async function commandValidate(kind, inputFile) {
+async function commandValidate(kind, inputFile, options = {}) {
   const text = inputFile ? inputReader.readInputFile(inputFile) : await readStdin();
-  return validateText(text, kind);
+  return validateText(text, kind, options);
 }
 
 /** Verify once and validate that exact buffer; never read the report again. */
 function validateFile(dir, reference, kind, options = {}) {
+  const { command, ...transferOptions } = options;
   let verified;
   try {
-    verified = require('./transfer').verify(dir, reference, options);
+    verified = require('./transfer').verify(dir, reference, transferOptions);
   } catch (error) {
     return { ok: false, action: 'validate', kind, outcome: 'delivery-failed', errors: [error.message] };
   }
@@ -677,14 +660,14 @@ function validateFile(dir, reference, kind, options = {}) {
   } catch (error) {
     return { ok: false, action: 'validate', kind, outcome: 'report-invalid', errors: [error.message] };
   }
-  const verdict = validateText(text, kind);
+  const verdict = validateText(text, kind, { command });
   return { ...verdict, outcome: verdict.ok ? 'accepted' : 'report-invalid',
     ...(verdict.ok ? { payload: parsePayloadText(text).payload } : {}) };
 }
 
 function usage() {
   return [
-    'Usage: node sai/tools/worker-report-validator.js validate --kind <kind> --input-file <path> [--json] [--cwd <dir>]',
+    'Usage: node sai/tools/worker-report-validator.js validate --kind <kind> [--command <name>] --input-file <path> [--json] [--cwd <dir>]',
     '',
     '  validate                 Read a closed payload from the input file (or stdin) and validate it.',
     '  --input-file <path>      File holding the payload; without it the payload is read from stdin.',
@@ -694,9 +677,12 @@ function usage() {
     '                           JSON includes outcome and, only on acceptance, the parsed payload.',
     '',
     '  --kind <kind>            Mandatory: the payload kind to validate.',
-    '                           One of: terminal, notice, progress, conflict_detected.',
+    `                           One of: ${VALID_KINDS.join(', ')}.`,
     '                           Omitting the flag or passing an invalid kind is a usage',
     '                           error (exit 2).',
+    '  --command <name>         The command whose `outcome` values a completed report may carry.',
+    `                           One of: ${Object.keys(COMMAND_OUTCOMES).join(', ')}.`,
+    '                           Without it a report that carries `outcome` is invalid.',
     '',
     '  --json                   Emit the report as JSON on stdout.',
     '  --cwd <dir>              Working directory (for symmetry with other tools; not',
@@ -708,12 +694,16 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const opts = { command: null, positional: [], json: false, cwd: null, kind: null, help: false };
+  const opts = { command: null, positional: [], json: false, cwd: null, kind: null, outcomeCommand: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
     else if (arg === '--cwd') opts.cwd = argv[++i];
     else if (arg === '--kind') opts.kind = argv[++i];
+    else if (arg === '--command') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('--')) return { error: 'missing value for --command' };
+      opts.outcomeCommand = argv[++i];
+    }
     else if (arg === '--input-file') {
       if (!argv[i + 1] || argv[i + 1].startsWith('--')) return { error: 'missing value for --input-file' };
       opts.inputFile = argv[++i];
@@ -764,14 +754,18 @@ async function main(argv) {
 
   // The kind is mandatory: missing or invalid value is a usage error (exit 2).
   const kind = opts.kind;
-  const validKinds = ['terminal', 'notice', 'progress', 'conflict_detected'];
-  if (!validKinds.includes(kind)) {
+  if (!VALID_KINDS.includes(kind)) {
     const problem = kind === null
-      ? 'validate requires --kind with one of: terminal, notice, progress, conflict_detected'
+      ? `validate requires --kind with one of: ${VALID_KINDS.join(', ')}`
       : `invalid --kind value: ${kind}`;
     process.stderr.write(`${problem}\n${usage()}\n`);
     return 2;
   }
+  if (opts.outcomeCommand !== null && !Object.hasOwn(COMMAND_OUTCOMES, opts.outcomeCommand)) {
+    process.stderr.write(`invalid --command value: ${opts.outcomeCommand}\n${usage()}\n`);
+    return 2;
+  }
+  const verdictOptions = opts.outcomeCommand === null ? {} : { command: opts.outcomeCommand };
 
   try {
     const fileMode = ['reportDir', 'reportFile', 'reportHash'].some(key => opts[key] !== undefined);
@@ -781,8 +775,8 @@ async function main(argv) {
     }
     const receivedAt = generateReceivedAt();
     const verdict = fileMode
-      ? validateFile(opts.reportDir, { path: opts.reportFile, sha256: opts.reportHash }, kind)
-      : await commandValidate(kind, opts.inputFile);
+      ? validateFile(opts.reportDir, { path: opts.reportFile, sha256: opts.reportHash }, kind, verdictOptions)
+      : await commandValidate(kind, opts.inputFile, verdictOptions);
     const payload = Object.assign({ received_at: receivedAt }, verdict);
     render(payload, opts.json);
     return payload.ok ? 0 : 1;
@@ -810,14 +804,12 @@ module.exports = {
   parsePayloadText,
   validatePayload,
   validateTerminal,
-  validateNotice,
   validateProgress,
-  validateConflictDetected,
   generateReceivedAt,
   usage,
   VALID_STATUSES,
   VALID_FAILURE_CLASSES,
-  VALID_EVENTS,
-  VALID_CONTINUATION_STATES,
+  VALID_KINDS,
+  COMMAND_OUTCOMES,
   RECEIVED_AT_PATTERN,
 };

@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-resilience. Update Purpose after
 
 ### Requirement: Identifiers-only run state
 
-The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
+The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, the report directory, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` (kinds `deviation`, `override`, `report`, `report-dir`, `finding`, and `baseline`) SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
 
 #### Scenario: A second start is rejected
 - **WHEN** the coordinator emits `start` to a run that is already running
@@ -60,11 +60,11 @@ When an obstacle's budget is exhausted, the coordinator SHALL escalate at once, 
 
 ### Requirement: Broken worker replacement
 
-A worker that returns no ready, whose report cannot be read, that stays silent past what the step needs, or that drifts from its instruction SHALL be an obstacle. The coordinator SHALL first ask the same worker again; when that does not help, it SHALL create a new worker for that role, which receives the ready handshake and a hand-over summary the coordinator writes in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). The old worker's history SHALL NOT be forwarded and the working-tree files SHALL stay as they are. Each response, including the worker change, SHALL count as an attempt.
+A worker that returns no ready, whose report does not validate, that stays silent past what the step needs, or that drifts from its instruction SHALL be an obstacle. The coordinator SHALL first ask the same worker again, returning the validator's errors for an invalid report; when that does not help, and at the latest at a second consecutive invalid report from that worker, it SHALL create a new worker for that role, which receives the ready handshake and a hand-over summary the coordinator writes in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). The old worker's history SHALL NOT be forwarded and the working-tree files SHALL stay as they are. Each response, including the worker change, SHALL count as an attempt.
 
 #### Scenario: Asking again does not help
 
-- **WHEN** a worker's report stays unreadable after the coordinator asked the same worker again
+- **WHEN** a worker's report stays invalid after the coordinator returned the validator's errors to the same worker
 - **THEN** the coordinator creates a new worker for that role with a coordinator-written hand-over summary and counts the replacement as an attempt.
 
 ### Requirement: Resumption after compaction or in another session
@@ -88,7 +88,7 @@ At start, a `status` response with a `running` or `escalated` stage and a run di
 
 ### Requirement: Run directory removal at a completed close
 
-When a run closes `completed`, the coordinator SHALL remove its run directory with `temp-root.js remove` once the closing report content is read from it. A stopped run, a blocked run, and an unanswered escalation SHALL keep their run directory. A failed removal SHALL fail nothing: the closing report SHALL say the run directory was left at its path.
+When a run closes `completed`, the coordinator SHALL remove its run directory with `temp-root.js remove` once the closing report content is read from it, and SHALL close its report directory with `transfer.js close` at the same point. A stopped run, a blocked run, and an unanswered escalation SHALL keep their run directory and their report directory. A failed removal or close SHALL fail nothing: the closing report SHALL say the directory was left at its path.
 
 #### Scenario: A completed run removes its run directory
 
