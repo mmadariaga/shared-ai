@@ -620,3 +620,31 @@ For an explicit draft request, publication and recovery SHALL require readback c
 #### Scenario: Lost response is recovered read-only
 - **WHEN** draft publication may have succeeded but its response was lost
 - **THEN** recovery reads the selected request and reports completion only when exact content and draft state match, without repeating creation, conversion or push.
+
+### Requirement: Timed-out push is read back and reported as uncertain
+
+When the approved `git push` reaches the 120 s process limit, the tool SHALL end the push's process group, SHALL read the remote branch back, and SHALL return `status: uncertain` with reason `push-timeout` and `remote_state` set to `at-approved-commit`, `not-at-approved-commit`, or `unverified`. Because a surviving git process may still be pushing, the result SHALL NOT be reported as `blocked`, publication SHALL NOT follow, and the push SHALL NOT be repeated on its own.
+
+#### Scenario: Push reaches the limit
+
+- **WHEN** an approved push runs longer than 120 s
+- **THEN** the tool returns `uncertain` with reason `push-timeout` and the `remote_state` it read back, skips publication, and does not repeat the push.
+
+#### Scenario: Remote readback fails after a push timeout
+
+- **WHEN** the remote branch cannot be read back after a push timeout
+- **THEN** the result is `uncertain` with `remote_state: unverified`.
+
+### Requirement: Risk comment waits for a verified draft state
+
+The request status SHALL become `complete` only when its approved content and any requested draft state are both verified. While a requested draft state is unverified, the Azure DevOps adapter SHALL report `content_status: pending`, the result SHALL be `uncertain`, and the managed risk comment SHALL stay `pending` with no write. A later resume or recovery that verifies the draft state SHALL write the risk comment exactly once.
+
+#### Scenario: Azure draft state is still pending
+
+- **WHEN** Azure DevOps content matches the approved proposal but the requested draft state is not yet confirmed
+- **THEN** the result is `uncertain`, the request status is `pending`, and no risk comment is written.
+
+#### Scenario: A resume verifies the draft state
+
+- **WHEN** a later resume or recovery confirms the requested draft state of that request
+- **THEN** the risk comment is written exactly once.

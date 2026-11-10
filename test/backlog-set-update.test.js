@@ -28,14 +28,14 @@ function fixture(t, provider) {
       state.reads.push(row.issue.number);
       return structuredClone(row);
     },
-    'query-update': request => {
-      const row = adapter['read-update'](request);
+    'query-update': async request => {
+      const row = await adapter['read-update'](request);
       if (digest(row.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline' };
       const proposal = { ...row, title: request.title, description: request.description };
       return { status: row.baseline.title === request.title && row.baseline.description === request.description ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
     },
-    update: request => {
-      const ready = adapter['query-update'](request);
+    update: async request => {
+      const ready = await adapter['query-update'](request);
       assert.equal(request.confirmation, ready.confirmation);
       fs.writeFileSync(request.receipt, JSON.stringify(request), { flag: 'wx' });
       const row = rows.find(row => row.issue.url === request.reference);
@@ -45,9 +45,9 @@ function fixture(t, provider) {
       if (state.after) state.after(row);
       return { status: state.lost === row.issue.number ? 'uncertain' : 'complete' };
     },
-    'recover-update': request => {
+    'recover-update': async request => {
       const saved = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
-      const current = adapter['read-update'](saved);
+      const current = await adapter['read-update'](saved);
       return { status: current.baseline.title === saved.title && current.baseline.description === saved.description ? 'complete' : 'pending' };
     }
   };
@@ -55,7 +55,7 @@ function fixture(t, provider) {
   return { tool, request, rows, state, file: path.join(directory, 'update.json') };
 }
 for (const provider of ['github', 'gitlab', 'azuredevops']) {
-  test(`${provider}: adopted parents still require unambiguous matching upper correspondence`, t => {
+  test(`${provider}: adopted parents still require unambiguous matching upper correspondence`, async t => {
     const f = fixture(t, provider), child = identity.decode(f.rows[1].baseline.description);
     const encode = provider === 'azuredevops' ? identity.encodeHtml : identity.encode;
     const nested = { version: 1, platform: provider, role: 'parent', parent: f.rows[1].issue.url,
@@ -63,77 +63,77 @@ for (const provider of ['github', 'gitlab', 'azuredevops']) {
     // A valid local parent marker alone cannot prove membership in the upper set.
     const { child_of, ...unlinked } = nested;
     f.rows[1].baseline.description = encode(unlinked);
-    assert.throws(() => f.tool['query-set-update'](f.request), /correspondence/);
+    await assert.rejects(async () => await f.tool['query-set-update'](f.request), /correspondence/);
     const incompatible = structuredClone(nested);
     incompatible.child_of.slices[1].depends_on = ['one'];
     f.rows[1].baseline.description = encode(incompatible);
-    assert.throws(() => f.tool['query-set-update'](f.request), /correspondence/);
+    await assert.rejects(async () => await f.tool['query-set-update'](f.request), /correspondence/);
     f.rows[1].baseline.description = encode(nested) + '\n' + encode(nested);
-    assert.throws(() => f.tool['query-set-update'](f.request), /ambiguous|Ambiguous/);
+    await assert.rejects(async () => await f.tool['query-set-update'](f.request), /ambiguous|Ambiguous/);
     assert.deepEqual(f.state.writes, []);
     assert.equal(fs.existsSync(f.file), false);
   });
-  test(`${provider}: set approval binds exact content and baseline, rejection causes no writes`, t => {
-    const f = fixture(t, provider), ready = f.tool['query-set-update'](f.request);
+  test(`${provider}: set approval binds exact content and baseline, rejection causes no writes`, async t => {
+    const f = fixture(t, provider), ready = await f.tool['query-set-update'](f.request);
     for (const patch of [{ confirmation: 'wrong' }, { description: 'unapproved', confirmation: ready.confirmation }]) {
-      assert.equal(f.tool['update-set']({ ...f.request, receipt: f.file, ...patch }).status, 'failure_before_publication');
+      assert.equal((await f.tool['update-set']({ ...f.request, receipt: f.file, ...patch })).status, 'failure_before_publication');
     }
     f.rows[2].baseline.title = 'concurrent edit';
-    assert.equal(f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation }).status, 'failure_before_publication');
+    assert.equal((await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation })).status, 'failure_before_publication');
     assert.deepEqual(f.state.writes, []);
     assert.equal(fs.existsSync(f.file), false);
   });
-  test(`${provider}: missing or ambiguous child correspondence blocks the entire set`, t => {
+  test(`${provider}: missing or ambiguous child correspondence blocks the entire set`, async t => {
     const f = fixture(t, provider);
     const mismatched = f.request.blocks.replace('**What**:', `**Backlog origin**: ${f.rows[0].issue.url}\n**What**:`);
-    assert.throws(() => f.tool['query-set-update']({ ...f.request, blocks: mismatched }), /Block origin/);
+    await assert.rejects(async () => await f.tool['query-set-update']({ ...f.request, blocks: mismatched }), /Block origin/);
     f.rows[2].baseline.description = f.rows[1].baseline.description;
-    assert.throws(() => f.tool['query-set-update'](f.request), /correspondence/);
+    await assert.rejects(async () => await f.tool['query-set-update'](f.request), /correspondence/);
     f.rows.pop();
-    assert.throws(() => f.tool['query-set-update'](f.request), /missing child/);
+    await assert.rejects(async () => await f.tool['query-set-update'](f.request), /missing child/);
     assert.deepEqual(f.state.writes, []);
   });
-  test(`${provider}: partial failure is durable and recovery skips applied updates`, t => {
-    const f = fixture(t, provider), ready = f.tool['query-set-update'](f.request);
+  test(`${provider}: partial failure is durable and recovery skips applied updates`, async t => {
+    const f = fixture(t, provider), ready = await f.tool['query-set-update'](f.request);
     f.state.fail = 2;
-    const result = f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation });
+    const result = await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation });
     assert.equal(result.status, 'partial_failure');
     assert.deepEqual(result.updated.map(row => row.number), [1]);
     assert.deepEqual(result.pending.map(row => row.issue.number), [2, 3]);
-    const recovered = f.tool['recover-set-update']({ receipt: f.file });
+    const recovered = await f.tool['recover-set-update']({ receipt: f.file });
     assert.deepEqual(f.state.writes, [1]);
     f.state.fail = null;
-    assert.equal(f.tool['continue-set-update']({ receipt: f.file, confirmation: recovered.continuation, automatic_retry: true }).status, 'complete');
+    assert.equal((await f.tool['continue-set-update']({ receipt: f.file, confirmation: recovered.continuation, automatic_retry: true })).status, 'complete');
     assert.deepEqual(f.state.writes, [1, 2, 3]);
-    assert.equal(f.tool['recover-set-update']({ receipt: f.file }).status, 'complete');
+    assert.equal((await f.tool['recover-set-update']({ receipt: f.file })).status, 'complete');
   });
-  test(`${provider}: edits during a partial update stop pending writes and renewal is required`, t => {
-    const f = fixture(t, provider), ready = f.tool['query-set-update'](f.request);
+  test(`${provider}: edits during a partial update stop pending writes and renewal is required`, async t => {
+    const f = fixture(t, provider), ready = await f.tool['query-set-update'](f.request);
     f.state.after = row => { if (row.issue.number === 1) f.rows[2].baseline.title = 'remote edit'; };
-    const result = f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation });
+    const result = await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation });
     assert.equal(result.status, 'partial_failure');
     assert.deepEqual(result.updated.map(row => row.number), [1]);
     assert.deepEqual(f.state.writes, [1]);
-    const recovered = f.tool['recover-set-update']({ receipt: f.file });
+    const recovered = await f.tool['recover-set-update']({ receipt: f.file });
     assert.equal(recovered.continuation, undefined);
     assert.match(recovered.message, /renew/);
-    assert.equal(f.tool['continue-set-update']({ receipt: f.file, confirmation: ready.confirmation }).status, 'partial_failure');
+    assert.equal((await f.tool['continue-set-update']({ receipt: f.file, confirmation: ready.confirmation })).status, 'partial_failure');
     assert.deepEqual(f.state.writes, [1]);
   });
-  test(`${provider}: lost update response is reconciled without repeating the write`, t => {
-    const f = fixture(t, provider), ready = f.tool['query-set-update'](f.request);
+  test(`${provider}: lost update response is reconciled without repeating the write`, async t => {
+    const f = fixture(t, provider), ready = await f.tool['query-set-update'](f.request);
     f.state.lost = 1;
-    assert.equal(f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation }).status, 'complete');
+    assert.equal((await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation })).status, 'complete');
     assert.deepEqual(f.state.writes, [1, 2, 3]);
-    assert.equal(f.tool['recover-set-update']({ receipt: f.file }).status, 'complete');
+    assert.equal((await f.tool['recover-set-update']({ receipt: f.file })).status, 'complete');
     assert.deepEqual(f.state.writes, [1, 2, 3]);
   });
 }
-test('azuredevops E8 I6: a set update writes each work item in its own description format', t => {
+test('azuredevops E8 I6: a set update writes each work item in its own description format', async t => {
   const f = fixture(t, 'azuredevops'), [parent, one, two] = f.rows;
   const asMarkdown = row => { row.format = 'markdown'; row.baseline.description = `old\n${identity.encodeMarkdown(identity.decode(row.baseline.description))}`; };
   asMarkdown(parent); asMarkdown(two); one.format = 'html';
-  const ready = f.tool['query-set-update'](f.request), described = ready.proposal.items.map(item => item.request.description);
+  const ready = await f.tool['query-set-update'](f.request), described = ready.proposal.items.map(item => item.request.description);
   assert.equal(ready.status, 'ready');
   assert.match(described[0], /^refined objective\n\nChild: one — .*\nChild: two — .*\n```\nsai-backlog-slices@1 /);
   assert.doesNotMatch(described[0], /<p>|<pre>/);
@@ -141,6 +141,6 @@ test('azuredevops E8 I6: a set update writes each work item in its own descripti
   assert.match(described[2], /^```\n## Ready to Propose[\s\S]*\n```\n\nParent: .*\n```\nsai-backlog-slices@1 /);
   assert.doesNotMatch(described[2], /<p>|<pre>/);
   for (const [i, row] of f.rows.entries()) assert.equal(identity.decode(described[i]).role, i ? 'child' : 'parent', `item ${i}`);
-  assert.equal(f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation }).status, 'complete');
+  assert.equal((await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation })).status, 'complete');
   assert.deepEqual(f.state.writes, [1, 2, 3]);
 });

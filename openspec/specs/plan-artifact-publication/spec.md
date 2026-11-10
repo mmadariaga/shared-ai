@@ -60,3 +60,31 @@ After inclusion, the workflow SHALL recollect the same branch and destination th
 #### Scenario: Publication succeeds
 - **WHEN** exact remote approval and verified draft publication complete
 - **THEN** the same change branch and request remain available for later implementation, with no separate documentation branch, forced push, automatic ready conversion or implementation execution.
+
+### Requirement: Plan inclusion never drops staged content of owned paths
+
+Plan publication SHALL compare the index entry of every owned path with `HEAD` and with the working tree. `plan-query` SHALL return `status: blocked` with reason `staged-content` and SHALL name each owned path whose index entry differs from both. `plan-commit` SHALL block on that result before any write, creating no commit and leaving the real index unchanged. A staged entry equal to `HEAD` or to the working tree SHALL be no obstacle.
+
+#### Scenario: Staged content differs from both HEAD and the working tree
+
+- **WHEN** an owned path has staged content that differs from both `HEAD` and its working-tree content
+- **THEN** `plan-query` returns `blocked` naming that path, and `plan-commit` creates no commit and leaves the real index unchanged.
+
+#### Scenario: Staged content matches the working tree
+
+- **WHEN** an owned path's staged content equals its working-tree content
+- **THEN** `plan-query` returns `ready` and the inclusion commit proceeds.
+
+### Requirement: Plan publication git calls are bounded and a timed-out commit is read back
+
+Every git call of plan publication SHALL run through the shared asynchronous process helper with its 120 s limit and process-group termination. A call that reaches the limit SHALL end the operation. After a `commit` timeout, plan publication SHALL read `HEAD` back, SHALL return `status: uncertain` with the state of `HEAD` relative to the approved commit, and SHALL NOT repeat the commit on its own.
+
+#### Scenario: The commit reaches the limit
+
+- **WHEN** the plan inclusion commit, a hook included, runs longer than 120 s
+- **THEN** its process group ends, plan publication reads `HEAD` back and returns `uncertain` with that `HEAD` state, and no second commit runs.
+
+#### Scenario: Another git call reaches the limit
+
+- **WHEN** a git call of `plan-query` or `plan-commit` other than the commit runs longer than 120 s
+- **THEN** the operation ends with the `process-timeout` failure and no later git call of that operation runs.

@@ -49,7 +49,7 @@ function configuration(registry, io) {
   if (legacy?.type !== undefined) throw new Error('Work-item type is invocation-scoped');
   return { config: legacy || {}, settings: false, warnings, notices };
 }
-function resolve(request, registry, io) {
+async function resolve(request, registry, io) {
   const explicit = request.explicit || {};
   // An injected `config` stands in for the files; otherwise the working directory's files supply it.
   const read = request.config === undefined && io.cwd ? configuration(registry, io) : { config: request.config || {}, settings: false, warnings: [], notices: [] };
@@ -66,7 +66,7 @@ function resolve(request, registry, io) {
     const unknownHosts = [...new Set(values.filter(value => !registry.providers.some(entry => entry.classification === 'provider' && loadAdapter(entry).classify(value) === 'match')).map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !hosts.includes(host)))];
     if (unknownHosts.length) return finish({ status: 'needs_input', reason: 'provider-ambiguous', unknownHosts });
   }
-  const result = backlog.resolve({ ...request, explicit, config }, registry, { ...io, loadAdapter });
+  const result = await backlog.resolve({ ...request, explicit, config }, registry, { ...io, loadAdapter });
   if (result.status === 'resolved') loadAdapter(registry.providers.find(entry => entry.id === result.provider));
   return finish(result);
 }
@@ -83,15 +83,16 @@ function inherentRisk(review, base, cwd) {
     return state === 'fresh' ? { state, block } : { state };
   } catch { return { state: 'absent' }; }
 }
-function collect(request, io) {
-  const git = args => io.run('git', args).trim();
-  const source = ref(git(['symbolic-ref', '--quiet', '--short', 'HEAD']));
-  const head = git(['rev-parse', 'HEAD']);
-  const remotes = git(['remote']).split('\n').filter(Boolean).map(name => ({ name, url: git(['remote', 'get-url', name]), pushUrl: git(['remote', 'get-url', '--push', name]) }));
-  const state = { source, head, remotes, pending: git(['status', '--porcelain=v1']) };
+async function collect(request, io) {
+  const git = async args => (await io.run('git', args)).trim();
+  const source = ref(await git(['symbolic-ref', '--quiet', '--short', 'HEAD']));
+  const head = await git(['rev-parse', 'HEAD']);
+  const remotes = [];
+  for (const name of (await git(['remote'])).split('\n').filter(Boolean)) remotes.push({ name, url: await git(['remote', 'get-url', name]), pushUrl: await git(['remote', 'get-url', '--push', name]) });
+  const state = { source, head, remotes, pending: await git(['status', '--porcelain=v1']) };
   if (!request.base) return state;
   const base = ref(request.base);
-  git(['rev-parse', '--verify', `${base}^{commit}`]);
+  await git(['rev-parse', '--verify', `${base}^{commit}`]);
   const context = {};
   if (request.change) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(request.change)) throw new Error('Invalid optional change name');
@@ -100,12 +101,12 @@ function collect(request, io) {
       try { context[name] = fs.readFileSync(file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
   }
-  return { ...state, base, inherent_risk: inherentRisk(context.review, base, io.cwd || process.cwd()), commits: git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: git(['diff', `${base}...HEAD`]), diffStats: git(['diff', '--stat', `${base}...HEAD`]), context };
+  return { ...state, base, inherent_risk: inherentRisk(context.review, base, io.cwd || process.cwd()), commits: await git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: await git(['diff', `${base}...HEAD`]), diffStats: await git(['diff', '--stat', `${base}...HEAD`]), context };
 }
-function destination(request, io) {
+async function destination(request, io) {
   const provider = adapter(request.provider, io);
-  const target = provider.inspect(request.repository, io);
-  const state = collect({}, io);
+  const target = await provider.inspect(request.repository, io);
+  const state = await collect({}, io);
   const candidates = state.remotes.filter(remote => {
     const same = value => { if (provider.sameRepository) return provider.sameRepository(value, target); const parsed = backlog.address(value); return parsed && parsed.host === target.host.split(':')[0] && parsed.repository === target.repository; };
     return same(remote.url) && same(remote.pushUrl);
@@ -116,18 +117,32 @@ function destination(request, io) {
   if (base === state.source) throw new Error('Source and target branches must differ');
   return { target, source: state.source, head: state.head, base, remote: remote.name, pushUrl: remote.pushUrl };
 }
-function pushQuery(request, io) {
-  const proposal = destination(request, io);
-  const rows = io.run('git', ['ls-remote', '--heads', proposal.remote, `refs/heads/${proposal.source}`]).trim();
+async function pushQuery(request, io) {
+  const proposal = await destination(request, io);
+  const rows = (await io.run('git', ['ls-remote', '--heads', proposal.remote, `refs/heads/${proposal.source}`])).trim();
   const remoteHead = rows ? rows.split(/\s+/)[0] : null;
   return { status: remoteHead === proposal.head ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
 }
-function push(request, io) {
-  const ready = pushQuery(request, io);
+// A push that reached the process bound may still have reached the remote: its outcome is read back, never assumed,
+// and the push is never repeated on its own. A surviving git process may still be pushing, so the readback proves nothing final.
+async function pushTimedOut(request, ready, io) {
+  const { remote, source } = ready.proposal;
+  let readback = 'unverified';
+  try { readback = (await pushQuery(request, io)).status === 'no_changes' ? 'at-approved-commit' : 'not-at-approved-commit'; } catch { /* The readback is itself bounded and advisory. */ }
+  const seen = { 'at-approved-commit': `The remote branch ${source} now holds the approved commit.`, 'not-at-approved-commit': `The remote branch ${source} does not hold the approved commit yet.`, unverified: 'The remote branch could not be read back.' }[readback];
+  return { status: 'uncertain', reason: 'push-timeout', remote_state: readback, proposal: ready.proposal,
+    message: `The push to ${remote} did not finish within the process limit and was stopped. ${seen} A git process may still be pushing, so the push is not repeated automatically; read the remote again before approving another push.` };
+}
+async function push(request, io) {
+  const ready = await pushQuery(request, io);
   if (request.approved !== true || ready.confirmation !== request.confirmation) throw new Error('Independent exact remote and branch push approval required');
   if (ready.status === 'no_changes') return ready;
-  io.run('git', ['push', ready.proposal.remote, `${ready.proposal.head}:refs/heads/${ready.proposal.source}`]);
-  const verified = pushQuery(request, io);
+  try { await io.run('git', ['push', ready.proposal.remote, `${ready.proposal.head}:refs/heads/${ready.proposal.source}`]); }
+  catch (error) {
+    if (error.reason !== 'process-timeout') throw error;
+    return await pushTimedOut(request, ready, io);
+  }
+  const verified = await pushQuery(request, io);
   if (verified.status !== 'no_changes') throw new Error('Push could not be verified');
   return { status: 'complete' };
 }
@@ -149,7 +164,7 @@ function uniqueReferences(refs) {
   return refs.filter(ref => !seen.has(issueKey(ref)) && seen.add(issueKey(ref)));
 }
 // E5: the branch id closes its issue only when it has children and all are covered.
-function branchParent(request, selected, provider, covered, io) {
+async function branchParent(request, selected, provider, covered, io) {
   const id = /^[^/]+\/([1-9]\d*)_/.exec(selected.source)?.[1];
   if (!id) return {};
   const { config } = readBacklog({ cwd: io.cwd || process.cwd() });
@@ -162,7 +177,7 @@ function branchParent(request, selected, provider, covered, io) {
   }
   const ref = { host: selected.target.host, repository, number: Number(id) };
   if (covered.has(issueKey(ref))) return {};
-  const children = provider.closing.children(provider.closing.issueUrl(repository, ref.number, selected.target), io);
+  const children = await provider.closing.children(provider.closing.issueUrl(repository, ref.number, selected.target), io);
   if (children.status !== 'complete') return { warning: `Issue ${writtenIssue(ref, selected.target)} from the branch name was not evaluated for closing: ${children.message}` };
   const done = children.children.length && children.children.every(child => {
     const found = ISSUE_URL.exec(child.url);
@@ -171,20 +186,20 @@ function branchParent(request, selected, provider, covered, io) {
   return done ? { ref } : {};
 }
 // E1-E6: the description with its closing block, plus warnings to show before approval.
-function withClosingBlock(request, selected, io) {
+async function withClosingBlock(request, selected, io) {
   const provider = adapter(request.provider, io);
   const warnings = [];
   if (!provider.closing) return { description: request.description, warnings };
   let log = '';
   for (const range of [selected.base, `${selected.remote}/${selected.base}`]) {
-    try { log = io.run('git', ['log', `${range}..HEAD`, '--format=%H%n%s%n%b']); break; }
+    try { log = await io.run('git', ['log', `${range}..HEAD`, '--format=%H%n%s%n%b']); break; }
     catch (error) { if (range !== selected.base) warnings.push(`Commit log unavailable, so no closing references were computed: ${error.message}`); }
   }
   const stripped = request.description.replace(CLOSING_BLOCK, '');
   const text = stripped.trimEnd();
   const found = uniqueReferences(closingReferences(log, selected.target));
   const manual = closingReferences(text, selected.target);
-  const parent = branchParent(request, selected, provider, new Set([...found, ...manual].map(issueKey)), io);
+  const parent = await branchParent(request, selected, provider, new Set([...found, ...manual].map(issueKey)), io);
   if (parent.warning) warnings.push(parent.warning);
   const handWritten = new Set(manual.map(issueKey));
   const closable = [...found, ...(parent.ref ? [parent.ref] : [])].filter(ref => ref.host.toLowerCase() === selected.target.host.toLowerCase());
@@ -196,12 +211,12 @@ function withClosingBlock(request, selected, io) {
 const UNSUPPORTED_LABELLING = 'no assignee or labels: the provider does not support them';
 // Creation only: the current user and the requested labels bounded to the project's real label list.
 // Every read or selection problem is a warning; none of them stops the proposal.
-function labelling(request, selected, provider, io) {
+async function labelling(request, selected, provider, io) {
   if (!provider.currentUser || !provider.labels) return { warnings: [UNSUPPORTED_LABELLING] };
   const warnings = [];
   let assignee, available, userFailed = false, labelsFailed = false;
-  try { assignee = provider.currentUser(selected.target, io); } catch (error) { userFailed = true; warnings.push(`The current user could not be read, so no assignee is set: ${error.message}`); }
-  try { available = provider.labels(selected.target, io); } catch (error) { labelsFailed = true; warnings.push(`The project labels could not be read, so no labels are applied: ${error.message}`); }
+  try { assignee = await provider.currentUser(selected.target, io); } catch (error) { userFailed = true; warnings.push(`The current user could not be read, so no assignee is set: ${error.message}`); }
+  try { available = await provider.labels(selected.target, io); } catch (error) { labelsFailed = true; warnings.push(`The project labels could not be read, so no labels are applied: ${error.message}`); }
   const requested = [...new Set(Array.isArray(request.labels) ? request.labels : [])];
   const labels = requested.filter(name => typeof name === 'string' && available?.includes(name));
   const dropped = requested.filter(name => !labels.includes(name));
@@ -217,16 +232,16 @@ function validateDescription(provider, description, overflowLimit) {
   }
 }
 // `build` rebuilds the proposal around a given assignee and labels, for publish's fallback.
-function prepareQuery(request, io) {
+async function prepareQuery(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
   const violations = checkPrTitleRules(request.provider === 'gitlab' ? request.title.replace(/^Draft:\s*/i, '') : request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
-  const selected = destination(request, io);
+  const selected = await destination(request, io);
   const provider = adapter(request.provider, io);
-  const rows = provider.list(selected.target, selected.source, selected.base, io);
+  const rows = await provider.list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
   const warning = rows[0] && provider.concurrencyWarning;
-  const { description, warnings } = withClosingBlock(request, selected, io);
+  const { description, warnings } = await withClosingBlock(request, selected, io);
   validateDescription(request.provider, description, request.risk_placement === 'comment' ? request.description_overflow?.limit : undefined);
   if (request.draft !== undefined && request.draft !== true) throw new Error('Only an explicit draft:true request is supported');
   // GitLab's supported draft write is its title prefix; bind the actual wire title.
@@ -235,11 +250,11 @@ function prepareQuery(request, io) {
     if (/^Draft:\s*/i.test(request.title) && !draft) throw new Error('Draft title requires an explicit draft request');
     if (draft) request = { ...request, title: `Draft: ${request.title.replace(/^Draft:\s*/i, '')}` };
   }
-  const inherent_risk = riskComments.plan(request, description, provider, selected.target, rows[0], io);
+  const inherent_risk = await riskComments.plan(request, description, provider, selected.target, rows[0], io);
   const attribution = request.allow_attribution === true ? [] : checkAiAttribution(description, 'request description');
   if (attribution.length) throw new Error(`Invalid request description: ${JSON.stringify(attribution)}`);
   if (inherent_risk && request.allow_attribution !== true && checkAiAttribution(inherent_risk.body, 'risk comment').length) throw new Error('Invalid risk comment: AI_ATTRIBUTION');
-  const applied = rows[0] ? { warnings: [] } : labelling(request, selected, provider, io);
+  const applied = rows[0] ? { warnings: [] } : await labelling(request, selected, provider, io);
   const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
     ...(inherent_risk ? { inherent_risk } : {}), ...(request.draft === true ? { draft: true } : {}),
     ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}) });
@@ -250,7 +265,7 @@ function prepareQuery(request, io) {
   const ready = { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(applied.available ? { available_labels: applied.available } : {}), ...(all.length ? { warnings: all } : {}) };
   return { ready, applied, build, prMatches };
 }
-function query(request, io) { return prepareQuery(request, io).ready; }
+async function query(request, io) { return (await prepareQuery(request, io)).ready; }
 // E10: a user or label read that fails when publish re-queries never rejects an approved creation. The assignee and
 // labels the caller echoes back stand in for the failed read only when the approval digest proves they are exactly the approved ones.
 function approvedWithFailedReads({ ready, applied, build }, request) {
@@ -279,33 +294,39 @@ function labellingOutcome(outcome, proposal, result, notices = []) {
   }
   return warnings.length ? { ...outcome, warnings } : outcome;
 }
-function publish(request, io) {
-  const prepared = prepareQuery(request, io);
+async function publish(request, io) {
+  const prepared = await prepareQuery(request, io);
   const ready = approvedWithFailedReads(prepared, request);
   const rereadNotices = ready === prepared.ready ? [] : ready.warnings.slice(-1);
   if (request.approved !== true || request.confirmation !== ready.confirmation) throw new Error('Exact destination, baseline and content approval required; review again');
   if (ready.status === 'no_changes') return ready;
-  if (pushQuery(request, io).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
+  if ((await pushQuery(request, io)).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
   request = { ...request, receipt: receiptPath(request.receipt) };
   const provider = adapter(request.provider, io);
-  const receipt = { proposal: ready.proposal, pr: { status: prepared.prMatches ? 'complete' : 'pending' }, comment: { status: ready.proposal.inherent_risk?.required ? 'pending' : 'not_required', attempted: false }, ...(provider.publicationEvidence ? { evidence: provider.publicationEvidence(ready.proposal, io) } : {}) };
+  const receipt = { proposal: ready.proposal, pr: { status: prepared.prMatches ? 'complete' : 'pending' }, comment: { status: ready.proposal.inherent_risk?.required ? 'pending' : 'not_required', attempted: false }, ...(provider.publicationEvidence ? { evidence: await provider.publicationEvidence(ready.proposal, io) } : {}) };
   fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
   let submitted = false;
   try {
-    const result = prepared.prMatches ? ready.proposal.existing : provider.mutate(ready.proposal, io);
+    const result = prepared.prMatches ? ready.proposal.existing : await provider.mutate(ready.proposal, io);
     submitted = true;
     receipt.pr = { status: 'complete', request: result };
     if (receipt.evidence) {
       receipt.evidence.result = result;
     }
     fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
-    const verified = recover({ receipt: request.receipt }, io);
-    if (verified.pr?.status === 'complete' && receipt.comment.status === 'pending') return labellingOutcome(writeComment(request.receipt, io), ready.proposal, result, rereadNotices);
+    const verified = await recover({ receipt: request.receipt }, io);
+    if (verified.pr?.status === 'complete' && receipt.comment.status === 'pending') return labellingOutcome(await writeComment(request.receipt, io), ready.proposal, result, rereadNotices);
     return labellingOutcome(verified, ready.proposal, result, rereadNotices);
   } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message,
     pr: { status: submitted ? 'verification_pending' : error.rejected ? 'rejected' : 'uncertain' }, comment: receipt.comment }; }
 }
-function recover(request, io) {
+// The request is complete only when its content and any requested draft state are both verified, so a risk comment
+// (visible to others) is never written on an unverified state.
+function requestStatus(result) {
+  const status = result.content_status || result.status;
+  return status === 'complete' && result.draft?.status === 'pending' ? 'pending' : status;
+}
+async function recover(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
   const receipt = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
   const { proposal, evidence } = receipt;
@@ -313,20 +334,21 @@ function recover(request, io) {
   let result;
   if (provider.recoverPublication) {
     if (!evidence || !Array.isArray(evidence.previous)) throw new Error('Missing private publication evidence');
-    result = provider.recoverPublication(proposal, evidence, io, request);
+    result = await provider.recoverPublication(proposal, evidence, io, request);
   } else {
-    const target = provider.inspect(proposal.target.url, io);
+    const target = await provider.inspect(proposal.target.url, io);
     if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
-    const rows = provider.list(target, proposal.source, proposal.base, io);
+    const rows = await provider.list(target, proposal.source, proposal.base, io);
     const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
     const draftVerified = proposal.draft !== true || candidates[0]?.isDraft === true;
     result = candidates.length === 1 && draftVerified ? { status: 'complete', request: candidates[0], ...(proposal.draft === true ? { draft: { requested: true, status: 'complete' } } : {}) } : { status: 'uncertain', candidates: rows, ...(proposal.draft === true ? { draft: { requested: true, status: 'pending' } } : {}), message: 'Read-only recovery cannot verify the approved content and draft state; do not repeat creation' };
   }
-  if (!proposal.inherent_risk?.required) return { ...result, receipt: request.receipt, pr: { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) }, comment: { status: 'not_required' } };
-  receipt.pr = { status: result.content_status || result.status, ...(result.request ? { request: result.request } : {}) };
+  const pr = { status: requestStatus(result), ...(result.request ? { request: result.request } : {}) };
+  if (!proposal.inherent_risk?.required) return { ...result, receipt: request.receipt, pr, comment: { status: 'not_required' } };
+  receipt.pr = pr;
   if (receipt.pr.status === 'complete') {
     try {
-      const row = riskComments.current(proposal, result.request, provider, io);
+      const row = await riskComments.current(proposal, result.request, provider, io);
       receipt.comment = { ...receipt.comment, status: row?.body === proposal.inherent_risk.body ? 'complete' : receipt.comment?.attempted ? 'uncertain' : 'pending', current: row };
     } catch (error) { receipt.comment = { ...receipt.comment, status: 'uncertain', message: error.message }; }
   }
@@ -337,31 +359,31 @@ function recover(request, io) {
     pr: receipt.pr, comment: receipt.comment, ...(!complete ? { message: 'PR and risk comment have separate outcomes; recover before retrying the pending comment only.' } : {}),
     ...(safe ? { continuation: digest(receipt) } : {}) };
 }
-function writeComment(file, io) {
+async function writeComment(file, io) {
   const receipt = JSON.parse(fs.readFileSync(file, 'utf8')), { proposal } = receipt;
   const provider = adapter(proposal.provider, io), risk = proposal.inherent_risk;
   try {
-    if (provider.commentActor(proposal.target, io) !== risk.actor) throw new Error('Authenticated comment author changed');
-    const row = riskComments.current(proposal, receipt.pr.request, provider, io);
-    if (row?.body === risk.body) return recover({ receipt: file }, io);
+    if (await provider.commentActor(proposal.target, io) !== risk.actor) throw new Error('Authenticated comment author changed');
+    const row = await riskComments.current(proposal, receipt.pr.request, provider, io);
+    if (row?.body === risk.body) return await recover({ receipt: file }, io);
     if (receipt.comment.attempted || digest(row) !== digest(risk.existing)) throw new Error('Comment baseline changed or submission remains uncertain; clarify before modification');
     receipt.comment.attempted = true;
     fs.writeFileSync(file, JSON.stringify(receipt), { mode: 0o600 });
-    provider.writeComment(proposal.target, receipt.pr.request, row, risk.body, io);
+    await provider.writeComment(proposal.target, receipt.pr.request, row, risk.body, io);
   } catch (error) {
     if (error.rejected || /\bHTTP(?: status)?\s*[:=]?\s*(?:400|401|403|404|409|412|422)\b/i.test(error.message)) receipt.comment.attempted = false;
     receipt.comment.message = error.message;
     fs.writeFileSync(file, JSON.stringify(receipt), { mode: 0o600 });
   }
-  return recover({ receipt: file }, io);
+  return await recover({ receipt: file }, io);
 }
-function resume(request, io) {
-  const result = recover(request, io);
+async function resume(request, io) {
+  const result = await recover(request, io);
   if (result.status === 'complete') return result;
   if (request.approved !== true || !result.continuation || request.confirmation !== result.continuation) throw new Error('Exact pending-comment approval required after read-only recovery');
-  return writeComment(receiptPath(request.receipt), io);
+  return await writeComment(receiptPath(request.receipt), io);
 }
-function main(rawArgv) {
+async function main(rawArgv) {
   let request;
   try {
     const { argv, inputFile } = extractInputFile(rawArgv);
@@ -370,14 +392,14 @@ function main(rawArgv) {
     if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit <registry.json>; JSON in --input-file <path> (stdin also accepted)');
     request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-    const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
+    const io = { registry, cwd: process.cwd(), run: async (command, args, input) => await backlog.run(command, args, process.cwd(), input) };
     let result;
     if (operation === 'resolve') {
-      result = resolve({ explicit: request.explicit || {}, remotes: collect({}, io).remotes.map(row => row.url) }, registry, io);
-    } else result = operations[operation](request, io);
+      result = await resolve({ explicit: request.explicit || {}, remotes: (await collect({}, io)).remotes.map(row => row.url) }, registry, io);
+    } else result = await operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;
   } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
 }
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, resume, validateDescription, main };

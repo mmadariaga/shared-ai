@@ -114,7 +114,9 @@ safety checks; the push runs first and publication only follows a verified push.
 the remote branch already holds the commit, a publication-only approval is asked.
 The options name the provider's term (PR on GitHub and Azure Repos, MR on GitLab):
 approve, edit, or cancel. Cancel runs neither operation and keeps the draft. No force
-push or automatic commit runs, and a failed or unverified push skips publication.
+push or automatic commit runs, and a failed or unverified push skips publication. A push
+that reaches the 120 s process limit is read back from the remote and reported as uncertain,
+never as blocked and never repeated on its own; the process group of the push ends with it.
 
 Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only
