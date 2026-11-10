@@ -73,59 +73,59 @@ function receipt(t) {
 
 for (const provider of ['github', 'gitlab']) {
   for (const existing of [false, true]) {
-    test(`${provider} explicitly approved draft ${existing ? 'conversion reuses ready request' : 'creation'} and verifies state`, t => {
+    test(`${provider} explicitly approved draft ${existing ? 'conversion reuses ready request' : 'creation'} and verifies state`, async t => {
       const { io, request, state } = fixture(provider, existing);
       const input = { ...request, draft: true };
-      const ready = tool.query(input, io);
-      assert.throws(() => tool.publish({ ...input, approved: true, confirmation: tool.query(request, io).confirmation, receipt: receipt(t) }, io), /approval/);
+      const ready = await tool.query(input, io);
+      await assert.rejects(async () => await tool.publish({ ...input, approved: true, confirmation: (await tool.query(request, io)).confirmation, receipt: receipt(t) }, io), /approval/);
       assert.equal(state.mutations.length, 0);
-      const result = tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+      const result = await tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
       assert.equal(result.status, 'complete');
       assert.equal(result.request.isDraft, true);
       assert.equal(state.rows.length, 1);
       assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), provider === 'github' && existing);
       if (provider === 'github' && !existing) assert.equal(state.mutations[0].body.draft, true);
       if (provider === 'gitlab') assert.equal(state.mutations[0].body.title, 'Draft: feat: add feature');
-      assert.equal(tool.query(input, io).status, 'no_changes');
+      assert.equal((await tool.query(input, io)).status, 'no_changes');
     });
   }
-  test(`${provider} an unverified draft recovers read-only, never creates twice`, t => {
+  test(`${provider} an unverified draft recovers read-only, never creates twice`, async t => {
     const { io, request, state } = fixture(provider);
-    const input = { ...request, draft: true }, ready = tool.query(input, io), file = receipt(t);
+    const input = { ...request, draft: true }, ready = await tool.query(input, io), file = receipt(t);
     state.dropDraft = true;
-    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    assert.equal((await tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'uncertain');
     const count = state.mutations.length;
-    assert.equal(tool.recover({ receipt: file }, io).status, 'uncertain');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'uncertain');
     assert.equal(state.mutations.length, count);
     state.rows[0].draft = true;
-    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
     assert.equal(state.mutations.length, count);
   });
-  test(`${provider} lost draft response recovers the published request without another mutation`, t => {
+  test(`${provider} lost draft response recovers the published request without another mutation`, async t => {
     const { io, request, state } = fixture(provider);
-    const input = { ...request, draft: true }, ready = tool.query(input, io), file = receipt(t);
+    const input = { ...request, draft: true }, ready = await tool.query(input, io), file = receipt(t);
     state.loseResponse = true;
-    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    assert.equal((await tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'uncertain');
     const count = state.mutations.length;
-    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
     assert.equal(state.mutations.length, count);
   });
-  test(`${provider} existing draft with content edit preserves draft without conversion; ambiguity and cancellation mutate nothing`, t => {
+  test(`${provider} existing draft with content edit preserves draft without conversion; ambiguity and cancellation mutate nothing`, async t => {
     const { io, request, state } = fixture(provider, true);
     state.rows[0].draft = true;
-    const input = { ...request, draft: true }, ready = tool.query(input, io);
-    assert.throws(() => tool.publish({ ...input, approved: false, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    const input = { ...request, draft: true }, ready = await tool.query(input, io);
+    await assert.rejects(async () => await tool.publish({ ...input, approved: false, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
     assert.equal(state.mutations.length, 0);
-    assert.equal(tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...input, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
     state.rows.push({ ...state.rows[0], number: 8, iid: 8 });
-    assert.throws(() => tool.query(input, io), /Multiple matching/);
+    await assert.rejects(async () => await tool.query(input, io), /Multiple matching/);
   });
-  test(`${provider} ordinary updates preserve an existing draft without requesting conversion`, t => {
+  test(`${provider} ordinary updates preserve an existing draft without requesting conversion`, async t => {
     const { io, request, state } = fixture(provider, true);
     state.rows[0].draft = true;
-    const ready = tool.query(request, io);
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    const ready = await tool.query(request, io);
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.rows[0].draft, true);
     assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
   });
@@ -159,115 +159,115 @@ function commentFixture(provider, existing = false) {
   return made;
 }
 for (const provider of ['github', 'gitlab']) {
-  test(`${provider} relocation validates the composed description at and above the supplied limit`, () => {
+  test(`${provider} relocation validates the composed description at and above the supplied limit`, async () => {
     const { io, request, state } = commentFixture(provider);
     const run = io.run;
     io.run = (command, args, input) => command === 'git' && args[0] === 'log' ? 'Closes #5' : run(command, args, input);
     const limit = 2800, suffix = `\n\n<!-- sai-closing-refs:start -->\nCloses #5\n<!-- sai-closing-refs:end -->`;
     const exact = { ...request, description: 'x'.repeat(limit - suffix.length), description_overflow: { length: 5000, limit } };
-    const ready = tool.query(exact, io);
+    const ready = await tool.query(exact, io);
     assert.equal(ready.proposal.description, exact.description + suffix);
     assert.equal(ready.proposal.description.length, limit);
     const above = { ...exact, description: exact.description + 'x' };
     const diagnostic = error => error.code === 'description-too-long' && error.provider === provider && error.length === limit + 1 && error.limit === limit && error.excess === 1;
-    assert.throws(() => tool.query(above, io), diagnostic);
-    assert.throws(() => tool.publish({ ...above, approved: true, confirmation: ready.confirmation }, io), diagnostic);
+    await assert.rejects(async () => await tool.query(above, io), diagnostic);
+    await assert.rejects(async () => await tool.publish({ ...above, approved: true, confirmation: ready.confirmation }, io), diagnostic);
     assert.equal(state.mutations.length, 0);
-    assert.throws(() => tool.query({ ...exact, description: 'x'.repeat(limit + 100) }, io), error => error.length === limit + 100 + suffix.length);
+    await assert.rejects(async () => await tool.query({ ...exact, description: 'x'.repeat(limit + 100) }, io), error => error.length === limit + 100 + suffix.length);
   });
-  test(`${provider} original overflow excludes tool-added closing references and its evidence binds approval`, t => {
+  test(`${provider} original overflow excludes tool-added closing references and its evidence binds approval`, async t => {
     const { io, request, state } = commentFixture(provider);
     const run = io.run;
     io.run = (command, args, input) => command === 'git' && args[0] === 'log' ? 'Closes #5' : run(command, args, input);
     const block = riskBlock.replace('Complete ratings', 'r'.repeat(1580 - riskBlock.length + 'Complete ratings'.length));
     assert.equal(block.length, 1580);
     const chosen = { ...request, description: 'x'.repeat(1500), risk_block: block, description_overflow: { length: 3080, limit: 2800 } };
-    const ready = tool.query(chosen, io);
+    const ready = await tool.query(chosen, io);
     assert.ok(ready.proposal.description.length > 1500);
     assert.ok(ready.proposal.description.length <= 2800);
     assert.deepEqual(ready.proposal.inherent_risk.description_overflow, chosen.description_overflow);
     for (const evidence of [{ length: 3081, limit: 2800 }, { length: 3080, limit: 2801 }]) {
       const changed = { ...chosen, description_overflow: evidence };
-      assert.notEqual(tool.query(changed, io).confirmation, ready.confirmation);
-      assert.throws(() => tool.publish({ ...changed, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+      assert.notEqual((await tool.query(changed, io)).confirmation, ready.confirmation);
+      await assert.rejects(async () => await tool.publish({ ...changed, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
     }
     assert.equal(state.mutations.length, 0);
-    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.comments[0].body, `<!-- sai-to-pr:inherent-risk -->\n${block}`);
   });
-  test(`${provider} risk comment creation, idempotent update and full allocation approval`, t => {
+  test(`${provider} risk comment creation, idempotent update and full allocation approval`, async t => {
     const { io, request, state } = commentFixture(provider);
-    const ready = tool.query(request, io), file = receipt(t);
+    const ready = await tool.query(request, io), file = receipt(t);
     assert.equal(ready.proposal.inherent_risk.placement, 'comment');
     assert.equal(ready.proposal.inherent_risk.body, `<!-- sai-to-pr:inherent-risk -->\n${riskBlock}`);
-    assert.throws(() => tool.publish({ ...request, risk_block: riskBlock.replace('ratings', 'changed'), approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
-    assert.throws(() => tool.publish({ ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
-    const published = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
+    await assert.rejects(async () => await tool.publish({ ...request, risk_block: riskBlock.replace('ratings', 'changed'), approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, approved: true, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+    const published = await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
     assert.equal(published.status, 'complete');
     assert.equal(published.pr.status, 'complete'); assert.equal(published.comment.status, 'complete');
     assert.equal(state.comments.length, 1);
     const count = state.mutations.length;
-    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
-    assert.equal(tool.query(request, io).status, 'no_changes');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
+    assert.equal((await tool.query(request, io)).status, 'no_changes');
     assert.equal(state.mutations.length, count);
     state.comments.push({ id: 12, body: 'Unrelated comment', actor: 'someone-else' });
     const updated = { ...request, risk_block: riskBlock.replace('ratings', 'new ratings') };
-    const next = tool.query(updated, io);
-    assert.equal(tool.publish({ ...updated, approved: true, confirmation: next.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    const next = await tool.query(updated, io);
+    assert.equal((await tool.publish({ ...updated, approved: true, confirmation: next.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.comments.length, 2); assert.equal(state.comments[1].body, 'Unrelated comment');
     assert.match(state.comments[0].body, /new ratings/);
     const restored = { ...request, description: `${request.description}\n${riskBlock}`, risk_placement: 'description' };
-    assert.equal(tool.publish({ ...restored, approved: true, confirmation: tool.query(restored, io).confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...restored, approved: true, confirmation: (await tool.query(restored, io)).confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.doesNotMatch(state.comments[0].body, /sai-inherent-risk:start/);
     assert.match(state.rows[0].body ?? state.rows[0].description, /sai-inherent-risk:start/);
   });
-  test(`${provider} rejected comment resumes alone after read-only recovery and exact approval`, t => {
+  test(`${provider} rejected comment resumes alone after read-only recovery and exact approval`, async t => {
     const { io, request, state } = commentFixture(provider);
     state.commentRejected = true;
-    const file = receipt(t), ready = tool.query(request, io);
-    const partial = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
+    const file = receipt(t), ready = await tool.query(request, io);
+    const partial = await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
     assert.equal(partial.status, 'partial_failure'); assert.equal(partial.pr.status, 'complete');
     const count = state.mutations.length;
-    const recovered = tool.recover({ receipt: file }, io);
+    const recovered = await tool.recover({ receipt: file }, io);
     assert.equal(state.mutations.length, count); assert.ok(recovered.continuation);
-    assert.throws(() => tool.resume({ receipt: file, approved: true, confirmation: 'wrong' }, io), /approval/);
+    await assert.rejects(async () => await tool.resume({ receipt: file, approved: true, confirmation: 'wrong' }, io), /approval/);
     state.commentRejected = false;
-    assert.equal(tool.resume({ receipt: file, approved: true, confirmation: recovered.continuation }, io).status, 'complete');
+    assert.equal((await tool.resume({ receipt: file, approved: true, confirmation: recovered.continuation }, io)).status, 'complete');
     assert.equal(state.mutations.length, count + 1);
     assert.match(state.mutations.at(-1).endpoint, /comments|notes/);
   });
-  test(`${provider} lost comment response verifies without duplicate and unreadable/ambiguous state cannot resume`, t => {
+  test(`${provider} lost comment response verifies without duplicate and unreadable/ambiguous state cannot resume`, async t => {
     const { io, request, state } = commentFixture(provider);
     state.commentLost = true;
-    const file = receipt(t), ready = tool.query(request, io);
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+    const file = receipt(t), ready = await tool.query(request, io);
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'complete');
     assert.equal(state.comments.length, 1);
     state.commentReadFails = true;
-    const count = state.mutations.length, uncertain = tool.recover({ receipt: file }, io);
+    const count = state.mutations.length, uncertain = await tool.recover({ receipt: file }, io);
     assert.equal(uncertain.status, 'partial_failure'); assert.equal(uncertain.comment.status, 'uncertain');
     assert.equal(uncertain.continuation, undefined); assert.equal(state.mutations.length, count);
     state.commentReadFails = false;
     state.comments[0].actor = 'different-author';
-    assert.throws(() => tool.query(request, io), /different author/);
-    assert.equal(tool.recover({ receipt: file }, io).comment.status, 'uncertain');
+    await assert.rejects(async () => await tool.query(request, io), /different author/);
+    assert.equal((await tool.recover({ receipt: file }, io)).comment.status, 'uncertain');
     state.comments[0].actor = 'octo';
     state.comments.push({ ...state.comments[0], id: 22 });
-    assert.throws(() => tool.query(request, io), /Ambiguous/);
-    assert.equal(tool.recover({ receipt: file }, io).comment.status, 'uncertain');
+    await assert.rejects(async () => await tool.query(request, io), /Ambiguous/);
+    assert.equal((await tool.recover({ receipt: file }, io)).comment.status, 'uncertain');
   });
-  test(`${provider} comment choice requires overflow and complete block, supports explicit draft`, () => {
+  test(`${provider} comment choice requires overflow and complete block, supports explicit draft`, async () => {
     const { io, request } = commentFixture(provider);
-    assert.throws(() => tool.query({ ...request, description_overflow: undefined }, io), /overflow/);
-    assert.throws(() => tool.query({ ...request, risk_block: 'summary' }, io), /complete/);
-    assert.equal(tool.query({ ...request, draft: true }, io).proposal.draft, true);
-    assert.equal(tool.query({ ...request, risk_placement: undefined, risk_block: undefined, description: 'x'.repeat(4001) }, io).status, 'ready');
+    await assert.rejects(async () => await tool.query({ ...request, description_overflow: undefined }, io), /overflow/);
+    await assert.rejects(async () => await tool.query({ ...request, risk_block: 'summary' }, io), /complete/);
+    assert.equal((await tool.query({ ...request, draft: true }, io)).proposal.draft, true);
+    assert.equal((await tool.query({ ...request, risk_placement: undefined, risk_block: undefined, description: 'x'.repeat(4001) }, io)).status, 'ready');
   });
-  test(`${provider} an unconfirmed absent comment cannot be blindly retried and baseline edits invalidate approval`, t => {
+  test(`${provider} an unconfirmed absent comment cannot be blindly retried and baseline edits invalidate approval`, async t => {
     const { io, request, state } = commentFixture(provider, true);
     state.comments = [{ id: 11, body: '<!-- sai-to-pr:inherent-risk -->\nold block', actor: 'octo' }];
-    const before = tool.query(request, io);
+    const before = await tool.query(request, io);
     state.comments[0].body += '\nconcurrent edit';
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: before.confirmation, receipt: receipt(t) }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: before.confirmation, receipt: receipt(t) }, io), /approval/);
     assert.equal(state.mutations.length, 0);
     state.comments = [];
     const run = io.run;
@@ -279,41 +279,41 @@ for (const provider of ['github', 'gitlab']) {
       return run(command, args, input);
     };
     const file = receipt(t);
-    const result = tool.publish({ ...request, approved: true, confirmation: tool.query(request, io).confirmation, receipt: file }, io);
+    const result = await tool.publish({ ...request, approved: true, confirmation: (await tool.query(request, io)).confirmation, receipt: file }, io);
     assert.equal(result.pr.status, 'complete'); assert.equal(result.comment.status, 'uncertain');
     assert.equal(result.continuation, undefined);
     const count = state.mutations.length;
-    assert.throws(() => tool.resume({ receipt: file, approved: true }, io), /approval/);
+    await assert.rejects(async () => await tool.resume({ receipt: file, approved: true }, io), /approval/);
     assert.equal(state.mutations.length, count);
   });
 }
 
 for (const provider of ['github', 'gitlab']) {
   for (const existing of [false, true]) {
-    test(`${provider} ${existing ? 'update' : 'create'} checks AI attribution at query and publish before mutation`, t => {
+    test(`${provider} ${existing ? 'update' : 'create'} checks AI attribution at query and publish before mutation`, async t => {
       const { request, io, state } = fixture(provider, existing);
       request.description += '\n\nGenerated with Claude Code';
-      assert.throws(() => tool.query(request, io), /AI_ATTRIBUTION/);
-      assert.throws(() => tool.query({ ...request, allow_attribution: 'true' }, io), /AI_ATTRIBUTION/);
+      await assert.rejects(async () => await tool.query(request, io), /AI_ATTRIBUTION/);
+      await assert.rejects(async () => await tool.query({ ...request, allow_attribution: 'true' }, io), /AI_ATTRIBUTION/);
       const allowed = { ...request, allow_attribution: true };
-      const ready = tool.query(allowed, io);
+      const ready = await tool.query(allowed, io);
       const file = receipt(t);
-      assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), /AI_ATTRIBUTION/);
+      await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), /AI_ATTRIBUTION/);
       assert.equal(fs.existsSync(file), false);
       assert.equal(state.mutations.length, 0);
-      assert.throws(() => tool.query({ ...allowed, title: 'invalid title' }, io), /title/);
-      assert.throws(() => tool.publish({ ...allowed, confirmation: ready.confirmation, receipt: file }, io), /approval/);
+      await assert.rejects(async () => await tool.query({ ...allowed, title: 'invalid title' }, io), /title/);
+      await assert.rejects(async () => await tool.publish({ ...allowed, confirmation: ready.confirmation, receipt: file }, io), /approval/);
       state.remoteHead = null;
-      assert.throws(() => tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io), /push approval/);
+      await assert.rejects(async () => await tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io), /push approval/);
       assert.equal(state.mutations.length, 0);
       state.remoteHead = state.head;
-      assert.equal(tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+      assert.equal((await tool.publish({ ...allowed, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'complete');
     });
-    test(`${provider} ${existing ? 'update' : 'create'} allows a human coauthor without an exception`, t => {
+    test(`${provider} ${existing ? 'update' : 'create'} allows a human coauthor without an exception`, async t => {
       const { request, io } = fixture(provider, existing);
       request.description += '\n\nCo-Authored-By: Alice Smith <alice@example.com>';
-      const ready = tool.query(request, io);
-      assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+      const ready = await tool.query(request, io);
+      assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     });
   }
 }
@@ -322,11 +322,11 @@ for (const provider of ['github', 'gitlab']) {
 // questions/approval tokens, forbidden mutations, recovery and optional context.
 // All provider calls are mocked; these are not live Azure publication tests.
 for (const provider of ['github', 'gitlab']) {
-  for (const existing of [false, true]) test(`${provider} ${existing ? 'update' : 'create'} publishes exact content and reads it back`, t => {
+  for (const existing of [false, true]) test(`${provider} ${existing ? 'update' : 'create'} publishes exact content and reads it back`, async t => {
     const { request, io, state } = fixture(provider, existing);
-    const ready = tool.query(request, io);
+    const ready = await tool.query(request, io);
     assert.equal(Boolean(ready.proposal.existing), existing);
-    const result = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+    const result = await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
     assert.equal(result.status, 'complete');
     // GitHub sets the assignee on the created pull request with a second call on its issue.
     assert.equal(state.mutations.length, provider === 'github' && !existing ? 2 : 1);
@@ -334,60 +334,60 @@ for (const provider of ['github', 'gitlab']) {
       ? (provider === 'github' ? ['body', 'title'] : ['description', 'title'])
       : (provider === 'github' ? ['base', 'body', 'head', 'title'] : ['assignee_ids', 'description', 'source_branch', 'target_branch', 'title']));
   });
-  test(`${provider} approvals are independent, declines mutate nothing and changed content invalidates approval`, t => {
+  test(`${provider} approvals are independent, declines mutate nothing and changed content invalidates approval`, async t => {
     const { request, io, state } = fixture(provider);
-    const ready = tool.query(request, io);
-    assert.throws(() => tool.publish({ ...request, confirmation: ready.confirmation }, io), /approval/);
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, description: 'Changed' }, io), /approval/);
+    const ready = await tool.query(request, io);
+    await assert.rejects(async () => await tool.publish({ ...request, confirmation: ready.confirmation }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, description: 'Changed' }, io), /approval/);
     state.remoteHead = null;
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
-    assert.throws(() => tool.push({ ...request, approved: true, confirmation: ready.confirmation }, io), /push approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
+    await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: ready.confirmation }, io), /push approval/);
     assert.equal(state.mutations.length, 0);
-    const pushReady = tool.pushQuery(request, io);
-    assert.throws(() => tool.push({ ...request, confirmation: pushReady.confirmation }, io), /push approval/);
-    assert.equal(tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
+    const pushReady = await tool.pushQuery(request, io);
+    await assert.rejects(async () => await tool.push({ ...request, confirmation: pushReady.confirmation }, io), /push approval/);
+    assert.equal((await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io)).status, 'complete');
     assert.equal(state.mutations[0].command, 'git');
     assert.ok(!state.mutations[0].args.some(arg => /force/.test(arg)));
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
   });
-  test(`${provider} uncertain creation uses read-only recovery and never creates duplicates`, t => {
+  test(`${provider} uncertain creation uses read-only recovery and never creates duplicates`, async t => {
     const { request, io, state } = fixture(provider);
-    const ready = tool.query(request, io), file = receipt(t);
+    const ready = await tool.query(request, io), file = receipt(t);
     state.loseResponse = true;
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
-    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'uncertain');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
     assert.equal(state.mutations.length, 1);
-    assert.equal(tool.query(request, io).status, 'no_changes');
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    assert.equal((await tool.query(request, io)).status, 'no_changes');
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
     assert.equal(state.mutations.length, 1);
   });
-  test(`${provider} stale baseline, moved HEAD, duplicate matches and tool errors block`, () => {
+  test(`${provider} stale baseline, moved HEAD, duplicate matches and tool errors block`, async () => {
     const { request, io, state } = fixture(provider, true);
-    const ready = tool.query(request, io);
+    const ready = await tool.query(request, io);
     state.rows[0].title = 'feat: concurrent change';
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation }, io), /approval/);
     state.head = 'b'.repeat(40);
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation }, io), /approval/);
     state.rows.push({ ...state.rows[0], number: 8, iid: 8 });
-    assert.throws(() => tool.query(request, io), /Multiple/);
-    assert.throws(() => tool.query(request, { registry, run() { throw new Error('Authentication missing'); } }), /Authentication/);
+    await assert.rejects(async () => await tool.query(request, io), /Multiple/);
+    await assert.rejects(async () => await tool.query(request, { registry, run() { throw new Error('Authentication missing'); } }), /Authentication/);
     assert.equal(state.mutations.length, 0);
   });
-  test(`${provider} collection is committed Git only and OpenSpec is optional`, t => {
+  test(`${provider} collection is committed Git only and OpenSpec is optional`, async t => {
     const { io } = fixture(provider);
     const directory = temporaryDirectory(t, 'to-pr-context-');
     io.cwd = directory;
-    const absent = tool.collect({ base: 'main', change: 'optional' }, io);
+    const absent = await tool.collect({ base: 'main', change: 'optional' }, io);
     assert.deepEqual(absent.context, {});
     assert.match(absent.pending, /pending.txt/);
     assert.equal(absent.diff, 'committed diff');
     fs.mkdirSync(path.join(directory, 'openspec/changes/optional'), { recursive: true });
     fs.writeFileSync(path.join(directory, 'openspec/changes/optional/proposal.md'), 'Optional purpose');
-    assert.equal(tool.collect({ base: 'main', change: 'optional' }, io).context.proposal, 'Optional purpose');
+    assert.equal((await tool.collect({ base: 'main', change: 'optional' }, io)).context.proposal, 'Optional purpose');
   });
 }
 
-test('collect reports the stored inherent-risk block as fresh, stale, or absent against the base', t => {
+test('collect reports the stored inherent-risk block as fresh, stale, or absent against the base', async t => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'to-pr-risk-'));
   t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
   const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -414,47 +414,47 @@ test('collect reports the stored inherent-risk block as fresh, stale, or absent 
     if (args[0] === 'diff') return 'committed diff';
     return execFileSync(command, args, { cwd, encoding: 'utf8' });
   } };
-  const inherent = () => tool.collect({ base: 'main', change: 'risky' }, io).inherent_risk;
-  assert.deepEqual(inherent(), { state: 'absent' });
+  const inherent = async () => (await tool.collect({ base: 'main', change: 'risky' }, io)).inherent_risk;
+  assert.deepEqual(await inherent(), { state: 'absent' });
   fs.writeFileSync(review, `# Code Review\n\n${stored}\n\nSummary: Critical=0 High=0 Medium=0 Low=0 Questions=0\n`);
-  assert.deepEqual(inherent(), { state: 'fresh', block: stored });
-  assert.deepEqual(tool.collect({ base: 'main' }, io).inherent_risk, { state: 'absent' });
+  assert.deepEqual(await inherent(), { state: 'fresh', block: stored });
+  assert.deepEqual((await tool.collect({ base: 'main' }, io)).inherent_risk, { state: 'absent' });
   fs.writeFileSync(review, '# Code Review\n\n<!-- sai-inherent-risk:start -->\nbroken\n');
-  assert.deepEqual(inherent(), { state: 'absent' });
+  assert.deepEqual(await inherent(), { state: 'absent' });
   fs.writeFileSync(review, `# Code Review\n\n${stored}\n`);
   fs.writeFileSync(path.join(cwd, 'src/b.js'), 'b\n');
   git('add', '.');
   git('commit', '-m', 'later');
-  assert.deepEqual(inherent(), { state: 'stale' });
+  assert.deepEqual(await inherent(), { state: 'stale' });
 });
 
-test('resolution uses backlog precedence, asks on ambiguity and supports explicit self-hosted GitLab', () => {
+test('resolution uses backlog precedence, asks on ambiguity and supports explicit self-hosted GitLab', async () => {
   const { io } = fixture('gitlab');
-  assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: [] }, registry, io).status, 'needs_input');
-  assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: ['git@gitlab.example.com:team/repo.git'] }, registry, io).status, 'needs_input');
-  assert.equal(tool.resolve({ explicit: { provider: 'unknown' }, config: {}, remotes: [] }, registry, io).status, 'unsupported');
-  assert.equal(tool.resolve({ explicit: { provider: 'gitlab', repository: 'https://gitlab.example.com/team/repo' }, config: {}, remotes: [] }, registry, io).repository, 'https://gitlab.example.com/team/repo');
+  assert.equal((await tool.resolve({ explicit: {}, config: {}, remotes: [] }, registry, io)).status, 'needs_input');
+  assert.equal((await tool.resolve({ explicit: {}, config: {}, remotes: ['git@gitlab.example.com:team/repo.git'] }, registry, io)).status, 'needs_input');
+  assert.equal((await tool.resolve({ explicit: { provider: 'unknown' }, config: {}, remotes: [] }, registry, io)).status, 'unsupported');
+  assert.equal((await tool.resolve({ explicit: { provider: 'gitlab', repository: 'https://gitlab.example.com/team/repo' }, config: {}, remotes: [] }, registry, io)).repository, 'https://gitlab.example.com/team/repo');
 });
 
-test('I1 / I10: registry metadata selects hosts, adapter and instructions without a provider enumeration', t => {
+test('I1 / I10: registry metadata selects hosts, adapter and instructions without a provider enumeration', async t => {
   const { io, request, state } = fixture('github');
   const entry = { id: 'test-provider', hosts: ['test.example'], capabilities: ['publish'], instructions: 'providers/test-provider.md', adapter: 'to-pr-github.js' };
   io.registry = { providers: [entry] };
-  const resolved = tool.resolve({ remotes: ['https://test.example/team/repo.git'] }, io.registry, io);
+  const resolved = await tool.resolve({ remotes: ['https://test.example/team/repo.git'] }, io.registry, io);
   assert.deepEqual(resolved, { status: 'resolved', provider: entry.id, repository: 'team/repo', project: undefined, instructions: entry.instructions, adapter: entry.adapter });
   request.provider = entry.id;
-  const ready = tool.query(request, io);
+  const ready = await tool.query(request, io);
   assert.equal(ready.proposal.provider, entry.id);
-  assert.throws(() => tool.publish({ ...request, confirmation: ready.confirmation }, io), /approval/);
+  await assert.rejects(async () => await tool.publish({ ...request, confirmation: ready.confirmation }, io), /approval/);
   assert.equal(state.mutations.length, 0);
   const file = receipt(t);
-  assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
-  assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+  assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'complete');
+  assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
   assert.equal(state.mutations.length, 2, 'Recovery must not publish');
-  assert.equal(tool.query(request, io).status, 'no_changes');
+  assert.equal((await tool.query(request, io)).status, 'no_changes');
 });
 
-test('I1 / I10: unsafe references and unregistered adapters block before provider or Git operations', () => {
+test('I1 / I10: unsafe references and unregistered adapters block before provider or Git operations', async () => {
   const { request, io, state } = fixture('github');
   for (const overrides of [
     { adapter: '../to-pr-github.js' },
@@ -463,31 +463,31 @@ test('I1 / I10: unsafe references and unregistered adapters block before provide
     { instructions: 'providers/../../github.md' },
   ]) {
     const selected = { providers: [{ ...registry.providers[0], ...overrides }] };
-    assert.throws(() => tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' } }, selected, io), /Invalid/);
-    assert.throws(() => tool.query(request, { ...io, registry: selected }), /Invalid/);
+    await assert.rejects(async () => await tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' } }, selected, io), /Invalid/);
+    await assert.rejects(async () => await tool.query(request, { ...io, registry: selected }), /Invalid/);
   }
   for (const provider of ['unknown', 'unregistered-provider']) {
-    assert.equal(tool.resolve({ explicit: { provider } }, registry, io).status, 'unsupported');
-    assert.throws(() => tool.query({ ...request, provider }, io), /Unsupported/);
+    assert.equal((await tool.resolve({ explicit: { provider } }, registry, io)).status, 'unsupported');
+    await assert.rejects(async () => await tool.query({ ...request, provider }, io), /Unsupported/);
   }
   assert.equal(state.calls.length, 0);
   assert.equal(state.mutations.length, 0);
   assert.deepEqual(registry.providers.map(entry => entry.id), ['github', 'gitlab', 'azuredevops'], 'Azure extends the same provider registry');
 });
 
-test('E9 / I1 / I10: destination precedence and unknown-host questions are unchanged', () => {
+test('E9 / I1 / I10: destination precedence and unknown-host questions are unchanged', async () => {
   const { io, state } = fixture('gitlab');
   const configured = { provider: 'gitlab', repository: 'https://gitlab.example.com/team/repo' };
-  const explicit = tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, config: configured, remotes: ['https://gitlab.com/team/repo'] }, registry, io);
+  const explicit = await tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, config: configured, remotes: ['https://gitlab.com/team/repo'] }, registry, io);
   assert.equal(explicit.provider, 'github');
   assert.equal(explicit.repository, 'other/repo');
   assert.equal(explicit.instructions, 'providers/github.md');
-  const configuredResult = tool.resolve({ config: configured, remotes: ['https://github.com/other/repo'] }, registry, io);
+  const configuredResult = await tool.resolve({ config: configured, remotes: ['https://github.com/other/repo'] }, registry, io);
   assert.equal(configuredResult.provider, 'gitlab');
   assert.equal(configuredResult.repository, configured.repository);
-  assert.equal(tool.resolve({ remotes: ['https://gitlab.com/team/repo'] }, registry, io).provider, 'gitlab');
+  assert.equal((await tool.resolve({ remotes: ['https://gitlab.com/team/repo'] }, registry, io)).provider, 'gitlab');
   const calls = state.calls.length;
-  const unknown = tool.resolve({ explicit: { repository: 'https://unknown.example/team/repo' } }, registry, io);
+  const unknown = await tool.resolve({ explicit: { repository: 'https://unknown.example/team/repo' } }, registry, io);
   assert.deepEqual(unknown, { status: 'needs_input', reason: 'provider-ambiguous', unknownHosts: ['unknown.example'] });
   assert.equal(state.calls.length, calls, 'Unknown-host clarification runs no commands');
   assert.equal(state.mutations.length, 0);
@@ -504,9 +504,9 @@ test('I1 / I10: CLI operations honor the supplied registry rather than a fixed a
   assert.deepEqual(JSON.parse(result.stdout), { status: 'blocked', message: 'Unsupported provider' });
 });
 
-test('temporary preparation returns a private receipt path under the SAI temp root and rejects an unknown harness', t => {
-  assert.throws(() => tool.prepare({ harness: 'unknown' }), /Expected harness/);
-  const result = tool.prepare({ harness: 'claude' });
+test('temporary preparation returns a private receipt path under the SAI temp root and rejects an unknown harness', async t => {
+  await assert.rejects(async () => await tool.prepare({ harness: 'unknown' }), /Expected harness/);
+  const result = await tool.prepare({ harness: 'claude' });
   const directory = path.dirname(result.receipt);
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   assert.equal(result.status, 'ready');
@@ -516,9 +516,9 @@ test('temporary preparation returns a private receipt path under the SAI temp ro
   if (process.platform !== 'win32') assert.equal(fs.statSync(directory).mode & 0o777, 0o700);
 });
 
-test('missing required OpenCode temporary root gives a concrete blocker without repairing or replacing it', () => {
+test('missing required OpenCode temporary root gives a concrete blocker without repairing or replacing it', async () => {
   const reads = [];
-  assert.throws(() => tool.prepare({ harness: 'opencode' }, {
+  await assert.rejects(async () => await tool.prepare({ harness: 'opencode' }, {
     platform: 'linux',
     uid: 1000,
     io: {
@@ -533,18 +533,18 @@ test('missing required OpenCode temporary root gives a concrete blocker without 
 
 for (const provider of ['github', 'gitlab']) test(`${provider} rejects repository, symlink and unsafe receipts before publication or recovery`, async t => {
   const { request, io, state } = fixture(provider);
-  const ready = tool.query(request, io);
+  const ready = await tool.query(request, io);
   const directory = temporaryDirectory(t, 'to-pr-receipt-boundary-');
   const valid = path.join(directory, 'valid.json');
   fs.writeFileSync(valid, '{}', { mode: 0o600 });
   const privateDirectory = path.join(directory, 'private');
   fs.mkdirSync(privateDirectory, { mode: 0o700 });
-  const rejects = (name, error, prepare) => t.test(name, st => {
+  const rejects = (name, error, prepare) => t.test(name, async st => {
     const file = prepare(st);
     if (!file) return;
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), error);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io), error);
     const calls = state.calls.length;
-    assert.throws(() => tool.recover({ receipt: file }, io), error);
+    await assert.rejects(async () => await tool.recover({ receipt: file }, io), error);
     assert.equal(state.calls.length, calls, 'Recovery must validate the file before trusting content or contacting the provider');
   });
   await rejects('a receipt outside the repository', /outside the repository/, () => path.resolve('to-pr-rejected-receipt.json'));
@@ -613,64 +613,87 @@ test('I2 / I10: skill presents full content before one combined approval, covers
 });
 
 for (const provider of ['github', 'gitlab']) {
-  test(`${provider} combined approval pushes then publishes with separate non-interchangeable tokens`, t => {
+  test(`${provider} combined approval pushes then publishes with separate non-interchangeable tokens`, async t => {
     const { request, io, state } = fixture(provider);
     state.remoteHead = null;
-    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io);
+    const ready = await tool.query(request, io), pushReady = await tool.pushQuery(request, io);
     assert.equal(pushReady.status, 'ready');
     assert.notEqual(ready.confirmation, pushReady.confirmation);
-    assert.throws(() => tool.push({ ...request, approved: true, confirmation: ready.confirmation }, io), /push approval/);
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: pushReady.confirmation, receipt: receipt(t) }, io), /approval/);
+    await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: ready.confirmation }, io), /push approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: pushReady.confirmation, receipt: receipt(t) }, io), /approval/);
     assert.equal(state.mutations.length, 0);
-    assert.equal(tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io)).status, 'complete');
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.mutations[0].command, 'git');
     assert.ok(!state.mutations[0].args.some(arg => /force/.test(arg)));
     assert.equal(state.mutations.length, provider === 'github' ? 3 : 2);
   });
-  test(`${provider} publication-only approval needs no push when the remote branch holds the commit`, t => {
+  test(`${provider} publication-only approval needs no push when the remote branch holds the commit`, async t => {
     const { request, io, state } = fixture(provider);
-    const ready = tool.query(request, io);
-    assert.equal(tool.pushQuery(request, io).status, 'no_changes');
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    const ready = await tool.query(request, io);
+    assert.equal((await tool.pushQuery(request, io)).status, 'no_changes');
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.ok(state.mutations.every(mutation => mutation.command !== 'git'));
   });
-  test(`${provider} failed push skips publication and leaves the remote history untouched`, t => {
+  test(`${provider} failed push skips publication and leaves the remote history untouched`, async t => {
     const { request, io, state } = fixture(provider);
     state.remoteHead = null;
-    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), run = io.run;
+    const ready = await tool.query(request, io), pushReady = await tool.pushQuery(request, io), run = io.run;
     io.run = (command, args, input) => {
       if (command === 'git' && args[0] === 'push') throw new Error('Push rejected');
       return run(command, args, input);
     };
-    assert.throws(() => tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /Push rejected/);
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
+    await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /Push rejected/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
     assert.equal(state.mutations.length, 0);
     assert.equal(state.remoteHead, null);
   });
-  test(`${provider} unverified push is reported and publication stays blocked`, t => {
+  test(`${provider} unverified push is reported and publication stays blocked`, async t => {
     const { request, io, state } = fixture(provider);
     state.remoteHead = null;
-    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), run = io.run;
+    const ready = await tool.query(request, io), pushReady = await tool.pushQuery(request, io), run = io.run;
     io.run = (command, args, input) => {
       if (command === 'git' && args[0] === 'push') { state.mutations.push({ command, args }); return ''; }
       return run(command, args, input);
     };
-    assert.throws(() => tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /could not be verified/);
-    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
+    await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /could not be verified/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
     assert.equal(state.mutations.length, 1);
   });
-  test(`${provider} failed publication after a verified push keeps the pushed branch and recovers read-only`, t => {
+  test(`${provider} E7 I4: a push that reaches the process limit is read back and reported as uncertain, never blocked or repeated`, async () => {
+    const { request, io, state } = fixture(provider);
+    const run = io.run;
+    for (const readback of ['at-approved-commit', 'not-at-approved-commit', 'unverified']) {
+      state.remoteHead = null;
+      const pushReady = await tool.pushQuery(request, io), pushes = [];
+      io.run = (command, args, input) => {
+        if (command === 'git' && args[0] === 'push') {
+          pushes.push(args);
+          if (readback === 'at-approved-commit') state.remoteHead = state.head;
+          throw Object.assign(new Error('git push did not finish within 120 s and was stopped.'), { reason: 'process-timeout' });
+        }
+        if (readback === 'unverified' && command === 'git' && args[0] === 'ls-remote' && pushes.length) throw Object.assign(new Error('git ls-remote did not finish within 120 s and was stopped.'), { reason: 'process-timeout' });
+        return run(command, args, input);
+      };
+      const result = await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io);
+      assert.equal(result.status, 'uncertain');
+      assert.equal(result.reason, 'push-timeout');
+      assert.equal(result.remote_state, readback);
+      assert.match(result.message, /not repeated automatically/);
+      assert.equal(pushes.length, 1, 'the push is never repeated on its own');
+    }
+  });
+  test(`${provider} failed publication after a verified push keeps the pushed branch and recovers read-only`, async t => {
     const { request, io, state } = fixture(provider);
     state.remoteHead = null;
-    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), file = receipt(t);
-    assert.equal(tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
+    const ready = await tool.query(request, io), pushReady = await tool.pushQuery(request, io), file = receipt(t);
+    assert.equal((await tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io)).status, 'complete');
     state.loseResponse = true;
-    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    assert.equal((await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'uncertain');
     assert.equal(state.remoteHead, state.head);
-    assert.equal(tool.pushQuery(request, io).status, 'no_changes');
+    assert.equal((await tool.pushQuery(request, io)).status, 'no_changes');
     const mutations = state.mutations.length;
-    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
     assert.equal(state.mutations.length, mutations);
   });
 }
@@ -757,95 +780,95 @@ function closingFixture(provider, { log = '', source = 'feature', children = [],
   };
   return made;
 }
-const queried = (provider, options) => {
+const queried = async (provider, options) => {
   const { request, io, state } = closingFixture(provider, options);
-  return { ...tool.query({ ...request, description: options?.draft ?? request.description }, io), request, state };
+  return { ...await tool.query({ ...request, description: options?.draft ?? request.description }, io), request, state };
 };
 
 for (const provider of ['github', 'gitlab']) {
   const other = provider === 'github' ? 'other/repo' : 'group/sub/project';
   const foreign = provider === 'github' ? 'https://gitlab.com/g/p/-/issues/3' : 'https://github.com/g/p/issues/3';
   const sameUrl = provider === 'github' ? githubIssue(7) : gitlabIssue(7);
-  test(`${provider} parent and three children produce four stable closing references`, () => {
+  test(`${provider} parent and three children produce four stable closing references`, async () => {
     const options = { source: 'feat/10_closing', children: [11, 12, 13], log: 'Closes team/repo#11\nCloses team/repo#12\nCloses team/repo#13' };
-    const first = queried(provider, options).proposal.description;
+    const first = (await queried(provider, options)).proposal.description;
     assert.equal(first, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12', 'Closes #13', 'Closes #10')}`);
-    assert.equal(queried(provider, { ...options, draft: first, description: first }).status, 'no_changes');
+    assert.equal((await queried(provider, { ...options, draft: first, description: first })).status, 'no_changes');
   });
-  test(`${provider} manually written child closing references count toward parent coverage`, () => {
+  test(`${provider} manually written child closing references count toward parent coverage`, async () => {
     const draft = 'Summary\nCloses #13';
     const options = { source: 'feat/10_closing', children: [11, 12, 13], log: 'Closes #11\nCloses #12', draft };
-    const first = queried(provider, options).proposal.description;
+    const first = (await queried(provider, options)).proposal.description;
     assert.equal(first, `${draft}\n\n${block('Closes #11', 'Closes #12', 'Closes #10')}`);
-    assert.equal(queried(provider, { ...options, draft: first, description: first }).status, 'no_changes');
+    assert.equal((await queried(provider, { ...options, draft: first, description: first })).status, 'no_changes');
   });
-  test(`${provider} a same-numbered issue in another repository does not cover a child`, () => {
-    const result = queried(provider, { source: 'feat/10_closing', children: [11, 12, 13], log: `Closes #11\nCloses #12\nCloses ${other}#13\nRefs: #13` });
+  test(`${provider} a same-numbered issue in another repository does not cover a child`, async () => {
+    const result = await queried(provider, { source: 'feat/10_closing', children: [11, 12, 13], log: `Closes #11\nCloses #12\nCloses ${other}#13\nRefs: #13` });
     assert.doesNotMatch(result.proposal.description, /Closes #10\b/);
     assert.match(result.proposal.description, new RegExp(`Closes ${other}#13`));
   });
-  test(`${provider} E1 / E2 / I1: closing set is the keyword issues of the commits, normalized to the destination`, () => {
+  test(`${provider} E1 / E2 / I1: closing set is the keyword issues of the commits, normalized to the destination`, async () => {
     const log = `${'b'.repeat(40)}\nfeat: add\nCloses #5\nFixes: ${other}#6\nresolved ${sameUrl}\nRefs: #8\nCloses #5\nCloses ${foreign}\n`;
-    const result = queried(provider, { log });
+    const result = await queried(provider, { log });
     assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #5', `Closes ${other}#6`, 'Closes #7')}`);
     assert.equal(result.warnings.length, 1);
     assert.match(result.warnings[0], /another host/);
   });
-  test(`${provider} E1: an empty closing set publishes the description without a block`, () => {
-    const result = queried(provider, { log: `${'b'.repeat(40)}\nfeat: add\nRefs: #8\n` });
+  test(`${provider} E1: an empty closing set publishes the description without a block`, async () => {
+    const result = await queried(provider, { log: `${'b'.repeat(40)}\nfeat: add\nRefs: #8\n` });
     assert.equal(result.proposal.description, '## Summary\nCommitted feature');
     assert.equal(result.warnings, undefined);
   });
-  test(`${provider} E3: a hand-written closing line stays and the block omits that issue`, () => {
+  test(`${provider} E3: a hand-written closing line stays and the block omits that issue`, async () => {
     const draft = '## Summary\nCloses #5\nDone';
-    const result = queried(provider, { log: 'Closes #5\nCloses #6\n', draft });
+    const result = await queried(provider, { log: 'Closes #5\nCloses #6\n', draft });
     assert.equal(result.proposal.description, `${draft}\n\n${block('Closes #6')}`);
-    assert.equal(queried(provider, { log: 'Closes #5\n', draft }).proposal.description, draft);
+    assert.equal((await queried(provider, { log: 'Closes #5\n', draft })).proposal.description, draft);
   });
-  test(`${provider} E4: an update replaces the previous block and keeps the other text`, () => {
+  test(`${provider} E4: an update replaces the previous block and keeps the other text`, async () => {
     const draft = `Intro\n\n## Notes\nKeep this\n\n${block('Closes #99')}`;
-    const result = queried(provider, { log: 'Closes #5\n', draft, description: draft });
+    const result = await queried(provider, { log: 'Closes #5\n', draft, description: draft });
     assert.equal(result.proposal.description, `Intro\n\n## Notes\nKeep this\n\n${block('Closes #5')}`);
     assert.equal(result.status, 'ready');
-    const same = queried(provider, { log: 'Closes #99\n', draft, description: draft });
+    const same = await queried(provider, { log: 'Closes #99\n', draft, description: draft });
     assert.equal(same.status, 'no_changes');
-    assert.equal(queried(provider, { log: '', draft, description: draft }).proposal.description, 'Intro\n\n## Notes\nKeep this');
+    assert.equal((await queried(provider, { log: '', draft, description: draft })).proposal.description, 'Intro\n\n## Notes\nKeep this');
   });
-  test(`${provider} E5 / I2: the branch issue closes only when every child is covered or already closed`, () => {
+  test(`${provider} E5 / I2: the branch issue closes only when every child is covered or already closed`, async () => {
     const source = 'feat/10_closing';
-    const done = queried(provider, { source, children: [11, 12, 13], states: { 13: 'CLOSED' }, log: 'Closes #11\nFixes #12\n' });
+    const done = await queried(provider, { source, children: [11, 12, 13], states: { 13: 'CLOSED' }, log: 'Closes #11\nFixes #12\n' });
     assert.equal(done.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12', 'Closes #10')}`);
-    const pending = queried(provider, { source, children: [11, 12, 13], log: 'Closes #11\nFixes #12\n' });
+    const pending = await queried(provider, { source, children: [11, 12, 13], log: 'Closes #11\nFixes #12\n' });
     assert.equal(pending.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12')}`);
-    const leaf = queried(provider, { source, children: [], log: 'Closes #11\n' });
+    const leaf = await queried(provider, { source, children: [], log: 'Closes #11\n' });
     assert.doesNotMatch(leaf.proposal.description, /#10/);
-    const explicit = queried(provider, { source, children: [11, 12], log: 'Closes #10\n' });
+    const explicit = await queried(provider, { source, children: [11, 12], log: 'Closes #10\n' });
     assert.equal(explicit.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #10')}`);
-    assert.equal(queried(provider, { source: 'feat/abc_closing', children: [11], log: 'Closes #11\n' }).proposal.description.includes('#10'), false);
+    assert.equal((await queried(provider, { source: 'feat/abc_closing', children: [11], log: 'Closes #11\n' })).proposal.description.includes('#10'), false);
   });
-  test(`${provider} E6: a failed provider read leaves the parent out and warns before approval`, () => {
-    const result = queried(provider, { source: 'feat/10_closing', fail: true, log: 'Closes #11\n' });
+  test(`${provider} E6: a failed provider read leaves the parent out and warns before approval`, async () => {
+    const result = await queried(provider, { source: 'feat/10_closing', fail: true, log: 'Closes #11\n' });
     assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11')}`);
     assert.match(result.warnings[0], /#10.*not evaluated/);
   });
 }
-test('E4 / I3: a GitLab work-item origin closes through the same merge-request line as an issue origin', () => {
+test('E4 / I3: a GitLab work-item origin closes through the same merge-request line as an issue origin', async () => {
   const host = 'https://gitlab.example.com';
   const log = [`Closes team/repo#7`, `Closes ${host}/team/repo/-/work_items/7`, `Closes group/sub/project#8`, `Closes ${host}/group/sub/project/-/work_items/8`].join('\n');
   const { request, io } = closingFixture('gitlab', { log });
   const refs = tool.closingReferences(log, { host: 'gitlab.example.com', repository: 'team/repo' });
   assert.deepEqual(refs.map(ref => `${ref.repository}#${ref.number}`), ['team/repo#7', 'team/repo#7', 'group/sub/project#8', 'group/sub/project#8']);
-  assert.equal(tool.query(request, io).proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #7', 'Closes group/sub/project#8')}`);
+  assert.equal((await tool.query(request, io)).proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #7', 'Closes group/sub/project#8')}`);
 });
 test('I3: the archive closing-line rule names the GitLab work-item form', () => {
   const rules = fs.readFileSync('sai/policies/commit-rules.md', 'utf8');
   const section = rules.slice(rules.indexOf('## Closing Lines'), rules.indexOf('## Repo Commit-Style Detection Rubric'));
   assert.match(section, /-\/work_items\/N/);
 });
-test('I3: publication writes the block into the created request exactly as approved', t => {
+test('I3: publication writes the block into the created request exactly as approved', async t => {
   const { request, io, state } = closingFixture('github', { log: 'Closes #5\n' });
-  const ready = tool.query(request, io);
-  const result = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+  const ready = await tool.query(request, io);
+  const result = await tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
   assert.equal(result.status, 'complete');
   assert.equal(state.mutations[0].body.body, `## Summary\nCommitted feature\n\n${block('Closes #5')}`);
 });
@@ -853,17 +876,17 @@ test('I3: publication writes the block into the created request exactly as appro
 // Assignee and labels on creation (E1-E10, I1-I6): the current user plus existing type/area labels.
 const labelCalls = state => state.calls.filter(call => call.command !== 'git' && (call.args[1] === 'user' || /\/labels\?/.test(call.args[1])));
 for (const provider of ['github', 'gitlab']) {
-  test(`${provider} labelling: creation reads the user and every label page, keeps only listed labels and applies them`, t => {
+  test(`${provider} labelling: creation reads the user and every label page, keeps only listed labels and applies them`, async t => {
     const { request, io, state } = fixture(provider);
     state.labels = Array.from({ length: 120 }, (_, index) => `label-${index}`).concat(['bug', 'performance']);
-    const ready = tool.query({ ...request, labels: ['bug', 'bug', 'performance', 'invented', 'label-3'] }, io);
+    const ready = await tool.query({ ...request, labels: ['bug', 'bug', 'performance', 'invented', 'label-3'] }, io);
     assert.equal(ready.available_labels.length, 122, 'E6: every page is read');
     assert.deepEqual(ready.proposal.labels, ['bug', 'performance', 'label-3'], 'E5: exact names only, no duplicates');
     assert.equal(ready.proposal.assignee.login, 'octo');
     assert.match(ready.warnings.join('\n'), /dropped: invented/);
-    assert.notEqual(tool.query({ ...request, labels: ['bug'] }, io).confirmation, ready.confirmation, 'I2: labels enter the digest');
+    assert.notEqual((await tool.query({ ...request, labels: ['bug'] }, io)).confirmation, ready.confirmation, 'I2: labels enter the digest');
     const chosen = { ...request, labels: ['bug', 'performance', 'label-3'] };
-    const result = tool.publish({ ...chosen, approved: true, confirmation: tool.query(chosen, io).confirmation, receipt: receipt(t) }, io);
+    const result = await tool.publish({ ...chosen, approved: true, confirmation: (await tool.query(chosen, io)).confirmation, receipt: receipt(t) }, io);
     assert.equal(result.status, 'complete');
     assert.equal(result.warnings, undefined);
     assert.deepEqual([...result.request.labels].sort(), ['bug', 'label-3', 'performance']);
@@ -876,16 +899,16 @@ for (const provider of ['github', 'gitlab']) {
       assert.deepEqual([state.mutations[0].body.assignee_ids, state.mutations[0].body.labels], [[5], 'bug,performance,label-3']);
     }
   });
-  test(`${provider} labelling: a request without a matching label publishes with the assignee only`, t => {
+  test(`${provider} labelling: a request without a matching label publishes with the assignee only`, async t => {
     const { request, io, state } = fixture(provider);
     state.labels = [];
     const chosen = { ...request, labels: ['bug'] };
-    const ready = tool.query(chosen, io);
+    const ready = await tool.query(chosen, io);
     assert.deepEqual(ready.proposal.labels, []);
-    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.ok(!state.mutations.some(item => item.body.labels));
   });
-  test(`${provider} labelling: unreadable user or labels warn and never stop publication`, t => {
+  test(`${provider} labelling: unreadable user or labels warn and never stop publication`, async t => {
     const { request, io, state } = fixture(provider);
     const run = io.run;
     io.run = (command, args, input) => {
@@ -893,25 +916,25 @@ for (const provider of ['github', 'gitlab']) {
       return run(command, args, input);
     };
     const chosen = { ...request, labels: ['bug'] };
-    const ready = tool.query(chosen, io);
+    const ready = await tool.query(chosen, io);
     assert.equal(ready.warnings.length, 3, 'E3: user, labels and the dropped request are named');
     assert.equal(ready.proposal.assignee, undefined);
     assert.deepEqual(ready.proposal.labels, []);
-    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.equal(state.mutations.length, 1);
   });
-  test(`${provider} labelling: an update reads and sends no assignee or labels`, t => {
+  test(`${provider} labelling: an update reads and sends no assignee or labels`, async t => {
     const { request, io, state } = fixture(provider, true);
     const chosen = { ...request, labels: ['bug'] };
-    const ready = tool.query(chosen, io);
+    const ready = await tool.query(chosen, io);
     assert.equal(labelCalls(state).length, 0, 'E8: nothing is read');
     assert.equal(ready.proposal.assignee, undefined);
     assert.equal(ready.proposal.labels, undefined);
     assert.equal(ready.proposal.existing.labels, undefined);
-    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal((await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io)).status, 'complete');
     assert.deepEqual(Object.keys(state.mutations[0].body).sort(), provider === 'github' ? ['body', 'title'] : ['description', 'title']);
   });
-  test(`${provider} labelling: an assignee or label the provider silently drops is reported as a difference`, t => {
+  test(`${provider} labelling: an assignee or label the provider silently drops is reported as a difference`, async t => {
     const { request, io, state } = fixture(provider);
     const run = io.run;
     // The provider accepts the creation but keeps neither the assignee nor the labels.
@@ -921,32 +944,32 @@ for (const provider of ['github', 'gitlab']) {
       return out;
     };
     const chosen = { ...request, labels: ['bug'] };
-    const ready = tool.query(chosen, io);
-    const result = tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+    const ready = await tool.query(chosen, io);
+    const result = await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
     assert.equal(result.status, 'complete', 'E10: the request counts as published');
     assert.equal(result.warnings.length, 2);
     assert.match(result.warnings.join('\n'), /missing the approved assignee: octo/);
     assert.match(result.warnings.join('\n'), /missing the approved labels: bug/);
   });
 }
-test('labelling: a failed second GitHub call keeps the created request and warns with its URL', t => {
+test('labelling: a failed second GitHub call keeps the created request and warns with its URL', async t => {
   const { request, io, state } = fixture('github');
   state.labelCallFails = true;
   const chosen = { ...request, labels: ['bug'] };
-  const ready = tool.query(chosen, io);
-  const result = tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+  const ready = await tool.query(chosen, io);
+  const result = await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
   assert.equal(result.status, 'complete', 'E1: never uncertain');
   assert.equal(result.warnings.length, 1);
   assert.match(result.warnings[0], /https:\/\/github\.com\/team\/repo\/pull\/7 was created.*assignee and labels could not be applied: Labelling refused/);
   assert.equal(state.mutations.length, 2, 'no retry and no deletion');
 });
-test('labelling: recovery of an uncertain creation reports the actual assignee and labels without applying any', t => {
+test('labelling: recovery of an uncertain creation reports the actual assignee and labels without applying any', async t => {
   const { request, io, state } = fixture('gitlab');
   const chosen = { ...request, labels: ['bug'] };
-  const ready = tool.query(chosen, io), file = receipt(t);
+  const ready = await tool.query(chosen, io), file = receipt(t);
   state.loseResponse = true;
-  assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
-  const recovered = tool.recover({ receipt: file }, io);
+  assert.equal((await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'uncertain');
+  const recovered = await tool.recover({ receipt: file }, io);
   assert.equal(recovered.status, 'complete');
   assert.deepEqual(recovered.request.labels, ['bug']);
   assert.deepEqual(recovered.request.assignees, ['octo']);
@@ -955,10 +978,10 @@ test('labelling: recovery of an uncertain creation reports the actual assignee a
 
 // E10: a user or label read that fails when publish re-queries never rejects an approved creation.
 for (const provider of ['github', 'gitlab']) {
-  test(`${provider} labelling: a read failing at publication still publishes exactly the approved assignee and labels`, t => {
+  test(`${provider} labelling: a read failing at publication still publishes exactly the approved assignee and labels`, async t => {
     const { request, io, state } = fixture(provider);
     const chosen = { ...request, labels: ['bug', 'performance'] };
-    const ready = tool.query(chosen, io);
+    const ready = await tool.query(chosen, io);
     const run = io.run;
     io.run = (command, args, input) => {
       if (command !== 'git' && (args[1] === 'user' || /\/labels\?/.test(args[1]))) throw new Error('Rate limited');
@@ -966,11 +989,11 @@ for (const provider of ['github', 'gitlab']) {
     };
     const approved = { ...chosen, assignee: ready.proposal.assignee, approved: true, confirmation: ready.confirmation };
     // Without the approved values echoed back, or with different ones, the digest still rejects.
-    assert.throws(() => tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
-    assert.throws(() => tool.publish({ ...approved, labels: ['bug', 'wontfix'], receipt: receipt(t) }, io), /approval/);
-    assert.throws(() => tool.publish({ ...approved, assignee: { ...ready.proposal.assignee, login: 'someone-else' }, receipt: receipt(t) }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...approved, labels: ['bug', 'wontfix'], receipt: receipt(t) }, io), /approval/);
+    await assert.rejects(async () => await tool.publish({ ...approved, assignee: { ...ready.proposal.assignee, login: 'someone-else' }, receipt: receipt(t) }, io), /approval/);
     assert.equal(state.mutations.length, 0);
-    const result = tool.publish({ ...approved, receipt: receipt(t) }, io);
+    const result = await tool.publish({ ...approved, receipt: receipt(t) }, io);
     assert.equal(result.status, 'complete', 'the request counts as published');
     assert.match(result.warnings.join('\n'), /could not be re-read at publication/);
     assert.deepEqual([...result.request.labels].sort(), ['bug', 'performance']);
@@ -992,59 +1015,59 @@ function settingsProject(t, files) {
 const SETTINGS = '.sai/settings.jsonc';
 const selfHosted = ['https://git.example.com/team/repo.git'];
 
-test('E3: pr.provider resolves a self-hosted remote without asking and names the setting', t => {
+test('E3: pr.provider resolves a self-hosted remote without asking and names the setting', async t => {
   const { io } = fixture('gitlab');
   const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab"}}' });
-  assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: selfHosted }, registry, io).reason, 'provider-ambiguous');
-  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  assert.equal((await tool.resolve({ explicit: {}, config: {}, remotes: selfHosted }, registry, io)).reason, 'provider-ambiguous');
+  const result = await tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
   assert.deepEqual([result.status, result.provider, result.notices], ['resolved', 'gitlab', ['Project setting pr.provider: gitlab']]);
   assert.equal(result.warnings, undefined);
 });
 
-test('E5: backlog.* never chooses the pull request destination', t => {
+test('E5: backlog.* never chooses the pull request destination', async t => {
   const { io } = fixture('gitlab');
   const cwd = settingsProject(t, { [SETTINGS]: '{"backlog":{"provider":"gitlab","repository":"g/r"}}' });
-  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  const result = await tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
   assert.deepEqual([result.status, result.reason, result.notices], ['needs_input', 'provider-ambiguous', undefined]);
 });
 
-test('E1: pr.* wins over .to-pr.json, which is reported as deprecated', t => {
+test('E1: pr.* wins over .to-pr.json, which is reported as deprecated', async t => {
   const { io } = fixture('gitlab');
   const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab"}}', '.to-pr.json': '{"provider":"github","repository":"o/r"}' });
-  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  const result = await tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
   assert.equal(result.provider, 'gitlab');
   assert.match(result.warnings.join('\n'), /\.to-pr\.json is deprecated and ignored because pr\.\* in \.sai\/settings\.jsonc is set/);
 });
 
-test('E2: only .to-pr.json is used and reported as deprecated', t => {
+test('E2: only .to-pr.json is used and reported as deprecated', async t => {
   const { io } = fixture('github');
   const cwd = settingsProject(t, { '.to-pr.json': '{"provider":"github","repository":"team/repo"}' });
-  const result = tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd });
+  const result = await tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd });
   assert.deepEqual([result.status, result.provider, result.repository], ['resolved', 'github', 'team/repo']);
   assert.match(result.warnings.join('\n'), /\.to-pr\.json is deprecated; move its keys to pr\.\* in \.sai\/settings\.jsonc/);
   assert.equal(result.notices, undefined);
   const typed = settingsProject(t, { '.to-pr.json': '{"type":"bug"}' });
-  assert.throws(() => tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd: typed }), /invocation-scoped/);
+  await assert.rejects(async () => await tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd: typed }), /invocation-scoped/);
 });
 
-test('E4: an explicit provider or repository wins over pr.* with a notice', t => {
+test('E4: an explicit provider or repository wins over pr.* with a notice', async t => {
   const { io } = fixture('github');
   const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab","repository":"https://gitlab.example.com/team/repo"}}' });
-  const result = tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' }, remotes: [] }, registry, { ...io, cwd });
+  const result = await tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' }, remotes: [] }, registry, { ...io, cwd });
   assert.deepEqual([result.provider, result.repository], ['github', 'team/repo']);
   assert.deepEqual(result.notices, [
     'Project setting pr.provider: gitlab is overridden by the explicit provider github',
     'Project setting pr.repository: https://gitlab.example.com/team/repo is overridden by the explicit repository team/repo',
   ]);
-  const address = tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, remotes: [] }, registry, { ...io, cwd });
+  const address = await tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, remotes: [] }, registry, { ...io, cwd });
   assert.equal(address.provider, 'github');
   assert.match(address.notices.join('\n'), /pr\.provider: gitlab is overridden by the explicit repository address, which selects github/);
 });
 
-test('E12: an invalid pr.provider is dropped with a warning and resolution continues', t => {
+test('E12: an invalid pr.provider is dropped with a warning and resolution continues', async t => {
   const { io } = fixture('gitlab');
   const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"jira"}}' });
-  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  const result = await tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
   assert.equal(result.reason, 'provider-ambiguous');
   assert.match(result.warnings.join('\n'), /Setting pr\.provider .*must be one of github, gitlab, azuredevops/);
 });

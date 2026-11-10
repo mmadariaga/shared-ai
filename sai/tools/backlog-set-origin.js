@@ -14,12 +14,12 @@ const blocked = (reason, message, extra = {}) => ({ status: 'blocked', reason, m
  * `provider.query(request, io)` is the provider's ordinary destination query; `origin.format`, when the origin has one,
  * reaches it as `request.description_format`.
  */
-function prepare(platform, request, io, provider) {
+async function prepare(platform, request, io, provider) {
   if (identity.platformFor(request.origin) !== platform) return blocked('origin-destination-mismatch', 'Slices are published in the originating issue\'s own provider; nothing was written');
   let url;
   try { url = identity.normalize(request.origin, platform); } catch (error) { return blocked('origin-unavailable', error.message); }
   let current;
-  try { current = provider.origin({ ...request, origin: url }, io); } catch (error) { return blocked('origin-unavailable', error.message); }
+  try { current = await provider.origin({ ...request, origin: url }, io); } catch (error) { return blocked('origin-unavailable', error.message); }
   const { issue } = current;
   if (current.closed) return blocked('origin-closed', 'The originating issue is closed; it is not reopened and nothing was written', { issue });
   let marker;
@@ -28,13 +28,13 @@ function prepare(platform, request, io, provider) {
   if (marker?.role === 'parent') return blocked('origin-already-published', 'The originating issue already carries a sai-backlog-slices@1 parent marker; no second set is written', { issue, children: identity.slicesOf(marker, issue.url).map(slice => slice.issue) });
   if (!request.origin_baseline) return { status: 'needs_input', reason: 'origin-baseline-required', message: 'Read the originating issue with read-update and pass its baseline as origin_baseline', current };
   if (digest(current.baseline) !== digest(request.origin_baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
-  const children = current.children();
+  const children = await current.children();
   // A provider whose descriptions have a format per issue reports the origin's, so the content is prepared in that format.
   const content = { title: current.baseline.title, description: request.description, ...(current.format ? { description_format: current.format } : {}) };
-  const ready = provider.query({ ...request, ...content, repository: current.repository }, io);
+  const ready = await provider.query({ ...request, ...content, repository: current.repository }, io);
   if (ready.status !== 'ready') return ready;
   if (request.repository) {
-    const configured = provider.query({ ...request, ...content }, io);
+    const configured = await provider.query({ ...request, ...content }, io);
     if (configured.status !== 'ready' || digest(configured.proposal) !== digest(ready.proposal)) return blocked('origin-destination-mismatch', 'The configured destination differs from the originating issue\'s; nothing was written', { issue });
   }
   return { status: 'ready', ready, origin: { issue, baseline: current.baseline, children, destination: digest(ready.proposal), ...(marker ? { child_of: marker } : {}) } };
@@ -55,9 +55,9 @@ function upperLinks(upper) {
 const bodies = (row, ...current) => [...current, row.description, row.previous_body, row.previous_relation_body, row.baseline_body];
 
 // Re-reads the destination of an origin set against the one approved.
-function checkDestination(receipt, query, io) {
+async function checkDestination(receipt, query, io) {
   const { request, proposal } = receipt;
-  const fresh = query({ ...request, title: proposal.title, repository: proposal.repository, ...(proposal.format ? { description_format: proposal.format } : {}) }, io);
+  const fresh = await query({ ...request, title: proposal.title, repository: proposal.repository, ...(proposal.format ? { description_format: proposal.format } : {}) }, io);
   if (fresh.status !== 'ready' || digest(fresh.proposal) !== proposal.origin.destination) throw new Error('Publication destination, content, type or authenticated identity changed; renew review');
 }
 

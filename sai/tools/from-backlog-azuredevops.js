@@ -33,8 +33,8 @@ function classify(value) {
   } catch { return null; }
 }
 
-function execute(io, args) {
-  try { return io.run('az', args); }
+async function execute(io, args) {
+  try { return await io.run('az', args); }
   catch (error) {
     const message = error.message || '';
     const reason = error.reason === 'tool-unavailable' || /ENOENT|not recognized|not found|cannot find.*az/i.test(message) ? 'tool-unavailable'
@@ -44,14 +44,14 @@ function execute(io, args) {
   }
 }
 
-function context(io) {
+async function context(io) {
   const organizations = new Map();
   const add = (organization, project) => {
     const key = organization.toLowerCase();
     if (!organizations.has(key)) organizations.set(key, { organization, projects: new Set() });
     if (project) organizations.get(key).projects.add(project);
   };
-  const defaults = execute(io, ['devops', 'configure', '--list', '--only-show-errors']);
+  const defaults = await execute(io, ['devops', 'configure', '--list', '--only-show-errors']);
   const organization = /^\s*organization\s*=\s*(.+?)\s*$/im.exec(defaults)?.[1];
   const project = /^\s*project\s*=\s*(.+?)\s*$/im.exec(defaults)?.[1];
   if (organization) {
@@ -60,7 +60,7 @@ function context(io) {
     add(parsed.organization, project);
   }
   let remotes = '';
-  try { remotes = io.run('git', ['remote', '-v']); } catch { /* No repository context is available. */ }
+  try { remotes = await io.run('git', ['remote', '-v']); } catch { /* No repository context is available. */ }
   for (const line of remotes.split('\n')) {
     const value = line.trim().split(/\s+/)[1];
     if (!value) continue;
@@ -73,16 +73,22 @@ function context(io) {
   return { organization: selected.organization, ...(selected.projects.size === 1 ? { project: [...selected.projects][0] } : {}) };
 }
 
-function resolve(value, io) {
-  if (positive(value)) {
-    const selected = context(io);
-    return selected ? { status: 'resolved', ...selected, number: Number(value) }
-      : { status: 'needs_input', reason: 'context-ambiguous', message: 'Supply a complete Azure DevOps work-item link; no unambiguous organization is available' };
-  }
+// A complete work-item link names its organization and project, so reading it needs no command and no context.
+function resolveLink(value) {
   const parsed = address(value);
   if (!parsed || parsed.username || parsed.parts.length !== 4 || !segment(parsed.parts[0]) || parsed.parts[1] !== '_workitems' || parsed.parts[2] !== 'edit' || !positive(parsed.parts[3]) || /\/\/{1,}/.test(new URL(value).pathname)) throw fault('invalid-reference', 'Supply a complete Azure DevOps Services project/_workitems/edit/ID link');
   const project = parsed.parts[0], number = Number(parsed.parts[3]);
   return { status: 'resolved', organization: parsed.organization, project, number, url: `${parsed.organization}/${encodeURIComponent(project)}/_workitems/edit/${number}` };
+}
+
+
+async function resolve(value, io) {
+  if (positive(value)) {
+    const selected = await context(io);
+    return selected ? { status: 'resolved', ...selected, number: Number(value) }
+      : { status: 'needs_input', reason: 'context-ambiguous', message: 'Supply a complete Azure DevOps work-item link; no unambiguous organization is available' };
+  }
+  return resolveLink(value);
 }
 
 // The work item's own `multilineFieldsFormat` decides when the response carries it. Without that key the
@@ -92,11 +98,11 @@ function descriptionFormat(multiline, description) {
   return require('./ready-to-propose').isHtmlDescription(description) ? 'html' : 'markdown';
 }
 
-function read(reference, io) {
+async function read(reference, io) {
   let item;
   const comments = [];
   try {
-    const data = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
+    const data = JSON.parse(await execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
     const fields = data.fields;
     if (data.id !== reference.number || !fields || !segment(fields['System.TeamProject']) || ['System.Title', 'System.State', 'System.WorkItemType'].some(key => typeof fields[key] !== 'string') || (fields['System.Description'] != null && typeof fields['System.Description'] !== 'string')) throw fault('retrieval-failed', 'Incomplete Azure DevOps work-item response');
     const project = fields['System.TeamProject'];
@@ -111,7 +117,7 @@ function read(reference, io) {
       const args = ['devops', 'invoke', '--organization', item.organization, '--area', 'wit', '--resource', 'comments', '--route-parameters', `project=${project}`, `workItemId=${item.number}`, '--query-parameters', '$top=100'];
       if (token !== undefined) args.push(`continuationToken=${token}`);
       args.push('--http-method', 'GET', '--api-version', '7.1-preview', '--detect', 'false', '--output', 'json', '--only-show-errors');
-      const page = JSON.parse(execute(io, args));
+      const page = JSON.parse(await execute(io, args));
       if (!Array.isArray(page.comments) || !Number.isSafeInteger(page.count) || page.count !== page.comments.length || !Number.isSafeInteger(page.totalCount) || page.totalCount < 0 || (total !== undefined && page.totalCount !== total)) throw fault('retrieval-failed', 'Incomplete or changing Azure DevOps comments response');
       total = page.totalCount;
       for (const comment of page.comments) {
@@ -147,35 +153,39 @@ function planningFields(row, reference) {
     assignment: assigned ? { id: assigned.id, ...(typeof assigned.displayName === 'string' ? { displayName: assigned.displayName } : {}), ...(typeof assigned.uniqueName === 'string' ? { uniqueName: assigned.uniqueName } : {}) } : null };
 }
 
-function nativeRelations(reference, io) {
-  const row = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
+async function nativeRelations(reference, io) {
+  const row = JSON.parse(await execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
   if (row.id !== reference.number || !row.fields || !segment(row.fields['System.TeamProject']) || (reference.project && row.fields['System.TeamProject'].toLowerCase() !== reference.project.toLowerCase()) || (row.relations != null && !Array.isArray(row.relations))) throw fault('retrieval-failed', 'Incomplete work-item relations');
   const related = new Map();
-  const urls = rel => (row.relations || []).filter(link => link.rel === rel).map(link => {
-    const match = /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
-    const parsed = address(link.url);
-    if (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase()) throw fault('retrieval-failed', 'Invalid native work-item relation identity');
-    const number = Number(match[1]);
-    if (!related.has(number)) {
-      // Relation IDs are organization-wide; the selected item's project is not evidence.
-      const item = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(number), '--organization', reference.organization, '--detect', 'false', '--output', 'json', '--only-show-errors']));
-      if (item.id !== number || !item.fields || !segment(item.fields['System.TeamProject'])) throw fault('retrieval-failed', 'Related work-item project could not be verified');
-      related.set(number, `${reference.organization}/${encodeURIComponent(item.fields['System.TeamProject'])}/_workitems/edit/${number}`);
+  const urls = async rel => {
+    const found = [];
+    for (const link of (row.relations || []).filter(link => link.rel === rel)) {
+      const match = /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
+      const parsed = address(link.url);
+      if (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase()) throw fault('retrieval-failed', 'Invalid native work-item relation identity');
+      const number = Number(match[1]);
+      if (!related.has(number)) {
+        // Relation IDs are organization-wide; the selected item's project is not evidence.
+        const item = JSON.parse(await execute(io, ['boards', 'work-item', 'show', '--id', String(number), '--organization', reference.organization, '--detect', 'false', '--output', 'json', '--only-show-errors']));
+        if (item.id !== number || !item.fields || !segment(item.fields['System.TeamProject'])) throw fault('retrieval-failed', 'Related work-item project could not be verified');
+        related.set(number, `${reference.organization}/${encodeURIComponent(item.fields['System.TeamProject'])}/_workitems/edit/${number}`);
+      }
+      found.push(related.get(number));
     }
-    return related.get(number);
-  });
-  const parents = urls('System.LinkTypes.Hierarchy-Reverse');
+    return found;
+  };
+  const parents = await urls('System.LinkTypes.Hierarchy-Reverse');
   if (parents.length > 1) throw fault('retrieval-failed', 'Multiple work-item parents');
   const assigned = row.fields['System.AssignedTo'];
   if (assigned != null && (typeof assigned.id !== 'string' || !assigned.id)) throw fault('retrieval-failed', 'Incomplete Azure assignee identity');
-  return { row, ...planningFields(row, reference), parent: parents[0] || null, children: urls('System.LinkTypes.Hierarchy-Forward'), dependencies: urls('System.LinkTypes.Dependency-Reverse'), assignees: assigned ? [assigned.id] : [] };
+  return { row, ...planningFields(row, reference), parent: parents[0] || null, children: await urls('System.LinkTypes.Hierarchy-Forward'), dependencies: await urls('System.LinkTypes.Dependency-Reverse'), assignees: assigned ? [assigned.id] : [] };
 }
-const readSet = require('./backlog-provider-import').bind('azuredevops', (url, io, initial) => {
-  const ref = url ? resolve(url, io) : initial, result = read(ref, io);
+const readSet = require('./backlog-provider-import').bind('azuredevops', async (url, io, initial) => {
+  const ref = url ? await resolve(url, io) : initial, result = await read(ref, io);
   if (result.status !== 'complete') return result;
   try {
-  const { row, ...relations } = nativeRelations({ ...ref, project: result.item.project }, io);
+  const { row, ...relations } = await nativeRelations({ ...ref, project: result.item.project }, io);
   return { ...result, item: { ...result.item, ...relations } };
   } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
 });
-module.exports = { classify, resolve, read, readSet, nativeRelations, address, segment };
+module.exports = { classify, resolve, resolveLink, read, readSet, nativeRelations, address, segment };

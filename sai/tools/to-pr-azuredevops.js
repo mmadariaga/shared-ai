@@ -2,12 +2,12 @@
 
 const azure = require('./azure-publication');
 const classify = value => { try { return azure.repositoryAddress(value) ? 'match' : null; } catch { return null; } };
-const resolve = request => azure.resolve(request, true);
-function inspect(repository, io) {
+const resolve = async request => await azure.resolve(request, true);
+async function inspect(repository, io) {
   const parsed = azure.repositoryAddress(repository);
   if (!parsed) throw new Error('Azure Repos Services repository URL required');
-  const project = azure.inspect(repository, io);
-  const row = azure.api(project, 'git', 'repositories', { project: project.project, repositoryId: parsed.repository }, io);
+  const project = await azure.inspect(repository, io);
+  const row = await azure.api(project, 'git', 'repositories', { project: project.project, repositoryId: parsed.repository }, io);
   if (typeof row.id !== 'string' || !row.id || typeof row.name !== 'string' || row.isDisabled || row.project?.id !== project.projectId || typeof row.defaultBranch !== 'string' || !row.defaultBranch.startsWith('refs/heads/')) throw new Error('Incomplete, incompatible or disabled Azure repository');
   const url = `${project.url}/_git/${encodeURIComponent(row.name)}`;
   return { ...project, id: row.id, repository: url, host: 'dev.azure.com', url, defaultBranch: row.defaultBranch.slice(11) };
@@ -22,10 +22,10 @@ function identity(row, target, source, base) {
     description: row.description ?? '', actor: row.createdBy.id, head: row.lastMergeSourceCommit.commitId, status: row.status,
     ...(typeof row.isDraft === 'boolean' ? { isDraft: row.isDraft } : {}) };
 }
-function list(target, source, base, io, all = false) {
+async function list(target, source, base, io, all = false) {
   const result = [], seen = new Set();
   for (let skip = 0; ; skip += 100) {
-    const page = azure.api(target, 'git', 'pullrequests', { project: target.project, repositoryId: target.id }, io, 'GET', undefined, {
+    const page = await azure.api(target, 'git', 'pullrequests', { project: target.project, repositoryId: target.id }, io, 'GET', undefined, {
       'searchCriteria.status': all ? 'all' : 'active', 'searchCriteria.sourceRefName': `refs/heads/${source}`,
       'searchCriteria.targetRefName': `refs/heads/${base}`, '$top': 100, '$skip': skip
     });
@@ -39,28 +39,28 @@ function list(target, source, base, io, all = false) {
     if (!page.value.length) throw new Error('Azure pagination did not advance');
   }
 }
-function mutate(proposal, io) {
+async function mutate(proposal, io) {
   const p = proposal;
-  const row = azure.api(p.target, 'git', 'pullrequests', { project: p.target.project, repositoryId: p.target.id,
+  const row = await azure.api(p.target, 'git', 'pullrequests', { project: p.target.project, repositoryId: p.target.id,
     ...(p.existing ? { pullRequestId: p.existing.number } : {}) }, io, p.existing ? 'PATCH' : 'POST', p.existing
     ? { title: p.title, description: p.description, ...(p.draft === true ? { isDraft: true } : {}) }
     : { title: p.title, description: p.description, sourceRefName: `refs/heads/${p.source}`, targetRefName: `refs/heads/${p.base}`, ...(p.draft === true ? { isDraft: true } : {}) });
   return identity(row, p.target, p.source, p.base);
 }
-function publicationEvidence(proposal, io) {
-  return { previous: list(proposal.target, proposal.source, proposal.base, io, true).map(row => row.number) };
+async function publicationEvidence(proposal, io) {
+  return { previous: (await list(proposal.target, proposal.source, proposal.base, io, true)).map(row => row.number) };
 }
-function recoverPublication(proposal, evidence, io, request) {
-  const target = inspect(proposal.target.url, io);
+async function recoverPublication(proposal, evidence, io, request) {
+  const target = await inspect(proposal.target.url, io);
   if (target.id !== proposal.target.id || target.projectId !== proposal.target.projectId || target.actor !== proposal.target.actor || target.visibility !== proposal.target.visibility) throw new Error('Azure recovery destination or authenticated identity changed');
-  const rows = list(target, proposal.source, proposal.base, io, true);
+  const rows = await list(target, proposal.source, proposal.base, io, true);
    const candidates = rows.filter(row => row.title === proposal.title && row.description === proposal.description && row.head === proposal.head &&
     (proposal.existing ? row.number === proposal.existing.number : row.actor === target.actor && !evidence.previous.includes(row.number)));
   const number = proposal.existing?.number || evidence.result?.number;
   const verified = number ? candidates.filter(row => row.number === number) : candidates.filter(row => row.url === request.requestUrl);
   if (verified.length === 1) {
     const draft = proposal.draft === true ? { requested: true, status: verified[0].isDraft === true ? 'complete' : 'pending' } : undefined;
-    return { status: draft?.status === 'pending' ? 'uncertain' : 'complete', request: verified[0], content_status: 'complete',
+    return { status: draft?.status === 'pending' ? 'uncertain' : 'complete', request: verified[0], content_status: draft?.status === 'pending' ? 'pending' : 'complete',
       ...(draft ? { draft } : {}), ...(draft?.status === 'pending' ? { message: 'PR content is verified, but the requested draft state is not confirmed; do not repeat creation.' } : {}) };
   }
   return { status: 'uncertain', candidates, ...(proposal.draft === true ? { draft: { requested: true, status: 'pending' } } : {}),
@@ -68,8 +68,8 @@ function recoverPublication(proposal, evidence, io, request) {
 }
 function commentActor(target) { return target.actor; }
 function commentRoute(target, request) { return { project: target.project, repositoryId: target.id, pullRequestId: request.number }; }
-function comments(target, request, io) {
-  const result = azure.api(target, 'git', 'pullRequestThreads', commentRoute(target, request), io);
+async function comments(target, request, io) {
+  const result = await azure.api(target, 'git', 'pullRequestThreads', commentRoute(target, request), io);
   if (!Array.isArray(result.value) || result.count !== result.value.length || result.continuation_token) throw new Error('Incomplete Azure comment threads');
   const rows = [], seen = new Set();
   for (const thread of result.value) {
@@ -83,11 +83,11 @@ function comments(target, request, io) {
   }
   return rows;
 }
-function writeComment(target, request, previous, body, io) {
+async function writeComment(target, request, previous, body, io) {
   const route = commentRoute(target, request);
   return previous
-    ? azure.api(target, 'git', 'pullRequestThreadComments', { ...route, threadId: previous.threadId, commentId: previous.commentId }, io, 'PATCH', { content: body })
-    : azure.api(target, 'git', 'pullRequestThreads', route, io, 'POST', { comments: [{ parentCommentId: 0, content: body, commentType: 1 }], status: 1 });
+    ? await azure.api(target, 'git', 'pullRequestThreadComments', { ...route, threadId: previous.threadId, commentId: previous.commentId }, io, 'PATCH', { content: body })
+    : await azure.api(target, 'git', 'pullRequestThreads', route, io, 'POST', { comments: [{ parentCommentId: 0, content: body, commentType: 1 }], status: 1 });
 }
 module.exports = { classify, resolve, inspect, sameRepository, list, mutate, publicationEvidence, recoverPublication, commentActor, comments, writeComment,
   concurrencyWarning: 'Azure PR updates reread before writing, but a concurrent edit between that read and the PATCH is not protected. Approve only if you accept this interval.' };

@@ -8,7 +8,7 @@ const { digest, receiptPath, save } = require('./to-backlog-github');
 const classify = value => {
   try { return azure.repositoryAddress(value) || source.address(value) ? 'match' : null; } catch { return null; }
 };
-const resolve = request => azure.resolve(request);
+const resolve = async request => await azure.resolve(request);
 // Azure re-serializes a description it stores: it adds formatting whitespace between block tags or before a
 // block closing tag and drops the backlog-id-counters comment. Sent content is equivalent to received content
 // only when received is sent plus that whitespace (counters comment optional); everything else is a real change.
@@ -69,8 +69,8 @@ function content(request, baseline, rendered = false, markdown = false) {
   if (markdown) return { title: request.title, description: checkMarkdown(request.description) };
   return { title: request.title, description: rendered ? request.description : convert(request.description) };
 }
-function readItem(target, number, io) {
-  const row = azure.api(target, 'wit', 'workitems', { project: target.project, id: number }, io);
+async function readItem(target, number, io) {
+  const row = await azure.api(target, 'wit', 'workitems', { project: target.project, id: number }, io);
   const fields = row.fields;
   if (!Number.isSafeInteger(row.id) || row.id !== number || !Number.isSafeInteger(row.rev) || row.rev < 1 || !fields || !azure.equal(fields['System.TeamProject'], target.project) || typeof fields['System.Title'] !== 'string' || typeof fields['System.WorkItemType'] !== 'string' || (fields['System.Description'] != null && typeof fields['System.Description'] !== 'string')) throw new Error('Incomplete or incompatible Boards work item');
   return { issue: { id: row.id, number: row.id, url: `${target.url}/_workitems/edit/${row.id}` },
@@ -87,16 +87,16 @@ function planningState(row) {
   if (iteration != null && typeof iteration !== 'string') throw new Error('Invalid iteration path');
   return { parent: parents[0] || null, iteration: iteration ?? null, assignee: assigned?.id || null };
 }
-function planning(request, target, io, item) {
+async function planning(request, target, io, item) {
   if (request.assignToMe !== undefined && typeof request.assignToMe !== 'boolean') throw new Error('assignToMe must be boolean; arbitrary assignment is unsupported');
   if (request.assignee !== undefined || request.state !== undefined) throw new Error('Arbitrary assignment and state changes are unsupported');
   const result = {};
   if (request.parent !== undefined) {
     let ref;
     if (/^[1-9][0-9]*$/.test(String(request.parent))) ref = { number: Number(request.parent), organization: target.organization };
-    else ref = source.resolve(request.parent, io);
+    else ref = await source.resolve(request.parent, io);
     if (!Number.isSafeInteger(ref.number) || !azure.equal(ref.organization, target.organization) || ref.number === item?.number) throw new Error('Invalid or self parent reference');
-    const row = azure.api(target, 'wit', 'workitems', { id: ref.number }, io);
+    const row = await azure.api(target, 'wit', 'workitems', { id: ref.number }, io);
     if (row.id !== ref.number || !source.segment(row.fields?.['System.TeamProject']) || (ref.project && !azure.equal(ref.project, row.fields['System.TeamProject'])) || row.fields['System.WorkItemType'] !== 'Product Backlog Item') throw new Error('Parent must resolve to the intended PBI');
     result.parent = { number: row.id, url: `${target.organization}/_apis/wit/workItems/${row.id}` };
   }
@@ -105,11 +105,11 @@ function planning(request, target, io, item) {
     let selected = request.iteration;
     if (selected === 'current') {
       if (!source.segment(request.team)) throw new Error('Team required to resolve the current sprint');
-      const rows = azure.api(target, 'work', 'iterations', { project: target.project, team: request.team }, io, 'GET', undefined, { '$timeframe': 'current' });
+      const rows = await azure.api(target, 'work', 'iterations', { project: target.project, team: request.team }, io, 'GET', undefined, { '$timeframe': 'current' });
       if (!Array.isArray(rows.value) || rows.value.length !== 1 || typeof rows.value[0].path !== 'string') throw new Error('Current sprint is missing or ambiguous');
       selected = rows.value[0].path;
     }
-    const tree = azure.api(target, 'wit', 'classificationnodes', { project: target.project, structureGroup: 'iterations' }, io, 'GET', undefined, { '$depth': 14 });
+    const tree = await azure.api(target, 'wit', 'classificationnodes', { project: target.project, structureGroup: 'iterations' }, io, 'GET', undefined, { '$depth': 14 });
     const matches = [];
     const visit = (node, path) => {
       if (!source.segment(node?.name) || (node.children != null && !Array.isArray(node.children)) || (node.hasChildren && !node.children?.length)) throw new Error('Incomplete iteration inventory');
@@ -127,7 +127,7 @@ function planning(request, target, io, item) {
   }
   if (!Object.keys(result).length) return undefined;
   if (item) {
-    result.baseline = planningState(relationRow(target, item, io));
+    result.baseline = planningState(await relationRow(target, item, io));
     if (result.parent && result.baseline.parent && !azure.equal(result.parent.url, result.baseline.parent)) throw new Error('A different native parent already exists');
   }
   return result;
@@ -136,65 +136,65 @@ function pendingPlanning(plan, state) {
   return ['parent', 'iteration', 'assignee'].filter(key => plan[key] !== undefined && !azure.equal(
     key === 'parent' ? plan.parent.url : key === 'assignee' ? plan.assignee.id : plan.iteration, state[key]));
 }
-function planningOutcome(receipt, io) {
-  const p = receipt.proposal, row = relationRow(p, receipt.issue, io), state = planningState(row);
+async function planningOutcome(receipt, io) {
+  const p = receipt.proposal, row = await relationRow(p, receipt.issue, io), state = planningState(row);
   if (row.fields['System.WorkItemType'] !== p.type || row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '', p.format)) throw new Error('Content changed during planning verification');
   const pending = pendingPlanning(p.planning, state);
   if (!pending.length) return { status: 'complete', issue: receipt.issue, confirmed: ['content', ...Object.keys(p.planning).filter(key => key !== 'baseline')], pending: [] };
   return { status: 'partial_failure', issue: receipt.issue, confirmed: ['content', ...['parent', 'iteration', 'assignee'].filter(key => p.planning[key] !== undefined && !pending.includes(key))], pending, current: state,
     continuation: digest({ proposal: p, issue: receipt.issue, rev: row.rev, state }), message: 'Content is verified; planning changes remain pending. Confirm this continuation to complete only pending changes.' };
 }
-function applyPlanning(receipt, file, io, continuation) {
+async function applyPlanning(receipt, file, io, continuation) {
   const p = receipt.proposal;
   try {
-    const target = azure.inspect(p.repository, io);
+    const target = await azure.inspect(p.repository, io);
     if (target.actor !== p.actor || target.projectId !== p.projectId || target.visibility !== p.visibility || (p.planning.assignee && target.uniqueName !== p.planning.assignee.uniqueName)) throw new Error('Planning destination or authenticated identity changed');
-    const row = relationRow(p, receipt.issue, io), state = planningState(row), pending = pendingPlanning(p.planning, state);
+    const row = await relationRow(p, receipt.issue, io), state = planningState(row), pending = pendingPlanning(p.planning, state);
     if (continuation && continuation !== digest({ proposal: p, issue: receipt.issue, rev: row.rev, state })) throw new Error('Planning changed after continuation approval; verify and approve again');
     if (row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '', p.format)) throw new Error('Content changed before planning; reconcile and approve again');
     if (!continuation && p.planning.baseline && digest(state) !== digest(p.planning.baseline) && pending.length) throw new Error('Planning fields changed; reconcile and approve again');
     if (p.planning.parent && state.parent && !azure.equal(state.parent, p.planning.parent.url)) throw new Error('A different native parent already exists');
-    if (!pending.length) return planningOutcome(receipt, io);
+    if (!pending.length) return await planningOutcome(receipt, io);
     const patch = [{ op: 'test', path: '/rev', value: row.rev }];
     if (pending.includes('parent')) patch.push({ op: 'add', path: '/relations/-', value: { rel: relationType('parent'), url: p.planning.parent.url } });
     if (pending.includes('iteration')) patch.push({ op: 'add', path: '/fields/System.IterationPath', value: p.planning.iteration });
     if (pending.includes('assignee')) patch.push({ op: 'add', path: '/fields/System.AssignedTo', value: p.planning.assignee.uniqueName });
-    azure.api(p, 'wit', 'workitems', { project: p.project, id: receipt.issue.number }, io, 'PATCH', patch, {}, true);
-    return recover({ receipt: file }, io);
+    await azure.api(p, 'wit', 'workitems', { project: p.project, id: receipt.issue.number }, io, 'PATCH', patch, {}, true);
+    return await recover({ receipt: file }, io);
   } catch (error) { return { status: 'partial_failure', issue: receipt.issue, receipt: file, confirmed: ['content'], message: error.message }; }
 }
 // A new work item is created as Markdown. `markdown` is false only for the description of a set's originating work item
 // that is already HTML: it keeps its format and is rewritten as HTML.
-function query(request, io, markdown = true) {
+async function query(request, io, markdown = true) {
   if (!request.type) return { status: 'needs_input', reason: 'work-item-type-required', message: 'Select the work-item type for this invocation; no default type is stored' };
   if (!source.segment(request.type)) throw new Error('Invalid work-item type');
-  const target = azure.inspect(request.repository, io, request.project);
-  const type = azure.api(target, 'wit', 'workitemtypes', { project: target.project, type: request.type }, io);
+  const target = await azure.inspect(request.repository, io, request.project);
+  const type = await azure.api(target, 'wit', 'workitemtypes', { project: target.project, type: request.type }, io);
   if (type.name !== request.type) throw new Error('Invalid or incompatible work-item type');
-  const plan = planning(request, target, io);
+  const plan = await planning(request, target, io);
   const proposal = { provider: 'azuredevops', repository: target.url, ...target, type: type.name, format: markdown ? 'markdown' : 'html', ...content(request, undefined, false, markdown), ...(plan ? { planning: plan } : {}) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
-function readUpdate(request, io) {
-  const ref = source.resolve(request.reference, io);
+async function readUpdate(request, io) {
+  const ref = await source.resolve(request.reference, io);
   if (ref.status !== 'resolved' || !ref.project) throw new Error('Complete work-item URL required for update');
-  const target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
-  const item = readItem(target, ref.number, io);
+  const target = await azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
+  const item = await readItem(target, ref.number, io);
   return { status: 'complete', ...target, repository: target.url, issue: item.issue, baseline: item.baseline, type: item.type, format: item.format,
-    planning_state: planningState(relationRow(target, item.issue, io)) };
+    planning_state: planningState(await relationRow(target, item.issue, io)) };
 }
-function queryUpdate(request, io, rendered = false) {
-  const current = readUpdate(request, io);
+async function queryUpdate(request, io, rendered = false) {
+  const current = await readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Boards revision changed; prepare and explicitly approve again' };
-  const plan = planning(request, current, io, current.issue);
+  const plan = await planning(request, current, io, current.issue);
   const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered, current.format === 'markdown'), ...(plan ? { planning: plan } : {}) };
   delete proposal.status;
   if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description, current.format) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
-function list(proposal, io) {
+async function list(proposal, io) {
   const quote = value => value.replace(/'/g, "''");
-  const result = azure.api(proposal, 'wit', 'wiql', { project: proposal.project }, io, 'POST', {
+  const result = await azure.api(proposal, 'wit', 'wiql', { project: proposal.project }, io, 'POST', {
     query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${quote(proposal.project)}' AND [System.WorkItemType] = '${quote(proposal.type)}' ORDER BY [System.Id]`
   }, { '$top': 20000 });
   if (!Array.isArray(result.workItems) || result.workItems.length >= 20000) throw new Error('Boards recovery inventory incomplete or exceeds supported query limit');
@@ -202,25 +202,25 @@ function list(proposal, io) {
   if (ids.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(ids).size !== ids.length) throw new Error('Invalid Boards inventory');
   return ids;
 }
-function outcome(receipt, io) {
+async function outcome(receipt, io) {
   const p = receipt.proposal;
-  const target = azure.inspect(p.repository, io);
+  const target = await azure.inspect(p.repository, io);
   if (target.projectId !== p.projectId || target.actor !== p.actor || target.visibility !== p.visibility) throw new Error('Recovery destination or identity changed');
   if (!receipt.issue) return { status: 'uncertain', message: 'No verified creation identity; query candidates and obtain user clarification, never repeat creation' };
-  const row = readItem(target, receipt.issue.number, io);
+  const row = await readItem(target, receipt.issue.number, io);
   if (row.issue.url !== receipt.issue.url || row.type !== p.type) throw new Error('Recovery item identity changed');
-  if (row.baseline.title === p.title && equivalent(p.description, row.baseline.description, p.format)) return p.planning ? planningOutcome(receipt, io) : { status: 'complete', issue: row.issue };
+  if (row.baseline.title === p.title && equivalent(p.description, row.baseline.description, p.format)) return p.planning ? await planningOutcome(receipt, io) : { status: 'complete', issue: row.issue };
   if (p.operation === 'update' && digest(row.baseline) === digest(p.baseline)) return { status: 'pending', issue: row.issue, message: 'Update is not visible; fresh approval and a new receipt are required before retrying' };
   return { status: p.operation === 'update' ? 'divergent' : 'uncertain', issue: row.issue, current: row.baseline, message: 'Remote content differs; reconcile and obtain fresh approval' };
 }
-function execute(request, io, updating, rendered = false) {
+async function execute(request, io, updating, rendered = false) {
   let receipt, file;
   try {
     file = receiptPath(request.receipt);
-    const ready = updating ? queryUpdate(request, io, rendered) : query(request, io);
+    const ready = updating ? await queryUpdate(request, io, rendered) : await query(request, io);
     if (ready.status !== 'ready') return ready;
     if (ready.confirmation !== request.confirmation) throw new Error('Exact destination, revision and outgoing content confirmation required');
-    receipt = { proposal: ready.proposal, ...(updating ? { issue: ready.proposal.issue } : { baseline: list(ready.proposal, io) }), stage: 'write_pending' };
+    receipt = { proposal: ready.proposal, ...(updating ? { issue: ready.proposal.issue } : { baseline: await list(ready.proposal, io) }), stage: 'write_pending' };
     fs.writeFileSync(file, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
   } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
   const p = receipt.proposal;
@@ -230,35 +230,37 @@ function execute(request, io, updating, rendered = false) {
   // Only a creation sets the format; an update never changes the format of an existing work item.
   if (!updating) patch.push({ op: 'add', path: '/multilineFieldsFormat/System.Description', value: 'Markdown' });
   try {
-    const result = azure.api(p, 'wit', 'workitems', { project: p.project, ...(updating ? { id: p.issue.number } : { type: p.type }) }, io, updating ? 'PATCH' : 'POST', patch, {}, true);
+    const result = await azure.api(p, 'wit', 'workitems', { project: p.project, ...(updating ? { id: p.issue.number } : { type: p.type }) }, io, updating ? 'PATCH' : 'POST', patch, {}, true);
     if (!Number.isSafeInteger(result.id) || result.id < 1 || (updating && result.id !== p.issue.number)) throw new Error('Incomplete write response');
     receipt.issue = { id: result.id, number: result.id, url: `${p.url}/_workitems/edit/${result.id}` };
     save(file, receipt);
-    const verified = recover({ receipt: file }, io);
-    return p.planning && verified.status === 'partial_failure' ? applyPlanning(receipt, file, io) : verified;
+    const verified = await recover({ receipt: file }, io);
+    return p.planning && verified.status === 'partial_failure' ? await applyPlanning(receipt, file, io) : verified;
   } catch (error) {
     receipt.stage = error.rejected ? 'rejected' : 'uncertain'; save(file, receipt);
     return { status: error.rejected ? 'rejected' : 'uncertain', issue: receipt.issue || null, receipt: file, message: error.rejected && updating ? `${error.message} Reread the revision and obtain renewed approval; never retry automatically.` : error.message };
   }
 }
-function recover(request, io) {
+async function recover(request, io) {
   try {
     const file = receiptPath(request.receipt), receipt = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (receipt.proposal?.provider !== 'azuredevops' || !['write_pending', 'uncertain', 'rejected', 'complete'].includes(receipt.stage)) throw new Error('Invalid Azure receipt');
     if (!receipt.issue && !receipt.proposal.operation) {
       if (!Array.isArray(receipt.baseline)) throw new Error('Missing pre-creation evidence');
-      const p = receipt.proposal, target = azure.inspect(p.repository, io);
+      const p = receipt.proposal, target = await azure.inspect(p.repository, io);
       if (target.projectId !== p.projectId || target.actor !== p.actor || target.visibility !== p.visibility) throw new Error('Recovery identity changed');
-      const candidates = list(p, io).filter(id => !receipt.baseline.includes(id)).map(id => readItem(target, id, io))
+      const created = [];
+      for (const id of (await list(p, io)).filter(id => !receipt.baseline.includes(id))) created.push(await readItem(target, id, io));
+      const candidates = created
         .filter(row => row.type === p.type && row.actor === p.actor && row.baseline.title === p.title && equivalent(p.description, row.baseline.description, p.format));
       const chosen = candidates.find(row => row.issue.url === request.issueUrl);
       if (!chosen) return { status: 'uncertain', candidates: candidates.map(row => row.issue), message: 'Confirm the actual created item URL; matching title alone is not publication evidence. Do not create again.' };
       receipt.issue = chosen.issue; save(file, receipt);
     }
-    const result = outcome(receipt, io);
+    const result = await outcome(receipt, io);
     if (result.status === 'partial_failure' && request.confirmation !== undefined) {
       if (request.confirmation !== result.continuation || request.approved !== true) throw new Error('Exact pending planning continuation approval required');
-      return applyPlanning(receipt, file, io, request.confirmation);
+      return await applyPlanning(receipt, file, io, request.confirmation);
     }
     if (result.status === 'complete') { receipt.stage = 'complete'; save(file, receipt); }
     return result;
@@ -268,88 +270,88 @@ const sliceIdentity = require('./backlog-slice-identity');
 const CLOSED = ['Closed', 'Done', 'Removed'];
 // Azure DevOps exposes no direct per-item permission read. A validate-only update (a revision test, nothing saved) is
 // evaluated by the same service-side authorization as a real update and persists nothing, so a refusal is read before any write.
-function requireEditable(current, io) {
+async function requireEditable(current, io) {
   try {
-    azure.api(current, 'wit', 'workitems', { project: current.project, id: current.issue.number }, io, 'PATCH', [{ op: 'test', path: '/rev', value: current.baseline.rev }], { validateOnly: 'true' }, true);
+    await azure.api(current, 'wit', 'workitems', { project: current.project, id: current.issue.number }, io, 'PATCH', [{ op: 'test', path: '/rev', value: current.baseline.rev }], { validateOnly: 'true' }, true);
   } catch (error) {
     throw new Error(`Originating work item is not editable or its edit permission could not be verified (${error.message}); no replacement will be created`);
   }
 }
 // The origin as set parent: its state and the native children it already has.
-function readOrigin(request, io) {
-  const current = readUpdate({ reference: request.origin }, io);
-  requireEditable(current, io);
-  const ref = source.resolve(request.origin, io);
-  const found = source.nativeRelations({ ...ref, project: ref.project }, io);
+async function readOrigin(request, io) {
+  const current = await readUpdate({ reference: request.origin }, io);
+  await requireEditable(current, io);
+  const ref = await source.resolve(request.origin, io);
+  const found = await source.nativeRelations({ ...ref, project: ref.project }, io);
   return { issue: current.issue, repository: current.repository, baseline: current.baseline, format: current.format, closed: CLOSED.includes(found.row.fields['System.State']), children: () => found.children };
 }
-function setRead(p, item, io) {
-  const row = readItem(p, item.number, io);
+async function setRead(p, item, io) {
+  const row = await readItem(p, item.number, io);
   // An originating work item keeps its own type; only the published children share the configured one.
   if (row.type !== p.type && row.issue.url !== p.origin?.issue.url) throw new Error('Work-item type changed');
   return { issue: row.issue, title: row.baseline.title, description: row.baseline.description, version: row.baseline.rev, actor: row.actor };
 }
 const relationType = kind => kind === 'parent' ? 'System.LinkTypes.Hierarchy-Reverse' : 'System.LinkTypes.Dependency-Reverse';
 const relationURL = (p, other) => `${p.organization}/_apis/wit/workItems/${other.number}`;
-function relationRow(p, item, io) {
-  const row = azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'GET', undefined, { '$expand': 'relations' });
+async function relationRow(p, item, io) {
+  const row = await azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'GET', undefined, { '$expand': 'relations' });
   if (row.id !== item.number || !Number.isSafeInteger(row.rev) || !row.fields || !azure.equal(row.fields['System.TeamProject'], p.project) || (row.relations != null && !Array.isArray(row.relations))) throw new Error('Incomplete native relation inspection');
   return row;
 }
-function hasRelation(p, item, other, kind, io) {
-  return (relationRow(p, item, io).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
+async function hasRelation(p, item, other, kind, io) {
+  return ((await relationRow(p, item, io)).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
 }
 const set = require('./backlog-provider-set').bind('azuredevops', {
-  query: (request, io) => query(request, io, request.description_format !== 'html'), equivalent,
+  query: async (request, io) => await query(request, io, request.description_format !== 'html'), equivalent,
   // The originating work item keeps its own format; every work item the set creates is Markdown.
   formatOf: (p, index) => index ? 'markdown' : p.format, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
   // Preserve every character of the agreed block, including the Markdown separator.
   renderBlock: text => sliceIdentity.fenced(text),
   append: (description, links, value, format) => format === 'markdown' ? `${description}\n\n${links.join('\n')}\n${sliceIdentity.encodeMarkdown(value)}`
     : `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
-  inventory: (p, io) => list(p, io).map(number => setRead(p, { number }, io)), read: setRead,
-  create: (p, item, io) => {
-    const row = azure.api(p, 'wit', 'workitems', { project: p.project, type: p.type }, io, 'POST', [
+  inventory: async (p, io) => { const rows = []; for (const number of await list(p, io)) rows.push(await setRead(p, { number }, io)); return rows; }, read: setRead,
+  create: async (p, item, io) => {
+    const row = await azure.api(p, 'wit', 'workitems', { project: p.project, type: p.type }, io, 'POST', [
       { op: 'add', path: '/fields/System.Title', value: item.title }, { op: 'add', path: '/fields/System.Description', value: item.description },
       { op: 'add', path: '/multilineFieldsFormat/System.Description', value: 'Markdown' }
     ], {}, true);
     if (!Number.isSafeInteger(row.id) || row.id < 1) throw new Error('Incomplete work-item creation identity');
     return { id: row.id, number: row.id, url: `${p.url}/_workitems/edit/${row.id}` };
   },
-  writeReferences: (p, current, description, io) => azure.api(p, 'wit', 'workitems', { project: p.project, id: current.issue.number }, io, 'PATCH', [
+  writeReferences: async (p, current, description, io) => await azure.api(p, 'wit', 'workitems', { project: p.project, id: current.issue.number }, io, 'PATCH', [
     { op: 'test', path: '/rev', value: current.version }, { op: 'add', path: '/fields/System.Description', value: description }
   ], {}, true),
   hasRelation,
-  addRelation: (p, item, other, kind, io) => {
-    const current = relationRow(p, item, io);
+  addRelation: async (p, item, other, kind, io) => {
+    const current = await relationRow(p, item, io);
     if (kind === 'parent' && (current.relations || []).some(link => link.rel === relationType(kind))) throw new Error('A different native parent already exists');
-    azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'PATCH', [
+    await azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'PATCH', [
       { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/relations/-', value: { rel: relationType(kind), url: relationURL(p, other) } }
     ], {}, true);
   }
 });
 const assignment = require('./backlog-provider-assignment').bind('azuredevops', {
   native: true,
-  inspect: (request, io) => {
-    const ref = source.resolve(request.reference, io);
+  inspect: async (request, io) => {
+    const ref = await source.resolve(request.reference, io);
     if (!ref.url) throw new Error('Complete child work-item URL required');
-    const target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
-    return { result: source.readSet(ref, io), actor: target.actor };
+    const target = await azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
+    return { result: await source.readSet(ref, io), actor: target.actor };
   },
-  assign: (request, proposal, io) => {
-    const ref = source.resolve(request.reference, io), target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
-    const current = relationRow(target, { number: ref.number }, io);
+  assign: async (request, proposal, io) => {
+    const ref = await source.resolve(request.reference, io), target = await azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
+    const current = await relationRow(target, { number: ref.number }, io);
     const assigned = current.fields['System.AssignedTo'];
     if (digest(assigned ? [assigned.id] : []) !== digest(proposal.assignees) || target.actor !== proposal.actor) throw new Error('Azure responsibility or authenticated identity changed');
     // Azure resolves an identity field by unique name; the identity id is rejected as an unknown identity.
     if (!target.uniqueName) throw Object.assign(new Error('Azure did not report the authenticated user unique name; the work item was not changed'), { rejected: true });
-    azure.api(target, 'wit', 'workitems', { project: target.project, id: ref.number }, io, 'PATCH', [
+    await azure.api(target, 'wit', 'workitems', { project: target.project, id: ref.number }, io, 'PATCH', [
       { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/fields/System.AssignedTo', value: target.uniqueName }
     ], {}, true);
   }
 });
-module.exports = { classify, resolve, query, publish: (r, io) => execute(r, io, false), recover,
-  'read-update': readUpdate, 'query-update': queryUpdate, update: (r, io) => execute(r, io, true), 'recover-update': recover, ...set, ...assignment };
+module.exports = { classify, resolve, query, publish: async (r, io) => await execute(r, io, false), recover,
+  'read-update': readUpdate, 'query-update': queryUpdate, update: async (r, io) => await execute(r, io, true), 'recover-update': recover, ...set, ...assignment };
 Object.assign(module.exports, require('./backlog-set-update').bind('azuredevops', () => ({
-  ...module.exports, 'query-update': (r, io) => queryUpdate(r, io, true), update: (r, io) => execute(r, io, true, true)
+  ...module.exports, 'query-update': async (r, io) => await queryUpdate(r, io, true), update: async (r, io) => await execute(r, io, true, true)
 }), equivalent));

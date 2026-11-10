@@ -80,36 +80,36 @@ function fakeGithub(state, command, args, input) {
   return JSON.stringify({ data });
 }
 function mock(state = {}) { return { sleep: ms => (state.sleeps ||= []).push(ms), run: (...args) => fakeGithub(state, ...args) }; }
-function approved(state = {}) {
+async function approved(state = {}) {
   const io = mock(state);
-  const ready = github.query(request, io);
+  const ready = await github.query(request, io);
   const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp();
   const receipt = path.join(directory, 'receipt.json');
   return { io, receipt, input: { ...request, confirmation: ready.confirmation, receipt } };
 }
 
-test('resolution prioritizes explicit destination, configuration and deduplicated remotes', () => {
+test('resolution prioritizes explicit destination, configuration and deduplicated remotes', async () => {
   const remotes = ['git@github.com:a/b.git', 'https://github.com/a/b.git'];
-  assert.equal(resolve({ remotes }, registry).repository, 'a/b');
-  assert.equal(resolve({ config: { provider: 'github', repository: 'configured/repo' }, remotes }, registry).repository, 'configured/repo');
-  assert.equal(resolve({ explicit: { repository: 'https://github.com/explicit/repo' }, config: { provider: 'jira' }, remotes }, registry).repository, 'explicit/repo');
-  assert.equal(resolve({ explicit: { provider: 'jira' }, remotes }, registry).status, 'unsupported');
-  assert.equal(resolve({ remotes: [...remotes, 'ssh://git@github.com/c/d.git'] }, registry).reason, 'repository-ambiguous');
-  assert.equal(resolve({ remotes: [] }, registry).reason, 'provider-ambiguous');
-  assert.equal(resolve({ remotes: [...remotes, 'git@gitlab.com:other/repo.git'] }, registry).reason, 'provider-ambiguous');
-  assert.equal(resolve({ explicit: { repository: 'https://gitlab.com/a/b' }, remotes }, registry).reason, 'unrecognized-destination');
+  assert.equal((await resolve({ remotes }, registry)).repository, 'a/b');
+  assert.equal((await resolve({ config: { provider: 'github', repository: 'configured/repo' }, remotes }, registry)).repository, 'configured/repo');
+  assert.equal((await resolve({ explicit: { repository: 'https://github.com/explicit/repo' }, config: { provider: 'jira' }, remotes }, registry)).repository, 'explicit/repo');
+  assert.equal((await resolve({ explicit: { provider: 'jira' }, remotes }, registry)).status, 'unsupported');
+  assert.equal((await resolve({ remotes: [...remotes, 'ssh://git@github.com/c/d.git'] }, registry)).reason, 'repository-ambiguous');
+  assert.equal((await resolve({ remotes: [] }, registry)).reason, 'provider-ambiguous');
+  assert.equal((await resolve({ remotes: [...remotes, 'git@gitlab.com:other/repo.git'] }, registry)).reason, 'provider-ambiguous');
+  assert.equal((await resolve({ explicit: { repository: 'https://gitlab.com/a/b' }, remotes }, registry)).reason, 'unrecognized-destination');
   assert.deepEqual(address('ssh://git@github.com/a/b.git'), { host: 'github.com', repository: 'a/b' });
   assert.equal(address('$(touch nope)'), null);
-  assert.throws(() => resolve({ config: { labels: 'no' } }, registry), /Invalid destination/);
+  await assert.rejects(async () => await resolve({ config: { labels: 'no' } }, registry), /Invalid destination/);
 });
 
-test('registry extensions do not need provider branches in resolver', () => {
+test('registry extensions do not need provider branches in resolver', async () => {
   const extended = { providers: [...registry.providers, { id: 'example', hosts: ['example.test'], capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-example.js' }] };
-  assert.equal(resolve({ remotes: ['git@example.test:a/b.git'] }, extended).provider, 'example');
-  assert.equal(resolve({ remotes: ['git@example.test:a/b.git', 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
+  assert.equal((await resolve({ remotes: ['git@example.test:a/b.git'] }, extended)).provider, 'example');
+  assert.equal((await resolve({ remotes: ['git@example.test:a/b.git', 'git@github.com:a/b.git'] }, extended)).reason, 'provider-ambiguous');
 });
 
-test('provider-owned resolution receives raw inputs and read-only IO without a host catalogue', () => {
+test('provider-owned resolution receives raw inputs and read-only IO without a host catalogue', async () => {
   const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-example.js' };
   const extended = { providers: [...registry.providers, entry] };
   const remote = 'ssh://git@private.example:2222/group/nested/repo.git';
@@ -120,24 +120,24 @@ test('provider-owned resolution receives raw inputs and read-only IO without a h
     run(command, args) { assert.equal(command, 'example-cli'); assert.deepEqual(args, ['resolve', remote]); return 'group/nested/repo'; },
     loadAdapter(selected) {
       assert.equal(selected, entry);
-      return { resolve(input, receivedIO) {
+      return { async resolve(input, receivedIO) {
         assert.equal(receivedIO, io);
         assert.deepEqual(input, { explicit, config, remotes });
-        return { status: 'resolved', repository: receivedIO.run('example-cli', ['resolve', input.explicit.repository]) };
+        return { status: 'resolved', repository: await receivedIO.run('example-cli', ['resolve', input.explicit.repository]) };
       } };
     },
   };
-  assert.deepEqual(resolve({ explicit, config, remotes }, extended, io), { status: 'resolved', repository: 'group/nested/repo', provider: 'example', instructions: entry.instructions, adapter: entry.adapter });
-  assert.equal(resolve({ remotes: [remote] }, extended, { loadAdapter: () => ({ resolve: input => ({ status: 'resolved', repository: input.remotes[0] }) }) }).repository, remote);
-  assert.equal(resolve({ remotes: [remote, 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
-  assert.equal(resolve({ explicit: { repository: 'https://github.com/a/b' } }, extended).provider, 'github');
-  assert.equal(resolve({ config: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => ({ status: 'needs_input', reason: 'repository-ambiguous' }) }) }).reason, 'repository-ambiguous');
-  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid registry adapter/);
-  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, instructions: '../escape.md' }] }, io), /Invalid provider instruction reference/);
-  assert.throws(() => resolve({ explicit: { provider: 'github', repository: 'a/b' } }, { providers: [{ ...registry.providers[0], instructions: '../escape.md' }] }), /Invalid provider instruction reference/);
+  assert.deepEqual(await resolve({ explicit, config, remotes }, extended, io), { status: 'resolved', repository: 'group/nested/repo', provider: 'example', instructions: entry.instructions, adapter: entry.adapter });
+  assert.equal((await resolve({ remotes: [remote] }, extended, { loadAdapter: () => ({ resolve: input => ({ status: 'resolved', repository: input.remotes[0] }) }) })).repository, remote);
+  assert.equal((await resolve({ remotes: [remote, 'git@github.com:a/b.git'] }, extended)).reason, 'provider-ambiguous');
+  assert.equal((await resolve({ explicit: { repository: 'https://github.com/a/b' } }, extended)).provider, 'github');
+  assert.equal((await resolve({ config: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => ({ status: 'needs_input', reason: 'repository-ambiguous' }) }) })).reason, 'repository-ambiguous');
+  await assert.rejects(async () => await resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid registry adapter/);
+  await assert.rejects(async () => await resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, instructions: '../escape.md' }] }, io), /Invalid provider instruction reference/);
+  await assert.rejects(async () => await resolve({ explicit: { provider: 'github', repository: 'a/b' } }, { providers: [{ ...registry.providers[0], instructions: '../escape.md' }] }), /Invalid provider instruction reference/);
 });
 
-test('delegated clarification and unsupported results pass through without publication', t => {
+test('delegated clarification and unsupported results pass through without publication', async t => {
   const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-github.js' };
   const extended = { providers: [entry] };
   const directory = temp();
@@ -148,133 +148,133 @@ test('delegated clarification and unsupported results pass through without publi
     { status: 'unsupported', reason: 'incompatible-destination', message: 'Unsupported destination' },
   ]) {
     const expected = { ...outcome, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
-    assert.deepEqual(resolve({ explicit: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => outcome, publish() { assert.fail('Must not publish'); } }) }), expected);
-    const script = `const adapter=require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog-github'))}); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; process.exitCode=require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog'))}).main(['resolve',process.argv[1]]);`;
+    assert.deepEqual(await resolve({ explicit: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => outcome, publish() { assert.fail('Must not publish'); } }) }), expected);
+    const script = `const adapter=require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog-github'))}); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; require(${JSON.stringify(path.join(root, 'sai/tools/to-backlog'))}).main(['resolve',process.argv[1]]).then(code=>{process.exitCode=code});`;
     const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: isolatedProject(t), input: JSON.stringify({ explicit: { provider: 'example' } }), encoding: 'utf8' });
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), expected);
   }
 });
 
-test('queries exhaust pages, omit closed Projects, respect explicit independent owner and public visibility', () => {
-  const ready = github.query(request, mock());
+test('queries exhaust pages, omit closed Projects, respect explicit independent owner and public visibility', async () => {
+  const ready = await github.query(request, mock());
   assert.equal(ready.status, 'ready');
   assert.equal(ready.proposal.project.id, 'P');
   assert.equal(ready.proposal.visibility, 'PUBLIC');
-  assert.equal(github.query(request, mock({ twoProjects: true })).reason, 'project-ambiguous');
-  assert.equal(github.query(request, mock({ noProjects: true })).reason, 'project-required');
-  assert.throws(() => github.query(request, mock({ projectError: true })), /query failed/);
-  assert.equal(github.query({ ...request, project: ready.proposal.project.url }, mock({ projectError: true })).status, 'ready');
-  assert.throws(() => github.query(request, mock({ disabled: true })), /issues disabled/);
-  assert.throws(() => github.query(request, mock({ unauthenticated: true })), /not authenticated/);
-  assert.throws(() => github.query(request, mock({ unavailable: true })), /unavailable/);
-  assert.equal(github.query(request, mock({ readOnlyProject: true })).reason, 'project-required');
-  assert.throws(() => github.query({ ...request, project: ready.proposal.project.url }, mock({ closed: true })), /closed/);
-  assert.throws(() => github.query({ ...request, project: ready.proposal.project.url }, mock({ readOnlyProject: true })), /not writable/);
+  assert.equal((await github.query(request, mock({ twoProjects: true }))).reason, 'project-ambiguous');
+  assert.equal((await github.query(request, mock({ noProjects: true }))).reason, 'project-required');
+  await assert.rejects(async () => await github.query(request, mock({ projectError: true })), /query failed/);
+  assert.equal((await github.query({ ...request, project: ready.proposal.project.url }, mock({ projectError: true }))).status, 'ready');
+  await assert.rejects(async () => await github.query(request, mock({ disabled: true })), /issues disabled/);
+  await assert.rejects(async () => await github.query(request, mock({ unauthenticated: true })), /not authenticated/);
+  await assert.rejects(async () => await github.query(request, mock({ unavailable: true })), /unavailable/);
+  assert.equal((await github.query(request, mock({ readOnlyProject: true }))).reason, 'project-required');
+  await assert.rejects(async () => await github.query({ ...request, project: ready.proposal.project.url }, mock({ closed: true })), /closed/);
+  await assert.rejects(async () => await github.query({ ...request, project: ready.proposal.project.url }, mock({ readOnlyProject: true })), /not writable/);
 });
 
-test('confirmation binds content, destination and visibility; absence and edits cause no mutation', () => {
+test('confirmation binds content, destination and visibility; absence and edits cause no mutation', async () => {
   for (const edit of [{ confirmation: undefined }, { title: 'changed' }, { description: 'changed' }, { repository: 'different/repo' }]) {
     const state = {};
-    const { input, io } = approved(state);
-    assert.equal(github.publish({ ...input, ...edit }, io).status, 'failure_before_publication');
+    const { input, io } = await approved(state);
+    assert.equal((await github.publish({ ...input, ...edit }, io)).status, 'failure_before_publication');
     assert.equal(state.creations, undefined);
   }
   const state = {};
-  const { input, io } = approved(state);
+  const { input, io } = await approved(state);
   state.private = true;
-  assert.equal(github.publish(input, io).status, 'failure_before_publication');
+  assert.equal((await github.publish(input, io)).status, 'failure_before_publication');
   assert.equal(state.creations, undefined);
 });
 
-test('publication preserves Markdown exactly and publishes at most once per receipt', () => {
+test('publication preserves Markdown exactly and publishes at most once per receipt', async () => {
   const state = {};
-  const { input, io } = approved(state);
-  const result = github.publish(input, io);
+  const { input, io } = await approved(state);
+  const result = await github.publish(input, io);
   assert.equal(result.status, 'complete');
   assert.equal(state.issue.title, request.title);
   assert.equal(state.issue.body, request.description);
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 1);
-  assert.equal(github.publish(input, io).status, 'failure_before_publication');
+  assert.equal((await github.publish(input, io)).status, 'failure_before_publication');
   assert.equal(state.creations, 1);
 });
 
-test('Project membership is verified by direct reads and a lagging items connection is never trusted', () => {
+test('Project membership is verified by direct reads and a lagging items connection is never trusted', async () => {
   const state = {};
-  const { input, io } = approved(state);
-  assert.equal(github.publish(input, io).status, 'complete');
+  const { input, io } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'complete');
   assert.equal(state.insertions, 1);
   assert.equal(state.sleeps, undefined);
 });
 
-test('a lagging direct read is retried every two seconds, five reads in total', () => {
+test('a lagging direct read is retried every two seconds, five reads in total', async () => {
   const state = { visibleAfter: 2 };
-  const { input, io } = approved(state);
-  assert.equal(github.publish(input, io).status, 'complete');
+  const { input, io } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'complete');
   assert.deepEqual(state.sleeps, [2000, 2000]);
 });
 
-test('an unverified insertion is a partial failure with the issue preserved; recovery verifies without repeating the mutation', () => {
+test('an unverified insertion is a partial failure with the issue preserved; recovery verifies without repeating the mutation', async () => {
   const state = { visibleAfter: 99 };
-  const { input, io, receipt } = approved(state);
-  const result = github.publish(input, io);
+  const { input, io, receipt } = await approved(state);
+  const result = await github.publish(input, io);
   assert.equal(result.status, 'partial_failure');
   assert.match(result.message, /Project membership not verified/);
   assert.equal(result.issue.number, 5);
   assert.deepEqual(state.sleeps, [2000, 2000, 2000, 2000]);
   assert.equal(JSON.parse(fs.readFileSync(receipt, 'utf8')).stage, 'insertion_pending');
   state.visibleAfter = 0;
-  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt }, io)).status, 'complete');
   assert.equal(state.insertions, 1);
   assert.equal(state.creations, 1);
 });
 
-test('a direct item read of another issue is not membership', () => {
+test('a direct item read of another issue is not membership', async () => {
   const state = { itemContent: 'OTHER' };
-  const { input, io } = approved(state);
-  assert.equal(github.publish(input, io).status, 'partial_failure');
+  const { input, io } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'partial_failure');
   assert.equal(state.sleeps.length, 4);
 });
 
-test('a response without an item id is verified by the issue-side read', () => {
+test('a response without an item id is verified by the issue-side read', async () => {
   const state = { noItemId: true, visibleAfter: 1 };
-  const { input, io } = approved(state);
-  assert.equal(github.publish(input, io).status, 'complete');
+  const { input, io } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'complete');
   assert.equal(state.insertions, 1);
   assert.deepEqual(state.sleeps, [2000]);
 });
 
-test('an issue already in the Project, archived or not, is verified without adding it again', () => {
+test('an issue already in the Project, archived or not, is verified without adding it again', async () => {
   for (const archived of [false, true]) {
     const state = { member: true, archived };
-    const { input, io } = approved(state);
-    assert.equal(github.publish(input, io).status, 'complete');
+    const { input, io } = await approved(state);
+    assert.equal((await github.publish(input, io)).status, 'complete');
     assert.equal(state.insertions, undefined);
     assert.equal(state.sleeps, undefined);
   }
 });
 
-test('only the destination Project counts and a null projectItems means no items', () => {
+test('only the destination Project counts and a null projectItems means no items', async () => {
   for (const option of ['otherProject', 'nullItems']) {
     const state = { [option]: true };
-    const { input, io } = approved(state);
-    assert.equal(github.publish(input, io).status, 'complete', option);
+    const { input, io } = await approved(state);
+    assert.equal((await github.publish(input, io)).status, 'complete', option);
     assert.equal(state.insertions, 1, option);
   }
 });
 
 for (const message of ['Content already exists', 'Content already exists in this project'])
-for (const variant of ['graphql', 'plain', 'prefix', 'suffix', 'prefix-and-suffix']) test(`concurrent auto-add completes only after a fresh destination read: ${message}, ${variant}`, () => {
+for (const variant of ['graphql', 'plain', 'prefix', 'suffix', 'prefix-and-suffix']) test(`concurrent auto-add completes only after a fresh destination read: ${message}, ${variant}`, async () => {
   const graphqlError = variant === 'graphql';
   const insertionError = `${variant.includes('prefix') ? 'gh: gh: ' : ''}${message}${variant.includes('suffix') ? ' (addProjectV2ItemById)' : ''}\n`;
   const state = { insertionError: graphqlError ? message : insertionError, graphqlError, raceMember: true, visibleAfter: 2 };
-  const { input, io, receipt } = approved(state);
-  assert.equal(github.publish(input, io).status, 'complete');
+  const { input, io, receipt } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'complete');
   assert.equal(state.visibleReads, 3);
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 1);
-  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt }, io)).status, 'complete');
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 1);
   assert.deepEqual(state.sleeps, [2000, 2000]);
@@ -282,10 +282,10 @@ for (const variant of ['graphql', 'plain', 'prefix', 'suffix', 'prefix-and-suffi
 });
 
 for (const message of ['Content already exists', 'Content already exists in this project'])
-for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${message}, ${option}`, () => {
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${message}, ${option}`, async () => {
   const state = { insertionError: option === 'unrelated-error' ? 'Project access denied' : message, otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' };
-  const { input, io, receipt } = approved(state);
-  const result = github.publish(input, io);
+  const { input, io, receipt } = await approved(state);
+  const result = await github.publish(input, io);
   assert.equal(result.status, 'partial_failure');
   assert.equal(result.issue.id, 'I');
   const saved = JSON.parse(fs.readFileSync(receipt, 'utf8'));
@@ -293,27 +293,27 @@ for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error'
   assert.equal(saved.issue.id, 'I');
   assert.match(result.message, option === 'read-error' ? /Membership query denied/ : option === 'unrelated-error' ? /Project access denied/ : /Project membership not verified/);
   state.insertionError = null; state.failRaceRead = false; state.member = true;
-  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt }, io)).status, 'complete');
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 1);
 });
 
-for (const message of ['Content already exists', 'Content already exists in this project']) test(`single-issue recovery resolves a concurrent insertion without recreating the issue: ${message}`, () => {
+for (const message of ['Content already exists', 'Content already exists in this project']) test(`single-issue recovery resolves a concurrent insertion without recreating the issue: ${message}`, async () => {
   const state = { failInsertion: true };
-  const { input, io, receipt } = approved(state);
-  assert.equal(github.publish(input, io).status, 'partial_failure');
+  const { input, io, receipt } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'partial_failure');
   state.failInsertion = false;
   state.insertionError = message;
   state.raceMember = true;
-  const verified = github.recover({ receipt }, io);
+  const verified = await github.recover({ receipt }, io);
   assert.equal(verified.status, 'partial_failure');
   assert.equal(state.insertions, 1);
-  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io)).status, 'complete');
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 2);
 });
 
-test('only the specific duplicate-content response is eligible for automatic verification', () => {
+test('only the specific duplicate-content response is eligible for automatic verification', async () => {
   const failures = [
     { message: 'Content already exists but permission denied' },
     { message: 'Network failure: Content already exists' },
@@ -337,12 +337,12 @@ test('only the specific duplicate-content response is eligible for automatic ver
       reads++;
       return JSON.stringify({ data: { node: { projectItems: { nodes: [], pageInfo: { hasNextPage: false } } } } });
     } };
-    assert.throws(() => github.ensureMembership(io, 'P', 'I'));
+    await assert.rejects(async () => await github.ensureMembership(io, 'P', 'I'));
     assert.equal(reads, 1, JSON.stringify(failure));
   }
 });
 
-test('structured duplicate errors may mix both exact messages and optional operation paths', () => {
+test('structured duplicate errors may mix both exact messages and optional operation paths', async () => {
   let reads = 0;
   const io = { run(command, args, input) {
     const { query } = JSON.parse(input);
@@ -353,60 +353,60 @@ test('structured duplicate errors may mix both exact messages and optional opera
     reads++;
     return JSON.stringify({ data: { node: { projectItems: { nodes: reads > 1 ? [{ id: 'ITEM', project: { id: 'P' } }] : [], pageInfo: { hasNextPage: false } } } } });
   } };
-  github.ensureMembership(io, 'P', 'I');
+  await github.ensureMembership(io, 'P', 'I');
   assert.equal(reads, 2);
 });
 
-test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', () => {
-  const { input } = approved();
+test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', async () => {
+  const { input } = await approved();
   const relative = `to-backlog-rejected-${process.pid}.json`;
   const inside = path.join(root, relative);
   const io = { run() { assert.fail('A rejected receipt must not query or mutate GitHub'); } };
   for (const receipt of [relative, inside]) {
-    assert.equal(github.publish({ ...input, receipt }, io).status, 'failure_before_publication');
-    assert.equal(github.recover({ receipt }, io).status, 'failure_before_publication');
+    assert.equal((await github.publish({ ...input, receipt }, io)).status, 'failure_before_publication');
+    assert.equal((await github.recover({ receipt }, io)).status, 'failure_before_publication');
     assert.equal(fs.existsSync(path.resolve(receipt)), false);
   }
   const cwd = process.cwd();
   try {
     process.chdir(path.join(root, 'test'));
-    assert.match(github.publish({ ...input, receipt: inside }, io).message, /outside the repository/);
+    assert.match((await github.publish({ ...input, receipt: inside }, io)).message, /outside the repository/);
     assert.equal(fs.existsSync(inside), false);
   } finally { process.chdir(cwd); }
 });
 
-test('receipt boundary rejects symlink aliases into the repository and linked receipt files', { skip: process.platform === 'win32' }, () => {
-  const { input } = approved();
+test('receipt boundary rejects symlink aliases into the repository and linked receipt files', { skip: process.platform === 'win32' }, async () => {
+  const { input } = await approved();
   const directory = temp();
   const alias = path.join(directory, 'repo-alias');
   fs.symlinkSync(root, alias, 'dir');
   const receipt = path.join(alias, `to-backlog-rejected-${process.pid}.json`);
   const io = { run() { assert.fail('A rejected symlink must not access GitHub'); } };
-  assert.match(github.publish({ ...input, receipt }, io).message, /outside the repository/);
-  assert.match(github.recover({ receipt }, io).message, /outside the repository/);
+  assert.match((await github.publish({ ...input, receipt }, io)).message, /outside the repository/);
+  assert.match((await github.recover({ receipt }, io)).message, /outside the repository/);
   assert.equal(fs.existsSync(receipt), false);
   const target = path.join(temp(), 'original.json');
   fs.writeFileSync(target, 'unchanged', { mode: 0o600 });
   const linked = path.join(directory, 'linked.json');
   fs.symlinkSync(target, linked);
-  assert.match(github.publish({ ...input, receipt: linked }, io).message, /regular/);
-  assert.match(github.recover({ receipt: linked }, io).message, /regular/);
+  assert.match((await github.publish({ ...input, receipt: linked }, io)).message, /regular/);
+  assert.match((await github.recover({ receipt: linked }, io)).message, /regular/);
   assert.equal(fs.readFileSync(target, 'utf8'), 'unchanged');
 });
 
-test('receipt parent must remain private', { skip: process.platform === 'win32' }, () => {
+test('receipt parent must remain private', { skip: process.platform === 'win32' }, async () => {
   const directory = temp();
   fs.chmodSync(directory, 0o755);
   const receipt = path.join(directory, 'receipt.json');
   const io = { run() { assert.fail('Insecure receipts must not access GitHub'); } };
-  assert.match(github.publish({ ...request, receipt }, io).message, /private/);
-  assert.match(github.recover({ receipt }, io).message, /private/);
+  assert.match((await github.publish({ ...request, receipt }, io)).message, /private/);
+  assert.match((await github.recover({ receipt }, io)).message, /private/);
   assert.equal(fs.existsSync(receipt), false);
 });
 
-test('explicit unsupported provider takes precedence over incompatible destination without Git or gh probing', () => {
+test('explicit unsupported provider takes precedence over incompatible destination without Git or gh probing', async () => {
   const explicit = { provider: 'jira', repository: 'https://github.com/code/repo' };
-  assert.deepEqual(resolve({ explicit }, registry), { status: 'unsupported', provider: 'jira' });
+  assert.deepEqual(await resolve({ explicit }, registry), { status: 'unsupported', provider: 'jira' });
   const directory = temp();
   // An empty PATH makes even accidental Git/gh calls fail instead of passing.
   const result = spawnSync(process.execPath, [path.join(root, 'sai/tools/to-backlog.js'), 'resolve', path.join(root, 'skills/universal/to-backlog/providers/registry.json')], { cwd: directory, input: JSON.stringify({ explicit }), encoding: 'utf8', env: { ...process.env, PATH: '' } });
@@ -414,16 +414,16 @@ test('explicit unsupported provider takes precedence over incompatible destinati
   assert.deepEqual(JSON.parse(result.stdout), { status: 'unsupported', provider: 'jira' });
 });
 
-test('recovery blocks visibility drift and known-issue edits before receipt writes or insertion', () => {
+test('recovery blocks visibility drift and known-issue edits before receipt writes or insertion', async () => {
   for (const originalPrivate of [false, true]) {
     const state = { private: originalPrivate, failInsertion: true };
-    const { input, io, receipt } = approved(state);
-    assert.equal(github.publish(input, io).status, 'partial_failure');
+    const { input, io, receipt } = await approved(state);
+    assert.equal((await github.publish(input, io)).status, 'partial_failure');
     const before = fs.readFileSync(receipt, 'utf8');
     const insertions = state.insertions;
     state.private = !originalPrivate;
     state.failInsertion = false;
-    const result = github.recover({ receipt }, io);
+    const result = await github.recover({ receipt }, io);
     assert.equal(result.status, 'partial_failure');
     assert.match(result.message, /visibility changed; fresh review/);
     assert.equal(fs.readFileSync(receipt, 'utf8'), before);
@@ -432,13 +432,13 @@ test('recovery blocks visibility drift and known-issue edits before receipt writ
   }
   for (const field of ['title', 'body']) {
     const state = { failInsertion: true };
-    const { input, io, receipt } = approved(state);
-    github.publish(input, io);
+    const { input, io, receipt } = await approved(state);
+    await github.publish(input, io);
     state.issue[field] = 'external edit';
     state.failInsertion = false;
     const before = fs.readFileSync(receipt, 'utf8');
     const insertions = state.insertions;
-    assert.match(github.recover({ receipt }, io).message, /content changed; fresh review/);
+    assert.match((await github.recover({ receipt }, io)).message, /content changed; fresh review/);
     assert.equal(state.insertions, insertions);
     assert.equal(state.creations, 1);
     assert.equal(fs.readFileSync(receipt, 'utf8'), before);
@@ -446,11 +446,11 @@ test('recovery blocks visibility drift and known-issue edits before receipt writ
   }
 });
 
-test('initial insertion also checks visibility and issue content after creation', () => {
+test('initial insertion also checks visibility and issue content after creation', async () => {
   for (const option of ['driftAfterCreation', 'editAfterCreation']) {
     const state = { [option]: true };
-    const { input, io } = approved(state);
-    const result = github.publish(input, io);
+    const { input, io } = await approved(state);
+    const result = await github.publish(input, io);
     assert.equal(result.status, 'partial_failure');
     assert.match(result.message, /fresh review/);
     assert.equal(state.creations, 1);
@@ -458,67 +458,67 @@ test('initial insertion also checks visibility and issue content after creation'
   }
 });
 
-test('partial failure and lost insertion recover membership without issue recreation', () => {
+test('partial failure and lost insertion recover membership without issue recreation', async () => {
   for (const option of ['failInsertion', 'loseInsertion']) {
     const state = { [option]: true };
-    const { input, io, receipt } = approved(state);
-    assert.equal(github.publish(input, io).status, 'partial_failure');
+    const { input, io, receipt } = await approved(state);
+    assert.equal((await github.publish(input, io)).status, 'partial_failure');
     const before = state.insertions;
     state[option] = false;
-    const verified = github.recover({ receipt }, io);
+    const verified = await github.recover({ receipt }, io);
     assert.equal(state.insertions, before);
-    const result = verified.status === 'complete' ? verified : github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io);
+    const result = verified.status === 'complete' ? verified : await github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io);
     assert.equal(result.status, 'complete');
     assert.equal(state.creations, 1);
     assert.equal(state.insertions, option === 'loseInsertion' ? before : before + 1);
   }
 });
 
-test('lost creation returns uncertain, requires verified issue choice, never repeats creation', () => {
+test('lost creation returns uncertain, requires verified issue choice, never repeats creation', async () => {
   const state = { loseCreation: true };
-  const { input, io, receipt } = approved(state);
-  assert.equal(github.publish(input, io).status, 'uncertain');
-  const found = github.recover({ receipt }, io);
+  const { input, io, receipt } = await approved(state);
+  assert.equal((await github.publish(input, io)).status, 'uncertain');
+  const found = await github.recover({ receipt }, io);
   assert.equal(found.status, 'uncertain');
   assert.equal(found.candidates[0].url, state.issue.url);
-  const verified = github.recover({ receipt, issueUrl: state.issue.url }, io);
+  const verified = await github.recover({ receipt, issueUrl: state.issue.url }, io);
   assert.equal(verified.status, 'partial_failure');
-  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io)).status, 'complete');
   assert.equal(state.creations, 1);
 });
 
-test('single publication retry is durably consumed before insertion and cannot reset through verification', () => {
+test('single publication retry is durably consumed before insertion and cannot reset through verification', async () => {
   const state = { failInsertion: true };
-  const { input, io, receipt } = approved(state);
-  github.publish(input, io);
-  let verified = github.recover({ receipt }, io);
+  const { input, io, receipt } = await approved(state);
+  await github.publish(input, io);
+  let verified = await github.recover({ receipt }, io);
   assert.equal(state.insertions, 1);
-  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'partial_failure');
+  assert.equal((await github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io)).status, 'partial_failure');
   assert.equal(JSON.parse(fs.readFileSync(receipt)).automatic_retry_consumed, true);
-  verified = github.recover({ receipt }, io);
-  assert.match(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).message, /exhausted/);
+  verified = await github.recover({ receipt }, io);
+  assert.match((await github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io)).message, /exhausted/);
   assert.equal(state.insertions, 2);
   state.failInsertion = false;
-  assert.equal(github.recover({ receipt, confirmation: verified.continuation }, io).status, 'complete');
+  assert.equal((await github.recover({ receipt, confirmation: verified.continuation }, io)).status, 'complete');
   assert.equal(state.creations, 1);
 });
 
-test('uncertain empty verification and changed authentication remain blocked', () => {
+test('uncertain empty verification and changed authentication remain blocked', async () => {
   const state = { loseCreation: true };
-  const { input, io, receipt } = approved(state);
-  github.publish(input, io);
+  const { input, io, receipt } = await approved(state);
+  await github.publish(input, io);
   state.issue = null;
-  const result = github.recover({ receipt }, io);
+  const result = await github.recover({ receipt }, io);
   assert.equal(result.status, 'uncertain');
   assert.deepEqual(result.candidates, []);
   state.otherActor = true;
-  assert.match(github.recover({ receipt }, io).message, /identity/);
+  assert.match((await github.recover({ receipt }, io)).message, /identity/);
   assert.equal(state.creations, 1);
 });
 
-test('pagination failures are errors rather than empty destinations', () => {
-  assert.throws(() => github.pages(() => ({ nodes: [], pageInfo: { hasNextPage: true, endCursor: null } }), page => page), /cursor/);
-  assert.throws(() => github.pages(() => ({ nodes: [] }), page => page), /Incomplete/);
+test('pagination failures are errors rather than empty destinations', async () => {
+  await assert.rejects(async () => await github.pages(() => ({ nodes: [], pageInfo: { hasNextPage: true, endCursor: null } }), page => page), /cursor/);
+  await assert.rejects(async () => await github.pages(() => ({ nodes: [] }), page => page), /Incomplete/);
 });
 
 test('common instructions retain conversation, confirmation and cancellation boundaries in both wrappers', () => {

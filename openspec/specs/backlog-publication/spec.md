@@ -117,3 +117,22 @@ Every external process the backlog tools start (`gh`, `glab`, `git`, `az`, `wher
 
 - **WHEN** every external process of a backlog operation finishes within 120 s
 - **THEN** the operation returns the same output, status, and receipt it returned before the limit existed.
+
+### Requirement: Process groups of backlog tool external processes end with their bound
+
+The shared helper that runs every external process of the backlog tools, `to-pr`, and plan publication SHALL be asynchronous and SHALL start each process as the leader of its own process group. When a process reaches its limit, the helper SHALL end the whole group, every descendant included (`process.kill(-pid)` on POSIX, `taskkill /T` on Windows), and the caller SHALL receive the `process-timeout` failure. While a started group is running, the helper SHALL end that group when the calling process receives `SIGINT` or `SIGTERM` or exits, because a group started apart from the terminal no longer receives its interrupt. Claude Code and opencode SHALL behave the same.
+
+#### Scenario: A grandchild outlives its parent's limit
+
+- **WHEN** a process started through the helper spawns a descendant and the process exceeds its limit
+- **THEN** the helper ends the process and the descendant together and the caller receives a `process-timeout` failure.
+
+#### Scenario: The calling tool is interrupted
+
+- **WHEN** the calling tool receives `SIGINT` or `SIGTERM` while a process group started through the helper is still running
+- **THEN** the helper ends that process group before the default action of the signal applies.
+
+#### Scenario: A process finishes within the limit
+
+- **WHEN** a process started through the helper exits within its limit
+- **THEN** the helper resolves with the process's exit status, standard output, and standard error, and removes its interrupt handlers once no group is running.

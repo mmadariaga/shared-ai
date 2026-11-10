@@ -9,16 +9,16 @@ function normalize(value) {
   return { repository: `${match[1]}/${match[2]}`, number: Number(match[3]), url: `https://github.com/${match[1]}/${match[2]}/issues/${Number(match[3])}` };
 }
 
-function api(io, query, variables) {
-  const response = JSON.parse(io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
+async function api(io, query, variables) {
+  const response = JSON.parse(await io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
   if (response.errors?.length || !response.data) throw fault('retrieval-failed', `GitHub retrieval failed: ${JSON.stringify(response.errors || response)}`);
   return response.data;
 }
 
-function readIssue(reference, io) {
+async function readIssue(reference, io) {
   const checked = normalize(reference.url);
   const [owner, name] = checked.repository.split('/');
-  const repo = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){nameWithOwner isArchived issueOrPullRequest(number:$number){__typename ... on Issue{number url title body state}}}}', { owner, name, number: checked.number }).repository;
+  const repo = (await api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){nameWithOwner isArchived issueOrPullRequest(number:$number){__typename ... on Issue{number url title body state}}}}', { owner, name, number: checked.number })).repository;
   const issue = repo?.issueOrPullRequest;
   if (!issue) throw fault('inaccessible-issue', 'Issue is missing or not readable; check authentication and repository access');
   if (issue.__typename === 'PullRequest') throw fault('not-an-issue', 'This number identifies a pull request, not an issue');
@@ -26,18 +26,18 @@ function readIssue(reference, io) {
   return { provider: 'github', repository: repo.nameWithOwner, repository_archived: repo.isArchived, number: issue.number, url: issue.url, title: issue.title, description: issue.body, state: issue.state, description_missing: issue.body.trim().length === 0 };
 }
 
-function read(reference, io) {
+async function read(reference, io) {
   let item;
   const comments = [];
   try {
     const checked = normalize(reference.url);
     const [owner, name] = checked.repository.split('/');
     const variables = { owner, name, number: checked.number };
-    item = readIssue(checked, io);
+    item = await readIssue(checked, io);
     let cursor = null;
     const seen = new Set();
     do {
-      const result = api(io, 'query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){comments(first:100,after:$cursor){nodes{id url body author{login}} pageInfo{hasNextPage endCursor}}}}}', { ...variables, cursor });
+      const result = await api(io, 'query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){comments(first:100,after:$cursor){nodes{id url body author{login}} pageInfo{hasNextPage endCursor}}}}}', { ...variables, cursor });
       const page = result.repository?.issue?.comments;
       if (!Array.isArray(page?.nodes) || typeof page.pageInfo?.hasNextPage !== 'boolean') throw fault('incomplete-response', 'GitHub comments response is incomplete');
       for (const comment of page.nodes) {
@@ -55,12 +55,12 @@ function read(reference, io) {
   }
 }
 
-function connection(io, reference, field) {
+async function connection(io, reference, field) {
   const [owner, name] = normalize(reference.url).repository.split('/');
   const nodes = [], cursors = new Set(), urls = new Set();
   let cursor = null;
   do {
-    const data = api(io, `query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){${field}(first:100,after:$cursor){nodes{url} pageInfo{hasNextPage endCursor}}}}}`, { owner, name, number: reference.number, cursor });
+    const data = await api(io, `query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){${field}(first:100,after:$cursor){nodes{url} pageInfo{hasNextPage endCursor}}}}}`, { owner, name, number: reference.number, cursor });
     const page = data.repository?.issue?.[field];
     if (!Array.isArray(page?.nodes) || typeof page.pageInfo?.hasNextPage !== 'boolean') throw fault('incomplete-response', `Incomplete ${field} connection`);
     for (const row of page.nodes) {
@@ -75,24 +75,24 @@ function connection(io, reference, field) {
 }
 
 /** Hierarchical delivery is read-only and retains the selected issue as origin. */
-function readSet(reference, io) {
+async function readSet(reference, io) {
   let selected;
   const sources = [];
   try {
     const identity = require('./backlog-slice-identity');
-    const fields = api(io, 'query{__type(name:"Issue"){fields{name}}}', {}).__type?.fields;
+    const fields = (await api(io, 'query{__type(name:"Issue"){fields{name}}}', {})).__type?.fields;
     if (!Array.isArray(fields)) throw fault('incomplete-response', 'Hierarchy capability read is incomplete');
     const native = fields.some(field => field.name === 'parent') && fields.some(field => field.name === 'subIssues');
-    const load = url => {
+    const load = async url => {
       const ref = normalize(url);
-      const result = read(ref, io);
+      const result = await read(ref, io);
       if (result.status !== 'complete') throw fault(result.reason, result.message);
       const assignees = [];
       const [owner, name] = ref.repository.split('/');
       let cursor = null;
       const seen = new Set();
       do {
-        const page = api(io, 'query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){assignees(first:100,after:$cursor){nodes{login} pageInfo{hasNextPage endCursor}}}}}', { owner, name, number: ref.number, cursor }).repository?.issue?.assignees;
+        const page = (await api(io, 'query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){issue(number:$number){assignees(first:100,after:$cursor){nodes{login} pageInfo{hasNextPage endCursor}}}}}', { owner, name, number: ref.number, cursor })).repository?.issue?.assignees;
         if (!Array.isArray(page?.nodes) || typeof page.pageInfo?.hasNextPage !== 'boolean') throw fault('incomplete-response', 'Incomplete assignee page');
         for (const row of page.nodes) {
           if (typeof row?.login !== 'string' || seen.has(`login:${row.login}`)) throw fault('incomplete-response', 'Incomplete or repeated assignee');
@@ -109,20 +109,20 @@ function readSet(reference, io) {
       let parent = upper ? upper.parent : null;
       let children = correspondence?.role === 'parent' ? identity.slicesOf(correspondence, ref.url).map(slice => slice.issue) : [];
       if (native) {
-        const issue = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url}}}}', { owner, name, number: ref.number }).repository?.issue;
+        const issue = (await api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url}}}}', { owner, name, number: ref.number })).repository?.issue;
         if (!issue || !Object.prototype.hasOwnProperty.call(issue, 'parent')) throw fault('incomplete-response', 'Parent relationship read is incomplete');
         const nativeParent = issue.parent?.url || null;
         if (parent && nativeParent && parent !== nativeParent) throw fault('incomplete-response', 'Native parent conflicts with written correspondence');
         parent = nativeParent || parent;
-        children = [...new Set([...children, ...connection(io, ref, 'subIssues')])];
+        children = [...new Set([...children, ...await connection(io, ref, 'subIssues')])];
       }
       const dependencies = upper ? identity.slicesOf(upper, ref.url).find(slice => slice.change_name === upper.change_name).depends_on.map(name => identity.slicesOf(upper, ref.url).find(slice => slice.change_name === name).issue) : [];
-      if (fields.some(field => field.name === 'blockedBy')) dependencies.push(...connection(io, ref, 'blockedBy'));
+      if (fields.some(field => field.name === 'blockedBy')) dependencies.push(...await connection(io, ref, 'blockedBy'));
       return { ...result, item: { ...result.item, assignees, parent, children, dependencies: [...new Set(dependencies)], correspondence } };
     };
-    selected = load(reference.url); sources.push({ role: 'selected', ...selected });
+    selected = await load(reference.url); sources.push({ role: 'selected', ...selected });
     if (selected.item.parent) {
-      const parent = load(selected.item.parent);
+      const parent = await load(selected.item.parent);
       if (!parent.item.children.includes(selected.item.url)) throw fault('incomplete-response', 'Parent does not confirm the selected child');
       sources.push({ role: 'parent-context', ...parent });
     }
@@ -132,7 +132,7 @@ function readSet(reference, io) {
       || (!selected.item.correspondence && selected.item.children.length > 0);
     if (importsChildren) {
       for (const url of selected.item.children) {
-        const child = load(url);
+        const child = await load(url);
         if (child.item.parent !== selected.item.url) throw fault('incomplete-response', 'Child does not confirm its parent');
         sources.push({ role: 'child', ...child });
       }
@@ -144,17 +144,22 @@ function readSet(reference, io) {
 }
 
 /** Children of an issue with their state: written slice correspondence plus native sub-issues. No comments or assignees. */
-function readChildren(reference, io) {
+async function readChildren(reference, io) {
   try {
     const checked = normalize(reference.url);
-    const identity = require('./backlog-slice-identity'), written = identity.decode(readIssue(checked, io).description, reference.url);
-    const fields = api(io, 'query{__type(name:"Issue"){fields{name}}}', {}).__type?.fields;
+    const identity = require('./backlog-slice-identity'), written = identity.decode((await readIssue(checked, io)).description, reference.url);
+    const fields = (await api(io, 'query{__type(name:"Issue"){fields{name}}}', {})).__type?.fields;
     if (!Array.isArray(fields)) throw fault('incomplete-response', 'Hierarchy capability read is incomplete');
     const urls = [...new Set([
       ...(written?.role === 'parent' ? identity.slicesOf(written, reference.url).map(slice => slice.issue) : []),
-      ...(fields.some(field => field.name === 'subIssues') ? connection(io, checked, 'subIssues') : []),
+      ...(fields.some(field => field.name === 'subIssues') ? await connection(io, checked, 'subIssues') : []),
     ])];
-    return { status: 'complete', children: urls.map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; }) };
+    const children = [];
+    for (const url of urls) {
+      const child = await readIssue({ url }, io);
+      children.push({ url: child.url, state: child.state });
+    }
+    return { status: 'complete', children };
   } catch (error) {
     return { status: 'error', reason: error.reason || 'retrieval-failed', message: error.message };
   }
