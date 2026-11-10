@@ -41,11 +41,11 @@ Every emit SHALL travel as stage plus next only, with mandatory machineId on the
 
 ### Requirement: Silent ignore of undeclared ids with authoritative re-steer
 
-Newly completed declared ids SHALL be added in canonical STEPS order with marks monotonic and never reopened. Missing, empty, or only-undeclared ids SHALL be ignored silently with no notification or state change, and the coordinator SHALL re-emit the authoritative pointer. The retired mutation id SHALL be undeclared.
+Newly completed declared ids SHALL be added in canonical STEPS order with marks monotonic and never reopened. Missing or empty ids SHALL change no state. A report that names an undeclared id SHALL be rejected whole with `rejected: "UNKNOWN_STEP_ID"` and the undeclared ids in `unknown_ids`, with no state change and none of its declared ids applied, and the coordinator SHALL re-emit the authoritative pointer. The retired mutation id SHALL be undeclared.
 
 #### Scenario: Undeclared ids leave state unchanged
 - **WHEN** the signal carries only ids outside the four declared states
-- **THEN** the state SHALL stay unchanged with no rejection marker
+- **THEN** the state SHALL stay unchanged and the response SHALL carry `rejected: "UNKNOWN_STEP_ID"` with those ids in `unknown_ids`
 
 ### Requirement: Terminal done maps to completion pointer
 

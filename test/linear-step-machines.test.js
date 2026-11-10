@@ -87,14 +87,35 @@ for (const { name, machine } of machines) {
     assert.equal(done.next.follow, 'none', 'done stage must have follow: none');
   });
 
-  test(`${name} undeclared ids are ignored silently`, () => {
+  test(`${name} undeclared ids are rejected whole with UNKNOWN_STEP_ID`, () => {
     const started = machine.transition(machine.initialState, { step_ids: [machine.STEPS[0]] });
     const before = JSON.stringify(started.state);
     const current = machine.project(started.state);
-    const ignored = machine.transition(started.state, { step_ids: ['not-a-step', 'also-unknown'] });
-    assert.equal(JSON.stringify(ignored.state), before, 'undeclared ids must not change state');
-    assert.deepEqual(ignored.next, current.next, 'authoritative pointer re-steers worker');
-    assert.equal(ignored.rejected, undefined, 'silent ignore carries no notification');
+    const rejected = machine.transition(started.state, { step_ids: ['not-a-step', 'also-unknown'] });
+    assert.equal(JSON.stringify(rejected.state), before, 'undeclared ids must not change state');
+    assert.deepEqual(rejected.next, current.next, 'authoritative pointer re-steers worker');
+    assert.equal(rejected.rejected, 'UNKNOWN_STEP_ID');
+    assert.deepEqual(rejected.unknown_ids, ['not-a-step', 'also-unknown']);
+  });
+
+  test(`${name} a rejection with nothing done answers with the first filed step and leaves the state unchanged`, () => {
+    const rejected = machine.transition(machine.initialState, { step_ids: ['not-a-step'] });
+    const first = machine.firstFiled();
+    assert.equal(rejected.rejected, 'UNKNOWN_STEP_ID');
+    assert.equal(rejected.stage, first.stage, 'the answered stage is the first filed step');
+    assert.deepEqual(rejected.next, first.next, 'the answered pointer is the one reset returns');
+    assert.notEqual(rejected.next.follow, 'none');
+    assert.equal(JSON.stringify(rejected.state), JSON.stringify(machine.initialState), 'the state is unchanged');
+  });
+
+  test(`${name} a report mixing declared and undeclared ids applies none of them`, () => {
+    const mixed = machine.transition(machine.initialState, { step_ids: [machine.STEPS[0], 'not-a-step'] });
+    assert.equal(JSON.stringify(mixed.state), JSON.stringify(machine.initialState), 'the declared id is not applied');
+    assert.equal(mixed.rejected, 'UNKNOWN_STEP_ID');
+    assert.deepEqual(mixed.unknown_ids, ['not-a-step']);
+    const repeated = machine.transition(machine.transition(machine.initialState, { step_ids: [machine.STEPS[0]] }).state, { step_ids: [machine.STEPS[0]] });
+    assert.equal(repeated.rejected, undefined, 'a declared id that is already done stays accepted');
+    assert.equal(repeated.unknown_ids, undefined);
   });
 
   test(`${name} replacement re-resolves from surviving session state`, () => {

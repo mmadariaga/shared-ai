@@ -74,7 +74,21 @@ function createLinearStepMachine({ machineId, steps, stageFiles }) {
     return { stage: DONE_STAGE, next: nextFor(DONE_STAGE) };
   }
 
-  function outcome(current, rejected) {
+  // The active step a rejection answers with: the first unmarked step, except
+  // that with nothing done it is the first filed step, the pointer `reset`
+  // returned, so a rejection right after `reset` re-steers the worker to the
+  // file it was given and never to the fileless first step. Only the response
+  // carries it; the stored state still derives its stage from the done set.
+  function activeFor(done) {
+    if (done.length === 0) {
+      const first = firstFiled();
+      return { stage: first.stage, next: first.next };
+    }
+    const stage = firstUnmarked(done);
+    return { stage, next: nextFor(stage) };
+  }
+
+  function outcome(current, rejected, extra) {
     const state = {
       stage: current.stage,
       done: current.done.slice(),
@@ -85,6 +99,7 @@ function createLinearStepMachine({ machineId, steps, stageFiles }) {
       next: nextFor(state.stage),
     };
     if (rejected) result.rejected = rejected;
+    if (extra) Object.assign(result, extra);
     return result;
   }
 
@@ -113,20 +128,33 @@ function createLinearStepMachine({ machineId, steps, stageFiles }) {
     const current = cloneState(state);
 
     const ids = reportedIds(signal);
-    // No recognized ids (missing signal, empty list, or only undeclared ids)
-    // is ignored silently with no notification channel — no `rejected` marker,
-    // no state change. The coordinator re-emits the authoritative pointer from
-    // the unchanged state, which re-steers the worker. A machine-named unknown
-    // file or a path outside `steps/` never reaches this transition as an id;
-    // that case stops at the coordinator's follow-load gate and fetches nothing.
+    // A report without a step list (missing signal) changes nothing: the
+    // coordinator re-emits the authoritative pointer from the unchanged state,
+    // which re-steers the worker.
     if (!ids) {
       current.stage = firstUnmarked(current.done);
       return outcome(current);
     }
 
+    // A report that names an id the machine does not declare is rejected whole:
+    // `rejected: UNKNOWN_STEP_ID` with the unknown ids, the state unchanged, and
+    // the unchanged active pointer, so the coordinator re-steers the worker and
+    // the worker reports the whole step again. Declared ids of that report are not
+    // applied, so the machine never moves on input it does not understand. A
+    // machine-named unknown file or a path outside `steps/` never reaches this
+    // transition as an id; that case stops at the coordinator's follow-load gate
+    // and fetches nothing.
+    const unknown = ids.filter((id) => STEPS.indexOf(id) === -1);
+    if (unknown.length > 0) {
+      current.stage = firstUnmarked(current.done);
+      const active = activeFor(current.done);
+      return outcome(current, 'UNKNOWN_STEP_ID', { unknown_ids: unknown, stage: active.stage, next: active.next });
+    }
+
     // Add newly completed declared ids in canonical STEPS order so the done set
-    // stays deterministic regardless of wire order. Undeclared ids are silently
-    // dropped. Marks are monotonic — never reopened or removed.
+    // stays deterministic regardless of wire order. Declared ids that are already
+    // done stay accepted with no change. Marks are monotonic — never reopened or
+    // removed.
     for (const step of STEPS) {
       if (ids.indexOf(step) !== -1 && current.done.indexOf(step) === -1) {
         current.done = current.done.concat([step]);

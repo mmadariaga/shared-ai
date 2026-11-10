@@ -156,12 +156,12 @@ The sidecar SHALL persist a minimal per-machine ledger (`rev`, `lastEventId`, `l
 
 ### Requirement: Session-file degradation warnings
 
-The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics) from a present-but-corrupt or truncated file: absence SHALL seed or continue from the live in-memory state with no warning, while a corrupt file SHALL be treated as absent (initial seed) and notified through a closed optional `warnings` response attribute (a string array, absent when there are no warnings, first value `SESSION_FILE_CORRUPT`) piggybacked on the same `/emit` or `/restore` response the agent already receives, with no extra turns or calls. Once the store is rewritten by a successful persistence, later responses SHALL carry no warning.
+The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics) from a present-but-corrupt or truncated file: absence SHALL seed or continue from the live in-memory state with no warning, while a corrupt file SHALL be renamed aside to `<session-file>.corrupt` (with a numeric suffix when that name is taken, so an earlier copy survives), treated as absent (initial seed), and notified through a closed optional `warnings` response attribute (a string array, absent when there are no warnings, first value `SESSION_FILE_CORRUPT`) together with the preserved path in `corrupt_file`, piggybacked on the same `/emit` or `/restore` response the agent already receives, with no extra turns or calls. A corrupt file SHALL never be overwritten. Once the store is rewritten by a successful persistence, later responses SHALL carry no warning.
 
 #### Scenario: Corrupt file warns in-band and heals
 
 - **WHEN** the session file is corrupt or truncated and the next `/emit` or `/restore` request arrives
-- **THEN** that response carries `warnings` with the value `SESSION_FILE_CORRUPT` and the machine seeds from its initial state, and later responses after the store is rewritten carry no warning
+- **THEN** that response carries `warnings` with the value `SESSION_FILE_CORRUPT` and the preserved path in `corrupt_file`, the corrupt bytes survive at that path, the machine seeds from its initial state, and later responses after the store is rewritten carry no warning
 
 #### Scenario: Absent file is legal and silent
 

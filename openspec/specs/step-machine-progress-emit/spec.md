@@ -21,7 +21,7 @@ TBD - created by archiving change emit-validates-progress. Update Purpose after 
 - **THEN** the output reports only `received_at` and the invalid `validation` block, with no `SESSION_FILE_CORRUPT` warning and no `VERSION_MISMATCH` error
 
 ### Requirement: Progress verdict parity and single clock
-`sai/tools/worker-report-validator.js` SHALL export a pure `validateText(text, kind, options)` function that builds the closed, timeless verdict (`ok`, `action`, `kind`, `errors`) from stdin text, and SHALL export `generateReceivedAt` as the only clock. Both the `validate` CLI and the progress emit (in its reference mode through `validateFile`, which validates the verified bytes with `validateText`) SHALL obtain their verdict from `validateText` and their time from `generateReceivedAt`, each reading it once per invocation, so the verdict shape and the clock stay single-sourced. The progress emit SHALL return a `validation` block byte-identical to what `worker-report-validator.js validate --kind progress --json` returns for the same stdin bytes without its `received_at` key, for valid and invalid verdicts. `validate --kind progress` SHALL remain available.
+`sai/tools/worker-report-validator.js` SHALL export a pure `validateText(text, kind, options)` function that builds the closed, timeless verdict (`ok`, `action`, `kind`, `errors`) from stdin text, and SHALL re-export `generateReceivedAt` from the clock module `sai/tools/received-at.js`, the only clock. Both the `validate` CLI and the progress emit (in its reference mode through `validateFile`, which validates the verified bytes with `validateText`) SHALL obtain their verdict from `validateText` and their time from that one `generateReceivedAt`, each reading it once per invocation, so the verdict shape and the clock stay single-sourced. The progress emit SHALL return a `validation` block byte-identical to what `worker-report-validator.js validate --kind progress --json` returns for the same stdin bytes without its `received_at` key, for valid and invalid verdicts. `validate --kind progress` SHALL remain available.
 
 #### Scenario: BOM-prefixed and padded payloads get the same verdict
 - **WHEN** the same BOM-prefixed or whitespace-padded progress payload is sent to both `validate --kind progress --json` and a progress emit
@@ -32,7 +32,7 @@ TBD - created by archiving change emit-validates-progress. Update Purpose after 
 - **THEN** the verdict shape, `received_at` format, and exit codes are the same as before the extraction, and the emit's `validation` block equals that response with `received_at` removed
 
 ### Requirement: Progress emit derives the event and returns the verdict with the routing
-On a valid verdict the progress emit SHALL derive the machine event `{"step_ids": payload.step_ids}` and apply it through the same transition logic as an event emit. It SHALL write one object carrying `received_at` first, then `validation`, plus the ordinary emit fields (`stage`, `next`, `rejected?`, `warnings?`, or `error` with `next`), unchanged. Validation and machine advancement SHALL share the one `received_at` value read for the invocation. Exit code 1 SHALL cover both an invalid verdict and a machine error, and callers SHALL discriminate by `validation.ok`. A valid verdict that meets a store failure (`SESSION_FILE_CORRUPT`, `VERSION_MISMATCH`, `UNKNOWN_MACHINE`, or an unreachable store) SHALL keep its `validation` block unaltered and the top-level `received_at` alongside the machine's error or warnings. An empty `step_ids` list SHALL be valid and SHALL leave the pointer where it was. Undeclared ids SHALL validate and the machine SHALL ignore them.
+On a valid verdict the progress emit SHALL derive the machine event `{"step_ids": payload.step_ids}` and apply it through the same transition logic as an event emit. It SHALL write one object carrying `received_at` first, then `validation`, plus the ordinary emit fields (`stage`, `next`, `rejected?`, `unknown_ids?`, `warnings?`, or `error` with `next`), unchanged. Validation and machine advancement SHALL share the one `received_at` value read for the invocation. Exit code 1 SHALL cover both an invalid verdict and a machine error, and callers SHALL discriminate by `validation.ok`. A valid verdict that meets a store failure (`SESSION_FILE_CORRUPT`, `VERSION_MISMATCH`, `UNKNOWN_MACHINE`, `STORE_WRITE_FAILED`, `STORE_CONFLICT`, or an unreachable store) SHALL keep its `validation` block unaltered and the top-level `received_at` alongside the machine's error or warnings. An empty `step_ids` list SHALL be valid and SHALL leave the pointer where it was. Undeclared ids SHALL validate, and the step machine SHALL reject the whole report with `rejected: "UNKNOWN_STEP_ID"`, the unknown ids in `unknown_ids`, exit 0, the state unchanged, and the unchanged active pointer.
 
 #### Scenario: Valid payload validates and advances in one call
 - **WHEN** a valid progress payload reporting `spec-intake` and `research` is piped to `emit <id> spec-steps@1 --progress -` after reset
@@ -46,19 +46,28 @@ On a valid verdict the progress emit SHALL derive the machine event `{"step_ids"
 - **WHEN** a valid progress payload with `step_ids: []` is piped to a progress emit
 - **THEN** the process exits 0 with `validation.ok` true and the same `next.follow` as before
 
+#### Scenario: Undeclared step id is rejected with a valid verdict
+- **WHEN** a valid progress payload reporting an id that `spec-steps@1` does not declare is piped to a progress emit
+- **THEN** the process exits 0 with `validation.ok` true, `rejected: "UNKNOWN_STEP_ID"`, that id in `unknown_ids`, and the same `next.follow` as before
+
 ### Requirement: Validator module resolution relative to the store CLI
-Every `bin/sai-state.js` verb (`spawn`, `emit`, `emit --progress`, `reset`, `close`) SHALL load the validator module relative to `bin/sai-state.js` from two fixed candidates, in order: `../tools/worker-report-validator.js` (installed layout `sai/{bin,sai-state,tools}`), then `../sai/tools/worker-report-validator.js` (source layout `{bin,sai-state,sai/tools}`), because the module exports the only `received_at` clock. When neither exists, or the module lacks `generateReceivedAt` or `validateText`, the verb SHALL exit 2 naming the tried paths on stderr and SHALL emit nothing on stdout. The invocation SHALL be byte-identical whichever tool-resolution candidate for `sai-state.js` wins.
+Only the progress emit (`emit --progress`) and the block emit (`emit --ready-to-propose`, the amendment included) of `bin/sai-state.js` SHALL load the validator module, relative to `bin/sai-state.js` from two fixed candidates, in order: `../tools/worker-report-validator.js` (installed layout `sai/{bin,sai-state,tools}`), then `../sai/tools/worker-report-validator.js` (source layout `{bin,sai-state,sai/tools}`). When neither exists, or the module lacks `validateText`, those two emits SHALL exit 2 naming the tried paths on stderr and SHALL emit nothing on stdout. `spawn`, `reset`, `close`, `block`, and an identifier-event `emit` SHALL NOT load the validator and SHALL succeed without it. Every verb SHALL load the clock module `received-at.js` from the same two layouts; when neither candidate exists, or it lacks `generateReceivedAt`, the verb SHALL exit 2 naming the tried paths on stderr and SHALL emit nothing on stdout. The invocation SHALL be byte-identical whichever tool-resolution candidate for `sai-state.js` wins.
 
 #### Scenario: Missing validator never emits
-- **WHEN** any `sai-state` verb runs from a layout where neither validator candidate exists
+- **WHEN** a progress emit runs from a layout where the clock module exists and neither validator candidate exists
 - **THEN** the process exits 2 with a stderr message naming both tried paths, writes nothing to stdout, and the session is unchanged
+- **AND** `spawn`, `reset`, `close`, and an identifier-event `emit` from the same layout succeed with `received_at` as their first key
 
 #### Scenario: Installed layout resolves the validator
 - **WHEN** a progress emit runs from a copy laid out as `sai/{bin,sai-state,tools}`
 - **THEN** it loads `sai/tools/worker-report-validator.js` and validates the payload
 
+#### Scenario: Missing clock module stops every verb
+- **WHEN** any `sai-state` verb runs from a layout where neither `received-at.js` candidate exists
+- **THEN** the process exits 2 with a stderr message naming both tried paths and writes nothing to stdout
+
 ### Requirement: Progress mode accepts only progress payloads and leaves event emits unchanged
-A terminal or `needs_input` payload, or a retired `notice` or `conflict_detected` payload, piped to a progress emit SHALL return `validation.ok: false`. Terminal payloads SHALL keep validating through `worker-report-validator.js validate --kind terminal`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every machine, including `explore-idea`, `explore-slice`, and `recovery-ledger`.
+A terminal or `needs_input` payload, or a retired `notice` or `conflict_detected` payload, piped to a progress emit SHALL return `validation.ok: false`. Terminal payloads SHALL keep validating through `worker-report-validator.js validate --kind terminal`. `emit` without `--progress` SHALL keep its shape, operation order, and exit codes for every registered machine, including `explore-idea` and `explore-slice`.
 
 #### Scenario: Non-progress kind is rejected
 - **WHEN** a terminal `completed` payload is piped to a progress emit
@@ -80,7 +89,7 @@ When the active adapter declares a `step_machine`, the coordinator SHALL pipe th
 - **THEN** the step Milestone Stamp is the `HH:mm` of the response top-level `received_at` with no wall-clock call
 
 ### Requirement: Progress emit behavior is tested through the spawned CLI
-The repository SHALL test the progress emit by spawning `node bin/sai-state.js emit … --progress -` as a real process. The tests SHALL cover invalid shapes, non-JSON stdin, verdict parity without time normalization, validation-before-store-read, store failures with the verdict intact, a missing validator module on every verb, the installed layout, empty `step_ids`, non-progress kinds, and unchanged plain emit. A further test SHALL run every `sai-state` verb and assert `received_at` is the first stdout key while stderr carries no time. The existing validator tests SHALL pass with the rename applied.
+The repository SHALL test the progress emit by spawning `node bin/sai-state.js emit … --progress -` as a real process. The tests SHALL cover invalid shapes, non-JSON stdin, verdict parity without time normalization, validation-before-store-read, store failures with the verdict intact, a missing clock module on every verb, a missing validator module on the progress emit, the installed layout, empty `step_ids`, non-progress kinds, and unchanged plain emit. A further test SHALL run every `sai-state` verb and assert `received_at` is the first stdout key while stderr carries no time. The existing validator tests SHALL pass with the rename applied.
 
 #### Scenario: Suite exercises the real process
 - **WHEN** `test/sai-state-progress-emit.test.js` runs
