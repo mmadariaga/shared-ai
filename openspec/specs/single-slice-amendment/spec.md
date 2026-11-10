@@ -65,7 +65,7 @@ Define how one pending or stopped slice of a recorded crystallization set is cor
 
 ### Requirement: An accepted amendment replaces only its slice's stored entry
 
-An accepted amendment SHALL replace only that slice's stored text, hash, and verdicts in the session file. The inventory order, the other slices' stored entries, the completed slices, and every parked cursor SHALL stay unchanged. The response SHALL carry the block emit's `validation` block plus the ordinary emit fields, and SHALL add the `BLOCKS_NOT_STORED` warning when the replacement cannot be confirmed after one retry, in which case the previous entry remains stored.
+An accepted amendment SHALL replace only that slice's stored text, hash, and verdicts in the session file, in the same session-file write as the machine outcome. The inventory order, the other slices' stored entries, the completed slices, and every parked cursor SHALL stay unchanged. The response SHALL carry the block emit's `validation` block plus the ordinary emit fields. When that write fails, the response SHALL be the store failure (`STORE_WRITE_FAILED` or `STORE_CONFLICT`) with exit 1, and the previous entry SHALL remain stored. A rejected amendment SHALL store nothing.
 
 #### Scenario: Pending slice is replaced alone
 

@@ -45,12 +45,12 @@ On a dispatchable set the emit SHALL store in the session file a top-level `bloc
 
 ### Requirement: Block storage failures are reported, never silent
 
-After a successful emit the command SHALL confirm that the stored blocks match the recorded inventory, SHALL retry the store once when they do not, and, if the store still cannot be confirmed, SHALL remove any earlier emit's `blocks` map and add `BLOCKS_NOT_STORED` to the response `warnings` while the inventory stays recorded. After an accepted single-slice amendment, the command SHALL confirm the replaced entry and retry once; if the entry still cannot be confirmed, it SHALL add `BLOCKS_NOT_STORED` to the response `warnings`, and the previous entry SHALL remain stored.
+A block emit SHALL store the recorded inventory, the block texts, their hashes, and their verdicts in the same single session-file write as the machine outcome, and an accepted single-slice amendment SHALL write its replaced entry in the same single write as its machine outcome. When that write fails, the response SHALL be the store failure `STORE_WRITE_FAILED` (or `STORE_CONFLICT` for a crossed write) with exit 1 and no `stage` or `next`, and the earlier inventory and stored blocks SHALL stay intact. There SHALL be no separate confirmation, repair write, or `BLOCKS_NOT_STORED` warning.
 
 #### Scenario: Unwritable session file is reported
 
-- **WHEN** the stored blocks cannot be written after the inventory was recorded
-- **THEN** the response carries `warnings` including `BLOCKS_NOT_STORED` and no stale blocks remain beside the new inventory
+- **WHEN** the session file cannot be written during a block emit
+- **THEN** the response carries `error: "STORE_WRITE_FAILED"` with exit 1 and no `BLOCKS_NOT_STORED` warning, and the earlier inventory and stored blocks remain unchanged with no stale blocks beside a new inventory
 
 ### Requirement: Crystallization close runs the hygiene judgment
 

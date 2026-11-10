@@ -16,12 +16,12 @@ The machine SHALL hold the five spec steps in canonical order `spec-intake`, `re
 
 ### Requirement: Monotonic transition with silent ignore
 
-Transition SHALL add newly completed declared ids in canonical STEPS order so the done set stays deterministic regardless of wire order. Undeclared ids SHALL be ignored silently with no notification channel and no state change, and the authoritative pointer SHALL re-steer the worker. Marks SHALL be monotonic and SHALL never be reopened or removed.
+Transition SHALL add newly completed declared ids in canonical STEPS order so the done set stays deterministic regardless of wire order. A report that names an undeclared id SHALL be rejected whole with `rejected: "UNKNOWN_STEP_ID"` and the undeclared ids in `unknown_ids`, with no state change and none of its declared ids applied, and the unchanged authoritative pointer SHALL re-steer the worker. Marks SHALL be monotonic and SHALL never be reopened or removed.
 
 #### Scenario: Undeclared ids leave state and pointer unchanged
 
 - **WHEN** the caller emits undeclared ids against a session at research
-- **THEN** the state and next follow are unchanged and no rejection marker is present
+- **THEN** the state and next follow are unchanged and the response carries `rejected: "UNKNOWN_STEP_ID"` with those ids in `unknown_ids`
 
 ### Requirement: Project re-resolution for replacement
 

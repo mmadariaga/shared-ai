@@ -546,32 +546,32 @@ test('STATE_VERSION is exported correctly', () => {
   assert.match(STATE_VERSION, /^\d+\.\d+\.\d+$/, 'STATE_VERSION should be semantic version');
 });
 
-test('CLI: concurrent emits to different machines preserve both done sets', () => {
+test('CLI: a write from a record read before another writer wrote is refused with STORE_CONFLICT and keeps the other writer\'s state', () => {
   const key = 'test-concurrent-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
   const spawn = invokeCommand('spawn', '--key', key);
   assert.equal(spawn.exitCode, 0, 'spawn should succeed');
   const id = JSON.parse(spawn.stdout).id;
   try {
-    // Both concurrent writers start from the same stale snapshot.
+    // Both writers start from the same snapshot.
     const staleRecord = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
     // First writer: security via CLI.
     const secEvent = JSON.stringify({ step_ids: ['resolve-security-scope'] });
     const secRes = invokeCommand('emit', id, 'security-steps@1', secEvent);
     assert.equal(secRes.exitCode, 0, 'security emit should succeed');
-    // Second writer: performance from the stale snapshot (simulates a concurrent
-    // reader that read before security wrote). Fresh re-read inside persist must
-    // preserve the sibling. Direct call avoids timing flakiness from the residual
-    // TOCTOU window while still exercising the stale-snapshot merge.
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    // Second writer: performance from the stale snapshot. The revision counter
+    // detects the crossed write and nothing is written. A direct call avoids
+    // timing flakiness while exercising the same check.
     const perfNext = { stage: 'map-stack-hot-paths', done: ['resolve-performance-scope'] };
     const perfWire = { stage: perfNext.stage, next: { follow: 'sai/commands/performance/steps/map-stack-hot-paths.md', hint: 'fetch the map-stack-hot-paths step' } };
-    persistMachineOutcome(id, staleRecord, 'performance-steps@1', perfNext, '', perfWire);
-    const stored = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
-    const secEntry = stored.stateByMachine && stored.stateByMachine['security-steps@1'];
-    const perfEntry = stored.stateByMachine && stored.stateByMachine['performance-steps@1'];
-    const secDone = secEntry && secEntry.state && secEntry.state.done;
-    const perfDone = perfEntry && perfEntry.state && perfEntry.state.done;
-    assert.ok(Array.isArray(secDone) && secDone.indexOf('resolve-security-scope') !== -1, 'security done should survive concurrent emit');
-    assert.ok(Array.isArray(perfDone) && perfDone.indexOf('resolve-performance-scope') !== -1, 'performance done should survive concurrent emit');
+    assert.throws(
+      () => persistMachineOutcome(id, staleRecord, 'performance-steps@1', perfNext, '', perfWire),
+      (error) => error.code === 'STORE_CONFLICT',
+    );
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'the other writer\'s file is untouched');
+    const stored = JSON.parse(before);
+    assert.deepEqual(stored.stateByMachine['security-steps@1'].state.done, ['resolve-security-scope']);
+    assert.equal(stored.stateByMachine['performance-steps@1'], undefined);
   } finally {
     cleanup([id]);
   }
@@ -718,7 +718,7 @@ test('CLI: reset returns the first filed step pointer for the spec, design, and 
 test('CLI: reset on a non-step machine keeps the plain {reset} response', () => {
   const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-non-step').stdout).id;
   try {
-    for (const machineId of ['explore-idea@1', 'explore-slice@1', 'recovery-ledger@1']) {
+    for (const machineId of ['explore-idea@1', 'explore-slice@1']) {
       const json = JSON.parse(invokeCommand('reset', id, machineId).stdout);
       assert.deepEqual(Object.keys(json), ['received_at', 'reset'], `${machineId} reset carries only the time and reset`);
       assert.equal(json.reset, machineId);
@@ -762,3 +762,335 @@ test('CLI: a first progress emit with only the first id returns the reset pointe
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// Store failures: write failure, write conflict, undeclared step ids, corrupt
+// session files, the validator-free verbs, and the retired recovery ledger
+// ---------------------------------------------------------------------------
+
+// A preload that injects store failures by environment variable, so a real CLI
+// process meets them: `SAI_TEST_FAIL_SESSION_WRITE` makes the session-file rename
+// fail, and `SAI_TEST_CROSS_WRITE` makes another writer raise the file's revision
+// between this verb's read and its write.
+const STORE_STUB_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-store-stub-'));
+const STORE_STUB = path.join(STORE_STUB_DIR, 'store-failures.js');
+fs.writeFileSync(STORE_STUB, [
+  "const fs = require('fs');",
+  'const rename = fs.renameSync;',
+  'const chmod = fs.chmodSync;',
+  "fs.renameSync = (from, to) => { if (process.env.SAI_TEST_FAIL_SESSION_WRITE && /\\.tmp$/.test(String(from))) throw Object.assign(new Error('EACCES: injected'), { code: 'EACCES' }); return rename(from, to); };",
+  'fs.chmodSync = (file, mode) => {',
+  "  if (process.env.SAI_TEST_CROSS_WRITE && /\\.tmp$/.test(String(file))) {",
+  "    const target = String(file).replace(/\\.[0-9a-f]+\\.tmp$/, '');",
+  "    const record = JSON.parse(fs.readFileSync(target, 'utf8'));",
+  '    record.revision = (record.revision || 0) + 1;',
+  '    record.crossed = true;',
+  '    fs.writeFileSync(target, JSON.stringify(record));',
+  '  }',
+  '  return chmod(file, mode);',
+  '};',
+  '',
+].join('\n'));
+test.after(() => fs.rmSync(STORE_STUB_DIR, { recursive: true, force: true }));
+
+function runWithStub(argv, input, env) {
+  const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], {
+    encoding: 'utf8',
+    input: input || '',
+    env: Object.assign({}, process.env, { NODE_OPTIONS: '--require ' + JSON.stringify(STORE_STUB) }, env || {}),
+  });
+  return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status };
+}
+
+function revisionOnDisk(id) {
+  return JSON.parse(fs.readFileSync(sessionFile(id), 'utf8')).revision;
+}
+
+test('store (E1): a failed session write exits 1 with STORE_WRITE_FAILED, no stage or next, and the file keeps its state', () => {
+  const id = spawnTestSession('test-store-write-failed');
+  try {
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    const result = runWithStub(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}', { SAI_TEST_FAIL_SESSION_WRITE: '1' });
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.deepEqual(Object.keys(json).slice(0, 2), ['received_at', 'error']);
+    assert.equal(json.error, 'STORE_WRITE_FAILED');
+    assert.equal(json.stage, undefined);
+    assert.equal(json.next, undefined);
+    assert.match(json.detail, /injected/);
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'the session file keeps its previous state');
+    const base = path.basename(sessionFile(id));
+    assert.deepEqual(fs.readdirSync(sessionDir()).filter((name) => name.startsWith(base + '.') && name.endsWith('.tmp')), [], 'no temporary file is left behind');
+    // The same emit succeeds once the write works: the failed one advanced nothing.
+    const retry = runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}');
+    assert.equal(retry.exitCode, 0);
+    assert.equal(JSON.parse(retry.stdout).error, undefined);
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('store (E1): spawn and reset report a failed session write as STORE_WRITE_FAILED', () => {
+  const key = 'test-store-write-failed-verbs-' + process.pid + '-' + Date.now();
+  const spawned = runWithStub(['spawn', '--key', key], '', { SAI_TEST_FAIL_SESSION_WRITE: '1' });
+  assert.equal(spawned.exitCode, 1);
+  assert.equal(JSON.parse(spawned.stdout).error, 'STORE_WRITE_FAILED');
+  const id = JSON.parse(runCli(['spawn', '--key', key]).stdout).id;
+  try {
+    const reset = runWithStub(['reset', id, 'security-steps@1'], '', { SAI_TEST_FAIL_SESSION_WRITE: '1' });
+    assert.equal(reset.exitCode, 1);
+    const json = JSON.parse(reset.stdout);
+    assert.equal(json.error, 'STORE_WRITE_FAILED');
+    assert.equal(json.reset, undefined);
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('store (E2): a revision that changed between the read and the rename exits 1 with STORE_CONFLICT and writes nothing', () => {
+  const id = spawnTestSession('test-store-conflict');
+  try {
+    const startRevision = revisionOnDisk(id);
+    const result = runWithStub(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}', { SAI_TEST_CROSS_WRITE: '1' });
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.error, 'STORE_CONFLICT');
+    assert.equal(json.stage, undefined);
+    assert.equal(json.next, undefined);
+    const stored = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    assert.equal(stored.crossed, true, 'the other writer\'s file stays');
+    assert.equal(stored.revision, startRevision + 1, 'this verb replaced nothing');
+    assert.equal(stored.stateByMachine['explore-idea@1'], undefined, 'this verb\'s state was not written');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('store (E2): the revision counter rises by one with every write and a file without one counts as 0', () => {
+  const id = spawnTestSession('test-store-revision');
+  try {
+    assert.equal(revisionOnDisk(id), 1, 'spawn writes revision 1');
+    assert.equal(runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}').exitCode, 0);
+    assert.equal(revisionOnDisk(id), 2);
+    assert.equal(runCli(['reset', id, 'security-steps@1']).exitCode, 0);
+    assert.equal(revisionOnDisk(id), 3);
+    const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    delete record.revision;
+    fs.writeFileSync(sessionFile(id), JSON.stringify(record));
+    assert.equal(runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}').exitCode, 0);
+    assert.equal(revisionOnDisk(id), 1, 'a legacy file is read as revision 0 and written as 1');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('store (E3): a step report with an undeclared id is rejected whole with UNKNOWN_STEP_ID and the unchanged pointer', () => {
+  const id = spawnTestSession('test-store-unknown-step');
+  try {
+    runCli(['reset', id, 'spec-steps@1']);
+    const first = JSON.parse(runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['spec-intake'] })).stdout);
+    assert.equal(first.stage, 'research');
+    const mixed = runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['research', 'proposal', 'reserch', 7] }));
+    assert.equal(mixed.exitCode, 0);
+    const json = JSON.parse(mixed.stdout);
+    assert.equal(json.rejected, 'UNKNOWN_STEP_ID');
+    assert.deepEqual(json.unknown_ids, ['reserch', 7]);
+    assert.equal(json.error, undefined);
+    assert.equal(json.stage, 'research', 'the declared ids of the report are not applied');
+    assert.deepEqual(json.next, first.next, 'the active pointer is unchanged');
+    const stored = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    assert.deepEqual(stored.stateByMachine['spec-steps@1'].state.done, ['spec-intake']);
+
+    // The whole step reported again advances.
+    const again = JSON.parse(runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['research'] })).stdout);
+    assert.equal(again.rejected, undefined);
+    assert.equal(again.unknown_ids, undefined);
+    assert.equal(again.stage, 'proposal');
+
+    // Declared ids that are already done stay accepted with no change.
+    const repeated = runCli(['emit', id, 'spec-steps@1', '-'], JSON.stringify({ step_ids: ['research'] }));
+    assert.equal(repeated.exitCode, 0);
+    const repeatedJson = JSON.parse(repeated.stdout);
+    assert.equal(repeatedJson.rejected, undefined);
+    assert.equal(repeatedJson.stage, 'proposal');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+function corruptCopies(id) {
+  const base = path.basename(sessionFile(id));
+  return fs.readdirSync(sessionDir()).filter((name) => name.startsWith(base + '.corrupt')).sort();
+}
+
+function removeCorruptCopies(id) {
+  for (const name of corruptCopies(id)) fs.rmSync(path.join(sessionDir(), name), { force: true });
+}
+
+test('store (E4): every verb that reads an unparseable session file renames it aside, reports it, and continues from the initial state', () => {
+  const verbs = [
+    ['spawn', (id, key) => runCli(['spawn', '--key', key])],
+    ['emit', (id) => runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}')],
+    ['progress emit', (id) => runCli(['emit', id, 'spec-steps@1', '--progress', '-'], JSON.stringify({ event: 'progress', step_ids: [], changed_files: [] }))],
+    ['reset', (id) => runCli(['reset', id, 'security-steps@1'])],
+    ['block', (id) => runCli(['block', id, 'anything'])],
+  ];
+  for (const [name, run] of verbs) {
+    const key = 'test-store-corrupt-' + name.replace(/ /g, '-') + '-' + process.pid + '-' + Date.now();
+    const id = JSON.parse(runCli(['spawn', '--key', key]).stdout).id;
+    try {
+      fs.writeFileSync(sessionFile(id), 'not-json');
+      const result = run(id, key);
+      const json = JSON.parse(result.stdout);
+      assert.ok(json.warnings.includes('SESSION_FILE_CORRUPT'), name + ': warns');
+      assert.equal(json.corrupt_file, path.join(sessionDir(), path.basename(sessionFile(id)) + '.corrupt'), name + ': names the renamed file');
+      assert.equal(fs.readFileSync(json.corrupt_file, 'utf8'), 'not-json', name + ': the corrupt content is preserved');
+      if (name === 'emit') {
+        assert.equal(result.exitCode, 0);
+        const cleanId = spawnTestSession('test-store-corrupt-reference');
+        try {
+          const clean = JSON.parse(runCli(['emit', cleanId, 'explore-idea@1', '-'], '{"intent":"next-step"}').stdout);
+          assert.equal(json.stage, clean.stage, 'the emit continues from the initial state');
+        } finally {
+          cleanup([cleanId]);
+        }
+      }
+      if (name === 'block') assert.equal(json.error, 'BLOCK_NOT_FOUND');
+    } finally {
+      cleanup([id]);
+      removeCorruptCopies(id);
+    }
+  }
+});
+
+test('store (E4): a second corrupt file keeps the earlier copy under a numeric suffix', () => {
+  const id = spawnTestSession('test-store-corrupt-twice');
+  try {
+    fs.writeFileSync(sessionFile(id), 'first-corrupt');
+    const first = JSON.parse(runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}').stdout);
+    fs.writeFileSync(sessionFile(id), 'second-corrupt');
+    const second = JSON.parse(runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}').stdout);
+    assert.notEqual(second.corrupt_file, first.corrupt_file);
+    assert.match(path.basename(second.corrupt_file), /\.corrupt\.\d+$/);
+    assert.equal(fs.readFileSync(first.corrupt_file, 'utf8'), 'first-corrupt', 'the earlier copy survives');
+    assert.equal(fs.readFileSync(second.corrupt_file, 'utf8'), 'second-corrupt');
+  } finally {
+    cleanup([id]);
+    removeCorruptCopies(id);
+  }
+});
+
+test('store (E4): a clean session file produces no warning and no corrupt_file', () => {
+  const id = spawnTestSession('test-store-clean');
+  try {
+    const json = JSON.parse(runCli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}').stdout);
+    assert.equal(json.warnings, undefined);
+    assert.equal(json.corrupt_file, undefined);
+  } finally {
+    cleanup([id]);
+  }
+});
+
+// A copy of the source layout (`bin/`, `sai-state/`, `sai/tools/`) without the
+// worker-report validator.
+function copyWithoutValidator() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-no-validator-'));
+  const repo = path.join(__dirname, '..');
+  fs.mkdirSync(path.join(root, 'bin'));
+  fs.copyFileSync(path.join(repo, 'bin', 'sai-state.js'), path.join(root, 'bin', 'sai-state.js'));
+  fs.cpSync(path.join(repo, 'sai-state'), path.join(root, 'sai-state'), { recursive: true });
+  fs.cpSync(path.join(repo, 'sai', 'tools'), path.join(root, 'sai', 'tools'), { recursive: true });
+  fs.rmSync(path.join(root, 'sai', 'tools', 'worker-report-validator.js'));
+  return root;
+}
+
+test('store (E5): without the validator module the common verbs succeed with received_at first and only the progress and block emits exit 2', () => {
+  const root = copyWithoutValidator();
+  const tool = path.join(root, 'bin', 'sai-state.js');
+  const run = (argv, input) => {
+    const result = spawnSync(process.execPath, [tool, ...argv], { encoding: 'utf8', input: input || '' });
+    return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status };
+  };
+  const key = 'test-store-no-validator-' + process.pid + '-' + Date.now();
+  let id;
+  try {
+    const spawned = run(['spawn', '--key', key]);
+    assert.equal(spawned.exitCode, 0, spawned.stderr);
+    id = JSON.parse(spawned.stdout).id;
+    assert.equal(Object.keys(JSON.parse(spawned.stdout))[0], 'received_at');
+    const verbs = [
+      ['reset', ['reset', id, 'spec-steps@1'], '', 0],
+      ['emit', ['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}', 0],
+      ['block', ['block', id, 'missing'], '', 1],
+    ];
+    for (const [name, argv, input, code] of verbs) {
+      const result = run(argv, input);
+      assert.equal(result.exitCode, code, name + ': ' + result.stderr);
+      const json = JSON.parse(result.stdout);
+      assert.equal(Object.keys(json)[0], 'received_at', name + ' response opens with received_at');
+      assert.match(json.received_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
+    }
+
+    const progress = run(['emit', id, 'spec-steps@1', '--progress', '-'], JSON.stringify({ event: 'progress', step_ids: [], changed_files: [] }));
+    assert.equal(progress.exitCode, 2);
+    assert.match(progress.stderr, /worker-report-validator\.js/);
+    assert.match(progress.stderr, /tried: /);
+    assert.equal(progress.stdout, '');
+
+    const block = run(['emit', id, 'explore-slice@1', '--ready-to-propose', '-'], 'x');
+    assert.equal(block.exitCode, 2);
+    assert.match(block.stderr, /worker-report-validator\.js/);
+    assert.equal(block.stdout, '');
+
+    const closed = run(['close', id]);
+    assert.equal(closed.exitCode, 0);
+    assert.equal(Object.keys(JSON.parse(closed.stdout))[0], 'received_at');
+  } finally {
+    if (id) cleanup([id]);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('store (E5): the validator re-exports the received_at clock of its own module', () => {
+  const clock = require('../sai/tools/received-at.js');
+  const validator = require('../sai/tools/worker-report-validator.js');
+  assert.equal(validator.generateReceivedAt, clock.generateReceivedAt);
+  assert.equal(validator.RECEIVED_AT_PATTERN, clock.RECEIVED_AT_PATTERN);
+  assert.match(clock.generateReceivedAt(new Date(2026, 0, 2, 3, 4, 5)), /^2026-01-02T03:04:05[+-]\d{2}:\d{2}$/);
+});
+
+test('store (E8): recovery-ledger@1 is no longer registered', () => {
+  const id = spawnTestSession('test-store-recovery-ledger');
+  try {
+    const result = runCli(['emit', id, 'recovery-ledger@1', '-'], '{}');
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.parse(result.stdout).error, 'UNKNOWN_MACHINE');
+    assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai-state', 'machines', 'recovery-ledger.js')), false);
+    assert.equal(require('../sai-state/registry.js').has('recovery-ledger@1'), false);
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('store (E3): a rejection right after reset returns the stage and pointer reset returned, with the stored state unchanged', () => {
+  const id = spawnTestSession('test-store-unknown-after-reset');
+  try {
+    for (const machineId of ['spec-steps@1', 'design-steps@1', 'red-steps@1', 'green-steps@1', 'review-steps@1', 'security-steps@1', 'performance-steps@1', 'accessibility-steps@1']) {
+      const reset = JSON.parse(runCli(['reset', id, machineId]).stdout);
+      assert.notEqual(reset.next.follow, 'none', machineId + ' reset names a filed step');
+      const before = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8')).stateByMachine[machineId].state;
+      const result = runCli(['emit', id, machineId, '-'], JSON.stringify({ step_ids: ['bogus-step'] }));
+      assert.equal(result.exitCode, 0, machineId);
+      const json = JSON.parse(result.stdout);
+      assert.equal(json.rejected, 'UNKNOWN_STEP_ID', machineId);
+      assert.deepEqual(json.unknown_ids, ['bogus-step'], machineId);
+      assert.equal(json.stage, reset.stage, machineId + ' answers with the stage reset returned');
+      assert.deepEqual(json.next, reset.next, machineId + ' answers with the pointer reset returned');
+      const after = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8')).stateByMachine[machineId].state;
+      assert.deepEqual(after, before, machineId + ' keeps its stored state');
+      assert.deepEqual(after.done, []);
+    }
+  } finally {
+    cleanup([id]);
+  }
+});

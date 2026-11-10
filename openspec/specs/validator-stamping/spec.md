@@ -33,8 +33,12 @@ TBD - created by archiving change replace-emitted-on-with-validated-at. Update P
 - **THEN** received_at remains first, outcome identifies delivery or validity, and only acceptance includes the parsed payload
 
 ### Requirement: One exported generator is the single clock of both CLIs
-The validator module SHALL export `generateReceivedAt` as the only time source for `worker-report-validator.js` and `bin/sai-state.js`. It SHALL return local wall-clock time with its numeric UTC offset in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, never the `Z` designator (a machine on UTC writes `+00:00`).
+The clock module `sai/tools/received-at.js` SHALL export `generateReceivedAt` as the only time source for `worker-report-validator.js` and `bin/sai-state.js`; the validator module SHALL import it from there and re-export it, and `bin/sai-state.js` SHALL load it without loading the validator. It SHALL return local wall-clock time with its numeric UTC offset in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, never the `Z` designator (a machine on UTC writes `+00:00`).
 
 #### Scenario: The generator format is stable
 - **WHEN** `generateReceivedAt()` is called
 - **THEN** the value matches `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$`
+
+#### Scenario: The validator re-exports the same clock
+- **WHEN** `generateReceivedAt` is read from `worker-report-validator.js` and from `received-at.js`
+- **THEN** both are the same function
