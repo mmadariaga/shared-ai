@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const registry = require('../sai-state/registry.js');
 const envelope = require('../sai-state/envelope.js');
+const { ID_PATTERN } = require('../sai-state/machines/run-core.js');
 
 // The worker-report validator is resolved relative to this file. The installed
 // layout is `sai/{bin,tools}` and the source layout is `{bin,sai/tools}`; in each
@@ -452,12 +453,25 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, 
 // Flags that never take a value, so a following `-` stays positional.
 const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose', 'export']);
 
+// Event-building flags: repeatable, each carrying one `<field>=<value>` argument.
+// They are collected in order in `out.eventFlags` (a flag without its argument
+// records the value `null`) and validated by `buildFlagEvent`.
+const EVENT_FLAGS = new Set(['set', 'add', 'set-path']);
+
 function parseArgs(argv) {
-  const out = { command: null, positional: [], named: {} };
+  const out = { command: null, positional: [], named: {}, eventFlags: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
+      const flagName = eqIdx > 0 ? arg.slice(2, eqIdx) : arg.slice(2);
+      if (EVENT_FLAGS.has(flagName)) {
+        let value = null;
+        if (eqIdx > 0) value = arg.slice(eqIdx + 1);
+        else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) value = argv[++i];
+        out.eventFlags.push({ flag: flagName, value });
+        continue;
+      }
       if (eqIdx > 0) {
         out.named[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
       } else {
@@ -628,6 +642,84 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
 // True when the structured input comes from stdin: the `-` marker, no input file.
 function usesStdin(inputFile, eventSource) {
   return !inputFile && eventSource === '-';
+}
+
+const EMIT_FLAGS_FORM = "node <tool-path> emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>=\"<path>\"] (an identifier event built from flags, no input file)";
+
+// A field name starts with a letter and holds letters, digits, or `_`.
+const FLAG_FIELD_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
+// A `--set-path` value must survive a double-quoted argument in Bash and PowerShell 7.
+const FLAG_PATH_FORBIDDEN = /["$`\u0000-\u001f\u007f]/;
+
+// Builds the identifier event of the flag form: `--set <field>=<id>` sets one
+// value, repeatable `--add <field>=<id>` appends to a list (`--add <field>=`
+// records an empty list), `--set-path <field>=<path>` sets a path. Returns
+// `{ event }`, or `{ error }` naming the first violation; nothing else is read.
+function buildFlagEvent(flags) {
+  const event = {};
+  const scalars = new Set();
+  const lists = new Map();
+  for (const entry of flags) {
+    const flag = '--' + entry.flag;
+    if (typeof entry.value !== 'string' || entry.value.indexOf('=') < 1) {
+      return { error: flag + ' requires <field>=<value>' };
+    }
+    const eq = entry.value.indexOf('=');
+    const field = entry.value.slice(0, eq);
+    const value = entry.value.slice(eq + 1);
+    if (!FLAG_FIELD_PATTERN.test(field)) {
+      return { error: flag + ' field "' + field + '" must start with a letter and hold only letters, digits, or _' };
+    }
+    if (entry.flag === 'add') {
+      if (scalars.has(field)) return { error: 'field "' + field + '" is named by --add and by --set or --set-path' };
+      if (!lists.has(field)) lists.set(field, []);
+      if (value !== '') {
+        if (!ID_PATTERN.test(value)) return { error: '--add value for "' + field + '" is not an identifier (' + ID_PATTERN + ')' };
+        lists.get(field).push(value);
+      }
+      continue;
+    }
+    if (lists.has(field)) return { error: 'field "' + field + '" is named by --add and by --set or --set-path' };
+    if (scalars.has(field)) return { error: 'field "' + field + '" is set more than once' };
+    if (entry.flag === 'set') {
+      if (!ID_PATTERN.test(value)) return { error: '--set value for "' + field + '" is not an identifier (' + ID_PATTERN + ')' };
+    } else if (value === '' || FLAG_PATH_FORBIDDEN.test(value)) {
+      return { error: '--set-path value for "' + field + '" is empty or holds a double quote, $, a backtick, or a control character; send this event with --input-file instead' };
+    }
+    scalars.add(field);
+    event[field] = value;
+  }
+  for (const [field, items] of lists) event[field] = items;
+  if (Object.keys(event).length === 0) return { error: 'the flag form needs at least one --set, --add, or --set-path' };
+  return { event };
+}
+
+function flagUsageError(message) {
+  process.stderr.write('emit: ' + message + '; no transition occurred. Send it as: ' + EMIT_FLAGS_FORM + '\n');
+  process.exitCode = 2;
+}
+
+// Flag-form emit: the event is built from `--set`, `--add`, and `--set-path`,
+// so no input file or stdin is read. Combining the flags with any other event
+// source is a usage error that changes nothing.
+function commandEmitFlags(parsed) {
+  const [id, machineIdArg, ...extra] = parsed.positional;
+  if (parsed.named['input-file'] !== undefined || parsed.named.progress !== undefined || parsed.named['ready-to-propose'] !== undefined || extra.length > 0) {
+    flagUsageError('--set, --add, and --set-path cannot be combined with --input-file, stdin "-", --progress, or --ready-to-propose');
+    return;
+  }
+  if (!id || !machineIdArg) {
+    flagUsageError('emit requires <id> <machineId>');
+    return;
+  }
+  const built = buildFlagEvent(parsed.eventFlags);
+  if (built.error) {
+    flagUsageError(built.error);
+    return;
+  }
+  const outcome = runEmit(id, machineIdArg, () => ({ event: built.event }));
+  writeResponse(outcome.payload);
+  process.exitCode = outcome.code;
 }
 
 function commandEmit(id, machineIdArg, eventSource, extraArgs, inputFile) {
@@ -1102,6 +1194,10 @@ function main(argv) {
     commandSpawn(parsed.named.key);
     return;
   }
+  if (parsed.command === 'emit' && parsed.eventFlags.length > 0) {
+    commandEmitFlags(parsed);
+    return;
+  }
   if (parsed.command === 'emit' && parsed.named['ready-to-propose'] === true) {
     if (parsed.named.progress !== undefined) {
       process.stderr.write('--ready-to-propose cannot be combined with --progress\n');
@@ -1142,6 +1238,7 @@ function main(argv) {
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> --input-file <path>   (event JSON in the input file; `-` reads stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]   (identifier event built from flags)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>   (the worker progress report reference, verified and validated)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress --input-file <path>   (worker progress payload JSON in the input file; `-` reads stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --input-file <path>   (Ready to Propose block set in the input file; `-` reads stdin)\n');

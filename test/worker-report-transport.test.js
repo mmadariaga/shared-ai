@@ -332,7 +332,7 @@ test('the plan cycle opens and records the report directory, validates every rep
   assert.match(cycle, /Its first task message opens with the same `--report-dir` line the run recorded/);
   assert.match(cycle, /The report directory in `report_dirs` is reused/);
   assert.match(cycle, /transfer\.js close --dir \{report directory\}/);
-  assert.match(cycle, /emit `\{"step_ids": \[\.\.\.\]\}` to the machine, with the ids copied from its payload/);
+  assert.match(cycle, /emit the step ids to the machine, copied from its payload, through `emit <id> <machine> --add step_ids=<id>`/);
   for (const name of ['spec', 'design']) {
     assert.match(read(`sai/commands/${name}/coordinator.md`), /opens with the `--report-dir` line the cycle's Reports names/);
   }

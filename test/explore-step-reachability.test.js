@@ -229,7 +229,7 @@ test('the POC lane is a follow-loaded conditional stage entered from the stage-1
   const lane = fs.readFileSync(path.join(explorerStepsDir, 'poc-lane.md'), 'utf8');
 
   // The stage-1 close owns the trigger and routes into the lane.
-  assert.match(common, /\{"intent":"poc-lane"\}/);
+  assert.match(common, /--set intent=poc-lane`/);
   assert.match(common, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
   assert.match(common, /Yes, run a POC before continuing/);
   assert.match(common, /No, continue without a POC/);
@@ -245,7 +245,7 @@ test('the POC lane is a follow-loaded conditional stage entered from the stage-1
   assert.match(lane, /conditional stage/);
   assert.match(lane, /`C1\.\.Cn`/);
   assert.match(lane, /`<Cn> wins` or `none`/);
-  assert.match(lane, /\{"intent":"next-step"\}/);
+  assert.match(lane, /--set intent=next-step`/);
   assert.doesNotMatch(lane, /crystallize-resume/);
 });
 
@@ -256,13 +256,13 @@ test('the late explicit lane entry is owned by common.md and routes to the same 
 
   // The explicit gate, its emit, and its stage range live in common.md only.
   assert.match(common, /\*\*Late explicit POC entry \(stages 2 through 4\)\.\*\*/);
-  assert.match(common, /\{"intent":"poc-lane-late"\}/);
+  assert.match(common, /--set intent=poc-lane-late`/);
   assert.match(common, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
   assert.match(common, /Nothing enters the lane automatically after stage 1/);
   assert.match(common, /never skips, weakens, or re-opens an already agreed/);
 
   // The lane accepts both entries and always returns to stage 2.
-  assert.match(lane, /\{"intent":"poc-lane-late"\}/);
+  assert.match(lane, /--set intent=poc-lane-late`/);
 
   // Crystallization points at the shared gate instead of restating the emit.
   assert.doesNotMatch(protocol, /\{"intent":"poc-lane-late"\}/);
