@@ -4,7 +4,7 @@ Fetch `@sai/policies/cache-warming.md` and follow its § Hand-off wait. Fetch `@
 
 **Hand-off close.** The successful end of a Plan - Unattended slice (`pipeline-plan-unattended.md` § Close) or of a sliced Manual hand-off (`route-selector.md` § Post-Manual handoff), where the user goes to another chat and returns here with `next-slice`. Run this file as the last step of that close, after its text is printed.
 
-**State.** Keep in conversation state, for the current `/sai-explore` invocation only: `handoff_answer` (unset, `off`, or `{interval, max}` in minutes, from the user's answers), `handoff_wait` (the chain of the armed wait and the id of its live background task, or unset). Every wake re-arm launches a new background task: replace the task id in `handoff_wait` with the new one at that re-arm (the chain stays), so a stop always targets the live task. Write nothing to a settings file, the `sai-state` store, or the repository; explore stays read-only for repository files.
+**State.** Keep in conversation state, for the current `/sai-explore` invocation only: `handoff_answer` (unset, `off`, or `{interval, max}`, each value in an accepted form below and counted in minutes when it has no unit, from the user's answers), `handoff_wait` (the chain of the armed wait and the id of its live background task, or unset). Every wake re-arm launches a new background task: replace the task id in `handoff_wait` with the new one at that re-arm (the chain stays), so a stop always targets the live task. Write nothing to a settings file, the `sai-state` store, or the repository; explore stays read-only for repository files.
 
 ## Whether to warm
 
@@ -28,8 +28,9 @@ Print the harness TTL notice in the chat language, then ask both questions in on
 Read the answers:
 
 - Interval `No`, or a dismissed picker: no warming, and the duration is ignored. Set `handoff_answer` to `off` and end this file.
-- Interval as free text: a positive number of minutes (`20`, `20 min`, `1h`). Duration as free text: the same. An unanswered duration, or an interval given as free text with no duration, is `4h`.
-- When a free text gives no positive number of minutes, or the interval exceeds the duration, ask the two questions once more. When the second answer is also invalid, do not warm: say so in one line, set `handoff_answer` to `off`, and end this file.
+- **Accepted forms.** The interval and the duration, whether picked or typed, are each a positive number with an optional unit: `s` or `sec` (seconds), `m` or `min` (minutes), `h` or `hr` (hours). A value with no unit counts in minutes. The picker's `30 min`, `4 min`, `4h`, `2h`, and `1h` and free text such as `20`, `20 min`, and `1.5h` are accepted. A compound such as `1h30` is not accepted. `wait.js begin` converts each value, so keep the answer as the user gave it, without the `(Recommended)` suffix of a picked label.
+- An unanswered duration, or an interval given as free text with no duration, is `4h`.
+- When a free text is not an accepted form, or the interval exceeds the duration, ask the two questions once more. When the second answer is also invalid, do not warm: say so in one line, set `handoff_answer` to `off`, and end this file.
 - A valid pair is `{interval, max}` with `max` the duration. Set `handoff_answer` to it; it applies to every later hand-off close of this invocation with no new question (E7).
 
 ## Arm
