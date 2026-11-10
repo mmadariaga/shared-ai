@@ -2,7 +2,7 @@
 
 Single source for when and how a coordinator ends the workers and helpers it creates, and for the rule every worker follows on the commands it launches. Ending a worker never depends on the warming setting: `@sai/policies/cache-warming.md` decides whether a worker's prompt cache stays warm, and this policy decides when the worker ends. Coordinators, worker bindings, and helper skills fetch this file and never restate it.
 
-Terms. **Dispose**: the unconditional action that ends a worker or helper the coordinator created, whatever the warming setting and whatever the worker's latest `warming` diagnostic. **Last use**: the point after which the coordinator sends no further message to that worker. **Handle**: the identifier the coordinator captured when it created the worker (the agent ID on Claude Code, the `sessionID` on opencode). **Worker**, **helper**, and **live explorer** keep the meaning they have in `cache-warming.md` Terms and below.
+Terms. **Dispose**: the unconditional action that ends a worker or helper the coordinator created, whatever the warming setting and whatever the worker's latest `warming` diagnostic (the diagnostic decides only the opencode `dispose` message after a `none` listing, § Stop call). **Last use**: the point after which the coordinator sends no further message to that worker. **Handle**: the identifier the coordinator captured when it created the worker (the agent ID on Claude Code, the `sessionID` on opencode). **Worker**, **helper**, and **live explorer** keep the meaning they have in `cache-warming.md` Terms and below.
 
 ## Dispose
 
@@ -22,14 +22,14 @@ Claude Code and opencode dispose at the same points and differ only in the stop 
 ## Stop call
 
 - **Claude Code**: `TaskStop(task_id: "<captured agent ID>")`.
-- **opencode**: `node <tool-path> --session <sessionID> --cwd <project-root>`, with `dispose-shells.js` resolved per `@sai/policies/tool-resolution.md`, the captured `sessionID`, and the project root. The tool removes every running shell of that session, which ends the agent's armed cache-warm wait with them, and prints `{"status": "removed" | "none" | "failed" | "unavailable"}`. `removed` and `none` (a worker with no running shell) are a complete dispose and print no notice. Send the message `dispose` only when the status is `failed` or `unavailable`, after printing a one-line notice: from then on the agent answers each wake with `ok` and arms nothing. No `session.interrupt` call exists in this stop: it returns 404 for a child session, and aimed at your own session it aborts the tool call that is running.
+- **opencode**: `node <tool-path> --session <sessionID> --cwd <project-root>`, with `dispose-shells.js` resolved per `@sai/policies/tool-resolution.md`, the captured `sessionID`, and the project root. The tool removes every running shell of that session, which ends the agent's armed cache-warm wait with them, and prints `{"status": "removed" | "none" | "failed" | "unavailable"}`. `removed` is a complete dispose and prints no notice. `none` means the session has no running shell at that moment: a worker that is warming can sit in the gap between a wait's exit and its re-arm, so `none` ends nothing for it. Send the message `dispose` when the status is `none` and the `warming:` line of the worker's last real message was `true` (keep that value with the handle; a worker that never sent the line, for example one that only answered the ready handshake, receives none), and when the status is `failed` or `unavailable`, the last two after printing a one-line notice. A worker that is not warming receives no message, so a dispose adds no turn to the common warming-off case. From then on the agent answers each wake with `ok` and arms nothing. No `session.interrupt` call exists in this stop: it returns 404 for a child session, and aimed at your own session it aborts the tool call that is running.
 
-One dispose also ends the cache-warm wait the agent armed; no second stop action follows. Neither harness sends the `dispose` message first.
+One dispose also ends the cache-warm wait the agent armed; no second stop action follows. Neither harness sends the `dispose` message first: on opencode it follows the stop call only in the cases of § Stop call, and Claude Code never sends it.
 
 ## Outcomes
 
 - **Already ended.** A worker that finished or no longer exists counts as disposed. It spends no attempt and triggers no retry. On Claude Code, `TaskStop` on a cleanly finished worker returns `No task found`.
-- **Lost handle.** Handles live in conversation state only, never in the `sai-state` store. A handle lost to a context compaction is skipped: dispose the workers whose handles you still hold. The run outcome does not change.
+- **Lost handle.** Handles, and the last `warming:` line kept with each, live in conversation state only, never in the `sai-state` store. A handle lost to a context compaction is skipped: dispose the workers whose handles you still hold. The run outcome does not change.
 - **Other failure.** For any other dispose failure (a permission refusal, a failed `TaskStop`, the `dispose` fallback itself), print one notice naming the worker role and the error. The run continues to its close and keeps its outcome.
 
 ## Worker side

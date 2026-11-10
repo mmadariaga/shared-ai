@@ -25,13 +25,19 @@ Claude Code and opencode SHALL each end `/sai-2-design` after design-artifact co
 
 ### Requirement: Surviving harnesses use routed dispatch mechanisms
 
-Claude Code SHALL retain Agent dispatch with SendMessage continuation and opencode SHALL retain task dispatch with task-ID continuation for their routed planning and audit workers. No inline execution mechanism or Copilot-specific dispatch branch SHALL remain in the supported harness contract.
+Claude Code SHALL retain `Agent` dispatch in the background with `SendMessage` continuation, and opencode SHALL use the v2 `subagent` tool with `background: true` for dispatch and a continuation through `subagent` with the same `agent` and the captured `sessionID`, for their routed planning, implementation, review, and audit workers. The retired opencode v1 `task` dispatch and its task-ID continuation SHALL NOT be part of the supported harness contract. No inline execution mechanism or Copilot-specific dispatch branch SHALL remain in the supported harness contract.
 
 #### Scenario: Routed worker requests input
 
 - **WHEN** a design or implementation worker returns `needs_input` on Claude Code or opencode
-- **THEN** its existing harness-native binding continues the same worker
+- **THEN** its existing harness-native binding continues the same worker, through `SendMessage` on Claude Code and through `subagent` with the same `agent` and the captured `sessionID` on opencode
 - **AND** no inline adapter is selected
+
+#### Scenario: opencode routed dispatch uses the v2 subagent tool
+
+- **WHEN** an opencode coordinator dispatches a routed worker
+- **THEN** it calls the v2 `subagent` tool with `background: true`
+- **AND** it uses no v1 `task` dispatch or task-ID continuation
 
 ### Requirement: Coordinator runtime selection is limited to surviving harnesses
 

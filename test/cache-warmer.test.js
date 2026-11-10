@@ -253,6 +253,48 @@ test('begin for the main session may carry timings the user chose, which replace
   assert.equal(setting.value, 'off');
 });
 
+test('E2 begin accepts every interval and duration form the hand-off picker offers, unitless values in minutes, and rejects 1h30', t => {
+  const { setting, io, saiRoot } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'forms' };
+  const timingsOf = (interval, max) => warmer.beginOnce({ ...main, interval, max }, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] }).warming;
+  assert.deepEqual(timingsOf('30 min', '4h'), { interval: 30, max: 240 });
+  assert.deepEqual(timingsOf('4 min', '2h'), { interval: 4, max: 120 });
+  assert.deepEqual(timingsOf('4 min', '1h'), { interval: 4, max: 60 });
+  assert.deepEqual(timingsOf('20', '20 min'), { interval: 20, max: 20 });
+  assert.deepEqual(timingsOf('20 min', '4h'), { interval: 20, max: 240 });
+  for (const [interval, max] of [['1h30', '4h'], ['30 min', '1h30'], ['No', '4h'], ['0', '4h'], ['5h', '4h']]) {
+    assert.throws(() => timingsOf(interval, max), warmer.UsageError, `${interval} / ${max}`);
+  }
+  const argv = warmer.beginInputFromArgv(['--role', 'agent', '--provider', 'anthropic', '--interval', '30 min', '--max', '4h', '--fixed-deadline', '--harness', 'claude']);
+  assert.deepEqual([argv.interval, argv.max], ['30 min', '4h']);
+  assert.equal(setting.value, 'off');
+});
+
+test('E3 a main-session begin without a harness session id fails naming the variable and arms nothing, and a subagent begin is unchanged', t => {
+  const { begin, io, saiRoot } = chainFixture(t);
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude' };
+  const empty = { ...io, cwd: saiRoot, agentFolders: [], env: {} };
+  assert.throws(() => warmer.beginOnce(main, empty), error => error instanceof warmer.UsageError && /CLAUDE_CODE_SESSION_ID/.test(error.message));
+  assert.throws(() => warmer.beginOnce({ ...main, harness: 'opencode' }, empty), error => error instanceof warmer.UsageError && /OPENCODE_SESSION_ID/.test(error.message));
+  assert.throws(() => warmer.beginOnce({ ...main, interval: '30 min', max: '4h', fixedDeadline: true }, empty), warmer.UsageError, 'the hand-off begin included');
+  assert.deepEqual(fs.readdirSync(saiRoot), [], 'no chain record was written');
+  const fromEnv = warmer.beginOnce(main, { ...empty, env: { CLAUDE_CODE_SESSION_ID: 'from-env' } });
+  assert.equal(fromEnv.chain, warmer.sessionChainId('claude', 'from-env'));
+  assert.match(begin().chain, /^[0-9a-f]{16}$/, 'a subagent begin needs no session id');
+});
+
+test('E4 the two context-preserving wrappers carry no preamble on either harness, and AGENTS.md states the exemption', () => {
+  const root = path.resolve(__dirname, '..');
+  const clean = 'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.';
+  for (const harness of ['claude', 'opencode']) {
+    for (const file of ['sai-cache-warmer.md', 'sai-context-cache-ttl-benchmark.md']) {
+      assert.ok(!fs.readFileSync(path.join(root, 'commands', harness, file), 'utf8').split(/\r?\n/).includes(clean), `${harness}/${file}`);
+    }
+  }
+  const agents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(agents, /### Isolation Mode[\s\S]*\*\*Exemption\.\*\* `sai-cache-warmer` and `sai-context-cache-ttl-benchmark` keep their wrappers without the preamble on both harnesses/);
+});
+
 test('I3 begin with a fixed deadline stores it in the record, needs the user\'s timings, and a plain begin drops it', t => {
   const { begin, saiRoot, clock } = chainFixture(t, 'off');
   const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'chat' };
@@ -529,6 +571,10 @@ test('the policy keeps the reduced rule set: switch, begin, arm after every resp
   assert.match(policy, /`max` minutes have passed since your last real message, whether or not anyone disposed you/);
   assert.match(policy, /answer every wake with `ok` and arm nothing again/);
   assert.match(policy, /## Warming diagnostic[\s\S]*It gates no stop and no dispatch/);
+  assert.match(policy, /except, on opencode, the one of each worker's last real message, which decides whether a `none` listing still needs the `dispose` message/);
+  assert.match(policy, /`budget-subagent` receives it only on a continuation/);
+  assert.match(policy, /A main-session `begin` without a session id exits non-zero with a message that names the variable and arms nothing/);
+  assert.match(policy, /supersedes nothing: an earlier wait of its chain keeps re-arming at each wake until its window closes or the agent is disposed/);
   assert.match(policy, /## Dispose[\s\S]*`@sai\/policies\/worker-lifecycle\.md` owns the dispose points[\s\S]*No `dispose` message is sent first/);
   assert.match(policy, /The main session is never disposed[\s\S]*continues the same chain/);
   assert.match(policy, /beside that path in the message and never inside the report file/);
@@ -543,7 +589,9 @@ test('the lifecycle policy disposes unconditionally, names the Claude Code stop 
   assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/);
   assert.match(lifecycle, /node <tool-path> --session <sessionID> --cwd <project-root>[\s\S]*`dispose-shells\.js`/);
   assert.match(lifecycle, /`removed`, `none`, `failed`, or `unavailable`|"removed" \| "none" \| "failed" \| "unavailable"/);
-  assert.match(lifecycle, /Send the message `dispose` only when the status is `failed` or `unavailable`/);
+  assert.match(lifecycle, /Send the message `dispose` when the status is `none` and the `warming:` line of the worker's last real message was `true`[\s\S]*and when the status is `failed` or `unavailable`/);
+  assert.match(lifecycle, /a worker that never sent the line[\s\S]{0,120}receives none/);
+  assert.match(lifecycle, /`removed` is a complete dispose and prints no notice/);
   assert.match(lifecycle, /No `session\.interrupt` call exists/);
   assert.doesNotMatch(lifecycle, /api\/session\/:sessionID\/interrupt/);
   assert.match(lifecycle, /answer each later wake of a wait you armed with `ok` alone/);
@@ -597,6 +645,8 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /--role agent/);
   assert.match(step, /`30 min \(Recommended\)`, `4 min`, `No`/);
   assert.match(step, /`4h \(Recommended\)`, `2h`, `1h`/);
+  assert.match(step, /A compound such as `1h30` is not accepted/);
+  assert.match(step, /`30 min`, `4 min`, `4h`, `2h`, and `1h` and free text such as `20`, `20 min`/);
   assert.match(step, /1 hour with a Claude subscription and 5 minutes with pay-per-token/);
   assert.match(step, /\/sai-context-cache-ttl-benchmark/);
   assert.match(step, /§ Stop your own wait/);

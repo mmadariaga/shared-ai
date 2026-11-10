@@ -10,10 +10,10 @@ A dispatcher that disposes an agent turns its warming on by ending the task mess
 
 `Warming: on, agent {agent}. Fetch @sai/policies/cache-warming.md and follow it as a subagent.`
 
-- Workers, `budget-explorer`, and `budget-subagent` receive it. `budget-executor` never does: it never arms.
+- Workers and `budget-explorer` receive it. `budget-subagent` receives it only on a continuation: its one-shot task message is followed by its dispose and carries none (`skills/{claude,opencode}/budget-subagent/SKILL.md` § Warming and dispose). `budget-executor` never does: it never arms.
 - The ready-only dispatch of the two-phase handshake carries no task content and therefore no switch.
 - A dispatcher that cannot dispose (a worker that dispatches its own helpers) sends no switch, so its helpers never arm. Only an agent that disposes another one enables its warming.
-- The dispatcher resolves no timings and keeps no state about the agent's warming. The agent's own `begin` reads the setting.
+- The dispatcher resolves no timings and keeps no state about the agent's warming, except the `warming:` diagnostic of each worker's last real message, which the opencode dispose reads (§ Warming diagnostic). The agent's own `begin` reads the setting.
 
 ## Begin
 
@@ -25,9 +25,9 @@ The first response of an agent that received the switch (or of a main session th
 `begin` prints `{"chain": "<id>", "warming": {"interval", "max"}}` in minutes, or `{"chain": null, "warming": "off"}`. Keep the chain for the whole session.
 
 - `off` (the setting turns the agent off, or has no entry for it): arm nothing for the session. Nothing warms until the user enables it.
-- A non-zero exit (for example the harness temporary root is missing on Linux, which SAI never creates): print one line that names the message `begin` printed, arm nothing, and finish the task unchanged.
+- A non-zero exit (for example the harness temporary root is missing on Linux, which SAI never creates, or a main session has no harness session id): print one line that names the message `begin` printed, arm nothing, and finish the task unchanged.
 
-A main session's chain follows its harness session id, so `begin` in a later command invocation of the same chat returns the chain the chat already owns, and at most one wait of the main session is live.
+A main session's chain follows its harness session id (`CLAUDE_CODE_SESSION_ID` on Claude Code, `OPENCODE_SESSION_ID` on opencode, or `--session <id>`), so `begin` in a later command invocation of the same chat returns the chain the chat already owns, and at most one wait of the main session is live. A main-session `begin` without a session id exits non-zero with a message that names the variable and arms nothing, because a new chain for each call would break that rule: the session runs without warming. A subagent `begin` needs no session id.
 
 ## Arm, wake, and window
 
@@ -42,7 +42,7 @@ A main session's chain follows its harness session id, so `begin` in a later com
 
 A wake performs no work. Run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing.
 
-**A real message while a wait is armed.** Handle it as normal work, and arm again after you respond with `warm --chain <chain>`. The earlier wait is superseded: its late wake returns `finished`, and you reply `ok` and arm nothing. A message that carries no switch (a helper's task message) arms nothing for a subagent: its earlier wait ends at its next wake or at its dispose.
+**A real message while a wait is armed.** Handle it as normal work, and arm again after you respond with `warm --chain <chain>`. The earlier wait is superseded: its late wake returns `finished`, and you reply `ok` and arm nothing. A message that carries no switch (a helper's task message) arms nothing for a subagent and supersedes nothing: an earlier wait of its chain keeps re-arming at each wake until its window closes or the agent is disposed.
 
 **The benchmark.** `/sai-context-cache-ttl-benchmark` applies a warming override with a cutoff mark; every chain armed before the mark ends at its next wake, in every agent and in sessions of other projects on the same harness, which then resume cold at their next real message.
 
@@ -54,7 +54,7 @@ A wake performs no work. Run no tool other than the re-arm, send no report, emit
 
 ## Warming diagnostic
 
-Every real message a subagent sends to its dispatcher carries the line `warming: true` or `warming: false`: `true` when its wait is armed when it sends the message, `false` otherwise (no switch reached it, the setting is off, or arming failed). The line is a diagnostic. It gates no stop and no dispatch: the dispatcher keeps no value for it, and a message without the line is read the same way.
+Every real message a subagent sends to its dispatcher carries the line `warming: true` or `warming: false`: `true` when its wait is armed when it sends the message, `false` otherwise (no switch reached it, the setting is off, or arming failed). The line is a diagnostic. It gates no stop and no dispatch: the stop call always runs, a message without the line is read the same way, and the dispatcher keeps no value for the line except, on opencode, the one of each worker's last real message, which decides whether a `none` listing still needs the `dispose` message (`@sai/policies/worker-lifecycle.md` § Stop call).
 
 - A worker that returns only the path of its report writes the line beside that path in the message and never inside the report file, because arming happens after the report is written.
 - The `ready` reply of the two-phase startup is the exact text its prompt asks for and carries no field.
@@ -62,11 +62,11 @@ Every real message a subagent sends to its dispatcher carries the line `warming:
 
 ## Dispose
 
-Ending a worker or helper does not depend on warming: `@sai/policies/worker-lifecycle.md` owns the dispose points, the stop call, and the already-ended and failure handling. On Claude Code a dispose ends the armed wait together with the agent. On opencode it removes the running shells of the agent's session, the armed wait included. No `dispose` message is sent first, and no second stop of the wait follows. The main session is never disposed: after its closing report it keeps arming until `max` minutes have passed since its last real message, and a new command invocation in the same chat continues the same chain.
+Ending a worker or helper does not depend on warming: `@sai/policies/worker-lifecycle.md` owns the dispose points, the stop call, and the already-ended and failure handling. On Claude Code a dispose ends the armed wait together with the agent. On opencode it removes the running shells of the agent's session, the armed wait included. No `dispose` message is sent first, and no second stop of the wait follows; the opencode `dispose` message that `worker-lifecycle.md` § Stop call sends after a `none` listing is a fallback after the stop call. The main session is never disposed: after its closing report it keeps arming until `max` minutes have passed since its last real message, and a new command invocation in the same chat continues the same chain.
 
 ## Hand-off wait
 
-A command that sends the user to another chat and waits for them to return (the `/sai-explore` hand-off close, `sai/commands/explore/steps/handoff-warming.md`) arms a hand-off wait: an ordinary chain of the main session whose window is a fixed deadline, which `wait.js` owns. The command settles the timings (the `agent` setting, or the user's answers to its question) and passes them explicitly: `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. The chain record then holds the deadline, `max` minutes after that `begin`, and no arm or wake moves it.
+A command that sends the user to another chat and waits for them to return (the `/sai-explore` hand-off close, `sai/commands/explore/steps/handoff-warming.md`) arms a hand-off wait: an ordinary chain of the main session whose window is a fixed deadline, which `wait.js` owns. The command settles the timings (the `agent` setting, or the user's answers to its question) and passes them explicitly, each as a positive duration in minutes unless it ends in `s`, `m`, or `h` (`20`, `30 min`, `4h`; `1h30` is refused): `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. The chain record then holds the deadline, `max` minutes after that `begin`, and no arm or wake moves it.
 
 - **Arm once.** Run `begin` as above and arm with `warm --chain <chain>` at the end of the hand-off close. A real message other than the event the command waits for re-arms nothing, so the deadline stays where `begin` set it; the tool also keeps it if an arm happens anyway, and an arm after the deadline arms nothing.
 - **Wake.** Re-arm with `--state <state_token>` (the returned token, unchanged) and reply `ok`. Each re-arm launches a new background task, so replace the task id the command holds for the wait with the new task's id (the chain stays the same); the stop must end the live task, not the one that already ended. The timings stay as passed to `begin`.
