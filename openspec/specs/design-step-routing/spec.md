@@ -6,11 +6,11 @@ TBD - created by archiving change design-standalone-state-machine. Update Purpos
 ## Requirements
 
 ### Requirement: Silent ignore with authoritative re-steer
-The machine SHALL ignore undeclared worker ids silently with no notification channel and no state change. The coordinator SHALL re-emit the authoritative pointer from the unchanged state, which re-steers the worker.
+The machine SHALL reject a worker report that names an undeclared id with `rejected: "UNKNOWN_STEP_ID"` and the undeclared ids in `unknown_ids`, with no state change and none of its declared ids applied. The coordinator SHALL re-emit the authoritative pointer from the unchanged state, which re-steers the worker.
 
 #### Scenario: Unknown ids leave state unchanged
 - **WHEN** the worker reports only undeclared ids while parked at research
-- **THEN** the state and pointer stay unchanged with no rejection marker
+- **THEN** the state and pointer stay unchanged and the response carries `rejected: "UNKNOWN_STEP_ID"` with those ids in `unknown_ids`
 
 ### Requirement: design-steps happy-path progression to done
 

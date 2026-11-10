@@ -208,7 +208,7 @@ function copyTree(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-test('progress emit (E6): a missing validator module exits 2 on every verb naming the tried paths and never emits', () => {
+test('progress emit (E6): a missing received_at clock exits 2 on every verb and a missing validator exits 2 on the progress emit, each naming the tried paths and never emitting', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-progress-novalidator-'));
   try {
     fs.mkdirSync(path.join(root, 'bin'));
@@ -222,8 +222,12 @@ test('progress emit (E6): a missing validator module exits 2 on every verb namin
         const r = runCli(argv, '', tool);
         assert.equal(r.exitCode, 2);
         assert.equal(r.stdout, '');
-        assert.ok(r.stderr.includes(path.join(root, 'tools', 'worker-report-validator.js')));
+        assert.ok(r.stderr.includes(path.join(root, 'tools', 'received-at.js')));
+        assert.ok(r.stderr.includes(path.join(root, 'sai', 'tools', 'received-at.js')));
       }
+      // The clock present, the validator absent: only the progress emit stops.
+      fs.mkdirSync(path.join(root, 'sai', 'tools'), { recursive: true });
+      fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', 'received-at.js'), path.join(root, 'sai', 'tools', 'received-at.js'));
       const before = readRecord(id);
       const result = runCli(['emit', id, 'spec-steps@1', '--progress', '-'], progress(['spec-intake']), tool);
       assert.equal(result.exitCode, 2);
@@ -247,7 +251,7 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
     fs.mkdirSync(path.join(sai, 'tools'), { recursive: true });
     fs.copyFileSync(SAI_STATE_TOOL, path.join(sai, 'bin', 'sai-state.js'));
     copyTree(path.join(REPO_ROOT, 'sai-state'), path.join(sai, 'sai-state'));
-    for (const file of ['worker-report-validator.js', 'input-reader.js']) {
+    for (const file of ['worker-report-validator.js', 'received-at.js', 'input-reader.js', 'temp-root.js', 'transfer.js']) {
       fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', file), path.join(sai, 'tools', file));
     }
     const tool = path.join(sai, 'bin', 'sai-state.js');

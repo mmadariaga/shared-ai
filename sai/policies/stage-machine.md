@@ -18,7 +18,16 @@ project and never travels in a request or a response.
 A session file takes one writer at a time: run `emit` and `reset` calls against
 the same session id one after another, even while workers run in parallel. The
 deep-review audit batch emits in fixed order security → performance →
-accessibility.
+accessibility. The file carries an integer `revision` that every write raises
+by one (a file without one counts as 0). Each verb remembers the revision it
+read, reads the file's revision again just before it replaces the file, and
+writes nothing when the two differ (`STORE_CONFLICT`, § Responses): a crossed
+write is reported, never silently lost. The check detects a crossed write and
+does not lock; a very small window between the second read and the replacement
+remains. An unparseable session file is never overwritten: the verb that reads
+it renames it to `<session-file>.corrupt` (a numeric suffix, `.corrupt.1`,
+`.corrupt.2`, keeps an earlier copy when that name is taken) and continues from
+the initial state.
 
 ## Verbs
 
@@ -62,10 +71,13 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
   error: discriminate by `validation.ok`. A validator module found in
   neither location relative to the CLI exits 2 naming the tried paths and
-  emits nothing. Every verb loads that module for `received_at`, so a missing
-  validator exits 2 on every verb. Every stdout JSON response, machine errors
-  (exit 1) included, carries `received_at` as its first key; stderr carries no
-  time.
+  emits nothing. Only the progress emit and the block emit load that module;
+  `spawn`, `reset`, `close`, `block`, and an identifier-event `emit` run without
+  it. Every verb takes `received_at` from its own clock module
+  (`sai/tools/received-at.js`, the single source the validator also uses), and a
+  clock module found in neither location exits 2 naming the tried paths. Every
+  stdout JSON response, machine errors (exit 1) included, carries `received_at`
+  as its first key; stderr carries no time.
 - **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>`
   reads the complete `Ready to Propose` block set as text from the block file
   instead of a hand-composed event, and the bounded-judgment verdicts
@@ -81,9 +93,10 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   the session file, per change name, each block's text, its sha256 hash, and
   the verdicts of its flagged lines, in the same session-file write as the
   inventory; a later successful block emit replaces the stored blocks together
-  with the inventory. When the stored blocks cannot be confirmed after the emit,
-  the response carries `warnings: ["BLOCKS_NOT_STORED"]`, the inventory stays
-  recorded, and no earlier emit's blocks are left in place. The set is validated as a whole: a
+  with the inventory. The inventory, the block texts, their hashes, and their
+  verdicts are one session-file write: when it fails the response is the
+  `STORE_WRITE_FAILED` (or `STORE_CONFLICT`) error of § Responses, and the
+  earlier inventory and blocks stay intact. The set is validated as a whole: a
   structural violation, a flagged line without a verdict, or a `violation`
   verdict records nothing and leaves the machine untouched. It always
   returns `received_at` and `validation: {ok, structural_ok, profile, blocks:
@@ -102,8 +115,8 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1`
   pointer (exit 1). `--amend` is outside this check. On any other
   machine, or combined with `--progress`, the option is a
-  usage error (exit 2). A detector module found in neither location relative to
-  the CLI exits 2 naming the tried paths.
+  usage error (exit 2). A detector or validator module found in neither location
+  relative to the CLI exits 2 naming the tried paths.
 - **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --block-file <path> --verdicts-file <path>`
   reads exactly one `Ready to Propose` block as text from the block file, in the
   block emit's delivery form and with the same verdicts file. It
@@ -118,9 +131,10 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   accepted amendment replaces only that slice's stored text, hash, and verdicts
   in the session file; the inventory order, the other slices' stored entries,
   the completed slices, and every parked cursor stay unchanged. It returns the
-  block emit's `validation` block plus the ordinary emit fields, and the
-  `BLOCKS_NOT_STORED` warning when the replacement cannot be confirmed (the
-  previous entry then remains stored). A non-dispatchable block returns
+  block emit's `validation` block plus the ordinary emit fields. The
+  replacement is written together with the machine outcome in one session-file
+  write, so a store failure (§ Responses) leaves the previous entry stored. A
+  non-dispatchable block returns
   `validation` alone, exits 1, and replaces nothing. The option is accepted
   only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
   error (exit 2).
@@ -171,13 +185,31 @@ A machine error exits 1 with `{error, next}` and one closed literal:
 The `block` verb alone answers a missing block with `{error: "BLOCK_NOT_FOUND"}`
 (exit 1), without `next`.
 
+A store write that does not complete is reported, never swallowed, and exits 1
+with no `stage` and no `next`:
+
+- `STORE_WRITE_FAILED`: the session file could not be written; it keeps its
+  previous state and the machine did not advance. The response carries the
+  error text as `detail`.
+- `STORE_CONFLICT`: another writer changed the session file between this verb's
+  read and its write (the `revision` counter differs); nothing was written. The
+  emitter does not retry it: re-sending an Explore intent after another
+  writer's event could advance two stages.
+
+Both follow § Degraded mode. `spawn` and `reset` report them the same way.
+
 A `rejected` field (exit 0) means the machine did not advance, for example an
 intent-less advance or `ALREADY_RUNNING`: fetch nothing and give the
-acknowledgement the owning command defines.
+acknowledgement the owning command defines. A step machine rejects a step
+report that names an id it does not declare with
+`rejected: "UNKNOWN_STEP_ID"`, the unknown ids in `unknown_ids`, and `next`
+carrying the unchanged active pointer (§ Step machines).
 
 A `warnings` array (first value `SESSION_FILE_CORRUPT`) reports store
-degradation inside that same response: treat the returned `stage` as
-authoritative and surface the regression against the presentation hint.
+degradation inside that same response: the unparseable session file was renamed
+aside, the path of the preserved copy is in `corrupt_file`, and the verb
+continued from the initial state. Treat the returned `stage` as authoritative
+and surface the regression against the presentation hint.
 
 ## Event delivery
 
@@ -265,12 +297,14 @@ A follow-load failure or an emit error stops the run, after § Corrective
 retry for a delivery failure:
 show the error and wait for the user. Guess no other file and
 never route the failure through worker Bounded Recovery. An emit error here is
-`INVALID_EVENT` or `UNKNOWN_MACHINE`; an unreachable store, `VERSION_MISMATCH`,
-and a closed session follow § Degraded mode instead.
+`INVALID_EVENT` or `UNKNOWN_MACHINE`; an unreachable store, `STORE_WRITE_FAILED`,
+`STORE_CONFLICT`, `VERSION_MISMATCH`, and a closed session follow § Degraded
+mode instead.
 
 ## Degraded mode
 
-When the store is unreachable or degraded, hold the current stage without
+When the store is unreachable or degraded (`STORE_WRITE_FAILED` and
+`STORE_CONFLICT` included), hold the current stage without
 auto-advancing and ask the user for an explicit next step; the progression
 continues in degraded mode without re-deriving the transition table in prose.
 Version-mismatch and closed-session outcomes fall to this degraded path
@@ -304,7 +338,11 @@ The rules below hold for every one of them.
    per-phase exception.
 2. **Each step report**: emit `{"step_ids":[...]}` with the ids the worker
    reported, in order, as its card says. The machine advances on declared new
-   ids and ignores the rest. Send the returned `next.follow` as
+   ids. A report that names an id the machine does not declare changes nothing:
+   the response is `rejected: "UNKNOWN_STEP_ID"` (exit 0) with the unknown ids
+   in `unknown_ids` and `next` carrying the unchanged active pointer, and the
+   declared ids of that report are not applied, so the worker reports the whole
+   step again. Send the returned `next.follow` as
    `Active step: <id> — follow <path>`; `next.follow: none` is terminal.
 3. **Questions and replacements** do not invoke emit and do not consult the
    machine: the active step file persists across them, and the machine stays
@@ -316,6 +354,9 @@ The rules below hold for every one of them.
 4. **Run close**: `reset <id> <machineId>` again, so a later run starts at
    step zero.
 
-The store never gates these runs. When the store is unreachable or an emit
-still fails after § Corrective retry, the card sends the next pointer from the
-static step order it lists and carries on.
+The store never gates these runs. When the store is unreachable, answers
+`STORE_WRITE_FAILED` or `STORE_CONFLICT`, or an emit still fails after
+§ Corrective retry, the card sends the next pointer from the static step order
+it lists and carries on. An `UNKNOWN_STEP_ID` rejection is not a store failure:
+re-steer the worker with the returned pointer instead of falling back to the
+static order.
