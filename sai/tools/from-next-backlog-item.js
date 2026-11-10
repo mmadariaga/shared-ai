@@ -20,7 +20,7 @@ function pending(reason, message, extra = {}) { return { status: 'pending', reas
 function check(condition, message) { if (!condition) throw Object.assign(new Error(message), { reason: 'incomplete-response' }); }
 function positive(value) { return Number.isSafeInteger(value) && value > 0; }
 function text(value) { return typeof value === 'string' && !!value.trim() && !/[\x00-\x1f\x7f]/.test(value); }
-function resolveDestination(request, io, report) {
+async function resolveDestination(request, io, report) {
   const r = { ...request };
   if ((r.provider === 'gitlab' && text(r.project)) ||
       (r.provider === 'github' && text(r.owner)) ||
@@ -38,15 +38,15 @@ function resolveDestination(request, io, report) {
   if (r.organization) explicit.organization = r.organization;
   if (r.provider === 'azuredevops' && r.project) explicit.project = r.project;
   report.warnings = settings.warnings;
-  let result = destination.resolve({ explicit, config }, registry, io);
+  let result = await destination.resolve({ explicit, config }, registry, io);
   if (result.status === 'needs_input' && ['provider-ambiguous', 'repository-ambiguous', 'destination-ambiguous'].includes(result.reason)) {
-    const urls = io.run('git', ['remote', '-v']).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean)
+    const urls = (await io.run('git', ['remote', '-v'])).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean)
       .filter(url => !(r.provider || config.provider) || destination.detect(url, registry).some(candidate => candidate.provider === (r.provider || config.provider)));
     const remotes = [...new Map(urls.map(url => {
       const parsed = destination.address(url);
       return [parsed ? `${parsed.host}/${parsed.repository}` : url, url];
     })).values()];
-    result = destination.resolve({ explicit, config, remotes }, registry, io);
+    result = await destination.resolve({ explicit, config, remotes }, registry, io);
   }
   const addressed = destination.detect(explicit.repository, registry);
   report.notices = [...(settings.notices || []), ...projectSettings.notices(config, explicit, result, addressed.length === 1 ? addressed[0].provider : undefined)];
@@ -65,7 +65,7 @@ function resolveDestination(request, io, report) {
     ...(!r.provider ? { options: Object.keys(adapters).map(value => ({ label: value, value })) } : {}),
   });
 }
-function select(request, io = { run }) {
+async function select(request, io = { run }) {
   const report = {};
   try {
     if (!request || typeof request !== 'object' || Array.isArray(request)) return pending('invalid-request', 'Supply a selection object.');
@@ -73,16 +73,16 @@ function select(request, io = { run }) {
     if (request.provider && !Object.hasOwn(adapters, request.provider)) return pending('unsupported-provider', 'Supported providers: GitHub, GitLab, Azure DevOps.');
     const fields = request.provider ? FIELDS[request.provider] : Object.values(FIELDS).flat();
     if (Object.keys(request).some(key => !['provider', 'cancel', 'repository', ...fields].includes(key))) return pending('unsupported-context', 'The pile has unsupported selection context; membership and manual order cannot be established.');
-    const resolved = resolveDestination(request, io, report);
+    const resolved = await resolveDestination(request, io, report);
     if (resolved.status === 'pending') return projectSettings.report(resolved, report);
     if (Object.keys(resolved).some(key => !['provider', 'cancel', 'repository', ...FIELDS[resolved.provider]].includes(key))) return pending('unsupported-context', 'The destination has incompatible selection context.');
-    const result = adapters[resolved.provider].select(resolved, io, { pending, check, positive, text });
+    const result = await adapters[resolved.provider].select(resolved, io, { pending, check, positive, text });
     return projectSettings.report(result.status === 'pending' ? { ...result, selection: resolved } : result, report);
   } catch (error) {
     return projectSettings.report(pending(error.reason || 'retrieval-failed', error.message), { warnings: report.warnings });
   }
 }
-function main(rawArgv) {
+async function main(rawArgv) {
   let argv = rawArgv;
   let inputFile = null;
   try { ({ argv, inputFile } = extractInputFile(rawArgv)); } catch (error) { argv = []; }
@@ -91,10 +91,10 @@ function main(rawArgv) {
     return 2;
   }
   let result;
-  try { result = select(JSON.parse(readInput(inputFile))); }
+  try { result = await select(JSON.parse(readInput(inputFile))); }
   catch (error) { result = pending('invalid-request', error.message); }
   process.stdout.write(JSON.stringify(result) + '\n');
   return ['selected', 'candidates', 'empty', 'cancelled'].includes(result.status) ? 0 : 1;
 }
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 module.exports = { select, main };

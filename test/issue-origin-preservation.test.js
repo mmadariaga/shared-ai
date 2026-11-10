@@ -74,7 +74,7 @@ test('known loss warns, no issue stays silent, and all handoff owners apply the 
   ]) assert.match(read(file), /issue-origin-preservation\.md/, file);
 });
 
-for (const priorIntent of [false, true]) test(`sai-workflow ${priorIntent ? 'usable-intent' : 'no-intent'} child origins survive normal archive sync and closing-reference query`, t => {
+for (const priorIntent of [false, true]) test(`sai-workflow ${priorIntent ? 'usable-intent' : 'no-intent'} child origins survive normal archive sync and closing-reference query`, async t => {
   const available = spawnSync('openspec', ['--version'], { encoding: 'utf8' });
   if (available.error?.code === 'ENOENT') return t.skip('OpenSpec CLI is not installed');
   assert.equal(available.status, 0, available.stderr);
@@ -152,7 +152,7 @@ for (const priorIntent of [false, true]) test(`sai-workflow ${priorIntent ? 'usa
     throw new Error(`Unexpected read: ${command} ${args.join(' ')}`);
   } };
   const request = { provider: 'github', repository: 'team/repo', remote: 'origin', base: 'main', title: 'fix: preserve origins', description: 'Summary' };
-  const result = pr.query(request, io);
+  const result = await pr.query(request, io);
   assert.deepEqual(pr.closingReferences(result.proposal.description, target).map(ref => ref.number), [11, 12, 13, 10]);
-  assert.equal(pr.query({ ...request, description: result.proposal.description }, io).proposal.description, result.proposal.description);
+  assert.equal((await pr.query({ ...request, description: result.proposal.description }, io)).proposal.description, result.proposal.description);
 });

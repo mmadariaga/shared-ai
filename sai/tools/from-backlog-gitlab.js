@@ -2,10 +2,10 @@
 
 function fault(message, reason = 'retrieval-failed') { return Object.assign(new Error(message), { reason }); }
 
-function project(repository, io) {
+async function project(repository, io) {
   const args = ['repo', 'view', '--output', 'json'];
   if (repository) args.push('--', repository);
-  const data = JSON.parse(io.run('glab', args));
+  const data = JSON.parse(await io.run('glab', args));
   if (!Number.isSafeInteger(data.id) || data.id <= 0 || typeof data.path_with_namespace !== 'string' || typeof data.archived !== 'boolean' || typeof data.visibility !== 'string') throw fault('Incomplete GitLab project response');
   const hasEnabled = Object.hasOwn(data, 'issues_enabled');
   const hasAccess = Object.hasOwn(data, 'issues_access_level');
@@ -16,10 +16,10 @@ function project(repository, io) {
   return { id: data.id, repository: data.path_with_namespace, url: data.web_url.replace(/\/$/, ''), host: url.host, archived: data.archived, visibility: data.visibility, issues_enabled: issuesEnabled };
 }
 
-function api(target, endpoint, io, method = 'GET', body) {
+async function api(target, endpoint, io, method = 'GET', body) {
   const args = ['api', endpoint, '--hostname', target.host, '--method', method];
   if (body !== undefined) args.push('--header', 'Content-Type: application/json', '--input', '-');
-  return JSON.parse(io.run('glab', args, body === undefined ? undefined : JSON.stringify(body)));
+  return JSON.parse(await io.run('glab', args, body === undefined ? undefined : JSON.stringify(body)));
 }
 
 function issueURL(value) {
@@ -36,15 +36,15 @@ function issueURL(value) {
   return { destination: `${url.origin}${match[1]}`, number, route: match[2] };
 }
 
-function resolve(value, io) {
+async function resolve(value, io) {
   const parsed = issueURL(value);
-  const target = project(parsed.destination, io);
+  const target = await project(parsed.destination, io);
   if (parsed.destination !== target.url) throw fault('GitLab project destination does not match the requested URL');
   return { status: 'resolved', provider: 'gitlab', repository: target.repository, number: parsed.number, url: `${target.url}/-/${parsed.route}/${parsed.number}`, target };
 }
 
-function issue(target, number, io, anyType = false) {
-  const data = api(target, `projects/${target.id}/issues/${number}`, io);
+async function issue(target, number, io, anyType = false) {
+  const data = await api(target, `projects/${target.id}/issues/${number}`, io);
   if (!Number.isSafeInteger(data?.id) || data.id <= 0) throw fault('Invalid or missing GitLab issue ID');
   if (data.project_id !== target.id) throw fault('GitLab issue project ID does not match the requested project');
   if (data.iid !== number) throw fault('GitLab issue number does not match the requested number');
@@ -60,22 +60,22 @@ function issue(target, number, io, anyType = false) {
   return data;
 }
 
-function readIssue(reference, io) {
-  const checked = resolve(reference.url, io);
-    const data = issue(checked.target, checked.number, io);
+async function readIssue(reference, io) {
+  const checked = await resolve(reference.url, io);
+    const data = await issue(checked.target, checked.number, io);
   const description = data.description ?? '';
   return { provider: 'gitlab', repository: checked.repository, repository_archived: checked.target.archived, number: data.iid, url: data.web_url, title: data.title, description, state: data.state === 'opened' ? 'OPEN' : 'CLOSED', description_missing: !description.trim() };
 }
 
-function read(reference, io) {
+async function read(reference, io) {
   let item;
   const comments = [];
   try {
-    const checked = resolve(reference.url, io);
-    item = readIssue(checked, io);
+    const checked = await resolve(reference.url, io);
+    item = await readIssue(checked, io);
     const seen = new Set();
     for (let page = 1; ; page++) {
-      const notes = api(checked.target, `projects/${checked.target.id}/issues/${checked.number}/notes?per_page=100&page=${page}&sort=asc&order_by=created_at`, io);
+      const notes = await api(checked.target, `projects/${checked.target.id}/issues/${checked.number}/notes?per_page=100&page=${page}&sort=asc&order_by=created_at`, io);
       if (!Array.isArray(notes)) throw fault('Incomplete GitLab comments response');
       for (const note of notes) {
         if (!Number.isSafeInteger(note?.id) || typeof note.body !== 'string' || typeof note.system !== 'boolean' || (note.author !== null && typeof note.author?.username !== 'string') || seen.has(note.id)) throw fault('Incomplete or repeated GitLab comment');
@@ -93,10 +93,10 @@ function read(reference, io) {
   }
 }
 
-function dependencies(target, number, io) {
+async function dependencies(target, number, io) {
   const result = [], seen = new Set();
   for (let page = 1; ; page++) {
-    const rows = api(target, `projects/${target.id}/issues/${number}/links?per_page=100&page=${page}`, io);
+    const rows = await api(target, `projects/${target.id}/issues/${number}/links?per_page=100&page=${page}`, io);
     if (!Array.isArray(rows)) throw fault('Incomplete GitLab dependency links');
     for (const row of rows) {
       if (!Number.isSafeInteger(row.id) || typeof row.web_url !== 'string' || !['relates_to', 'blocks', 'is_blocked_by'].includes(row.link_type) || seen.has(row.id)) throw fault('Incomplete or repeated GitLab dependency link');
@@ -106,17 +106,17 @@ function dependencies(target, number, io) {
     if (rows.length < 100) return result;
   }
 }
-const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) => {
-  const ref = resolve(url, io), result = read(ref, io);
+const readSet = require('./backlog-provider-import').bind('gitlab', async (url, io) => {
+  const ref = await resolve(url, io), result = await read(ref, io);
   if (result.status !== 'complete') return result;
   try {
-  const row = issue(ref.target, ref.number, io);
+  const row = await issue(ref.target, ref.number, io);
   if (!Array.isArray(row.assignees) || row.assignees.some(actor => !Number.isSafeInteger(actor.id) || actor.id < 1)) throw fault('Incomplete GitLab assignees');
   const identity = require('./backlog-slice-identity'), written = identity.decode(result.item.description, ref.url);
   // Native blockers belong to the set the issue is a child of.
   const correspondence = identity.upper(written) ?? written;
   let blockers, limitation;
-  try { blockers = dependencies(ref.target, ref.number, io); }
+  try { blockers = await dependencies(ref.target, ref.number, io); }
   catch (error) {
     // A written marker is not evidence that native discovery is unavailable.
     const unavailable = error.reason === 'dependency-capability-unavailable'
@@ -129,11 +129,14 @@ const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) =>
   } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
 });
 /** Children of an issue with their state, from the written slice correspondence. No comments or assignees. */
-function readChildren(reference, io) {
+async function readChildren(reference, io) {
   try {
-    const identity = require('./backlog-slice-identity'), written = identity.decode(readIssue(reference, io).description, reference.url);
-    const children = (written?.role === 'parent' ? [...new Set(identity.slicesOf(written, reference.url).map(slice => slice.issue))] : [])
-      .map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; });
+    const identity = require('./backlog-slice-identity'), written = identity.decode((await readIssue(reference, io)).description, reference.url);
+    const children = [];
+    for (const url of written?.role === 'parent' ? [...new Set(identity.slicesOf(written, reference.url).map(slice => slice.issue))] : []) {
+      const child = await readIssue({ url }, io);
+      children.push({ url: child.url, state: child.state });
+    }
     return { status: 'complete', children };
   } catch (error) {
     return { status: 'error', reason: error.reason || 'retrieval-failed', message: error.message };

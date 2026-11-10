@@ -2,17 +2,17 @@
 
 const backlog = require('./from-backlog-gitlab');
 const { api } = backlog;
-function inspect(repository, io) {
-  const row = JSON.parse(io.run('glab', ['repo', 'view', '--output', 'json', '--', repository]));
+async function inspect(repository, io) {
+  const row = JSON.parse(await io.run('glab', ['repo', 'view', '--output', 'json', '--', repository]));
   const url = new URL(row.web_url);
   if (!Number.isSafeInteger(row.id) || !row.path_with_namespace || !row.default_branch || row.archived || !['https:', 'http:'].includes(url.protocol) || url.username || url.password || !['private', 'internal', 'public'].includes(row.visibility)) throw new Error('Invalid or archived GitLab project');
   return { id: row.id, repository: row.path_with_namespace, host: url.host, url: row.web_url.replace(/\/$/, ''), defaultBranch: row.default_branch, visibility: row.visibility };
 }
-function resolve({ explicit, config, remotes }, io) {
+async function resolve({ explicit, config, remotes }, io) {
   const destination = { ...config, ...explicit };
   const candidates = [...new Set(remotes)];
   if (!destination.repository && candidates.length !== 1) return { status: 'needs_input', reason: 'repository-ambiguous', candidates };
-  return { status: 'resolved', repository: inspect(destination.repository || candidates[0], io).url };
+  return { status: 'resolved', repository: (await inspect(destination.repository || candidates[0], io)).url };
 }
 function identity(row) {
   if (!Number.isSafeInteger(row.iid) || typeof row.web_url !== 'string' || typeof row.title !== 'string' || (row.description !== null && typeof row.description !== 'string')) throw new Error('Incomplete GitLab MR response');
@@ -21,16 +21,16 @@ function identity(row) {
     assignees: Array.isArray(row.assignees) ? row.assignees.map(item => item?.username) : [], labels: Array.isArray(row.labels) ? row.labels.map(item => typeof item === 'string' ? item : item?.name) : [] };
 }
 // The authenticated user, who is assigned to a request created through this tool.
-function currentUser(target, io) {
-  const row = api(target, 'user', io);
+async function currentUser(target, io) {
+  const row = await api(target, 'user', io);
   if (!Number.isSafeInteger(row?.id) || typeof row.username !== 'string' || !row.username) throw new Error('Invalid GitLab current user response');
   return { id: row.id, login: row.username };
 }
 // Every label name of the project, across all pages.
-function labels(target, io) {
+async function labels(target, io) {
   const names = [];
   for (let page = 1; ; page++) {
-    const batch = api(target, `projects/${target.id}/labels?per_page=100&page=${page}`, io);
+    const batch = await api(target, `projects/${target.id}/labels?per_page=100&page=${page}`, io);
     if (!Array.isArray(batch)) throw new Error('Invalid GitLab label list');
     for (const row of batch) {
       if (typeof row?.name !== 'string' || !row.name) throw new Error('Incomplete GitLab label response');
@@ -39,10 +39,10 @@ function labels(target, io) {
     if (batch.length < 100) return [...new Set(names)];
   }
 }
-function list(target, source, base, io) {
+async function list(target, source, base, io) {
   const rows = [], seen = new Set();
   for (let page = 1; ; page++) {
-    const batch = api(target, `projects/${target.id}/merge_requests?state=opened&source_branch=${encodeURIComponent(source)}&target_branch=${encodeURIComponent(base)}&per_page=100&page=${page}`, io);
+    const batch = await api(target, `projects/${target.id}/merge_requests?state=opened&source_branch=${encodeURIComponent(source)}&target_branch=${encodeURIComponent(base)}&per_page=100&page=${page}`, io);
     if (!Array.isArray(batch)) throw new Error('Invalid GitLab MR list');
     for (const row of batch) {
       identity(row);
@@ -54,9 +54,9 @@ function list(target, source, base, io) {
     if (batch.length < 100) return rows;
   }
 }
-function mutate(proposal, io) {
+async function mutate(proposal, io) {
   const endpoint = `projects/${proposal.target.id}/merge_requests`;
-  return identity(api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PUT' : 'POST', proposal.existing
+  return identity(await api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PUT' : 'POST', proposal.existing
     ? { title: proposal.title, description: proposal.description }
     : { title: proposal.title, description: proposal.description, source_branch: proposal.source, target_branch: proposal.base,
       ...(proposal.assignee ? { assignee_ids: [proposal.assignee.id] } : {}), ...(proposal.labels?.length ? { labels: proposal.labels.join(',') } : {}) }));
@@ -64,13 +64,13 @@ function mutate(proposal, io) {
 // Closing references: how to address an issue and read its children (E5).
 const closing = {
   issueUrl: (repository, number, target) => `${target.url.slice(0, -target.repository.length)}${repository}/-/issues/${number}`,
-  children: (url, io) => backlog.readChildren({ url }, io),
+  children: async (url, io) => await backlog.readChildren({ url }, io),
 };
-function commentActor(target, io) { return currentUser(target, io).login; }
-function comments(target, request, io) {
+async function commentActor(target, io) { return (await currentUser(target, io)).login; }
+async function comments(target, request, io) {
   const rows = [], seen = new Set();
   for (let page = 1; ; page++) {
-    const batch = api(target, `projects/${target.id}/merge_requests/${request.number}/notes?per_page=100&page=${page}`, io);
+    const batch = await api(target, `projects/${target.id}/merge_requests/${request.number}/notes?per_page=100&page=${page}`, io);
     if (!Array.isArray(batch)) throw new Error('Incomplete GitLab comments');
     for (const row of batch) {
       if (!Number.isSafeInteger(row.id) || typeof row.body !== 'string' || !row.author?.username || seen.has(row.id)) throw new Error('Incomplete or repeated GitLab comment');
@@ -79,7 +79,7 @@ function comments(target, request, io) {
     if (batch.length < 100) return rows;
   }
 }
-function writeComment(target, request, previous, body, io) {
-  return api(target, `projects/${target.id}/merge_requests/${request.number}/notes${previous ? `/${previous.id}` : ''}`, io, previous ? 'PUT' : 'POST', { body });
+async function writeComment(target, request, previous, body, io) {
+  return await api(target, `projects/${target.id}/merge_requests/${request.number}/notes${previous ? `/${previous.id}` : ''}`, io, previous ? 'PUT' : 'POST', { body });
 }
 module.exports = { inspect, resolve, list, currentUser, labels, mutate, closing, commentActor, comments, writeComment };

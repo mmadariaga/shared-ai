@@ -33,12 +33,12 @@ function gh(options = {}) {
 const noIo = () => ({ cwd, run() { assert.fail('This selection performs no I/O'); } });
 const issue = (id, rank, type = 'issue') => ({ id, iid: id, project_id: 1, relative_position: rank, issue_type: type, web_url: `https://gitlab.com/group/repo/-/issues/${id}` });
 function gl(items = [issue(20, 100), issue(8, 2)], options = {}) {
-  return { cwd, run(command, args) {
+  return { cwd, async run(command, args) {
     assert.equal(command, 'glab'); assert.ok(!args.includes('POST'));
     if (options.fail) throw new Error('not authenticated');
     if (args[0] === 'repo') return JSON.stringify({ id: 1, path_with_namespace: 'group/repo', archived: false, visibility: 'private', issues_enabled: true, web_url: gitlab.project });
     assert.match(args[1], /order_by=relative_position/);
-    if (options.check) options.check(args[1]);
+    if (options.check) await options.check(args[1]);
     if (options.partial) return '{}';
     const page = Number(new URL(`https://unused/${args[1]}`).searchParams.get('page'));
     return JSON.stringify(items.slice((page - 1) * 100, page * 100));
@@ -64,58 +64,58 @@ function az(options = {}) {
     return JSON.stringify(options.partial ? {} : { workItems: options.empty ? [] : [{ target: { id: 20 } }, { target: { id: 8 } }] });
   } };
 }
-test('E1 missing provider and provider context remain pending without guessing', () => {
+test('E1 missing provider and provider context remain pending without guessing', async () => {
   const noRemotes = { cwd, run(command, args) { assert.equal(command, 'git'); assert.deepEqual(args, ['remote', '-v']); return ''; } };
-  assert.equal(select({}, noRemotes).options.length, 3);
+  assert.equal((await select({}, noRemotes)).options.length, 3);
   for (const provider of ['github', 'gitlab', 'azuredevops']) {
-    assert.equal(select({ provider }, noRemotes).status, 'pending');
+    assert.equal((await select({ provider }, noRemotes)).status, 'pending');
   }
-  assert.equal(select({ ...github, project: undefined }, gh()).options[0].value, 1);
-  assert.equal(select({ ...gitlab, pile: undefined }, gl()).status, 'candidates');
-  assert.equal(select({ ...azure, backlog: undefined }, az()).options[0].value, 'requirements');
-  assert.equal(select({ ...azure, backlog: 'unknown' }, az()).status, 'pending');
+  assert.equal((await select({ ...github, project: undefined }, gh())).options[0].value, 1);
+  assert.equal((await select({ ...gitlab, pile: undefined }, gl())).status, 'candidates');
+  assert.equal((await select({ ...azure, backlog: undefined }, az())).options[0].value, 'requirements');
+  assert.equal((await select({ ...azure, backlog: 'unknown' }, az())).status, 'pending');
 });
-test('E2 and E5 first manual position produces complete import references for every provider', () => {
-  const gitlabResult = select(gitlab, gl());
+test('E2 and E5 first manual position produces complete import references for every provider', async () => {
+  const gitlabResult = await select(gitlab, gl());
   assert.equal(gitlabResult.status, 'candidates');
-  const outcomes = [select(github, gh()), { ...gitlabResult, status: 'selected', reference: gitlabResult.candidates[0].reference }, select(azure, az())];
+  const outcomes = [await select(github, gh()), { ...gitlabResult, status: 'selected', reference: gitlabResult.candidates[0].reference }, await select(azure, az())];
   for (const outcome of outcomes) { assert.equal(outcome.status, 'selected', JSON.stringify(outcome)); assert.match(outcome.reference, /(?:issues\/8|edit\/8)$/); }
-  assert.equal(resolve(outcomes[0].reference, registry).url, outcomes[0].reference);
-  assert.equal(resolve(outcomes[1].reference, registry, gl()).url, outcomes[1].reference);
-  assert.equal(resolve(outcomes[2].reference, registry).url, outcomes[2].reference);
+  assert.equal((await resolve(outcomes[0].reference, registry)).url, outcomes[0].reference);
+  assert.equal((await resolve(outcomes[1].reference, registry, gl())).url, outcomes[1].reference);
+  assert.equal((await resolve(outcomes[2].reference, registry)).url, outcomes[2].reference);
   assert.equal(outcomes[2].type, 'Custom PBI');
 });
-test('E2 unavailable ranks, top ties, partial responses, and unsupported views stay pending', () => {
-  assert.equal(select(github, gh({ partial: true })).status, 'pending');
-  assert.equal(select(gitlab, gl([], { partial: true })).status, 'pending');
-  assert.equal(select(azure, az({ missingRank: true })).status, 'pending');
-  assert.equal(select(azure, az({ tie: true })).reason, 'order-ambiguous');
-  assert.equal(select(azure, az({ partial: true })).status, 'pending');
-  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, view: 'filtered' }, noIo()).reason, 'order-unavailable');
-  for (const request of [github, gitlab, azure]) assert.equal(select({ ...request, sort: 'created_at' }, noIo()).reason, 'unsupported-context');
+test('E2 unavailable ranks, top ties, partial responses, and unsupported views stay pending', async () => {
+  assert.equal((await select(github, gh({ partial: true }))).status, 'pending');
+  assert.equal((await select(gitlab, gl([], { partial: true }))).status, 'pending');
+  assert.equal((await select(azure, az({ missingRank: true }))).status, 'pending');
+  assert.equal((await select(azure, az({ tie: true }))).reason, 'order-ambiguous');
+  assert.equal((await select(azure, az({ partial: true }))).status, 'pending');
+  for (const request of [github, gitlab, azure]) assert.equal((await select({ ...request, view: 'filtered' }, noIo())).reason, 'order-unavailable');
+  for (const request of [github, gitlab, azure]) assert.equal((await select({ ...request, sort: 'created_at' }, noIo())).reason, 'unsupported-context');
 });
-test('E2 GitLab filters and complete pagination determine membership before manual selection', () => {
+test('E2 GitLab filters and complete pagination determine membership before manual selection', async () => {
   const members = Array.from({ length: 101 }, (_, i) => issue(i + 1, 200 - i));
-  const result = select({ ...gitlab, filters: { labels: 'ready', state: 'opened' } }, gl(members, { check(endpoint) { assert.match(endpoint, /labels=ready/); assert.match(endpoint, /state=opened/); } }));
+  const result = await select({ ...gitlab, filters: { labels: 'ready', state: 'opened' } }, gl(members, { check(endpoint) { assert.match(endpoint, /labels=ready/); assert.match(endpoint, /state=opened/); } }));
   assert.deepEqual(result.candidates.map(item => item.reference), [issue(101, 100).web_url]);
-  assert.equal(select({ ...gitlab, filters: { order_by: 'created_at' } }, gl()).status, 'pending');
+  assert.equal((await select({ ...gitlab, filters: { order_by: 'created_at' } }, gl())).status, 'pending');
 });
-test('E3 only complete empty results establish an empty pile', () => {
-  assert.equal(select(github, gh({ empty: true })).status, 'empty');
-  assert.equal(select(gitlab, gl([])).status, 'empty');
-  assert.equal(select(azure, az({ empty: true })).status, 'empty');
-  assert.equal(select(github, gh({ empty: true, more: true })).status, 'pending');
+test('E3 only complete empty results establish an empty pile', async () => {
+  assert.equal((await select(github, gh({ empty: true }))).status, 'empty');
+  assert.equal((await select(gitlab, gl([]))).status, 'empty');
+  assert.equal((await select(azure, az({ empty: true }))).status, 'empty');
+  assert.equal((await select(github, gh({ empty: true, more: true }))).status, 'pending');
 });
-test('Git remotes resolve provider and GitLab project before any question', () => {
+test('Git remotes resolve provider and GitLab project before any question', async () => {
   for (const remote of ['git@gitlab.com:group/repo.git', 'https://gitlab.com/group/repo.git', 'ssh://git@gitlab.example/group/repo.git']) {
     const host = remote.includes('example') ? 'gitlab.example' : 'gitlab.com';
     const target = `https://${host}/group/repo`;
     const reader = gl();
     const calls = [];
-    const result = select({}, { cwd, run(command, args) {
+    const result = await select({}, { cwd, async run(command, args) {
       calls.push(command);
       if (command === 'git') { assert.deepEqual(args, ['remote', '-v']); return `origin\t${remote} (fetch)\norigin\t${remote} (push)\n`; }
-      const data = JSON.parse(reader.run(command, args));
+      const data = JSON.parse(await reader.run(command, args));
       if (args[0] === 'repo') return JSON.stringify({ ...data, web_url: target });
       return JSON.stringify(data.map(item => ({ ...item, web_url: item.web_url.replace('gitlab.com', host) })));
     } });
@@ -125,8 +125,8 @@ test('Git remotes resolve provider and GitLab project before any question', () =
     assert.ok(result.candidates.every(item => item.reference.startsWith(`${target}/-/issues/`)));
   }
 });
-test('explicit destination and filters win without consulting Git', () => {
-  const result = select({ project: gitlab.project, filters: { state: 'closed', labels: 'ready', milestone: 'v1', assignee_id: '7' } }, gl(undefined, { check(endpoint) {
+test('explicit destination and filters win without consulting Git', async () => {
+  const result = await select({ project: gitlab.project, filters: { state: 'closed', labels: 'ready', milestone: 'v1', assignee_id: '7' } }, gl(undefined, { check(endpoint) {
     const params = new URL(`https://unused/${endpoint}`).searchParams;
     assert.equal(params.get('state'), 'closed');
     assert.equal(params.get('labels'), 'ready');
@@ -135,66 +135,66 @@ test('explicit destination and filters win without consulting Git', () => {
   } }));
   assert.equal(result.status, 'candidates');
   assert.equal(result.pile, gitlab.project);
-  assert.equal(select({ ...gitlab, board: 'board' }, gl()).reason, 'order-unavailable');
-  assert.equal(select({ ...gitlab, pile: 'other' }, gl()).reason, 'missing-pile');
+  assert.equal((await select({ ...gitlab, board: 'board' }, gl())).reason, 'order-unavailable');
+  assert.equal((await select({ ...gitlab, pile: 'other' }, gl())).reason, 'missing-pile');
 });
-test('equivalent Git remotes and explicit provider constraints do not require a destination question', () => {
+test('equivalent Git remotes and explicit provider constraints do not require a destination question', async () => {
   for (const [request, remotes] of [
     [{}, 'origin\tgit@gitlab.com:group/repo.git (fetch)\norigin\thttps://gitlab.com/group/repo.git (push)\n'],
     [{ provider: 'gitlab' }, 'origin\tgit@gitlab.com:group/repo.git (fetch)\nother\tgit@github.com:owner/repo.git (fetch)\n'],
   ]) {
     const reader = gl();
-    const result = select(request, { cwd, run(command, args) {
+    const result = await select(request, { cwd, async run(command, args) {
       if (command === 'git') return remotes;
-      return reader.run(command, args);
+      return await reader.run(command, args);
     } });
     assert.equal(result.status, 'candidates', JSON.stringify(result));
     assert.equal(result.pile, gitlab.project);
   }
 });
-test('GitLab defaults to open issues and returns only equally highest available priority', () => {
+test('GitLab defaults to open issues and returns only equally highest available priority', async () => {
   const fixtures = [
     { items: [issue(1, null), issue(2, 0), issue(3, 0), issue(4, 9)], allowed: [2, 3] },
     { items: [issue(1, null), issue(2, undefined), issue(3, -1), issue(4, '2'), issue(5, Number.MAX_SAFE_INTEGER + 1)], allowed: [1, 2, 3, 4, 5] },
     { items: [issue(1, null), issue(2, 4), issue(3, 9)], allowed: [2] },
   ];
   for (const { items, allowed } of fixtures) {
-    const result = select({ provider: 'gitlab', project: gitlab.project }, gl(items, { check(endpoint) { assert.match(endpoint, /state=opened/); } }));
+    const result = await select({ provider: 'gitlab', project: gitlab.project }, gl(items, { check(endpoint) { assert.match(endpoint, /state=opened/); } }));
     assert.equal(result.status, 'candidates');
     const references = new Set(allowed.map(id => issue(id).web_url));
     assert.equal(result.candidates.length, references.size);
     for (const candidate of result.candidates) {
       assert.ok(references.has(candidate.reference));
-      assert.equal(resolve(candidate.reference, registry, gl()).url, candidate.reference);
+      assert.equal((await resolve(candidate.reference, registry, gl())).url, candidate.reference);
     }
   }
 });
-test('unresolved remotes retain known provider; conflicting explicit identities remain pending', () => {
+test('unresolved remotes retain known provider; conflicting explicit identities remain pending', async () => {
   const io = { cwd, run(command) { assert.equal(command, 'git'); return 'origin\tgit@gitlab.com:group/a.git (fetch)\nother\tgit@gitlab.com:group/b.git (fetch)\n'; } };
-  const result = select({}, io);
+  const result = await select({}, io);
   assert.equal(result.status, 'pending');
   assert.equal(result.selection.provider, 'gitlab');
   assert.equal(result.reason, 'repository-ambiguous');
   assert.equal(result.options, undefined);
-  assert.equal(select({ provider: 'github', repository: gitlab.project }, io).reason, 'provider-destination-conflict');
+  assert.equal((await select({ provider: 'github', repository: gitlab.project }, io)).reason, 'provider-destination-conflict');
 });
-test('GitLab candidate validation does not skip non-importable or incompatible priority members', () => {
-  assert.equal(select(gitlab, gl([issue(1, 1), issue(2, 1, 'incident')])).reason, 'non-importable');
-  assert.equal(select(gitlab, gl([{ ...issue(1, 1), web_url: 'https://gitlab.com/other/repo/-/issues/1' }])).status, 'pending');
-  assert.equal(select(gitlab, gl([{ ...issue(1, 1), project_id: 2 }])).status, 'pending');
-  assert.equal(select(gitlab, gl([issue(1, 1), issue(1, 2)])).status, 'pending');
+test('GitLab candidate validation does not skip non-importable or incompatible priority members', async () => {
+  assert.equal((await select(gitlab, gl([issue(1, 1), issue(2, 1, 'incident')]))).reason, 'non-importable');
+  assert.equal((await select(gitlab, gl([{ ...issue(1, 1), web_url: 'https://gitlab.com/other/repo/-/issues/1' }]))).status, 'pending');
+  assert.equal((await select(gitlab, gl([{ ...issue(1, 1), project_id: 2 }]))).status, 'pending');
+  assert.equal((await select(gitlab, gl([issue(1, 1), issue(1, 2)]))).status, 'pending');
 });
-test('E4 unsupported first items are not skipped; Azure importer supports custom types', () => {
-  for (const type of ['PullRequest', 'DraftIssue']) assert.equal(select(github, gh({ type })).reason, 'non-importable');
-  assert.equal(select(github, gh({ hidden: true })).reason, 'non-importable');
-  assert.equal(select(gitlab, gl([issue(1, 1, 'incident'), issue(2, 2)])).reason, 'non-importable');
-  assert.equal(select(azure, az({ type: 'Custom PBI' })).status, 'selected');
+test('E4 unsupported first items are not skipped; Azure importer supports custom types', async () => {
+  for (const type of ['PullRequest', 'DraftIssue']) assert.equal((await select(github, gh({ type }))).reason, 'non-importable');
+  assert.equal((await select(github, gh({ hidden: true }))).reason, 'non-importable');
+  assert.equal((await select(gitlab, gl([issue(1, 1, 'incident'), issue(2, 2)]))).reason, 'non-importable');
+  assert.equal((await select(azure, az({ type: 'Custom PBI' }))).status, 'selected');
 });
-test('E6 access failures are pending, not empty; E7 cancellation performs no reads', () => {
+test('E6 access failures are pending, not empty; E7 cancellation performs no reads', async () => {
   for (const [request, io] of [[github, gh({ fail: true })], [gitlab, gl([], { fail: true })], [azure, az({ fail: true })]]) {
-    assert.equal(select(request, io).status, 'pending');
+    assert.equal((await select(request, io)).status, 'pending');
   }
-  for (const provider of ['github', 'gitlab', 'azuredevops']) assert.deepEqual(select({ provider, cancel: true }, { cwd, run() { assert.fail('Cancelled selection has no I/O'); } }), { status: 'cancelled' });
+  for (const provider of ['github', 'gitlab', 'azuredevops']) assert.deepEqual(await select({ provider, cancel: true }, { cwd, run() { assert.fail('Cancelled selection has no I/O'); } }), { status: 'cancelled' });
 });
 test('both installations include selector, provider instructions, tools, and bounded import access', () => {
   const manifest = loadInstallManifest(root);

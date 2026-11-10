@@ -120,13 +120,13 @@ test('the CLI gets both explore ids with canonical values and rejects an unknown
   assert.equal(run('get', 'explore.itemThree', '--json', '--cwd', cwd).status, 2);
 });
 
-test('to-backlog resolves an unknown host through the configured provider', () => {
+test('to-backlog resolves an unknown host through the configured provider', async () => {
   const remotes = ['https://git.example.com/group/repo.git', 'https://github.com/owner/repo.git'];
-  assert.equal(toBacklog.resolve({ remotes }, toRegistry, {}).reason, 'provider-ambiguous');
+  assert.equal((await toBacklog.resolve({ remotes }, toRegistry, {})).reason, 'provider-ambiguous');
   const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}' });
   const { config } = settings.readBacklog({ cwd, providerIds });
   const loadAdapter = entry => ({ resolve: input => ({ status: 'resolved', repository: input.remotes[0] }), id: entry.id });
-  assert.deepEqual(toBacklog.resolve({ explicit: {}, config, remotes }, toRegistry, { loadAdapter }), {
+  assert.deepEqual(await toBacklog.resolve({ explicit: {}, config, remotes }, toRegistry, { loadAdapter }), {
     status: 'resolved', repository: remotes[0], provider: 'gitlab', instructions: 'providers/gitlab.md', adapter: 'to-backlog-gitlab.js',
   });
 });
@@ -147,24 +147,24 @@ const fromRegistry = { providers: ['gitlab', 'forge'].map(id => ({ id, resolutio
 const fromIo = extra => ({ ...extra, loadAdapter: entry => entry.id === 'github' ? require('../sai/tools/from-backlog-github') : { resolve: () => ({ status: 'resolved', from: entry.id }) } });
 const url = 'https://git.example.com/group/repo/-/issues/1';
 
-test('E15 from-backlog: the configured provider breaks a tie between fallback candidates only', () => {
-  assert.throws(() => fromBacklog.resolve(url, fromRegistry, fromIo()), { reason: 'unsupported-provider' });
-  const picked = fromBacklog.resolve(url, fromRegistry, fromIo({ configuredProvider: 'forge' }));
+test('E15 from-backlog: the configured provider breaks a tie between fallback candidates only', async () => {
+  await assert.rejects(async () => await fromBacklog.resolve(url, fromRegistry, fromIo()), { reason: 'unsupported-provider' });
+  const picked = await fromBacklog.resolve(url, fromRegistry, fromIo({ configuredProvider: 'forge' }));
   assert.deepEqual([picked.provider, picked.from, picked.settingApplied], ['forge', 'forge', true]);
-  assert.throws(() => fromBacklog.resolve(url, fromRegistry, fromIo({ configuredProvider: 'github' })), { reason: 'provider-destination-conflict' });
+  await assert.rejects(async () => await fromBacklog.resolve(url, fromRegistry, fromIo({ configuredProvider: 'github' })), { reason: 'provider-destination-conflict' });
 });
 
-test('E15 from-backlog: a single fallback candidate needs the setting absent or naming it', () => {
+test('E15 from-backlog: a single fallback candidate needs the setting absent or naming it', async () => {
   const single = { providers: fromRegistry.providers.slice(0, 1) };
-  assert.equal(fromBacklog.resolve(url, single, fromIo()).provider, 'gitlab');
-  const named = fromBacklog.resolve(url, single, fromIo({ configuredProvider: 'gitlab' }));
+  assert.equal((await fromBacklog.resolve(url, single, fromIo())).provider, 'gitlab');
+  const named = await fromBacklog.resolve(url, single, fromIo({ configuredProvider: 'gitlab' }));
   assert.deepEqual([named.provider, named.settingApplied], ['gitlab', undefined]);
-  assert.throws(() => fromBacklog.resolve(url, single, fromIo({ configuredProvider: 'forge' })), { reason: 'provider-destination-conflict' });
+  await assert.rejects(async () => await fromBacklog.resolve(url, single, fromIo({ configuredProvider: 'forge' })), { reason: 'provider-destination-conflict' });
 });
 
-test('E15 from-backlog: a positive match ignores the configured provider', () => {
+test('E15 from-backlog: a positive match ignores the configured provider', async () => {
   const registry = { providers: [{ id: 'github', hosts: ['github.com'], domainless: true, capabilities: ['read'], instructions: 'providers/github.md', adapter: 'from-backlog-github.js' }, ...fromRegistry.providers] };
-  const result = fromBacklog.resolve('https://github.com/owner/repo/issues/1', registry, fromIo({ configuredProvider: 'forge' }));
+  const result = await fromBacklog.resolve('https://github.com/owner/repo/issues/1', registry, fromIo({ configuredProvider: 'forge' }));
   assert.equal(result.provider, 'github');
   assert.equal(result.settingApplied, undefined);
 });
@@ -199,13 +199,13 @@ test('E5/E6: settings warnings stay on a failed to-backlog resolve', () => {
   assert.match(output.warnings.join('\n'), /Unknown setting id backlog\.bogus/);
 });
 
-test('E5/E6: settings warnings stay on a failed from-next-backlog-item selection', () => {
+test('E5/E6: settings warnings stay on a failed from-next-backlog-item selection', async () => {
   const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab","bogus":1}}' });
   const run = command => {
     if (command === 'git') return 'origin\thttps://git.example.com/g/r.git (fetch)\n';
     throw new Error('glab unreachable');
   };
-  const output = require('../sai/tools/from-next-backlog-item').select({}, { cwd, run });
+  const output = await require('../sai/tools/from-next-backlog-item').select({}, { cwd, run });
   assert.deepEqual([output.status, output.reason], ['pending', 'retrieval-failed']);
   assert.match(output.warnings.join('\n'), /Unknown setting id backlog\.bogus/);
 });
@@ -274,41 +274,41 @@ const remoteIo = (remote, extra = {}) => ({
   loadAdapter: entry => entry.id === 'gitlab' ? { resolve: value => ({ status: 'resolved', value }) } : require(`../sai/tools/${entry.adapter.replace('.js', '')}`),
 });
 
-test('E6: with backlog.provider gitlab, N and #N resolve against the repository of the remote', () => {
+test('E6: with backlog.provider gitlab, N and #N resolve against the repository of the remote', async () => {
   for (const reference of ['8', '#8']) {
-    const resolved = fromBacklog.resolve(reference, realFromRegistry, remoteIo('git@git.example.com:group/sub/repo.git', { configuredProvider: 'gitlab' }));
+    const resolved = await fromBacklog.resolve(reference, realFromRegistry, remoteIo('git@git.example.com:group/sub/repo.git', { configuredProvider: 'gitlab' }));
     assert.deepEqual([resolved.provider, resolved.value, resolved.settingApplied], ['gitlab', 'https://git.example.com/group/sub/repo/-/issues/8', true]);
   }
-  const http = fromBacklog.resolve('8', realFromRegistry, remoteIo('http://git.example.com:8080/g/r.git', { configuredProvider: 'gitlab' }));
+  const http = await fromBacklog.resolve('8', realFromRegistry, remoteIo('http://git.example.com:8080/g/r.git', { configuredProvider: 'gitlab' }));
   assert.equal(http.value, 'http://git.example.com:8080/g/r/-/issues/8');
 });
 
-test('E6: with backlog.provider github, #N resolves against the github.com remote; no single repository asks for a URL', () => {
-  const resolved = fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://github.com/owner/repo.git', { configuredProvider: 'github' }));
+test('E6: with backlog.provider github, #N resolves against the github.com remote; no single repository asks for a URL', async () => {
+  const resolved = await fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://github.com/owner/repo.git', { configuredProvider: 'github' }));
   assert.deepEqual([resolved.provider, resolved.repository, resolved.number, resolved.settingApplied], ['github', 'owner/repo', 8, true]);
-  const none = fromBacklog.resolve('8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'github' }));
+  const none = await fromBacklog.resolve('8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'github' }));
   assert.deepEqual([none.status, none.reason], ['needs_input', 'context-ambiguous']);
 });
 
-test('E6: with backlog.provider azuredevops, N resolves against the configured organization and project', () => {
+test('E6: with backlog.provider azuredevops, N resolves against the configured organization and project', async () => {
   const configuredDestination = { organization: 'https://dev.azure.com/acme', project: 'Board One' };
-  const resolved = fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'azuredevops', configuredDestination }));
+  const resolved = await fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'azuredevops', configuredDestination }));
   assert.deepEqual([resolved.provider, resolved.organization, resolved.project, resolved.number], ['azuredevops', 'https://dev.azure.com/acme', 'Board One', 8]);
 });
 
-test('E6: a configured provider that does not read the registry stops with provider-destination-conflict', () => {
-  assert.throws(() => fromBacklog.resolve('8', realFromRegistry, remoteIo('https://github.com/o/r.git', { configuredProvider: 'jira' })), { reason: 'provider-destination-conflict' });
+test('E6: a configured provider that does not read the registry stops with provider-destination-conflict', async () => {
+  await assert.rejects(async () => await fromBacklog.resolve('8', realFromRegistry, remoteIo('https://github.com/o/r.git', { configuredProvider: 'jira' })), { reason: 'provider-destination-conflict' });
 });
 
-test('E7: a full URL keeps its own provider and reports that the setting was overridden', () => {
-  const resolved = fromBacklog.resolve('https://github.com/owner/repo/issues/3', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'gitlab' }));
+test('E7: a full URL keeps its own provider and reports that the setting was overridden', async () => {
+  const resolved = await fromBacklog.resolve('https://github.com/owner/repo/issues/3', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'gitlab' }));
   assert.deepEqual([resolved.provider, resolved.settingOverridden, resolved.settingApplied], ['github', true, undefined]);
 });
 
-test('E8: without backlog.provider, a bare number keeps its current resolution', () => {
+test('E8: without backlog.provider, a bare number keeps its current resolution', async () => {
   const io = { run: () => '', loadAdapter: remoteIo('x').loadAdapter };
-  assert.throws(() => fromBacklog.resolve('#8', realFromRegistry, io), { reason: 'invalid-reference' });
-  const bare = fromBacklog.resolve('8', realFromRegistry, io);
+  await assert.rejects(async () => await fromBacklog.resolve('#8', realFromRegistry, io), { reason: 'invalid-reference' });
+  const bare = await fromBacklog.resolve('8', realFromRegistry, io);
   assert.deepEqual([bare.provider, bare.status, bare.reason, bare.settingApplied], ['azuredevops', 'needs_input', 'context-ambiguous', undefined]);
 });
 
@@ -469,87 +469,87 @@ const warmingProject = (value = warmingSetting, local) => project({
   '.sai/settings.jsonc': JSON.stringify({ warming: value }),
   ...(local === undefined ? {} : { '.sai/settings.local.jsonc': JSON.stringify({ warming: local }) }),
 });
-const resolved = (cwd, provider, model, role, harness = 'claude') => settings.warming({ provider, model, role, harness }, { cwd });
+const resolved = async (cwd, provider, model, role, harness = 'claude') => await settings.warming({ provider, model, role, harness }, { cwd });
 
-test('I3: warming is one catalogue id and no setting means off for both roles (E1)', () => {
+test('I3: warming is one catalogue id and no setting means off for both roles (E1)', async () => {
   assert.ok(settings.CATALOGUE.warming);
   const cwd = project();
   for (const role of ['agent', 'subagent']) {
-    assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', role), { warming: 'off', origin: 'none', warnings: [] });
+    assert.deepEqual(await resolved(cwd, 'anthropic', 'haiku', role), { warming: 'off', origin: 'none', warnings: [] });
   }
-  assert.equal(resolved(warmingProject({ defaults: { agent: false, subagent: false } }), 'anthropic', 'haiku', 'agent').warming, 'off');
+  assert.equal((await resolved(warmingProject({ defaults: { agent: false, subagent: false } }), 'anthropic', 'haiku', 'agent')).warming, 'off');
 });
 
-test('E3/E4/E5: a harness reads its own block, and a harness without one reads the global fallback', () => {
+test('E3/E4/E5: a harness reads its own block, and a harness without one reads the global fallback', async () => {
   const cwd = warmingProject({
     defaults: { agent: { interval: 9, max: 30 }, subagent: false },
     rules: [{ provider: 'anthropic', role: 'agent', interval: 8, max: 30 }],
     claude: { defaults: { agent: { interval: 1, max: 10 } } },
   });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'agent', 'claude'), { warming: { interval: 1, max: 10 }, origin: 'defaults', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'agent', 'opencode'), { warming: { interval: 8, max: 30 }, origin: 'provider', warnings: [] });
-  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'subagent', 'opencode').warming, 'off');
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'haiku', 'agent', 'claude'), { warming: { interval: 1, max: 10 }, origin: 'defaults', warnings: [] });
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'haiku', 'agent', 'opencode'), { warming: { interval: 8, max: 30 }, origin: 'provider', warnings: [] });
+  assert.equal((await resolved(cwd, 'anthropic', 'haiku', 'subagent', 'opencode')).warming, 'off');
   const scoped = warmingProject({ defaults: { agent: { interval: 9, max: 30 } }, opencode: { rules: [{ provider: 'opencode-go', role: 'subagent', enabled: false }] } });
-  assert.deepEqual(resolved(scoped, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'a harness block is not merged with the global value');
-  assert.equal(resolved(scoped, 'opencode-go', 'm', 'subagent', 'opencode').warming, 'off');
+  assert.deepEqual(await resolved(scoped, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'a harness block is not merged with the global value');
+  assert.equal((await resolved(scoped, 'opencode-go', 'm', 'subagent', 'opencode')).warming, 'off');
   const both = warmingProject({ defaults: { agent: { interval: 9, max: 30 } }, claude: { defaults: { agent: { interval: 1, max: 10 } } }, opencode: { defaults: { agent: { interval: 2, max: 20 } } } });
-  assert.deepEqual(resolved(both, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 10 });
-  assert.deepEqual(resolved(both, 'x', 'y', 'agent', 'opencode').warming, { interval: 2, max: 20 });
+  assert.deepEqual((await resolved(both, 'x', 'y', 'agent', 'claude')).warming, { interval: 1, max: 10 });
+  assert.deepEqual((await resolved(both, 'x', 'y', 'agent', 'opencode')).warming, { interval: 2, max: 20 });
 });
 
-test('E2/I4: the model rule beats the provider rule, which beats the role default, separately per role', () => {
+test('E2/I4: the model rule beats the provider rule, which beats the role default, separately per role', async () => {
   const cwd = warmingProject();
-  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'subagent'), { warming: { interval: 4, max: 20 }, origin: 'model', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'opus', 'subagent'), { warming: { interval: 3, max: 15 }, origin: 'provider', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', undefined, 'subagent').warming, { interval: 3, max: 15 });
-  assert.deepEqual(resolved(cwd, 'unlisted', 'any', 'agent'), { warming: { interval: 4, max: 30 }, origin: 'defaults', warnings: [] });
-  assert.equal(resolved(cwd, 'unlisted', 'any', 'subagent').warming, 'off');
-  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'agent').origin, 'defaults');
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'haiku', 'subagent'), { warming: { interval: 4, max: 20 }, origin: 'model', warnings: [] });
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'opus', 'subagent'), { warming: { interval: 3, max: 15 }, origin: 'provider', warnings: [] });
+  assert.deepEqual((await resolved(cwd, 'anthropic', undefined, 'subagent')).warming, { interval: 3, max: 15 });
+  assert.deepEqual(await resolved(cwd, 'unlisted', 'any', 'agent'), { warming: { interval: 4, max: 30 }, origin: 'defaults', warnings: [] });
+  assert.equal((await resolved(cwd, 'unlisted', 'any', 'subagent')).warming, 'off');
+  assert.equal((await resolved(cwd, 'anthropic', 'haiku', 'agent')).origin, 'defaults');
 });
 
-test('E3/I4: the family rule applies between the exact model rule and the provider rule, for both roles and anthropic only', () => {
+test('E3/I4: the family rule applies between the exact model rule and the provider rule, for both roles and anthropic only', async () => {
   const rule = (model, role, interval) => ({ provider: 'anthropic', ...(model === undefined ? {} : { model }), role, interval, max: 30 });
   const cwd = warmingProject({
     defaults: { agent: { interval: 9, max: 30 } },
     rules: [rule('opus', 'agent', 2), rule('claude-opus-5-5', 'agent', 1), rule(undefined, 'agent', 3), rule('opus', 'subagent', 4), rule(undefined, 'subagent', 5), { provider: 'opencode-go', model: 'opus', role: 'agent', interval: 6, max: 30 }],
   });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-5', 'agent'), { warming: { interval: 1, max: 30 }, origin: 'model', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-6', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'family', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'claude-opus-5-6', 'subagent'), { warming: { interval: 4, max: 30 }, origin: 'family', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'anthropic', 'opus', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'model', warnings: [] });
-  assert.equal(resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'agent').origin, 'provider');
-  assert.equal(resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'subagent').origin, 'provider');
-  assert.equal(resolved(cwd, 'opencode-go', 'claude-opus-5-5', 'agent').origin, 'defaults');
-  assert.equal(resolved(cwd, 'unlisted', 'claude-opus-5-5', 'agent').origin, 'defaults');
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'claude-opus-5-5', 'agent'), { warming: { interval: 1, max: 30 }, origin: 'model', warnings: [] });
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'claude-opus-5-6', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'family', warnings: [] });
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'claude-opus-5-6', 'subagent'), { warming: { interval: 4, max: 30 }, origin: 'family', warnings: [] });
+  assert.deepEqual(await resolved(cwd, 'anthropic', 'opus', 'agent'), { warming: { interval: 2, max: 30 }, origin: 'model', warnings: [] });
+  assert.equal((await resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'agent')).origin, 'provider');
+  assert.equal((await resolved(cwd, 'anthropic', 'claude-sonnet-5-5', 'subagent')).origin, 'provider');
+  assert.equal((await resolved(cwd, 'opencode-go', 'claude-opus-5-5', 'agent')).origin, 'defaults');
+  assert.equal((await resolved(cwd, 'unlisted', 'claude-opus-5-5', 'agent')).origin, 'defaults');
 });
 
-test('E3/I4: an id that names no family skips the family step', () => {
+test('E3/I4: an id that names no family skips the family step', async () => {
   const cwd = warmingProject({ rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 2, max: 30 }, { provider: 'anthropic', role: 'agent', interval: 3, max: 30 }] });
   for (const model of ['gpt-5', 'claude', 'claude-3-5-sonnet-20241022', 'opus-5', 'Claude-opus-5', undefined]) {
-    assert.equal(resolved(cwd, 'anthropic', model, 'agent').origin, 'provider', String(model));
+    assert.equal((await resolved(cwd, 'anthropic', model, 'agent')).origin, 'provider', String(model));
   }
 });
 
-test('E1/E2: a rule with enabled: false turns warming off even where the defaults enable it', () => {
+test('E1/E2: a rule with enabled: false turns warming off even where the defaults enable it', async () => {
   const cwd = warmingProject({ defaults: { subagent: { interval: 4, max: 30 } }, rules: [{ provider: 'opencode-go', model: 'm', role: 'subagent', enabled: false }] });
-  assert.deepEqual(resolved(cwd, 'opencode-go', 'm', 'subagent'), { warming: 'off', origin: 'model', warnings: [] });
-  assert.deepEqual(resolved(cwd, 'opencode-go', 'other', 'subagent').warming, { interval: 4, max: 30 });
+  assert.deepEqual(await resolved(cwd, 'opencode-go', 'm', 'subagent'), { warming: 'off', origin: 'model', warnings: [] });
+  assert.deepEqual((await resolved(cwd, 'opencode-go', 'other', 'subagent')).warming, { interval: 4, max: 30 });
 });
 
-test('E15/E8: the resolver reads the files again at every call, and the local file replaces the whole entry', () => {
+test('E15/E8: the resolver reads the files again at every call, and the local file replaces the whole entry', async () => {
   const cwd = warmingProject();
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
+  assert.deepEqual((await resolved(cwd, 'x', 'y', 'agent')).warming, { interval: 4, max: 30 });
   fs.writeFileSync(path.join(cwd, '.sai/settings.local.jsonc'), '{ "warming": { "defaults": { "agent": false, "subagent": false }, "rules": [] } }');
-  assert.equal(resolved(cwd, 'x', 'y', 'agent').warming, 'off');
-  assert.equal(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, 'off');
+  assert.equal((await resolved(cwd, 'x', 'y', 'agent')).warming, 'off');
+  assert.equal((await resolved(cwd, 'anthropic', 'haiku', 'subagent')).warming, 'off');
   fs.writeFileSync(path.join(cwd, '.sai/settings.local.jsonc'), '{ "warming": { "claude": { "defaults": { "agent": { "interval": 1, "max": 5 } } } } }');
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 5 });
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'an unnamed harness reads off');
+  assert.deepEqual((await resolved(cwd, 'x', 'y', 'agent', 'claude')).warming, { interval: 1, max: 5 });
+  assert.deepEqual(await resolved(cwd, 'x', 'y', 'agent', 'opencode'), { warming: 'off', origin: 'none', warnings: [] }, 'an unnamed harness reads off');
   fs.rmSync(path.join(cwd, '.sai/settings.local.jsonc'));
-  assert.deepEqual(resolved(cwd, 'anthropic', 'haiku', 'subagent').warming, { interval: 4, max: 20 });
+  assert.deepEqual((await resolved(cwd, 'anthropic', 'haiku', 'subagent')).warming, { interval: 4, max: 20 });
 });
 
-test('I3: an invalid warming value drops the key with a warning, so nothing warms', () => {
+test('I3: an invalid warming value drops the key with a warning, so nothing warms', async () => {
   const invalid = [
     'text', { defaults: { agent: { interval: 0, max: 5 } } }, { defaults: { agent: { interval: 5, max: 2 } } }, { defaults: { manager: false } },
     { rules: {} }, { rules: [{ provider: 'p', role: 'agent' }] }, { rules: [{ provider: 'p', role: 'boss', interval: 1, max: 2 }] },
@@ -559,7 +559,7 @@ test('I3: an invalid warming value drops the key with a warning, so nothing warm
     { claude: { defaults: { agent: { interval: 1, max: 2 } }, extra: 1 } },
   ];
   for (const value of invalid) {
-    const result = resolved(warmingProject(value), 'p', 'm', 'agent');
+    const result = await resolved(warmingProject(value), 'p', 'm', 'agent');
     assert.equal(result.warming, 'off', JSON.stringify(value));
     assert.match(result.warnings.join('\n'), /Setting warming in \.sai\/settings\.jsonc/, JSON.stringify(value));
   }
@@ -579,16 +579,16 @@ test('I4: the warming subcommand prints the effective values as JSON and rejects
   }
 });
 
-test('I3: the settings writer validates and saves a warming entry through the catalogue', () => {
+test('I3: the settings writer validates and saves a warming entry through the catalogue', async () => {
   const writer = require('../bin/project-settings-writer');
   const cwd = project({ '.sai/settings.jsonc': '{\n  // keep me\n  "explore": { "chatPublicLanguage": "English" }\n}\n' });
   assert.equal(writer.saveSettings(cwd, { warming: { defaults: { agent: { interval: 4, max: 30 } } } }).ok, true);
   const text = fs.readFileSync(path.join(cwd, '.sai/settings.jsonc'), 'utf8');
   assert.match(text, /\/\/ keep me/);
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent').warming, { interval: 4, max: 30 });
+  assert.deepEqual((await resolved(cwd, 'x', 'y', 'agent')).warming, { interval: 4, max: 30 });
   assert.equal(writer.saveSettings(cwd, { warming: { claude: { defaults: { agent: { interval: 1, max: 5 } } }, defaults: { agent: { interval: 4, max: 30 } } } }).ok, true);
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'claude').warming, { interval: 1, max: 5 });
-  assert.deepEqual(resolved(cwd, 'x', 'y', 'agent', 'opencode').warming, { interval: 4, max: 30 });
+  assert.deepEqual((await resolved(cwd, 'x', 'y', 'agent', 'claude')).warming, { interval: 1, max: 5 });
+  assert.deepEqual((await resolved(cwd, 'x', 'y', 'agent', 'opencode')).warming, { interval: 4, max: 30 });
   const refused = writer.saveSettings(cwd, { warming: { defaults: { agent: { interval: -1, max: 30 } } } });
   assert.equal(refused.ok, false);
   assert.match(refused.error, /warming/);

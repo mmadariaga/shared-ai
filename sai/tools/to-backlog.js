@@ -7,10 +7,10 @@ const { extractInputFile, readInput } = require('./input-reader');
 const projectSettings = require('./project-settings');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
-function run(command, args, cwd, input) {
-  if (command === 'azure-sdk') return require('./from-backlog').runAzureSdk(input);
-  if (command === 'az') return require('./from-backlog').run(command, args, input);
-  const result = runProcess(command, args, { step: stepLabel(command, args), cwd, input, encoding: 'utf8', shell: false, maxBuffer: 32 * 1024 * 1024 });
+async function run(command, args, cwd, input) {
+  if (command === 'azure-sdk') return await require('./from-backlog').runAzureSdk(input);
+  if (command === 'az') return await require('./from-backlog').run(command, args, input);
+  const result = await runProcess(command, args, { step: stepLabel(command, args), cwd, input, encoding: 'utf8', shell: false, maxBuffer: 32 * 1024 * 1024 });
   if (result.error || result.status !== 0) throw new Error(`${command}: ${result.error?.message || result.stderr || `exit ${result.status}`}`);
   return result.stdout;
 }
@@ -45,15 +45,15 @@ function validateInstructions(entry) {
   if (!/^providers\/[a-z0-9-]+\.md$/.test(entry.instructions)) throw new Error('Invalid provider instruction reference');
 }
 
-function dispatch(operation, request, registry, io) {
+async function dispatch(operation, request, registry, io) {
   const entry = registry.providers.find(item => item.id === request.provider);
   if (!entry?.capabilities.includes(operation)) return { status: 'unsupported', provider: request.provider };
   const adapter = loadAdapter(entry);
   if (typeof adapter[operation] !== 'function') throw new Error(`Registered provider ${entry.id} does not implement ${operation}`);
-  return adapter[operation](request, io);
+  return await adapter[operation](request, io);
 }
 
-function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}) {
+async function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}) {
   for (const input of [explicit, config]) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Destination must be an object');
     for (const [key, value] of Object.entries(input)) {
@@ -75,7 +75,7 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
   if (delegated) {
     if (!delegated.capabilities.includes('publish')) return { status: 'unsupported', provider };
     validateInstructions(delegated);
-    const result = (io.loadAdapter || loadAdapter)(delegated).resolve({ explicit, config, remotes }, io);
+    const result = await (io.loadAdapter || loadAdapter)(delegated).resolve({ explicit, config, remotes }, io);
     return { ...result, provider, instructions: delegated.instructions, adapter: delegated.adapter };
   }
   if (address(repository) && !fromAddress.length) return { status: 'needs_input', reason: 'unrecognized-destination', repository };
@@ -95,7 +95,7 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
   if (!entry || !entry.capabilities.includes('publish')) return { status: 'unsupported', provider };
   validateInstructions(entry);
   if (entry.resolution === 'provider') {
-    const result = (io.loadAdapter || loadAdapter)(entry).resolve({ explicit, config, remotes }, io);
+    const result = await (io.loadAdapter || loadAdapter)(entry).resolve({ explicit, config, remotes }, io);
     return { ...result, provider, instructions: entry.instructions, adapter: entry.adapter };
   }
   if (!repository) {
@@ -106,7 +106,7 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
   return { status: 'resolved', provider, repository, project: selected.project, instructions: entry.instructions, adapter: entry.adapter };
 }
 
-function main(rawArgv) {
+async function main(rawArgv) {
   // Settings warnings stay visible when resolution fails after the read.
   let warnings = [];
   try {
@@ -118,7 +118,7 @@ function main(rawArgv) {
     const request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const cwd = process.cwd();
-    const io = { run: (command, args, input) => run(command, args, cwd, input) };
+    const io = { run: async (command, args, input) => await run(command, args, cwd, input) };
     let result;
     if (operation === 'resolve-origin') {
       const candidates = request.provider ? registry.providers.filter(entry => entry.id === request.provider)
@@ -135,17 +135,17 @@ function main(rawArgv) {
       const settings = projectSettings.readBacklog({ cwd, providerIds: registry.providers.map(entry => entry.id) });
       const config = settings.config;
       warnings = settings.warnings;
-      result = resolve({ explicit: request.explicit, config }, registry, io);
+      result = await resolve({ explicit: request.explicit, config }, registry, io);
       // Unsupported explicit providers and complete destinations need no Git.
       if (result.status === 'needs_input' && ['provider-ambiguous', 'repository-ambiguous', 'destination-ambiguous'].includes(result.reason)) {
-        const remotes = run('git', ['remote', '-v'], cwd).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean);
-        result = resolve({ explicit: request.explicit, config, remotes }, registry, io);
+        const remotes = (await run('git', ['remote', '-v'], cwd)).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean);
+        result = await resolve({ explicit: request.explicit, config, remotes }, registry, io);
       }
       const addressed = detect(request.explicit?.repository, registry);
       const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
       result = projectSettings.report(result, { warnings, notices: [...(settings.notices || []), ...projectSettings.notices(config, request.explicit, result, addressProvider)] });
     } else {
-      result = dispatch(operation, request, registry, io);
+      result = await dispatch(operation, request, registry, io);
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
@@ -155,5 +155,5 @@ function main(rawArgv) {
   }
 }
 
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 module.exports = { run, address, detect, resolve, dispatch, main };

@@ -17,7 +17,7 @@ function normalize(value, platform) {
     const parsed = require('./from-backlog-gitlab').issueURL(value);
     return `${parsed.destination}/-/${parsed.route}/${parsed.number}`;
   }
-  const ref = require('./from-backlog-azuredevops').resolve(value, {});
+  const ref = require('./from-backlog-azuredevops').resolveLink(value);
   if (ref.status !== 'resolved' || !ref.url) throw new Error('Complete Azure slice URL required');
   return ref.url;
 }

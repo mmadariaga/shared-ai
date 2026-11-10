@@ -16,7 +16,7 @@ test('H1: actual shared spawn boundary overrides inherited dynamic installation 
     process.env.AZURE_EXTENSION_USE_DYNAMIC_INSTALL='yes_without_prompt';
     process.env.AZURE_DEVOPS_EXT_PAT='preserved-test-token';
     const calls=[];let absent=false;
-    child.spawnSync=(command,args,options)=>{
+    require(${JSON.stringify(path.join(__dirname, 'helpers', 'spawn-stub.js'))}).stub(child,(command,args,options)=>{
       calls.push({command,args});
       if(command==='where.exe') return {stdout:'C:\\cli\\wbin\\az.cmd\\r\\n'.replace(/\\\\r\\\\n/,'\\r\\n'),status:0};
       assert.equal(options.shell,false);
@@ -25,23 +25,25 @@ test('H1: actual shared spawn boundary overrides inherited dynamic installation 
       if(args.includes('show')) return absent?{status:1,stderr:'azure-devops extension not installed'}:{status:0,stdout:JSON.stringify({name:'azure-devops',path:'C:\\extension'})};
       assert.ok(!args.includes('add')&&!args.includes('login')&&!args.includes('configure'));
       return {status:0,stdout:'{}'};
-    };
+    });
     const shared=require('./sai/tools/to-backlog'),reader=require('./sai/tools/from-backlog');
     fs.existsSync=()=>true;fs.readFileSync=()=>'-IBm azure.cli';fs.statSync=()=>({isDirectory:()=>true});
-    shared.run('az',['devops','invoke'],process.cwd());
-    shared.run('azure-sdk',[],process.cwd(),JSON.stringify({organization:'https://dev.azure.com/org'}));
-    const sdkCalls=calls.filter(c=>c.args[0]==='-IBc').length;assert.equal(sdkCalls,1);
-    reader.resetAzureMemory();
-    absent=true;
-    assert.throws(()=>shared.run('azure-sdk',[],process.cwd(),'{}'),/extension not installed/);
-    assert.equal(calls.filter(c=>c.args[0]==='-IBc').length,1);
-    assert.equal(process.env.AZURE_EXTENSION_USE_DYNAMIC_INSTALL,'yes_without_prompt');
+    (async()=>{
+      await shared.run('az',['devops','invoke'],process.cwd());
+      await shared.run('azure-sdk',[],process.cwd(),JSON.stringify({organization:'https://dev.azure.com/org'}));
+      const sdkCalls=calls.filter(c=>c.args[0]==='-IBc').length;assert.equal(sdkCalls,1);
+      reader.resetAzureMemory();
+      absent=true;
+      await assert.rejects(()=>shared.run('azure-sdk',[],process.cwd(),'{}'),/extension not installed/);
+      assert.equal(calls.filter(c=>c.args[0]==='-IBc').length,1);
+      assert.equal(process.env.AZURE_EXTENSION_USE_DYNAMIC_INSTALL,'yes_without_prompt');
+    })().catch(error=>{console.error(error);process.exitCode=1});
   `;
   const result = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('H2: installed-SDK bridge selects distinct official location IDs and resolves final encoded REST templates', () => {
+test('H2: installed-SDK bridge selects distinct official location IDs and resolves final encoded REST templates', async () => {
   const prefix = fs.readFileSync(path.join(__dirname, 'fixtures/azure-sdk-routing.py'), 'utf8');
   const cases = [
     { client: 'wit', location: '5a172953-1b41-49d3-840a-33f79c3ce89f', method: 'GET', route: { project: 'Team Ω', structureGroup: 'iterations' }, expected: '/Team%20%CE%A9/_apis/wit/classificationnodes/iterations' },
@@ -68,14 +70,14 @@ test('H2: installed-SDK bridge selects distinct official location IDs and resolv
   for (const [area, resource, route, location, client] of [['wit', 'workitems', { project: 'Team', type: 'Task' }, '62d3d110-0047-428c-ad3c-4fe872c91c74', 'wit'],
     ['wit', 'workitems', { project: 'Team', id: 1 }, '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', 'wit'],
     ['git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, '9946fd70-0d40-406e-b686-b4744cbbcc37', 'git']]) {
-    azure.api(org, area, resource, route, { run(command, args, input) {
+    await azure.api(org, area, resource, route, { run(command, args, input) {
       assert.equal(command, 'azure-sdk'); const request = JSON.parse(input); calls.push(request); assert.equal(request.location, location); assert.equal(request.client, client); return '{}';
     } });
   }
   assert.equal(calls.length, 3);
   assert.equal(calls[2].version, '7.1');
   // Only git/pullrequests changes transport: repositories keep the invoke path.
-  azure.api(org, 'git', 'repositories', { project: 'Team', repositoryId: 'r' }, { run(command) { assert.equal(command, 'az'); return '{}'; } });
+  await azure.api(org, 'git', 'repositories', { project: 'Team', repositoryId: 'r' }, { run(command) { assert.equal(command, 'az'); return '{}'; } });
 });
 
 test('H3: escapes, reference definitions in paragraphs and task-list semantics fail closed before approval', () => {
@@ -91,7 +93,7 @@ test('H3: escapes, reference definitions in paragraphs and task-list semantics f
   assert.ok(html.includes('<!-- backlog-id-counters: E=0 I=0 Q=0 -->'));
 });
 
-test('M1: only owned transport payloads are removed on success, runner/JSON/preparation errors; receipts survive', () => {
+test('M1: only owned transport payloads are removed on success, runner/JSON/preparation errors; receipts survive', async () => {
   let created;
   const originalMkdtemp = fs.mkdtempSync, originalWrite = fs.writeFileSync;
   const receiptDirectory = originalMkdtemp(path.join(require('node:os').tmpdir(), 'azure-receipt-'));
@@ -105,12 +107,12 @@ test('M1: only owned transport payloads are removed on success, runner/JSON/prep
         if (outcome === 'prepare-error' && path.basename(args[0]) === 'payload.json') throw new Error('Preparation failed');
         return originalWrite(...args);
       };
-      const call = () => azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'wiql', {}, { run(command, args) {
+      const call = async () => await azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'wiql', {}, { run(command, args) {
         const file = args[args.indexOf('--in-file') + 1]; assert.ok(fs.existsSync(file));
         if (outcome === 'runner-error') throw new Error('Runner failed');
         return outcome === 'parse-error' ? '{invalid' : '{}';
       } }, 'POST', { title: 'Private title', description: 'Private body' });
-      if (outcome === 'success') assert.deepEqual(call(), {}); else assert.throws(call);
+      if (outcome === 'success') assert.deepEqual(await call(), {}); else await assert.rejects(call);
       assert.ok(created); assert.equal(fs.existsSync(created), false, `${outcome} cleans its directory and payload`);
       assert.equal(fs.readFileSync(receiptFile, 'utf8'), '{"evidence":"preserved"}');
     }
@@ -120,24 +122,24 @@ test('M1: only owned transport payloads are removed on success, runner/JSON/prep
   }
 });
 
-test('M2: pull-request writes travel as SDK stdin JSON and create no temporary payload file', () => {
+test('M2: pull-request writes travel as SDK stdin JSON and create no temporary payload file', async () => {
   const created = [], originalMkdtemp = fs.mkdtempSync;
   fs.mkdtempSync = (...args) => { created.push(args); return originalMkdtemp(...args); };
   try {
     const body = { title: 'Título\nlínea', description: '## Ω\nbody' };
-    const result = azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run(command, args, input) {
+    const result = await azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run(command, args, input) {
       assert.equal(command, 'azure-sdk'); assert.deepEqual(args, []); assert.deepEqual(JSON.parse(input).body, body); return '{"ok":true}';
     } }, 'POST', body);
     assert.deepEqual(result, { ok: true });
     assert.equal(created.length, 0);
     for (const [text, reason] of [['ENOENT az not found', 'tool-unavailable'], ['extension not installed', 'extension-unavailable'], ['az login required', 'authentication-failed'], ['no luck', 'azure-request-failed']]) {
-      assert.throws(() => azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => { throw new Error(text); } }), error => error.reason === reason);
+      await assert.rejects(async () => await azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => { throw new Error(text); } }), error => error.reason === reason);
     }
-    assert.throws(() => azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => JSON.stringify({ sdk_error: 'VS403: denied', status_code: 403 }) }), error => error.reason === 'azure-request-failed' && /HTTP status 403/.test(error.message) && error.rejected === true);
+    await assert.rejects(async () => await azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => JSON.stringify({ sdk_error: 'VS403: denied', status_code: 403 }) }), error => error.reason === 'azure-request-failed' && /HTTP status 403/.test(error.message) && error.rejected === true);
   } finally { fs.mkdtempSync = originalMkdtemp; }
 });
 
-test('I4: the SDK bridge carries the HTTP status of a service error so an unknown-identity 400 is rejected', () => {
+test('I4: the SDK bridge carries the HTTP status of a service error so an unknown-identity 400 is rejected', async () => {
   // Mirrors the installed SDK: _send_request hands a failed response to _handle_error, which raises an error without a status.
   const prefix = `
 import sys, types
@@ -159,8 +161,8 @@ sys.modules['azext_devops.dev.common.services'] = services
   const failed = run({ project: 'Team', id: 1 });
   assert.equal(failed.status, 0, failed.stderr);
   assert.equal(JSON.parse(failed.stdout).status_code, 400);
-  const rejected = status => { try { azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'workitems', { project: 'Team', id: 1 }, { run: () => JSON.stringify({ sdk_error: 'VS402625: The identity is an unknown identity', status_code: status }) }, 'PATCH', [], {}, true); } catch (error) { return error.rejected; } };
-  assert.equal(rejected(400), true);
-  assert.equal(rejected(503), false);
-  assert.equal(rejected(null), false);
+  const rejected = async status => { try { await azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'workitems', { project: 'Team', id: 1 }, { run: () => JSON.stringify({ sdk_error: 'VS402625: The identity is an unknown identity', status_code: status }) }, 'PATCH', [], {}, true); } catch (error) { return error.rejected; } };
+  assert.equal(await rejected(400), true);
+  assert.equal(await rejected(503), false);
+  assert.equal(await rejected(null), false);
 });

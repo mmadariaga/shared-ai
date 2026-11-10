@@ -1,6 +1,6 @@
 'use strict';
 
-const { test } = require('node:test');
+const { test, before } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const os = require('node:os');
@@ -11,7 +11,8 @@ const registry = require('../skills/universal/from-backlog/providers/registry.js
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
 const link = 'https://dev.azure.com/team/My%20Project/_workitems/edit/42';
-const reference = resolve(link, registry);
+let reference;
+before(async () => { reference = await resolve(link, registry); });
 const html = '<p>Exact ñ &amp; text</p><ul><li><a href="https://example.test">Link</a></li></ul>';
 
 function mock(state = {}) {
@@ -38,35 +39,35 @@ function mock(state = {}) {
   } };
 }
 
-test('Services references claim their hosts without breaking GitHub or self-hosted GitLab', () => {
+test('Services references claim their hosts without breaking GitHub or self-hosted GitLab', async () => {
   for (const value of [link, 'https://team.visualstudio.com/My%20Project/_workitems/edit/42', 'https://team.visualstudio.com/DefaultCollection/My%20Project/_workitems/edit/42?x=1#comment']) {
-    assert.equal(resolve(value, registry).url, link);
-    assert.equal(resolve(value, registry).provider, 'azuredevops');
+    assert.equal((await resolve(value, registry)).url, link);
+    assert.equal((await resolve(value, registry)).provider, 'azuredevops');
   }
-  assert.equal(resolve('/owner/repo/issues/42', registry).provider, 'github');
-  assert.equal(resolve('https://github.com/owner/repo/issues/42', registry).provider, 'github');
+  assert.equal((await resolve('/owner/repo/issues/42', registry)).provider, 'github');
+  assert.equal((await resolve('https://github.com/owner/repo/issues/42', registry)).provider, 'github');
   const io = { run(command) { assert.equal(command, 'glab'); return JSON.stringify({ id: 1, path_with_namespace: 'group/repo', archived: false, visibility: 'private', issues_enabled: true, web_url: 'https://private.example/group/repo' }); } };
-  assert.equal(resolve('https://private.example/group/repo/-/issues/42', registry, io).provider, 'gitlab');
-  for (const value of ['http://dev.azure.com/team/project/_workitems/edit/42', 'https://user@dev.azure.com/team/project/_workitems/edit/42', 'https://dev.azure.com:8443/team/project/_workitems/edit/42', 'https://dev.azure.com/team/project/_workitems/edit/0', 'https://dev.azure.com/team/project/_workitems/edit/999999999999999999', 'https://dev.azure.com/team/project/_workitems/edit/42/extra', 'https://dev.azure.com/team/project/../project/_workitems/edit/42', 'https://dev.azure.com/team/p%2fq/_workitems/edit/42']) assert.throws(() => resolve(value, registry));
+  assert.equal((await resolve('https://private.example/group/repo/-/issues/42', registry, io)).provider, 'gitlab');
+  for (const value of ['http://dev.azure.com/team/project/_workitems/edit/42', 'https://user@dev.azure.com/team/project/_workitems/edit/42', 'https://dev.azure.com:8443/team/project/_workitems/edit/42', 'https://dev.azure.com/team/project/_workitems/edit/0', 'https://dev.azure.com/team/project/_workitems/edit/999999999999999999', 'https://dev.azure.com/team/project/_workitems/edit/42/extra', 'https://dev.azure.com/team/project/../project/_workitems/edit/42', 'https://dev.azure.com/team/p%2fq/_workitems/edit/42']) await assert.rejects(async () => await resolve(value, registry));
   assert.equal(azure.classify('https://server.test/collection/project/_workitems/edit/42'), null);
-  for (const value of ['https://dev.azure.com/team/p%ZZ/_workitems/edit/42', 'https://dev.azure.com/team/p%0A/_workitems/edit/42']) assert.throws(() => resolve(value, registry), error => error.reason === 'invalid-reference');
+  for (const value of ['https://dev.azure.com/team/p%ZZ/_workitems/edit/42', 'https://dev.azure.com/team/p%0A/_workitems/edit/42']) await assert.rejects(async () => await resolve(value, registry), error => error.reason === 'invalid-reference');
 });
 
-test('isolated ID uses only existing unambiguous organization context', () => {
-  assert.equal(resolve('42', registry, mock()).status, 'needs_input');
+test('isolated ID uses only existing unambiguous organization context', async () => {
+  assert.equal((await resolve('42', registry, mock())).status, 'needs_input');
   const defaults = 'organization = https://dev.azure.com/team\nproject = My Project';
-  assert.equal(resolve('42', registry, mock({ defaults })).organization, reference.organization);
+  assert.equal((await resolve('42', registry, mock({ defaults }))).organization, reference.organization);
   for (const remote of ['https://user@dev.azure.com/team/My%20Project/_git/repo', 'git@ssh.dev.azure.com:v3/team/My%20Project/repo', 'https://team.visualstudio.com/My%20Project/_git/repo']) {
-    assert.equal(resolve('42', registry, mock({ remotes: `origin ${remote} (fetch)\norigin ${remote} (push)` })).project, 'My Project');
+    assert.equal((await resolve('42', registry, mock({ remotes: `origin ${remote} (fetch)\norigin ${remote} (push)` }))).project, 'My Project');
   }
-  assert.equal(resolve('42', registry, mock({ defaults, remotes: 'other https://dev.azure.com/other/project/_git/repo (fetch)' })).status, 'needs_input');
-  const selected = resolve('42', registry, mock({ defaults: 'organization = https://dev.azure.com/team' }));
+  assert.equal((await resolve('42', registry, mock({ defaults, remotes: 'other https://dev.azure.com/other/project/_git/repo (fetch)' }))).status, 'needs_input');
+  const selected = await resolve('42', registry, mock({ defaults: 'organization = https://dev.azure.com/team' }));
   assert.equal(selected.project, undefined);
-  assert.equal(azure.read(selected, mock()).item.project, 'My Project');
+  assert.equal((await azure.read(selected, mock())).item.project, 'My Project');
 });
 
-test('custom type, state, rich content and all comment pages preserve project identity', () => {
-  const state = {}, result = azure.read(reference, mock(state));
+test('custom type, state, rich content and all comment pages preserve project identity', async () => {
+  const state = {}, result = await azure.read(reference, mock(state));
   assert.equal(result.status, 'complete');
   assert.equal(result.item.type, 'Custom type');
   assert.equal(result.item.state, 'Custom closed');
@@ -77,22 +78,22 @@ test('custom type, state, rich content and all comment pages preserve project id
   assert.equal(result.comments[0].body, html);
   assert.equal(result.comments[1].author, null);
   assert.equal(state.calls.length, 3);
-  assert.equal(azure.read(reference, mock({ noComments: true, empty: true })).item.description_missing, true);
+  assert.equal((await azure.read(reference, mock({ noComments: true, empty: true }))).item.description_missing, true);
 });
 
-test('partial, repeated, malformed and changing comments never report complete', () => {
+test('partial, repeated, malformed and changing comments never report complete', async () => {
   for (const state of [{ commentsFailure: true }, { pageFailure: true }, { repeat: true }, { duplicate: true }, { total: 3 }, { page: { count: 9 } }, { page: { continuationToken: {} } }, { page: { comments: null } }]) {
-    const result = azure.read(reference, mock(state));
+    const result = await azure.read(reference, mock(state));
     assert.equal(result.status, 'incomplete', JSON.stringify(state));
     assert.equal(result.item.description, html);
   }
-  assert.equal(azure.read(reference, mock({ pageFailure: true })).comments.length, 1);
-  assert.equal(azure.read(reference, mock({ project: 'Wrong' })).status, 'error');
+  assert.equal((await azure.read(reference, mock({ pageFailure: true }))).comments.length, 1);
+  assert.equal((await azure.read(reference, mock({ project: 'Wrong' }))).status, 'error');
 });
 
-test('missing tool, extension, authentication and access failures remain distinct', () => {
+test('missing tool, extension, authentication and access failures remain distinct', async () => {
   for (const [failure, reason] of [['spawn az ENOENT', 'tool-unavailable'], ['extension not installed; az extension add', 'extension-unavailable'], ['Run az devops login to setup credentials', 'authentication-failed'], ['does not exist, or you do not have permissions', 'inaccessible-item']]) {
-    const result = azure.read(reference, mock({ failure }));
+    const result = await azure.read(reference, mock({ failure }));
     assert.equal(result.status, 'error');
     assert.equal(result.reason, reason);
   }
@@ -119,7 +120,7 @@ test('Windows Azure execution bypasses shell syntax and disables automatic exten
     Object.defineProperty(process,'platform',{value:'win32'});
     const malicious="project=a&whoami|echo%NAME%\\\"'";
     const calls=[];
-    child.spawnSync=(command,args,options)=>{
+    require(${JSON.stringify(path.join(__dirname, 'helpers', 'spawn-stub.js'))}).stub(child,(command,args,options)=>{
       calls.push({command,args,options});
       if(command==='where.exe')return {stdout:'C:\\\\cli\\\\wbin\\\\az\\r\\nC:\\\\cli\\\\wbin\\\\az.cmd\\r\\n',status:0};
       assert.equal(command,path.resolve(path.dirname('C:\\\\cli\\\\wbin\\\\az.cmd'),'..','python.exe'));
@@ -127,42 +128,41 @@ test('Windows Azure execution bypasses shell syntax and disables automatic exten
       assert.equal(options.shell,false);
       assert.equal(options.env.AZURE_EXTENSION_USE_DYNAMIC_INSTALL,'no');
       return {stdout:'{}',status:0};
-    };
+    });
     const tool=require('./sai/tools/from-backlog');
     fs.existsSync=()=>true;
     fs.readFileSync=()=>'-IBm azure.cli';
-    tool.run('az',['devops','invoke',malicious]);
-    assert.equal(calls.length,2);
+    tool.run('az',['devops','invoke',malicious]).then(()=>assert.equal(calls.length,2)).catch(error=>{console.error(error);process.exitCode=1});
   `;
   const result = spawnSync(process.execPath, ['-e', script], { cwd: path.resolve(__dirname, '..'), encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('E9 I1 I3: a Markdown work item imports as Markdown with its description entity-decoded, an HTML one as before', () => {
+test('E9 I1 I3: a Markdown work item imports as Markdown with its description entity-decoded, an HTML one as before', async () => {
   const stored = '## Goal\n\nSay &quot;hi&quot; &#128640;\n\n```\n&lt;b&gt; &amp; x\n```';
   for (const multiline of [{ 'System.Description': 'markdown' }, { 'System.Description': 'Markdown' }]) {
-    const result = azure.read(reference, mock({ description: stored, multiline }));
+    const result = await azure.read(reference, mock({ description: stored, multiline }));
     assert.equal(result.item.description_format, 'markdown');
     assert.equal(result.item.description, '## Goal\n\nSay "hi" \u{1F680}\n\n```\n<b> & x\n```');
     assert.equal(result.item.description_missing, false);
   }
   for (const multiline of [{}, { 'System.Description': 'html' }]) {
     // An HTML work item keeps its stored text even when it reads like Markdown.
-    const result = azure.read(reference, mock({ description: stored, multiline }));
+    const result = await azure.read(reference, mock({ description: stored, multiline }));
     assert.equal(result.item.description_format, 'html');
     assert.equal(result.item.description, stored);
   }
 });
-test('E9 E10: without the multilineFieldsFormat key the deterministic detector decides and doubt means Markdown', () => {
-  const format = description => azure.read(reference, mock({ description })).item.description_format;
-  assert.equal(format(html), 'html');
-  assert.equal(format('<h2>Goal</h2><p>text</p>'), 'html');
-  assert.equal(format('## Goal\n\ntext'), 'markdown');
-  assert.equal(format('plain text'), 'markdown');
-  assert.equal(format('Use `<p>` and <br> in `<div>` text'), 'html');
-  assert.equal(format('Use `<p>` and `<div>` here'), 'markdown');
-  assert.equal(format('```html\n<p>x</p>\n```\ntext'), 'markdown');
-  assert.equal(format('<p>real</p>\n```\n<div>x</div>\n```'), 'html');
+test('E9 E10: without the multilineFieldsFormat key the deterministic detector decides and doubt means Markdown', async () => {
+  const format = async description => (await azure.read(reference, mock({ description }))).item.description_format;
+  assert.equal(await format(html), 'html');
+  assert.equal(await format('<h2>Goal</h2><p>text</p>'), 'html');
+  assert.equal(await format('## Goal\n\ntext'), 'markdown');
+  assert.equal(await format('plain text'), 'markdown');
+  assert.equal(await format('Use `<p>` and <br> in `<div>` text'), 'html');
+  assert.equal(await format('Use `<p>` and `<div>` here'), 'markdown');
+  assert.equal(await format('```html\n<p>x</p>\n```\ntext'), 'markdown');
+  assert.equal(await format('<p>real</p>\n```\n<div>x</div>\n```'), 'html');
 });
 test('E4 I4: a Markdown work item carries its slice identity as a fenced code block read after entity decoding', () => {
   const identity = require('../sai/tools/backlog-slice-identity');

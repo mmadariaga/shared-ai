@@ -226,6 +226,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0213 — opencode dispose removes the worker's shells](./0213-opencode-dispose-removes-the-workers-shells.md) — **Amends** 0210, Refs 0202
 - [0215 — opencode dispose sends the dispose message after a none listing of a warming worker](./0215-opencode-dispose-message-follows-a-warming-none-listing.md) — **Amends** 0213
 - [0216 — Main-session warming needs a harness session id, and warming ends as the code says](./0216-main-session-warming-needs-a-session-id.md) — **Amends** 0212
+- [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
 
 ### `/sai-backfill`
 
@@ -553,6 +554,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0213 — opencode dispose removes the worker's shells](./0213-opencode-dispose-removes-the-workers-shells.md) — **Amends** 0210, Refs 0202
 - [0215 — opencode dispose sends the dispose message after a none listing of a warming worker](./0215-opencode-dispose-message-follows-a-warming-none-listing.md) — **Amends** 0213
 - [0216 — Main-session warming needs a harness session id, and warming ends as the code says](./0216-main-session-warming-needs-a-session-id.md) — **Amends** 0212
+- [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
 
 ### Testability routing & RED → GREEN
 

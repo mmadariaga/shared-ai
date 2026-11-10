@@ -4,26 +4,26 @@ const crypto = require('node:crypto');
 const source = require('./from-backlog-github');
 const identity = require('./backlog-slice-identity');
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
-function rest(io, endpoint, method = 'GET', body) {
-  return JSON.parse(io.run('gh', ['api', '--hostname', 'github.com', endpoint, '--method', method, ...(body ? ['--input', '-'] : [])], body ? JSON.stringify(body) : undefined));
+async function rest(io, endpoint, method = 'GET', body) {
+  return JSON.parse(await io.run('gh', ['api', '--hostname', 'github.com', endpoint, '--method', method, ...(body ? ['--input', '-'] : [])], body ? JSON.stringify(body) : undefined));
 }
-function readHierarchy(io, ref) {
+async function readHierarchy(io, ref) {
   const [owner, name] = ref.repository.split('/');
-  const issue = source.api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url} subIssues(first:1){nodes{url}}}}}', { owner, name, number: ref.number }).repository?.issue;
+  const issue = (await source.api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){parent{url} subIssues(first:1){nodes{url}}}}}', { owner, name, number: ref.number })).repository?.issue;
   // Only a complete response decides: a missing parent field or sub-issue page is never read as "none".
   if (!issue || !Object.prototype.hasOwnProperty.call(issue, 'parent') || (issue.parent !== null && typeof issue.parent?.url !== 'string') || !Array.isArray(issue.subIssues?.nodes)) throw new Error('Incomplete assignment inspection');
   return { parent: issue.parent?.url ?? null, hasSubIssues: issue.subIssues.nodes.length > 0 };
 }
-function inspect(request, io) {
+async function inspect(request, io) {
   const ref = source.normalize(request.reference);
-  const issue = rest(io, `repos/${ref.repository}/issues/${ref.number}`);
-  const actor = rest(io, 'user');
+  const issue = await rest(io, `repos/${ref.repository}/issues/${ref.number}`);
+  const actor = await rest(io, 'user');
   if (issue.pull_request || issue.html_url !== ref.url || !Array.isArray(issue.assignees) || issue.assignees.some(item => typeof item.login !== 'string') || typeof actor.login !== 'string' || typeof issue.body !== 'string') throw new Error('Incomplete assignment inspection');
   const correspondence = identity.decode(issue.body, ref.url);
   if (correspondence && (correspondence.role !== 'child' || identity.slicesOf(correspondence, ref.url).find(slice => slice.change_name === correspondence.change_name)?.issue !== ref.url)) throw new Error('Assignment requires verified child correspondence; parent responsibility is preserved');
   let nativeParent;
   if (!correspondence || correspondence.hierarchy === 'native') {
-    const hierarchy = readHierarchy(io, ref);
+    const hierarchy = await readHierarchy(io, ref);
     nativeParent = hierarchy.parent;
     if (!nativeParent && correspondence) throw new Error('Selected issue has no verified native parent; parent responsibility is preserved');
     if (!nativeParent && hierarchy.hasSubIssues) throw new Error('Selected issue has sub-issues; parent responsibility is preserved');
@@ -33,7 +33,7 @@ function inspect(request, io) {
   const parentRef = parentUrl ? source.normalize(parentUrl) : null;
   if (parentRef) {
     if (parentRef.url === ref.url) throw new Error('An issue cannot be its own parent');
-    const parentIssue = rest(io, `repos/${parentRef.repository}/issues/${parentRef.number}`);
+    const parentIssue = await rest(io, `repos/${parentRef.repository}/issues/${parentRef.number}`);
     if (parentIssue.pull_request || parentIssue.html_url !== parentRef.url || typeof parentIssue.body !== 'string') throw new Error('Parent issue identity could not be verified');
     if (correspondence) {
       const parent = identity.decode(parentIssue.body, parentRef.url);
@@ -43,8 +43,8 @@ function inspect(request, io) {
   }
   return { status: 'complete', issue: ref.url, parent: parentRef?.url ?? null, actor: actor.login, assignees: issue.assignees.map(item => item.login).sort(), correspondence };
 }
-function propose(request, io) {
-  const current = inspect(request, io);
+async function propose(request, io) {
+  const current = await inspect(request, io);
   if (request.choice === 'keep') {
     if (!current.assignees.length) return { ...current, status: 'needs_input', reason: 'responsibility-changed' };
     const proposal = { ...current, choice: 'keep', target: current.assignees };
@@ -54,8 +54,8 @@ function propose(request, io) {
   const proposal = { ...current, choice: current.assignees.length ? 'replace' : 'assign', target: [current.actor] };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
-function verify(request, io) {
-  const current = inspect(request, io);
+async function verify(request, io) {
+  const current = await inspect(request, io);
   const expected = request.expected_assignees || (request.choice === 'keep' ? [] : [current.actor]);
   const valid = Array.isArray(expected) && expected.length > 0 && expected.every(login => typeof login === 'string' && login) && new Set(expected).size === expected.length;
   const target = valid ? expected.slice().sort() : [];
@@ -64,15 +64,15 @@ function verify(request, io) {
   else verified = verified && target.length === 1 && target[0] === current.actor;
   return { ...current, status: verified ? 'complete' : 'needs_input', reason: 'assignment-verification', verified };
 }
-function assign(request, io) {
+async function assign(request, io) {
   if (request.choice === 'keep') throw new Error('Keeping responsibility is read-only; use verify-assignment');
-  const ready = propose(request, io);
+  const ready = await propose(request, io);
   if (ready.status !== 'ready' || ready.confirmation !== request.confirmation) throw new Error('Exact assignment approval and unchanged assignees are required');
   const ref = source.normalize(request.reference);
   try {
     // Assignment is a separate operation; title, body, labels and state stay untouched.
-    rest(io, `repos/${ref.repository}/issues/${ref.number}`, 'PATCH', { assignees: ready.proposal.target });
-    return verify({ ...request, expected_parent: ready.proposal.parent }, io);
+    await rest(io, `repos/${ref.repository}/issues/${ref.number}`, 'PATCH', { assignees: ready.proposal.target });
+    return await verify({ ...request, expected_parent: ready.proposal.parent }, io);
   } catch (error) { return { status: 'uncertain', issue: ref.url, message: error.message, next_operation: 'verify-assignment' }; }
 }
 module.exports = { inspect, propose, assign, verify, rest };

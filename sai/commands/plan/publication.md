@@ -29,8 +29,14 @@ the final request. It is the only exception to ordinary planning's ignored-file 
    and preserves unrelated staging and working files. Only the authorized excluded
    paths may bypass ignore rules. A changed plan, HEAD or owned index entry requires
    renewed file review and approval. A `no_changes` result needs no new commit.
-   If the operation fails, inspect HEAD and the exact-path diff before retrying;
-   report an already-created commit separately and never repeat it blindly.
+   A `blocked` `plan-query` result or a blocked `plan-commit` names owned paths
+   whose staged content differs from both HEAD and the working tree: the commit
+   would drop that staging, so tell the user to commit, unstage or discard it and
+   query again. Every git call runs for at most 120 s; an `uncertain` result
+   (a commit that reached that bound) carries the HEAD read back and is never
+   repeated on its own. If the operation fails, inspect HEAD and the exact-path
+   diff before retrying; report an already-created commit separately and never
+   repeat it blindly.
 4. Continue `/to-pr` with fresh collection against the same destination and branch.
    Keep `draft:true` in query and publication. Show the complete branch changes,
    included files, content, destination and branches in the final exact confirmation.

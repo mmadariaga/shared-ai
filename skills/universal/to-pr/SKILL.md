@@ -150,7 +150,10 @@ own token: they are never combined or interchangeable. When a push is needed, ru
 tool verifies that the remote branch has HEAD before publication. No force push,
 automatic commit, authentication change or installation is allowed. If the push fails
 or cannot be verified, skip publication, keep the draft, report the failure and leave
-the remote history as it is.
+the remote history as it is. A push that reaches the process time limit returns
+`uncertain` with `remote_state` (the remote branch read back as `at-approved-commit`,
+`not-at-approved-commit` or `unverified`) because a git process may still be pushing:
+report it as uncertain, skip publication, and never repeat the push on your own.
 
 Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
