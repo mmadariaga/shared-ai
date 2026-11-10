@@ -8,7 +8,8 @@ const envelope = require('../sai-state/envelope.js');
 
 // The worker-report validator is resolved relative to this file. The installed
 // layout is `sai/{bin,tools}` and the source layout is `{bin,sai/tools}`; in each
-// layout exactly one candidate exists. Loaded by every verb: it is the single source of `received_at`.
+// layout exactly one candidate exists. Loaded only by the progress emit and the
+// block emit (`requireValidator`); the other verbs run without it.
 const VALIDATOR_CANDIDATES = [
   path.join(__dirname, '..', 'tools', 'worker-report-validator.js'),
   path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'),
@@ -24,18 +25,59 @@ const DETECTOR_CANDIDATES = [
 // Installed and source layouts both put temp-root beside the detector.
 const TEMP_ROOT_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'temp-root.js'));
 
+// The `received_at` clock, resolved the same way. Loaded by every verb: it is the
+// single source of `received_at` and does not depend on the validator.
+const RECEIVED_AT_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'received-at.js'));
+
 // The shared input reader, resolved the same way. Reads `--input-file` or stdin.
 const INPUT_READER_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'input-reader.js'));
 
 let receivedAt = null;
 
+const CORRUPT_WARNING = 'SESSION_FILE_CORRUPT';
+
+// The unparseable session file this process renamed aside, if any: `{ file }` with
+// the path of the preserved copy, or null for none. Any verb that reads the store
+// can trigger it, and the response of that verb reports it whichever read it was,
+// so it is process state rather than a per-read result.
+let corruption = null;
+
 // Every stdout JSON response goes through here so `received_at` is its first key.
+// A corrupt session file renamed aside by this verb is reported on its response.
 function writeResponse(payload) {
-  process.stdout.write(JSON.stringify(Object.assign({ received_at: receivedAt }, payload)) + '\n');
+  let body = payload;
+  if (corruption) {
+    body = Object.assign({}, payload);
+    const warnings = Array.isArray(body.warnings) ? body.warnings.slice() : [];
+    if (!warnings.includes(CORRUPT_WARNING)) warnings.unshift(CORRUPT_WARNING);
+    body.warnings = warnings;
+    body.corrupt_file = corruption.file;
+  }
+  process.stdout.write(JSON.stringify(Object.assign({ received_at: receivedAt }, body)) + '\n');
 }
 
 function loadValidator() {
   for (const candidate of VALIDATOR_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  return null;
+}
+
+// The progress emit and the block emit need the validator module; without it they
+// exit 2 naming the paths tried and change nothing. Returns the module, or null
+// after reporting.
+function requireValidator() {
+  const validator = loadValidator();
+  if (!validator || typeof validator.validateText !== 'function') {
+    process.stderr.write('sai-state could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
+    process.exitCode = 2;
+    return null;
+  }
+  return validator;
+}
+
+function loadReceivedAt() {
+  for (const candidate of RECEIVED_AT_CANDIDATES) {
     if (fs.existsSync(candidate)) return require(candidate);
   }
   return null;
@@ -159,17 +201,71 @@ function isUuidv4(value) {
 
 function ensureSessionDir() { fs.mkdirSync(sessionDir(), { recursive: true, mode: 0o700 }); }
 
-function writeSessionFile(id, record) {
+// Another writer changed the session file between this verb's read and its write.
+class StoreConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.code = 'STORE_CONFLICT';
+  }
+}
+
+// The revision counter of a session record: the integer every write raises, `0`
+// for an absent record and for a file written before the counter existed.
+function revisionOf(record) {
+  return (record && typeof record === 'object' && !Array.isArray(record) && Number.isSafeInteger(record.revision) && record.revision >= 0) ? record.revision : 0;
+}
+
+// The revision the session file holds right now: `0` when it is absent, `-1`
+// when it cannot be read or parsed (never equal to a revision a verb read).
+function peekRevision(id) {
+  let raw;
+  try { raw = fs.readFileSync(sessionFile(id), 'utf8'); } catch (err) { return err && err.code === 'ENOENT' ? 0 : -1; }
+  try {
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? revisionOf(parsed) : -1;
+  } catch (err) { return -1; }
+}
+
+// Writes the session record as revision `expectedRevision + 1`, where
+// `expectedRevision` is the revision this verb read at its start. The file's
+// revision is read again just before the rename and a difference raises
+// `StoreConflictError` with nothing replaced. The window between that read and
+// the rename is accepted: the check detects a crossed write, it does not lock.
+function writeSessionFile(id, record, expectedRevision) {
+  if (corruption && corruption.file === null) {
+    throw new Error('the unparseable session file could not be set aside, so it is not overwritten');
+  }
   ensureSessionDir();
   const target = sessionFile(id);
   const tmp = target + '.' + crypto.randomBytes(6).toString('hex') + '.tmp';
+  const written = Object.assign({}, record, { revision: expectedRevision + 1 });
   try {
-    fs.writeFileSync(tmp, JSON.stringify(record, null, 2) + '\n', { mode: 0o600 });
+    fs.writeFileSync(tmp, JSON.stringify(written, null, 2) + '\n', { mode: 0o600 });
     try { fs.chmodSync(tmp, 0o600); } catch (err) {}
+    const onDisk = peekRevision(id);
+    if (onDisk !== expectedRevision) {
+      throw new StoreConflictError('the session file is at revision ' + onDisk + ', this verb read revision ' + expectedRevision);
+    }
     fs.renameSync(tmp, target);
   } catch (err) {
     try { fs.unlinkSync(tmp); } catch (e) {}
     throw err;
+  }
+}
+
+// Moves an unparseable session file aside as `<session-file>.corrupt`, adding a
+// numeric suffix when that name is taken so an earlier copy survives, and records
+// where it went for the response. When the rename fails the file stays in place
+// and `corruption.file` is null, which stops any later write over it.
+function setAsideCorruptFile(id) {
+  const source = sessionFile(id);
+  let candidate = source + '.corrupt';
+  for (let n = 1; fs.existsSync(candidate) && n < 10000; n++) candidate = source + '.corrupt.' + n;
+  try {
+    fs.renameSync(source, candidate);
+    corruption = { file: candidate };
+  } catch (err) {
+    corruption = { file: null };
   }
 }
 
@@ -180,7 +276,8 @@ function readSessionRecord(id) {
   let record = null;
   try { record = JSON.parse(raw); } catch (err) { record = null; }
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
-    return { record: null, warnings: ['SESSION_FILE_CORRUPT'] };
+    setAsideCorruptFile(id);
+    return { record: null, warnings: [CORRUPT_WARNING] };
   }
   return { record, warnings: null };
 }
@@ -208,9 +305,10 @@ function withWarnings(payload, warnings) {
 // Machine-authored observability fields carried verbatim onto the emit wire.
 // The set is closed: budget tallies, the name of the exhausted budget, scope
 // entry outcomes, the apply-only authorized retry grant/history, and the
-// apply-only worker veto record/override outcomes, and the `/sai-3-implement`
-// run view (identifiers and paths only).
-const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run'];
+// apply-only worker veto record/override outcomes, the `/sai-3-implement`
+// run view (identifiers and paths only), and the unknown step ids of a rejected
+// step report.
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run', 'unknown_ids'];
 
 function attachObservabilityFields(target, source) {
   if (!target || !source) return target;
@@ -270,51 +368,40 @@ function canonicalizeMergedState(mod, mergedState) {
   return mergedState;
 }
 
-// Re-reads the session file just before writing, keeps sibling machines by max
-// `rev`, and unions the target `done[]` in canonical order unless its machine
-// declares that this transition replaces a versioned inventory. The
-// read-then-write is not atomic (no lockfile, no CAS retry): the residual window
-// is accepted because callers serialize store operations per session id and
-// the union keeps survivors harmless for monotonic step sets. One file per
-// session, never one per machine.
-// Top-level session-record fields the next persistMachineOutcome write carries
-// with the machine state, so an inventory and its stored blocks land in one
-// session-file write. Set by the block emit around its runEmit call only.
-let pendingRecordExtras = null;
-
-function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
-  let freshRecord = null;
-  try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
+// Writes one machine's outcome into the session record in a single session-file
+// write: the machine's new state, the siblings of the record the verb read at its
+// start, and `extras`, top-level session-record fields that must land with the
+// state (the block emit's inventory and its stored blocks). The write raises the
+// record's revision and fails with `STORE_CONFLICT` when another writer got in
+// between (`writeSessionFile`); it throws on any write failure and writes nothing
+// then. The target `done[]` is unioned with the stored one in canonical order
+// unless the machine declares that this transition replaces a versioned inventory.
+// One file per session, never one per machine.
+function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, extras) {
   const staleMap = stateByMachineMap(record);
-  const freshMap = stateByMachineMap(freshRecord);
-  const baseForMeta = (freshRecord && typeof freshRecord === 'object' && !Array.isArray(freshRecord)) ? freshRecord : ((record && typeof record === 'object' && !Array.isArray(record)) ? record : {});
-  const freshCreatedAt = (freshRecord && typeof freshRecord.createdAt === 'number') ? freshRecord.createdAt : null;
-  const staleCreatedAt = (record && typeof record.createdAt === 'number') ? record.createdAt : null;
-  const createdAt = (typeof freshCreatedAt === 'number') ? freshCreatedAt : ((typeof staleCreatedAt === 'number') ? staleCreatedAt : Date.now());
+  const baseForMeta = (record && typeof record === 'object' && !Array.isArray(record)) ? record : {};
+  const createdAt = (typeof baseForMeta.createdAt === 'number') ? baseForMeta.createdAt : Date.now();
 
   let mod = null;
   try { mod = registry.get(machineId); } catch (err) { mod = null; }
 
   const staleEntry = (staleMap[machineId] && typeof staleMap[machineId] === 'object' && !Array.isArray(staleMap[machineId])) ? staleMap[machineId] : {};
-  const freshEntry = (freshMap[machineId] && typeof freshMap[machineId] === 'object' && !Array.isArray(freshMap[machineId])) ? freshMap[machineId] : {};
-  const newRev = Math.max(entryRev(staleEntry), entryRev(freshEntry)) + 1;
+  const newRev = entryRev(staleEntry) + 1;
   const resetDone = !!(
     mod
     && typeof mod.shouldResetDone === 'function'
-    && mod.shouldResetDone(nextState, [staleEntry.state, freshEntry.state])
+    && mod.shouldResetDone(nextState, [staleEntry.state])
   );
 
   let mergedState = nextState;
   const nextHasDone = !!(nextState && Array.isArray(nextState.done));
   const staleHasDone = !!(staleEntry.state && Array.isArray(staleEntry.state.done));
-  const freshHasDone = !!(freshEntry.state && Array.isArray(freshEntry.state.done));
-  if (nextHasDone || staleHasDone || freshHasDone) {
+  if (nextHasDone || staleHasDone) {
     const nextDone = nextHasDone ? nextState.done : [];
-    const freshDone = freshHasDone ? freshEntry.state.done : [];
     const staleDone = staleHasDone ? staleEntry.state.done : [];
     const united = resetDone
       ? nextDone.slice()
-      : unionDoneInCanonicalOrder(mod, nextDone, freshDone, staleDone);
+      : unionDoneInCanonicalOrder(mod, nextDone, staleDone);
     mergedState = Object.assign({}, nextState);
     mergedState.done = united;
     mergedState = canonicalizeMergedState(mod, mergedState);
@@ -323,7 +410,9 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   let mergedStage = (mergedState && typeof mergedState.stage === 'string') ? mergedState.stage : wire.stage;
   let mergedNext = wire.next;
   try {
-    if (mod && typeof mod.project === 'function' && mergedState) {
+    // A rejection answers with the machine's own stage and pointer; every other
+    // outcome re-derives them from the merged state.
+    if (!wire.rejected && mod && typeof mod.project === 'function' && mergedState) {
       const proj = mod.project(mergedState);
       if (proj && proj.next && typeof proj.next.follow === 'string' && typeof proj.next.hint === 'string') {
         mergedNext = proj.next;
@@ -333,6 +422,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
       }
     }
   } catch (err) {}
+  if (wire.rejected && typeof wire.stage === 'string') mergedStage = wire.stage;
   const mergedWire = { stage: mergedStage, next: mergedNext };
   if (wire.rejected !== undefined) mergedWire.rejected = wire.rejected;
   attachObservabilityFields(mergedWire, wire);
@@ -340,22 +430,11 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   const merged = Object.assign({}, baseForMeta);
   merged.createdAt = createdAt;
   merged.stateVersion = STATE_VERSION;
-  if (pendingRecordExtras) Object.assign(merged, pendingRecordExtras);
+  if (extras) Object.assign(merged, extras);
   merged.stateByMachine = {};
-  const allKeys = new Set(Object.keys(staleMap).concat(Object.keys(freshMap)));
-  for (const key of allKeys) {
-    if (key === machineId) continue;
-    const sEnt = staleMap[key];
-    const fEnt = freshMap[key];
-    const sValid = (sEnt && typeof sEnt === 'object' && !Array.isArray(sEnt)) ? sEnt : null;
-    const fValid = (fEnt && typeof fEnt === 'object' && !Array.isArray(fEnt)) ? fEnt : null;
-    if (sValid && fValid) {
-      merged.stateByMachine[key] = (entryRev(fValid) >= entryRev(sValid)) ? fValid : sValid;
-    } else if (fValid) {
-      merged.stateByMachine[key] = fValid;
-    } else if (sValid) {
-      merged.stateByMachine[key] = sValid;
-    }
+  for (const key of Object.keys(staleMap)) {
+    const entry = staleMap[key];
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) merged.stateByMachine[key] = entry;
   }
   const lastOutcome = { stage: mergedWire.stage, next: mergedWire.next };
   if (mergedWire.rejected !== undefined) lastOutcome.rejected = mergedWire.rejected;
@@ -366,7 +445,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
     lastEventId: eventId,
     lastOutcome,
   };
-  writeSessionFile(id, merged);
+  writeSessionFile(id, merged, revisionOf(record));
   return { mergedState, mergedWire, newRev };
 }
 
@@ -410,6 +489,14 @@ function deriveUuidFromKey(key) {
   return uuid.match(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/).slice(1).join('-').toLowerCase();
 }
 
+// Maps a thrown store write error to its wire literal: a crossed write is
+// `STORE_CONFLICT`, any other failure `STORE_WRITE_FAILED`. The response carries
+// the error text as `detail` and no `stage` or `next`.
+function storeFailure(err, loadWarnings) {
+  const error = err && err.code === 'STORE_CONFLICT' ? 'STORE_CONFLICT' : 'STORE_WRITE_FAILED';
+  return withWarnings({ error, detail: err && err.message ? err.message : String(err) }, loadWarnings);
+}
+
 function commandSpawn(key) {
   if (!key) {
     process.stderr.write('spawn requires --key <stable-key>\n');
@@ -435,7 +522,13 @@ function commandSpawn(key) {
     stateVersion: STATE_VERSION,
     stateByMachine: carriedState,
   };
-  writeSessionFile(id, newRecord);
+  try {
+    writeSessionFile(id, newRecord, revisionOf(record));
+  } catch (err) {
+    writeResponse(storeFailure(err, loadWarnings));
+    process.exitCode = 1;
+    return;
+  }
   const payload = withWarnings({ id }, loadWarnings);
   writeResponse(payload);
   process.exitCode = 0;
@@ -443,8 +536,13 @@ function commandSpawn(key) {
 
 // Shared emit core. `obtainEvent(session, loadWarnings)` returns either
 // `{ event }` or `{ payload }` (an INVALID_EVENT outcome whose stderr notice, if
-// any, it already wrote). Returns `{ payload, code }` and writes no stdout.
-function runEmit(id, machineIdArg, obtainEvent) {
+// any, it already wrote). `extras` is an object of top-level session-record fields
+// written together with the machine state, or a function of the machine's wire
+// outcome and the record the verb read that returns such an object or null. A failed or conflicting write
+// answers `STORE_WRITE_FAILED` or `STORE_CONFLICT` (exit 1) with no `stage` or
+// `next`, leaves the session file as it was, and advances neither the in-memory
+// session nor the pointer. Returns `{ payload, code }` and writes no stdout.
+function runEmit(id, machineIdArg, obtainEvent, extras) {
   const loaded = readSessionRecord(id);
   const record = loaded.record;
   const loadWarnings = loaded.warnings;
@@ -502,17 +600,23 @@ function runEmit(id, machineIdArg, obtainEvent) {
     nxt = result.next;
   }
 
-  const wire = { stage: typeof nextState.stage === 'string' ? nextState.stage : undefined, next: nxt };
+  // A machine may answer with a stage of its own besides its state (a rejection
+  // that re-steers to a pointer the stored state does not derive).
+  const answeredStage = typeof result.stage === 'string' ? result.stage : nextState.stage;
+  const wire = { stage: typeof answeredStage === 'string' ? answeredStage : undefined, next: nxt };
   if (result.rejected) wire.rejected = result.rejected;
   attachObservabilityFields(wire, result);
 
   let emitWire = wire;
   let persistedState = nextState;
   try {
-    const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire);
+    const recordExtras = typeof extras === 'function' ? extras(wire, record) : extras;
+    const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire, recordExtras || null);
     if (merged && merged.mergedWire) emitWire = merged.mergedWire;
     if (merged && merged.mergedState) persistedState = merged.mergedState;
-  } catch (err) {}
+  } catch (err) {
+    return { payload: storeFailure(err, loadWarnings), code: 1 };
+  }
 
   session.stateByMachine.set(targetId, persistedState);
   session.lastPointer = emitWire.next;
@@ -585,7 +689,8 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile
     return;
   }
 
-  const validator = loadValidator();
+  const validator = requireValidator();
+  if (!validator) return;
 
   let validation;
   let progress;
@@ -677,37 +782,6 @@ function buildRecordedBlocks(detector, verdict, text) {
   return blocks;
 }
 
-function blocksMatch(stored, expected) {
-  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return false;
-  const keys = Object.keys(expected);
-  if (Object.keys(stored).length !== keys.length) return false;
-  return keys.every((key) => stored[key] && stored[key].hash === expected[key].hash && stored[key].text === expected[key].text);
-}
-
-// Confirms the stored blocks match the recorded inventory. When they do not,
-// retries the store once and, failing that, removes any earlier emit's map so
-// stale text is never left beside a newer inventory. Returns whether the
-// session file now holds exactly the recorded blocks.
-function ensureRecordedBlocks(id, expected) {
-  try {
-    if (blocksMatch((readSessionRecord(id).record || {}).blocks, expected)) return true;
-    const record = readSessionRecord(id).record;
-    if (record) {
-      record.blocks = expected;
-      writeSessionFile(id, record);
-      return true;
-    }
-  } catch (err) {}
-  try {
-    const record = readSessionRecord(id).record;
-    if (record && record.blocks !== undefined) {
-      delete record.blocks;
-      writeSessionFile(id, record);
-    }
-  } catch (err) {}
-  return false;
-}
-
 // The `explore-idea@1` stage recorded for this session; the machine's initial
 // stage when the session holds no state for it.
 function ideaStageOf(id) {
@@ -733,6 +807,8 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
     process.exitCode = 2;
     return;
   }
+
+  if (!requireValidator()) return;
 
   const detector = loadDetector();
   if (!detector || typeof detector.detect !== 'function') {
@@ -794,38 +870,11 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
     return;
   }
   const event = { recordedList: dependencies.order };
-  const expectedBlocks = buildRecordedBlocks(detector, verdict, text);
-  pendingRecordExtras = { blocks: expectedBlocks };
-  let outcome;
-  try {
-    outcome = runEmit(id, machineIdArg, () => ({ event }));
-  } finally {
-    pendingRecordExtras = null;
-  }
-  let payload = outcome.payload;
-  if (outcome.code === 0 && !payload.rejected && !ensureRecordedBlocks(id, expectedBlocks)) {
-    payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
-  }
-  writeResponse(Object.assign({ validation }, payload));
+  // The inventory and the blocks land in one session-file write; when it fails
+  // the response is the store failure and the earlier inventory and blocks stay.
+  const outcome = runEmit(id, machineIdArg, () => ({ event }), { blocks: buildRecordedBlocks(detector, verdict, text) });
+  writeResponse(Object.assign({ validation }, outcome.payload));
   process.exitCode = outcome.code;
-}
-
-// Stores one amended block entry beside the untouched entries of the other
-// slices: reads the session record, replaces only `blocks[name]`, writes it back,
-// and confirms the stored entry. Returns whether the session file now holds it.
-function storeAmendedBlock(id, name, entry) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const record = readSessionRecord(id).record;
-      if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
-      const blocks = (record.blocks && typeof record.blocks === 'object' && !Array.isArray(record.blocks)) ? record.blocks : {};
-      record.blocks = Object.assign({}, blocks, { [name]: entry });
-      writeSessionFile(id, record);
-      const stored = (readSessionRecord(id).record || {}).blocks;
-      if (stored && stored[name] && stored[name].hash === entry.hash && stored[name].text === entry.text) return true;
-    } catch (err) {}
-  }
-  return false;
 }
 
 // Single-slice amendment (`emit --ready-to-propose --amend <change-name>`): the
@@ -884,15 +933,11 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
     process.exitCode = 1;
     return;
   }
-  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
-  let payload = outcome.payload;
-  if (outcome.code === 0 && !payload.rejected) {
-    const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
-    if (!storeAmendedBlock(id, amendName, entry)) {
-      payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
-    }
-  }
-  writeResponse(Object.assign({ validation }, payload));
+  // An accepted amendment replaces only that slice's entry, in the same
+  // session-file write as the machine outcome; a rejected one stores nothing.
+  const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
+  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }), (wire, current) => (wire.rejected ? null : { blocks: Object.assign({}, (current && current.blocks) || {}, { [amendName]: entry }) }));
+  writeResponse(Object.assign({ validation }, outcome.payload));
   process.exitCode = outcome.code;
 }
 
@@ -966,51 +1011,32 @@ function commandReset(id, machineIdArg) {
     return;
   }
 
-  // Build new record with this machine reset to initialState, preserving siblings by max rev
+  // Build the new record with this machine reset to initialState; siblings stay as read
   const base = (record && typeof record === 'object' && !Array.isArray(record)) ? record : {};
-  let freshRecordForReset = null;
-  try { freshRecordForReset = readSessionRecord(id).record; } catch (err) { freshRecordForReset = null; }
-  const staleMapForReset = stateByMachineMap(record);
-  const freshMapForReset = stateByMachineMap(freshRecordForReset);
-  const baseForReset = (freshRecordForReset && typeof freshRecordForReset === 'object' && !Array.isArray(freshRecordForReset)) ? freshRecordForReset : base;
-  const freshCreatedAtForReset = (freshRecordForReset && typeof freshRecordForReset.createdAt === 'number') ? freshRecordForReset.createdAt : null;
-  const baseCreatedAtForReset = (typeof base.createdAt === 'number') ? base.createdAt : null;
-  const merged = Object.assign({}, baseForReset);
-  merged.createdAt = (typeof freshCreatedAtForReset === 'number') ? freshCreatedAtForReset : ((typeof baseCreatedAtForReset === 'number') ? baseCreatedAtForReset : Date.now());
+  const siblings = stateByMachineMap(record);
+  const merged = Object.assign({}, base);
+  merged.createdAt = (typeof base.createdAt === 'number') ? base.createdAt : Date.now();
   merged.stateVersion = STATE_VERSION;
   merged.stateByMachine = {};
-  const allResetKeys = new Set(Object.keys(staleMapForReset).concat(Object.keys(freshMapForReset)));
-  for (const key of allResetKeys) {
+  for (const key of Object.keys(siblings)) {
     if (key === targetId) continue;
-    const sEnt = staleMapForReset[key];
-    const fEnt = freshMapForReset[key];
-    const sValid = (sEnt && typeof sEnt === 'object' && !Array.isArray(sEnt)) ? sEnt : null;
-    const fValid = (fEnt && typeof fEnt === 'object' && !Array.isArray(fEnt)) ? fEnt : null;
-    if (sValid && fValid) {
-      merged.stateByMachine[key] = (entryRev(fValid) >= entryRev(sValid)) ? fValid : sValid;
-    } else if (fValid) {
-      merged.stateByMachine[key] = fValid;
-    } else if (sValid) {
-      merged.stateByMachine[key] = sValid;
-    }
+    const entry = siblings[key];
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) merged.stateByMachine[key] = entry;
   }
 
   // Reset just this machine to initial state
-  const staleTarget = (staleMapForReset[targetId] && typeof staleMapForReset[targetId] === 'object' && !Array.isArray(staleMapForReset[targetId])) ? staleMapForReset[targetId] : {};
-  const freshTarget = (freshMapForReset[targetId] && typeof freshMapForReset[targetId] === 'object' && !Array.isArray(freshMapForReset[targetId])) ? freshMapForReset[targetId] : {};
-  const priorRev = Math.max(entryRev(staleTarget), entryRev(freshTarget));
+  const priorTarget = (siblings[targetId] && typeof siblings[targetId] === 'object' && !Array.isArray(siblings[targetId])) ? siblings[targetId] : {};
   merged.stateByMachine[targetId] = {
     state: mod.initialState,
-    rev: priorRev + 1,
+    rev: entryRev(priorTarget) + 1,
     lastEventId: '',
     lastOutcome: null,
   };
 
   try {
-    writeSessionFile(id, merged);
+    writeSessionFile(id, merged, revisionOf(record));
   } catch (err) {
-    const payload = withWarnings({ error: 'WRITE_FAILED' }, loadWarnings);
-    writeResponse(payload);
+    writeResponse(storeFailure(err, loadWarnings));
     process.exitCode = 1;
     return;
   }
@@ -1064,13 +1090,13 @@ function commandClose(id) {
 function main(argv) {
   const parsed = parseArgs(argv);
   if (['spawn', 'emit', 'reset', 'close', 'block'].includes(parsed.command)) {
-    const validator = loadValidator();
-    if (!validator || typeof validator.generateReceivedAt !== 'function' || typeof validator.validateText !== 'function') {
-      process.stderr.write('sai-state could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
+    const clock = loadReceivedAt();
+    if (!clock || typeof clock.generateReceivedAt !== 'function') {
+      process.stderr.write('sai-state could not load the received_at clock; tried: ' + RECEIVED_AT_CANDIDATES.join(', ') + '\n');
       process.exitCode = 2;
       return;
     }
-    receivedAt = validator.generateReceivedAt();
+    receivedAt = clock.generateReceivedAt();
   }
   if (parsed.command === 'spawn') {
     commandSpawn(parsed.named.key);

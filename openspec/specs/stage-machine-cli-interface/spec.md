@@ -24,12 +24,12 @@ The `spawn --key <stable-key>` verb SHALL derive a well-formed UUIDv4 from the s
 
 ### Requirement: Session file store on local filesystem
 
-The store SHALL persist each session's state in a JSON file `sai-state/<id>.json` under the SAI temp root that `sai/tools/temp-root.js` resolves for the harness whose installed root holds the running `bin/sai-state.js` copy (Claude Code for a source checkout), with owner-only permissions (0600 semantics, closest Windows equivalent). It SHALL NOT read `TMPDIR`, `TEMP`, `TMP`, or `os.tmpdir()` itself, and sessions stored in an earlier location SHALL NOT be found. A missing or unsafe SAI temp root SHALL make the CLI print `sai-state: <message>` on stderr and exit 2. File writes SHALL be atomic using temp-file-plus-rename so a process crash mid-write never leaves a truncated session file.
+The store SHALL persist each session's state in a JSON file `sai-state/<id>.json` under the SAI temp root that `sai/tools/temp-root.js` resolves for the harness whose installed root holds the running `bin/sai-state.js` copy (Claude Code for a source checkout), with owner-only permissions (0600 semantics, closest Windows equivalent). It SHALL NOT read `TMPDIR`, `TEMP`, `TMP`, or `os.tmpdir()` itself, and sessions stored in an earlier location SHALL NOT be found. A missing or unsafe SAI temp root SHALL make the CLI print `sai-state: <message>` on stderr and exit 2. File writes SHALL be atomic using temp-file-plus-rename so a process crash mid-write never leaves a truncated session file. The session record SHALL carry an integer `revision` that every write raises by one; a file without one SHALL count as revision 0. A write SHALL carry the record the verb read at its start, its sibling machines included, with no re-read and merge of a fresher record.
 
 #### Scenario: Session file stores persisted machine state
 
 - **WHEN** `emit` applies a transition and persists the outcome
-- **THEN** the session file under the harness SAI temp root contains the per-machine ledger and state in JSON form `{createdAt, stateVersion, stateByMachine: {machineId: {state, rev, lastEventId, lastOutcome}}}`
+- **THEN** the session file under the harness SAI temp root contains the per-machine ledger and state in JSON form `{createdAt, stateVersion, stateByMachine: {machineId: {state, rev, lastEventId, lastOutcome}}, revision}`, with `revision` one higher than the revision the verb read
 
 #### Scenario: Reset atomically updates machine state
 
@@ -53,7 +53,7 @@ The store SHALL persist each session's state in a JSON file `sai-state/<id>.json
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. A block emit rejected because the same session's `explore-idea@1` stage is not `crystallize` SHALL carry `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, with the `explore-idea@1` pointer as its `next`. A file-backed block emit composition failure SHALL carry `reason: "BLOCK_COMPOSITION_FAILED"` with `error: "INVALID_EVENT"` and exit 1 before any state read or write; this pre-state failure need not carry `next`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and export failures with `{error: "BLOCK_EXPORT_FAILED", reason}`, exit 1 and no `next`.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. A block emit rejected because the same session's `explore-idea@1` stage is not `crystallize` SHALL carry `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, with the `explore-idea@1` pointer as its `next`. A file-backed block emit composition failure SHALL carry `reason: "BLOCK_COMPOSITION_FAILED"` with `error: "INVALID_EVENT"` and exit 1 before any state read or write; this pre-state failure need not carry `next`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. A session-file write that does not complete SHALL instead answer `error: "STORE_WRITE_FAILED"`, or `error: "STORE_CONFLICT"` when another writer changed the file between the verb's read and its write, with the error text in `detail`, no `stage`, no `next`, and exit code 1; `emit`, `spawn`, and `reset` SHALL report these two values the same way. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and export failures with `{error: "BLOCK_EXPORT_FAILED", reason}`, exit 1 and no `next`.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
@@ -85,11 +85,17 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 - **WHEN** a dispatchable block set is emitted while the session's `explore-idea@1` stage is `explore-change`, `review-edge-cases`, or `implementation-details`
 - **THEN** the response carries `{error: "INVALID_EVENT", reason: "STAGE_NOT_CRYSTALLIZE", stage}` with the `explore-idea@1` pointer and exit code 1
 
+#### Scenario: A failed write carries no pointer
+
+- **WHEN** an `emit` cannot write the session file
+- **THEN** the response carries `{error: "STORE_WRITE_FAILED", detail}` with exit code 1 and no `stage` or `next` field
+
 ### Requirement: Minimal wire outcomes
 Each CLI verb SHALL return minimal JSON without state serialization, with `received_at` as the first key of every response:
 - `spawn`: `{received_at, id}`
-- `emit` success: `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`
+- `emit` success: `{received_at, stage, next: {follow, hint}, rejected?, unknown_ids?, warnings?, corrupt_file?}`
 - `emit` failure: `{received_at, error: <name>, reason?, next: {follow, hint}}`, where the existing reason vocabulary additionally permits `STAGE_NOT_CRYSTALLIZE` and file-backed `BLOCK_COMPOSITION_FAILED`; composition failure before state reads omits `next`
+- store failure of `emit`, `spawn`, or `reset`: `{received_at, error: "STORE_WRITE_FAILED" | "STORE_CONFLICT", detail, warnings?, corrupt_file?}`, with no `stage` and no `next`
 - `emit --progress`: `{received_at, validation}` on an invalid verdict; on a valid verdict, `{received_at, validation, …}` followed by the `emit` success or failure fields above, unchanged
 - `reset` success: `{received_at, reset: <machineId>}`, or `{received_at, reset: <machineId>, stage, next: {follow, hint}}` on a machine that exposes a first filed step
 - `reset` failure: `{received_at, error: <name>}`
@@ -173,7 +179,7 @@ When the normalized stdin text fails `JSON.parse`, `emit` SHALL answer `{error: 
 - **THEN** the responses carry `INVALID_EVENT` and `UNKNOWN_MACHINE` respectively with exit 1 and no `reason` field
 
 ### Requirement: Every JSON response carries received_at as its first key
-Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as its first key: `spawn`, `reset`, `emit`, `emit --progress` and `close`, including responses with `rejected` or `warnings` (exit 0) and machine errors with exit 1 (`INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`). The value SHALL be read once per invocation from the validator module's `generateReceivedAt`, in `YYYY-MM-DDTHH:MM:SS±HH:MM` form with local wall-clock time and a numeric offset, never `Z`. Usage errors (exit 2), a missing validator, IO errors and exceptions SHALL go to stderr and carry no time. Each field named in the other wire-outcome requirements follows `received_at`.
+Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as its first key: `spawn`, `reset`, `emit`, `emit --progress`, `close`, and `block`, including responses with `rejected` or `warnings` (exit 0), machine errors with exit 1 (`INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`), and store failures with exit 1 (`STORE_WRITE_FAILED`, `STORE_CONFLICT`). The value SHALL be read once per invocation from `generateReceivedAt` of the clock module `sai/tools/received-at.js`, resolved relative to `bin/sai-state.js` in the installed and source layouts, in `YYYY-MM-DDTHH:MM:SS±HH:MM` form with local wall-clock time and a numeric offset, never `Z`. Every verb SHALL load that clock module, and none SHALL depend on the worker-report validator for it. Usage errors (exit 2), a missing clock module, a missing validator on the verbs that need it, IO errors and exceptions SHALL go to stderr and carry no time. Each field named in the other wire-outcome requirements follows `received_at`.
 
 #### Scenario: Reset exposes the segment start time
 - **WHEN** the caller invokes `sai-state reset <id> <machineId>` on a step machine
@@ -277,3 +283,45 @@ Ready to Propose registration and amendment SHALL also accept paired block/verdi
 #### Scenario: CLI block returns the stored block
 - **WHEN** the caller invokes `sai-state block <id> <change-name>` for a recorded slice
 - **THEN** the process outputs `{received_at, hash, text}` with exit code 0
+
+### Requirement: Store write failures are reported, never swallowed
+
+A session-file write of `emit`, `spawn`, or `reset` that does not complete SHALL NOT be swallowed. When the write fails, the verb SHALL exit 1 with `error: "STORE_WRITE_FAILED"`, SHALL return no `stage` or `next`, and the session file SHALL keep its previous state, so no pointer is returned for state that was not saved. Before the rename, the verb SHALL read the file's `revision` again; when it differs from the revision the verb read at its start, the verb SHALL write nothing and exit 1 with `error: "STORE_CONFLICT"`. The store SHALL NOT retry either failure itself. The check detects a crossed write and SHALL NOT lock the file; the small window between the second read and the rename is accepted.
+
+#### Scenario: A failed write leaves the session file unchanged
+
+- **WHEN** an `emit` applies a valid transition and the session-file write fails
+- **THEN** the process exits 1 with `error: "STORE_WRITE_FAILED"` and no `stage` or `next`, and the session file holds the same bytes as before the call
+
+#### Scenario: A crossed write is a conflict
+
+- **WHEN** another writer raises the session file's `revision` between an `emit`'s read and its rename
+- **THEN** the `emit` writes nothing and exits 1 with `error: "STORE_CONFLICT"`, and the other writer's state stays in the file
+
+#### Scenario: Spawn and reset report store failures
+
+- **WHEN** `spawn` or `reset` cannot write the session file
+- **THEN** the verb exits 1 with `error: "STORE_WRITE_FAILED"` or `error: "STORE_CONFLICT"` and the error text in `detail`
+
+### Requirement: An unparseable session file is set aside
+
+Any verb that reads a session file that exists but cannot be parsed as a JSON object SHALL rename it to `<session-file>.corrupt`, or, when that name is taken, to `<session-file>.corrupt.<n>` with the first free numeric suffix, so an earlier copy survives. The verb SHALL continue from the initial state, and its response SHALL carry `warnings` whose first value is `SESSION_FILE_CORRUPT` and the path of the preserved copy in `corrupt_file`. When the rename fails, the file SHALL stay in place and no write of that verb SHALL replace it.
+
+#### Scenario: Spawn preserves a corrupt session file
+
+- **WHEN** `spawn` runs for a key whose session file holds unparseable text
+- **THEN** that text is preserved at `<session-file>.corrupt`, the response carries `warnings: ["SESSION_FILE_CORRUPT"]` and `corrupt_file`, and a new session file is written from the initial state
+
+#### Scenario: An earlier corrupt copy survives
+
+- **WHEN** a session file is found corrupt again while `<session-file>.corrupt` already exists
+- **THEN** the new copy is renamed to `<session-file>.corrupt.1` and the earlier copy is unchanged
+
+### Requirement: recovery-ledger@1 is not registered
+
+The registry SHALL NOT register `recovery-ledger@1`, and the repository SHALL NOT ship `sai-state/machines/recovery-ledger.js`. The installed copy of that machine file SHALL be a retired path of the installer for both Claude Code and opencode.
+
+#### Scenario: Emit to the removed machine is an unknown machine
+
+- **WHEN** `emit <id> recovery-ledger@1` is called with a valid event
+- **THEN** the response carries `error: "UNKNOWN_MACHINE"` with exit code 1

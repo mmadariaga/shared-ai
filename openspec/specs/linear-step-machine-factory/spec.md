@@ -71,19 +71,24 @@ The factory-created machine MUST accept both `step_ids` and `completedIds` as si
 
 ### Requirement: Silent undeclared id drop
 
-Undeclared step ids (not in the STEPS array) MUST be silently ignored with no notification channel, no state change, and no `rejected` marker.
+A step report whose step ids include an id not in the STEPS array MUST be rejected whole: the transition returns `rejected: "UNKNOWN_STEP_ID"` with the undeclared ids in `unknown_ids`, the state unchanged, and the unchanged active pointer, and the declared ids of that report are not applied. The active pointer is the first unmarked step's pointer, except that with nothing done it is the first filed step's pointer (the one `firstFiled()` and `reset` return), never the fileless first step. Declared ids that are already done stay accepted with no change and no rejection.
 
 **Scope:** Robustness against unknown worker ids.
 
 #### Scenario: Unknown ids cause no state change
 
 - **WHEN** a progress event reports `step_ids: ['not-a-step', 'also-unknown']` while the machine is at any stage
-- **THEN** the machine does not advance, returns the unchanged state with the same pointer, and carries no `rejected` field
+- **THEN** the machine does not advance, returns the unchanged state with the same pointer, and carries `rejected: "UNKNOWN_STEP_ID"` with `unknown_ids: ['not-a-step', 'also-unknown']`
 
 #### Scenario: Mix of known and unknown ids
 
 - **WHEN** a progress event reports `step_ids: ['research', 'unknown', 'proposal']`
-- **THEN** only the known ids advance the machine; unknown ids are silently dropped
+- **THEN** none of the ids advance the machine, the state is unchanged, and the response carries `rejected: "UNKNOWN_STEP_ID"` with `unknown_ids: ['unknown']`
+
+#### Scenario: Rejection right after reset answers with the first filed step
+
+- **WHEN** a progress event reports only an undeclared id while nothing is done
+- **THEN** the answered stage and `next` are those of `firstFiled()`, `next.follow` is not `none`, and the state equals the initial state
 
 ### Requirement: Monotonic marks
 

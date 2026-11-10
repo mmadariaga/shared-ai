@@ -21,7 +21,7 @@
  * The verdict is timeless. The `validate` CLI response carries received_at (CLI
  * reception time in YYYY-MM-DDTHH:MM:SS±HH:MM form, local wall-clock with numeric
  * offset, never Z) as its first JSON key, and as a text suffix on valid results.
- * The time never alters the validation decision. Zone handling lives in this tool; the
+ * The time never alters the validation decision. Zone handling lives in received-at.js, the shared clock; the
  * coordinator never calls wall-clock time and forwards the verdict verbatim.
  *
  * Sub-commands:
@@ -166,12 +166,7 @@ const COMMAND_FIELDS = Object.freeze({
   },
 });
 
-/**
- * Received-at wire form: YYYY-MM-DDTHH:MM:SS±HH:MM
- * Local wall-clock time with numeric offset (never Z). This pattern describes
- * the response-envelope `received_at` only; it is never a payload field.
- */
-const RECEIVED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+const { generateReceivedAt, RECEIVED_AT_PATTERN } = require('./received-at.js');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -179,31 +174,6 @@ class ToolError extends Error {
     super(message);
     this.code = code;
   }
-}
-
-function pad2(n) {
-  return String(n).padStart(2, '0');
-}
-
-/**
- * Generate the CLI reception timestamp (`received_at`), the single clock of both CLIs.
- * Local wall-clock time with its numeric UTC offset, colon-separated, never Z.
- * Reception time substitutes emission time; the small transport delta is
- * accepted as a duration proxy. Time is observation, not claim.
- */
-function generateReceivedAt(now = new Date()) {
-  const year = now.getFullYear();
-  const month = pad2(now.getMonth() + 1);
-  const day = pad2(now.getDate());
-  const hours = pad2(now.getHours());
-  const minutes = pad2(now.getMinutes());
-  const seconds = pad2(now.getSeconds());
-  const offsetMinutes = -now.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? '+' : '-';
-  const abs = Math.abs(offsetMinutes);
-  const offHours = pad2(Math.floor(abs / 60));
-  const offMinutes = pad2(abs % 60);
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${sign}${offHours}:${offMinutes}`;
 }
 
 /**

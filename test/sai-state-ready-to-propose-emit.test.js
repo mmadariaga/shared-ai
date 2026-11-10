@@ -641,7 +641,7 @@ test('block emit: a later successful emit replaces the stored blocks', () => {
   }
 });
 
-test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', () => {
+test('block emit (E9): the inventory and the blocks land in one write; when it fails the response is STORE_WRITE_FAILED and the earlier inventory and blocks stay', () => {
   const os = require('os');
   // The session directory is the shared SAI temp root, so the write is made to
   // fail by a preloaded stub instead of by changing the directory's permissions.
@@ -665,11 +665,21 @@ test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STOR
       const advanced = run(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
       assert.equal(advanced.status, 0, advanced.stderr);
     }
+    const stored = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('kept-change'));
+    assert.equal(stored.status, 0, stored.stderr);
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+
     const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'), { SAI_TEST_FAIL_SESSION_WRITE: '1' });
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.status, 1, result.stderr);
     const json = JSON.parse(result.stdout);
-    assert.ok(json.warnings.includes('BLOCKS_NOT_STORED'));
+    assert.equal(json.error, 'STORE_WRITE_FAILED');
+    assert.equal(json.stage, undefined);
+    assert.equal(json.next, undefined);
+    assert.equal(json.warnings, undefined, 'the BLOCKS_NOT_STORED warning no longer exists');
     assert.equal(json.validation.ok, true);
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'the session file keeps its earlier state');
+    assert.deepEqual(readSet(id), ['kept-change']);
+    assert.deepEqual(Object.keys(readStoredBlocks(id)), ['kept-change']);
   } finally {
     if (id) fs.rmSync(sessionFile(id), { force: true });
     fs.rmSync(tmp, { recursive: true, force: true });
