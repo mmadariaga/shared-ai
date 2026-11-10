@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync, spawnSync } = require('node:child_process');
+const { execFileSync, spawn, spawnSync } = require('node:child_process');
 const { prepare, waitOnce, intervalMilliseconds } = require('../skills/universal/sai-cache-warmer/wait');
 const { expandInstallManifest } = require('../bin/install-manifest');
 
@@ -335,10 +335,13 @@ test('E9 a fixed deadline holds: a later arm supersedes the earlier wait without
 });
 
 test('warm opens a window of max minutes, and the returned state re-arms it with the same window', async t => {
-  const { io, clock, begin } = chainFixture(t, { interval: 4, max: 10 });
+  const { io, clock, begin, saiRoot } = chainFixture(t, { interval: 4, max: 10 });
   const { chain } = begin();
   const first = await warmer.warmOnce({ chain }, io);
-  assert.deepEqual(first, { status: 'continue', waited_ms: 240000, state: { interval_ms: 240000, closing_ms: 600000, chain, generation: 1, armed_ms: 0 } });
+  assert.deepEqual({ ...first.state, token: undefined }, { interval_ms: 240000, closing_ms: 600000, chain, generation: 1, armed_ms: 0, max_ms: 600000, token: undefined });
+  assert.deepEqual([first.status, first.waited_ms], ['continue', 240000]);
+  assert.match(first.state.token, /^[0-9a-f]{16}$/, 'the arm takes an owner token');
+  assert.equal(recordOf(saiRoot, chain).owner, null, 'the wait clears its lease as it ends');
   const second = await warmer.warmOnce({ state: first.state }, io);
   assert.equal(second.status, 'continue');
   assert.deepEqual(second.state, first.state, 'a wake re-arms the state unchanged');
@@ -405,12 +408,13 @@ test('E5 a real message supersedes the earlier wait of its chain, and only the n
   assert.equal((await warmer.warmOnce({ state: newest.state }, io)).status, 'continue');
 });
 
-test('a wait superseded while it sleeps finishes at its wake', async t => {
-  const { io, saiRoot, begin } = chainFixture(t);
+test('E4 a wait superseded while it sleeps finishes within one chunk', async t => {
+  const { io, saiRoot, begin, clock } = chainFixture(t);
   const { chain } = begin();
-  const rearm = () => warmer.warmOnce({ chain }, { ...io, wait: async () => {} });
+  const rearm = () => warmer.warmOnce({ chain }, { ...io, wait: async ms => { clock.time += ms; } });
   const result = await warmer.warmOnce({ chain }, { ...io, wait: async () => { await rearm(); } });
   assert.equal(result.status, 'finished');
+  assert.equal(result.waited_ms, warmer.TICK_MS, 'it retires after one chunk, not after its whole interval');
   assert.equal(recordOf(saiRoot, chain).generation, 2);
 });
 
@@ -421,6 +425,200 @@ test('each agent owns its own chain: one agent\'s arm never supersedes another a
   assert.notEqual(a.state.chain, b.state.chain);
   assert.equal((await warmer.warmOnce({ state: a.state }, io)).status, 'continue');
   assert.equal((await warmer.warmOnce({ state: b.state }, io)).status, 'continue');
+});
+
+/** A chain record holding the lease a live wait would hold, so the arm check can be tested without an in-flight wait. */
+function leasedChain(t, lease = {}, timings = ON) {
+  const fixture = chainFixture(t, timings);
+  const { chain } = fixture.begin();
+  const file = path.join(fixture.saiRoot, `warm-chain-${chain}.json`);
+  const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({
+    ...record, generation: 1, interval_ms: 240000, max_ms: 1800000, closing_ms: 600000,
+    owner: { token: 'a'.repeat(16), renewed_ms: 0, armed_ms: 0, ...lease },
+  }));
+  return { ...fixture, chain, file };
+}
+
+test('E2 the arm check launches a wait when the chain has no live one, and after a wait ended', async t => {
+  const { begin, io, saiRoot } = chainFixture(t);
+  const { chain } = begin();
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: true });
+  const armed = await warmer.warmOnce({ chain }, io);
+  assert.equal(armed.status, 'continue');
+  assert.equal(recordOf(saiRoot, chain).owner, null, 'the ended wait cleared its lease');
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: true }, 'a wait that already ended is not reused');
+  assert.throws(() => warmer.armCheck('0123456789abcdef', io), /run begin first/);
+  assert.throws(() => warmer.armCheck('../escape', io), /chain must be the id/);
+});
+
+test('E1 a live wait with the same timings is reused: the check extends its window and launches nothing', t => {
+  const { chain, io, clock, saiRoot, file } = leasedChain(t);
+  clock.time = 5000;
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: false });
+  const record = recordOf(saiRoot, chain);
+  assert.equal(record.closing_ms, 5000 + 1800000, 'the window is extended to now plus max');
+  assert.equal(record.owner.token, 'a'.repeat(16), 'reuse keeps the live owner');
+  assert.equal(fs.existsSync(`${file}.lock`), false, 'no lock outlives the check');
+});
+
+test('E1 a reused wait picks up the window the check extended instead of finishing at the old one', async t => {
+  const { io, clock, begin } = chainFixture(t, { interval: 4, max: 4 });
+  const { chain } = begin();
+  let calls = 0;
+  const wait = async ms => {
+    clock.time += ms;
+    calls += 1;
+    if (calls === 2) assert.deepEqual(warmer.armCheck(chain, io), { launch: false }, 'the check reuses the live wait');
+  };
+  const result = await warmer.warmOnce({ chain }, { ...io, wait });
+  assert.deepEqual([result.status, result.waited_ms], ['continue', 240000], 'the extended window keeps it alive');
+  assert.equal(result.state.closing_ms, 246000, 'the wait re-reads the window the check wrote');
+});
+
+test('E2 E5 a lease that stopped renewing counts as dead, so the check launches a new wait', t => {
+  const { chain, io, clock } = leasedChain(t);
+  clock.time = warmer.LEASE_STALE_MS;
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: false }, 'the staleness bound is still live');
+  clock.time = warmer.LEASE_STALE_MS + 1;
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: true });
+});
+
+test('E3 a changed interval or max makes the live wait invalid, so the check launches a new one', t => {
+  for (const timings of [{ interval: 2, max: 30 }, { interval: 4, max: 20 }]) {
+    const { chain, io, clock } = leasedChain(t, {}, timings);
+    clock.time = 5000;
+    assert.deepEqual(warmer.armCheck(chain, io), { launch: true }, JSON.stringify(timings));
+  }
+});
+
+test('E8 the arm check launches nothing when the warming setting is off', t => {
+  const { chain, io, clock, setting } = leasedChain(t);
+  setting.value = 'off';
+  clock.time = 5000;
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: false });
+});
+
+test('E9 a cutoff mark newer than the live wait makes the check launch a new wait', t => {
+  const { chain, io, clock, saiRoot } = leasedChain(t);
+  clock.time = 5000;
+  fs.writeFileSync(path.join(saiRoot, warmer.CUTOFF_FILE), JSON.stringify({ cutoff_ms: 6000 }));
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: true });
+});
+
+test('E7 the arm check reuses a live fixed-deadline wait, never moves the deadline, and launches nothing after it', async t => {
+  const { io, clock, saiRoot } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'check-deadline', interval: 4, max: 10, fixedDeadline: true };
+  const began = warmer.beginOnce(main, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  const check = { ...io, resolve: undefined };
+  assert.deepEqual(warmer.armCheck(began.chain, check), { launch: true });
+  assert.equal((await warmer.warmOnce({ chain: began.chain }, check)).status, 'continue');
+  const file = path.join(saiRoot, `warm-chain-${began.chain}.json`);
+  const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({
+    ...record, interval_ms: 240000, max_ms: 600000, closing_ms: 600000,
+    owner: { token: 'b'.repeat(16), renewed_ms: 240000, armed_ms: 0 },
+  }));
+  clock.time = 245000;
+  assert.deepEqual(warmer.armCheck(began.chain, check), { launch: false });
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).closing_ms, 600000, 'the check never moves the deadline');
+  clock.time = 600000;
+  assert.deepEqual(warmer.armCheck(began.chain, check), { launch: false }, 'after the deadline nothing is launched');
+  assert.deepEqual(await warmer.warmOnce({ chain: began.chain }, check), { status: 'finished', waited_ms: 0, state: { chain: began.chain } });
+});
+
+test('I1 a new owner starts its interval only after the previous lease was released or went stale', async t => {
+  const { chain, io, clock, saiRoot } = leasedChain(t);
+  const result = await warmer.warmOnce({ chain }, io);
+  assert.deepEqual([result.status, result.waited_ms], ['continue', 240000]);
+  assert.equal(clock.time, warmer.LEASE_STALE_MS + 240000, 'the stale lease is waited out before the interval');
+  assert.equal(recordOf(saiRoot, chain).generation, 2);
+});
+
+test('E5 two concurrent arms leave exactly one owner, and the other wait finishes', async t => {
+  const { chain, io, begin, saiRoot } = chainFixture(t);
+  const started = begin();
+  const results = await Promise.all([warmer.warmOnce({ chain: started.chain }, io), warmer.warmOnce({ chain: started.chain }, io)]);
+  assert.deepEqual(results.map(result => result.status).sort(), ['continue', 'finished']);
+  const [loser, winner] = results;
+  assert.deepEqual([loser.state.generation, winner.state.generation], [1, 2], 'both acquisitions counted, and the later one owns the chain');
+  assert.notEqual(loser.state.token, winner.state.token);
+  assert.equal(recordOf(saiRoot, started.chain).generation, 2);
+  assert.equal(recordOf(saiRoot, started.chain).owner, null, 'the winner cleared its lease when its interval ended');
+});
+
+test('M1 an ordinary repeated begin keeps the live wait, and a fixed-deadline begin replaces it', t => {
+  const { io, clock, saiRoot } = chainFixture(t, 'off');
+  const main = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'rebegin', interval: 4, max: 10 };
+  const began = warmer.beginOnce(main, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  const check = { ...io, resolve: undefined };
+  const file = path.join(saiRoot, `warm-chain-${began.chain}.json`);
+  const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({
+    ...record, generation: 1, interval_ms: 240000, max_ms: 600000, closing_ms: 600000,
+    owner: { token: 'c'.repeat(16), renewed_ms: 0, armed_ms: 0 },
+  }));
+  clock.time = 5000;
+  assert.equal(warmer.beginOnce(main, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] }).chain, began.chain);
+  assert.equal(recordOf(saiRoot, began.chain).owner.token, 'c'.repeat(16), 'an ordinary begin keeps the live lease');
+  assert.deepEqual(warmer.armCheck(began.chain, check), { launch: false }, 'the next invocation reuses the live wait');
+  assert.equal(recordOf(saiRoot, began.chain).closing_ms, 5000 + 600000, 'and extends its window');
+  const fixed = warmer.beginOnce({ ...main, interval: 4, max: 10, fixedDeadline: true }, { ...io, cwd: saiRoot, resolve: undefined, agentFolders: [] });
+  assert.equal(fixed.chain, began.chain);
+  assert.equal(recordOf(saiRoot, fixed.chain).owner, undefined, 'a fixed-deadline begin clears the lease');
+  assert.deepEqual(warmer.armCheck(fixed.chain, check), { launch: true }, 'the hand-off wait gets its own background task');
+});
+
+test('I3 a stale chain lock is removed, and a check reads the record under the lock', t => {
+  const { chain, io, clock, file } = leasedChain(t);
+  fs.writeFileSync(`${file}.lock`, '');
+  const old = new Date(Date.now() - 60000);
+  fs.utimesSync(`${file}.lock`, old, old);
+  clock.time = 5000;
+  assert.deepEqual(warmer.armCheck(chain, io), { launch: false });
+  assert.equal(fs.existsSync(`${file}.lock`), false);
+});
+
+test('E4 one wait per chain stays alive: the check reuses the live wait and a replacement retires it', async t => {
+  const tempRoot = require('../sai/tools/temp-root');
+  const saiRoot = tempRoot.resolveTempRoot('claude');
+  const session = `process-${warmer.newChainId()}`;
+  const { chain } = warmer.beginOnce({ role: 'agent', provider: 'process-test', harness: 'claude', session, interval: '60s', max: '3m' }, { saiRoot });
+  const file = path.join(saiRoot, `warm-chain-${chain}.json`);
+  const records = [`warm-chain-${chain}.json`, `warm-chain-${chain}.json.lock`];
+  t.after(() => { for (const name of records) fs.rmSync(path.join(saiRoot, name), { force: true }); });
+  const read = () => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+  const until = async (check, ms) => {
+    const end = Date.now() + ms;
+    for (;;) {
+      const value = check();
+      if (value) return value;
+      if (Date.now() > end) throw new Error('timed out');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  };
+
+  const child = spawn(process.execPath, [WAIT, 'warm', '--chain', chain], { stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => child.kill('SIGKILL'));
+  let out = '';
+  child.stdout.on('data', chunk => { out += chunk; });
+  const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
+
+  const firstOwner = await until(() => read()?.owner?.token, 10000);
+  assert.equal(child.exitCode, null, 'the launched wait is alive');
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, [WAIT, 'arm', '--chain', chain], { encoding: 'utf8' })), { launch: false });
+  assert.ok(read().closing_ms > Date.now() + 60000, 'the check extended the live window');
+  assert.equal(child.exitCode, null, 'the reused wait keeps running and nothing else starts');
+
+  const replacement = spawn(process.execPath, [WAIT, 'warm', '--chain', chain], { stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => replacement.kill('SIGKILL'));
+  const owner = await until(() => { const record = read(); return record?.generation === 2 && record.owner?.token !== firstOwner ? record.owner : null; }, 15000);
+  assert.notEqual(owner.token, firstOwner);
+  await exited;
+  assert.equal(JSON.parse(out).status, 'finished', 'the replaced wait retires with finished');
+  assert.equal(read().owner.token, owner.token, 'the replacement owns the chain');
+  assert.equal(replacement.exitCode, null, 'exactly one wait is alive');
+  replacement.kill('SIGKILL');
 });
 
 test('E11 a cutoff mark newer than the arm ends the chain at its next wake, and later arms stay live', async t => {
@@ -564,6 +762,9 @@ test('the policy keeps the reduced rule set: switch, begin, arm after every resp
   assert.match(policy, /begin --agent <agent> --harness <claude\|opencode>/);
   assert.match(policy, /begin --role agent --provider <provider> \[--model <model>\] --harness <claude\|opencode>/);
   assert.match(policy, /Arm after every response: a result, a question, and a step report all keep the wait armed until the agent is disposed/);
+  assert.match(policy, /arm --chain <chain>/, 'the foreground arm check is stated');
+  assert.match(policy, /when `launch` is `true`, launch one wait in the background/, 'the check decides, not the model');
+  assert.match(policy, /When `launch` is `false`, launch nothing/);
   assert.match(policy, /warm --chain <chain>/);
   assert.match(policy, /warm --state <state_token>/);
   assert.match(policy, /exactly `ok`[\s\S]{0,300}not a real message/);
@@ -601,7 +802,7 @@ test('helper contracts and budget skills send the switch only to agents their co
   const read = relative => fs.readFileSync(path.resolve(__dirname, '..', relative), 'utf8');
   assert.match(read('sai/policies/explore-agent.md'), /`ladder_discards`, `out_of_root_requests`, and `warming`/);
   assert.doesNotMatch(read('sai/policies/explore-agent.md'), /warm-up/);
-  assert.match(read('sai/policies/explore-agent.md'), /`begin` and the background `warm`/);
+  assert.match(read('sai/policies/explore-agent.md'), /`begin`, the foreground arm check, and the background `warm`/);
   assert.match(read('sai/policies/executor-agent.md'), /`warming: false`/);
   assert.match(read('sai/policies/budget-agent.md'), /`warming: true` or `warming: false`/);
   for (const harness of ['claude', 'opencode']) {
@@ -652,7 +853,7 @@ test('explore hand-off warming: the step file, its two loaders, and the stops ar
   assert.match(step, /§ Stop your own wait/);
   assert.match(step, /Run `begin` in the foreground as `cache-warming\.md` § Begin states for the main session[\s\S]*--interval <interval> --max <max> --fixed-deadline/);
   assert.doesNotMatch(step, /Only a wake re-arms|moves the deadline/, 'the step file describes no variant of its own');
-  assert.match(step, /Launch `wait\.js warm --chain <chain>` in the background/);
+  assert.match(step, /Run `wait\.js arm --chain <chain>` in the foreground, and launch `wait\.js warm --chain <chain>` in the background only when it prints `launch: true`/);
   assert.match(read('sai/policies/cache-warming.md'), /## Hand-off wait[\s\S]*--interval <interval> --max <max> --fixed-deadline[\s\S]*no arm or wake moves it/);
   assert.match(read('sai/policies/cache-warming.md'), /The timings stay as passed to `begin`/);
   assert.match(read('sai/policies/cache-warming.md'), /Each re-arm launches a new background task, so replace the task id[\s\S]{0,120}chain stays the same/);

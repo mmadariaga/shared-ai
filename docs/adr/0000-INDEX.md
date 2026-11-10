@@ -227,6 +227,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0215 — opencode dispose sends the dispose message after a none listing of a warming worker](./0215-opencode-dispose-message-follows-a-warming-none-listing.md) — **Amends** 0213
 - [0216 — Main-session warming needs a harness session id, and warming ends as the code says](./0216-main-session-warming-needs-a-session-id.md) — **Amends** 0212
 - [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
+- [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
 
 ### `/sai-backfill`
 
@@ -555,6 +556,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0215 — opencode dispose sends the dispose message after a none listing of a warming worker](./0215-opencode-dispose-message-follows-a-warming-none-listing.md) — **Amends** 0213
 - [0216 — Main-session warming needs a harness session id, and warming ends as the code says](./0216-main-session-warming-needs-a-session-id.md) — **Amends** 0212
 - [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
+- [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
 
 ### Testability routing & RED → GREEN
 
@@ -695,6 +697,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0214](./0214-routed-workers-report-through-one-validated-file-transport.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0215](./0215-opencode-dispose-message-follows-a-warming-none-listing.md) | amends | [0213](./0213-opencode-dispose-removes-the-workers-shells.md) |
 | [0216](./0216-main-session-warming-needs-a-session-id.md) | amends | [0212](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) |
+| [0218](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) | amends | [0212](./0212-cache-warming-is-tool-owned-and-ends-only-on-dispose.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
