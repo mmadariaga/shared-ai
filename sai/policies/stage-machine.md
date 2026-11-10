@@ -39,14 +39,25 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
   session for that key and returns `{received_at, id}`. Derive the key from the harness
   session identifier; the same key always yields the same id.
-- **Emit**: `sai-state emit <id> <machineId> --input-file <path>` reads one
-  event as JSON from the input file (§ Event delivery), sends it to one machine,
-  and returns
-  `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The stdin
-  form `emit <id> <machineId> -` stays accepted, so older instructions keep
-  working; event JSON passed as an argument is a usage error (exit 2). A
-  missing, unreadable, or empty input file exits 2 naming the path and changes
-  no state.
+- **Emit**: `sai-state emit <id> <machineId> --set <field>=<id> ...` builds one
+  identifier event from flags (§ Event delivery), sends it to one machine, and
+  returns
+  `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The flags:
+  `--set <field>=<id>` sets one value, repeatable `--add <field>=<id>` appends to
+  a list, `--add <field>=` records an empty list, and `--set-path <field>="<path>"`
+  sets a path. A field name starts with a letter followed by letters, digits, or
+  `_`; a `--set` or `--add` value matches the `ID_PATTERN` of
+  `sai-state/machines/run-core.js`; a `--set-path` value holds no `"`, `$`,
+  backtick, or control character. A violation, a field named twice by `--set`
+  or by both `--set` and `--add`, or a flag combined with `--input-file`, stdin
+  `-`, `--progress`, or `--ready-to-propose` is a usage error (exit 2) that
+  changes no state; a rejected path names `--input-file` as the alternative.
+  `sai-state emit <id> <machineId> --input-file <path>` reads one event as JSON
+  from the input file instead, for an event that holds free text or a path the
+  flags reject. The stdin form `emit <id> <machineId> -` stays accepted, so
+  older instructions keep working; event JSON passed as an argument is a usage
+  error (exit 2). A missing, unreadable, or empty input file exits 2 naming the
+  path and changes no state.
 - **Progress emit**: `sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`
   takes the worker's progress report as a reference: it verifies the reference
   once (directory, containment, symbolic links, sha256), validates those same
@@ -166,7 +177,7 @@ without re-spelling the verbs):
 ```text
 sai-state spawn --key <stable-key>
 sai-state reset <id> security-steps@1
-node <tool-path> emit <id> explore-idea@1 --input-file <dir>/event-1.json
+node <tool-path> emit <id> explore-idea@1 --set intent=next-step
 sai-state close <id>
 ```
 
@@ -213,8 +224,19 @@ and surface the regression against the presentation hint.
 
 ## Event delivery
 
-A non-block event travels as an input file, never as an argument, a stdin pipe,
-or a heredoc. Prepare it in this order on both Claude Code and opencode:
+An identifier event, one whose values are all identifiers or paths with no free
+text, travels as flags in one call, the canonical example's emit line with
+`--set <field>=<id>`, repeatable `--add <field>=<id>`, and
+`--set-path <field>="<path>"` (§ Verbs, Emit). Identifiers need no quoting, so
+the line is identical in Bash and PowerShell 7 (the shells
+`@sai/policies/command-execution.md` supports) on both Claude Code and opencode.
+A `--set-path` value holds no `"`, `$`, backtick, or control character; the
+paths run events carry come from `temp-root.js mkdtemp` and `transfer.js open`,
+so a rejected path is rare.
+
+An event that holds free text, or a path the flags reject, travels as an input
+file, never as an argument, a stdin pipe, or a heredoc. Prepare it in this order
+on both Claude Code and opencode:
 
 1. Run `transfer.js` as `node <tool-path> open --harness <claude|opencode>` once
    per session. It creates one private directory under the SAI temp root and
@@ -223,10 +245,8 @@ or a heredoc. Prepare it in this order on both Claude Code and opencode:
    `event-<n>.json`) with the harness-native file-write tool (`Write` on Claude
    Code, `write` on opencode). Each call uses its own file, so parallel calls
    never share one. The write goes outside the repository.
-3. Run the canonical example's emit line with `--input-file <dir>/<file>`. The
-   line is identical in Bash and PowerShell 7 (the shells
-   `@sai/policies/command-execution.md` supports); nothing is quoted or escaped
-   and the tool receives the bytes exactly.
+3. Run the emit line with `--input-file <dir>/<file>` in place of the flags.
+   Nothing is quoted or escaped and the tool receives the bytes exactly.
 
 `--input-file` wins over stdin. The `-` stdin form stays accepted only so
 instructions installed before the input file keep working. The same procedure

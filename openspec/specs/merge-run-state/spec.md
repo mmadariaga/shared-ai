@@ -69,9 +69,9 @@ After a context compaction, or when the start finds a run of the named branch in
 
 ### Requirement: Merge coordinator states the merge-run event shape
 
-The merge coordinator card SHALL state, where it introduces the `merge-run@1` machine, that every event is one JSON object whose `kind` field names the event. Its run-state section SHALL list the fields each event takes: `start` takes `dir`; `launch` takes `method`, `branch`, `head`, and `baseline`; `stop` takes `stop`; `attempt`, `escalate`, and `answer` take `obstacle`, and `answer` also takes `choice`; `record` takes `ref` and `path`; and `close` takes `outcome`.
+The merge coordinator card SHALL state, where it introduces the `merge-run@1` machine, that every event is sent as flags whose `kind` names the event (`--set kind=<event>`), per `sai/policies/stage-machine.md` § Event delivery. Its run-state section SHALL list the fields each event takes: `start` takes `dir`; `launch` takes `method`, `branch`, `head`, and `baseline`; `stop` takes `stop`; `attempt`, `escalate`, and `answer` take `obstacle`, and `answer` also takes `choice`; `record` takes `ref` and `path`; and `close` takes `outcome`. It SHALL state that `dir`, `baseline`, `path`, and a branch that holds `/` travel as `--set-path` values and the other fields as `--set` values.
 
 #### Scenario: Status event carries its kind
 
 - **WHEN** the coordinator emits the opening `status` event to `merge-run@1`
-- **THEN** it pipes one JSON object whose `kind` field is `status`
+- **THEN** it sends the event as flags with `--set kind=status`
