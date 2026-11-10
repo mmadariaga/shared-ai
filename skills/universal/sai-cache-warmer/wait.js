@@ -32,6 +32,12 @@ function intervalMilliseconds(value) {
   return ms >= 1 && Number.isSafeInteger(Math.round(ms)) ? Math.round(ms) : null;
 }
 
+/** A duration in minutes, in any form `intervalMilliseconds` accepts; `NaN` when it is not one. */
+function minutesOf(value) {
+  const ms = intervalMilliseconds(value);
+  return ms === null ? NaN : ms / 60000;
+}
+
 function splitArguments(text = '') {
   text = String(text ?? '');
   const match = /^(.*?)\s*((?:\d{4}-\d{2}-\d{2}\s+)?\d{1,2}:\d{2}|now\s*\+\s*\d+(?:\.\d+)?\s*h)\s*$/i.exec(text.trim());
@@ -289,8 +295,8 @@ function beginOnce(input, io = {}) {
     identity = { provider: input.provider, ...(input.model === undefined ? {} : { model: input.model }), role: 'agent' };
     // Timings the user chose in the conversation (the explore hand-off wait) replace the settings for this chain.
     if (input.interval !== undefined || input.max !== undefined) {
-      const fixed = { interval: Number(input.interval), max: Number(input.max) };
-      try { warmState(fixed); } catch { throw new UsageError('--interval and --max must be given together, as positive numbers of minutes with max at least interval'); }
+      const fixed = { interval: minutesOf(input.interval), max: minutesOf(input.max) };
+      try { warmState(fixed); } catch { throw new UsageError('--interval and --max must be given together, each as a positive duration (minutes unless it ends in s, m, or h, as in 20, 30 min, or 4h) with max at least interval'); }
       identity.fixed = fixed;
     }
     if (input.fixedDeadline && !identity.fixed) throw new UsageError('--fixed-deadline needs the --interval and --max the user chose');
@@ -300,8 +306,12 @@ function beginOnce(input, io = {}) {
   const warming = (io.resolve ?? defaultResolve)(identity);
   if (warming === 'off') return { chain: null, warming: 'off' };
   const saiRoot = io.saiRoot ?? defaultSaiRoot();
-  const session = input.session ?? (harness === 'claude' ? process.env.CLAUDE_CODE_SESSION_ID : process.env.OPENCODE_SESSION_ID);
-  const chain = identity.role === 'agent' && session ? sessionChainId(harness, session) : newChainId();
+  // The main session's chain follows its harness session id; without one every call would open a new chain and break the
+  // one-live-wait rule, so the call fails instead.
+  const sessionVariable = harness === 'claude' ? 'CLAUDE_CODE_SESSION_ID' : 'OPENCODE_SESSION_ID';
+  const session = input.session ?? (io.env ?? process.env)[sessionVariable];
+  if (identity.role === 'agent' && !session) throw new UsageError(`begin for the main session needs the harness session id: set ${sessionVariable} or pass --session <id>; nothing was armed`);
+  const chain = identity.role === 'agent' ? sessionChainId(harness, session) : newChainId();
   const file = chainFile(saiRoot, chain);
   const held = readJson(file);
   // A fixed deadline is a property of the record, set here: it closes `max` minutes from this begin, and no later arm moves it.

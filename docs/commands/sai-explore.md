@@ -144,7 +144,9 @@ return with `next-slice` or a fixed deadline passes:
   and [`/sai-context-cache-ttl-benchmark`](sai-context-cache-ttl-benchmark.md)
   measures it) and asks one picker with two questions. The interval offers
   `30 min (Recommended)`, `4 min`, and `No`; the duration offers `4h (Recommended)`,
-  `2h`, and `1h`; both accept free text. `No`, or a dismissed picker, means no
+  `2h`, and `1h`; both accept free text as a positive number with an optional unit
+  (`s`, `min`, or `h`; no unit means minutes), such as `20` or `20 min`, and
+  `1h30` is not accepted. `No`, or a dismissed picker, means no
   warming; an unanswered duration is `4h`. An invalid free text is asked once more
   and then ignored with a one-line note. Each wake costs two short requests, and an
   interval longer than the cache lifetime saves nothing.

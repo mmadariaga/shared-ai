@@ -42,7 +42,7 @@ Before asking, the step SHALL run `project-settings.js warming --provider <provi
 
 ### Requirement: Hand-off warming question
 
-When no setting entry applies and no earlier answer exists in the invocation, explore SHALL print a harness cache-lifetime notice in the chat language and then ask both questions in one native picker call. The notice SHALL state, on Claude Code, 1 hour with a Claude subscription and 5 minutes with pay-per-token, and on opencode that the lifetime depends on the provider and that `/sai-context-cache-ttl-benchmark` measures it; it SHALL say that each wake costs two short requests and that an interval longer than the cache lifetime saves nothing. The interval question SHALL offer `30 min (Recommended)`, `4 min`, and `No`, and the duration question SHALL offer `4h (Recommended)`, `2h`, and `1h`; both SHALL accept free text as a positive number of minutes. An interval of `No`, or a dismissed picker, SHALL mean no warming and SHALL ignore the duration. An unanswered duration, or a free-text interval with no duration, SHALL be `4h`. When a free text gives no positive number of minutes or the interval exceeds the duration, explore SHALL ask the two questions once more, and when the second answer is also invalid it SHALL not warm and SHALL say so in one line.
+When no setting entry applies and no earlier answer exists in the invocation, explore SHALL print a harness cache-lifetime notice in the chat language and then ask both questions in one native picker call. The notice SHALL state, on Claude Code, 1 hour with a Claude subscription and 5 minutes with pay-per-token, and on opencode that the lifetime depends on the provider and that `/sai-context-cache-ttl-benchmark` measures it; it SHALL say that each wake costs two short requests and that an interval longer than the cache lifetime saves nothing. The interval question SHALL offer `30 min (Recommended)`, `4 min`, and `No`, and the duration question SHALL offer `4h (Recommended)`, `2h`, and `1h`; both SHALL accept free text. The interval and the duration, whether picked or typed, SHALL each be accepted as a positive number with an optional unit: `s` or `sec` (seconds), `m` or `min` (minutes), `h` or `hr` (hours), a value with no unit counting in minutes; every picker option other than `No`, and free text such as `20`, `20 min`, and `1.5h`, SHALL be accepted, and a compound such as `1h30` SHALL NOT be accepted. `sai/commands/explore/steps/handoff-warming.md` SHALL list exactly these accepted forms, and explore SHALL keep each answer as the user gave it, without the `(Recommended)` suffix of a picked label, because `wait.js begin` converts it. An interval of `No`, or a dismissed picker, SHALL mean no warming and SHALL ignore the duration. An unanswered duration, or a free-text interval with no duration, SHALL be `4h`. When a free text is not an accepted form or the interval exceeds the duration, explore SHALL ask the two questions once more, and when the second answer is also invalid it SHALL not warm and SHALL say so in one line. `docs/commands/sai-explore.md` SHALL describe the same accepted forms.
 
 #### Scenario: Recommended answers
 - **WHEN** the user picks `30 min (Recommended)` and `4h (Recommended)`
@@ -55,6 +55,14 @@ When no setting entry applies and no earlier answer exists in the invocation, ex
 #### Scenario: Invalid answer twice
 - **WHEN** the interval exceeds the duration in both the first answer and the repeated question
 - **THEN** explore does not warm and says so in one line
+
+#### Scenario: Picked and typed forms are accepted
+- **WHEN** the user picks `4 min` and `2h`, or types `20` or `20 min` for the interval
+- **THEN** explore passes the answers unchanged to `begin`, which reads `4 min` and `20` as minutes and `2h` as 120 minutes, and arms the hand-off wait
+
+#### Scenario: Compound duration is rejected
+- **WHEN** the user types `1h30` as the duration
+- **THEN** the answer is not an accepted form and explore asks the two questions once more under the invalid-answer rule
 
 ### Requirement: Hand-off answers are invocation-scoped conversation state
 
