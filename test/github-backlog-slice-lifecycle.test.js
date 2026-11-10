@@ -101,22 +101,22 @@ function receipt(t) {
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   return path.join(directory, 'receipt.json');
 }
-function publish(t, fixture) {
-  const ready = github['query-set'](fixture.request, fixture.io);
+async function publish(t, fixture) {
+  const ready = await github['query-set'](fixture.request, fixture.io);
   assert.equal(ready.status, 'ready');
   const file = receipt(t);
-  return { result: github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io), file };
+  return { result: await github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io), file };
 }
-test('published GitHub set updates only changed content without creations, membership or relation mutations', t => {
-  const f = fake({ native: true }), published = publish(t, f);
+test('published GitHub set updates only changed content without creations, membership or relation mutations', async t => {
+  const f = fake({ native: true }), published = await publish(t, f);
   assert.equal(published.result.status, 'complete');
   const request = { origin: f.state.issues[0].url, title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
-  assert.equal(github['query-set-update'](request, f.io).status, 'no_changes');
+  assert.equal((await github['query-set-update'](request, f.io)).status, 'no_changes');
   request.blocks = request.blocks.replace('**What**: None', '**What**: refined child');
-  const ready = github['query-set-update'](request, f.io);
+  const ready = await github['query-set-update'](request, f.io);
   assert.equal(ready.status, 'ready');
   const start = f.state.calls.length, file = receipt(t);
-  const result = github['update-set']({ ...request, confirmation: ready.confirmation, receipt: file }, f.io);
+  const result = await github['update-set']({ ...request, confirmation: ready.confirmation, receipt: file }, f.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.deepEqual(result.updated.map(item => item.number), [2]);
   assert.equal(f.state.issues.length, 3);
@@ -124,7 +124,7 @@ test('published GitHub set updates only changed content without creations, membe
   assert.equal(writes.length, 1);
   assert.match(JSON.parse(writes[0].input).query, /updateIssue/);
   assert.deepEqual(result.correspondence, published.result.correspondence);
-  assert.equal(github['recover-set-update']({ receipt: file }, f.io).status, 'complete');
+  assert.equal((await github['recover-set-update']({ receipt: file }, f.io)).status, 'complete');
 });
 
 test('dependency validator separates singleton and complete sets, format, duplicate, self, absent and cycles', () => {
@@ -140,9 +140,9 @@ test('dependency validator separates singleton and complete sets, format, duplic
   assert.equal(detector.checkStrict(withOrigin).ok, true);
   assert.equal(detector.checkStrict(withOrigin.replace('https://github.com/owner/repo/issues/2', 'https://other.test/issues/2')).ok, false);
 });
-for (const native of [false, true]) test(`set publication and complete import: ${native ? 'native' : 'written'} hierarchy`, t => {
+for (const native of [false, true]) test(`set publication and complete import: ${native ? 'native' : 'written'} hierarchy`, async t => {
   const fixture = fake({ native });
-  const { result } = publish(t, fixture);
+  const { result } = await publish(t, fixture);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues.length, 3);
   assert.deepEqual(result.correspondence.slices.map(row => row.change_name), ['blocker', 'dependent']);
@@ -151,13 +151,13 @@ for (const native of [false, true]) test(`set publication and complete import: $
   if (native) assert.deepEqual(fixture.state.blockers.get(3), [2]);
   assert.ok(fixture.state.issues[2].body.startsWith(block('dependent', 'blocker')));
   fixture.state.issues[0].assignees = ['parent-owner'];
-  const imported = source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
+  const imported = await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
   assert.equal(imported.status, 'complete', JSON.stringify(imported));
   assert.equal(imported.origin.issue, fixture.state.issues[0].url);
   assert.equal(imported.sources.length, 3);
   assert.deepEqual(imported.item.assignees, ['parent-owner']);
   assert.equal(imported.sources[2].comments[0].body, 'Full comment');
-  const child = source.readSet(source.normalize(fixture.state.issues[2].url), fixture.io);
+  const child = await source.readSet(source.normalize(fixture.state.issues[2].url), fixture.io);
   assert.equal(child.status, 'complete', JSON.stringify(child));
   assert.equal(child.sources.length, 2);
   assert.equal(child.sources[1].role, 'parent-context');
@@ -165,139 +165,139 @@ for (const native of [false, true]) test(`set publication and complete import: $
   assert.deepEqual(child.item.dependencies, [fixture.state.issues[1].url]);
   assert.deepEqual(fixture.state.issues[0].assignees, ['parent-owner']);
 });
-test('one-slice set creates parent and child; simple publication API remains unchanged', t => {
+test('one-slice set creates parent and child; simple publication API remains unchanged', async t => {
   const fixture = fake(); fixture.request.blocks = block('one');
-  assert.equal(publish(t, fixture).result.status, 'complete');
+  assert.equal((await publish(t, fixture)).result.status, 'complete');
   assert.equal(fixture.state.issues.length, 2);
-  assert.equal(github.query({ ...fixture.request, blocks: undefined }, fixture.io).proposal.operation, undefined);
+  assert.equal((await github.query({ ...fixture.request, blocks: undefined }, fixture.io)).proposal.operation, undefined);
   assert.equal(typeof github.publish, 'function');
 });
-test('partial creation has read-only recovery and approved continuation without duplicates', t => {
+test('partial creation has read-only recovery and approved continuation without duplicates', async t => {
   const fixture = fake(); fixture.state.lostCreation = true;
-  const { result, file } = publish(t, fixture);
+  const { result, file } = await publish(t, fixture);
   assert.equal(result.status, 'partial_failure'); assert.equal(fixture.state.issues.length, 1);
-  let recovered = github['recover-set']({ receipt: file }, fixture.io);
+  let recovered = await github['recover-set']({ receipt: file }, fixture.io);
   assert.equal(recovered.candidates.length, 1);
   assert.equal(fixture.state.issues.length, 1);
-  assert.throws(() => github['continue-set']({ receipt: file, confirmation: 'not approval', identified: { 0: fixture.state.issues[0].url } }, fixture.io), /approval/);
-  recovered = github['recover-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url } }, fixture.io);
-  assert.equal(github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io).status, 'complete');
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, confirmation: 'not approval', identified: { 0: fixture.state.issues[0].url } }, fixture.io), /approval/);
+  recovered = await github['recover-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url } }, fixture.io);
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io)).status, 'complete');
   assert.equal(fixture.state.issues.length, 3);
 });
 const adds = fixture => fixture.state.calls.filter(call => call.input?.includes('addProjectV2ItemById(')).length;
-test('one durable automatic retry covers the complete set and exhaustion survives recovery', t => {
+test('one durable automatic retry covers the complete set and exhaustion survives recovery', async t => {
   const fixture = fake(); fixture.state.insertionError = 'Permission denied';
-  const { file } = publish(t, fixture);
-  let verified = github['recover-set']({ receipt: file }, fixture.io);
+  const { file } = await publish(t, fixture);
+  let verified = await github['recover-set']({ receipt: file }, fixture.io);
   assert.equal(adds(fixture), 1);
-  const failed = github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io);
+  const failed = await github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io);
   assert.equal(failed.status, 'partial_failure');
   assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, true);
-  verified = github['recover-set']({ receipt: file }, fixture.io);
-  assert.throws(() => github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /exhausted/);
+  verified = await github['recover-set']({ receipt: file }, fixture.io);
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /exhausted/);
   assert.equal(adds(fixture), 2);
   fixture.state.insertionError = null;
   // An explicit subsequent answer still uses the fresh verified token.
-  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io).status, 'complete');
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io)).status, 'complete');
   assert.equal(fixture.state.issues.length, 3);
 });
-test('automatic continuation preserves verified work and completion does not consume retry', t => {
+test('automatic continuation preserves verified work and completion does not consume retry', async t => {
   const fixture = fake(); fixture.state.insertionError = 'Permission denied';
-  const { file } = publish(t, fixture);
-  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  const { file } = await publish(t, fixture);
+  const verified = await github['recover-set']({ receipt: file }, fixture.io);
   fixture.state.insertionError = null;
-  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io).status, 'complete');
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io)).status, 'complete');
   const before = fixture.state.calls.filter(call => call.input?.includes('mutation(')).length;
-  assert.equal(github['continue-set']({ receipt: file, automatic_retry: true }, fixture.io).status, 'complete');
+  assert.equal((await github['continue-set']({ receipt: file, automatic_retry: true }, fixture.io)).status, 'complete');
   assert.equal(fixture.state.calls.filter(call => call.input?.includes('mutation(')).length, before);
   assert.equal(fixture.state.issues.length, 3);
 });
-test('uncertain creation and changed content cannot use the automatic continuation', t => {
+test('uncertain creation and changed content cannot use the automatic continuation', async t => {
   const fixture = fake(); fixture.state.lostCreation = true;
-  const { file } = publish(t, fixture);
-  const verified = github['recover-set']({ receipt: file }, fixture.io);
-  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io).candidates.length, 1);
+  const { file } = await publish(t, fixture);
+  const verified = await github['recover-set']({ receipt: file }, fixture.io);
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io)).candidates.length, 1);
   assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
   assert.equal(fixture.state.issues.length, 1);
   fixture.state.issues[0].body = 'unapproved edit';
-  assert.equal(github['continue-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url }, confirmation: verified.continuation, automatic_retry: true }, fixture.io).candidates.length, 1);
+  assert.equal((await github['continue-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url }, confirmation: verified.continuation, automatic_retry: true }, fixture.io)).candidates.length, 1);
   assert.equal(fixture.state.issues.length, 1);
 });
-test('known issue content and relationship scope changes invalidate automatic continuation', t => {
+test('known issue content and relationship scope changes invalidate automatic continuation', async t => {
   const fixture = fake({ native: true }); fixture.state.failNative = true;
-  const { file } = publish(t, fixture);
-  const fallback = github['recover-set']({ receipt: file, fallback: 'written' }, fixture.io);
-  assert.throws(() => github['continue-set']({ receipt: file, fallback: 'written', confirmation: fallback.continuation, automatic_retry: true }, fixture.io), /renewed approval/);
+  const { file } = await publish(t, fixture);
+  const fallback = await github['recover-set']({ receipt: file, fallback: 'written' }, fixture.io);
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, fallback: 'written', confirmation: fallback.continuation, automatic_retry: true }, fixture.io), /renewed approval/);
   fixture.state.failNative = false;
-  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  const verified = await github['recover-set']({ receipt: file }, fixture.io);
   fixture.state.issues[0].body = 'unapproved edit';
-  assert.throws(() => github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /diverged/);
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /diverged/);
   assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
 });
-test('verified completion consumes nothing and an unread relationship authorizes no retry', t => {
-  const complete = fake(); const finished = publish(t, complete);
+test('verified completion consumes nothing and an unread relationship authorizes no retry', async t => {
+  const complete = fake(); const finished = await publish(t, complete);
   const before = complete.state.calls.length;
-  assert.equal(github['continue-set']({ receipt: finished.file, automatic_retry: true }, complete.io).status, 'complete');
+  assert.equal((await github['continue-set']({ receipt: finished.file, automatic_retry: true }, complete.io)).status, 'complete');
   assert.equal(JSON.parse(fs.readFileSync(finished.file)).automatic_retry_consumed, undefined);
   assert.ok(complete.state.calls.slice(before).every(call => !call.input?.includes('mutation(')));
   const partial = fake({ native: true }); partial.state.failNative = true;
-  const { file } = publish(t, partial);
-  assert.throws(() => github['recover-set']({ receipt: file }, partial.io), /unavailable/);
-  assert.throws(() => github['continue-set']({ receipt: file, automatic_retry: true }, partial.io), /unavailable/);
+  const { file } = await publish(t, partial);
+  await assert.rejects(async () => await github['recover-set']({ receipt: file }, partial.io), /unavailable/);
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, automatic_retry: true }, partial.io), /unavailable/);
   assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
 });
-test('Project membership is verified by direct reads: no wait when visible at once, no items connection', t => {
-  const fixture = fake(); const { result } = publish(t, fixture);
+test('Project membership is verified by direct reads: no wait when visible at once, no items connection', async t => {
+  const fixture = fake(); const { result } = await publish(t, fixture);
   assert.equal(result.status, 'complete'); assert.equal(adds(fixture), 3); assert.deepEqual(fixture.state.sleeps, []);
 });
-test('lagging visibility waits two seconds between at most five reads per issue', t => {
+test('lagging visibility waits two seconds between at most five reads per issue', async t => {
   const fixture = fake(); fixture.state.visibleAfter = 2;
-  const { result } = publish(t, fixture);
+  const { result } = await publish(t, fixture);
   assert.equal(result.status, 'complete');
   assert.deepEqual(fixture.state.sleeps, Array(6).fill(2000));
 });
-test('unverified Project membership stops with project pending, then recover-set and continue-set decide by the issue-side read', t => {
+test('unverified Project membership stops with project pending, then recover-set and continue-set decide by the issue-side read', async t => {
   const fixture = fake(); fixture.state.visibleAfter = 99;
-  const { result, file } = publish(t, fixture);
+  const { result, file } = await publish(t, fixture);
   assert.equal(result.status, 'partial_failure'); assert.equal(result.message, 'Project membership not verified');
   assert.ok(result.pending.includes('project:0')); assert.equal(fixture.state.issues.length, 1);
   assert.deepEqual(fixture.state.sleeps, Array(4).fill(2000)); assert.equal(adds(fixture), 1);
   fixture.state.visibleAfter = 0; fixture.state.reads.clear();
-  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  const recovered = await github['recover-set']({ receipt: file }, fixture.io);
   assert.ok(!recovered.pending.includes('project:0'));
-  assert.equal(github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io).status, 'complete');
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io)).status, 'complete');
   assert.equal(fixture.state.issues.length, 3); assert.equal(adds(fixture), 3);
 });
-test('recover-set leaves project pending when the issue-side read sees no item and never repeats the mutation', t => {
+test('recover-set leaves project pending when the issue-side read sees no item and never repeats the mutation', async t => {
   const fixture = fake(); fixture.state.visibleAfter = 99;
-  const { file } = publish(t, fixture);
-  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  const { file } = await publish(t, fixture);
+  const recovered = await github['recover-set']({ receipt: file }, fixture.io);
   assert.ok(recovered.pending.includes('project:0')); assert.equal(adds(fixture), 1);
 });
-test('an issue already in the Project, archived or not, counts as member and is never re-added', t => {
+test('an issue already in the Project, archived or not, counts as member and is never re-added', async t => {
   for (const archived of [false, true]) {
     const fixture = fake(); fixture.state.autoAdd = true; fixture.state.archived = archived;
-    const { result } = publish(t, fixture);
+    const { result } = await publish(t, fixture);
     assert.equal(result.status, 'complete'); assert.equal(adds(fixture), 0); assert.deepEqual(fixture.state.sleeps, []);
   }
 });
-test('only items of the destination Project count, and a null projectItems means no items', t => {
+test('only items of the destination Project count, and a null projectItems means no items', async t => {
   for (const option of ['otherProject', 'nullItems']) {
     const fixture = fake(); fixture.state[option] = true;
-    const { result } = publish(t, fixture);
+    const { result } = await publish(t, fixture);
     assert.equal(result.status, 'complete', option); assert.equal(adds(fixture), 3, option);
   }
 });
-test('a mutation response without an item id is verified by the issue-side read', t => {
+test('a mutation response without an item id is verified by the issue-side read', async t => {
   const fixture = fake(); fixture.state.noItemId = true; fixture.state.visibleAfter = 1;
-  const { result } = publish(t, fixture);
+  const { result } = await publish(t, fixture);
   assert.equal(result.status, 'complete'); assert.deepEqual(fixture.state.sleeps, Array(3).fill(2000));
 });
 for (const message of ['Content already exists', 'Content already exists in this project'])
-for (const graphqlError of [false, true]) test(`set publication resolves concurrent auto-add for every issue: ${message}, GraphQL=${graphqlError}`, t => {
+for (const graphqlError of [false, true]) test(`set publication resolves concurrent auto-add for every issue: ${message}, GraphQL=${graphqlError}`, async t => {
   const fixture = fake();
   Object.assign(fixture.state, { insertionError: graphqlError ? message : `gh: gh: ${message} (addProjectV2ItemById)`, graphqlError, raceMember: true, visibleAfter: 1 });
-  const { result, file } = publish(t, fixture);
+  const { result, file } = await publish(t, fixture);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(adds(fixture), 3);
@@ -305,10 +305,10 @@ for (const graphqlError of [false, true]) test(`set publication resolves concurr
   assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
 });
 for (const message of ['Content already exists', 'Content already exists in this project'])
-for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`set partial result and approved continuation preserve existing issues: ${message}, ${option}`, t => {
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`set partial result and approved continuation preserve existing issues: ${message}, ${option}`, async t => {
   const fixture = fake();
   Object.assign(fixture.state, { insertionError: option === 'unrelated-error' ? 'Permission denied' : message, otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' });
-  const { result, file } = publish(t, fixture);
+  const { result, file } = await publish(t, fixture);
   assert.equal(result.status, 'partial_failure');
   assert.ok(result.pending.includes('project:0'));
   assert.equal(result.created[0].id, 'I1');
@@ -316,73 +316,73 @@ for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error'
   assert.match(result.message, option === 'read-error' ? /Membership query denied/ : option === 'unrelated-error' ? /Permission denied/ : /Project membership not verified/);
   fixture.state.failRaceRead = false;
   fixture.state.members.clear();
-  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  const recovered = await github['recover-set']({ receipt: file }, fixture.io);
   assert.ok(recovered.pending.includes('project:0'));
   fixture.state.insertionError = message; fixture.state.raceMember = false;
-  const incomplete = github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io);
+  const incomplete = await github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io);
   assert.equal(incomplete.status, 'partial_failure');
   assert.ok(incomplete.pending.includes('project:0'));
   assert.equal(incomplete.created[0].id, 'I1');
   assert.equal(fixture.state.issues.length, 1);
-  const retry = github['recover-set']({ receipt: file }, fixture.io);
+  const retry = await github['recover-set']({ receipt: file }, fixture.io);
   fixture.state.insertionError = message; fixture.state.raceMember = true;
-  const done = github['continue-set']({ receipt: file, confirmation: retry.continuation }, fixture.io);
+  const done = await github['continue-set']({ receipt: file, confirmation: retry.continuation }, fixture.io);
   assert.equal(done.status, 'complete', JSON.stringify(done));
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(done.created[0].id, 'I1');
   assert.equal(adds(fixture), 5);
 });
 
-test('assignment is isolated, exact-authorized and verified; existing assignment blocks', t => {
-  const fixture = fake(); publish(t, fixture);
+test('assignment is isolated, exact-authorized and verified; existing assignment blocks', async t => {
+  const fixture = fake(); await publish(t, fixture);
   const ref = fixture.state.issues[1].url;
   const before = fixture.state.issues.map(issue => [issue.title, issue.body, issue.state]);
-  assert.throws(() => assignment.assign({ reference: ref, confirmation: 'wrong' }, fixture.io), /approval/);
-  const ready = assignment.propose({ reference: ref }, fixture.io);
-  assert.equal(assignment.assign({ reference: ref, confirmation: ready.confirmation }, fixture.io).verified, true);
+  await assert.rejects(async () => await assignment.assign({ reference: ref, confirmation: 'wrong' }, fixture.io), /approval/);
+  const ready = await assignment.propose({ reference: ref }, fixture.io);
+  assert.equal((await assignment.assign({ reference: ref, confirmation: ready.confirmation }, fixture.io)).verified, true);
   assert.deepEqual(fixture.state.issues.map(issue => [issue.title, issue.body, issue.state]), before);
-  assert.equal(assignment.propose({ reference: ref }, fixture.io).reason, 'already-assigned');
-  assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /child correspondence/);
+  assert.equal((await assignment.propose({ reference: ref }, fixture.io)).reason, 'already-assigned');
+  await assert.rejects(async () => await assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /child correspondence/);
   fixture.state.issues[1].assignees.push('another');
-  assert.equal(assignment.verify({ reference: ref }, fixture.io).verified, false);
+  assert.equal((await assignment.verify({ reference: ref }, fixture.io)).verified, false);
 });
-test('required child read failures leave import incomplete and keep selected parent identity', t => {
-  const fixture = fake(); publish(t, fixture); fixture.state.fail = 'comments(first'; fixture.state.failNumber = 2;
-  const imported = source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
+test('required child read failures leave import incomplete and keep selected parent identity', async t => {
+  const fixture = fake(); await publish(t, fixture); fixture.state.fail = 'comments(first'; fixture.state.failNumber = 2;
+  const imported = await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
   assert.equal(imported.status, 'incomplete'); assert.equal(imported.item.url, fixture.state.issues[0].url);
   assert.throws(() => identity.decode('<!-- sai-backlog-slices@1 bad -->'), /JSON/);
 });
-test('native hierarchy failure proposes an explicitly approved written fallback', t => {
+test('native hierarchy failure proposes an explicitly approved written fallback', async t => {
   const fixture = fake({ native: true }); fixture.state.failNative = true;
-  const { result, file } = publish(t, fixture);
+  const { result, file } = await publish(t, fixture);
   assert.equal(result.status, 'partial_failure');
-  const ready = github['recover-set']({ receipt: file, fallback: 'written' }, fixture.io);
+  const ready = await github['recover-set']({ receipt: file, fallback: 'written' }, fixture.io);
   assert.equal(ready.fallback_proposal.hierarchy, 'written');
-  assert.throws(() => github['continue-set']({ receipt: file, fallback: 'written', confirmation: 'wrong' }, fixture.io), /approval/);
-  const done = github['continue-set']({ receipt: file, fallback: 'written', confirmation: ready.continuation }, fixture.io);
+  await assert.rejects(async () => await github['continue-set']({ receipt: file, fallback: 'written', confirmation: 'wrong' }, fixture.io), /approval/);
+  const done = await github['continue-set']({ receipt: file, fallback: 'written', confirmation: ready.continuation }, fixture.io);
   assert.equal(done.status, 'complete', JSON.stringify(done)); assert.equal(fixture.state.issues.length, 3);
   assert.equal(identity.decode(fixture.state.issues[0].body).hierarchy, 'written');
-  assert.equal(source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io).status, 'complete');
+  assert.equal((await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io)).status, 'complete');
 });
-test('hierarchical connection exhausts pages and refuses repeated cursors or incomplete pages', () => {
+test('hierarchical connection exhausts pages and refuses repeated cursors or incomplete pages', async () => {
   let calls = 0;
   const io = { run(command, args, input) {
     const { variables } = JSON.parse(input); calls++;
     return JSON.stringify({ data: { repository: { issue: { subIssues: { nodes: [{ url: `https://github.com/owner/repo/issues/${variables.cursor ? 3 : 2}` }], pageInfo: { hasNextPage: !variables.cursor, endCursor: 'next' } } } } } });
   } };
-  assert.deepEqual(source.connection(io, source.normalize('https://github.com/owner/repo/issues/1'), 'subIssues'), ['https://github.com/owner/repo/issues/2', 'https://github.com/owner/repo/issues/3']);
+  assert.deepEqual(await source.connection(io, source.normalize('https://github.com/owner/repo/issues/1'), 'subIssues'), ['https://github.com/owner/repo/issues/2', 'https://github.com/owner/repo/issues/3']);
   assert.equal(calls, 2);
-  assert.throws(() => source.connection({ run: () => JSON.stringify({ data: { repository: { issue: { subIssues: { nodes: [], pageInfo: { hasNextPage: true, endCursor: 'same' } } } } } }) }, source.normalize('https://github.com/owner/repo/issues/1'), 'subIssues'), /pagination/);
+  await assert.rejects(async () => await source.connection({ run: () => JSON.stringify({ data: { repository: { issue: { subIssues: { nodes: [], pageInfo: { hasNextPage: true, endCursor: 'same' } } } } } }) }, source.normalize('https://github.com/owner/repo/issues/1'), 'subIssues'), /pagination/);
 });
-test('pre-existing assignee replacement requires fresh exact approval and preserves parent responsibility', t => {
-  const fixture = fake(); publish(t, fixture);
+test('pre-existing assignee replacement requires fresh exact approval and preserves parent responsibility', async t => {
+  const fixture = fake(); await publish(t, fixture);
   fixture.state.issues[0].assignees = ['parent-owner']; fixture.state.issues[1].assignees = ['existing'];
   const request = { reference: fixture.state.issues[1].url, choice: 'replace' };
-  const ready = assignment.propose(request, fixture.io);
+  const ready = await assignment.propose(request, fixture.io);
   fixture.state.issues[1].assignees = ['new-owner'];
-  assert.throws(() => assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io), /approval/);
-  const renewed = assignment.propose(request, fixture.io);
-  assert.equal(assignment.assign({ ...request, confirmation: renewed.confirmation }, fixture.io).verified, true);
+  await assert.rejects(async () => await assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io), /approval/);
+  const renewed = await assignment.propose(request, fixture.io);
+  assert.equal((await assignment.assign({ ...request, confirmation: renewed.confirmation }, fixture.io)).verified, true);
   assert.deepEqual(fixture.state.issues[0].assignees, ['parent-owner']);
 });
 test('both harnesses install canonical tooling and retain read-only importer and conditional branch owner', () => {
@@ -401,38 +401,38 @@ test('both harnesses install canonical tooling and retain read-only importer and
   assert.match(fs.readFileSync(path.join(__dirname, '../sai/policies/backlog-implementation-start.md'), 'utf8'), /Fast-track and unattended route\nconsent do not approve assignment/);
 });
 
-for (const assignees of [['existing'], ['existing', 'another'], ['actor']]) test(`H1 keeping exact existing responsibility: ${assignees.join(', ')}`, t => {
-  const fixture = fake(); publish(t, fixture);
+for (const assignees of [['existing'], ['existing', 'another'], ['actor']]) test(`H1 keeping exact existing responsibility: ${assignees.join(', ')}`, async t => {
+  const fixture = fake(); await publish(t, fixture);
   fixture.state.issues[1].assignees = assignees.slice();
   const request = { reference: fixture.state.issues[1].url, choice: 'keep' };
-  const ready = assignment.propose(request, fixture.io);
+  const ready = await assignment.propose(request, fixture.io);
   assert.equal(ready.status, 'ready');
   const approved = { ...request, expected_assignees: ready.proposal.target, expected_parent: ready.proposal.parent, confirmation: ready.confirmation };
   const beforeCalls = fixture.state.calls.length;
-  assert.equal(assignment.verify(approved, fixture.io).verified, true);
+  assert.equal((await assignment.verify(approved, fixture.io)).verified, true);
   assert.deepEqual(fixture.state.issues[1].assignees, assignees);
   assert.ok(fixture.state.calls.slice(beforeCalls).every(call => call.args.includes('GET')));
-  assert.throws(() => assignment.assign(approved, fixture.io), /read-only/);
+  await assert.rejects(async () => await assignment.assign(approved, fixture.io), /read-only/);
   fixture.state.issues[1].assignees = ['changed'];
-  assert.equal(assignment.verify(approved, fixture.io).verified, false);
-  assert.equal(assignment.verify({ ...approved, expected_assignees: ['changed'] }, fixture.io).verified, false);
+  assert.equal((await assignment.verify(approved, fixture.io)).verified, false);
+  assert.equal((await assignment.verify({ ...approved, expected_assignees: ['changed'] }, fixture.io)).verified, false);
 });
 
 function ordinaryIssue(number, body = 'Ordinary complete issue content') {
   return { id: `I${number}`, number, url: `https://github.com/owner/repo/issues/${number}`, title: `Issue ${number}`, body, author: { login: 'actor' }, assignees: [], state: 'OPEN' };
 }
-test('H3 ordinary native child is independently verified without markers, and parent is never assigned', () => {
+test('H3 ordinary native child is independently verified without markers, and parent is never assigned', async () => {
   const fixture = fake({ native: true });
   fixture.state.issues.push(ordinaryIssue(1), ordinaryIssue(2));
   fixture.state.parents.set(2, 1); fixture.state.issues[0].assignees = ['parent-owner'];
-  const child = source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
+  const child = await source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
   assert.equal(child.status, 'complete'); assert.equal(child.origin.issue, fixture.state.issues[1].url);
   const request = { reference: child.origin.issue };
-  const ready = assignment.propose(request, fixture.io);
+  const ready = await assignment.propose(request, fixture.io);
   assert.equal(ready.proposal.parent, fixture.state.issues[0].url);
   assert.equal(ready.proposal.correspondence, null);
-  assert.equal(assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io).verified, true);
-  assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/);
+  assert.equal((await assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io)).verified, true);
+  await assert.rejects(async () => await assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/);
   assert.deepEqual(fixture.state.issues[0].assignees, ['parent-owner']);
   assert.deepEqual(fixture.state.issues[1].assignees, ['actor']);
 });
@@ -442,95 +442,95 @@ function standalone(options = {}) {
   Object.assign(fixture.state, options);
   return fixture;
 }
-test('E1 standalone leaf is inspected with no parent and assigned through the current flow', () => {
+test('E1 standalone leaf is inspected with no parent and assigned through the current flow', async () => {
   const fixture = standalone();
   const request = { reference: fixture.state.issues[0].url };
-  const inspected = assignment.inspect(request, fixture.io);
+  const inspected = await assignment.inspect(request, fixture.io);
   assert.equal(inspected.status, 'complete'); assert.equal(inspected.parent, null); assert.equal(inspected.correspondence, null);
-  const ready = assignment.propose(request, fixture.io);
+  const ready = await assignment.propose(request, fixture.io);
   assert.equal(ready.status, 'ready'); assert.equal(ready.proposal.parent, null); assert.deepEqual(ready.proposal.target, ['actor']);
-  const done = assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io);
+  const done = await assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io);
   assert.equal(done.verified, true); assert.equal(done.parent, null);
   assert.deepEqual(fixture.state.issues[0].assignees, ['actor']);
-  assert.equal(assignment.verify({ ...request, expected_parent: null }, fixture.io).verified, true);
+  assert.equal((await assignment.verify({ ...request, expected_parent: null }, fixture.io)).verified, true);
 });
-test('E2 an unmarked issue with sub-issues, open or closed, is a parent and is never assigned', () => {
+test('E2 an unmarked issue with sub-issues, open or closed, is a parent and is never assigned', async () => {
   for (const state of ['OPEN', 'CLOSED']) {
     const fixture = standalone(); fixture.state.parents.set(2, 1); fixture.state.issues[1].state = state;
-    assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/, state);
-    assert.throws(() => assignment.propose({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues/, state);
+    await assert.rejects(async () => await assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/, state);
+    await assert.rejects(async () => await assignment.propose({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues/, state);
     assert.deepEqual(fixture.state.issues[0].assignees, []);
   }
 });
-test('E3 only a complete hierarchy response decides; errors and incomplete responses fail the inspection', () => {
+test('E3 only a complete hierarchy response decides; errors and incomplete responses fail the inspection', async () => {
   const request = { reference: 'https://github.com/owner/repo/issues/1' };
   const incomplete = [data => ({ repository: { issue: { subIssues: data.repository.issue.subIssues } } }), data => ({ repository: { issue: { parent: null } } }), data => ({ repository: { issue: { parent: null, subIssues: { nodes: null } } } }), data => ({ repository: { issue: { parent: {}, subIssues: { nodes: [] } } } }), data => ({ repository: { issue: null } })];
-  for (const hierarchyResponse of incomplete) assert.throws(() => assignment.inspect(request, standalone({ hierarchyResponse }).io), /Incomplete assignment inspection/);
+  for (const hierarchyResponse of incomplete) await assert.rejects(async () => await assignment.inspect(request, standalone({ hierarchyResponse }).io), /Incomplete assignment inspection/);
   for (const message of ['HTTP 401', 'HTTP 403', 'HTTP 502', 'network unreachable']) {
     const fixture = standalone(); const run = fixture.io.run;
     fixture.io.run = (command, args, input) => { if (args[1] === 'graphql' && JSON.parse(input).query.includes('subIssues(first:1)')) throw new Error(message); return run(command, args, input); };
-    assert.throws(() => assignment.inspect(request, fixture.io), new RegExp(message));
+    await assert.rejects(async () => await assignment.inspect(request, fixture.io), new RegExp(message));
   }
   const graphqlError = standalone(); const run = graphqlError.io.run;
   graphqlError.io.run = (command, args, input) => args[1] === 'graphql' && JSON.parse(input).query.includes('subIssues(first:1)') ? JSON.stringify({ errors: [{ message: 'Forbidden' }] }) : run(command, args, input);
-  assert.throws(() => assignment.inspect(request, graphqlError.io), /retrieval failed/);
+  await assert.rejects(async () => await assignment.inspect(request, graphqlError.io), /retrieval failed/);
 });
-test('E4 a marked issue keeps the correspondence flow; a native marker without a native parent is an unverified-parent error', t => {
-  const fixture = fake({ native: true }); publish(t, fixture);
+test('E4 a marked issue keeps the correspondence flow; a native marker without a native parent is an unverified-parent error', async t => {
+  const fixture = fake({ native: true }); await publish(t, fixture);
   const child = fixture.state.issues[1].url;
-  assert.equal(assignment.inspect({ reference: child }, fixture.io).parent, fixture.state.issues[0].url);
+  assert.equal((await assignment.inspect({ reference: child }, fixture.io)).parent, fixture.state.issues[0].url);
   fixture.state.parents.delete(2);
-  assert.throws(() => assignment.inspect({ reference: child }, fixture.io), /no verified native parent/);
+  await assert.rejects(async () => await assignment.inspect({ reference: child }, fixture.io), /no verified native parent/);
 });
-test('E5 a native child with sub-issues of its own follows the current flow', () => {
+test('E5 a native child with sub-issues of its own follows the current flow', async () => {
   const fixture = standalone(); fixture.state.parents.set(2, 1); fixture.state.parents.set(3, 2);
-  const inspected = assignment.inspect({ reference: fixture.state.issues[1].url }, fixture.io);
+  const inspected = await assignment.inspect({ reference: fixture.state.issues[1].url }, fixture.io);
   assert.equal(inspected.parent, fixture.state.issues[0].url);
 });
-test('E6 verification requires the approved parent for every choice and the approved leaf-or-parent outcome', () => {
+test('E6 verification requires the approved parent for every choice and the approved leaf-or-parent outcome', async () => {
   const fixture = standalone(); fixture.state.parents.set(2, 1);
   const child = { reference: fixture.state.issues[1].url };
-  const ready = assignment.propose(child, fixture.io);
-  const done = assignment.assign({ ...child, confirmation: ready.confirmation }, fixture.io);
+  const ready = await assignment.propose(child, fixture.io);
+  const done = await assignment.assign({ ...child, confirmation: ready.confirmation }, fixture.io);
   assert.equal(done.verified, true);
-  assert.equal(assignment.verify({ ...child, expected_parent: fixture.state.issues[0].url }, fixture.io).verified, true);
-  for (const expected_parent of [null, undefined, fixture.state.issues[2].url]) assert.equal(assignment.verify({ ...child, expected_parent }, fixture.io).verified, false);
+  assert.equal((await assignment.verify({ ...child, expected_parent: fixture.state.issues[0].url }, fixture.io)).verified, true);
+  for (const expected_parent of [null, undefined, fixture.state.issues[2].url]) assert.equal((await assignment.verify({ ...child, expected_parent }, fixture.io)).verified, false);
   fixture.state.issues[1].assignees = ['existing'];
-  const keep = assignment.propose({ ...child, choice: 'keep' }, fixture.io);
+  const keep = await assignment.propose({ ...child, choice: 'keep' }, fixture.io);
   const approved = { ...child, choice: 'keep', expected_assignees: keep.proposal.target, expected_parent: keep.proposal.parent, confirmation: keep.confirmation };
-  assert.equal(assignment.verify(approved, fixture.io).verified, true);
+  assert.equal((await assignment.verify(approved, fixture.io)).verified, true);
   fixture.state.parents.delete(2);
-  assert.equal(assignment.verify(approved, fixture.io).verified, false);
+  assert.equal((await assignment.verify(approved, fixture.io)).verified, false);
   const leaf = standalone(); const request = { reference: leaf.state.issues[0].url };
-  const approvedLeaf = assignment.propose(request, leaf.io);
-  assert.equal(assignment.assign({ ...request, confirmation: approvedLeaf.confirmation }, leaf.io).verified, true);
+  const approvedLeaf = await assignment.propose(request, leaf.io);
+  assert.equal((await assignment.assign({ ...request, confirmation: approvedLeaf.confirmation }, leaf.io)).verified, true);
   leaf.state.parents.set(2, 1);
-  assert.throws(() => assignment.verify({ ...request, expected_parent: null }, leaf.io), /sub-issues/);
+  await assert.rejects(async () => await assignment.verify({ ...request, expected_parent: null }, leaf.io), /sub-issues/);
   leaf.state.parents.delete(2); leaf.state.parents.set(1, 3);
-  assert.equal(assignment.verify({ ...request, expected_parent: null }, leaf.io).verified, false);
-  assert.equal(assignment.verify({ ...request, expected_parent: leaf.state.issues[2].url }, leaf.io).verified, true);
+  assert.equal((await assignment.verify({ ...request, expected_parent: null }, leaf.io)).verified, false);
+  assert.equal((await assignment.verify({ ...request, expected_parent: leaf.state.issues[2].url }, leaf.io)).verified, true);
 });
-test('H4 written correspondence reconciles extra native children, full content and comments, without replacing origin', t => {
-  const fixture = fake(); publish(t, fixture);
+test('H4 written correspondence reconciles extra native children, full content and comments, without replacing origin', async t => {
+  const fixture = fake(); await publish(t, fixture);
   fixture.state.native = true;
   fixture.state.issues.push(ordinaryIssue(4, 'External native child content\n\nEvery constraint retained.'));
   fixture.state.parents.set(4, 1);
-  const imported = source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
+  const imported = await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
   assert.equal(imported.status, 'complete', JSON.stringify(imported));
   assert.equal(imported.origin.issue, fixture.state.issues[0].url);
   assert.equal(imported.sources.length, 4);
   assert.equal(imported.sources[3].item.description, fixture.state.issues[3].body);
   assert.equal(imported.sources[3].comments[0].body, 'Full comment');
   fixture.state.fail = 'subIssues(first';
-  assert.notEqual(source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io).status, 'complete');
+  assert.notEqual((await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io)).status, 'complete');
 });
-for (const native of [false, true]) test(`nested published parent imports its own children plus higher context (${native ? 'native' : 'written'} slices)`, t => {
-  const fixture = fake({ native }); publish(t, fixture);
+for (const native of [false, true]) test(`nested published parent imports its own children plus higher context (${native ? 'native' : 'written'} slices)`, async t => {
+  const fixture = fake({ native }); await publish(t, fixture);
   fixture.state.native = true;
   fixture.state.issues.push(ordinaryIssue(4, 'Higher parent in full'), ordinaryIssue(5, 'Sibling not to import'));
   fixture.state.parents.set(1, 4); fixture.state.parents.set(5, 4);
   fixture.state.issues[0].assignees = ['selected-parent-owner'];
-  const imported = source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
+  const imported = await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
   assert.equal(imported.status, 'complete', JSON.stringify(imported));
   assert.equal(imported.origin.issue, fixture.state.issues[0].url);
   assert.equal(imported.origin.parent, fixture.state.issues[3].url);
@@ -542,30 +542,30 @@ for (const native of [false, true]) test(`nested published parent imports its ow
   assert.deepEqual(imported.item.assignees, ['selected-parent-owner']);
   assert.ok(!fixture.state.calls.some(call => call.input && JSON.parse(call.input).query?.includes('issueOrPullRequest') && JSON.parse(call.input).variables.number === 5));
 });
-test('ordinary nested parent imports direct children, separate parent context, but no siblings or descendants', () => {
+test('ordinary nested parent imports direct children, separate parent context, but no siblings or descendants', async () => {
   const fixture = fake({ native: true });
   fixture.state.issues.push(...[1, 2, 3, 4, 5].map(number => ordinaryIssue(number, `Full original content ${number}`)));
   fixture.state.parents.set(2, 1); fixture.state.parents.set(3, 2); fixture.state.parents.set(4, 1); fixture.state.parents.set(5, 3);
-  const imported = source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
+  const imported = await source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
   assert.equal(imported.status, 'complete', JSON.stringify(imported));
   assert.equal(imported.origin.issue, fixture.state.issues[1].url);
   assert.deepEqual(imported.sources.map(row => [row.role, row.item.number]), [['selected', 2], ['parent-context', 1], ['child', 3]]);
   for (const row of imported.sources) { assert.equal(row.item.description, `Full original content ${row.item.number}`); assert.equal(row.comments[0].body, 'Full comment'); }
-  const leaf = source.readSet(source.normalize(fixture.state.issues[4].url), fixture.io);
+  const leaf = await source.readSet(source.normalize(fixture.state.issues[4].url), fixture.io);
   assert.equal(leaf.status, 'complete');
   assert.deepEqual(leaf.sources.map(row => [row.role, row.item.number]), [['selected', 5], ['parent-context', 3]]);
 });
-test('an explicit published child retains child-only scope even when it has native descendants', t => {
-  const fixture = fake({ native: true }); publish(t, fixture);
+test('an explicit published child retains child-only scope even when it has native descendants', async t => {
+  const fixture = fake({ native: true }); await publish(t, fixture);
   fixture.state.issues.push(ordinaryIssue(4)); fixture.state.parents.set(4, 2);
-  const imported = source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
+  const imported = await source.readSet(source.normalize(fixture.state.issues[1].url), fixture.io);
   assert.equal(imported.status, 'complete');
   assert.deepEqual(imported.sources.map(row => [row.role, row.item.number]), [['selected', 2], ['parent-context', 1]]);
   assert.equal(imported.origin.issue, fixture.state.issues[1].url);
 });
-test('H2 publication -> amended stored block/hash -> spec provenance -> cold implementation identity', t => {
+test('H2 publication -> amended stored block/hash -> spec provenance -> cold implementation identity', async t => {
   const fixture = fake();
-  const publication = publish(t, fixture).result;
+  const publication = (await publish(t, fixture)).result;
   const root = path.join(__dirname, '..');
   const { sessionFile } = require('../bin/sai-state');
   function cli(args, input = '') {
@@ -599,35 +599,35 @@ test('H2 publication -> amended stored block/hash -> spec provenance -> cold imp
   assert.match(writer, /validator's returned `backlog_origin`/);
   const metadata = `backlog_origin: ${provenance}\n`;
   const standaloneReference = /^backlog_origin: (.+)$/m.exec(metadata)[1];
-  assert.equal(assignment.inspect({ reference: standaloneReference }, fixture.io).issue, provenance);
+  assert.equal((await assignment.inspect({ reference: standaloneReference }, fixture.io)).issue, provenance);
   const wrong = structuredClone(publication.correspondence); wrong.slices.pop();
   assert.throws(() => detector.attachBacklogOrigins(fixture.request.blocks, wrong), /complete stored block set|correspondence dependency/);
 });
-test('per-slice chain: later branches start from the previous branch, hold on uncommitted work and detect an occupied name', () => {
+test('per-slice chain: later branches start from the previous branch, hold on uncommitted work and detect an occupied name', async () => {
   const { execute } = require('../sai/tools/new-change-branch');
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'slice-branch-chain-'));
   try {
     const git = (...args) => { const r = spawnSync('git', args, { cwd, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
     git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
     fs.writeFileSync(path.join(cwd, 'file'), 'base'); git('add', 'file'); git('commit', '-m', 'base');
-    const start = (name, id, base, extra = {}) => {
-      const resolved = execute('base', { base }, cwd);
-      return execute('create', { type: 'feat', name, id, base, sha: resolved.sha, ...extra }, cwd);
+    const start = async (name, id, base, extra = {}) => {
+      const resolved = await execute('base', { base }, cwd);
+      return await execute('create', { type: 'feat', name, id, base, sha: resolved.sha, ...extra }, cwd);
     };
-    const first = start('first-slice', '11', 'main');
+    const first = await start('first-slice', '11', 'main');
     assert.equal(first.branch, 'feat/11_first_slice');
     fs.writeFileSync(path.join(cwd, 'file'), 'slice one');
-    const held = start('second-slice', '12', first.branch, { require_clean: true });
+    const held = await start('second-slice', '12', first.branch, { require_clean: true });
     assert.equal(held.status, 'failed');
     assert.equal(held.created, false);
     assert.equal(git('symbolic-ref', '--short', 'HEAD'), first.branch);
     git('commit', '-am', 'slice one');
-    const second = start('second-slice', '12', first.branch, { require_clean: true });
+    const second = await start('second-slice', '12', first.branch, { require_clean: true });
     assert.equal(second.status, 'completed');
     assert.equal(second.branch, 'feat/12_second_slice');
     assert.equal(git('rev-parse', 'HEAD'), git('rev-parse', first.branch));
     git('switch', first.branch);
-    const occupied = execute('name', { type: 'feat', name: 'second-slice', id: '12' }, cwd);
+    const occupied = await execute('name', { type: 'feat', name: 'second-slice', id: '12' }, cwd);
     assert.equal(occupied.status, 'failed');
     assert.match(occupied.reason, /Branch already exists: feat\/12_second_slice/);
     assert.equal(git('rev-parse', '--verify', 'refs/heads/feat/12_second_slice'), second.sha);
@@ -641,23 +641,23 @@ test('the shared branch strategy reuses one initial branch, and the chain tracks
 });
 
 // An originating issue becomes the set parent; nothing replaces it.
-function withOrigin(fixture, body = 'Old origin text') {
+async function withOrigin(fixture, body = 'Old origin text') {
   const origin = { id: 'O1', number: 1, url: 'https://github.com/owner/repo/issues/1', title: 'Origin title', body, author: { login: 'actor' }, assignees: [], state: 'OPEN' };
   fixture.state.issues.push(origin);
-  const baseline = github['read-update']({ reference: origin.url }, fixture.io).baseline;
+  const baseline = (await github['read-update']({ reference: origin.url }, fixture.io)).baseline;
   Object.assign(fixture.request, { origin: origin.url, origin_baseline: baseline, description: 'Agreed whole objective' });
   delete fixture.request.repository;
   return origin;
 }
 const writes = fixture => fixture.state.calls.filter(call => call.input?.includes('mutation('));
-for (const native of [false, true]) test(`origin set publication reuses the origin as parent: ${native ? 'native' : 'written'} hierarchy`, t => {
-  const fixture = fake({ native }), origin = withOrigin(fixture);
-  const ready = github['query-set'](fixture.request, fixture.io);
+for (const native of [false, true]) test(`origin set publication reuses the origin as parent: ${native ? 'native' : 'written'} hierarchy`, async t => {
+  const fixture = fake({ native }), origin = await withOrigin(fixture);
+  const ready = await github['query-set'](fixture.request, fixture.io);
   assert.equal(ready.status, 'ready', JSON.stringify(ready));
   assert.equal(ready.proposal.origin.issue.url, origin.url);
   assert.equal(ready.proposal.title, 'Origin title');
   const file = receipt(t);
-  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
+  const result = await github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(result.created.length, 2);
@@ -673,42 +673,42 @@ for (const native of [false, true]) test(`origin set publication reuses the orig
   assert.equal(JSON.parse(updates.at(-1).input).variables.id, 'O1');
   assert.equal(origin.state, 'OPEN');
   assert.equal(writes(fixture).filter(call => call.input.includes('createIssue(')).length, 2);
-  assert.equal(github['recover-set']({ receipt: file }, fixture.io).status, 'complete');
+  assert.equal((await github['recover-set']({ receipt: file }, fixture.io)).status, 'complete');
 });
-test('origin set publication lists existing native children and leaves them linked', t => {
-  const fixture = fake({ native: true }), origin = withOrigin(fixture);
+test('origin set publication lists existing native children and leaves them linked', async t => {
+  const fixture = fake({ native: true }), origin = await withOrigin(fixture);
   fixture.state.issues.push({ id: 'X', number: 2, url: 'https://github.com/owner/repo/issues/2', title: 'Native child', body: 'kept', author: { login: 'actor' }, assignees: [], state: 'OPEN' });
   fixture.state.parents.set(2, 1);
-  const ready = github['query-set'](fixture.request, fixture.io);
+  const ready = await github['query-set'](fixture.request, fixture.io);
   assert.deepEqual(ready.proposal.origin.children, ['https://github.com/owner/repo/issues/2']);
-  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  const result = await github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues[1].body, 'kept');
   assert.equal(fixture.state.parents.get(2), 1);
   assert.equal(fixture.state.parents.size, 3);
   assert.ok(origin.body.includes('Child: blocker'));
 });
-test('origin set publication stops before any write when the origin cannot take children', () => {
-  const stop = (mutate, reason) => {
-    const fixture = fake(), origin = withOrigin(fixture);
+test('origin set publication stops before any write when the origin cannot take children', async () => {
+  const stop = async (mutate, reason) => {
+    const fixture = fake(), origin = await withOrigin(fixture);
     mutate(fixture, origin);
-    const result = github['query-set'](fixture.request, fixture.io);
+    const result = await github['query-set'](fixture.request, fixture.io);
     assert.equal(result.status, reason === 'stale-baseline' ? 'needs_input' : 'blocked', JSON.stringify(result));
     assert.equal(result.reason, reason, result.message);
     assert.equal(writes(fixture).length, 0);
     assert.equal(fixture.state.issues.length, 1);
   };
-  stop((f, o) => { o.state = 'CLOSED'; }, 'origin-closed');
-  stop((f, o) => {
+  await stop((f, o) => { o.state = 'CLOSED'; }, 'origin-closed');
+  await stop((f, o) => {
     o.body = `Earlier\n${identity.encode({ version: 1, platform: 'github', role: 'parent', parent: o.url, slices: [{ change_name: 'one', issue: 'https://github.com/owner/repo/issues/9', depends_on: [] }] })}`;
     f.request.origin_baseline = { title: o.title, description: o.body };
   }, 'origin-already-published');
-  stop((f, o) => { o.body = 'edited after reading'; }, 'stale-baseline');
-  stop((f, o) => { f.state.viewerCanUpdate = false; }, 'origin-unavailable');
-  stop((f, o) => { f.request.origin = 'https://gitlab.example/group/repo/-/issues/1'; }, 'origin-destination-mismatch');
+  await stop((f, o) => { o.body = 'edited after reading'; }, 'stale-baseline');
+  await stop((f, o) => { f.state.viewerCanUpdate = false; }, 'origin-unavailable');
+  await stop((f, o) => { f.request.origin = 'https://gitlab.example/group/repo/-/issues/1'; }, 'origin-destination-mismatch');
 });
-test('origin set publication stops on a configured destination that differs from the origin', () => {
-  const fixture = fake(); withOrigin(fixture);
+test('origin set publication stops on a configured destination that differs from the origin', async () => {
+  const fixture = fake(); await withOrigin(fixture);
   const run = fixture.io.run;
   fixture.io.run = (command, args, input) => {
     const out = run(command, args, input);
@@ -717,42 +717,42 @@ test('origin set publication stops on a configured destination that differs from
     return JSON.stringify(data);
   };
   fixture.request.repository = 'other/repo';
-  const result = github['query-set'](fixture.request, fixture.io);
+  const result = await github['query-set'](fixture.request, fixture.io);
   assert.equal(result.reason, 'origin-destination-mismatch');
   assert.equal(writes(fixture).length, 0);
 });
-test('interrupted origin publication keeps the origin text and resumes with the same parent', t => {
-  const fixture = fake({ native: true }), origin = withOrigin(fixture);
-  const ready = github['query-set'](fixture.request, fixture.io);
+test('interrupted origin publication keeps the origin text and resumes with the same parent', async t => {
+  const fixture = fake({ native: true }), origin = await withOrigin(fixture);
+  const ready = await github['query-set'](fixture.request, fixture.io);
   fixture.state.failNative = true;
   const file = receipt(t);
-  const result = github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
+  const result = await github['publish-set']({ ...fixture.request, confirmation: ready.confirmation, receipt: file }, fixture.io);
   assert.equal(result.status, 'partial_failure');
   assert.equal(origin.body, 'Old origin text');
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(JSON.parse(fs.readFileSync(file)).items[0].issue.url, origin.url);
   fixture.state.failNative = false;
-  const verified = github['recover-set']({ receipt: file }, fixture.io);
-  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io).status, 'complete');
+  const verified = await github['recover-set']({ receipt: file }, fixture.io);
+  assert.equal((await github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io)).status, 'complete');
   assert.equal(fixture.state.issues.length, 3);
   assert.equal(identity.decode(origin.body).parent, origin.url);
   assert.equal(writes(fixture).filter(call => call.input.includes('createIssue(')).length, 2);
 });
-test('a set without an origin keeps creating a new parent', t => {
+test('a set without an origin keeps creating a new parent', async t => {
   const fixture = fake();
-  assert.equal(publish(t, fixture).result.status, 'complete');
+  assert.equal((await publish(t, fixture)).result.status, 'complete');
   assert.equal(fixture.state.issues.length, 3);
 });
 
-for (const native of [false, true]) test(`an origin that is a published child takes a set and keeps its earlier correspondence: ${native ? 'native' : 'written'} hierarchy`, t => {
-  const fixture = fake({ native }), first = publish(t, fixture);
+for (const native of [false, true]) test(`an origin that is a published child takes a set and keeps its earlier correspondence: ${native ? 'native' : 'written'} hierarchy`, async t => {
+  const fixture = fake({ native }), first = await publish(t, fixture);
   assert.equal(first.result.status, 'complete');
   const origin = fixture.state.issues[1], parent = fixture.state.issues[0].url;
-  const baseline = github['read-update']({ reference: origin.url }, fixture.io).baseline;
+  const baseline = (await github['read-update']({ reference: origin.url }, fixture.io)).baseline;
   const request = { ...fixture.request, blocks: block('sub-one'), origin: origin.url, origin_baseline: baseline, description: 'Agreed sub objective' };
-  const ready = github['query-set'](request, fixture.io);
+  const ready = await github['query-set'](request, fixture.io);
   assert.equal(ready.status, 'ready', JSON.stringify(ready));
-  const result = github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  const result = await github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   assert.equal(fixture.state.issues.length, 4);
   const marker = identity.decode(origin.body);
@@ -761,10 +761,10 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   assert.equal(marker.child_of.parent, parent);
   assert.ok(origin.body.includes(`Parent: ${parent}`));
   if (native) { assert.equal(fixture.state.parents.get(2), 1); assert.equal(fixture.state.parents.get(4), 2); }
-  assert.equal(github['lookup-slice']({ ...fixture.request, change_name: 'blocker' }, fixture.io).candidates[0].correspondence.parent, parent);
-  assert.equal(github['lookup-slice']({ ...fixture.request, change_name: 'sub-one' }, fixture.io).status, 'complete');
+  assert.equal((await github['lookup-slice']({ ...fixture.request, change_name: 'blocker' }, fixture.io)).candidates[0].correspondence.parent, parent);
+  assert.equal((await github['lookup-slice']({ ...fixture.request, change_name: 'sub-one' }, fixture.io)).status, 'complete');
   if (native) {
-    const imported = source.readSet(source.normalize(origin.url), fixture.io);
+    const imported = await source.readSet(source.normalize(origin.url), fixture.io);
     assert.equal(imported.status, 'complete', imported.message);
     assert.deepEqual(imported.sources.map(row => row.role), ['selected', 'parent-context', 'child']);
     assert.equal(imported.item.parent, parent);
@@ -775,10 +775,10 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   const members = [...fixture.state.members];
   const updateRequest = { origin: parent, title: fixture.request.title, description: fixture.request.description,
     blocks: block('dependent', 'blocker') + '\n' + block('blocker').replace('**What**: None', '**What**: Refined upper slice') };
-  const prepared = github['query-set-update'](updateRequest, fixture.io);
+  const prepared = await github['query-set-update'](updateRequest, fixture.io);
   assert.equal(prepared.status, 'ready', JSON.stringify(prepared));
   const start = fixture.state.calls.length;
-  const updated = github['update-set']({ ...updateRequest, confirmation: prepared.confirmation, receipt: receipt(t) }, fixture.io);
+  const updated = await github['update-set']({ ...updateRequest, confirmation: prepared.confirmation, receipt: receipt(t) }, fixture.io);
   assert.equal(updated.status, 'complete', JSON.stringify(updated));
   assert.deepEqual(updated.updated.map(item => item.url), [origin.url]);
   assert.deepEqual(identity.decode(origin.body), marker);
@@ -794,13 +794,13 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   assert.match(JSON.parse(mutations[0].input).query, /updateIssue/);
   assert.equal(fixture.state.issues.length, 4);
 });
-test('origin transport replaces the adopted origin in slice blocks with the child URL and refuses other origins', t => {
-  const fixture = fake(), origin = withOrigin(fixture);
+test('origin transport replaces the adopted origin in slice blocks with the child URL and refuses other origins', async t => {
+  const fixture = fake(), origin = await withOrigin(fixture);
   const named = text => text.replace('**What**:', `**Backlog origin**: ${origin.url}\n**What**:`);
   const blocks = named(block('dependent', 'blocker')) + '\n' + named(block('blocker'));
   const request = { ...fixture.request, blocks };
-  const ready = github['query-set'](request, fixture.io);
-  const result = github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
+  const ready = await github['query-set'](request, fixture.io);
+  const result = await github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
   const attached = detector.attachBacklogOrigins(blocks, result.correspondence);
   for (const entry of attached.blocks) {

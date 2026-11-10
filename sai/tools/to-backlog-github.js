@@ -36,18 +36,18 @@ function receiptPath(file) {
   return canonical;
 }
 
-function api(io, query, variables) {
-  const result = JSON.parse(io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
+async function api(io, query, variables) {
+  const result = JSON.parse(await io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
   if (result.errors?.length || !result.data) throw Object.assign(new Error(`GitHub query failed: ${JSON.stringify(result.errors || result)}`), { graphqlErrors: result.errors });
   return result.data;
 }
 
-function pages(fetch, connection) {
+async function pages(fetch, connection) {
   const nodes = [];
   let cursor = null;
   const seen = new Set();
   do {
-    const page = connection(fetch(cursor));
+    const page = await connection(await fetch(cursor));
     if (!page || !Array.isArray(page.nodes) || typeof page.pageInfo?.hasNextPage !== 'boolean') throw new Error('Incomplete GitHub connection');
     nodes.push(...page.nodes.filter(Boolean));
     if (!page.pageInfo.hasNextPage) return nodes;
@@ -68,12 +68,12 @@ const VERIFICATION_INTERVAL_MS = 2000;
 // Returns the item that places the issue in the destination Project, or nothing.
 // With an item id: the direct item read, accepted only for this Project and issue.
 // Without: the issue-side read, which counts archived items and only this Project.
-function membership(io, projectId, issueId, itemId) {
+async function membership(io, projectId, issueId, itemId) {
   if (itemId) {
-    const item = api(io, PROJECT_ITEM_QUERY, { id: itemId }).node;
+    const item = (await api(io, PROJECT_ITEM_QUERY, { id: itemId })).node;
     return item?.project?.id === projectId && item.content?.id === issueId ? item : undefined;
   }
-  const nodes = pages(cursor => api(io, ISSUE_ITEMS_QUERY, { id: issueId, cursor }), data => {
+  const nodes = await pages(async cursor => await api(io, ISSUE_ITEMS_QUERY, { id: issueId, cursor }), data => {
     if (!data.node) return undefined;
     // The schema made `Issue.projectItems` nullable: null means no items.
     return data.node.projectItems === null ? NO_ITEMS : data.node.projectItems;
@@ -83,22 +83,22 @@ function membership(io, projectId, issueId, itemId) {
 
 // One immediate read, then up to four more two seconds apart. The wait is
 // synchronous; tests inject `io.sleep` to avoid it.
-function verifyMembership(io, projectId, issueId, itemId) {
+async function verifyMembership(io, projectId, issueId, itemId) {
   const sleep = io.sleep || (ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms));
   for (let attempt = 0; attempt < VERIFICATION_ATTEMPTS; attempt++) {
     if (attempt) sleep(VERIFICATION_INTERVAL_MS);
-    const found = membership(io, projectId, issueId, itemId);
+    const found = await membership(io, projectId, issueId, itemId);
     if (found) return found;
   }
   return undefined;
 }
 
-function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
-  if (membership(io, projectId, issueId)) return;
+async function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
+  if (await membership(io, projectId, issueId)) return;
   beforeInsert();
   let itemId;
   try {
-    const added = api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: projectId, issue: issueId });
+    const added = await api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: projectId, issue: issueId });
     itemId = added.addProjectV2ItemById?.item?.id;
   } catch (error) {
     const alreadyExists = error.graphqlErrors?.length
@@ -108,7 +108,7 @@ function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
     // Auto-add may win after our first read. Only a fresh issue-side read
     // can establish membership when the mutation returns no usable item id.
   }
-  if (!verifyMembership(io, projectId, issueId, itemId)) throw new Error('Project membership not verified');
+  if (!await verifyMembership(io, projectId, issueId, itemId)) throw new Error('Project membership not verified');
 }
 
 function repository(value) {
@@ -124,22 +124,22 @@ function projectAddress(value) {
 
 const PROJECT_FIELDS = 'id title url closed viewerCanUpdate';
 
-function inspect(request, io) {
-  io.run('gh', ['--version']);
-  io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
+async function inspect(request, io) {
+  await io.run('gh', ['--version']);
+  await io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
   const [owner, name] = repository(request.repository);
-  const data = api(io, 'query($owner:String!,$name:String!){viewer{login} repository(owner:$owner,name:$name){id nameWithOwner url visibility hasIssuesEnabled isArchived}}', { owner, name });
+  const data = await api(io, 'query($owner:String!,$name:String!){viewer{login} repository(owner:$owner,name:$name){id nameWithOwner url visibility hasIssuesEnabled isArchived}}', { owner, name });
   const repo = data.repository;
   if (!repo || !repo.hasIssuesEnabled || repo.isArchived) throw new Error('Repository is inaccessible, archived, or has issues disabled');
   let projects;
   if (request.project) {
     const project = projectAddress(request.project);
-    const data = api(io, `query($owner:String!,$number:Int!){${project.type}(login:$owner){projectV2(number:$number){${PROJECT_FIELDS}}}}`, { owner: project.owner, number: project.number });
+    const data = await api(io, `query($owner:String!,$number:Int!){${project.type}(login:$owner){projectV2(number:$number){${PROJECT_FIELDS}}}}`, { owner: project.owner, number: project.number });
     const found = data[project.type]?.projectV2;
     if (!found || found.closed || !found.viewerCanUpdate) throw new Error('Selected Project is inaccessible, closed, or not writable');
     projects = [found];
   } else {
-    projects = pages(cursor => api(io, `query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){projectsV2(first:100,after:$cursor){nodes{${PROJECT_FIELDS}} pageInfo{hasNextPage endCursor}}}}`, { owner, name, cursor }), data => data.repository?.projectsV2)
+    projects = (await pages(async cursor => await api(io, `query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){projectsV2(first:100,after:$cursor){nodes{${PROJECT_FIELDS}} pageInfo{hasNextPage endCursor}}}}`, { owner, name, cursor }), data => data.repository?.projectsV2))
       .filter(project => !project.closed && project.viewerCanUpdate);
   }
   return { repo, projects, actor: data.viewer.login };
@@ -154,16 +154,16 @@ function digest(proposal) {
   return crypto.createHash('sha256').update(JSON.stringify(proposal)).digest('hex');
 }
 
-function query(request, io) {
-  const { repo, projects } = inspect(request, io);
+async function query(request, io) {
+  const { repo, projects } = await inspect(request, io);
   if (projects.length !== 1) return { status: 'needs_input', reason: projects.length ? 'project-ambiguous' : 'project-required', repository: repo.nameWithOwner, projects };
   const proposal = { provider: 'github', repository: repo.nameWithOwner, repositoryId: repo.id, visibility: repo.visibility, project: projects[0], ...content(request) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 
-function issues(receipt, io) {
+async function issues(receipt, io) {
   const [owner, name] = repository(receipt.proposal.repository);
-  return pages(cursor => api(io, 'query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){issues(first:100,after:$cursor){nodes{id number url title body author{login}} pageInfo{hasNextPage endCursor}}}}', { owner, name, cursor }), data => data.repository?.issues);
+  return await pages(async cursor => await api(io, 'query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){issues(first:100,after:$cursor){nodes{id number url title body author{login}} pageInfo{hasNextPage endCursor}}}}', { owner, name, cursor }), data => data.repository?.issues);
 }
 
 function save(file, receipt) {
@@ -186,16 +186,16 @@ function report(receipt, message) {
   return { status: receipt.stage === 'complete' ? 'complete' : receipt.issue ? 'partial_failure' : 'uncertain', issue: receipt.issue || null, project: receipt.proposal.project.url, message };
 }
 
-function insert(receipt, file, io) {
+async function insert(receipt, file, io) {
   try {
     file = receiptPath(file);
-    const state = inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
+    const state = await inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
     if (state.actor !== receipt.actor || state.repo.id !== receipt.proposal.repositoryId || state.projects[0].id !== receipt.proposal.project.id) throw new Error('Recovery identity or destination changed');
     if (state.repo.visibility !== receipt.proposal.visibility) throw new Error('Repository visibility changed; fresh review is required before insertion');
-    const current = issues(receipt, io).find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
+    const current = (await issues(receipt, io)).find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
     if (!current) throw new Error('Created issue could not be verified');
     if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before insertion');
-    ensureMembership(io, receipt.proposal.project.id, receipt.issue.id, () => {
+    await ensureMembership(io, receipt.proposal.project.id, receipt.issue.id, () => {
       receipt.stage = 'insertion_pending';
       save(file, receipt);
     });
@@ -205,43 +205,43 @@ function insert(receipt, file, io) {
   } catch (error) { return { ...report(receipt, error.message), status: 'partial_failure' }; }
 }
 
-function publish(request, io) {
+async function publish(request, io) {
   let receipt;
   try {
     request = { ...request, receipt: receiptPath(request.receipt) };
-    const ready = query(request, io);
+    const ready = await query(request, io);
     if (ready.status !== 'ready') return ready;
     if (request.confirmation !== ready.confirmation) throw new Error('Exact content and destination confirmation is required; review the current proposal again');
-    const actor = api(io, 'query{viewer{login}}', {}).viewer.login;
+    const actor = (await api(io, 'query{viewer{login}}', {})).viewer.login;
     receipt = { proposal: ready.proposal, actor, stage: 'prepared' };
-    receipt.baseline = issues(receipt, io).map(issue => issue.id);
+    receipt.baseline = (await issues(receipt, io)).map(issue => issue.id);
     // An existing receipt is never overwritten to start a second creation.
     fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
   } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
   try {
     receipt.stage = 'creation_pending';
     save(request.receipt, receipt);
-    const data = api(io, 'mutation($repo:ID!,$title:String!,$body:String!){createIssue(input:{repositoryId:$repo,title:$title,body:$body}){issue{id number url}}}', { repo: receipt.proposal.repositoryId, title: receipt.proposal.title, body: receipt.proposal.description });
+    const data = await api(io, 'mutation($repo:ID!,$title:String!,$body:String!){createIssue(input:{repositoryId:$repo,title:$title,body:$body}){issue{id number url}}}', { repo: receipt.proposal.repositoryId, title: receipt.proposal.title, body: receipt.proposal.description });
     const issue = data.createIssue?.issue;
     if (!issue?.id || !issue.url || !issue.number) throw new Error('Issue creation response is incomplete');
     receipt.issue = issue;
     receipt.stage = 'issue_created';
     save(request.receipt, receipt);
   } catch (error) { return report(receipt, error.message); }
-  return insert(receipt, request.receipt, io);
+  return await insert(receipt, request.receipt, io);
 }
 
-function recover(request, io) {
+async function recover(request, io) {
   let receipt;
   try {
     request = { ...request, receipt: receiptPath(request.receipt) };
     receipt = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
     if (receipt.proposal?.provider !== 'github' || !Array.isArray(receipt.baseline)) throw new Error('Invalid publication receipt');
     // Recovery performs queries first and never creates an issue.
-    const state = inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
+    const state = await inspect({ repository: receipt.proposal.repository, project: receipt.proposal.project.url }, io);
     if (state.actor !== receipt.actor || state.repo.id !== receipt.proposal.repositoryId || state.projects[0].id !== receipt.proposal.project.id) throw new Error('Recovery identity or destination changed');
     if (state.repo.visibility !== receipt.proposal.visibility) throw new Error('Repository visibility changed; fresh review is required before recovery');
-    const all = issues(receipt, io);
+    const all = await issues(receipt, io);
     if (!receipt.issue) {
       const matches = all.filter(issue => !receipt.baseline.includes(issue.id) && issue.title === receipt.proposal.title && issue.body === receipt.proposal.description && issue.author?.login === receipt.actor);
       // User identifies the verified issue; a similar concurrent issue is not proof.
@@ -254,7 +254,7 @@ function recover(request, io) {
       if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before recovery');
     }
     save(request.receipt, receipt);
-    const present = !!membership(io, receipt.proposal.project.id, receipt.issue.id);
+    const present = !!await membership(io, receipt.proposal.project.id, receipt.issue.id);
     receipt.stage = present ? 'complete' : 'insertion_pending';
     save(request.receipt, receipt);
     if (present) return report(receipt);
@@ -264,7 +264,7 @@ function recover(request, io) {
       return { ...report(receipt), continuation };
     }
     require('./backlog-publication-retry').authorize(request, receipt, request.receipt, save);
-    return insert(receipt, request.receipt, io);
+    return await insert(receipt, request.receipt, io);
   } catch (error) {
     return receipt?.proposal ? { ...report(receipt, error.message), status: receipt.issue ? 'partial_failure' : 'uncertain' } : { status: 'failure_before_publication', message: error.message };
   }
@@ -272,45 +272,45 @@ function recover(request, io) {
 
 const sourceIssue = require('./from-backlog-github');
 
-function readEditable(request, io) {
-  io.run('gh', ['--version']);
-  io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
+async function readEditable(request, io) {
+  await io.run('gh', ['--version']);
+  await io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
   const reference = sourceIssue.normalize(request.reference);
-  const item = sourceIssue.readIssue(reference, io);
+  const item = await sourceIssue.readIssue(reference, io);
   const [owner, name] = repository(item.repository);
-  const data = api(io, 'query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){visibility issue(number:$number){id url viewerCanUpdate title body}}}', { owner, name, number: item.number });
+  const data = await api(io, 'query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){visibility issue(number:$number){id url viewerCanUpdate title body}}}', { owner, name, number: item.number });
   const issue = data.repository?.issue;
   if (item.repository_archived || !issue?.viewerCanUpdate) throw new Error('Originating issue is inaccessible, archived, or not editable; no replacement will be created');
   if (!issue.id || issue.url !== item.url || typeof issue.title !== 'string' || typeof issue.body !== 'string' || typeof data.viewer?.login !== 'string' || typeof data.repository.visibility !== 'string') throw new Error('Incomplete issue update response');
   return { status: 'complete', issue: { id: issue.id, number: item.number, url: item.url }, repository: item.repository, visibility: data.repository.visibility, actor: data.viewer.login, baseline: { title: issue.title, description: issue.body }, state: item.state };
 }
 
-function readUpdate(request, io) {
-  const { state, ...result } = readEditable(request, io);
+async function readUpdate(request, io) {
+  const { state, ...result } = await readEditable(request, io);
   return result;
 }
 
 // The origin as set parent: its open state and the sub-issues it already has.
-function readOrigin(request, io) {
-  const { state, ...current } = readEditable({ reference: request.origin }, io);
-  const children = () => {
-    const read = sourceIssue.readChildren({ url: current.issue.url }, io);
+async function readOrigin(request, io) {
+  const { state, ...current } = await readEditable({ reference: request.origin }, io);
+  const children = async () => {
+    const read = await sourceIssue.readChildren({ url: current.issue.url }, io);
     if (read.status !== 'complete') throw new Error(read.message || 'Sub-issues of the originating issue could not be read');
     return read.children.map(child => child.url);
   };
   return { issue: current.issue, repository: current.repository, baseline: current.baseline, closed: state === 'CLOSED', children };
 }
 
-function queryUpdate(request, io) {
-  const current = readUpdate(request, io);
+async function queryUpdate(request, io) {
+  const current = await readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
   const proposal = { provider: 'github', operation: 'update', issue: current.issue, repository: current.repository, visibility: current.visibility, actor: current.actor, baseline: current.baseline, ...content(request) };
   if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue, message: 'No update is necessary' };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 
-function updateOutcome(receipt, io) {
-  const current = readUpdate({ reference: receipt.proposal.issue.url }, io);
+async function updateOutcome(receipt, io) {
+  const current = await readUpdate({ reference: receipt.proposal.issue.url }, io);
   const proposal = receipt.proposal;
   if (current.repository !== proposal.repository || current.actor !== proposal.actor || current.issue.id !== proposal.issue.id || current.visibility !== proposal.visibility) throw new Error('Update identity or destination changed; fresh review is required');
   const final = { title: proposal.title, description: proposal.description };
@@ -319,13 +319,13 @@ function updateOutcome(receipt, io) {
   return { status: 'divergent', issue: current.issue, current, message: 'Remote content differs from both baseline and proposal; reread, reconcile, and obtain fresh approval' };
 }
 
-function update(request, io) {
+async function update(request, io) {
   let receipt;
   try {
     request = { ...request, receipt: receiptPath(request.receipt) };
     // Re-read immediately before execution; the token binds target, actor,
     // visibility, baseline and exact final content, not merely the new text.
-    const ready = queryUpdate(request, io);
+    const ready = await queryUpdate(request, io);
     if (ready.status !== 'ready') return ready;
     if (request.confirmation !== ready.confirmation) throw new Error('Exact issue, baseline and content confirmation is required; review again');
     receipt = { proposal: ready.proposal, stage: 'update_pending' };
@@ -333,22 +333,22 @@ function update(request, io) {
   } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
   let submissionError;
   try {
-    api(io, 'mutation($id:ID!,$title:String!,$body:String!){updateIssue(input:{id:$id,title:$title,body:$body}){issue{id url}}}', { id: receipt.proposal.issue.id, title: receipt.proposal.title, body: receipt.proposal.description });
+    await api(io, 'mutation($id:ID!,$title:String!,$body:String!){updateIssue(input:{id:$id,title:$title,body:$body}){issue{id url}}}', { id: receipt.proposal.issue.id, title: receipt.proposal.title, body: receipt.proposal.description });
   } catch (error) { submissionError = error.message; }
   try {
-    const result = updateOutcome(receipt, io);
+    const result = await updateOutcome(receipt, io);
     receipt.stage = result.status;
     save(request.receipt, receipt);
     return { ...result, ...(submissionError ? { submission_error: submissionError } : {}) };
   } catch (error) { return { status: 'uncertain', issue: receipt.proposal.issue, message: error.message, ...(submissionError ? { submission_error: submissionError } : {}) }; }
 }
 
-function recoverUpdate(request, io) {
+async function recoverUpdate(request, io) {
   try {
     const file = receiptPath(request.receipt);
     const receipt = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (receipt.proposal?.provider !== 'github' || receipt.proposal.operation !== 'update' || !receipt.proposal.issue?.url || typeof receipt.proposal.baseline?.title !== 'string' || typeof receipt.proposal.baseline?.description !== 'string') throw new Error('Invalid update receipt');
-    const result = updateOutcome(receipt, io);
+    const result = await updateOutcome(receipt, io);
     receipt.stage = result.status;
     save(file, receipt);
     return result;
@@ -357,10 +357,10 @@ function recoverUpdate(request, io) {
 
 const set = require('./backlog-set-github');
 const assignment = require('./backlog-assignment-github');
-function lookupSlice(request, io) {
-  const state = inspect(request, io);
+async function lookupSlice(request, io) {
+  const state = await inspect(request, io);
   const identity = require('./backlog-slice-identity');
-  const candidates = issues({ proposal: { repository: state.repo.nameWithOwner } }, io).flatMap(issue => {
+  const candidates = (await issues({ proposal: { repository: state.repo.nameWithOwner } }, io)).flatMap(issue => {
     const value = identity.upper(identity.decode(issue.body, issue.url));
     return value && value.change_name === request.change_name && identity.slicesOf(value, issue.url).find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
   });

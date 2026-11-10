@@ -91,35 +91,35 @@ function receipt(harness = 'opencode') {
   return path.join(temp(harness), 'receipt.json');
 }
 
-function prepared(state = {}, mode = 'create') {
+async function prepared(state = {}, mode = 'create') {
   const io = mock(state);
-  const request = mode === 'create' ? { provider: 'gitlab', repository: url, ...text } : { provider: 'gitlab', reference, baseline: to['read-update']({ reference }, io).baseline, ...text };
-  const ready = to[mode === 'create' ? 'query' : 'query-update'](request, io);
+  const request = mode === 'create' ? { provider: 'gitlab', repository: url, ...text } : { provider: 'gitlab', reference, baseline: (await to['read-update']({ reference }, io)).baseline, ...text };
+  const ready = await to[mode === 'create' ? 'query' : 'query-update'](request, io);
   return { io, request: { ...request, confirmation: ready.confirmation, receipt: receipt() } };
 }
 
-test('GitLab resolves through glab without host catalogue; GitHub priority and missing destinations remain intact', () => {
+test('GitLab resolves through glab without host catalogue; GitHub priority and missing destinations remain intact', async () => {
   const io = mock();
-  const imported = importRouter.resolve(reference, readRegistry, io);
+  const imported = await importRouter.resolve(reference, readRegistry, io);
   assert.equal(imported.provider, 'gitlab'); assert.equal(imported.url, reference);
-  const resolved = publishRouter.resolve({ explicit: { repository: url } }, writeRegistry, io);
+  const resolved = await publishRouter.resolve({ explicit: { repository: url } }, writeRegistry, io);
   assert.equal(resolved.provider, 'gitlab'); assert.equal(resolved.repository, url);
-  assert.equal(publishRouter.resolve({ explicit: { provider: 'gitlab' } }, writeRegistry, io).reason, 'repository-ambiguous');
-  assert.equal(publishRouter.resolve({ explicit: { provider: 'gitlab', repository: url, project: 'board' } }, writeRegistry, io).status, 'needs_input');
-  assert.equal(publishRouter.resolve({ explicit: { repository: 'https://github.com/a/b' } }, writeRegistry, io).provider, 'github');
-  assert.equal(importRouter.resolve('/a/b/issues/7', readRegistry, io).provider, 'github');
-  assert.throws(() => to.query(text, io), /destination/);
-  assert.throws(() => importRouter.resolve('7', readRegistry, io));
+  assert.equal((await publishRouter.resolve({ explicit: { provider: 'gitlab' } }, writeRegistry, io)).reason, 'repository-ambiguous');
+  assert.equal((await publishRouter.resolve({ explicit: { provider: 'gitlab', repository: url, project: 'board' } }, writeRegistry, io)).status, 'needs_input');
+  assert.equal((await publishRouter.resolve({ explicit: { repository: 'https://github.com/a/b' } }, writeRegistry, io)).provider, 'github');
+  assert.equal((await importRouter.resolve('/a/b/issues/7', readRegistry, io)).provider, 'github');
+  await assert.rejects(async () => await to.query(text, io), /destination/);
+  await assert.rejects(async () => await importRouter.resolve('7', readRegistry, io));
 });
 
-test('both GitLab display routes import ordinary issues with API provenance intact', () => {
+test('both GitLab display routes import ordinary issues with API provenance intact', async () => {
   for (const inputRoute of ['issues', 'work_items']) {
     for (const responseRoute of ['issues', 'work_items']) {
       const returnedURL = `${url}/-/${responseRoute}/7?display=1#details`;
       const state = { issue: { web_url: returnedURL, title: text.title, description: text.description } };
       const io = mock(state);
-      const resolved = importRouter.resolve(`${url}/-/${inputRoute}/7?view=1#note_2`, readRegistry, io);
-      const result = from.read(resolved, io);
+      const resolved = await importRouter.resolve(`${url}/-/${inputRoute}/7?view=1#note_2`, readRegistry, io);
+      const result = await from.read(resolved, io);
       assert.equal(result.status, 'complete');
       assert.equal(result.item.url, returnedURL);
       assert.equal(result.item.title, text.title);
@@ -131,7 +131,7 @@ test('both GitLab display routes import ordinary issues with API provenance inta
   }
 });
 
-test('GitLab invalid and incomplete references fail before provider queries with specific causes', () => {
+test('GitLab invalid and incomplete references fail before provider queries with specific causes', async () => {
   for (const [input, reason, message] of [
     [`${url}/-/issues/0`, 'invalid-reference', /positive safe integer/],
     [`${url}/-/work_items/999999999999999999`, 'invalid-reference', /positive safe integer/],
@@ -142,12 +142,12 @@ test('GitLab invalid and incomplete references fail before provider queries with
     [`${url}/-/epics/7`, 'unsupported-reference', /route is not supported/],
   ]) {
     const state = {};
-    assert.throws(() => importRouter.resolve(input, readRegistry, mock(state)), error => error.reason === reason && message.test(error.message));
+    await assert.rejects(async () => await importRouter.resolve(input, readRegistry, mock(state)), error => error.reason === reason && message.test(error.message));
     assert.deepEqual(state.calls, []);
   }
 });
 
-test('GitLab response validation names the failed identity, URL, type or content check', () => {
+test('GitLab response validation names the failed identity, URL, type or content check', async () => {
   for (const [issue, message] of [
     [{ id: 0 }, /issue ID/], [{ project_id: 15 }, /project ID/], [{ iid: 8 }, /issue number/],
     [{ web_url: `${url}/-/work_items/8` }, /URL.*number/],
@@ -159,43 +159,43 @@ test('GitLab response validation names the failed identity, URL, type or content
     ...[undefined, null, ''].map(issue_type => [{ issue_type }, /issue type cannot be verified/]),
     [{ title: null }, /title/], [{ description: 5 }, /description/], [{ state: 'unknown' }, /state/],
   ]) {
-    const result = from.read({ url: reference }, mock({ issue }));
+    const result = await from.read({ url: reference }, mock({ issue }));
     assert.equal(result.status, 'error');
     assert.match(result.message, message);
     assert.equal(result.item, undefined);
   }
   const io = mock();
-  const redirected = { run(command, args, input) {
-    const result = JSON.parse(io.run(command, args, input));
+  const redirected = { async run(command, args, input) {
+    const result = JSON.parse(await io.run(command, args, input));
     if (args[0] === 'repo') result.web_url = `${url}-other`;
     return JSON.stringify(result);
   } };
-  assert.throws(() => from.resolve(reference, redirected), /project destination/);
+  await assert.rejects(async () => await from.resolve(reference, redirected), /project destination/);
 });
 
-test('recognized issue-enablement signals preserve boolean and access-level-only responses', () => {
+test('recognized issue-enablement signals preserve boolean and access-level-only responses', async () => {
   for (const projectSignals of [{ issues_enabled: true }, { issues_access_level: 'enabled' }, { issues_access_level: 'private' }, { issues_enabled: true, issues_access_level: 'enabled' }]) {
     const state = { projectSignals };
-    const { io, request } = prepared(state);
-    assert.equal(to.publish(request, io).status, 'complete');
+    const { io, request } = await prepared(state);
+    assert.equal((await to.publish(request, io)).status, 'complete');
     assert.equal(state.mutations, 1);
-    assert.equal(from.read({ url: reference }, io).status, 'complete');
-    const update = prepared({ projectSignals }, 'update');
-    assert.equal(to.update(update.request, update.io).status, 'complete');
+    assert.equal((await from.read({ url: reference }, io)).status, 'complete');
+    const update = await prepared({ projectSignals }, 'update');
+    assert.equal((await to.update(update.request, update.io)).status, 'complete');
   }
 });
 
-test('missing, malformed and disabled issue-enablement signals block POST and PUT', () => {
+test('missing, malformed and disabled issue-enablement signals block POST and PUT', async () => {
   const malformed = [{}, { issues_enabled: null }, { issues_enabled: 'true' }, { issues_enabled: 1 }, { issues_access_level: null }, { issues_access_level: 'unknown' }, { issues_access_level: true }, { issues_enabled: true, issues_access_level: 'unknown' }, { issues_enabled: 'true', issues_access_level: 'enabled' }];
   const disabled = [{ issues_enabled: false }, { issues_access_level: 'disabled' }, { issues_enabled: true, issues_access_level: 'disabled' }, { issues_enabled: false, issues_access_level: 'enabled' }];
   for (const projectSignals of [...malformed, ...disabled]) {
     for (const mode of ['create', 'update']) {
       const state = {};
-      const { io, request } = prepared(state, mode);
+      const { io, request } = await prepared(state, mode);
       // A previously approved proposal must also fail closed when its fresh
       // project response loses the enablement evidence before publication.
       state.projectSignals = projectSignals;
-      const result = to[mode === 'create' ? 'publish' : 'update'](request, io);
+      const result = await to[mode === 'create' ? 'publish' : 'update'](request, io);
       assert.equal(result.status, 'failure_before_publication');
       assert.match(result.message, malformed.includes(projectSignals) ? /Incomplete.*issue-enablement/ : /issues are disabled/);
       assert.equal(state.mutations, undefined);
@@ -205,9 +205,9 @@ test('missing, malformed and disabled issue-enablement signals block POST and PU
   }
 });
 
-test('complete paginated comments preserve text, unknown authors and canonical provenance', () => {
+test('complete paginated comments preserve text, unknown authors and canonical provenance', async () => {
   const state = { manyNotes: true, archived: true, issue: { description: null, state: 'closed' } };
-  const result = from.read({ url: reference }, mock(state));
+  const result = await from.read({ url: reference }, mock(state));
   assert.equal(result.status, 'complete'); assert.equal(result.comments.length, 100);
   assert.equal(result.item.description_missing, true); assert.equal(result.item.state, 'CLOSED');
   assert.equal(result.item.repository_archived, true);
@@ -217,7 +217,7 @@ test('complete paginated comments preserve text, unknown authors and canonical p
   assert.ok(state.calls.every(call => !call.args.includes('POST') && !call.args.includes('PUT')));
 });
 
-test('supported note ordering keeps ascending user identifiers across pages and partial failures', () => {
+test('supported note ordering keeps ascending user identifiers across pages and partial failures', async () => {
   const note = id => ({ id, body: ` original ${id} ñ\n\u0060code\u0060\n`, author: { username: 'writer' }, system: false });
   // Provider creation-time order need not equal identifier order, including
   // across page boundaries. System notes still count toward page length.
@@ -227,7 +227,7 @@ test('supported note ordering keeps ascending user identifiers across pages and 
   const received = `${url}/-/work_items/7?display=1#details`;
   for (const pageFailure of [false, true]) {
     const state = { notePages: [first, last], pageFailure, issue: { web_url: received, ...text } };
-    const result = from.read({ url: received }, mock(state));
+    const result = await from.read({ url: received }, mock(state));
     assert.equal(result.status, pageFailure ? 'incomplete' : 'complete');
     assert.equal(result.item.url, received);
     assert.equal(result.item.title, text.title);
@@ -239,25 +239,25 @@ test('supported note ordering keeps ascending user identifiers across pages and 
     assert.ok(requests.every(call => call.args.includes('GET') && call.args[1].endsWith('&sort=asc&order_by=created_at')));
     if (pageFailure) assert.match(result.message, /second page failed/);
   }
-  const empty = from.read({ url: received }, mock({ notePages: [[]], issue: { web_url: received } }));
+  const empty = await from.read({ url: received }, mock({ notePages: [[]], issue: { web_url: received } }));
   assert.equal(empty.status, 'complete');
   assert.deepEqual(empty.comments, []);
 });
 
-test('partial comment retrieval keeps title, description and already retrieved comments', () => {
-  const result = from.read({ url: reference }, mock({ manyNotes: true, pageFailure: true }));
+test('partial comment retrieval keeps title, description and already retrieved comments', async () => {
+  const result = await from.read({ url: reference }, mock({ manyNotes: true, pageFailure: true }));
   assert.equal(result.status, 'incomplete'); assert.equal(result.comments.length, 99);
   assert.equal(result.item.description, 'Before'); assert.match(result.message, /second page/);
-  assert.equal(from.read({ url: reference }, mock({ manyNotes: true, repeated: true })).status, 'incomplete');
+  assert.equal((await from.read({ url: reference }, mock({ manyNotes: true, repeated: true }))).status, 'incomplete');
   for (const failure of ['authentication failed', 'permission denied', 'unsupported glab version']) {
-    assert.match(from.read({ url: reference }, mock({ failure })).message, new RegExp(failure));
-    assert.throws(() => to.query({ repository: url, ...text }, mock({ failure })), new RegExp(failure));
+    assert.match((await from.read({ url: reference }, mock({ failure }))).message, new RegExp(failure));
+    await assert.rejects(async () => await to.query({ repository: url, ...text }, mock({ failure })), new RegExp(failure));
   }
 });
 
-test('partial work_items import preserves API provenance and already retrieved source text', () => {
+test('partial work_items import preserves API provenance and already retrieved source text', async () => {
   const received = `${url}/-/work_items/7`;
-  const result = from.read({ url: received }, mock({ manyNotes: true, pageFailure: true, issue: { web_url: received, ...text } }));
+  const result = await from.read({ url: received }, mock({ manyNotes: true, pageFailure: true, issue: { web_url: received, ...text } }));
   assert.equal(result.status, 'incomplete');
   assert.equal(result.item.url, received);
   assert.equal(result.item.description, text.description);
@@ -265,59 +265,59 @@ test('partial work_items import preserves API provenance and already retrieved s
   assert.match(result.message, /second page failed/);
 });
 
-test('work_items update uses exact approval and route drift does not normalize authorization or recovery', () => {
+test('work_items update uses exact approval and route drift does not normalize authorization or recovery', async () => {
   const received = `${url}/-/work_items/7`;
   const state = { issue: { web_url: received } };
-  const { io, request } = prepared(state, 'update');
-  assert.equal(to.update({ ...request, description: 'unapproved' }, io).status, 'failure_before_publication');
+  const { io, request } = await prepared(state, 'update');
+  assert.equal((await to.update({ ...request, description: 'unapproved' }, io)).status, 'failure_before_publication');
   assert.equal(state.mutations, undefined);
-  assert.equal(to.update(request, io).status, 'complete');
+  assert.equal((await to.update(request, io)).status, 'complete');
   state.issue.web_url = reference;
-  const recovered = to['recover-update']({ receipt: request.receipt }, io);
+  const recovered = await to['recover-update']({ receipt: request.receipt }, io);
   assert.equal(recovered.status, 'uncertain');
   assert.match(recovered.message, /identity or destination changed/);
   assert.equal(state.mutations, 1);
 
   const drift = { issue: { web_url: reference } };
-  const approved = prepared(drift, 'update');
+  const approved = await prepared(drift, 'update');
   drift.issue.web_url = received;
-  assert.equal(to.update(approved.request, approved.io).status, 'failure_before_publication');
+  assert.equal((await to.update(approved.request, approved.io)).status, 'failure_before_publication');
   assert.equal(drift.mutations, undefined);
   assert.equal(fs.existsSync(approved.request.receipt), false);
 });
 
-test('exact confirmation precedes creation; JSON content remains data and results are verified', () => {
+test('exact confirmation precedes creation; JSON content remains data and results are verified', async () => {
   const state = {};
-  const { io, request } = prepared(state);
-  assert.equal(to.publish({ ...request, title: 'edited' }, io).status, 'failure_before_publication');
+  const { io, request } = await prepared(state);
+  assert.equal((await to.publish({ ...request, title: 'edited' }, io)).status, 'failure_before_publication');
   assert.equal(state.mutations, undefined);
-  assert.equal(to.publish(request, io).status, 'complete');
+  assert.equal((await to.publish(request, io)).status, 'complete');
   assert.equal(state.mutations, 1);
   assert.equal(state.rows[0].title, text.title);
   assert.equal(state.rows[0].description, text.description);
   const submission = state.calls.find(call => call.args.includes('POST'));
   assert.equal(submission.input, JSON.stringify(text));
   assert.ok(!submission.args.includes(text.title) && !submission.args.includes(text.description));
-  assert.equal(to.publish(request, io).status, 'failure_before_publication');
+  assert.equal((await to.publish(request, io)).status, 'failure_before_publication');
   assert.equal(state.mutations, 1);
 });
 
-test('paginated issue baselines retain IDs regardless of their creation-time order', () => {
+test('paginated issue baselines retain IDs regardless of their creation-time order', async () => {
   const rows = Array.from({ length: 101 }, (_, i) => ({ id: 500 - i, project_id: 14, iid: i + 100, web_url: `${url}/-/issues/${i + 100}`, title: text.title, description: text.description, author: { id: 2 } }));
   const state = { issuePages: [rows.slice(0, 100), rows.slice(100)] };
-  const { io, request } = prepared(state);
+  const { io, request } = await prepared(state);
   // The POST reaches the host, but its response is lost. Existing matches
   // across both pages must remain baseline entries, not recovery candidates.
   state.loseResponse = true;
-  assert.equal(to.publish(request, io).status, 'uncertain');
+  assert.equal((await to.publish(request, io)).status, 'uncertain');
   assert.deepEqual(JSON.parse(fs.readFileSync(request.receipt)).baseline, rows.map(row => row.id));
-  const recovery = to.recover({ receipt: request.receipt, issueUrl: rows[100].web_url }, io);
+  const recovery = await to.recover({ receipt: request.receipt, issueUrl: rows[100].web_url }, io);
   assert.equal(recovery.status, 'uncertain');
   assert.deepEqual(recovery.candidates, []);
   assert.equal(state.mutations, 1);
 });
 
-test('invalid, repeated and failed issue pages stop before POST and pending receipt creation', () => {
+test('invalid, repeated and failed issue pages stop before POST and pending receipt creation', async () => {
   const row = { id: 100, project_id: 14, iid: 100, web_url: `${url}/-/issues/100`, title: 'Existing', description: null, author: { id: 2 } };
   const fullPage = Array.from({ length: 100 }, (_, i) => ({ ...row, id: i + 100, iid: i + 100, web_url: `${url}/-/issues/${i + 100}` }));
   for (const listing of [
@@ -330,8 +330,8 @@ test('invalid, repeated and failed issue pages stop before POST and pending rece
     { issuePages: [fullPage], issuePageFailure: 2 },
   ]) {
     const state = { ...listing };
-    const { io, request } = prepared(state);
-    const result = to.publish(request, io);
+    const { io, request } = await prepared(state);
+    const result = await to.publish(request, io);
     assert.equal(result.status, 'failure_before_publication');
     assert.match(result.message, /Incomplete.*GitLab issue|repeated GitLab issue|issue page failed/);
     assert.equal(fs.existsSync(request.receipt), false);
@@ -340,30 +340,30 @@ test('invalid, repeated and failed issue pages stop before POST and pending rece
   }
 });
 
-test('uncertain creation keeps its receipt and recovery performs reads only', () => {
+test('uncertain creation keeps its receipt and recovery performs reads only', async () => {
   for (const behavior of [{ denyMutation: true }, { ignoreMutation: true, loseResponse: true }]) {
     const state = { ...behavior };
-    const { io, request } = prepared(state);
-    assert.equal(to.publish(request, io).status, 'uncertain');
+    const { io, request } = await prepared(state);
+    assert.equal((await to.publish(request, io)).status, 'uncertain');
     const originalReceipt = fs.readFileSync(request.receipt, 'utf8');
     assert.equal(JSON.parse(originalReceipt).stage, 'creation_pending');
     state.calls = [];
-    assert.equal(to.recover({ receipt: request.receipt, issueUrl: reference }, io).status, 'uncertain');
+    assert.equal((await to.recover({ receipt: request.receipt, issueUrl: reference }, io)).status, 'uncertain');
     assert.equal(fs.readFileSync(request.receipt, 'utf8'), originalReceipt);
     assert.ok(state.calls.every(call => call.args[0] === 'repo' || call.args.includes('GET')));
-    assert.equal(to.publish(request, io).status, 'failure_before_publication');
+    assert.equal((await to.publish(request, io)).status, 'failure_before_publication');
     assert.equal(state.mutations, 1);
   }
 });
 
-test('a correct title with an empty description is never verified or repaired', () => {
+test('a correct title with an empty description is never verified or repaired', async () => {
   for (const loseResponse of [false, true]) {
     const state = { emptyDescription: true, loseResponse };
-    const { io, request } = prepared(state);
-    assert.equal(to.publish(request, io).status, 'uncertain');
+    const { io, request } = await prepared(state);
+    assert.equal((await to.publish(request, io)).status, 'uncertain');
     const originalReceipt = fs.readFileSync(request.receipt, 'utf8');
     state.calls = [];
-    const recovered = to.recover({ receipt: request.receipt, issueUrl: reference }, io);
+    const recovered = await to.recover({ receipt: request.receipt, issueUrl: reference }, io);
     assert.equal(recovered.status, 'uncertain');
     if (loseResponse) assert.deepEqual(recovered.candidates, []);
     else assert.match(recovered.message, /approved content could not be verified/);
@@ -375,43 +375,43 @@ test('a correct title with an empty description is never verified or repaired', 
   }
 });
 
-test('lost creation responses are verified before recovery and never cause duplicate creation', () => {
+test('lost creation responses are verified before recovery and never cause duplicate creation', async () => {
   const state = { loseResponse: true, manyIssues: true };
-  const { io, request } = prepared(state);
-  assert.equal(to.publish(request, io).status, 'uncertain');
-  const recovered = to.recover({ receipt: request.receipt }, io);
+  const { io, request } = await prepared(state);
+  assert.equal((await to.publish(request, io)).status, 'uncertain');
+  const recovered = await to.recover({ receipt: request.receipt }, io);
   assert.equal(recovered.status, 'uncertain'); assert.equal(recovered.candidates.length, 1);
-  assert.equal(to.recover({ receipt: request.receipt, issueUrl: reference }, io).status, 'complete');
+  assert.equal((await to.recover({ receipt: request.receipt, issueUrl: reference }, io)).status, 'complete');
   assert.equal(state.mutations, 1);
-  assert.equal(to.recover({ receipt: request.receipt }, mock({ otherActor: true })).status, 'uncertain');
+  assert.equal((await to.recover({ receipt: request.receipt }, mock({ otherActor: true }))).status, 'uncertain');
 });
 
-test('no-op and stale origin updates do not mutate, including version-only changes', () => {
+test('no-op and stale origin updates do not mutate, including version-only changes', async () => {
   const state = {};
-  const { io, request } = prepared(state, 'update');
-  assert.equal(to['query-update']({ ...request, title: 'Old', description: 'Before' }, io).status, 'no_changes');
+  const { io, request } = await prepared(state, 'update');
+  assert.equal((await to['query-update']({ ...request, title: 'Old', description: 'Before' }, io)).status, 'no_changes');
   state.issue = { updated_at: 'version-2' };
-  assert.equal(to.update(request, io).reason, 'stale-baseline');
+  assert.equal((await to.update(request, io)).reason, 'stale-baseline');
   assert.equal(state.mutations, undefined);
   state.issue = {};
-  assert.equal(to.update({ ...request, description: 'unconfirmed' }, io).status, 'failure_before_publication');
+  assert.equal((await to.update({ ...request, description: 'unconfirmed' }, io)).status, 'failure_before_publication');
   assert.equal(state.mutations, undefined);
 });
 
-test('update lost responses distinguish applied, pending and divergent; recovery never mutates', () => {
+test('update lost responses distinguish applied, pending and divergent; recovery never mutates', async () => {
   for (const ignoreMutation of [false, true]) {
     const state = { loseResponse: true, ignoreMutation };
-    const { io, request } = prepared(state, 'update');
-    assert.equal(to.update(request, io).status, ignoreMutation ? 'pending' : 'complete');
+    const { io, request } = await prepared(state, 'update');
+    assert.equal((await to.update(request, io)).status, ignoreMutation ? 'pending' : 'complete');
     const submission = state.calls.find(call => call.args.includes('PUT'));
     assert.equal(submission.input, JSON.stringify(text));
     if (!ignoreMutation) {
       assert.equal(state.issue.title, text.title);
       assert.equal(state.issue.description, text.description);
     }
-    assert.equal(to['recover-update']({ receipt: request.receipt }, io).status, ignoreMutation ? 'pending' : 'complete');
+    assert.equal((await to['recover-update']({ receipt: request.receipt }, io)).status, ignoreMutation ? 'pending' : 'complete');
     state.issue = { title: 'Other author edit', updated_at: 'version-3' };
-    assert.equal(to['recover-update']({ receipt: request.receipt }, io).status, 'divergent');
+    assert.equal((await to['recover-update']({ receipt: request.receipt }, io)).status, 'divergent');
     assert.equal(state.mutations, 1);
   }
 });

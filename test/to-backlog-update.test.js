@@ -48,104 +48,104 @@ function fakeUpdate(state, command, args, input) {
   return JSON.stringify({ data: { viewer: { login: state.otherActor ? 'other' : 'me' }, repository: { visibility: state.private ? 'PRIVATE' : 'PUBLIC', issue } } });
 }
 
-function approved(state = {}) {
+async function approved(state = {}) {
   const io = { run: (...args) => fakeUpdate(state, ...args) };
-  const current = github['read-update']({ reference }, io);
+  const current = await github['read-update']({ reference }, io);
   const request = { provider: 'github', reference: current.issue.url, baseline: current.baseline, ...final };
-  const ready = github['query-update'](request, io);
+  const ready = await github['query-update'](request, io);
   const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp('to-backlog-update-');
   return { io, request: { ...request, confirmation: ready.confirmation, receipt: path.join(directory, 'receipt.json') } };
 }
 
-test('E2 full and partial origin references reuse reader; incomplete references never guess', () => {
+test('E2 full and partial origin references reuse reader; incomplete references never guess', async () => {
   for (const ref of [reference, `${url}?x=1#comment`]) {
-    const current = github['read-update']({ reference: ref }, { run: (...args) => fakeUpdate({}, ...args) });
+    const current = await github['read-update']({ reference: ref }, { run: (...args) => fakeUpdate({}, ...args) });
     assert.equal(current.issue.url, url);
     assert.deepEqual(current.baseline, baseline);
   }
   for (const ref of ['123', '/repo/issues/123', 'https://gitlab.com/owner/repo/issues/123']) {
-    assert.throws(() => github['read-update']({ reference: ref }, { run: (...args) => fakeUpdate({}, ...args) }), /Use https/);
+    await assert.rejects(async () => await github['read-update']({ reference: ref }, { run: (...args) => fakeUpdate({}, ...args) }), /Use https/);
   }
 });
 
-test('E4 update changes only exact title and body without Project or creation operations', () => {
+test('E4 update changes only exact title and body without Project or creation operations', async () => {
   const state = {};
-  const { request, io } = approved(state);
-  assert.equal(github.update(request, io).status, 'complete');
+  const { request, io } = await approved(state);
+  assert.equal((await github.update(request, io)).status, 'complete');
   assert.deepEqual(state.content, final);
   assert.equal(state.mutations, 1);
-  assert.equal(github.update(request, io).reason, 'stale-baseline');
+  assert.equal((await github.update(request, io)).reason, 'stale-baseline');
   assert.equal(state.mutations, 1);
 });
 
-test('E5 bound approval rejects missing token, changed final content and changed target', () => {
+test('E5 bound approval rejects missing token, changed final content and changed target', async () => {
   for (const change of [{ confirmation: undefined }, { title: 'Changed' }, { description: 'Changed' }, { reference: '/owner/other/issues/123' }]) {
     const state = {};
-    const { request, io } = approved(state);
-    assert.equal(github.update({ ...request, ...change }, io).status, 'failure_before_publication');
+    const { request, io } = await approved(state);
+    assert.equal((await github.update({ ...request, ...change }, io)).status, 'failure_before_publication');
     assert.equal(state.mutations, undefined);
   }
 });
 
-test('E6 concurrent title or body changes require fresh baseline and approval', () => {
+test('E6 concurrent title or body changes require fresh baseline and approval', async () => {
   for (const field of ['title', 'description']) {
     const state = {};
-    const { request, io } = approved(state);
+    const { request, io } = await approved(state);
     state.content = { ...baseline, [field]: 'External edit' };
-    const stale = github.update(request, io);
+    const stale = await github.update(request, io);
     assert.equal(stale.reason, 'stale-baseline');
     assert.equal(state.mutations, undefined);
     assert.equal(fs.existsSync(request.receipt), false);
-    assert.equal(github.update({ ...request, baseline: stale.current.baseline }, io).status, 'failure_before_publication');
+    assert.equal((await github.update({ ...request, baseline: stale.current.baseline }, io)).status, 'failure_before_publication');
     assert.equal(state.mutations, undefined);
   }
   for (const field of ['otherActor', 'otherId', 'private']) {
     const state = {};
-    const { request, io } = approved(state);
+    const { request, io } = await approved(state);
     state[field] = true;
-    assert.equal(github.update(request, io).status, 'failure_before_publication');
+    assert.equal((await github.update(request, io)).status, 'failure_before_publication');
     assert.equal(state.mutations, undefined);
   }
 });
 
-test('E7 missing, pull request, archived, non-editable and inaccessible origins stop', () => {
+test('E7 missing, pull request, archived, non-editable and inaccessible origins stop', async () => {
   for (const field of ['missing', 'pr', 'archived', 'readOnly', 'unavailable', 'unauthenticated']) {
     const state = {};
-    const { request, io } = approved(state);
+    const { request, io } = await approved(state);
     state[field] = true;
-    assert.equal(github.update(request, io).status, 'failure_before_publication');
+    assert.equal((await github.update(request, io)).status, 'failure_before_publication');
     assert.equal(state.mutations, undefined);
   }
 });
 
-test('E8 matching content is a verified no-op without receipt or mutation', () => {
+test('E8 matching content is a verified no-op without receipt or mutation', async () => {
   const state = {};
-  const { request, io } = approved(state);
-  assert.equal(github.update({ ...request, ...baseline }, io).status, 'no_changes');
+  const { request, io } = await approved(state);
+  assert.equal((await github.update({ ...request, ...baseline }, io)).status, 'no_changes');
   assert.equal(state.mutations, undefined);
   assert.equal(fs.existsSync(request.receipt), false);
 });
 
-test('E9 uncertain submission reconciles applied, pending or divergent remotely before retry', () => {
+test('E9 uncertain submission reconciles applied, pending or divergent remotely before retry', async () => {
   for (const [options, expected] of [[{ lost: true }, 'complete'], [{ lost: true, notApplied: true }, 'pending'], [{ lost: true, diverge: true }, 'divergent']]) {
     const state = { ...options };
-    const { request, io } = approved(state);
-    assert.equal(github.update(request, io).status, expected);
-    assert.equal(github['recover-update']({ receipt: request.receipt }, io).status, expected);
+    const { request, io } = await approved(state);
+    assert.equal((await github.update(request, io)).status, expected);
+    assert.equal((await github['recover-update']({ receipt: request.receipt }, io)).status, expected);
     assert.equal(state.mutations, 1);
   }
   const state = { lost: true, verificationFailure: true };
-  const { request, io } = approved(state);
-  assert.equal(github.update(request, io).status, 'uncertain');
-  assert.equal(github['recover-update']({ receipt: request.receipt }, io).status, 'uncertain');
+  const { request, io } = await approved(state);
+  assert.equal((await github.update(request, io)).status, 'uncertain');
+  assert.equal((await github['recover-update']({ receipt: request.receipt }, io)).status, 'uncertain');
   state.verificationFailure = false;
-  assert.equal(github['recover-update']({ receipt: request.receipt }, io).status, 'complete');
+  assert.equal((await github['recover-update']({ receipt: request.receipt }, io)).status, 'complete');
   assert.equal(state.mutations, 1);
 });
 
-test('L1 repository drift during reconciliation fails closed without another mutation', () => {
+test('L1 repository drift during reconciliation fails closed without another mutation', async () => {
   const state = { renameAfterUpdate: true };
-  const { request, io } = approved(state);
+  const { request, io } = await approved(state);
   // Keep the observed issue identity and URL unchanged to isolate the explicit
   // repository comparison from the existing issue identity checks.
   const observed = {
@@ -158,10 +158,10 @@ test('L1 repository drift during reconciliation fails closed without another mut
       return JSON.stringify(response);
     },
   };
-  const result = github.update(request, observed);
+  const result = await github.update(request, observed);
   assert.equal(result.status, 'uncertain');
   assert.match(result.message, /identity or destination changed/);
-  const recovery = github['recover-update']({ receipt: request.receipt }, observed);
+  const recovery = await github['recover-update']({ receipt: request.receipt }, observed);
   assert.equal(recovery.status, 'uncertain');
   assert.match(recovery.message, /identity or destination changed/);
   assert.equal(state.mutations, 1);

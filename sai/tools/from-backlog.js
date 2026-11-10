@@ -19,9 +19,9 @@ const BARE_REFERENCE = /^#?([1-9][0-9]*)$/;
 
 // A bare number names no host, so the configured provider supplies the missing context:
 // the provider's own context (Azure DevOps) or the repository of the Git remotes.
-function remoteRepositories(entry, registry, io) {
+async function remoteRepositories(entry, registry, io) {
   let output = '';
-  try { output = io.run('git', ['remote', '-v']); } catch { return []; }
+  try { output = await io.run('git', ['remote', '-v']); } catch { return []; }
   const others = registry.providers.filter(item => item.id !== entry.id).flatMap(item => item.hosts || []);
   const found = new Map();
   for (const line of output.split(/\r?\n/)) {
@@ -40,12 +40,12 @@ function remoteRepositories(entry, registry, io) {
   return [...found.values()];
 }
 
-function configuredReference(number, entry, registry, adapter, io) {
+async function configuredReference(number, entry, registry, adapter, io) {
   if (entry.classification === 'provider') {
     const { organization, project } = io.configuredDestination || {};
     return organization && project ? `${organization.replace(/\/+$/, '')}/${encodeURIComponent(project)}/_workitems/edit/${number}` : String(number);
   }
-  const repositories = remoteRepositories(entry, registry, io);
+  const repositories = await remoteRepositories(entry, registry, io);
   if (repositories.length !== 1) return null;
   const { host, protocol, repository } = repositories[0];
   if (entry.resolution === 'provider') return `${protocol}//${host}/${repository}/-/issues/${number}`;
@@ -53,18 +53,18 @@ function configuredReference(number, entry, registry, adapter, io) {
 }
 
 // E6: the configured backlog provider decides a bare `N` or `#N`.
-function resolveBare(number, registry, readable, getAdapter, io) {
+async function resolveBare(number, registry, readable, getAdapter, io) {
   const entry = readable.find(item => item.id === io.configuredProvider);
   if (!entry) throw fault('provider-destination-conflict', `The configured backlog provider ${io.configuredProvider} does not accept this issue reference`);
   const adapter = getAdapter(entry);
   if (entry.classification === 'provider' && adapter.classify(String(number)) !== 'match') throw fault('provider-destination-conflict', `The configured backlog provider ${io.configuredProvider} does not accept this issue reference`);
-  const value = configuredReference(number, entry, registry, adapter, io);
+  const value = await configuredReference(number, entry, registry, adapter, io);
   if (value === null) return { status: 'needs_input', reason: 'context-ambiguous', provider: entry.id, message: 'Supply a complete issue URL; the Git remotes name no single repository for this provider' };
-  const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
+  const resolved = entry.resolution === 'provider' ? await adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
   return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, settingApplied: true };
 }
 
-function resolve(reference, registry, io = {}) {
+async function resolve(reference, registry, io = {}) {
   if (typeof reference !== 'string' || !reference.trim()) throw fault('invalid-reference', 'Supply a complete issue URL or /owner/repo/issues/123');
   const value = reference.trim();
   const bare = BARE_REFERENCE.exec(value);
@@ -80,7 +80,7 @@ function resolve(reference, registry, io = {}) {
     if (!adapters.has(entry)) adapters.set(entry, (io.loadAdapter || loadAdapter)(entry));
     return adapters.get(entry);
   };
-  if (bare && io.configuredProvider) return resolveBare(Number(bare[1]), registry, readable, getAdapter, io);
+  if (bare && io.configuredProvider) return await resolveBare(Number(bare[1]), registry, readable, getAdapter, io);
   const candidates = readable.map(entry => {
     // Classification is pure; only the selected adapter may resolve context.
     if (entry.classification === 'provider') {
@@ -108,7 +108,7 @@ function resolve(reference, registry, io = {}) {
     : 'Only github.com issues and /owner/repo/issues/123 are supported');
   const entry = entries[0];
   const adapter = getAdapter(entry);
-  const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
+  const resolved = entry.resolution === 'provider' ? await adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
   const settingOverridden = Boolean(matched.length && io.configuredProvider && entry.id !== io.configuredProvider);
   return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}), ...(settingOverridden ? { settingOverridden } : {}) };
 }
@@ -119,16 +119,16 @@ let runtimeMemory = null;
 let extensionMemory = null;
 function resetAzureMemory() { runtimeMemory = null; extensionMemory = null; }
 
-function azureRuntime() {
-  if (!runtimeMemory) runtimeMemory = locateAzureRuntime();
+async function azureRuntime() {
+  if (!runtimeMemory) runtimeMemory = await locateAzureRuntime();
   return runtimeMemory;
 }
 
-function locateAzureRuntime() {
+async function locateAzureRuntime() {
   // Invoke the MSI launcher's Python directly, without cmd.exe interpreting
   // project names or continuation tokens as shell syntax.
   if (process.platform === 'win32') {
-    const located = runProcess('where.exe', ['az'], { step: 'locate Azure CLI', encoding: 'utf8', shell: false });
+    const located = await runProcess('where.exe', ['az'], { step: 'locate Azure CLI', encoding: 'utf8', shell: false });
     const launcher = located.stdout?.trim().split(/\r?\n/).find(file => /\.(?:exe|cmd)$/i.test(file));
     if (!launcher) throw fault('tool-unavailable', 'Azure CLI executable not found');
     if (/\.cmd$/i.test(launcher)) {
@@ -144,15 +144,15 @@ function locateAzureRuntime() {
 // Azure CLI telemetry is disabled only for the processes this tool starts; the user's Azure CLI configuration stays unchanged.
 const azureEnvironment = () => ({ ...process.env, AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no', AZURE_CORE_COLLECT_TELEMETRY: 'no' });
 
-function run(command, args, input) {
+async function run(command, args, input) {
   const azure = command === 'az';
   const step = stepLabel(command, args);
   if (azure) {
-    const runtime = azureRuntime();
+    const runtime = await azureRuntime();
     command = runtime.command;
     args = [...runtime.prefix, ...args];
   }
-  const result = runProcess(command, args, { step, input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024, ...(azure ? { env: azureEnvironment() } : {}) });
+  const result = await runProcess(command, args, { step, input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024, ...(azure ? { env: azureEnvironment() } : {}) });
   if (result.error || result.status !== 0) throw fault('retrieval-failed', `${command}: ${result.error?.message || result.stderr || `exit ${result.status}`}. Content was not loaded completely.`);
   return result.stdout;
 }
@@ -186,13 +186,13 @@ except Exception as error:
     status = seen[0] if seen else getattr(error, 'status_code', None)
     print(json.dumps({'sdk_error': str(error), 'status_code': status}))
 `;
-function runAzureSdk(input) {
+async function runAzureSdk(input) {
   // Built-in extension show never installs. The installed extension is required
   // even under inherited yes_without_prompt configuration.
   let extension = extensionMemory;
   if (!extension) {
     try {
-      extension = JSON.parse(run('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json', '--only-show-errors']));
+      extension = JSON.parse(await run('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json', '--only-show-errors']));
       if (extension.name !== 'azure-devops' || typeof extension.path !== 'string' || !fs.statSync(extension.path).isDirectory()) throw new Error('Installed extension path is unavailable');
       extensionMemory = extension;
     } catch (error) {
@@ -200,7 +200,7 @@ function runAzureSdk(input) {
       throw fault('extension-unavailable', `Installed azure-devops extension required; no installation is attempted. ${error.message}`);
     }
   }
-  let python = azureRuntime().python;
+  let python = (await azureRuntime()).python;
   if (!python && process.platform !== 'win32') {
     // Official pip/Homebrew launchers name the CLI's interpreter in a shebang.
     // Other packaging must stop, not guess an unrelated system interpreter.
@@ -210,13 +210,13 @@ function runAzureSdk(input) {
   }
   if (!python) throw fault('tool-unavailable', 'This publication path requires the existing Azure CLI Python launcher (standard Windows MSI or absolute Python shebang); no interpreter is installed or guessed');
   const request = { ...JSON.parse(input), extension: extension.path };
-  const result = runProcess(python, ['-IBc', SDK_SCRIPT], { step: `Azure SDK ${request.client} ${request.method}`, input: JSON.stringify(request), encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024,
+  const result = await runProcess(python, ['-IBc', SDK_SCRIPT], { step: `Azure SDK ${request.client} ${request.method}`, input: JSON.stringify(request), encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024,
     env: azureEnvironment() });
   if (result.error || result.status !== 0) throw fault('retrieval-failed', result.error?.message || result.stderr || `Azure SDK exit ${result.status}`);
   return result.stdout;
 }
 
-function main(rawArgv) {
+async function main(rawArgv) {
   try {
     const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
@@ -224,9 +224,9 @@ function main(rawArgv) {
     const request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const settings = projectSettings.readBacklog({ cwd: process.cwd(), providerIds: registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => entry.id) });
-    const { settingApplied, settingOverridden, ...resolved } = resolve(request.reference, registry, { run, configuredProvider: settings.config.provider, configuredDestination: settings.config });
+    const { settingApplied, settingOverridden, ...resolved } = await resolve(request.reference, registry, { run, configuredProvider: settings.config.provider, configuredDestination: settings.config });
     const adapter = resolved.status === 'resolved' ? require(path.join(__dirname, resolved.adapter)) : null;
-    const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : (adapter.readSet || adapter.read)(resolved, { run });
+    const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : await (adapter.readSet || adapter.read)(resolved, { run });
     const lines = [...(settings.notices || []), ...(settingApplied ? [projectSettings.notice('provider', settings.config.provider)] : []),
       ...(settingOverridden ? [`${projectSettings.notice('provider', settings.config.provider)} is overridden by the issue URL, which selects ${resolved.provider}`] : [])];
     process.stdout.write(JSON.stringify(projectSettings.report(result, { warnings: settings.warnings, notices: lines })) + '\n');
@@ -237,5 +237,5 @@ function main(rawArgv) {
   }
 }
 
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 module.exports = { resolve, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT };

@@ -68,7 +68,7 @@ function destination(value, project) {
   if (!parsed || parsed.username || parsed.parts.length !== 1 || !segment(parsed.parts[0]) || (project && !equal(project, parsed.parts[0]))) throw new Error('Azure DevOps Services project URL required');
   return { organization: parsed.organization, project: parsed.parts[0] };
 }
-function api(target, area, resource, route, io, method = 'GET', body, query = {}, patch = false) {
+async function api(target, area, resource, route, io, method = 'GET', body, query = {}, patch = false) {
   let directory, file;
   try {
   // invoke picks a location by area and resource name, which is ambiguous for
@@ -81,7 +81,7 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
            : resource === 'classificationnodes' ? '5a172953-1b41-49d3-840a-33f79c3ce89f'
         : route.type !== undefined ? '62d3d110-0047-428c-ad3c-4fe872c91c74' : '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b';
      const version = area === 'location' ? '5.0-preview.1' : area === 'git' || resource === 'classificationnodes' ? '7.1' : area === 'work' ? '7.1-preview.1' : '7.1-preview.3';
-    const result = JSON.parse(io.run('azure-sdk', [], JSON.stringify({ organization: target.organization, client: area, location,
+    const result = JSON.parse(await io.run('azure-sdk', [], JSON.stringify({ organization: target.organization, client: area, location,
       version, method, route, body, query,
       mediaType: patch ? 'application/json-patch+json' : 'application/json' })));
     if (result.sdk_error) throw new Error(`${result.status_code ? `HTTP status ${result.status_code}: ` : ''}${result.sdk_error}`);
@@ -99,7 +99,7 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
     fs.writeFileSync(file, JSON.stringify(body), { mode: 0o600, flag: 'wx' });
     args.push('--in-file', file, '--encoding', 'utf-8', '--media-type', patch ? 'application/json-patch+json' : 'application/json');
   }
-  return JSON.parse(io.run('az', args));
+  return JSON.parse(await io.run('az', args));
   }
   catch (error) {
     const text = error.message || '';
@@ -117,10 +117,10 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
     if (directory) { try { fs.rmdirSync(directory); } catch (error) { process.stderr.write('Azure transport directory cleanup failed; retain the publication outcome.\n'); } }
   }
 }
-function inspect(value, io, project) {
-  const target = destination(value, project);
-  const row = api(target, 'core', 'projects', { projectId: target.project }, io);
-  const user = api(target, 'location', 'connectionData', {}, io).authenticatedUser, actor = user?.id;
+async function inspect(value, io, project) {
+  const target = await destination(value, project);
+  const row = await api(target, 'core', 'projects', { projectId: target.project }, io);
+  const user = (await api(target, 'location', 'connectionData', {}, io)).authenticatedUser, actor = user?.id;
   // The unique name (email/UPN) is the value Azure resolves when writing an identity field; the id is not.
   const uniqueName = user?.properties?.Account?.$value;
   if (typeof row.id !== 'string' || !segment(row.name) || !equal(row.name, target.project) || !['private', 'public'].includes(row.visibility) || typeof actor !== 'string' || !actor) throw new Error('Incomplete Azure destination or authenticated identity');
