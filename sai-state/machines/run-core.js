@@ -217,4 +217,4 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, onCl
   return { machineId, ATTEMPT_BUDGET, initialState, transition, project };
 }
 
-module.exports = { createRunMachine };
+module.exports = { createRunMachine, ID_PATTERN };

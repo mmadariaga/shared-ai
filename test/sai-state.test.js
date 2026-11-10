@@ -1094,3 +1094,142 @@ test('store (E3): a rejection right after reset returns the stage and pointer re
     cleanup([id]);
   }
 });
+
+// Flag form of identifier events (E6, E7): `--set`, repeatable `--add`, and
+// `--set-path` build the event, so no input file is written.
+function storedState(id, machineId) {
+  return JSON.parse(fs.readFileSync(sessionFile(id), 'utf8')).stateByMachine[machineId].state;
+}
+
+test('flags (E6): --set and --set-path drive a run machine and --add records a list', () => {
+  const id = spawnTestSession('test-flags-run');
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai flags run-'));
+  try {
+    const start = runCli(['emit', id, 'merge-run@1', '--set', 'kind=start', '--set-path', 'dir=' + runDir]);
+    assert.equal(start.exitCode, 0, start.stderr);
+    assert.equal(JSON.parse(start.stdout).run.status, 'running');
+    assert.equal(storedState(id, 'merge-run@1').dir, runDir);
+
+    const stop = runCli(['emit', id, 'merge-run@1', '--set', 'kind=stop', '--set', 'stop=2']);
+    assert.equal(stop.exitCode, 0, stop.stderr);
+    assert.equal(storedState(id, 'merge-run@1').stop, '2');
+
+    const record = runCli(['emit', id, 'merge-run@1', '--set=kind=record', '--set=ref=report-dir', '--set-path', 'path=' + runDir]);
+    assert.equal(record.exitCode, 0, record.stderr);
+    assert.deepEqual(storedState(id, 'merge-run@1').report_dirs, [runDir]);
+
+    const added = runCli(['emit', id, 'explore-idea@1', '--add', 'recordedList=first', '--add', 'recordedList=second.2']);
+    assert.equal(added.exitCode, 0, added.stderr);
+    assert.deepEqual(storedState(id, 'explore-idea@1').ideaList, ['first', 'second.2']);
+
+    const emptied = runCli(['emit', id, 'explore-idea@1', '--add', 'recordedList=']);
+    assert.equal(emptied.exitCode, 0, emptied.stderr);
+    assert.deepEqual(storedState(id, 'explore-idea@1').ideaList, []);
+  } finally {
+    fs.rmSync(runDir, { recursive: true, force: true });
+    cleanup([id]);
+  }
+});
+
+test('flags (E6): a malformed flag is a usage error that changes nothing and a rejected path names --input-file', () => {
+  const id = spawnTestSession('test-flags-invalid');
+  try {
+    runCli(['emit', id, 'merge-run@1', '--set', 'kind=start', '--set-path', 'dir=' + os.tmpdir()]);
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    const cases = [
+      ['--set', 'kind'],
+      ['--set', 'kind='],
+      ['--set', '1kind=start'],
+      ['--set', 'ki-nd=start'],
+      ['--set', 'kind=has space'],
+      ['--set', 'kind=-start'],
+      ['--add', 'recordedList=has space'],
+      ['--set'],
+      ['--set-path', 'path='],
+    ];
+    for (const flags of cases) {
+      const result = runCli(['emit', id, 'merge-run@1', ...flags]);
+      assert.equal(result.exitCode, 2, JSON.stringify(flags));
+      assert.equal(result.stdout, '', JSON.stringify(flags));
+    }
+    for (const bad of ['a"b', 'a$b', 'a`b', 'a\tb', 'a\nb']) {
+      const result = runCli(['emit', id, 'merge-run@1', '--set', 'kind=record', '--set-path', 'path=' + bad]);
+      assert.equal(result.exitCode, 2, JSON.stringify(bad));
+      assert.match(result.stderr, /--input-file/, JSON.stringify(bad));
+    }
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'no usage error changed the store');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('flags (E7): the flags refuse every other event source and a field named twice', () => {
+  const id = spawnTestSession('test-flags-conflict');
+  const eventFile = path.join(os.tmpdir(), 'sai-flags-event-' + Date.now() + '.json');
+  fs.writeFileSync(eventFile, JSON.stringify({ kind: 'status' }));
+  try {
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    const cases = [
+      ['--input-file', eventFile, '--set', 'kind=status'],
+      ['-', '--set', 'kind=status'],
+      ['--progress', '--set', 'kind=status'],
+      ['--ready-to-propose', '--set', 'kind=status'],
+      ['--set', 'kind=status', '--set', 'kind=start'],
+      ['--set', 'recordedList=a', '--add', 'recordedList=b'],
+      ['--add', 'recordedList=b', '--set', 'recordedList=a'],
+      ['--set', 'kind=status', '--set-path', 'kind=' + os.tmpdir()],
+      ['--set', 'kind=status', 'extra'],
+    ];
+    for (const flags of cases) {
+      const result = runCli(['emit', id, 'merge-run@1', ...flags], '{}');
+      assert.equal(result.exitCode, 2, JSON.stringify(flags));
+      assert.equal(result.stdout, '', JSON.stringify(flags));
+    }
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'no usage error changed the store');
+  } finally {
+    fs.rmSync(eventFile, { force: true });
+    cleanup([id]);
+  }
+});
+
+function shellAvailable(command, args) {
+  const probe = spawnSync(command, args, { encoding: 'utf8' });
+  return probe.status === 0 ? probe : null;
+}
+
+const BASH = shellAvailable('bash', ['-c', 'true']) ? 'bash' : null;
+const POWERSHELL = (() => {
+  const probe = shellAvailable('pwsh', ['-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.Major']);
+  return probe && Number(probe.stdout.trim()) >= 7 ? 'pwsh' : null;
+})();
+
+test('flags (I10): the flag form runs through Bash', { skip: BASH ? false : 'Bash is not installed' }, () => {
+  const id = spawnTestSession('test-flags-bash');
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai flags bash-'));
+  try {
+    const slashes = (value) => value.replace(/\\/g, '/');
+    const script = 'node "' + slashes(SAI_STATE_TOOL) + '" emit ' + id + ' merge-run@1 --set kind=start --set-path dir="' + slashes(runDir) + '"';
+    const result = spawnSync(BASH, ['-c', script], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).run.status, 'running');
+    assert.equal(storedState(id, 'merge-run@1').dir, slashes(runDir));
+  } finally {
+    fs.rmSync(runDir, { recursive: true, force: true });
+    cleanup([id]);
+  }
+});
+
+test('flags (I10): the flag form runs through PowerShell 7', { skip: POWERSHELL ? false : 'PowerShell 7 is not installed' }, () => {
+  const id = spawnTestSession('test-flags-pwsh');
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai flags pwsh-'));
+  try {
+    const script = '& node "' + SAI_STATE_TOOL + '" emit ' + id + ' merge-run@1 --set kind=start --set-path dir="' + runDir + '"';
+    const result = spawnSync(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.equal(JSON.parse(result.stdout).run.status, 'running');
+    assert.equal(storedState(id, 'merge-run@1').dir, runDir);
+  } finally {
+    fs.rmSync(runDir, { recursive: true, force: true });
+    cleanup([id]);
+  }
+});

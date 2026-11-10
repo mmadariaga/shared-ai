@@ -39,9 +39,14 @@ Every `ready-to-propose.js check` call that the instructions prescribe for a blo
 
 ### Requirement: Non-block deliveries keep stdin
 
-Events that are not blocks, such as intents, `step_ids`, and progress payloads, SHALL travel as input files per `sai/policies/stage-machine.md` § Event delivery: the JSON written with the harness-native file-write tool to a unique file in a `transfer.js open` directory and passed with `--input-file <path>`, with the stdin `-` form still accepted by the tool but not prescribed. `sai/commands/explore/steps/issue-intake.md` § Conversion SHALL describe the `ready-to-propose.js convert` input delivery itself: the issue text exactly as it entered the conversation, written as literal text with the harness-native file-write tool in a directory from `transfer.js open` and passed with `--input-file <path>`, with no heredoc, here-string, or stdin pipe.
+Events that are not blocks SHALL travel per `sai/policies/stage-machine.md` § Event delivery. Identifier events, such as intents, recorded lists, and `step_ids`, SHALL travel as `sai-state emit` flags (`--set <field>=<id>`, repeatable `--add <field>=<id>`, `--set-path <field>="<path>"`). An event that holds free text or a path the flags reject, and a progress payload sent in its input form, SHALL travel as an input file: the JSON written with the harness-native file-write tool to a unique file in a `transfer.js open` directory and passed with `--input-file <path>`, with the stdin `-` form still accepted by the tool but not prescribed. `sai/commands/explore/steps/issue-intake.md` § Conversion SHALL describe the `ready-to-propose.js convert` input delivery itself: the issue text exactly as it entered the conversation, written as literal text with the harness-native file-write tool in a directory from `transfer.js open` and passed with `--input-file <path>`, with no heredoc, here-string, or stdin pipe.
 
 #### Scenario: Conversion keeps its stdin delivery
 
 - **WHEN** Explore runs `ready-to-propose.js convert` on an imported issue
 - **THEN** it passes the issue text in an input file as `issue-intake.md` § Conversion describes, without citing the block emit delivery of `stage-machine.md`
+
+#### Scenario: Explore intent travels as flags
+
+- **WHEN** an Explore stage-event turn emits an intent to `explore-idea@1`
+- **THEN** it sends `--set intent=<name>` with no input file

@@ -159,7 +159,7 @@ test('the plan commands deliver the first filed pointer with the task message an
   const cycle = readRepo('sai/commands/plan/cycle.md');
   assert.match(cycle, /`reset` the segment's step machine; the response names the first filed step/);
   assert.match(cycle, /The task message opens with `Active step: <stage> — follow <next\.follow>`/);
-  assert.match(cycle, /emit `\{"step_ids": \[\.\.\.\]\}` to the machine/);
+  assert.match(cycle, /emit the step ids to the machine/);
   for (const [name, machineId] of [['spec', 'spec-steps@1'], ['design', 'design-steps@1']]) {
     const coordinator = readRepo(`sai/commands/${name}/coordinator.md`);
     assert.ok(coordinator.includes(machineId), `${name} coordinator should reset ${machineId}`);

@@ -136,7 +136,7 @@ The store SHALL operate as a local-only service with no HTTP server, no listenin
 - **THEN** the session file is deleted immediately with no tombstone delay, graceful shutdown period, or lingering liveness window
 
 ### Requirement: Event delivery on stdin
-Except for the Ready to Propose block file form and the progress reference mode, the `emit` verb SHALL read its event JSON from the file named by `--input-file <path>` when that option is given, and otherwise only from stdin, marked by `-` as the third and last positional argument; with `--input-file`, the third positional argument SHALL be absent or `-`, and the input file SHALL win over stdin. It SHALL read the input as UTF-8 through the shared input reader `sai/tools/input-reader.js`. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized input text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. In the progress reference mode (`--report-dir`, `--report-file`, and `--report-hash`, all three together) it SHALL read neither an input file nor stdin: it SHALL verify the reference and validate those verified bytes, and a partial reference, or a reference beside `--input-file` or `-`, SHALL be a usage error with exit code 2. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
+Except for the identifier flag form, the Ready to Propose block file form, and the progress reference mode, the `emit` verb SHALL read its event JSON from the file named by `--input-file <path>` when that option is given, and otherwise only from stdin, marked by `-` as the third and last positional argument; with `--input-file`, the third positional argument SHALL be absent or `-`, and the input file SHALL win over stdin. It SHALL read the input as UTF-8 through the shared input reader `sai/tools/input-reader.js`. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized input text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. In the progress reference mode (`--report-dir`, `--report-file`, and `--report-hash`, all three together) it SHALL read neither an input file nor stdin: it SHALL verify the reference and validate those verified bytes, and a partial reference, or a reference beside `--input-file` or `-`, SHALL be a usage error with exit code 2. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
 - the id or machine id is missing;
 - without `--input-file`, the third positional argument is not `-`;
 - any positional argument follows `-`;
@@ -152,7 +152,7 @@ A missing, unreadable, or empty input file SHALL exit 2 with a stderr message th
 - **THEN** the process exits 2 without reading stdin, writes no JSON payload to stdout, and writes a stderr message showing the `--input-file <path>` form
 
 #### Scenario: Missing marker or extra arguments is a usage error
-- **WHEN** the caller invokes `emit <id> <machineId>` without `-` and without `--input-file`, or `emit <id> <machineId> - extra`
+- **WHEN** the caller invokes `emit <id> <machineId>` without `-`, without `--input-file`, and without any event flag, or `emit <id> <machineId> - extra`
 - **THEN** the process exits 2
 
 #### Scenario: Payload with spaces and degraded characters is accepted
@@ -325,3 +325,33 @@ The registry SHALL NOT register `recovery-ledger@1`, and the repository SHALL NO
 
 - **WHEN** `emit <id> recovery-ledger@1` is called with a valid event
 - **THEN** the response carries `error: "UNKNOWN_MACHINE"` with exit code 1
+
+### Requirement: Identifier events built from flags
+
+The `emit` verb SHALL build one event from command-line flags when the invocation carries `--set`, `--add`, or `--set-path`, and SHALL then read neither an input file nor stdin. `--set <field>=<id>` SHALL set one value; repeatable `--add <field>=<id>` SHALL append to a list in flag order, and `--add <field>=` SHALL record an empty list; `--set-path <field>=<path>` SHALL set a path. Each flag SHALL accept its argument either as the next argument or joined with `=`, and a repeated flag SHALL add to the event rather than overwrite an earlier one. A field name SHALL start with a letter followed by letters, digits, or `_`. A `--set` or `--add` value SHALL match the `ID_PATTERN` that `sai-state/machines/run-core.js` exports and `bin/sai-state.js` imports, so the flag parser and the run machines share one identifier rule. A `--set-path` value SHALL be non-empty and SHALL hold no `"`, `$`, backtick, or control character. The event SHALL carry at least one field. The flag forms SHALL be the same for Claude Code and opencode.
+
+Each of these SHALL be a usage error that exits 2, writes no JSON payload, changes no state, and writes a stderr message stating that no transition occurred and showing the flag form: a flag without `<field>=<value>`, an invalid field name, a `--set` or `--add` value outside `ID_PATTERN`, a rejected `--set-path` value, a field set twice with `--set` or `--set-path`, a field named both by `--add` and by `--set` or `--set-path`, a missing id or machine id, and any flag combined with `--input-file`, stdin `-`, `--progress`, or `--ready-to-propose`. The message for a rejected `--set-path` value SHALL name `--input-file` as the alternative. The CLI usage text SHALL list the flag form.
+
+#### Scenario: Flags drive a run machine
+- **WHEN** the caller invokes `emit <id> <machineId> --set kind=start --set-path dir="<run-dir>"`, or records a list with one `--add <field>=<id>` per entry
+- **THEN** the process exits 0, the machine receives the event built from the flags, and repeated `--add` values arrive as one list in flag order
+
+#### Scenario: Empty list from a bare add
+- **WHEN** the caller passes `--add recordedList=`
+- **THEN** the event carries `recordedList` as an empty list
+
+#### Scenario: Malformed flag changes nothing
+- **WHEN** a `--set` value does not match `ID_PATTERN`, a field name does not start with a letter, or a flag lacks `<field>=<value>`
+- **THEN** the process exits 2, writes no JSON payload, and the session is unchanged
+
+#### Scenario: Rejected path names the input file
+- **WHEN** a `--set-path` value holds `"`, `$`, a backtick, or a control character
+- **THEN** the process exits 2, the session is unchanged, and the stderr message names `--input-file` as the alternative
+
+#### Scenario: Flags refuse every other event source
+- **WHEN** the flags are combined with `--input-file`, stdin `-`, `--progress`, or `--ready-to-propose`, or one field is set twice with `--set`, or named by both `--set` and `--add`
+- **THEN** the process exits 2 and the session is unchanged
+
+#### Scenario: Flag form runs through both supported shells
+- **WHEN** the flag form is run through Bash and through PowerShell 7
+- **THEN** both runs apply the same event with no quoting or escaping beyond the double-quoted `--set-path` value

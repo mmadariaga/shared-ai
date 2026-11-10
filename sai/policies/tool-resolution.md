@@ -123,7 +123,10 @@ takes one — never substitute one for the other.
   It prints JSON and takes neither `--json` nor `--cwd`.
 - `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
-  `--json` nor `--cwd`. The progress emit (`emit <id> <machineId> --progress
+  `--json` nor `--cwd`. An identifier-event emit is built from flags
+  (`emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...]
+  [--set-path <field>="<path>"]`); `--input-file <path>` carries an event that
+  holds free text or a path the flags reject. The progress emit (`emit <id> <machineId> --progress
   --report-dir <dir> --report-file <path> --report-hash <sha256>`, or
   `--progress --input-file <path>`) loads the validator module
   itself, relative to the resolved `sai-state.js`, so it needs no separate
