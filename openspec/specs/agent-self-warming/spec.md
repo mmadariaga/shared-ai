@@ -47,19 +47,32 @@ An agent whose `begin` returned timings SHALL, before ending each turn with its 
 
 ### Requirement: Wake performs no work
 
-On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged and reply `ok`; on `finished` it SHALL reply `ok` and arm nothing. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered `ok`, and from then on the agent SHALL answer every wake with `ok` and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting.
+On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged and reply `ok`, except that a worker whose last real message was a result (a message that carries the reference of a saved report) and that has received no real message since SHALL reply with that last message verbatim (the same reference and the same `warming:` line, and nothing else) instead of `ok`; on `finished` it SHALL reply `ok` and arm nothing. The repeat SHALL compose nothing new, SHALL NOT be a new real message, and SHALL restart no window. Once the dispatcher sends the worker a real message, the worker's wakes SHALL reply `ok` again. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered `ok`, and from then on the agent SHALL answer every wake with `ok` and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting.
 
 #### Scenario: Continue wake re-arms
-- **WHEN** a wait completes with status `continue`
+
+- **WHEN** a wait completes with status `continue` and the agent has no unconfirmed result to repeat
 - **THEN** the agent re-arms with the unchanged state token and replies only `ok`
 
 #### Scenario: Dispose message ends warming
+
 - **WHEN** an agent receives the message `dispose`
 - **THEN** it replies `ok`, arms no further wait, and answers each later wake of a wait it armed with `ok` alone
 
 #### Scenario: Setting turned off while warming
+
 - **WHEN** the `warming` setting turns the agent off while its wait is armed and the agent re-arms after a wake
 - **THEN** the re-armed wait returns `finished` and the agent replies `ok` and arms nothing
+
+#### Scenario: Worker repeats an unconfirmed result on a wake
+
+- **WHEN** a worker whose last real message carried a report reference has received no real message since and a wait completes with status `continue`
+- **THEN** the worker re-arms and replies with that last message verbatim instead of `ok`
+
+#### Scenario: A real message ends the repeat
+
+- **WHEN** the dispatcher has sent the worker a real message after the worker's last result and a wait completes with status `continue`
+- **THEN** the worker re-arms and replies only `ok`
 
 ### Requirement: Bounded warming window
 
