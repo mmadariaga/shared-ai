@@ -1,0 +1,34 @@
+{
+  "corpus": "fixture-corpus",
+  "rounds": 2,
+  "timeLimitSeconds": 60,
+  "configurations": [
+    {
+      "id": "claude-plan-haiku",
+      "harness": "claude",
+      "route": "plan",
+      "env": ["ANTHROPIC_API_KEY"],
+      "models": {
+        "sai-3-red-worker": { "model": "haiku", "effort": "medium" },
+        "sai-3-green-worker": { "model": "haiku", "effort": "medium" }
+      }
+    },
+    {
+      "id": "opencode-plan-small",
+      "harness": "opencode",
+      "route": "plan",
+      "env": ["OPENCODE_API_KEY"],
+      "models": {
+        "sai-3-red-worker": { "model": "vendor/small", "variant": "max" },
+        "sai-3-green-worker": { "model": "vendor/small", "variant": "max" }
+      }
+    }
+  ],
+  "prices": {
+    "date": "2026-11-01",
+    "models": {
+      "haiku": { "inputPerMTok": 1, "outputPerMTok": 5 },
+      "vendor/small": { "inputPerMTok": 0.2, "outputPerMTok": 0.8 }
+    }
+  }
+}

@@ -1,0 +1,159 @@
+'use strict';
+
+// Execution backend of the benchmark: one fresh Docker container per run.
+// A backend exposes `run({ corpus, configuration, brief, route, timeLimitMs })` and returns
+// what it observed: { output, wallMs, timedOut?, infraError?, suite? } (see classify.js).
+// The hidden suite enters the container only after the agents have finished.
+
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const { ROUTES } = require('./corpus');
+const { hashBlock } = require('../sai/tools/ready-to-propose.js');
+
+const IMAGE = 'sai-benchmark';
+const SUITE_TIMEOUT_MS = 10 * 60 * 1000;
+const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
+const COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
+const SUITE_RESULT_LINE = /^SUITE_RESULT\s+(\{.*\})\s*$/;
+const BRIEF_DIR = '/tmp/benchmark-brief';
+
+/** Run a process without a shell; collect its output; kill it at the time limit. */
+function runProcess(command, args, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const stdout = [];
+    const stderr = [];
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, timeoutMs);
+    child.stdout.on('data', (chunk) => stdout.push(chunk));
+    child.stderr.on('data', (chunk) => stderr.push(chunk));
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ code: null, stdout: '', stderr: error.message, timedOut: false, wallMs: Date.now() - started });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ code, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8'), timedOut, wallMs: Date.now() - started });
+    });
+  });
+}
+
+/** The command a run launches inside its container. */
+function launchCommand({ harness, prompt }) {
+  return harness === 'claude'
+    ? ['claude', '-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
+    : ['opencode', 'run', '--format', 'json', prompt];
+}
+
+function launchPrompt({ route, brief, blockHash }) {
+  const command = ROUTES[route].command;
+  return route === 'plan' ? `${command} ${brief.changeName}` : `${command} --block-file ${BRIEF_DIR}/block.md --block-hash ${blockHash}`;
+}
+
+function parseSuiteResult(stdout) {
+  for (const line of stdout.split(/\r?\n/).reverse()) {
+    const match = SUITE_RESULT_LINE.exec(line.trim());
+    if (!match) continue;
+    try {
+      const { passed, total } = JSON.parse(match[1]);
+      if (Number.isInteger(passed) && Number.isInteger(total) && passed >= 0 && total >= passed) return { passed, total };
+    } catch {
+      // Falls through to the error below.
+    }
+    break;
+  }
+  return { error: 'the suite command printed no valid SUITE_RESULT line' };
+}
+
+class DockerBackend {
+  constructor({ checkoutDir, dockerBinary = 'docker', environment = process.env, exec = runProcess }) {
+    this.checkoutDir = path.resolve(checkoutDir);
+    this.dockerBinary = dockerBinary;
+    this.environment = environment;
+    this.exec = exec;
+  }
+
+  docker(args, options) {
+    return this.exec(this.dockerBinary, args, options);
+  }
+
+  /** Build the image once; a failure here stops the whole benchmark. */
+  async prepare() {
+    const result = await this.docker(['build', '-t', IMAGE, path.join(this.checkoutDir, 'benchmark')], { timeoutMs: SETUP_TIMEOUT_MS });
+    if (result.code !== 0) throw new Error(`Building the benchmark image failed: ${result.stderr.trim() || result.stdout.trim()}`);
+  }
+
+  async step(name, args, options) {
+    const result = await this.docker(args, options);
+    if (result.code !== 0) throw new Error(`${name} failed: ${(result.stderr || result.stdout).trim()}`);
+    return result;
+  }
+
+  async prepareContainer(name, { corpus, configuration, brief, route }, scratch) {
+    const missing = configuration.env.filter((variable) => !this.environment[variable]);
+    if (missing.length > 0) throw new Error(`credential environment variable ${missing.join(', ')} is not set`);
+
+    const envArgs = configuration.env.flatMap((variable) => ['-e', variable]);
+    await this.step('Starting the container', ['run', '-d', '--name', name, '-v', `${this.checkoutDir}:/opt/shared-ai:ro`, ...envArgs, IMAGE, 'sleep', 'infinity']);
+    await this.step('Copying the base project', ['cp', `${path.join(corpus.dir, 'project')}${path.sep}.`, `${name}:/work`]);
+    const owned = ['/work'];
+    if (route === 'plan') {
+      const planDir = `/work/openspec/changes/${brief.changeName}`;
+      await this.step('Creating the plan folder', ['exec', name, 'mkdir', '-p', planDir]);
+      await this.step('Copying the fixed plan', ['cp', `${path.join(brief.dir, 'plan')}${path.sep}.`, `${name}:${planDir}`]);
+    } else {
+      owned.push(BRIEF_DIR);
+      await this.step('Creating the brief folder', ['exec', name, 'mkdir', '-p', BRIEF_DIR]);
+      await this.step('Copying the brief block', ['cp', path.join(brief.dir, 'block.md'), `${name}:${BRIEF_DIR}/block.md`]);
+    }
+    await this.step('Setting ownership', ['exec', '-u', 'root', name, 'chown', '-R', 'dev:dev', ...owned]);
+
+    const setupFile = path.join(scratch, 'setup.json');
+    fs.writeFileSync(setupFile, JSON.stringify({ harness: configuration.harness, project: '/work', checkout: '/opt/shared-ai', models: configuration.models }));
+    await this.step('Copying the setup', ['cp', setupFile, `${name}:/tmp/benchmark-setup.json`]);
+    await this.step('Installing SAI', ['exec', name, 'node', '/opt/shared-ai/benchmark/container-setup.js', '/tmp/benchmark-setup.json'], { timeoutMs: SETUP_TIMEOUT_MS });
+    const cli = await this.docker(['exec', name, 'sh', '-c', `command -v ${configuration.harness}`]);
+    if (cli.code !== 0) throw new Error(`the ${configuration.harness} CLI is missing in the image`);
+  }
+
+  async runSuite(name, brief) {
+    await this.step('Copying the hidden suite', ['cp', `${path.join(brief.dir, 'acceptance')}${path.sep}.`, `${name}:/acceptance`]);
+    await this.step('Setting suite ownership', ['exec', '-u', 'root', name, 'chown', '-R', 'dev:dev', '/acceptance']);
+    const result = await this.docker(['exec', '-w', '/work', name, ...brief.suiteCommand], { timeoutMs: SUITE_TIMEOUT_MS });
+    return result.timedOut ? { error: 'the suite command exceeded its time limit' } : parseSuiteResult(result.stdout);
+  }
+
+  async run(run) {
+    const { configuration, brief, route, timeLimitMs } = run;
+    const name = `sai-benchmark-${crypto.randomBytes(6).toString('hex')}`;
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-benchmark-'));
+    try {
+      try {
+        await this.prepareContainer(name, run, scratch);
+      } catch (error) {
+        return { infraError: error.message, wallMs: 0 };
+      }
+      const blockHash = hashBlock(fs.readFileSync(path.join(brief.dir, 'block.md'), 'utf8'));
+      const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, blockHash }) });
+      const agents = await this.docker(['exec', '-w', '/work', name, ...command], { timeoutMs: timeLimitMs });
+      if (agents.timedOut) return { timedOut: true, output: agents.stdout, wallMs: agents.wallMs };
+      try {
+        return { output: agents.stdout, exitCode: agents.code, wallMs: agents.wallMs, suite: await this.runSuite(name, brief) };
+      } catch (error) {
+        return { infraError: error.message, wallMs: agents.wallMs };
+      }
+    } finally {
+      await this.docker(['rm', '-f', name]);
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }
+}
+
+module.exports = { DockerBackend, IMAGE, launchCommand, launchPrompt, parseSuiteResult, runProcess };
