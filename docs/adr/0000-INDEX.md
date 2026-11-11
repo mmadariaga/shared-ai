@@ -557,6 +557,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0216 — Main-session warming needs a harness session id, and warming ends as the code says](./0216-main-session-warming-needs-a-session-id.md) — **Amends** 0212
 - [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
 - [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
+- [0219 — Coordinators recover undelivered worker reports with a background watch](./0219-coordinators-recover-undelivered-worker-reports-with-a-background-watch.md) — Refs 0214, Refs 0218
 
 ### Testability routing & RED → GREEN
 

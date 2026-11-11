@@ -13,7 +13,7 @@
       "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
       "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
-      "coordinator": { "extends": "boot", "search": true, "write": "temp", "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/transfer.js open *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "node {skills}/sai-cache-warmer/wait.js *"] },
+      "coordinator": { "extends": "boot", "search": true, "write": "temp", "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/transfer.js open *", "node {sai}/tools/transfer.js accept *", "node {sai}/tools/transfer.js watch *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "node {skills}/sai-cache-warmer/wait.js *"] },
       "audit-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations", "fetch"] },
       "security-command": { "extends": "audit-command", "delegate": ["sai-5-security-worker"] },
       "performance-command": { "extends": "audit-command", "delegate": ["sai-6-performance-worker"] },

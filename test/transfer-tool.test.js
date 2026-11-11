@@ -370,3 +370,130 @@ test('every worker card that spells the report put command saves with --exclusiv
   assert.doesNotMatch(read('sai/commands/backfill/worker.md'), /put --dir <transfer-dir>[^`]*--exclusive/);
   assert.doesNotMatch(read('sai/policies/ready-to-propose-format.md'), /--exclusive/);
 });
+
+// ─── accept and watch: recovery of undelivered worker reports ────────────────
+
+function age(file, milliseconds) {
+  const when = new Date(Date.now() - milliseconds);
+  fs.utimesSync(file, when, when);
+}
+
+test('accept records a verified reference once and reports a repeat as already recorded', () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'completed-1.json', Buffer.from('one'), { exclusive: true });
+    assert.deepEqual(transfer.accept(dir, saved, { check: true }), { path: saved.path, sha256: saved.sha256, already: false, recorded: false });
+    assert.deepEqual(transfer.accept(dir, saved), { path: saved.path, sha256: saved.sha256, already: false, recorded: true });
+    assert.deepEqual(transfer.accept(dir, saved), { path: saved.path, sha256: saved.sha256, already: true, recorded: false });
+    assert.equal(transfer.accept(dir, saved, { check: true }).already, true);
+    assert.equal(fs.readFileSync(path.join(dir, transfer.LEDGER), 'utf8').trim().split('\n').length, 1, 'the ledger holds the reference once');
+    assert.equal(transfer.accept(dir, { path: saved.path, sha256: sha('other') }, { check: true }).already, false, 'a different hash is a different reference');
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('accept verifies the reference: a missing file, a wrong hash, and the reserved names fail the check', () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'completed-1.json', Buffer.from('one'), { exclusive: true });
+    assert.throws(() => transfer.accept(dir, { path: saved.path, sha256: sha('wrong') }), /sha256 differs/);
+    assert.throws(() => transfer.accept(dir, { path: path.join(dir, 'absent.json'), sha256: sha('x') }), /missing/);
+    assert.throws(() => transfer.accept(dir, { path: path.join(dir, transfer.LEDGER), sha256: sha('x') }), /outside the transfer directory/);
+    assert.throws(() => transfer.put(dir, transfer.LEDGER, Buffer.from('x')), /reserved name/);
+    assert.equal(fs.existsSync(path.join(dir, transfer.LEDGER)), false, 'a failed accept records nothing');
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('watch returns the unrecorded reports in creation order once the settle delay has passed', async () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const first = transfer.put(dir, 'completed-a.json', Buffer.from('a'), { exclusive: true });
+    const second = transfer.put(dir, 'completed-b.json', Buffer.from('b'), { exclusive: true });
+    fs.writeFileSync(path.join(dir, 'completed-c.draft.json'), 'draft');
+    age(first.path, 120000);
+    age(second.path, 90000);
+    age(path.join(dir, 'completed-c.draft.json'), 120000);
+    const found = await transfer.watch(dir, { settleMs: 60000, maxMs: 1000, pollMs: 10 });
+    assert.equal(found.ended, 'found');
+    assert.deepEqual(found.reports.map(report => path.basename(report.path)), ['completed-a.json', 'completed-b.json']);
+    assert.deepEqual(found.reports.map(report => report.sha256), [sha('a'), sha('b')], 'the tool computes the hash');
+    transfer.accept(dir, first);
+    const rest = await transfer.watch(dir, { settleMs: 60000, maxMs: 1000, pollMs: 10 });
+    assert.deepEqual(rest.reports, [second], 'an accepted reference is not reported again');
+    transfer.accept(dir, second);
+    assert.deepEqual(await transfer.watch(dir, { settleMs: 0, maxMs: 30, pollMs: 10 }), { reports: [], ended: 'max' });
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('watch treats a report younger than the settle delay as in flight and sees it once it has settled', async () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const young = transfer.put(dir, 'completed-1.json', Buffer.from('young'), { exclusive: true });
+    assert.deepEqual(await transfer.watch(dir, { settleMs: 60000, maxMs: 40, pollMs: 10 }), { reports: [], ended: 'max' });
+    let at = Date.now();
+    const sleeps = [];
+    const settled = await transfer.watch(dir, {
+      settleMs: 60000, maxMs: 120000, pollMs: 1000,
+      now: () => at,
+      sleep: async milliseconds => { sleeps.push(milliseconds); at += 40000; },
+    });
+    assert.deepEqual(settled.reports, [young]);
+    assert.ok(sleeps.length >= 1 && sleeps.every(milliseconds => milliseconds <= 1000), 'it polls inside the process');
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('watch ends at its maximum without a report, and ends empty when the directory is closed under it', async () => {
+  const { dir } = transfer.open('claude');
+  const started = Date.now();
+  assert.deepEqual(await transfer.watch(dir, { settleMs: 0, maxMs: 60, pollMs: 20 }), { reports: [], ended: 'max' });
+  assert.ok(Date.now() - started >= 50, 'it waited for the maximum');
+  let polls = 0;
+  const closing = await transfer.watch(dir, { settleMs: 0, maxMs: 60000, pollMs: 10, sleep: async () => { if (++polls === 2) transfer.close(dir); } });
+  assert.deepEqual(closing, { reports: [], ended: 'closed' });
+  await assert.rejects(transfer.watch(dir, { maxMs: 10 }), /absolute path|existing directory/);
+});
+
+test('the watch and accept sub-commands run from the command line with duration flags', () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'completed-1.json', Buffer.from('cli'), { exclusive: true });
+    age(saved.path, 5000);
+    const found = cli(['watch', '--dir', dir, '--settle', '1s', '--max', '2s', '--poll', '50ms']);
+    assert.equal(found.status, 0, found.stderr);
+    assert.equal(found.json.ok, true);
+    assert.equal(found.json.command, 'watch');
+    assert.deepEqual(found.json.reports, [saved]);
+    const accepted = cli(['accept', '--dir', dir, '--path', saved.path, '--sha256', saved.sha256]);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    assert.equal(accepted.json.recorded, true);
+    assert.equal(cli(['accept', '--dir', dir, '--path', saved.path, '--sha256', saved.sha256, '--check']).json.already, true);
+    const none = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms']);
+    assert.deepEqual(none.json.reports, []);
+    assert.equal(none.json.ended, 'max');
+    for (const bad of [['--settle', '60'], ['--max', 'soon'], ['--poll', '1d']]) {
+      const refused = cli(['watch', '--dir', dir, ...bad]);
+      assert.equal(refused.status, 2, bad.join(' '));
+      assert.match(refused.json.error, /whole number followed by ms, s, m, or h/);
+    }
+    assert.equal(cli(['watch']).status, 2, 'watch needs --dir');
+    assert.equal(cli(['watch', '--dir', path.join(dir, 'missing')]).status, 1);
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('the watch defaults are 60 seconds to settle and 30 minutes to the maximum', () => {
+  const source = fs.readFileSync(TOOL, 'utf8');
+  assert.match(source, /DEFAULT_SETTLE_MS = 60 \* 1000/);
+  assert.match(source, /DEFAULT_MAX_MS = 30 \* 60 \* 1000/);
+  assert.equal(transfer.parseDuration('60s', '--settle'), 60000);
+  assert.equal(transfer.parseDuration('30m', '--max'), 1800000);
+  assert.equal(transfer.parseDuration('0', '--settle'), 0);
+});

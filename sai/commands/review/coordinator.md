@@ -66,6 +66,8 @@ summary: string
 changed_files: string[]
 ```
 
+**Undelivered reports.** While you wait for the worker's result, follow `worker-report-transport.md` § Undelivered reports: watch the report directory, ignore a reference you already accepted, and record each reference you process.
+
 A `completed` report without `outcome` carries the review's role fields; the validator admits no `outcome` but `no-changes` for this command. A `needs_input` or `cancelled` report is an obstacle of the run, because the review asks nothing and is never told to abandon.
 
 For a progress report, pass its reference to the machine with `sai-state emit <id> review-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>` (the first progress report carries `review-intake` and `establish-diff-scope`). The emit verifies the reference and validates those bytes before it advances the machine; a response whose `validation.ok` is `false` means the report is invalid (delivery failed or the content is outside the schema) and the machine did not advance, and you handle it like any other invalid report. After an accepted progress report, send the worker `Active step: <stage> — follow <next.follow>` from the response. The store never gates the run: when the emit fails, send the next pointer from the static order.
