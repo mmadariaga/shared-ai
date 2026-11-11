@@ -113,6 +113,23 @@ An invalid report is an obstacle of the step under `@sai/policies/obstacle-escal
 - A second consecutive invalid report from that worker replaces it, per `@sai/policies/worker-lifecycle.md` § Dispose, with a hand-over the coordinator writes.
 - Each of these counts as one attempt of the obstacle, and the exhausted budget escalates as that policy says.
 
+## Undelivered reports
+
+A worker's report can be on disk while its reference never reaches the coordinator: the completion notification is lost, or the worker's turn ends with a wake `ok` or a message such as "Ending this turn" instead of the reference. The coordinator recovers the report without reading it, and this section is the single source of how; a coordinator points here and does not restate it. It applies to every worker that reports through this policy, on Claude Code and opencode alike, whether cache warming is on or off. It does not cover the `budget-*` helpers, which reply in text, or the `--no-specs` POC.
+
+Terms. **Accepted reference**: a reference the coordinator has dealt with: validated and processed, or, for a report that failed validation, returned to its author as invalid. **Ledger**: the reserved file `.sai-accepted` in the report directory, the only memory of accepted references. **Watch**: the background `transfer.js watch` process of one report directory, a different thing from a cache-warming wait.
+
+- **Record.** After you have processed a reference, run `node <tool-path> accept --dir <report-dir> --path <path> --sha256 <sha256>` (`transfer.js`, resolved per `@sai/policies/tool-resolution.md`). The ledger lives in the report directory that your run state already keeps, so after a compaction or a resumed run a reference in the ledger is not processed again.
+- **Duplicate.** Before you validate a reference, from the worker's message or from the watch, run the same call with `--check`. When it answers `already: true`, treat the reference like an `ok`: validate nothing, emit nothing, spend no attempt, send no continuation. A worker's wake can repeat its last result (`@sai/policies/cache-warming.md` § Wake), so a repeated reference is expected and costs nothing.
+- **Watch.** Each time you start waiting for the result of a worker, launch `node <tool-path> watch --dir <report-dir>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), with its defaults, whatever the warming setting. The process polls the directory itself, so no model turn runs while nothing happens. It exits with `reports`, the references of the reports in the directory that are not in the ledger and have settled, in creation order, or with an empty list at its maximum. A file whose name contains `.draft.` is a draft, never a report.
+- **Found.** When the watch ends with reports, process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the machine emit), the same invalid-report recovery with its obstacle attempt, then the record. A report that fails validation is recorded after you return it to its author, so the watch does not report it again.
+- **Empty.** When the watch ends with an empty list, launch it again. Send nothing to the worker and write nothing to the user.
+- **Stop.** When the result you wait for arrives by any path, stop the watch (Claude Code `TaskStop`, opencode removal of its shell). A later firing finds nothing new and has no effect. Stop it too before you dispose the worker and close the report directory.
+- **Not a result.** A worker message that is neither a reference nor `ok`, such as "Ending this turn", is not a result: keep waiting with the watch armed.
+- **Parallel workers.** Watch each report directory separately and attribute a report to the worker of its directory.
+- **No watch.** When the watch cannot be launched (no shell, permission refused), print one notice and go on without it: the run does not stop.
+- **Wakes.** Your own cache-warming wake keeps performing no work; only the watch looks for reports.
+
 ## Recovery and lifetime
 
 The goal is an accepted report of the work actually performed, with the ordinary step checks satisfied. Recover delivery or request a corrected report using the available evidence, as an obstacle under `@sai/policies/obstacle-escalation.md`. Choose an approach that can work; do not repeat a mechanism already shown to fail. Recoverable transport problems require no user instructions. Missing authority or facts needed for safe continuation require intervention.

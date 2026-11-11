@@ -37,7 +37,7 @@ The run is done when the merge or rebase is finalized, every conflict is resolve
 
 ## Worker reports
 
-The worker saves each report in the report directory and returns only `{path, sha256}` and its `warming` line. Before you read any field, validate each response after ready as `worker-report-transport.md` says (`worker-report-validator.js validate --kind terminal --command merge --json --report-dir <dir> --report-file <path> --report-hash <sha256>`) and act on the accepted `payload`. Hand on the accepted references' paths (the strategy report to `apply`, the apply report to `merge.js resolution`). A report that does not validate (an inline result, or a `blocked`, `done`, or `escalate` status) or that is `failed` is an obstacle of the step it answers, and a `failed` summary names the blocker and the path. The strategy report's `escalations` list, not its status, tells step 3's escalation.
+The worker returns only `{path, sha256}` and its `warming` line. While you wait, follow `worker-report-transport.md` § Undelivered reports. Before you read any field, validate each response after ready as it says (`worker-report-validator.js validate --kind terminal --command merge --json --report-dir <dir> --report-file <path> --report-hash <sha256>`) and act on the accepted `payload`. Hand on the accepted references' paths (the strategy report to `apply`, the apply report to `merge.js resolution`). A report that does not validate (an inline result, or a `blocked`, `done`, or `escalate` status) or that is `failed` is an obstacle of the step it answers, and a `failed` summary names the blocker and the path. The strategy report's `escalations` list, not its status, tells step 3's escalation.
 
 ## A conflict stop
 

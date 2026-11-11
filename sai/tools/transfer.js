@@ -29,6 +29,21 @@
  *       Verify, then copy the verified bytes to the destination (resolved
  *       against --cwd, default cwd, and required to stay inside it), creating
  *       missing parent directories.
+ *   accept --dir <dir> --path <absolute> --sha256 <hex> [--check]
+ *       Record a reference the coordinator has dealt with in the ledger `.sai-accepted`
+ *       inside `<dir>`, after verifying it like `verify`. Recording an already
+ *       recorded reference changes nothing. Returns `already` (it was recorded
+ *       before) and `recorded` (this call recorded it). With `--check` the call only
+ *       looks the reference up in the ledger: it reads no report, records nothing,
+ *       and answers `already`.
+ *   watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]
+ *       Poll `<dir>` inside this process (every `--poll`, default 5s) until it holds
+ *       a report that is not in the ledger and has been on disk for at least the
+ *       settle delay (default 60s), then print those references (`reports`, each
+ *       `{path, sha256}` with the hash computed here) in creation order and
+ *       exit, or print an empty `reports` list at `--max` (default 30m). A
+ *       duration is a whole number followed by ms, s, m, or h. Draft files
+ *       (`*.draft.*`), the marker, and the ledger are never reports.
  *   close --dir <dir>
  *       Remove only that transfer directory. A directory already gone is not
  *       an error.
@@ -50,6 +65,11 @@ const { makeTempDir, TempRootError } = require('./temp-root');
 const { readInputBytes } = require('./input-reader');
 
 const MARKER = '.sai-transfer';
+const LEDGER = '.sai-accepted';
+const RESERVED = [MARKER, LEDGER];
+const DEFAULT_SETTLE_MS = 60 * 1000;
+const DEFAULT_MAX_MS = 30 * 60 * 1000;
+const DEFAULT_POLL_MS = 5 * 1000;
 const DIR_PREFIX = 'sai-transfer-';
 const DIR_NAME = /^sai-transfer-[A-Za-z0-9]{6}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -113,7 +133,7 @@ function relativeSegments(value) {
   if (segments.some(segment => segment === '' || segment === '.' || segment === '..')) {
     throw new UsageError('put --path must not contain empty, "." or ".." segments');
   }
-  if (segments[0] === MARKER) throw new UsageError(`put --path must not use the reserved name ${MARKER}`);
+  if (RESERVED.includes(segments[0])) throw new UsageError(`put --path must not use the reserved name ${segments[0]}`);
   return segments;
 }
 
@@ -167,7 +187,7 @@ function verify(dir, reference, { io = fs } = {}) {
   if (typeof target !== 'string' || !path.isAbsolute(target)) throw new CheckError('Reference path must be an absolute path');
   if (typeof sha256 !== 'string' || !SHA256.test(sha256)) throw new CheckError('Reference sha256 must be 64 lowercase hex characters');
   const resolved = path.resolve(target);
-  if (!within(root, resolved) || path.relative(root, resolved).split(path.sep)[0] === MARKER) {
+  if (!within(root, resolved) || RESERVED.includes(path.relative(root, resolved).split(path.sep)[0])) {
     throw new CheckError('Reference path lies outside the transfer directory');
   }
   let current = root;
@@ -186,6 +206,118 @@ function verify(dir, reference, { io = fs } = {}) {
   }
   if (sha256Of(bytes) !== sha256) throw new CheckError('Referenced transfer file sha256 differs from the reference');
   return { path: resolved, sha256, bytes };
+}
+
+const referenceKey = (target, sha256) => `${path.resolve(target)}\n${sha256}`;
+
+/** The references recorded in the ledger of a transfer directory, as a set of keys. */
+function readLedger(root, { io = fs } = {}) {
+  let text;
+  try {
+    text = io.readFileSync(path.join(root, LEDGER), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return new Set();
+    throw error;
+  }
+  const keys = new Set();
+  for (const line of text.split('\n')) {
+    if (line === '') continue;
+    try {
+      const entry = JSON.parse(line);
+      if (typeof entry.path === 'string' && typeof entry.sha256 === 'string') keys.add(referenceKey(entry.path, entry.sha256));
+    } catch (error) { /* a torn line is not a reference */ }
+  }
+  return keys;
+}
+
+/**
+ * Record a reference in the ledger of the transfer directory. The reference is verified first
+ * (inside the directory, a regular file, matching sha256). With `check` nothing is read or
+ * recorded: the call answers whether the reference is already in the ledger.
+ */
+function accept(dir, reference, { io = fs, check = false } = {}) {
+  const root = checkTransferDir(dir, { io });
+  const { path: target, sha256 } = reference;
+  if (check) {
+    if (typeof target !== 'string' || !path.isAbsolute(target)) throw new CheckError('Reference path must be an absolute path');
+    if (typeof sha256 !== 'string' || !SHA256.test(sha256)) throw new CheckError('Reference sha256 must be 64 lowercase hex characters');
+    return { path: path.resolve(target), sha256, already: readLedger(root, { io }).has(referenceKey(target, sha256)), recorded: false };
+  }
+  const verified = verify(dir, reference, { io });
+  const already = readLedger(root, { io }).has(referenceKey(verified.path, sha256));
+  if (!already) io.appendFileSync(path.join(root, LEDGER), `${JSON.stringify({ path: verified.path, sha256 })}\n`, { mode: 0o600 });
+  return { path: verified.path, sha256, already, recorded: !already };
+}
+
+/** Parse a duration written as a whole number and a unit (ms, s, m, h); a bare 0 is 0 ms. */
+function parseDuration(value, flag) {
+  const match = /^(\d+)(ms|s|m|h)?$/.exec(String(value));
+  if (!match || (match[2] === undefined && match[1] !== '0')) throw new UsageError(`${flag} must be a whole number followed by ms, s, m, or h`);
+  const unit = { ms: 1, s: 1000, m: 60 * 1000, h: 60 * 60 * 1000 }[match[2] || 'ms'];
+  return Number(match[1]) * unit;
+}
+
+/** Regular files of the directory (any depth) that can be reports, in creation order. */
+function candidateReports(root, io) {
+  const found = [];
+  const walk = current => {
+    for (const entry of io.readdirSync(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (current === root && RESERVED.includes(entry.name)) continue;
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) walk(target);
+      else if (entry.isFile() && !entry.name.includes('.draft.')) {
+        const stat = lstatOrNull(target, io);
+        if (stat && stat.isFile()) found.push({ target, name: path.relative(root, target), created: stat.birthtimeMs > 0 ? stat.birthtimeMs : stat.mtimeMs, modified: stat.mtimeMs });
+      }
+    }
+  };
+  walk(root);
+  return found.sort((a, b) => a.created - b.created || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/** The references of the reports that are not in the ledger and have been on disk for the settle delay. */
+function undelivered(root, settleMs, io, at) {
+  const ledger = readLedger(root, { io });
+  const references = [];
+  for (const candidate of candidateReports(root, io)) {
+    if (at - candidate.modified < settleMs) continue;
+    let bytes;
+    try {
+      bytes = io.readFileSync(candidate.target);
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    const sha256 = sha256Of(bytes);
+    if (!ledger.has(referenceKey(candidate.target, sha256))) references.push({ path: candidate.target, sha256 });
+  }
+  return references;
+}
+
+const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+/**
+ * Wait until the directory holds an undelivered report or `maxMs` has passed. The process owns the
+ * polling, so the caller spends no model turn while nothing happens. A directory that disappears
+ * ends the watch with an empty list.
+ */
+async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS, pollMs = DEFAULT_POLL_MS, io = fs, now = Date.now, sleep = defaultSleep } = {}) {
+  const root = checkTransferDir(dir, { io });
+  const deadline = now() + maxMs;
+  for (;;) {
+    let reports;
+    try {
+      reports = undelivered(root, settleMs, io, now());
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return { reports: [], ended: 'closed' };
+      throw error;
+    }
+    if (reports.length > 0) return { reports, ended: 'found' };
+    const remaining = deadline - now();
+    if (remaining <= 0) return { reports: [], ended: 'max' };
+    await sleep(Math.min(pollMs, remaining));
+  }
 }
 
 /** Copy verified bytes to a destination inside `cwd`. */
@@ -223,13 +355,15 @@ function usage() {
     '  node transfer.js put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]   (content in the input file, else on stdin)',
     '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
+    '  node transfer.js accept --dir <dir> --path <absolute> --sha256 <hex> [--check]',
+    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]',
     '  node transfer.js close --dir <dir>',
     '',
     'Exit codes: 0 = success; 1 = check failure; 2 = usage error or IO failure.',
   ].join('\n');
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--settle': 'settle', '--max': 'max', '--poll': 'poll' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -238,6 +372,10 @@ function parseArgs(argv) {
     if (arg === '--help' || arg === '-h') return { help: true };
     if (arg === '--exclusive') {
       opts.exclusive = true;
+      continue;
+    }
+    if (arg === '--check') {
+      opts.check = true;
       continue;
     }
     if (FLAGS[arg]) {
@@ -279,6 +417,9 @@ function execute(opts) {
     case 'materialize':
       require_(opts, ['dir', 'path', 'sha256', 'destination']);
       return materialize(opts.dir, { path: opts.path, sha256: opts.sha256 }, opts.destination, { cwd: opts.cwd || process.cwd() });
+    case 'accept':
+      require_(opts, ['dir', 'path', 'sha256']);
+      return accept(opts.dir, { path: opts.path, sha256: opts.sha256 }, { check: opts.check === true });
     case 'close':
       require_(opts, ['dir']);
       return close(opts.dir);
@@ -306,6 +447,29 @@ function main(argv) {
   }
 }
 
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+/** Run any sub-command; `watch` is the only one that waits. */
+async function run(argv) {
+  const parsed = parseArgs(argv);
+  if (parsed.help || parsed.error || !parsed.opts || parsed.opts.command !== 'watch') return main(argv);
+  const { opts } = parsed;
+  const respond = (payload, code) => {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return code;
+  };
+  try {
+    require_(opts, ['dir']);
+    const result = await watch(opts.dir, {
+      settleMs: opts.settle === undefined ? DEFAULT_SETTLE_MS : parseDuration(opts.settle, '--settle'),
+      maxMs: opts.max === undefined ? DEFAULT_MAX_MS : parseDuration(opts.max, '--max'),
+      pollMs: opts.poll === undefined ? DEFAULT_POLL_MS : Math.max(1, parseDuration(opts.poll, '--poll')),
+    });
+    return respond({ ok: true, command: 'watch', ...result }, 0);
+  } catch (error) {
+    if (error instanceof CheckError) return respond({ ok: false, command: 'watch', check: 'failed', error: error.message }, 1);
+    return respond({ ok: false, command: 'watch', error: error.message }, 2);
+  }
+}
 
-module.exports = { MARKER, CheckError, UsageError, checkTransferDir, open, put, verify, materialize, close, parseArgs, main };
+if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });
+
+module.exports = { MARKER, LEDGER, CheckError, UsageError, checkTransferDir, open, put, verify, accept, watch, parseDuration, materialize, close, parseArgs, main, run };
