@@ -770,7 +770,10 @@ test('the policy keeps the reduced rule set: switch, begin, arm after every resp
   assert.match(policy, /exactly `ok`[\s\S]{0,300}not a real message/);
   assert.match(policy, /Claude Code `Bash` with `run_in_background: true`[\s\S]*opencode shell with `background: true`/);
   assert.match(policy, /`max` minutes have passed since your last real message, whether or not anyone disposed you/);
-  assert.match(policy, /answer every wake with `ok` and arm nothing again/);
+  assert.match(policy, /answer every wake with `ok` and arm nothing again/, 'after a dispose every wake replies ok');
+  assert.match(policy, /replies to a `continue` wake with that message instead of `ok`/, 'an unconfirmed result is repeated on a wake');
+  assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply `ok` again/);
+  assert.match(policy, /A wake performs no work\./, 'the coordinator wake keeps performing no work');
   assert.match(policy, /## Warming diagnostic[\s\S]*It gates no stop and no dispatch/);
   assert.match(policy, /except, on opencode, the one of each worker's last real message, which decides whether a `none` listing still needs the `dispose` message/);
   assert.match(policy, /`budget-subagent` receives it only on a continuation/);
