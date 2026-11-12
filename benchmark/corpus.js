@@ -9,6 +9,7 @@ const ROUTES = Object.freeze({
   'direct-build': Object.freeze({ command: '/sai-direct-build', closingLiteral: 'Direct build done.' }),
 });
 const MODEL_SETTING_KEYS = Object.freeze({ claude: ['model', 'effort'], opencode: ['model', 'variant'] });
+const OPTIONAL_PRICE_KEYS = Object.freeze(['cacheReadPerMTok', 'cacheWrite5mPerMTok', 'cacheWrite1hPerMTok']);
 const DEFAULT_ROUNDS = 10;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const ENV_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -87,6 +88,10 @@ function validatePrices(prices, problems) {
   for (const [model, price] of Object.entries(prices.models)) {
     if (!isObject(price) || !(price.inputPerMTok >= 0) || !(price.outputPerMTok >= 0)) {
       problems.push(`prices: ${model} needs inputPerMTok and outputPerMTok`);
+      continue;
+    }
+    for (const key of OPTIONAL_PRICE_KEYS) {
+      if (price[key] !== undefined && !(typeof price[key] === 'number' && price[key] >= 0)) problems.push(`prices: ${model}: ${key} must be a number of at least 0`);
     }
   }
 }
