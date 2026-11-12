@@ -126,6 +126,30 @@ test('repository root checks accept equivalent native paths but reject subdirect
   assert.match(refused.payload.error, /--cwd must be the repository root/);
 });
 
+test('preflight returns a worktree_id that is stable across path spellings and differs between worktrees', t => {
+  const { cwd, parent } = fixture(t);
+  const id = merge.preflight(cwd).data.worktree_id;
+  assert.match(id, /^[0-9a-f]{16}$/);
+  assert.equal(merge.preflight(cwd).data.worktree_id, id, 'stable across invocations');
+  assert.equal(cli(cwd, ['preflight']).payload.data.worktree_id, id, 'same value through the CLI');
+  if (process.platform === 'win32') {
+    for (const spelling of [cwd.toUpperCase(), cwd.toLowerCase()]) {
+      assert.equal(merge.preflight(spelling).data.worktree_id, id, spelling);
+    }
+    // The CLI normalizes --cwd, so it is the entry that takes separator spellings.
+    for (const spelling of [cwd.replace(/\\/g, '/'), cwd.replace(/\//g, '\\'), cwd.replace(/\\/g, '/').toUpperCase()]) {
+      const run = cli(spelling, ['preflight']);
+      assert.equal(run.status, 0, run.stderr || run.payload.error);
+      assert.equal(run.payload.data.worktree_id, id, spelling);
+    }
+  }
+  const linked = path.join(parent, 'linked');
+  git(cwd, ['worktree', 'add', '--detach', linked, 'HEAD']);
+  const other = merge.preflight(linked).data.worktree_id;
+  assert.match(other, /^[0-9a-f]{16}$/);
+  assert.notEqual(other, id, 'two worktrees of one repository get different ids');
+});
+
 test('repository root checks use native realpaths when legacy resolution retains a short-name alias', t => {
   const { cwd, parent } = fixture(t);
   const aliased = cwd + path.sep;
