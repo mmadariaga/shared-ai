@@ -144,6 +144,7 @@ Use these workflows alongside the main pipeline in Claude Code and opencode.
 |---------|---------|
 | [`/sai-commit`](docs/commands/sai-commit.md) | Draft a message for staged changes and commit after approval. |
 | [`/sai-backfill`](docs/commands/sai-backfill.md) | Reconstruct proposal/specs from a code-first change. |
+| [`/sai-direct-build`](docs/commands/sai-direct-build.md) | Build a change from a stored `Ready to Propose` block file in one unattended run, with one local commit. |
 | [`/sai-merge`](docs/commands/sai-merge.md) | Merge, rebase, or squash-rebase with conflict resolution and decision-record repair. |
 | [`/sai-worktree`](docs/commands/sai-worktree.md) | Create or remove separate Git working folders so you can work on changes in parallel. |
 | [`/sai-status`](docs/commands/sai-status.md) | Check progress for one change or all active changes without modifying files. |

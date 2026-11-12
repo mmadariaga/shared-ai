@@ -43,6 +43,10 @@
     "model": "openai/gpt-6.1-sol",
     "variant": "high"
   },
+  "command:sai-direct-build": {
+    "model": "openai/gpt-6.1-sol",
+    "variant": "high"
+  },
   "command:sai-3-implement": {
     "model": "openai/gpt-6.1-sol",
     "variant": "high"

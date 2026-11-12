@@ -43,6 +43,10 @@
     "model": "claude-agent/opus",
     "variant": "medium"
   },
+  "command:sai-direct-build": {
+    "model": "claude-agent/opus",
+    "variant": "medium"
+  },
   "command:sai-3-implement": {
     "model": "claude-agent/opus",
     "variant": "medium"
