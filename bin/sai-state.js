@@ -682,7 +682,9 @@ function buildFlagEvent(flags) {
     if (lists.has(field)) return { error: 'field "' + field + '" is named by --add and by --set or --set-path' };
     if (scalars.has(field)) return { error: 'field "' + field + '" is set more than once' };
     if (entry.flag === 'set') {
-      if (!ID_PATTERN.test(value)) return { error: '--set value for "' + field + '" is not an identifier (' + ID_PATTERN + ')' };
+      if (!ID_PATTERN.test(value)) {
+        return { error: '--set value for "' + field + '" is not an identifier (' + ID_PATTERN + '); use --set-path ' + field + '="<value>"' };
+      }
     } else if (value === '' || FLAG_PATH_FORBIDDEN.test(value)) {
       return { error: '--set-path value for "' + field + '" is empty or holds a double quote, $, a backtick, or a control character; send this event with --input-file instead' };
     }

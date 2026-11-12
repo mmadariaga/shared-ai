@@ -330,7 +330,7 @@ The registry SHALL NOT register `recovery-ledger@1`, and the repository SHALL NO
 
 The `emit` verb SHALL build one event from command-line flags when the invocation carries `--set`, `--add`, or `--set-path`, and SHALL then read neither an input file nor stdin. `--set <field>=<id>` SHALL set one value; repeatable `--add <field>=<id>` SHALL append to a list in flag order, and `--add <field>=` SHALL record an empty list; `--set-path <field>=<path>` SHALL set a path. Each flag SHALL accept its argument either as the next argument or joined with `=`, and a repeated flag SHALL add to the event rather than overwrite an earlier one. A field name SHALL start with a letter followed by letters, digits, or `_`. A `--set` or `--add` value SHALL match the `ID_PATTERN` that `sai-state/machines/run-core.js` exports and `bin/sai-state.js` imports, so the flag parser and the run machines share one identifier rule. A `--set-path` value SHALL be non-empty and SHALL hold no `"`, `$`, backtick, or control character. The event SHALL carry at least one field. The flag forms SHALL be the same for Claude Code and opencode.
 
-Each of these SHALL be a usage error that exits 2, writes no JSON payload, changes no state, and writes a stderr message stating that no transition occurred and showing the flag form: a flag without `<field>=<value>`, an invalid field name, a `--set` or `--add` value outside `ID_PATTERN`, a rejected `--set-path` value, a field set twice with `--set` or `--set-path`, a field named both by `--add` and by `--set` or `--set-path`, a missing id or machine id, and any flag combined with `--input-file`, stdin `-`, `--progress`, or `--ready-to-propose`. The message for a rejected `--set-path` value SHALL name `--input-file` as the alternative. The CLI usage text SHALL list the flag form.
+Each of these SHALL be a usage error that exits 2, writes no JSON payload, changes no state, and writes a stderr message stating that no transition occurred and showing the flag form: a flag without `<field>=<value>`, an invalid field name, a `--set` or `--add` value outside `ID_PATTERN`, a rejected `--set-path` value, a field set twice with `--set` or `--set-path`, a field named both by `--add` and by `--set` or `--set-path`, a missing id or machine id, and any flag combined with `--input-file`, stdin `-`, `--progress`, or `--ready-to-propose`. The message for a `--set` value outside `ID_PATTERN` SHALL name `--set-path <field>="<value>"` for that field as the correction. The message for a rejected `--set-path` value SHALL name `--input-file` as the alternative. The CLI usage text SHALL list the flag form.
 
 #### Scenario: Flags drive a run machine
 - **WHEN** the caller invokes `emit <id> <machineId> --set kind=start --set-path dir="<run-dir>"`, or records a list with one `--add <field>=<id>` per entry
@@ -343,6 +343,10 @@ Each of these SHALL be a usage error that exits 2, writes no JSON payload, chang
 #### Scenario: Malformed flag changes nothing
 - **WHEN** a `--set` value does not match `ID_PATTERN`, a field name does not start with a letter, or a flag lacks `<field>=<value>`
 - **THEN** the process exits 2, writes no JSON payload, and the session is unchanged
+
+#### Scenario: Non-identifier set value names set-path
+- **WHEN** a `--set` value for a field, such as a branch with a space or a directory path, does not match `ID_PATTERN`
+- **THEN** the process exits 2 with no stdout, the session is unchanged, and the stderr message names `--set-path <field>="<value>"` for that field and states that no transition occurred
 
 #### Scenario: Rejected path names the input file
 - **WHEN** a `--set-path` value holds `"`, `$`, a backtick, or a control character

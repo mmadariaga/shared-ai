@@ -31,7 +31,7 @@ The `sai-state` registry SHALL register a `merge-run@1` machine built on the sha
 
 ### Requirement: Merge run session and run directory
 
-The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{branch}` and SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, reviews, hand-over files, the worker's report drafts, the obstacle, finding, and assumption files, and every diagnostic scratch file the run writes. Right after `start`, it SHALL open one report directory for the worker's saved reports with `transfer.js open --harness <claude|opencode>` and emit `record` (`report-dir`) with the returned directory, so a replacement worker and a resumed run reuse it; when either tool reports an error the coordinator SHALL print it, emit `close` with outcome `stopped` once the run has started, and end the run before anything is launched. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove`, and the report directory closed with `transfer.js close`, only when the run completed, and the removal SHALL target only this run's own directory, the `dir` of its `start` event; no other directory of the SAI temp root SHALL be removed, and the directory of an earlier stopped run SHALL stay. A stopped, escalated, or unanswered run SHALL keep both directories and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue.
+The merge coordinator SHALL keep one `sai-state` session per run under the key `merge-{worktree_id}-{branch}`, where `worktree_id` is the value the `merge.js preflight` of the same invocation returns, so two worktrees, or two repositories, that integrate a branch of the same name never share a session; Claude Code and opencode SHALL use the same key. It SHALL create the run directory with `temp-root.js mkdtemp --harness <claude|opencode> --prefix merge-`, outside the repository, holding the provenance, baseline, reviews, hand-over files, the worker's report drafts, the obstacle, finding, and assumption files, and every diagnostic scratch file the run writes. Right after `start`, it SHALL open one report directory for the worker's saved reports with `transfer.js open --harness <claude|opencode>` and emit `record` (`report-dir`) with the returned directory, so a replacement worker and a resumed run reuse it; when either tool reports an error the coordinator SHALL print it, emit `close` with outcome `stopped` once the run has started, and end the run before anything is launched. A completed or stopped run SHALL NOT block the next `start`. The run directory SHALL be removed with `temp-root.js remove`, and the report directory closed with `transfer.js close`, only when the run completed, and the removal SHALL target only this run's own directory, the `dir` of its `start` event; no other directory of the SAI temp root SHALL be removed, and the directory of an earlier stopped run SHALL stay. A stopped, escalated, or unanswered run SHALL keep both directories and the report SHALL say where. When a state emit still fails after two retries with a corrected delivery form, the coordinator SHALL keep the same facts in `run-state.md` in the run directory and continue. A `rejected` emit that says `run is not running` or `run is not started` after `start` SHALL count as a failing emit with no retry: the run left the store, so the coordinator SHALL keep the facts in `run-state.md` with no new `spawn` or `start` and SHALL state the store loss in the closing report.
 
 #### Scenario: Completed run removes its directory
 
@@ -47,6 +47,16 @@ The merge coordinator SHALL keep one `sai-state` session per run under the key `
 
 - **WHEN** a run closes `completed` while the directory of an earlier stopped run of the same branch still exists
 - **THEN** only the completed run's own directory is removed and the earlier directory stays
+
+#### Scenario: Two worktrees keep separate sessions
+
+- **WHEN** two worktrees of the same repository run `/sai-merge` for the same branch at the same time
+- **THEN** each run keeps its session under its own `merge-{worktree_id}-{branch}` key, and neither run reads, closes, nor deletes the other's state
+
+#### Scenario: Store loss uses the run-state fallback
+
+- **WHEN** an emit after `start` is rejected with `run is not running` or `run is not started`
+- **THEN** the coordinator keeps the run's facts in `run-state.md` without a new `spawn` or `start` or a state rebuild, and the closing report states the store loss
 
 ### Requirement: Interrupted merge run resumes from the store and the git state
 

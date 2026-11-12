@@ -1163,6 +1163,24 @@ test('flags (E6): a malformed flag is a usage error that changes nothing and a r
   }
 });
 
+test('flags: a --set value that is not an identifier points to --set-path for that field and changes nothing', () => {
+  const id = spawnTestSession('test-flags-set-hint');
+  try {
+    runCli(['emit', id, 'merge-run@1', '--set', 'kind=start', '--set-path', 'dir=' + os.tmpdir()]);
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    for (const [machine, field, value] of [['merge-run@1', 'branch', 'feature/x y'], ['merge-run@1', 'dir', os.tmpdir()]]) {
+      const result = runCli(['emit', id, machine, '--set', 'kind=launch', '--set', field + '=' + value]);
+      assert.equal(result.exitCode, 2, field);
+      assert.equal(result.stdout, '', field);
+      assert.ok(result.stderr.includes('--set-path ' + field + '="<value>"'), result.stderr);
+      assert.match(result.stderr, /no transition occurred/);
+    }
+    assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before, 'no transition occurred');
+  } finally {
+    cleanup([id]);
+  }
+});
+
 test('flags (E7): the flags refuse every other event source and a field named twice', () => {
   const id = spawnTestSession('test-flags-conflict');
   const eventFile = path.join(os.tmpdir(), 'sai-flags-event-' + Date.now() + '.json');
