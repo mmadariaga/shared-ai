@@ -5,6 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { BenchmarkError } = require('./corpus');
 const { classifyRun } = require('./classify');
+const { summarizeRun } = require('./cost');
 
 const INFO_FILE = 'benchmark-info.json';
 const RUNS_DIR = 'runs';
@@ -103,6 +104,7 @@ async function runBenchmark({ corpus, outDir, backend, provenance, log = () => {
       route: configuration.route,
       wallMs: raw.wallMs ?? 0,
       ...classifyRun(raw, configuration),
+      ...summarizeRun(raw.usage, configuration.harness, corpus.prices),
     };
     writeJsonAtomic(file, result);
     results.push(result);

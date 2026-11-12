@@ -16,7 +16,7 @@ The outcome benchmark SHALL run from a `shared-ai` checkout through `bin/benchma
 
 ### Requirement: Corpus validation before the first run
 
-The runner SHALL validate the whole corpus before it builds any backend or launches any run: `benchmark.json` with a non-empty corpus identifier, a mandatory positive per-run time limit, at least one configuration, unique configuration ids, and a price table with a `YYYY-MM-DD` date and a per-model input and output price; a `project/` folder; and a `briefs/` folder whose every brief holds a `block.md` with a `Change name` line, a non-empty `plan/` folder, and an `acceptance/suite.json` with a non-empty command. Each configuration SHALL name a supported harness (`claude` or `opencode`), a route (`plan` or `direct-build`), the names of its credential environment variables, and a model for at least one worker role of that harness, using only that harness's tunable keys (`model` and `effort` on Claude Code, `model` and `variant` on opencode). Every problem found SHALL be reported together in one stop. The price table SHALL be checked for shape only, so a configured model without a price is valid.
+The runner SHALL validate the whole corpus before it builds any backend or launches any run: `benchmark.json` with a non-empty corpus identifier, a mandatory positive per-run time limit, at least one configuration, unique configuration ids, and a price table with a `YYYY-MM-DD` date and a per-model input and output price; a `project/` folder; and a `briefs/` folder whose every brief holds a `block.md` with a `Change name` line, a non-empty `plan/` folder, and an `acceptance/suite.json` with a non-empty command. Each configuration SHALL name a supported harness (`claude` or `opencode`), a route (`plan` or `direct-build`), the names of its credential environment variables, and a model for at least one worker role of that harness, using only that harness's tunable keys (`model` and `effort` on Claude Code, `model` and `variant` on opencode). A price entry MAY carry `cacheReadPerMTok`, `cacheWrite5mPerMTok`, and `cacheWrite1hPerMTok`; each one present SHALL be a number of at least 0. Every problem found SHALL be reported together in one stop. The price table SHALL be checked for shape only, so a configured model without a price is valid.
 
 #### Scenario: Missing time limit stops the benchmark before anything launches
 
@@ -27,6 +27,11 @@ The runner SHALL validate the whole corpus before it builds any backend or launc
 
 - **WHEN** a configuration names a model that the price table does not list
 - **THEN** the corpus validates
+
+#### Scenario: Invalid optional cache price
+
+- **WHEN** a price entry carries a `cacheReadPerMTok` that is negative or not a number
+- **THEN** the corpus does not validate, and the problem names the model and the key
 
 ### Requirement: Paired rounds
 
@@ -104,7 +109,7 @@ The runner SHALL write to an output folder given as an argument, and SHALL refus
 
 ### Requirement: Per-configuration report
 
-The runner SHALL write one Markdown report per configuration, built only from the saved output folder, carrying its report format version and the command that regenerates it. Each report SHALL record its provenance (the runner commit and the SAI installation commit, marked `+dirty` when the checkout has uncommitted changes, the corpus identifier, the price table date, the number of rounds, and the time limit), the configuration's harness, route, and models, the completed and missing run counts, the accepted count over judged runs, the rejected, escalated, and timeout counts, the total and per-run wall time, the number of runs with cancelled questions, and a per-run table. Runs classified `error` SHALL be listed separately and excluded from the accepted count, its total, and the wall time.
+The runner SHALL write one Markdown report per configuration, built only from the saved output folder, carrying its report format version and the command that regenerates it. Each report SHALL record its provenance (the runner commit and the SAI installation commit, marked `+dirty` when the checkout has uncommitted changes, the corpus identifier, the price table date, the number of rounds, and the time limit), the configuration's harness, route, and models, the completed and missing run counts, the accepted count over judged runs, the rejected, escalated, and timeout counts, the total and per-run wall time, the number of runs with cancelled questions, the input, output, cache-read, and cache-write tokens and the tool calls in total and per run, the cost in total and per priced run with the price table date and how many runs it leaves out for lacking a price, a per-model usage table, and a per-run table that also shows each run's tokens, tool calls, and cost. Runs classified `error` SHALL be listed separately and excluded from the accepted count, its total, the wall time, and the usage figures. Runs without usage data SHALL be counted apart and excluded from the token, tool-call, and cost figures.
 
 #### Scenario: Errors excluded from the accepted total
 
@@ -115,3 +120,41 @@ The runner SHALL write one Markdown report per configuration, built only from th
 
 - **WHEN** the report is generated from an interrupted benchmark
 - **THEN** each configuration's report states how many of its runs are missing
+
+#### Scenario: Cost covers only priced runs
+
+- **WHEN** a configuration has one run with a priced model and one run with a model that has no price
+- **THEN** its report shows the cost of the priced run and states that one run is left out for lacking a price
+
+### Requirement: Usage measured from the harness data
+
+When a run ends, the default execution backend SHALL copy the harness data out of the container before it removes the container, also for a run that timed out, and SHALL read it with the shared readers of the SAI tools (`sai/tools/claude-transcripts.js` for Claude Code, `sai/tools/opencode-db.js` for opencode). The root session and every subagent session SHALL count. The measurement SHALL hold, per recorded model, the request count, the requests without recorded usage, the input, output, cache-read, and cache-write tokens (opencode reasoning tokens counted as output), the tool calls, and the cost the harness recorded; it SHALL hold no session identifier, project path, or credential. When the harness data cannot be copied or read, the run SHALL keep its classification and its usage SHALL be absent.
+
+#### Scenario: Unreadable harness data keeps the classification
+
+- **WHEN** the harness data of a run cannot be copied or read
+- **THEN** the run keeps its classification and its result carries no usage
+
+#### Scenario: Timed-out run is still measured
+
+- **WHEN** a launch exceeds the run's time limit
+- **THEN** the harness data is copied and measured before the container is removed
+
+### Requirement: Run cost from the price table
+
+Each run result SHALL carry its usage with the cost already computed. On Claude Code the cost SHALL be estimated from the token counts of each recorded model and the corpus price table: cache writes pay the 5-minute or the 1-hour price as the transcript splits them, and a cache write the transcript does not split pays the 5-minute price. On opencode the cost SHALL be the cost recorded per message, and a model whose messages recorded no cost SHALL be priced from the table. A price entry SHALL match a recorded model when its key equals the model name, or else when the words of the key appear in the model name as one run, the longest key winning; two matching keys of the same length SHALL give no price. A model with no matching entry, or whose entry lacks the price of a token type the run used, SHALL have its cost shown as `no price`, never as zero, while its tokens, tool calls, and time are reported as usual, and a run with such a model SHALL have no total cost.
+
+#### Scenario: Model without a price
+
+- **WHEN** a run uses a model that no price table entry matches
+- **THEN** that model's cost and the run's total cost show `no price`, and its tokens and tool calls are reported
+
+#### Scenario: Price key matched by words
+
+- **WHEN** the price table has an entry `haiku` and the transcript records the model `claude-haiku-4-5-20251001`
+- **THEN** the run's Claude Code cost is computed from the `haiku` entry
+
+#### Scenario: Ambiguous price keys
+
+- **WHEN** two price table keys of the same word length both match a recorded model
+- **THEN** that model has no price

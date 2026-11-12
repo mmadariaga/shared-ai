@@ -12,6 +12,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { ROUTES } = require('./corpus');
 const { hashBlock } = require('../sai/tools/ready-to-propose.js');
+const { measureClaude, measureOpencode } = require('./measure');
 
 const IMAGE = 'sai-benchmark';
 const SUITE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -19,6 +20,11 @@ const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
 const COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
 const SUITE_RESULT_LINE = /^SUITE_RESULT\s+(\{.*\})\s*$/;
 const BRIEF_DIR = '/tmp/benchmark-brief';
+// Where each harness keeps its data for the container's unprivileged user.
+const HARNESS_DATA = Object.freeze({
+  claude: { container: '/home/dev/.claude/projects', local: 'projects', measure: measureClaude },
+  opencode: { container: '/home/dev/.local/share/opencode', local: 'opencode', measure: measureOpencode },
+});
 
 /** Run a process without a shell; collect its output; kill it at the time limit. */
 function runProcess(command, args, { timeoutMs = COMMAND_TIMEOUT_MS } = {}) {
@@ -123,6 +129,23 @@ class DockerBackend {
     if (cli.code !== 0) throw new Error(`the ${configuration.harness} CLI is missing in the image`);
   }
 
+  /**
+   * Copy the harness data out of the container and read its usage. A failure leaves the usage
+   * unmeasured with a fixed message, so no path of the host reaches the result.
+   */
+  async measureUsage(name, harness, scratch) {
+    const { container, local, measure } = HARNESS_DATA[harness];
+    const dataDir = path.join(scratch, 'harness-data');
+    try {
+      fs.mkdirSync(path.join(dataDir, local), { recursive: true });
+      const copied = await this.docker(['cp', `${name}:${container}/.`, path.join(dataDir, local)]);
+      if (copied.code !== 0) throw new Error('copy failed');
+      return measure(dataDir);
+    } catch {
+      return { error: `the ${harness} data copied from the container could not be read` };
+    }
+  }
+
   async runSuite(name, brief) {
     await this.step('Copying the hidden suite', ['cp', `${path.join(brief.dir, 'acceptance')}${path.sep}.`, `${name}:/acceptance`]);
     await this.step('Setting suite ownership', ['exec', '-u', 'root', name, 'chown', '-R', 'dev:dev', '/acceptance']);
@@ -143,11 +166,12 @@ class DockerBackend {
       const blockHash = hashBlock(fs.readFileSync(path.join(brief.dir, 'block.md'), 'utf8'));
       const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, blockHash }) });
       const agents = await this.docker(['exec', '-w', '/work', name, ...command], { timeoutMs: timeLimitMs });
-      if (agents.timedOut) return { timedOut: true, output: agents.stdout, wallMs: agents.wallMs };
+      const usage = await this.measureUsage(name, configuration.harness, scratch);
+      if (agents.timedOut) return { timedOut: true, output: agents.stdout, wallMs: agents.wallMs, usage };
       try {
-        return { output: agents.stdout, exitCode: agents.code, wallMs: agents.wallMs, suite: await this.runSuite(name, brief) };
+        return { output: agents.stdout, exitCode: agents.code, wallMs: agents.wallMs, usage, suite: await this.runSuite(name, brief) };
       } catch (error) {
-        return { infraError: error.message, wallMs: agents.wallMs };
+        return { infraError: error.message, wallMs: agents.wallMs, usage };
       }
     } finally {
       await this.docker(['rm', '-f', name]);
