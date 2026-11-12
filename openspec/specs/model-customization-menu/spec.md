@@ -599,3 +599,12 @@ An OpenCode failed discovery or cancelled settings attempt SHALL return to the c
 #### Scenario: Explicit retry restores targets
 - **WHEN** the user explicitly re-enters OpenCode customization in the same scope after failure or cancellation
 - **THEN** the checklist SHALL restore the confirmed subset and no writes SHALL occur until settings succeed
+
+### Requirement: Direct Build command customization target
+
+Both the Claude Code and opencode adapters SHALL expose `/sai-direct-build` as the command target `command:sai-direct-build`. Its target profile SHALL resolve to `Large` under `CONTEXT` and `↑↑↑` under `DIFFICULTY`. In All scope the logical pipeline order SHALL place `sai-direct-build` in the implementation phase directly after `sai-build` and before `sai-3-implement`.
+
+#### Scenario: Direct Build command sits between build and implement
+
+- **WHEN** the user enters the All checklist for either harness
+- **THEN** `command:sai-direct-build` appears after `command:sai-build` and before `command:sai-3-implement`, showing `Large` and `↑↑↑`

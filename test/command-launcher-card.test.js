@@ -19,6 +19,7 @@ const commands = [
   ['sai-build.md', 'build'],
   ['sai-commit.md', 'commit'],
   ['sai-deep-review.md', 'deep-review'],
+  ['sai-direct-build.md', 'direct-build'],
   ['sai-explore.md', 'explore'],
   ['sai-merge.md', 'merge'],
   ['sai-plan.md', 'plan'],
@@ -35,7 +36,7 @@ const commands = [
 const AUDIT_WRAPPERS = new Set(['sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md']);
 const DIRECT_COORDINATOR = new Set([
   'sai-1-spec.md', 'sai-2-design.md', 'sai-plan.md', 'sai-3-implement.md', 'sai-4-review.md', 'sai-build.md',
-  'sai-deep-review.md', 'sai-merge.md', 'sai-commit.md', 'sai-archive.md', 'sai-backfill.md', ...AUDIT_WRAPPERS,
+  'sai-deep-review.md', 'sai-direct-build.md', 'sai-merge.md', 'sai-commit.md', 'sai-archive.md', 'sai-backfill.md', ...AUDIT_WRAPPERS,
 ]);
 const BODY_WRAPPERS = new Set(['sai-explore.md', 'sai-retire-docs.md', 'sai-retrospective.md', 'sai-status.md', 'sai-worktree.md']);
 function activeWrapperCommands(harness) {
@@ -253,6 +254,7 @@ const DIRECT_COORDINATOR_COORDINATOR = {
   'sai-4-review.md': 'Fetch `@sai/commands/review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-build.md': 'Fetch `@sai/commands/build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-deep-review.md': 'Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-direct-build.md': 'Fetch `@sai/commands/direct-build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-merge.md': 'Fetch `@sai/commands/merge/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-commit.md': 'Fetch `@sai/commands/commit/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-archive.md': 'Fetch `@sai/commands/archive/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below.',
@@ -370,12 +372,12 @@ test('final wrappers: all known labelled argument lines are absent after the env
   }
 });
 
-test('final wrappers: source wrapper directories contain 21 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 22 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 21, `${harness} should retain exactly 21 sai wrappers`);
-    assert.equal(files.length, 25, `${harness} wrapper directory should contain 25 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 22, `${harness} should retain exactly 22 sai wrappers`);
+    assert.equal(files.length, 26, `${harness} wrapper directory should contain 26 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);

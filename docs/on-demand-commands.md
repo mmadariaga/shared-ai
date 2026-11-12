@@ -12,6 +12,7 @@ are in the [backlog command reference](backlog-commands.md).
 | [`/sai-plan`](commands/sai-plan.md) | Prepare, check, and review specs and design in one run, with a local commit per segment and an optional draft PR/MR offer. |
 | [`/sai-build`](commands/sai-build.md) | Implement, review, and apply the fixes it selects, with local commits authorized by invocation. |
 | [`/sai-deep-review`](commands/sai-deep-review.md) | Review, run relevant audits, and automatically apply the fixes it judges justified, with local commits. |
+| [`/sai-direct-build`](commands/sai-direct-build.md) | Implement, review, backfill, archive, and commit one local change from a `Ready to Propose` block file: `/sai-direct-build --block-file <path> --block-hash <sha256>`. Unattended; never pushes. |
 | [`/sai-commit`](commands/sai-commit.md) | Draft a message for staged changes and commit after your approval. |
 | [`/sai-merge`](commands/sai-merge.md) | Integrate a branch locally: `/sai-merge [<branch>] [--rebase\|--squash]`. Asks only at the start (branch, method, autostash) and on escalation; never pushes. |
 | [`/sai-archive`](commands/sai-archive.md) | Sync specs, archive a completed change, and offer a local commit. |
