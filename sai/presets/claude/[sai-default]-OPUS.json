@@ -43,6 +43,10 @@
     "model": "opus",
     "effort": "medium"
   },
+  "command:sai-direct-build": {
+    "model": "opus",
+    "effort": "medium"
+  },
   "command:sai-3-implement": {
     "model": "opus",
     "effort": "medium"

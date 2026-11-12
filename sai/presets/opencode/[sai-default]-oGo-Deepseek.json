@@ -43,6 +43,10 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
+  "command:sai-direct-build": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
   "command:sai-3-implement": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"

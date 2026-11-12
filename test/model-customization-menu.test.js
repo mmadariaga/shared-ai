@@ -148,6 +148,7 @@ const OPENCODE_COMMANDS = [
   'sai-commit',
   'sai-context-cache-ttl-benchmark',
   'sai-deep-review',
+  'sai-direct-build',
   'sai-explore',
   'sai-merge',
   'sai-plan',

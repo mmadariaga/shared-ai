@@ -50,6 +50,7 @@ rather than treating model families and effort levels as one ordered scale.
       ORCHESTRATOR  sai-plan                     Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
 
       ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+      ORCHESTRATOR  sai-direct-build             Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
       ORCHESTRATOR  sai-3-implement              Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-3-red-worker             Medium   ↑           opencode-go/deepseek-v4.1-flash (max)
       WORKER        sai-3-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)

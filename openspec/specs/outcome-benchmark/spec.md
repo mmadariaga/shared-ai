@@ -58,12 +58,17 @@ The default execution backend SHALL build the run image once per benchmark from 
 
 ### Requirement: Route launch commands
 
-A plan-route run SHALL launch `/sai-3-implement <change>`, and a Direct Build-route run SHALL launch `/sai-direct-build --block-file <path> --block-hash <sha256>` with the hash of the brief's block. On Claude Code the launch SHALL use `claude -p` with `--output-format stream-json --verbose`; on opencode it SHALL use `opencode run --format json`.
+A plan-route run SHALL launch `/sai-3-implement <change>`, and a Direct Build-route run SHALL launch `/sai-direct-build --block-file <path> --block-hash <sha256>` with the hash of the brief's block. The Direct Build route's command SHALL be the shipped `/sai-direct-build` command, and the closing literal the runner reads for that route SHALL be the `Direct build done.` line that command prints on completion. On Claude Code the launch SHALL use `claude -p` with `--output-format stream-json --verbose`; on opencode it SHALL use `opencode run --format json`.
 
 #### Scenario: Plan route on opencode
 
 - **WHEN** an opencode configuration of the plan route runs a brief whose change name is `greeting`
 - **THEN** the launch is `opencode run --format json` with the prompt `/sai-3-implement greeting`
+
+#### Scenario: Direct Build route matches the command's closing literal
+
+- **WHEN** the runner classifies a Direct Build-route run
+- **THEN** it launches `/sai-direct-build` and looks for `Direct build done.`, the same literal the command's coordinator card prints
 
 ### Requirement: Hidden suite after the run
 

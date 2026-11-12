@@ -13,6 +13,7 @@
     "sai-build.md",
     "sai-commit.md",
     "sai-deep-review.md",
+    "sai-direct-build.md",
     "sai-explore.md",
     "sai-merge.md",
     "sai-plan.md",
@@ -92,6 +93,10 @@
         "Fetch `@skills/fetch/SKILL.md`",
         "Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
+      "sai-direct-build.md": [
+        "Fetch `@skills/fetch/SKILL.md`",
+        "Fetch `@sai/commands/direct-build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
       "sai-status.md": [
         "Fetch `@skills/fetch/SKILL.md`",
         "Fetch `@sai/commands/status/body.md` and follow it exactly, forwarding the InvocationEnvelope block below."
@@ -170,6 +175,10 @@
       "sai-deep-review.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch `@sai/commands/deep-review/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
+      "sai-direct-build.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch `@sai/commands/direct-build/coordinator.md` and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-status.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
