@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync, spawn, spawnSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const { prepare, waitOnce, intervalMilliseconds } = require('../skills/universal/sai-cache-warmer/wait');
 const { expandInstallManifest } = require('../bin/install-manifest');
 
@@ -639,45 +639,54 @@ test('I3 a stale chain lock is removed, and a check reads the record under the l
 });
 
 test('E4 one wait per chain stays alive: the check reuses the live wait and a replacement retires it', async t => {
-  const tempRoot = require('../sai/tools/temp-root');
-  const saiRoot = tempRoot.resolveTempRoot('claude');
-  const session = `process-${warmer.newChainId()}`;
-  const { chain } = warmer.beginOnce({ role: 'agent', provider: 'process-test', harness: 'claude', session, interval: '60s', max: '3m' }, { saiRoot });
-  const file = path.join(saiRoot, `warm-chain-${chain}.json`);
-  const records = [`warm-chain-${chain}.json`, `warm-chain-${chain}.json.lock`];
-  t.after(() => { for (const name of records) fs.rmSync(path.join(saiRoot, name), { force: true }); });
-  const read = () => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
-  const until = async (check, ms) => {
-    const end = Date.now() + ms;
-    for (;;) {
-      const value = check();
-      if (value) return value;
-      if (Date.now() > end) throw new Error('timed out');
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-  };
+  const { begin, io, clock, saiRoot } = chainFixture(t, { interval: 1, max: 3 });
+  const { chain } = begin();
+  const read = () => recordOf(saiRoot, chain);
+  // Hold overlapping waits at explicit barriers; advance the injected clock instead of sleeping or polling.
+  const firstWaiting = Promise.withResolvers();
+  const firstTick = Promise.withResolvers();
+  const replacementWaiting = Promise.withResolvers();
+  const replacementTick = Promise.withResolvers();
+  let firstSettled = false;
+  let replacementSettled = false;
+  const first = warmer.warmOnce({ chain }, { ...io, wait: async ms => {
+    firstWaiting.resolve(ms);
+    await firstTick.promise;
+    clock.time += ms;
+  } }).then(result => { firstSettled = true; return result; });
+  assert.equal(await firstWaiting.promise, warmer.TICK_MS);
+  const firstOwner = read().owner.token;
+  const closing = read().closing_ms;
+  clock.time += 1000;
+  assert.deepEqual(warmer.armCheck(chain, io), armResult(false));
+  assert.equal(read().closing_ms, closing + 1000, 'the check extended the live window');
+  assert.equal(read().owner.token, firstOwner, 'reuse keeps the same owner');
+  assert.equal(read().generation, 1, 'reuse starts no replacement');
+  assert.equal(firstSettled, false, 'the reused wait is still pending');
 
-  const child = spawn(process.execPath, [WAIT, 'warm', '--chain', chain], { stdio: ['ignore', 'pipe', 'pipe'] });
-  t.after(() => child.kill('SIGKILL'));
-  let out = '';
-  child.stdout.on('data', chunk => { out += chunk; });
-  const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
+  const replacement = warmer.warmOnce({ chain }, { ...io, wait: async ms => {
+    replacementWaiting.resolve(ms);
+    await replacementTick.promise;
+    clock.time += ms;
+  } }).then(result => { replacementSettled = true; return result; });
+  assert.equal(await replacementWaiting.promise, warmer.TICK_MS);
+  const owner = read().owner.token;
+  assert.notEqual(owner, firstOwner);
+  assert.equal(read().generation, 2, 'the replacement acquired the chain');
+  assert.equal(firstSettled, false, 'the previous wait has not observed replacement yet');
 
-  const firstOwner = await until(() => read()?.owner?.token, 10000);
-  assert.equal(child.exitCode, null, 'the launched wait is alive');
-  assert.deepEqual(JSON.parse(execFileSync(process.execPath, [WAIT, 'arm', '--chain', chain], { encoding: 'utf8' })), armResult(false));
-  assert.ok(read().closing_ms > Date.now() + 60000, 'the check extended the live window');
-  assert.equal(child.exitCode, null, 'the reused wait keeps running and nothing else starts');
-
-  const replacement = spawn(process.execPath, [WAIT, 'warm', '--chain', chain], { stdio: ['ignore', 'pipe', 'pipe'] });
-  t.after(() => replacement.kill('SIGKILL'));
-  const owner = await until(() => { const record = read(); return record?.generation === 2 && record.owner?.token !== firstOwner ? record.owner : null; }, 15000);
-  assert.notEqual(owner.token, firstOwner);
-  await exited;
-  assert.equal(JSON.parse(out).status, 'finished', 'the replaced wait retires with finished');
-  assert.equal(read().owner.token, owner.token, 'the replacement owns the chain');
-  assert.equal(replacement.exitCode, null, 'exactly one wait is alive');
-  replacement.kill('SIGKILL');
+  firstTick.resolve();
+  const retired = await first;
+  assert.equal(retired.status, 'finished', 'the replaced wait retires with finished');
+  assert.equal(retired.waited_ms, warmer.TICK_MS, 'retirement takes one simulated tick');
+  assert.equal(read().owner.token, owner, 'retirement does not clear the replacement lease');
+  assert.equal(replacementSettled, false, 'only the replacement wait remains pending');
+  replacementTick.resolve();
+  const continued = await replacement;
+  assert.equal(continued.status, 'continue', 'the replacement completes its own interval');
+  assert.equal(continued.waited_ms, 60000, 'the interval advances without a real-time wait');
+  assert.equal(continued.state.token, owner);
+  assert.equal(read().owner, null, 'the completed replacement releases its lease');
 });
 
 test('E11 a cutoff mark newer than the arm ends the chain at its next wake, and later arms stay live', async t => {
