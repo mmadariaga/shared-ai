@@ -41,7 +41,7 @@ Arm the hand-off wait as the last tool call of the hand-off close turn, then end
 2. Run `wait.js arm --chain <chain>` in the foreground, and launch `wait.js warm --chain <chain>` in the background only when it prints `launch: true`, as `cache-warming.md` § Arm, wake, and window states for each harness.
 3. Set `handoff_wait` to the background task id and the chain when the check launched a wait; otherwise leave it unset.
 
-The wait is a chain like any other: a wake re-arms with the state it returned and updates the task id in `handoff_wait`, and a real message other than `next-slice` re-arms nothing. The tool ends the wait at the deadline, and no wake follows.
+Apply the main-session continuation check of `cache-warming.md` on arm and wake responses. A notification does not supply `next-slice`: handle an actual user response under the active command contract, or preserve the hand-off wait. While still waiting, a `continue` wake re-arms with the state it returned and updates the task id in `handoff_wait`; a real message other than `next-slice` re-arms nothing. The tool ends the wait at the deadline, and no wake follows.
 
 When arming fails (no shell, a missing `wait.js`, a refused permission), say so in one line, leave `handoff_wait` unset, and let the hand-off close continue unchanged.
 
