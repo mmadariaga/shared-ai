@@ -1,6 +1,6 @@
 # Telemetry: <!-- Feature Name -->
 
-<!-- Optional artifact, written by sai/tools/change-telemetry.js at the close of /sai-plan and /sai-build when experimental.changeTelemetry is true. One section per execution, appended; the change total at the top is recomputed. -->
+<!-- Optional artifact, written by sai/tools/change-telemetry.js at the close of /sai-plan and /sai-build when experimental.changeTelemetry is true. One section per execution, appended; the change total and the "## By command" table (one row per command, the exploration as its own row) at the top are recomputed. -->
 
 ## Exploration
 

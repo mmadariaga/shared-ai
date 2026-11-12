@@ -145,7 +145,7 @@ const use = (name, input = {}, extra = {}) => ({ name, input, ...extra });
 const claudeOptions = (fixture, extra = {}) => ({ harness: 'claude', command: 'sai-plan', change: 'demo', cwd: fixture.project, status: 'completed', ...extra });
 const metricCells = (text, area, agent) => {
   const cells = rowOf(section(text, area), agent).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
-  const names = ['agent', 'model', 'variant', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cacheMisses', 'cost', 'time', 'toolCalls', 'toolErrors', 'subagents', 'wakes', 'tools'];
+  const names = ['agent', 'model', 'variant', 'requests', 'input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'cacheHit', 'cacheMisses', 'overcostPerMiss', 'cost', 'time', 'toolCalls', 'toolErrors', 'subagents', 'wakes', 'tools'];
   return Object.fromEntries(names.map((name, index) => [name, cells[index]]));
 };
 
@@ -174,10 +174,11 @@ test('claude collect: a direct /sai-plan is measured from its transcripts, with 
     const text = telemetryOf(f);
     assert.match(text, /## Execution 1 — \/sai-plan — completed/);
     assert.match(text, /Session: cs-root · Harness: Claude Code/);
-    assert.match(text, /Claude Code transcripts record no cost, reasoning, or variant/);
+    assert.match(text, /Claude Code transcripts record no cost, so each cost is estimated \(~\) from the price table dated \d{4}-\d{2}-\d{2}/);
+    assert.match(text, /They record no reasoning or variant either/);
     // The repeated line of one message.id is one request; the request still running is left out.
     const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
-    assert.deepEqual(coordinator, { agent: 'sai-plan', model: 'claude-test', variant: 'unavailable', requests: '2', input: '120', output: '12', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '50', cacheMisses: '1', cost: 'unavailable', time: '7s', toolCalls: '4', toolErrors: '1', subagents: '1', wakes: '0', tools: 'Read×2, Bash×1, Grep×1' });
+    assert.deepEqual(coordinator, { agent: 'sai-plan', model: 'claude-test', variant: 'unavailable', requests: '2', input: '120', output: '12', reasoning: 'unavailable', cacheRead: '0', cacheWrite: '50', cacheHit: '0.0%', cacheMisses: '1', overcostPerMiss: 'unavailable', cost: 'unavailable', time: '7s', toolCalls: '4', toolErrors: '1', subagents: '1', wakes: '0', tools: 'Read×2, Bash×1, Grep×1' });
     // Cache write sums the 5-minute and 1-hour creation tokens; a SendMessage continuation dispatches nothing.
     const spec = metricCells(text, 'Spec', 'sai-1-spec-proposal-worker');
     assert.deepEqual({ requests: spec.requests, input: spec.input, cacheRead: spec.cacheRead, cacheWrite: spec.cacheWrite, toolCalls: spec.toolCalls, subagents: spec.subagents, cost: spec.cost }, { requests: '2', input: '61', cacheRead: '300', cacheWrite: '10', toolCalls: '3', subagents: '1', cost: 'unavailable' });
@@ -495,14 +496,14 @@ sqliteTest('collect: reads per-agent figures, counts tool calls apart from dispa
     const text = telemetryOf(f);
     // E6: the third coordinator request is still running (no completion), so it is the closing turn and is left out.
     const coordinator = rowOf(section(text, 'Coordinator'), 'sai-plan').split(' | ').map(cell => cell.trim());
-    assert.deepEqual(coordinator.slice(1, -1), ['model-a', 'high', '2', '120', '12', '0', '0', '50', '1', '$0.7500', '4s', '4', '1', '1', '0']);
+    assert.deepEqual(coordinator.slice(1, -1), ['model-a', 'high', '2', '120', '12', '0', '0', '50', '0.0%', '1', 'unavailable', '$0.7500', '4s', '4', '1', '1', '0']);
     assert.equal(coordinator.at(-1), 'read×2, bash×1, grep×1 |');
     assert.match(text, /closing turn/);
     // E16/E15: the dispatch call is a subagent dispatched and never a tool call; the websearch counts as a call.
     const spec = rowOf(section(text, 'Spec'), 'sai-1-spec-proposal-worker').split(' | ').map(cell => cell.trim());
-    assert.deepEqual(spec.slice(1, -1), ['model-a', 'high', '2', '61', '7', '1', '300', '10', '1', '$3.0000', '4s', '2', '0', '1', '0']);
+    assert.deepEqual(spec.slice(1, -1), ['model-a', 'high', '2', '61', '7', '1', '300', '10', '80.9%', '1', 'unavailable', '$3.0000', '4s', '2', '0', '1', '0']);
     assert.match(spec.at(-1), /websearch×1, write×1/);
-    assert.match(rowOf(section(text, 'Spec'), '↳ budget-explorer'), /\| 1 \| 5 \| 1 \| 0 \| 50 \| 0 \| 0 \| \$0\.0000 \|/);
+    assert.match(rowOf(section(text, 'Spec'), '↳ budget-explorer'), /\| 1 \| 5 \| 1 \| 0 \| 50 \| 0 \| 90\.9% \| 0 \| n\/a \| \$0\.0000 \|/);
     // E9: the segment that never started shows as not run.
     assert.match(section(text, 'Design'), /Not run\./);
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
@@ -521,7 +522,7 @@ sqliteTest('collect: a request without tokens, model, variant, cost, or duration
     const cells = rowOf(section(telemetryOf(f), 'Coordinator'), 'sai-build').split(' | ').map(cell => cell.trim());
     assert.deepEqual(cells.slice(1, 4), ['model-a, unavailable', 'high, unavailable', '2']);
     // A figure the second request lacks is only a lower bound; with no known later request, the misses are unavailable.
-    assert.deepEqual(cells.slice(4, 14), ['≥10', '≥5', '≥1', '≥100', '≥20', 'unavailable', '≥$1.0000', '≥2s', '0', '0']);
+    assert.deepEqual(cells.slice(4, 16), ['≥10', '≥5', '≥1', '≥100', '≥20', 'unavailable', 'unavailable', 'unavailable', '≥$1.0000', '≥2s', '0', '0']);
     assert.match(telemetryOf(f), /Execution 1 — \/sai-build — completed/);
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });
@@ -1347,4 +1348,169 @@ sqliteTest('exploration wakes: an origin session counts its wakes inside the exp
     assert.match(origin, /#### Cache-warming wakes\n\n\| Agent \| Wakes \| Requests/);
     assert.match(origin, /\| Exploration total \| 1 \| 1 \|/);
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+// ---------------------------------------------------------------------------
+// Cache hit, cache misses by prefix shrink, overcost, estimated Claude Code cost, and the By command table
+// ---------------------------------------------------------------------------
+
+const PRICED = 'claude-sonnet-5-5';
+const claudeRun = (f, session, seconds, command, requests, args = 'demo') => {
+  const root = f.root(session);
+  f.command(root, session, seconds, command, args);
+  requests.forEach(([offset, usage, model = PRICED]) => f.request(root, session, seconds + offset, { usage, model }));
+  return root;
+};
+const rowCells = (text, heading, name) => rowOf(section(text, heading), name).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
+
+test('claude collect: the cost is estimated from the price table and marked, and a miss costs its rewritten tokens at the write price of the recorded lifetime (E5, E6, E7, I4)', () => {
+  const f = claudeScratch();
+  try {
+    claudeRun(f, 'cs-root', 1, 'sai-plan', [
+      [1, SPLIT_USAGE(100, 10, 0, 1000, 0)],
+      [4, SPLIT_USAGE(10, 5, 400, 0, 600)],
+    ]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.match(text, /each cost is estimated \(~\) from the price table dated \d{4}-\d{2}-\d{2} \(`sai\/tools\/model-prices\.js`\)/);
+    const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
+    // Cost: (100×2 + 10×10 + 1000×2.5) + (10×2 + 5×10 + 400×0.1 + 600×4), per million tokens.
+    assert.equal(coordinator.cost, '~$0.0053');
+    // The prefix shrank from 1000 to 400 read tokens: 600 rewritten at the 1-hour write price over the read price.
+    assert.equal(coordinator.cacheMisses, '1');
+    assert.equal(coordinator.overcostPerMiss, '$0.0023');
+    assert.equal(coordinator.cacheHit, '19.0%');
+    const stored = JSON.parse(text.match(/<!-- telemetry-totals (\{.*\}) -->/)[1]);
+    assert.deepEqual([stored.rewritten, stored.cacheMisses], [{ value: 600, partial: false }, { value: 1, partial: false }]);
+    assert.equal(stored.overcost.value.toFixed(6), '0.002340');
+    assert.equal(stored.cost.estimated, true);
+    assert.ok(!('cacheHit' in stored) && !('overcostPerMiss' in stored), 'derived figures are never stored');
+    // The change total repeats the figures and the estimate mark.
+    assert.match(text, /\| 2 \| 110 \| 15 \| unavailable \| 400 \| 1,600 \| 19\.0% \| 1 \| \$0\.0023 \| ~\$0\.0053 \|/);
+  } finally { f.close(); }
+});
+
+test('claude collect: a request that only writes new tokens on a fully read prefix is no miss, a shrink is, and an unsplit write pays the 5-minute price (E6, E7)', () => {
+  const f = claudeScratch();
+  try {
+    claudeRun(f, 'cs-root', 1, 'sai-plan', [
+      [1, SPLIT_USAGE(1, 1, 0, 1000, 0)],
+      [4, SPLIT_USAGE(1, 1, 1000, 200, 0)],
+      [7, { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 1100, cache_creation_input_tokens: 300 }],
+    ]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
+    assert.equal(coordinator.cacheMisses, '1');
+    const stored = JSON.parse(text.match(/<!-- telemetry-totals (\{.*\}) -->/)[1]);
+    assert.equal(stored.rewritten.value, 100);
+    // 100 rewritten tokens at (2.5 − 0.1) per million, the unsplit write priced as 5 minutes.
+    assert.equal(stored.overcost.value.toFixed(7), '0.0002400');
+  } finally { f.close(); }
+});
+
+test('claude collect: a model with no price has an unavailable cost and overcost, and the total is partial (E4)', () => {
+  const f = claudeScratch();
+  try {
+    claudeRun(f, 'cs-root', 1, 'sai-plan', [
+      [1, SPLIT_USAGE(10, 1, 0, 1000, 0), 'claude-unpriced-1'],
+      [4, SPLIT_USAGE(10, 1, 100, 0, 0), 'claude-unpriced-1'],
+      [7, SPLIT_USAGE(10, 1, 0, 500, 0)],
+      [10, SPLIT_USAGE(10, 1, 100, 0, 0)],
+    ]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
+    assert.equal(coordinator.cacheMisses, '3');
+    assert.match(coordinator.cost, /^≥~\$/);
+    assert.match(coordinator.overcostPerMiss, /^≥\$/);
+    const unpriced = claudeScratch();
+    try {
+      claudeRun(unpriced, 'cs-root', 1, 'sai-plan', [[1, SPLIT_USAGE(10, 1, 0, 1000, 0), 'claude-unpriced-1'], [4, SPLIT_USAGE(10, 1, 100, 0, 0), 'claude-unpriced-1']]);
+      assert.equal(collect(claudeOptions(unpriced), { env: unpriced.env }).outcome, 'written');
+      const only = metricCells(telemetryOf(unpriced), 'Coordinator', 'sai-plan');
+      assert.deepEqual([only.cost, only.cacheMisses, only.overcostPerMiss], ['unavailable', '1', 'unavailable']);
+    } finally { unpriced.close(); }
+  } finally { f.close(); }
+});
+
+test('claude collect: with no miss the overcost per miss is n/a, and with no tokens the cache hit is unavailable (E8, E9)', () => {
+  const f = claudeScratch();
+  try {
+    claudeRun(f, 'cs-root', 1, 'sai-plan', [[1, SPLIT_USAGE(1, 1, 0, 100, 0)], [4, SPLIT_USAGE(1, 1, 100, 50, 0)], [7, SPLIT_USAGE(1, 1, 150, 10, 0)]]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const coordinator = metricCells(telemetryOf(f), 'Coordinator', 'sai-plan');
+    assert.deepEqual([coordinator.cacheMisses, coordinator.overcostPerMiss], ['0', 'n/a']);
+  } finally { f.close(); }
+  const empty = claudeScratch();
+  try {
+    claudeRun(empty, 'cs-root', 1, 'sai-plan', [[1, SPLIT_USAGE(0, 1, 0, 0, 0)], [4, SPLIT_USAGE(0, 1, 0, 0, 0)]]);
+    assert.equal(collect(claudeOptions(empty), { env: empty.env }).outcome, 'written');
+    assert.equal(metricCells(telemetryOf(empty), 'Coordinator', 'sai-plan').cacheHit, 'unavailable');
+  } finally { empty.close(); }
+});
+
+sqliteTest('collect: opencode keeps its recorded cost, treats its cache write as unsplit, and prices the overcost from the table (E5, E7, I2)', () => {
+  const f = scratch();
+  try {
+    f.session('ses_root', null, 'build', 0);
+    f.invoke('ses_root', 1, 'plan', 'demo');
+    f.request('ses_root', 2, { model: PRICED, cost: 0.4, tokens: { input: 5, output: 1, reasoning: 0, cache: { read: 0, write: 1000 } } });
+    f.request('ses_root', 4, { model: PRICED, cost: 0.6, tokens: { input: 5, output: 1, reasoning: 0, cache: { read: 400, write: 0 } } });
+    f.request('ses_root', 6, { done: false });
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const coordinator = metricCells(text, 'Coordinator', 'sai-plan');
+    // The recorded cost, with no estimate mark; 600 rewritten tokens at (2.5 − 0.1) per million.
+    assert.deepEqual([coordinator.cost, coordinator.cacheMisses, coordinator.overcostPerMiss, coordinator.cacheHit], ['$1.0000', '1', '$0.0014', '28.4%']);
+    assert.ok(!/estimated \(~\)/.test(text), 'the opencode section carries no estimate note');
+    assert.match(text, /price table dated \d{4}-\d{2}-\d{2}/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+test('by command: one row per command label adds up its executions, and the exploration is its own row outside the change total (E1, E2, I5)', () => {
+  const f = claudeOriginFixture([CLAUDE_ORIGIN]);
+  try {
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    claudeRun(f, 'cs-second', 100, 'sai-plan', [[1, SPLIT_USAGE(10, 1, 0, 100, 0)], [4, SPLIT_USAGE(10, 1, 100, 0, 0)], [7, SPLIT_USAGE(1, 1, 100, 0, 0)]]);
+    claudeRun(f, 'cs-third', 200, 'sai-build', [[1, SPLIT_USAGE(20, 2, 0, 200, 0)], [4, SPLIT_USAGE(20, 2, 200, 0, 0)]]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    assert.equal(collect(claudeOptions(f, { command: 'sai-build' }), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    assert.ok(text.indexOf('## By command') > text.indexOf('## Change total') && text.indexOf('## By command') < text.indexOf('## Exploration'), 'the table follows the change total');
+    const table = text.slice(text.indexOf('## By command'), text.indexOf('## Exploration')).split('\n').filter(line => line.startsWith('|')).map(line => line.split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim()));
+    assert.deepEqual(table.filter((row, index) => index !== 1).map(row => row.slice(0, 2)), [['Command', 'Executions'], ['sai-plan', '2'], ['sai-build', '1'], ['sai-explore (exploration)', '1']]);
+    const total = text.split('\n').find(line => /^\| \d/.test(line));
+    const planRow = table.find(row => row[0] === 'sai-plan');
+    const buildRow = table.find(row => row[0] === 'sai-build');
+    // The change total is the plan and build rows added up; the exploration row stays out of it.
+    assert.equal(Number(planRow[2]) + Number(buildRow[2]), Number(total.split(' | ')[0].replace('| ', '')));
+    assert.match(text, /### Origin session [^\n]+\n\n<!-- telemetry-totals/);
+  } finally { f.close(); }
+});
+
+test('by command: sections written before the miss figures make the new figures unavailable, and a total that adds them up is partial (E3)', () => {
+  const f = claudeScratch();
+  try {
+    claudeRun(f, 'cs-root', 1, 'sai-plan', [[1, SPLIT_USAGE(10, 1, 0, 100, 0)], [4, SPLIT_USAGE(10, 1, 100, 0, 0)], [7, SPLIT_USAGE(1, 1, 100, 0, 0)]]);
+    assert.equal(collect(claudeOptions(f), { env: f.env }).outcome, 'written');
+    const file = path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md');
+    const written = fs.readFileSync(file, 'utf8');
+    const legacy = written.replace(/<!-- telemetry-totals (\{.*\}) -->/, (_, json) => { const totals = JSON.parse(json); delete totals.rewritten; delete totals.overcost; return `<!-- telemetry-totals ${JSON.stringify(totals)} -->`; });
+    fs.writeFileSync(file, legacy);
+    // Rebuilding the summaries from the legacy section alone shows the new figures as unavailable.
+    claudeRun(f, 'cs-second', 100, 'sai-build', [[1, SPLIT_USAGE(20, 2, 0, 200, 0)], [4, SPLIT_USAGE(20, 2, 100, 0, 0)], [7, SPLIT_USAGE(1, 1, 100, 0, 0)]]);
+    assert.equal(collect(claudeOptions(f, { command: 'sai-build' }), { env: f.env }).outcome, 'written');
+    const text = fs.readFileSync(file, 'utf8');
+    assert.ok(text.includes(legacy.slice(legacy.indexOf('## Execution 1'))), 'the earlier section keeps its text');
+    const rows = text.slice(text.indexOf('## By command'), text.indexOf('## Execution 1')).split('\n').filter(line => line.startsWith('| sai-'));
+    const [plan, build] = rows.map(row => row.split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim()));
+    // Columns: Command, Executions, Requests, Input, Output, Reasoning, Cache read, Cache write, Cache hit, Cache misses, Overcost/miss.
+    assert.deepEqual([plan[8], plan[10]], ['unavailable', 'unavailable']);
+    assert.match(build[8], /^\d/);
+    const total = text.split('\n').find(line => /^\| \d/.test(line)).split(' | ').map(value => value.replace(/^\| /, '').replace(/ \|$/, '').trim());
+    assert.match(total[6], /^≥\d+\.\d%$/, 'the change total adds a legacy section up: partial');
+    assert.match(total[8], /^≥\$|^unavailable$/);
+  } finally { f.close(); }
 });
