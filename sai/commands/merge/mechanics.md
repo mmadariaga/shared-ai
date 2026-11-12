@@ -18,7 +18,7 @@ All calls take `--json --cwd <project-root>`.
 
 | Call | Gives |
 | --- | --- |
-| `preflight` | the current branch, the dirty paths with their status codes, the branches not yet merged into `HEAD` newest first (local branches, the current branch's upstream, and each remote's default branch, with name and full `ref`), and whether a merge or rebase is in progress |
+| `preflight` | the `worktree_id` (the first 16 hex characters of the sha256 of the worktree's real top-level path, with `/` separators and lowercased on Windows, so one folder keeps one id whatever its spelling; the card keys the run-state slot `merge-{worktree_id}-{branch}` with it), the current branch, the dirty paths with their status codes, the branches not yet merged into `HEAD` newest first (local branches, the current branch's upstream, and each remote's default branch, with name and full `ref`), and whether a merge or rebase is in progress |
 | `provenance --source-ref <full-ref> --method merge\|rebase --squash yes\|no\|not-applicable` | after checking the ref, the target, source, and merge-base shas, the source-introduced ADR/DDR records, the governing rules of each side, and the upstream facts: the current branch's upstream, how many commits a rebase or squash would rewrite, and how many of those the upstream already holds (`force_push_needed`) |
 | `conflicts --record <file>` | the conflict snapshot: affected files with category, regions, and stage OIDs, and the unrelated-content inventory, captured before any write |
 | `bundle`, `write` | the conflict bundle for the worker, and the worker's only way to change an affected file (`steps/common.md`, `steps/apply.md`) |

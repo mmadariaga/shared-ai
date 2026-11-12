@@ -44,7 +44,7 @@ test('the coordinator is one goal-driven card that loads only the six policies a
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
     assert.ok(card.includes(heading), heading);
   }
-  assert.ok(card.length < 24000, 'the coordinator stays a short goal-driven card');
+  assert.ok(card.length < 24500, 'the coordinator stays a short goal-driven card');
 });
 
 test('the wrappers load the harness fetch skill and the coordinator directly, with no boot adapter or bootstrap', () => {
@@ -182,6 +182,19 @@ test('E6, E7: a dirty tree proceeds when git allows it, staged unrelated content
   assert.match(section(coordinator(), '## Resuming', '## Close'), /find the run that owns it|the git state wins|The git state wins/);
 });
 
+test('the run-state slot is keyed by the worktree, and a run that vanished from the store uses the run-state.md fallback', () => {
+  const card = coordinator();
+  const start = section(card, '## Start', '## Worker reports');
+  assert.match(start, /key `merge-\{worktree_id\}-\{branch\}`, with the `worktree_id` of the preflight/);
+  assert.match(start, /under `merge-\{worktree_id\}-\{branch\}`: follow/);
+  assert.match(section(card, '## Resuming', '## Close'), /under the key `merge-\{worktree_id\}-\{branch\}` \(this preflight's `worktree_id`\) of each local branch that points at it/);
+  assert.doesNotMatch(card, /merge-\{branch\}/);
+  const state = section(card, '## Run state', '## Resuming');
+  assert.match(state, /`run is not running` or `run is not started` after `start` is a failing emit/);
+  assert.match(state, /use that fallback with no new `spawn` or `start`, and state the store loss in the closing report/);
+  assert.match(read('sai/commands/merge/mechanics.md'), /`worktree_id`/);
+});
+
 test('E8: an interrupted run resumes from the store and the git state, and a replacement worker gets a hand-over file', () => {
   const card = coordinator();
   const resume = section(card, '## Resuming', '## Close');
@@ -312,7 +325,7 @@ test('E16: Claude Code and opencode render the same standalone merge binding fro
 test('the run state, review, and report: merge-run@1, review-delta, and the goal-defined closing report', () => {
   const card = coordinator();
   assert.match(card, /The `merge-run@1` machine in `sai-state` is your memory outside the conversation/);
-  assert.match(card, /key `merge-\{branch\}`/);
+  assert.match(card, /key `merge-\{worktree_id\}-\{branch\}`/);
   assert.match(card, /`temp-root\.js mkdtemp --harness <claude\|opencode> --prefix merge-`/);
   assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, and close the report directory with `transfer\.js close --dir <report directory>`, only when the run completed/);
   assert.match(card, /A stopped, escalated, or unanswered run keeps both directories/);

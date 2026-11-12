@@ -150,6 +150,15 @@ function candidateBranches(cwd) {
   return [...found.values()].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp) || compare(a.name, b.name));
 }
 
+// Stable identity of the worktree: the same folder yields the same id whatever its letter case
+// (Windows) or separators. The run-state slot of the card is keyed by it, so two worktrees
+// integrating the same branch never share a slot.
+function worktreeId(cwd) {
+  const toplevel = fs.realpathSync.native(git(cwd, ['rev-parse', '--show-toplevel']).trim());
+  const normalized = toplevel.replace(/\\/g, '/');
+  return hash(process.platform === 'win32' ? normalized.toLowerCase() : normalized).slice(0, 16);
+}
+
 function preflight(cwd) {
   return fact(cwd, 'preflight', ['head', 'index', 'refs', 'operations', 'tree'], () => {
     const entries = split0(git(cwd, ['status', '--porcelain=v1', '-z']));
@@ -160,7 +169,7 @@ function preflight(cwd) {
         ...(entry.slice(0, 2).match(/[RC]/) ? { original_path: entries[++i] } : {}) });
     }
     const candidates = candidateBranches(cwd);
-    return { current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), dirty, candidates, ...inProgress(cwd) };
+    return { worktree_id: worktreeId(cwd), current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), dirty, candidates, ...inProgress(cwd) };
   });
 }
 
