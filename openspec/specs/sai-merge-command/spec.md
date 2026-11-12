@@ -128,12 +128,12 @@ The system SHALL compose the `rebase-squash` squash commit with the same informa
 
 ### Requirement: Deterministic merge mechanical evidence
 
-The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, collision, and closing status facts through `sai/tools/merge.js`, and the coordinator SHALL collect them. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets.
+The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, collision, and closing status facts through `sai/tools/merge.js`, and the coordinator SHALL collect them. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets. The preflight data SHALL include `worktree_id`: the first 16 hexadecimal characters of the sha256 of the worktree's top-level path from `git rev-parse --show-toplevel`, resolved to its native real path, with `/` separators and, on Windows, lowercased, so the same folder yields the same `worktree_id` whatever its letter case or separators and two worktrees yield different values.
 
 #### Scenario: Preflight facts are collected together
 
 - **WHEN** the coordinator enters the preflight stage
-- **THEN** one engine call returns dirty paths, merge and rebase guards, the current branch, and the authoritative candidates not merged into `HEAD` (local branches, the current branch's upstream, and each remote's default branch, each with name and full `ref`) sorted by full committer timestamp descending and exact branch name ascending
+- **THEN** one engine call returns the `worktree_id`, dirty paths, merge and rebase guards, the current branch, and the authoritative candidates not merged into `HEAD` (local branches, the current branch's upstream, and each remote's default branch, each with name and full `ref`) sorted by full committer timestamp descending and exact branch name ascending
 
 #### Scenario: Captured launch provenance remains historical
 
@@ -149,6 +149,16 @@ The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suit
 
 - **WHEN** mechanical evidence is missing, malformed, incomplete, or cannot be collected
 - **THEN** the workflow reports the failure rather than inferring success or treating non-applicability as a passed test
+
+#### Scenario: Worktree identity ignores path spelling
+
+- **WHEN** the preflight runs on Windows for one worktree whose path is written with different letter case or with `\` instead of `/` separators
+- **THEN** every run returns the same 16-character hexadecimal `worktree_id`
+
+#### Scenario: Two worktrees get different identities
+
+- **WHEN** the preflight runs in two worktrees of the same repository
+- **THEN** the two `worktree_id` values differ
 
 ### Requirement: Protected merge snapshots and external records
 
@@ -348,7 +358,7 @@ When the fixed test command fails to start, the merge tool SHALL return `verific
 
 ### Requirement: Merge start guards
 
-Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resume an in-progress merge or rebase only when the invocation names the same branch and the run store holds a `running` or `escalated` `merge-run@1` run under `merge-{branch}`; any other in-progress operation SHALL be left untouched and the run SHALL end with the reason and, when a recorded run owns it, that run's branch. Without a branch argument, the coordinator SHALL ask which branch to integrate through the native picker with the newest preflight candidates up to the picker capacity, each picked candidate naming its full `ref`, and the picker's free text, or in plain text when there are none, mapping an `origin/<rest>` answer to `refs/remotes/origin/<rest>` and any other name to `refs/heads/<name>` and fetching nothing. Staged content before the launch SHALL end the run naming those paths. Unstaged changes SHALL NOT stop a merge, and for a rebase or squash the refusal on tracked unstaged changes SHALL apply only when the autostash question was declined or no native picker exists, before the first mutation. A provenance failure, such as a branch that does not exist, SHALL end the run with the cause and nothing launched, and a branch whose head is already an ancestor of `HEAD` SHALL close the run with no changes.
+Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resume an in-progress merge or rebase only when the invocation names the same branch and the run store holds a `running` or `escalated` `merge-run@1` run under `merge-{worktree_id}-{branch}`, with the `worktree_id` of this preflight; any other in-progress operation SHALL be left untouched and the run SHALL end with the reason and, when a recorded run owns it, that run's branch. To find the run that owns an operation in progress, the coordinator SHALL look up `merge-{worktree_id}-{branch}` with this preflight's `worktree_id` for each local branch that points at the integrated commit. Without a branch argument, the coordinator SHALL ask which branch to integrate through the native picker with the newest preflight candidates up to the picker capacity, each picked candidate naming its full `ref`, and the picker's free text, or in plain text when there are none, mapping an `origin/<rest>` answer to `refs/remotes/origin/<rest>` and any other name to `refs/heads/<name>` and fetching nothing. Staged content before the launch SHALL end the run naming those paths. Unstaged changes SHALL NOT stop a merge, and for a rebase or squash the refusal on tracked unstaged changes SHALL apply only when the autostash question was declined or no native picker exists, before the first mutation. A provenance failure, such as a branch that does not exist, SHALL end the run with the cause and nothing launched, and a branch whose head is already an ancestor of `HEAD` SHALL close the run with no changes.
 
 #### Scenario: Foreign operation is never touched
 
@@ -364,6 +374,11 @@ Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resu
 
 - **WHEN** the named branch's head is already an ancestor of `HEAD`
 - **THEN** the run closes with no changes and says so
+
+#### Scenario: Run under another worktree's key is not resumed
+
+- **WHEN** a rebase is in progress in a worktree and the only stored run for the branch is under a key with a different `worktree_id`, or under the earlier `merge-{branch}` key
+- **THEN** no recorded run owns the operation, so the run stops with its existing message and changes nothing
 
 ### Requirement: Suite baseline before the launch
 
