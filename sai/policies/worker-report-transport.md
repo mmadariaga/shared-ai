@@ -128,7 +128,7 @@ Terms. **Accepted reference**: a reference the coordinator has dealt with: valid
 - **Not a result.** A worker message that is neither a reference nor `ok`, such as "Ending this turn", is not a result: keep waiting with the watch armed.
 - **Parallel workers.** Watch each report directory separately and attribute a report to the worker of its directory.
 - **No watch.** When the watch cannot be launched (no shell, permission refused), print one notice and go on without it: the run does not stop.
-- **Wakes.** Your own cache-warming wake keeps performing no work; only the watch looks for reports.
+- **Wakes.** Follow `@sai/policies/cache-warming.md` for the main-session continuation check and the subagent protocol. Only the watch looks for undelivered reports; a warming notification does not trigger report polling.
 
 ## Recovery and lifetime
 

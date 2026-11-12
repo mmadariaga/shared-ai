@@ -27,6 +27,7 @@ const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const INSTALL_ROOT = [path.resolve(__dirname, '..', '..'), path.resolve(__dirname, '..', '..', '..')]
   .find(root => fs.existsSync(path.join(root, 'sai', 'tools', 'temp-root.js'))) ?? path.resolve(__dirname, '..', '..');
 const STDIN_GRACE_MS = 2000;
+const CONTINUATION_REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state. If you are a subagent, follow your existing warming protocol.';
 
 /** A misuse of the command line (exit 2); every other failure exits 1. */
 class UsageError extends Error {}
@@ -412,7 +413,7 @@ function armCheck(chain, io = {}) {
     writeAtomic(file, `${JSON.stringify({ ...record, closing_ms, updated_ms: at })}\n`);
     return false;
   });
-  return { launch };
+  return { launch, reminder: CONTINUATION_REMINDER };
 }
 
 /**
@@ -493,9 +494,9 @@ async function wakeOnce(state, io) {
 }
 
 async function warmOnce(input, io = {}) {
-  if (input.state !== undefined) return wakeOnce(input.state, io);
-  if (input.chain === undefined) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
-  return armOnce(input.chain, io);
+  if (input.state === undefined && input.chain === undefined) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
+  const result = await (input.state !== undefined ? wakeOnce(input.state, io) : armOnce(input.chain, io));
+  return { ...result, reminder: CONTINUATION_REMINDER };
 }
 
 /**
