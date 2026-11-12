@@ -23,7 +23,7 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records, the support on both Claude Code and opencode with the fields Claude Code does not record (`cost`, `reasoning`, `variant`), the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records (including the cache hit share, the cache misses with their average overcost, and the `By command` table), the support on both Claude Code and opencode with the fields Claude Code does not record (`reasoning`, `variant`) and its cost estimated from the dated price table in `sai/tools/model-prices.js`, the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read
@@ -116,14 +116,6 @@ A request lacking token usage, model, variant, cost, or a start or completion ti
 #### Scenario: a request without cost makes the cost total partial
 - **WHEN** one request of an agent has no `data.cost`
 - **THEN** that agent's cost and every cost total that includes it are shown with `≥`
-
-### Requirement: A cache miss is a later request that reads no cache
-
-A cache miss SHALL be a request with cache read `0` that is not the agent's first request, so an agent with a single request SHALL report zero misses.
-
-#### Scenario: a single-request agent has no cache miss
-- **WHEN** an agent made exactly one request with cache read `0`
-- **THEN** its cache misses are `0`
 
 ### Requirement: Dispatch calls count only as subagents dispatched
 
@@ -295,7 +287,7 @@ The plan and build coordinators, and the `/sai-explore` Plan - Unattended and Di
 
 ### Requirement: A change with explore_origin records its exploration once
 
-When the change's `.openspec.yaml` lists `explore_origin` sessions, a collection on either harness SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it on Claude Code and on opencode. Each listed id SHALL be read with the reader of its own harness, inferred from the id's shape (`ses_…` is an opencode session, a UUID is a Claude Code session), whichever harness runs the collection, so one list MAY mix both harnesses. The exploration of a Claude Code session SHALL show its cost, reasoning, and variant as `unavailable`.
+When the change's `.openspec.yaml` lists `explore_origin` sessions, a collection on either harness SHALL add an `## Exploration` section to `telemetry.md`, placed after the change total and before the first `## Execution` section, only in the collection that writes the file while it has no `## Exploration` section yet. A later collection SHALL keep the existing section unchanged. A change without `explore_origin` SHALL get no `## Exploration` section, and the rest of `telemetry.md` SHALL be written as before. The collector SHALL do this by itself, with no extra flag, so a direct `/sai-plan`, a direct `/sai-build`, and both in-session `/sai-explore` routes record it on Claude Code and on opencode. Each listed id SHALL be read with the reader of its own harness, inferred from the id's shape (`ses_…` is an opencode session, a UUID is a Claude Code session), whichever harness runs the collection, so one list MAY mix both harnesses. The exploration of a Claude Code session SHALL show its reasoning and variant as `unavailable` and its cost as the estimate from the dated price table in `sai/tools/model-prices.js`, marked `~`.
 
 #### Scenario: the first collection writes the exploration
 - **WHEN** the collector writes `telemetry.md` for a change whose `.openspec.yaml` reads `explore_origin: [ses_origin]` and the file has no `## Exploration` section
@@ -367,7 +359,7 @@ When a listed session is not a root session in the local data of its harness (`o
 
 ### Requirement: The exploration record is documented
 
-`docs/project-settings.md`, `sai/policies/change-telemetry.md` § Exploration, and the `## Exploration` part of `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL describe the exploration section: written once per change from `explore_origin` on both harnesses, one segment per listed session read with the reader of its own harness, shared segments counted in each change, an `unavailable` segment for a session missing from the data of its harness (`opencode.db` or the Claude Code transcripts), the fields unavailable on Claude Code (cost, reasoning, variant), and every listed session ID visible in a published issue.
+`docs/project-settings.md`, `sai/policies/change-telemetry.md` § Exploration, and the `## Exploration` part of `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL describe the exploration section: written once per change from `explore_origin` on both harnesses, one segment per listed session read with the reader of its own harness, shared segments counted in each change, an `unavailable` segment for a session missing from the data of its harness (`opencode.db` or the Claude Code transcripts), the fields unavailable on Claude Code (reasoning, variant), the Claude Code cost estimated from the dated price table in `sai/tools/model-prices.js`, and every listed session ID visible in a published issue.
 
 #### Scenario: the documentation names the exploration section
 - **WHEN** `docs/project-settings.md` and `sai/policies/change-telemetry.md` are read
@@ -399,7 +391,7 @@ On Claude Code the collector SHALL anchor a direct `/sai-plan` or `/sai-build` e
 
 ### Requirement: Claude Code figures come only from what the transcripts record
 
-On Claude Code each request SHALL be one assistant `message.id`, however many transcript lines repeat it; each tool call SHALL count once by its `tool_use` id; and a `tool_result` with `is_error: true` SHALL count as one tool error of the tool call it answers. `Cache write` SHALL be the sum of the 5-minute and 1-hour cache creation tokens, or the unsplit cache creation value when the transcript has no split. `cost`, `reasoning`, and `variant` SHALL be `unavailable` in every Claude Code row and total, never `0`, and each Claude Code section SHALL carry a note saying that the transcripts record none of them. No figure SHALL be estimated.
+On Claude Code each request SHALL be one assistant `message.id`, however many transcript lines repeat it; each tool call SHALL count once by its `tool_use` id; and a `tool_result` with `is_error: true` SHALL count as one tool error of the tool call it answers. `Cache write` SHALL be the sum of the 5-minute and 1-hour cache creation tokens, or the unsplit cache creation value when the transcript has no split. `reasoning` and `variant` SHALL be `unavailable` in every Claude Code row and total, never `0`. The transcripts record no cost, so the cost of each Claude Code request SHALL be estimated from its tokens and the dated price table `sai/tools/model-prices.js`, and every estimated figure SHALL carry `~`. Each Claude Code section SHALL carry a note that states the price table date and that the transcripts record no cost, reasoning, or variant. A model with no price entry, or whose entry lacks the price of a token type the request used, SHALL have an `unavailable` cost, never zero, and every total that includes it SHALL be marked partial with `≥`. No other figure SHALL be estimated.
 
 #### Scenario: repeated lines of one response are one request
 - **WHEN** a subagent transcript holds three lines with the same `message.id`
@@ -410,15 +402,19 @@ On Claude Code each request SHALL be one assistant `message.id`, however many tr
 - **THEN** its cache write is 150
 
 #### Scenario: cost, reasoning, and variant are unavailable on Claude Code
-- **WHEN** a section is written from Claude Code transcripts
-- **THEN** its cost, reasoning, and variant are `unavailable` in every row and total, no cost figure appears, and the section carries the note that Claude Code transcripts record none of them
+- **WHEN** a section is written from Claude Code transcripts for a model that has no entry in the price table
+- **THEN** its cost, reasoning, and variant are `unavailable` in that model's rows, every cost total that includes them is marked `≥`, and the section carries the note that Claude Code transcripts record none of them
+
+#### Scenario: a priced Claude Code cost is estimated
+- **WHEN** a section is written from Claude Code transcripts for a model that has an entry in the price table
+- **THEN** its cost is computed from the request tokens and that entry, shown with `~`, and the section note states the price table date
 
 ### Requirement: Each section names its harness
 
 Each execution section SHALL name the harness it was collected from (`Claude Code` or `opencode`) beside its session. One `telemetry.md` MAY hold executions from both harnesses; a change total SHALL add each field over the executions that recorded it and SHALL be marked partial with `≥` when any execution lacks that field.
 
 #### Scenario: a mixed-harness change total is partial for cost
-- **WHEN** a `telemetry.md` holds an opencode execution with a known cost and a Claude Code execution is appended
+- **WHEN** a `telemetry.md` holds an opencode execution with a known cost and a Claude Code execution whose model has no entry in the price table is appended
 - **THEN** the Claude Code section reads `Harness: Claude Code`, and the change total's cost is marked `≥`
 
 ### Requirement: The collector detects cache-warming wakes from the wait command on both harnesses
@@ -451,7 +447,7 @@ Each per-agent table of a telemetry section SHALL carry a `Wakes` column with th
 
 ### Requirement: Each section reports the wake cost as a subset of its figures
 
-Each execution section and each exploration segment SHALL end with a `Cache-warming wakes` table that lists, per agent and for the run or exploration total, the wakes and the requests, input, output, reasoning, cache read, cache write, and cost of every request of the wake turns, the re-arm and the `ok` reply included. Wake requests SHALL stay inside the ordinary figures, so no existing total changes meaning. On Claude Code the cost and reasoning columns SHALL be unavailable, as in every Claude Code row.
+Each execution section and each exploration segment SHALL end with a `Cache-warming wakes` table that lists, per agent and for the run or exploration total, the wakes and the requests, input, output, reasoning, cache read, cache write, and cost of every request of the wake turns, the re-arm and the `ok` reply included. Wake requests SHALL stay inside the ordinary figures, so no existing total changes meaning. On Claude Code the reasoning column SHALL be unavailable, as in every Claude Code row, and the cost column SHALL be the estimate from the price table, marked `~`.
 
 #### Scenario: wake requests stay inside the totals
 - **WHEN** an agent spends two requests in one wake turn
@@ -468,3 +464,71 @@ Each execution section and each exploration segment SHALL end with a `Cache-warm
 #### Scenario: the policy defines a wake
 - **WHEN** a reader opens the `Cache-warming wakes` section of `sai/policies/change-telemetry.md`
 - **THEN** it defines a wake from the wait command on both harnesses and states that an `ok` reply alone is not a wake
+
+### Requirement: A cache miss is a request whose cached prefix shrank and had to be rewritten
+
+A cache miss SHALL be a request after an agent's first whose cache read is smaller than the previous request's cache read plus cache write. The shortfall SHALL be the request's rewritten tokens. A request that only writes new tokens on top of a fully read prefix SHALL NOT be a miss, and a shrink caused by a context compaction SHALL count as a miss. An agent with a single request SHALL report zero misses. When a request or the request before it lacks a cache read or cache write figure, its miss, rewritten tokens, and overcost SHALL be unknown, never zero.
+
+#### Scenario: a single-request agent has no cache miss
+- **WHEN** an agent made exactly one request with cache read `0`
+- **THEN** its cache misses are `0`
+
+#### Scenario: a write on top of a fully read prefix is not a miss
+- **WHEN** an agent's second request reads exactly the previous request's cache read plus cache write and writes new tokens
+- **THEN** that request is not counted as a cache miss and adds no rewritten tokens
+
+#### Scenario: a partial expiry is a miss
+- **WHEN** an agent's previous request read 1,000 cached tokens and wrote 200, and its next request reads 400 cached tokens
+- **THEN** that request counts as one cache miss with 800 rewritten tokens
+
+### Requirement: Each cache miss carries its overcost from the price table
+
+The overcost of a miss SHALL be its rewritten tokens × (cache write price − cache read price), in USD, from the price table `sai/tools/model-prices.js`, on both Claude Code and opencode. It SHALL use the write price of the lifetime the request recorded (5 minutes or 1 hour), and a cache write without the lifetime split, which includes the single opencode cache-write figure, SHALL be priced as the 5-minute write. A model with no price entry, or whose entry lacks a price the computation needs, SHALL have an unknown overcost, never zero. The `telemetry-totals` comment of each section SHALL store `rewritten` (tokens) and `overcost` (money) beside the existing figures.
+
+#### Scenario: a miss is priced at the write price of its recorded lifetime
+- **WHEN** a Claude Code miss rewrites tokens and its request recorded the cache write as a 1-hour write
+- **THEN** its overcost uses the 1-hour write price minus the cache read price of the model's price entry
+
+#### Scenario: an unsplit write pays the 5-minute price
+- **WHEN** a miss's request records a cache write with no 5-minute and 1-hour split
+- **THEN** its overcost uses the 5-minute write price
+
+### Requirement: Every telemetry table reports the cache hit and the overcost per miss
+
+Every table of `telemetry.md` that lists the metric columns SHALL carry a `Cache hit` column after `Cache write` and an `Overcost/miss` column after `Cache misses`. `Cache hit` SHALL be cache read ÷ (cache read + cache write + input), computed from summed tokens, and SHALL show `unavailable` with a zero denominator. `Overcost/miss` SHALL be total overcost ÷ total misses, computed at every level from the summed figures and never as an average of averages, and SHALL show `n/a` with no misses, which is different from `unavailable`. Both columns SHALL be derived when a table is rendered and SHALL never be stored.
+
+#### Scenario: no miss shows n/a
+- **WHEN** an agent's requests contain no cache miss
+- **THEN** its `Overcost/miss` cell shows `n/a`
+
+#### Scenario: no tokens makes the cache hit unavailable
+- **WHEN** an agent's summed cache read, cache write, and input are all zero
+- **THEN** its `Cache hit` cell shows `unavailable`
+
+### Requirement: Sections written before the cache figures show them as unavailable
+
+A section written before the `rewritten` and `overcost` figures existed SHALL keep its text unchanged. Its `Cache hit` and `Overcost/miss` SHALL be `unavailable`, and a total that adds it to newer executions SHALL be marked partial with `≥`.
+
+#### Scenario: an older section makes the total partial
+- **WHEN** the collector appends an execution to a `telemetry.md` whose earlier section has no `rewritten` or `overcost` in its `telemetry-totals` comment
+- **THEN** the earlier section is unchanged, and the totals that add it up show the new figures as `unavailable` or marked `≥`
+
+### Requirement: telemetry.md holds a By command section after the change total
+
+`telemetry.md` SHALL hold a `## By command` section right after `## Change total`, with one row per command label of the execution headings (`## Execution N — <label> — <status>`, written without the leading slash), in order of first appearance. Each row SHALL add up every execution of that command in the change, show the execution count, and carry the same metric columns as the change total. The exploration SHALL be a separate last row, `sai-explore (exploration)`, whose count is the number of origin sessions, and it SHALL stay out of the change total. Every collection SHALL rebuild the section, with the change total, from the `telemetry-totals` comments of the execution sections and the exploration subsections.
+
+#### Scenario: two executions of one command share a row
+- **WHEN** a `telemetry.md` holds two `sai-plan` executions and one `sai-build` execution
+- **THEN** the `## By command` section has a `sai-plan` row with execution count 2 and a `sai-build` row with execution count 1
+
+#### Scenario: the exploration is its own row
+- **WHEN** a change with `explore_origin` records its exploration
+- **THEN** the `## By command` section ends with a `sai-explore (exploration)` row, and the change total does not include the exploration
+
+### Requirement: The cache and cost figures are documented
+
+`sai/policies/change-telemetry.md` SHALL describe the cache miss rule, the rewritten tokens, the overcost, `Overcost/miss`, `Cache hit`, the stored figures, the estimated Claude Code cost with its dated price table, the older sections, and the `By command` section. `docs/project-settings.md` and `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL mention the new figures and the `By command` table.
+
+#### Scenario: the policy defines the cache figures
+- **WHEN** a reader opens `sai/policies/change-telemetry.md`
+- **THEN** it has a `## Cache and cost` section that defines a cache miss, the overcost, `Overcost/miss`, and `Cache hit`, and a `## By command` section

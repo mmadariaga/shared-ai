@@ -22,7 +22,8 @@
  * the `<command-name>` record on Claude Code); an in-session route is found through
  * its workers, because the explore session carries no route invocation and one
  * explore session can host several routes and Direct Build slices. Claude Code
- * records no cost, reasoning, or variant: those figures are unavailable, never zero. `--run-dir` is the plan or
+ * records no cost, reasoning, or variant: its cost is estimated from `model-prices.js`, and reasoning
+ * and variant are unavailable, never zero. `--run-dir` is the plan or
  * Direct Build run directory, whose `reviews/{segment}-round-{k}.md` files hold the
  * review findings. The change folder may already be archived when Direct Build
  * collects, so `telemetry.md` is written into that folder. Only `telemetry.md` is
@@ -52,6 +53,7 @@ const path = require('node:path');
 const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, changeNameFromArgs, writtenChanges } = require('./opencode-db');
 const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
 const { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION } = require('./openspec-yaml');
+const { PRICES, PER_MILLION, findPrice, priceFromTable } = require('./model-prices');
 
 const OPEN_END = Number.MAX_SAFE_INTEGER;
 const UNAVAILABLE = 'unavailable';
@@ -91,6 +93,9 @@ const METRICS = [
   ['requests', 'Requests'], ['input', 'Input'], ['output', 'Output'], ['reasoning', 'Reasoning'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write'],
   ['cacheMisses', 'Cache misses'], ['cost', 'Cost'], ['ms', 'Time'], ['toolCalls', 'Tool calls'], ['toolErrors', 'Tool errors'], ['subagents', 'Subagents dispatched'], ['wakes', 'Wakes'],
 ];
+// The figures kept in the `telemetry-totals` comment. `rewritten` (tokens) and `overcost` (money) are stored without a
+// column: the `Overcost/miss` and `Cache hit` columns are derived from the stored figures when a table is rendered.
+const STORED = [...METRICS, ['rewritten', 'Rewritten tokens'], ['overcost', 'Overcost']];
 // The requests of an agent's wake turns, a subset of the figures above (`wakes` counts the turns themselves).
 const WAKE_METRICS = [['requests', 'Requests'], ['input', 'Input'], ['output', 'Output'], ['reasoning', 'Reasoning'], ['cacheRead', 'Cache read'], ['cacheWrite', 'Cache write'], ['cost', 'Cost']];
 const MARKER = '<!-- change-telemetry -->';
@@ -108,7 +113,7 @@ const number = value => (typeof value === 'number' && Number.isFinite(value) ? v
 const label = value => (typeof value === 'string' && value ? value : null);
 const exact = value => ({ value, partial: false });
 const UNKNOWN = { value: null, partial: true };
-const UNKNOWN_FIGURES = Object.fromEntries(METRICS.map(([key]) => [key, UNKNOWN]));
+const UNKNOWN_FIGURES = Object.fromEntries(STORED.map(([key]) => [key, UNKNOWN]));
 const UNKNOWN_WAKE = Object.fromEntries(WAKE_METRICS.map(([key]) => [key, UNKNOWN]));
 
 // The session a dispatch call started or continued.
@@ -140,6 +145,9 @@ function toRequest(row) {
     reasoning: number(tokens.reasoning),
     cacheRead: number(tokens.cache?.read),
     cacheWrite: number(tokens.cache?.write),
+    // opencode records one cache-write figure with no lifetime split: it is priced as the 5-minute write.
+    cacheWrite5m: null,
+    cacheWrite1h: null,
     cost: number(data.cost),
     ms: created !== null && completed !== null ? completed - created : null,
     model: label(data.model?.id),
@@ -157,10 +165,52 @@ function sum(values) {
   return { value: known.length ? known.reduce((total, value) => total + value, 0) : null, partial: known.length < values.length };
 }
 
+// The cost total of requests: a cost a price table supplied rather than the harness recorded marks the total estimated.
+function costSum(requests) {
+  return { ...sum(requests.map(request => request.cost)), ...(requests.some(request => request.estimated) ? { estimated: true } : {}) };
+}
+
+// Claude Code records no cost, so the cost of its request is estimated from the dated price table. A request with
+// a token count the transcript lacks, or a model with no price, has no cost.
+function estimateCost(request) {
+  const { input, output, cacheRead, cacheWrite, cacheWrite5m, cacheWrite1h } = request;
+  if ([input, output, cacheRead, cacheWrite].includes(null)) return null;
+  const split = cacheWrite5m !== null && cacheWrite1h !== null;
+  return priceFromTable({ input, output, cacheRead, cacheWrite5m: split ? cacheWrite5m : 0, cacheWrite1h: split ? cacheWrite1h : 0, cacheWrite: split ? 0 : cacheWrite }, findPrice(PRICES, request.model));
+}
+
+// The price per million tokens that the cache write of a request paid, by the lifetime the transcript recorded:
+// the 5-minute and the 1-hour writes at their own price, a write without the split at the 5-minute price.
+function writePrice(entry, request) {
+  const split = request.cacheWrite5m !== null && request.cacheWrite1h !== null;
+  const long = split ? request.cacheWrite1h : 0;
+  const short = split ? request.cacheWrite5m : request.cacheWrite ?? 0;
+  const { cacheWrite5mPerMTok: short5m, cacheWrite1hPerMTok: long1h } = entry;
+  if (short + long === 0) return typeof short5m === 'number' ? short5m : null;
+  if ((short > 0 && typeof short5m !== 'number') || (long > 0 && typeof long1h !== 'number')) return null;
+  return (short * (short5m ?? 0) + long * (long1h ?? 0)) / (short + long);
+}
+
+// A cache miss: a request after an agent's first whose cache read is smaller than the previous request's cache read
+// plus cache write. The shortfall is the tokens the request had to rewrite; each costs the write price instead of the
+// read price. A figure the records or the price table lack is null, never zero.
+function missOf(previous, request) {
+  if (previous.cacheRead === null || previous.cacheWrite === null || request.cacheRead === null) return { misses: null, rewritten: null, overcost: null };
+  const rewritten = Math.max(0, previous.cacheRead + previous.cacheWrite - request.cacheRead);
+  if (rewritten === 0) return { misses: 0, rewritten: 0, overcost: 0 };
+  const entry = findPrice(PRICES, request.model);
+  const write = entry ? writePrice(entry, request) : null;
+  const overcost = typeof write === 'number' && typeof entry.cacheReadPerMTok === 'number' ? (rewritten * (write - entry.cacheReadPerMTok)) / PER_MILLION : null;
+  return { misses: 1, rewritten, overcost };
+}
+
 // `wakes` is the number of wakes of the agent in the same window as `requests`.
 function figuresOf(requests, wakes) {
   if (requests.length === 0) return { ...UNKNOWN_FIGURES, requests: exact(0), wakes: exact(wakes) };
   const calls = requests.flatMap(request => request.calls);
+  // An agent's first request always writes the cache, so only later requests can miss.
+  const misses = requests.slice(1).map((request, index) => missOf(requests[index], request));
+  const missFigure = key => (requests.length === 1 ? exact(0) : sum(misses.map(miss => miss[key])));
   return {
     wakes: exact(wakes),
     requests: exact(requests.length),
@@ -169,9 +219,10 @@ function figuresOf(requests, wakes) {
     reasoning: sum(requests.map(request => request.reasoning)),
     cacheRead: sum(requests.map(request => request.cacheRead)),
     cacheWrite: sum(requests.map(request => request.cacheWrite)),
-    // An agent's first request always writes the cache, so only later requests can miss.
-    cacheMisses: requests.length === 1 ? exact(0) : sum(requests.slice(1).map(request => (request.cacheRead === null ? null : Number(request.cacheRead === 0)))),
-    cost: sum(requests.map(request => request.cost)),
+    cacheMisses: missFigure('misses'),
+    rewritten: missFigure('rewritten'),
+    overcost: missFigure('overcost'),
+    cost: costSum(requests),
     ms: sum(requests.map(request => request.ms)),
     toolCalls: exact(calls.length),
     toolErrors: exact(calls.filter(item => item.state?.status === 'error').length),
@@ -183,17 +234,17 @@ function figuresOf(requests, wakes) {
 // requests record, and no figure for one they never record (Claude Code records no cost or reasoning).
 function wakeFiguresOf(requests) {
   const own = requests.filter(request => request.wake);
-  const field = key => (own.length ? sum(own.map(request => request[key])) : requests.length === 0 || requests.some(request => request[key] !== null) ? exact(0) : UNKNOWN);
+  const field = key => (own.length ? (key === 'cost' ? costSum(own) : sum(own.map(request => request[key]))) : requests.length === 0 || requests.some(request => request[key] !== null) ? exact(0) : UNKNOWN);
   return { requests: exact(own.length), input: field('input'), output: field('output'), reasoning: field('reasoning'), cacheRead: field('cacheRead'), cacheWrite: field('cacheWrite'), cost: field('cost') };
 }
 
 // The figures of several agents added up; a total is partial when any part is. A part a figure set
 // lacks (a section written before the figure existed) is unknown.
-function combine(list, metrics = METRICS) {
+function combine(list, metrics = STORED) {
   return Object.fromEntries(metrics.map(([key]) => {
     const parts = list.map(figures => figures[key] ?? UNKNOWN);
     const known = parts.filter(metric => metric.value !== null);
-    return [key, { value: known.length ? known.reduce((total, metric) => total + metric.value, 0) : null, partial: parts.some(metric => metric.partial || metric.value === null) }];
+    return [key, { value: known.length ? known.reduce((total, metric) => total + metric.value, 0) : null, partial: parts.some(metric => metric.partial || metric.value === null), ...(parts.some(metric => metric.estimated) ? { estimated: true } : {}) }];
   }));
 }
 
@@ -266,8 +317,19 @@ function opencodeSource(db) {
   };
 }
 
+// The Claude Code source with the cost of each request estimated from the price table (the transcripts record none).
+function estimatingSource(source) {
+  return {
+    ...source,
+    requests: (sessionId, from, to) => source.requests(sessionId, from, to).map(request => {
+      const cost = estimateCost(request);
+      return { ...request, cost, estimated: cost !== null };
+    }),
+  };
+}
+
 function openSource(harness, { cwd, env, loadSqlite }) {
-  return harness === 'claude' ? openClaudeSource({ cwd, env }) : opencodeSource(openOpencodeDatabase(env, loadSqlite));
+  return harness === 'claude' ? estimatingSource(openClaudeSource({ cwd, env })) : opencodeSource(openOpencodeDatabase(env, loadSqlite));
 }
 
 const isSourceUnavailable = error => error instanceof OpencodeUnavailable || error instanceof ClaudeUnavailable;
@@ -625,13 +687,38 @@ function duration(ms) {
 
 const FORMATS = { cost: value => `$${value.toFixed(4)}`, ms: duration };
 
+// `≥` marks a partial figure and `~` a cost estimated from the price table.
 function show(metric, key) {
   if (metric.value === null) return UNAVAILABLE;
-  return `${metric.partial ? '≥' : ''}${FORMATS[key] ? FORMATS[key](metric.value) : metric.value.toLocaleString('en-US')}`;
+  return `${metric.partial ? '≥' : ''}${metric.estimated ? '~' : ''}${FORMATS[key] ? FORMATS[key](metric.value) : metric.value.toLocaleString('en-US')}`;
 }
 
-const metricCells = figures => METRICS.map(([key]) => show(figures[key], key));
-const TABLE_HEAD = ['Agent', 'Model', 'Variant', ...METRICS.map(([, name]) => name), 'Tools'];
+// Cache hit % = cache read ÷ (cache read + cache write + input), from the summed tokens. A figure set written before
+// the miss figures existed has no `rewritten`: its hit % is unavailable, and a total that adds it up is partial.
+function cacheHit(figures) {
+  const parts = ['cacheRead', 'cacheWrite', 'input', 'rewritten'].map(key => figures[key] ?? UNKNOWN);
+  if (parts.some(metric => metric.value === null)) return UNAVAILABLE;
+  const denominator = parts[0].value + parts[1].value + parts[2].value;
+  if (denominator === 0) return UNAVAILABLE;
+  return `${parts.some(metric => metric.partial) ? '≥' : ''}${((100 * parts[0].value) / denominator).toFixed(1)}%`;
+}
+
+// Overcost per miss = total overcost ÷ total misses, from the summed figures. No misses is `n/a`, which is not `unavailable`.
+function overcostPerMiss(figures) {
+  const misses = figures.cacheMisses ?? UNKNOWN, overcost = figures.overcost ?? UNKNOWN;
+  // A figure set written before the miss figures existed has no `rewritten`: its misses follow the earlier rule.
+  if ((figures.rewritten ?? UNKNOWN).value === null) return UNAVAILABLE;
+  if (misses.value === 0 && !misses.partial) return 'n/a';
+  // A partial overcost of zero comes from agents with no miss, while the misses the price table could not price add nothing known.
+  if (misses.value === null || misses.value === 0 || overcost.value === null || (overcost.partial && overcost.value === 0)) return UNAVAILABLE;
+  return show({ value: overcost.value / misses.value, partial: misses.partial || overcost.partial }, 'cost');
+}
+
+// The metric columns in order; the two derived columns follow the figure they derive from.
+const DERIVED_COLUMNS = { cacheWrite: ['Cache hit', cacheHit], cacheMisses: ['Overcost/miss', overcostPerMiss] };
+const COLUMNS = METRICS.flatMap(([key, name]) => [[name, figures => show(figures[key], key)], ...(DERIVED_COLUMNS[key] ? [DERIVED_COLUMNS[key]] : [])]);
+const metricCells = figures => COLUMNS.map(([, cellOf]) => cellOf(figures));
+const TABLE_HEAD = ['Agent', 'Model', 'Variant', ...COLUMNS.map(([name]) => name), 'Tools'];
 const tableLines = rows => [
   `| ${TABLE_HEAD.join(' | ')} |`,
   `|${TABLE_HEAD.map(() => '---').join('|')}|`,
@@ -656,7 +743,9 @@ function findingsLine(findings) {
 }
 
 // What each harness's record cannot supply, stated in every section written from it.
-const UNRECORDED = { claude: `- Note: Claude Code transcripts record no cost, reasoning, or variant, so those figures are ${UNAVAILABLE}.` };
+const UNRECORDED = {
+  claude: `- Note: Claude Code transcripts record no cost, so each cost is estimated (~) from the price table dated ${PRICES.date} (\`sai/tools/model-prices.js\`), and a model with no entry there has an ${UNAVAILABLE} cost. They record no reasoning or variant either, so those figures are ${UNAVAILABLE}.`,
+};
 
 function sectionText(number, options, execution, measured, source) {
   const out = [
@@ -670,6 +759,7 @@ function sectionText(number, options, execution, measured, source) {
     `- Note: a wake is the turn of an agent that the completion of its own \`wait.js … warm\` background wait opens (cache warming), the main session included. Its requests stay inside the tables above; the wake-cost table at the end is their subset. ${UNAVAILABLE} in Wakes means the agent's session was not recorded.`,
     `- Note: ≥ marks a partial total (a request lacks the datum); ${UNAVAILABLE} means no request supplied it. A subagent's own subagents are indented with ↳; dispatch calls count as subagents dispatched and stay out of tool calls.`,
     ...(UNRECORDED[options.harness] ? [UNRECORDED[options.harness]] : []),
+    `- Note: a cache miss is a request after an agent's first whose cache read is smaller than the previous request's cache read plus cache write (a context compaction counts). Its rewritten tokens are that shortfall, and Overcost/miss is the rewritten tokens × (cache write price − cache read price), from the price table dated ${PRICES.date}, divided by the misses (\`n/a\` means no miss). Cache hit is cache read ÷ (cache read + cache write + input).`,
     '',
     '### Coordinator',
     '',
@@ -719,14 +809,42 @@ function explorationText(origins) {
   return `${out.join('\n')}\n\n`;
 }
 
-const metricsList = totals => `| ${METRICS.map(([, name]) => name).join(' | ')} |\n|${METRICS.map(() => '---').join('|')}|\n| ${METRICS.map(([key]) => show(totals[key], key)).join(' | ')} |`;
+const metricsList = totals => `| ${COLUMNS.map(([name]) => name).join(' | ')} |\n|${COLUMNS.map(() => '---').join('|')}|\n| ${metricCells(totals).join(' | ')} |`;
 
-function headerText(change, count, totals) {
+// The command label of an execution heading (`## Execution N — <label> — <status>`), without the slash of a direct command.
+const commandOf = section => section.match(/^## Execution \d+ — (.+) — \S+$/m)?.[1].replace(/^\//, '') ?? UNAVAILABLE;
+
+// One row per command label: the executions of the command in this change, added up, and the exploration as its own row.
+function commandRows(sections, exploration) {
+  const groups = new Map();
+  for (const section of sections) groups.set(commandOf(section), [...(groups.get(commandOf(section)) ?? []), totalsOf(section)]);
+  const rows = [...groups].map(([name, list]) => ({ name, count: list.length, totals: combine(list) }));
+  const origins = exploration ? exploration.split(/(?=^### Origin session )/m).slice(1) : [];
+  if (origins.length) rows.push({ name: 'sai-explore (exploration)', count: origins.length, totals: combine(origins.map(totalsOf)) });
+  return rows;
+}
+
+function byCommandText(sections, exploration) {
+  const head = ['Command', 'Executions', ...COLUMNS.map(([name]) => name)];
+  return [
+    '## By command',
+    '',
+    'Each row adds up every execution of one command in this change; the exploration is its own row (its count is the origin sessions) and stays out of the change total.',
+    '',
+    `| ${head.join(' | ')} |`,
+    `|${head.map(() => '---').join('|')}|`,
+    ...commandRows(sections, exploration).map(row => `| ${[row.name, row.count, ...metricCells(row.totals)].map(cell).join(' | ')} |`),
+    '',
+    '',
+  ].join('\n');
+}
+
+function headerText(change, count, totals, sections, exploration) {
   return [
     `# Telemetry: ${change}`,
     '',
     MARKER,
-    'Written by `sai/tools/change-telemetry.js` at the close of `/sai-plan`, `/sai-build`, and the `/sai-explore` in-session routes. Each execution adds one section at the end and recomputes the change total below; earlier sections are never edited.',
+    'Written by `sai/tools/change-telemetry.js` at the close of `/sai-plan`, `/sai-build`, and the `/sai-explore` in-session routes. Each execution adds one section at the end and recomputes the change total and the by-command table below; earlier sections are never edited.',
     '',
     '## Change total',
     '',
@@ -735,7 +853,7 @@ function headerText(change, count, totals) {
     metricsList(totals),
     '',
     '',
-  ].join('\n');
+  ].join('\n') + byCommandText(sections, exploration);
 }
 
 function readExisting(file) {
@@ -799,7 +917,7 @@ function collect(options, { env = process.env, loadSqlite = defaultLoadSqlite } 
   if (existing.sections.some(section => section.includes(`<!-- telemetry-execution ${execution.inv.id} -->`))) return skipped(`This execution is already recorded in ${relative}.`);
   const section = sectionText(existing.sections.length + 1, options, execution, measured, source);
   const sections = [...existing.sections, section];
-  const header = headerText(change, sections.length, combine(sections.map(totalsOf)));
+  const header = headerText(change, sections.length, combine(sections.map(totalsOf)), sections, exploration ?? existing.exploration);
   const temporary = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, header + (exploration ?? existing.exploration ?? '') + sections.join(''));
   fs.renameSync(temporary, file);

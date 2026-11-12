@@ -163,3 +163,15 @@ Each run result SHALL carry its usage with the cost already computed. On Claude 
 
 - **WHEN** two price table keys of the same word length both match a recorded model
 - **THEN** that model has no price
+
+### Requirement: The benchmark prices runs with the shared installable price module
+
+The price lookup `findPrice` and the pricing helper `priceFromTable` SHALL live in the installable module `sai/tools/model-prices.js`, which the change telemetry also uses, and `benchmark/cost.js` SHALL import them instead of defining them. The benchmark SHALL keep the corpus price table as its input. The module SHALL also export a dated default price table with the shape of the corpus `prices` (`date`, and per model `inputPerMTok`, `outputPerMTok`, `cacheReadPerMTok`, `cacheWrite5mPerMTok`, `cacheWrite1hPerMTok`).
+
+#### Scenario: the benchmark no longer defines the helpers
+- **WHEN** `benchmark/cost.js` is loaded
+- **THEN** it exports no `findPrice`, and its run cost is computed with the `findPrice` and `priceFromTable` of `sai/tools/model-prices.js` against the corpus price table
+
+#### Scenario: the default table is dated
+- **WHEN** the default price table of `sai/tools/model-prices.js` is read
+- **THEN** its `date` is a `YYYY-MM-DD` date and every model entry carries a numeric price for each of the five price keys
