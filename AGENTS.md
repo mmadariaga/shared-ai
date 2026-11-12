@@ -99,7 +99,7 @@ The pipeline depends on the OpenSpec CLI:
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, single-line `model` with `#variant` suffix, often `subtask: false`) + the clean-start line + the capability profile + fetch to the command's card, `sai/commands/{name}/coordinator.md` or `sai/commands/{name}/body.md` for the utility commands. |
 | `sai-state/` | Explore stage machine: envelope, registry, and `machines/`. |
 | `bin/` | Installer, doctor, uninstall, worker-matrix, and the `sai-state` CLI. `bin/benchmark.js` is the exception: a repository-only runner of the outcome benchmark that the manifest projects to no harness (see [docs/benchmark.md](docs/benchmark.md)). |
-| `benchmark/` | Library and container image of `bin/benchmark.js`: corpus validation, run classification, the replaceable execution backend (Docker), the report, and the `Dockerfile`. Repository-only; not in the package `files`. |
+| `benchmark/` | Library and container image of `bin/benchmark.js`: corpus validation, run classification, token and cost measurement from the harness data, the replaceable execution backend (Docker), the report, and the `Dockerfile`. Repository-only; not in the package `files`. |
 | `openspec/schemas/sai-workflow/` | Custom OpenSpec schema: `schema.yaml` plus the artifact templates. |
 | `configs/` | Config samples. `opencode.jsonc`: `$schema` + `experimental.subagent_depth` + the SAI external-directory permission; no agent definitions (the agents ship as managed agent files). |
 

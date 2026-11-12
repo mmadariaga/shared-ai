@@ -241,6 +241,8 @@ function transcriptRequests(rows, agentOfToolUse = new Map()) {
       reasoning: null,
       cacheRead: count(entry.usage?.cache_read_input_tokens),
       cacheWrite: cacheWrite(entry.usage),
+      cacheWrite5m: count(entry.usage?.cache_creation?.ephemeral_5m_input_tokens),
+      cacheWrite1h: count(entry.usage?.cache_creation?.ephemeral_1h_input_tokens),
       cost: null,
       ms,
       model: typeof entry.model === 'string' && entry.model ? entry.model : null,
