@@ -47,32 +47,49 @@ An agent whose `begin` returned timings SHALL, before ending each turn with its 
 
 ### Requirement: Wake performs no work
 
-On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged and reply `ok`, except that a worker whose last real message was a result (a message that carries the reference of a saved report) and that has received no real message since SHALL reply with that last message verbatim (the same reference and the same `warming:` line, and nothing else) instead of `ok`; on `finished` it SHALL reply `ok` and arm nothing. The repeat SHALL compose nothing new, SHALL NOT be a new real message, and SHALL restart no window. Once the dispatcher sends the worker a real message, the worker's wakes SHALL reply `ok` again. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered `ok`, and from then on the agent SHALL answer every wake with `ok` and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting.
+On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged; on `finished` it SHALL arm nothing for that wait. A main session SHALL apply the continuation check on arm responses and normal warm results: it SHALL check the current conversation and active command contract for an unhandled user response or actionable authorized work, meaning work permitted now without another response, authorization, or result. It SHALL handle that response or continue that work before ending the turn, and SHALL reply `ok` only when there is nothing to handle. The reminder SHALL grant no permission and confirm no decision. The main session SHALL preserve legitimate waits and completed commands, invent no response, repeat no already-answered question, duplicate no running work, and reopen no completed command. A `finished` result SHALL end that wait, not necessarily the command's work; it SHALL NOT revive the finished wait or disturb a newer wait.
+
+A subagent SHALL reply `ok` on `continue`, except that a worker whose last real message was a result (a message that carries the reference of a saved report) and that has received no real message since SHALL reply with that last message verbatim (the same reference and the same `warming:` line, and nothing else) instead of `ok`; on `finished` it SHALL reply `ok` and arm nothing. The repeat SHALL compose nothing new, SHALL NOT be a new real message, and SHALL restart no window. Once the dispatcher sends the worker a real message, the worker's wakes SHALL reply `ok` again. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A subagent wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered `ok`, and from then on the agent SHALL answer every wake with `ok` and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting. These rules SHALL apply to Claude Code and opencode alike.
 
 #### Scenario: Continue wake re-arms
-
-- **WHEN** a wait completes with status `continue` and the agent has no unconfirmed result to repeat
+- **WHEN** a wait completes with status `continue` and the agent has no unconfirmed result to repeat or main-session response or authorized work to handle
 - **THEN** the agent re-arms with the unchanged state token and replies only `ok`
 
 #### Scenario: Dispose message ends warming
-
 - **WHEN** an agent receives the message `dispose`
 - **THEN** it replies `ok`, arms no further wait, and answers each later wake of a wait it armed with `ok` alone
 
 #### Scenario: Setting turned off while warming
-
 - **WHEN** the `warming` setting turns the agent off while its wait is armed and the agent re-arms after a wake
-- **THEN** the re-armed wait returns `finished` and the agent replies `ok` and arms nothing
+- **THEN** the re-armed wait returns `finished` and the agent arms nothing for it; a subagent replies `ok`, while a main session checks for a response or actionable authorized work and replies `ok` only when there is nothing to handle
 
 #### Scenario: Worker repeats an unconfirmed result on a wake
-
 - **WHEN** a worker whose last real message carried a report reference has received no real message since and a wait completes with status `continue`
 - **THEN** the worker re-arms and replies with that last message verbatim instead of `ok`
 
 #### Scenario: A real message ends the repeat
-
 - **WHEN** the dispatcher has sent the worker a real message after the worker's last result and a wait completes with status `continue`
 - **THEN** the worker re-arms and replies only `ok`
+
+#### Scenario: User response arrives with a notification
+- **WHEN** a user response and a warming notification are available together to the main session
+- **THEN** the main session handles the actual response under the active command contract instead of replacing it with `ok`, and the notification supplies no decision
+
+#### Scenario: Authorized work remains actionable
+- **WHEN** the main session receives an arm response or normal warm result and its current command permits pending work now without another response, authorization, or result
+- **THEN** it continues that work before ending the turn without treating the reminder as new permission
+
+#### Scenario: Legitimate waiting remains waiting
+- **WHEN** the main session is waiting for the user, a tool, or a worker
+- **THEN** it preserves that wait, invents no response, repeats no already-answered question, and duplicates no running work
+
+#### Scenario: Notification after command completion
+- **WHEN** a warming notification reaches the main session after its command completed
+- **THEN** it preserves completion, reopens no command, and repeats no completed action
+
+#### Scenario: Finished wait with unfinished command
+- **WHEN** a main-session wait returns `finished` while a user response or actionable authorized command work remains
+- **THEN** the main session handles that response or work without rearming the finished wait, and a superseded wait's result does not end a newer live wait
 
 ### Requirement: Bounded warming window
 
@@ -180,15 +197,15 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 
 ### Requirement: Hand-off wait with a fixed deadline
 
-`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: an ordinary `wait.js` chain of the main session whose window is a fixed deadline that `wait.js` owns. The command SHALL settle the timings (from the `warming` setting for the `agent` role, or from the user's answers to its question) and SHALL pass them explicitly as `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. `begin` SHALL read `--interval` and `--max` with the same duration parser that `wait.js` uses for its other intervals (`intervalMilliseconds`), so each value SHALL be a positive number with an optional unit `s`, `sec`, `m`, `min`, `h`, or `hr`, a value with no unit counting in minutes (`20`, `30 min`, `4h`), and a compound such as `1h30` SHALL be refused; `begin` SHALL reject `--interval` and `--max` as a usage error unless both are given in an accepted form with `max` at least `interval`, and the usage message SHALL name the accepted forms. The chain record SHALL then hold the deadline, `max` minutes after that `begin`, and no arm or wake SHALL move it. The command SHALL run the foreground arm check and launch `warm --chain <chain>` only when it prints `launch: true`, only at the end of the hand-off close; the check SHALL reuse a live wait and never move the deadline, and after the deadline it SHALL launch nothing. A real message other than the event the command waits for SHALL re-arm nothing. A wake SHALL re-arm with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. The timings SHALL stay as passed to `begin` at every wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
+`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: an ordinary `wait.js` chain of the main session whose window is a fixed deadline that `wait.js` owns. The command SHALL settle the timings (from the `warming` setting for the `agent` role, or from the user's answers to its question) and SHALL pass them explicitly as `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. `begin` SHALL read `--interval` and `--max` with the same duration parser that `wait.js` uses for its other intervals (`intervalMilliseconds`), so each value SHALL be a positive number with an optional unit `s`, `sec`, `m`, `min`, `h`, or `hr`, a value with no unit counting in minutes (`20`, `30 min`, `4h`), and a compound such as `1h30` SHALL be refused; `begin` SHALL reject `--interval` and `--max` as a usage error unless both are given in an accepted form with `max` at least `interval`, and the usage message SHALL name the accepted forms. The chain record SHALL then hold the deadline, `max` minutes after that `begin`, and no arm or wake SHALL move it. The command SHALL run the foreground arm check and launch `warm --chain <chain>` only when it prints `launch: true`, only at the end of the hand-off close; the check SHALL reuse a live wait and never move the deadline, and after the deadline it SHALL launch nothing. A real message other than the event the command waits for SHALL re-arm nothing. The main session SHALL apply the continuation check on arm and wake responses, handling actual user responses under the active command contract while preserving the wait when the required human action has not arrived. A notification SHALL NOT supply that action, such as `next-slice`. While still waiting, a `continue` wake SHALL re-arm with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. The timings SHALL stay as passed to `begin` at every wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed; the main session SHALL apply the continuation check and reply `ok` when there is nothing to handle. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
 
 #### Scenario: Wake with user-supplied timings
-- **WHEN** a hand-off wait whose timings came from the user's answers wakes
+- **WHEN** a hand-off wait whose timings came from the user's answers wakes with `continue` while the required human action has not arrived
 - **THEN** the command re-arms with `--state <state_token>` unchanged and no other flag, the wait keeps the timings passed to `begin`, and the command records the new task id
 
 #### Scenario: Deadline reached
 - **WHEN** the hand-off wait reaches its deadline
-- **THEN** the wait returns `finished`, the command replies `ok`, and nothing is armed
+- **THEN** the wait returns `finished`, nothing is armed, and the command applies the continuation check and replies `ok` when there is nothing to handle
 
 #### Scenario: Timings from the setting
 - **WHEN** the hand-off timings come from the `warming` setting for the `agent` role
@@ -205,6 +222,10 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 #### Scenario: Hand-off close runs the arm check
 - **WHEN** the hand-off close arms its fixed-deadline wait
 - **THEN** it runs the foreground arm check first and launches `warm --chain <chain>` only when the check prints `launch: true`, holding the task id only when a wait launched
+
+#### Scenario: Warming notification does not supply the human action
+- **WHEN** a hand-off arm response or wake arrives without the user action the command requires
+- **THEN** the command does not invent `next-slice` or advance on the notification, preserves the fixed deadline, and rearms only under the existing hand-off rules
 
 ### Requirement: Stopping an ended wait is harmless
 
@@ -288,15 +309,15 @@ A dispatcher that disposes an agent SHALL end the task message and every continu
 
 ### Requirement: Foreground arm check decides whether to launch
 
-After each response, an agent whose `begin` returned timings SHALL run `node "<wait-path>" arm --chain <chain>` in the foreground before ending the turn. The check SHALL print one JSON decision, `{"launch": true|false}`, and the agent SHALL launch one background `warm --chain <chain>` only when `launch` is `true`. An `arm` without `--chain` SHALL exit 2 as a usage error and launch nothing. The agent SHALL NOT decide itself, and both harnesses SHALL follow the same rule.
+After each response, an agent whose `begin` returned timings SHALL run `node "<wait-path>" arm --chain <chain>` in the foreground before ending the turn. The check SHALL print one JSON decision containing `launch: true|false` and the textual `reminder`, and the agent SHALL launch one background `warm --chain <chain>` only when `launch` is `true`. An `arm` without `--chain` SHALL exit 2 as a usage error and launch nothing. The agent SHALL NOT decide itself, and both harnesses SHALL follow the same rule. The main session SHALL apply the continuation check before ending its turn.
 
 #### Scenario: Launch answer starts one wait
-- **WHEN** the arm check prints `{"launch": true}`
-- **THEN** the agent launches one background `warm --chain <chain>` and ends the turn with its response
+- **WHEN** the arm check prints JSON containing `launch: true` and the reminder
+- **THEN** the agent launches one background `warm --chain <chain>` and ends the turn with its response after any applicable main-session continuation work
 
 #### Scenario: No-launch answer starts nothing
-- **WHEN** the arm check prints `{"launch": false}`
-- **THEN** the agent launches no wait and ends the turn with its response
+- **WHEN** the arm check prints JSON containing `launch: false` and the reminder
+- **THEN** the agent launches no wait and ends the turn with its response after any applicable main-session continuation work
 
 #### Scenario: Arm without a chain
 - **WHEN** `arm` runs without `--chain`
@@ -304,28 +325,48 @@ After each response, an agent whose `begin` returned timings SHALL run `node "<w
 
 ### Requirement: Arm check reuse and replacement rules
 
-The arm check SHALL reuse a live wait with a fresh owner lease, the resolved interval and max, and an arm instant not earlier than the cutoff mark; it SHALL extend that wait's window to `now` plus `max` and print `launch: false`. Otherwise, with warming on, it SHALL print `launch: true`. A fixed-deadline chain SHALL reuse its wait and never move the deadline, printing `launch: false` after it; warming off SHALL print `launch: false`.
+The arm check SHALL reuse a live wait with a fresh owner lease, the resolved interval and max, and an arm instant not earlier than the cutoff mark; it SHALL extend that wait's window to `now` plus `max` and print `launch: false`. Otherwise, with warming on, it SHALL print `launch: true`. A fixed-deadline chain SHALL reuse its wait and never move the deadline, printing `launch: false` after it; warming off SHALL print `launch: false`. Each decision SHALL also include the same textual reminder without changing these rules.
 
 #### Scenario: A live valid wait is reused
 - **WHEN** the arm check finds a live wait with a fresh lease, the same interval and max, and no newer cutoff mark
-- **THEN** it extends the wait's window to now plus max and prints `{"launch": false}`
+- **THEN** it extends the wait's window to now plus max and prints JSON containing `launch: false` and the reminder
 
 #### Scenario: Changed timings launch a new wait
 - **WHEN** the resolved interval or max differs from the live wait's
-- **THEN** the arm check prints `{"launch": true}` and the agent launches a new wait
+- **THEN** the arm check prints JSON containing `launch: true` and the reminder, and the agent launches a new wait
 
 #### Scenario: Stale lease launches a new wait
 - **WHEN** the live wait's lease is older than the staleness bound
-- **THEN** the arm check prints `{"launch": true}`
+- **THEN** the arm check prints JSON containing `launch: true` and the reminder
 
 #### Scenario: Cutoff mark launches a new wait
 - **WHEN** the cutoff mark is newer than the live wait's arm instant
-- **THEN** the arm check prints `{"launch": true}`
+- **THEN** the arm check prints JSON containing `launch: true` and the reminder
 
 #### Scenario: Warming off launches nothing
 - **WHEN** the warming setting resolves to off for the agent
-- **THEN** the arm check prints `{"launch": false}`
+- **THEN** the arm check prints JSON containing `launch: false` and the reminder
 
 #### Scenario: Fixed deadline is reused and never moved
 - **WHEN** the arm check runs on a fixed-deadline chain before its deadline
-- **THEN** it reuses the live wait, keeps the deadline, and prints `{"launch": false}`; at or after the deadline it prints `{"launch": false}` without launching
+- **THEN** it reuses the live wait, keeps the deadline, and prints JSON containing `launch: false` and the reminder; at or after the deadline it prints the same decision without launching
+
+### Requirement: Self-contained continuation reminder in warming responses
+
+On Claude Code and opencode, `wait.js` SHALL add one textual `reminder` to every successful `arm` response and normal `warm` result, preserving existing fields. The reminder SHALL have one definition reused across those outputs and SHALL NOT enter chain records, `state`, or `state_token`. `begin`, independent `prepare` and `wait`, and usage errors SHALL keep their existing behavior.
+
+#### Scenario: Both arm decisions carry the reminder
+- **WHEN** the arm check returns either `launch: true` or `launch: false`
+- **THEN** its JSON includes `reminder` with the exact text: "If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state. If you are a subagent, follow your existing warming protocol."
+
+#### Scenario: Both warm statuses carry the reminder
+- **WHEN** a normal `warm` result returns `continue` or `finished`, from a chain or returned state
+- **THEN** its JSON includes the same reminder while preserving the status, waited time, state, and state-token meaning, including when warming is off, a deadline expires, or a wait is superseded
+
+#### Scenario: Reminder is output only
+- **WHEN** a reminder-bearing result is returned and its state token is decoded
+- **THEN** neither the state nor the token's decoded state nor the persisted chain record includes the reminder, and no next-action pointer is stored
+
+#### Scenario: Coverage does not claim model compliance
+- **WHEN** regression tests exercise reminder output and E1–E7 continuation scenarios
+- **THEN** they check output fields, CLI transport, state isolation, and instruction coverage while distinguishing those checks from observing model compliance

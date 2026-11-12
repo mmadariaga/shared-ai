@@ -48,7 +48,7 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /neither a reference nor `ok`[\s\S]{0,80}is not a result: keep waiting with the watch armed/);
   assert.match(text, /Watch each report directory separately and attribute a report to the worker of its directory/);
   assert.match(text, /print one notice and go on without it: the run does not stop/);
-  assert.match(text, /Your own cache-warming wake keeps performing no work; only the watch looks for reports/);
+  assert.match(text, /Only the watch looks for undelivered reports; a warming notification does not trigger report polling/);
   assert.match(text, /`\.draft\.` is a draft, never a report/);
 });
 
@@ -64,15 +64,16 @@ test('deep-review watches each audit cycle on its own report directory', () => {
   assert.match(read('sai/commands/deep-review/coordinator.md'), /one watch per cycle on that cycle's own report directory: a report found there belongs to that cycle's worker/);
 });
 
-test('the wake of a worker repeats its unconfirmed result, and the coordinator wake still performs no work', () => {
+test('the wake of a worker keeps its report protocol while main-session continuity does not poll for reports', () => {
   const policy = read('sai/policies/cache-warming.md');
-  assert.match(policy, /reply with the single word `ok`, or with the repeat of your last result/);
+  assert.match(policy, /A subagent replies with the single word `ok`, or with the repeat of its last result/);
   assert.match(policy, /\*\*Repeat the last result\.\*\* A worker whose last real message was a result[\s\S]{0,120}has received no real message since replies to a `continue` wake with that message instead of `ok`/);
   assert.match(policy, /the same reference and the same `warming:` line, verbatim, and nothing else/);
   assert.match(policy, /A repeat is not a new real message: it restarts no window/);
   assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply `ok` again; a `finished` wake replies `ok`, and so does every wake after a `dispose`/);
   assert.match(policy, /\*\*Real message\*\*: any message to or from an agent except the `ok` of a wake, the `ok` of a `dispose`, and a wake's repeat of the last result\./, 'a repeat is not a real message, so it restarts no window');
-  assert.match(policy, /A wake performs no work\. Run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing\./);
+  assert.match(policy, /A subagent wake performs no work\. Run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing\./);
+  assert.match(policy, /Main-session work comes only from the current conversation and command contract/);
   assert.match(policy, /treats the repeat like an `ok` \(`@sai\/policies\/worker-report-transport\.md` § Undelivered reports\)/);
 });
 
