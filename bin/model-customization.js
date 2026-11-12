@@ -68,6 +68,7 @@ const TARGET_PROFILE = Object.freeze({
   'command:sai-archive':                 { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-backfill':                { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-build':                   { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-direct-build':            { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-4-review':                { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-explore':                 { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-merge':                   { context: 'Large',   difficulty: '↑↑↑' },
@@ -148,7 +149,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
 // `archive` as the explicit alphabetical exception.
 const ALL_PHASE_ORDER = Object.freeze([
   Object.freeze(['sai-explore', 'sai-plan', 'sai-1-spec', 'sai-2-design']),
-  Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-review']),
+  Object.freeze(['sai-build', 'sai-direct-build', 'sai-3-implement', 'sai-4-review']),
   Object.freeze(['sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']),
   Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge', 'sai-commit']),
 ]);

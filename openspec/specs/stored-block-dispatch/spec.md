@@ -26,7 +26,7 @@ Without export, `sai-state block <id> <change-name>` SHALL retain its existing `
 
 ### Requirement: Plan and Direct Build take block text only from the store
 
-Claude Code and opencode SHALL obtain stored blocks only from `sai-state`. Before each fresh Plan spec, Direct Build implementer, or backfill-prepare dispatch, including retries and replacements, the coordinator SHALL run `sai-state block <id> <change-name> --export --harness <claude|opencode>` and send only the returned paired `--block-file` and `--block-hash` lines. No model SHALL transcribe stored content into messages or heredocs. Later coordinator readings SHALL use the store, not conversation text. After amendment the coordinator SHALL export anew and never pair an old file with a new hash. Transfer directories SHALL remain available while continuations or recovery can need them and SHALL be closed through `transfer.js close` only afterward. `last_crystallization_set` SHALL hold names only; execute continuations SHALL carry validated draft references, not the block.
+Claude Code and opencode SHALL obtain stored blocks only from `sai-state` on the `/sai-explore` routes. Before each fresh Plan spec, Direct Build implementer, or backfill-prepare dispatch of those routes, including retries and replacements, the coordinator SHALL run `sai-state block <id> <change-name> --export --harness <claude|opencode>` and send only the returned paired `--block-file` and `--block-hash` lines. The one exception is `/sai-direct-build`: it has no `sai-state` store, so the caller-supplied `--block-file` and `--block-hash` pair, once verified with `ready-to-propose.js verify-file`, SHALL serve every dispatch of its run, retries and replacements included, and the command SHALL neither export a block nor close or remove that file. No model SHALL transcribe stored content into messages or heredocs. Later coordinator readings SHALL use the store, or for `/sai-direct-build` the verified file, not conversation text. After amendment the coordinator SHALL export anew and never pair an old file with a new hash. Transfer directories SHALL remain available while continuations or recovery can need them and SHALL be closed through `transfer.js close` only afterward. `last_crystallization_set` SHALL hold names only; execute continuations SHALL carry validated draft references, not the block.
 
 #### Scenario: A compaction leaves the next dispatch unaffected
 
@@ -42,6 +42,11 @@ Claude Code and opencode SHALL obtain stored blocks only from `sai-state`. Befor
 
 - **WHEN** a block is amended while recovery may still need its previous export
 - **THEN** the next dispatch receives a fresh export and its new hash while the previous directory remains available until no longer needed.
+
+#### Scenario: Direct Build command reuses the caller's verified pair
+
+- **WHEN** `/sai-direct-build` dispatches the implementer, the backfill prepare worker, or a replacement worker
+- **THEN** each envelope carries the caller-supplied `--block-file` and `--block-hash` pair it verified at start, with no `sai-state` export
 
 ### Requirement: A missing stored block dispatches nothing
 

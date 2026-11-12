@@ -26,7 +26,7 @@ Define the hash recomputation that every worker receiving a stored block perform
 
 ### Requirement: Receiving workers verify the block hash before any work
 
-The Direct Build implementer after `--direct-build`, the backfill prepare worker after `--direct-build-prepare`, and the supervised spec worker after `--supervised` SHALL require paired `--block-file <absolute path>` and `--block-hash <sha256>` lines. Before dependent work each SHALL invoke `ready-to-propose.js verify-file` with those references. Verification SHALL require a safe regular transfer file containing exactly one block and matching the existing LF-normalized hash; it SHALL reject missing, unreadable, unsafe, or mismatched files. Each receiver SHALL return `failed` with no changes and identify the problem before repository reads or writes when verification fails. After success the verified file SHALL supply the sole block input. Workers SHALL never reconstruct, complete, or repair a block from chat, and SHALL NOT compute a hash from block text in place of `verify-file`.
+The Direct Build implementer after `--direct-build`, the backfill prepare worker after `--direct-build-prepare`, the supervised spec worker after `--supervised`, and the `/sai-direct-build` coordinator on its own arguments SHALL require paired `--block-file <absolute path>` and `--block-hash <sha256>` lines. Before dependent work each SHALL invoke `ready-to-propose.js verify-file` with those references. Verification SHALL require a safe regular transfer file containing exactly one block and matching the existing LF-normalized hash; it SHALL reject missing, unreadable, unsafe, or mismatched files. Each receiving worker SHALL return `failed` with no changes and identify the problem before repository reads or writes when verification fails; the `/sai-direct-build` coordinator SHALL instead print `Cannot start /sai-direct-build: the block file does not verify against --block-hash ({problem}).`, write nothing, and dispatch no worker. After success the verified file SHALL supply the sole block input. Receivers SHALL never reconstruct, complete, or repair a block from chat, and SHALL NOT compute a hash from block text in place of `verify-file`.
 
 #### Scenario: Hash mismatch fails without changes
 
@@ -42,6 +42,11 @@ The Direct Build implementer after `--direct-build`, the backfill prepare worker
 
 - **WHEN** a required file line is absent or the supplied file cannot be read
 - **THEN** the worker returns failed without changes or dependent work and names the missing line or file problem.
+
+#### Scenario: Direct Build command refuses a mismatched block
+
+- **WHEN** `/sai-direct-build` receives a `--block-file` that `verify-file` reports as not matching its `--block-hash`
+- **THEN** the command prints the verification stop line naming the problem, writes nothing, and dispatches no worker
 
 ### Requirement: Unstored blocks carry no hash check
 
