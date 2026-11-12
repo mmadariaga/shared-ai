@@ -7,7 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { BenchmarkError, loadCorpus } = require('../benchmark/corpus');
-const { findPrice, summarizeRun } = require('../benchmark/cost');
+const { findPrice, priceFromTable } = require('../sai/tools/model-prices');
+const { summarizeRun } = require('../benchmark/cost');
 const { measureClaude, measureOpencode } = require('../benchmark/measure');
 const { buildReports } = require('../benchmark/report');
 const { runBenchmark } = require('../benchmark/runner');
@@ -69,6 +70,31 @@ test('price lookup: an exact key, else the longest key whose words are a run of 
   assert.equal(findPrice(PRICES, null), null);
   const ambiguous = { date: '2026-11-01', models: { 'a-b': { inputPerMTok: 1, outputPerMTok: 1 }, 'b-c': { inputPerMTok: 2, outputPerMTok: 2 } } };
   assert.equal(findPrice(ambiguous, 'a-b-c'), null);
+});
+
+test('the shared price module: the benchmark imports its helpers, and priceFromTable pays each token type its own price', () => {
+  assert.equal(require('../benchmark/cost').findPrice, undefined, 'the helpers are no longer defined by the benchmark');
+  const entry = { inputPerMTok: 1, outputPerMTok: 5, cacheReadPerMTok: 0.1, cacheWrite5mPerMTok: 1.25, cacheWrite1hPerMTok: 2 };
+  const tokens = { input: 1_000_000, output: 1_000_000, cacheRead: 1_000_000, cacheWrite5m: 1_000_000, cacheWrite1h: 1_000_000, cacheWrite: 1_000_000 };
+  assert.equal(priceFromTable(tokens, entry), 1 + 5 + 0.1 + 1.25 + 2 + 1.25);
+  assert.equal(priceFromTable({ input: 10 }, null), null);
+  assert.equal(priceFromTable({ input: 10, cacheRead: 5 }, { inputPerMTok: 1, outputPerMTok: 1 }), null, 'a token type with no price is no cost');
+  assert.equal(priceFromTable({ input: 0, cacheRead: 0 }, { inputPerMTok: 1, outputPerMTok: 1 }), 0);
+});
+
+test('the installable default price table is dated, has the benchmark corpus shape, and prices the recorded Claude Code model ids', () => {
+  const { PRICES: defaults } = require('../sai/tools/model-prices');
+  assert.match(defaults.date, /^\d{4}-\d{2}-\d{2}$/);
+  for (const [model, price] of Object.entries(defaults.models)) {
+    for (const key of ['inputPerMTok', 'outputPerMTok', 'cacheReadPerMTok', 'cacheWrite5mPerMTok', 'cacheWrite1hPerMTok']) {
+      assert.ok(typeof price[key] === 'number' && price[key] > 0, `${model}: ${key}`);
+    }
+    assert.ok(price.cacheReadPerMTok < price.inputPerMTok && price.inputPerMTok < price.cacheWrite5mPerMTok && price.cacheWrite5mPerMTok < price.cacheWrite1hPerMTok, `${model}: price order`);
+  }
+  assert.equal(findPrice(defaults, 'claude-sonnet-5-5').inputPerMTok, 2);
+  assert.equal(findPrice(defaults, 'claude-opus-5-5-20261101').cacheReadPerMTok, 0.2);
+  assert.equal(findPrice(defaults, 'claude-haiku-4-5-20251001').outputPerMTok, 5);
+  assert.equal(findPrice(defaults, 'claude-haiku-5-5'), null, 'a model whose price depends on the prompt length has no single entry');
 });
 
 test('E8: a model without a price, or without the price of a token type it used, has a cost of null and never zero', () => {
