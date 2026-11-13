@@ -281,7 +281,7 @@ test('E3 E4 a failing subpath prints an error block on stdout, the others still 
   assert.equal(result.code, 1);
   assert.equal(result.err, '');
   const blocks = result.out.split('\n\n').map(block => block.split('\n').filter(Boolean));
-  assert.deepEqual(blocks.map(block => block[0]), ['subpath: sai/a.md', 'subpath: ../secret.md', 'subpath: skills/budget/SKILL.md', 'subpath: sai/missing.md', 'subpath: sai/a.md']);
+  assert.deepEqual(blocks.map(block => block[0]), ['subpath: sai/a.md', 'subpath: ../secret.md', 'subpath: skills/budget/SKILL.md', 'subpath: sai/missing.md']);
   assert.match(blocks[0][1], /^path: /);
   assert.match(blocks[1][1], /^error: .*sai\/, commands\/, skills\//);
   assert.match(blocks[2][1], /^error: .*`Skill` tool/);
@@ -296,12 +296,71 @@ test('E4 a call without a subpath is a usage error that prints no block', () => 
   assert.equal(result.out, '');
 });
 
-test('E5 a repeated subpath prints one block per occurrence', () => {
-  const { cwd, home } = fixture();
-  write(path.join(cwd, '.claude/sai/a.md'), 'a');
-  const result = run(['--harness', 'claude', 'sai/a.md', 'sai/a.md'], { cwd, home });
-  assert.equal(result.out.split('subpath: sai/a.md').length - 1, 2);
-});
+for (const harness of ['claude', 'opencode']) {
+  test(`${harness} repeated-singleton lookup keeps path mode and resolves only once`, () => {
+    const { cwd, home } = fixture();
+    const root = harness === 'claude' ? '.claude' : '.opencode';
+    const file = path.join(cwd, root, 'sai/a.md');
+    write(file, 'CONTENT-A');
+    const realStat = fs.statSync;
+    let calls = 0;
+    fs.statSync = (...args) => { calls += 1; return realStat.apply(fs, args); };
+    let result;
+    try {
+      result = run(['--harness', harness, 'sai/a.md', 'sai/a.md'], { cwd, home });
+    } finally {
+      fs.statSync = realStat;
+    }
+    assert.equal(calls, 1);
+    assert.equal(result.code, 0);
+    assert.equal(result.err, '');
+    assert.equal(result.out, `subpath: sai/a.md\npath: ${path.resolve(file).replace(/\\/g, '/')}\nroot: project\n`);
+    assert.ok(!result.out.includes('CONTENT-A'));
+    assert.ok(run(['--harness', harness, 'sai/a.md'], { cwd, home }).out.endsWith('\n\nCONTENT-A'));
+  });
+
+  test(`${harness} adjacent and separated duplicates preserve first-occurrence order`, () => {
+    const { cwd, home } = fixture();
+    const root = harness === 'claude' ? '.claude' : '.opencode';
+    for (const name of ['a', 'b', 'c']) write(path.join(cwd, root, `sai/${name}.md`), `CONTENT-${name}`);
+    for (const paths of [
+      ['sai/a.md', 'sai/a.md', 'sai/b.md', 'sai/c.md', 'sai/c.md'],
+      ['sai/a.md', 'sai/b.md', 'sai/a.md', 'sai/c.md', 'sai/b.md'],
+    ]) {
+      const result = run(['--harness', harness, ...paths], { cwd, home });
+      assert.equal(result.code, 0);
+      assert.equal(result.err, '');
+      assert.deepEqual(result.out.match(/^subpath: .+$/gm), ['subpath: sai/a.md', 'subpath: sai/b.md', 'subpath: sai/c.md']);
+      assert.ok(!result.out.includes('CONTENT'));
+    }
+  });
+
+  test(`${harness} repeated missing and invalid paths each emit one error while others resolve`, () => {
+    const { cwd, home } = fixture();
+    const root = harness === 'claude' ? '.claude' : '.opencode';
+    write(path.join(cwd, root, 'sai/a.md'), 'CONTENT-A');
+    const result = run(['--harness', harness, 'sai/missing.md', 'sai/missing.md', '../secret.md', 'sai/a.md', '../secret.md'], { cwd, home });
+    assert.equal(result.code, 1);
+    assert.equal(result.err, '');
+    assert.deepEqual(result.out.match(/^subpath: .+$/gm), ['subpath: sai/missing.md', 'subpath: ../secret.md', 'subpath: sai/a.md']);
+    assert.equal(result.out.match(/^error: /gm).length, 2);
+    assert.match(result.out, /error: File not found: sai\/missing\.md/);
+    assert.match(result.out, /error: .*outside the permitted scope/);
+    assert.match(result.out, /subpath: sai\/a\.md\npath: /);
+  });
+
+  test(`${harness} distinct argument spellings for the same file stay distinct`, () => {
+    const { cwd, home } = fixture();
+    const root = harness === 'claude' ? '.claude' : '.opencode';
+    write(path.join(cwd, root, 'sai/a.md'), 'CONTENT-A');
+    const result = run(['--harness', harness, 'sai/a.md', 'sai\\a.md', 'sai/a.md'], { cwd, home });
+    assert.equal(result.code, 0);
+    assert.deepEqual(result.out.match(/^subpath: .+$/gm), ['subpath: sai/a.md', 'subpath: sai\\a.md']);
+    const resolved = result.out.match(/^path: .+$/gm);
+    assert.equal(resolved.length, 2);
+    assert.equal(resolved[0], resolved[1]);
+  });
+}
 
 test('E6 opencode runs debug paths at most once per call, whatever the number of subpaths that reach it', () => {
   const { base, cwd, home } = fixture();
