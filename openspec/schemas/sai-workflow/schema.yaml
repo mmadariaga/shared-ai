@@ -278,10 +278,10 @@ artifacts:
 
   - id: telemetry
     generates: telemetry.md
-    description: Change telemetry — optional per-execution cost and review figures of /sai-plan and /sai-build, read from opencode.db
+    description: Change telemetry — optional per-execution cost and review figures of /sai-plan, /sai-build, and the /sai-explore Plan and Direct Build routes, read from the harness session data
     template: telemetry.md
     instruction: |
-      Optional artifact. sai/tools/change-telemetry.js writes it at the close of a direct /sai-plan or /sai-build run on opencode when the project setting experimental.changeTelemetry is true; do not write it by hand. Nothing requires it, and every command works with or without it.
+      Optional artifact. sai/tools/change-telemetry.js writes it at the close of a direct /sai-plan or /sai-build run, and of the /sai-explore Plan - Unattended and Direct Build - Unattended routes, on Claude Code or opencode, when the project setting experimental.changeTelemetry is true; do not write it by hand. Nothing requires it, and every command works with or without it.
     requires: []
 
 apply:

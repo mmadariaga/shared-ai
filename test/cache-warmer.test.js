@@ -861,7 +861,9 @@ test('the lifecycle policy disposes unconditionally, names the Claude Code stop 
   assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/);
   assert.match(lifecycle, /node <tool-path> --session <sessionID> \[--session <sessionID> \.\.\.\] --cwd <project-root>[\s\S]*`dispose-shells\.js`/);
   assert.match(lifecycle, /`removed`, `none`, `failed`, or `unavailable`|"removed" \| "none" \| "failed" \| "unavailable"/);
-  assert.match(lifecycle, /Send the message `dispose` when the status is `none` and the `warming:` line of the worker's last real message was `true`[\s\S]*and when the status is `failed` or `unavailable`/);
+  assert.match(lifecycle, /- `removed`: send none\./);
+  assert.match(lifecycle, /- `none`: send `dispose` only when the `warming:` line of the worker's last real message was `true`/);
+  assert.match(lifecycle, /- `failed` or `unavailable`: print a one-line notice, then send `dispose` whatever the `warming:` value was/);
   assert.match(lifecycle, /a worker that never sent the line[\s\S]{0,120}receives none/);
   assert.match(lifecycle, /`removed` is a complete dispose and prints no notice/);
   assert.match(lifecycle, /No `session\.interrupt` call exists/);

@@ -1,0 +1,50 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+The review of the v0.11.0 branch found six defects. The benchmark's direct-build route passed `--block-file /tmp/benchmark-brief/block.md`, which `ready-to-propose.js verify-file` rejects because that file is not in a transfer directory, so every direct-build run stopped before any work. `sai-state` joined the raw session id into the session path, so `close ../x` deleted a file outside the store. The other four defects were contradictions between normative text and the code: the telemetry artifact of the `sai-workflow` schema and the live `change-telemetry` capability still described an opencode-only scope, AGENTS.md did not state that `/sai-plan` and `/sai-build` pre-authorize the telemetry commit, the opencode `dispose` message rule of `worker-lifecycle.md` contradicted itself, and the audit worker card showed one `counts` shape that invited invalid security reports.
+
+## What Changes
+
+- `benchmark/docker-backend.js`: the direct-build route no longer copies `block.md` into `/tmp/benchmark-brief`. After installing SAI, the container, running as its unprivileged user, creates the harness temporary root with mode 0700 (`/tmp/claude-<uid>` for Claude Code, with the uid from `id -u`, and `/tmp/opencode` for opencode), runs `transfer.js open --harness <harness>`, copies `block.md` to a staging file owned by that user, and stores it with `transfer.js put`. The launch prompt passes the path that `put` printed as `--block-file` and the host-side hash of `block.md` as `--block-hash`. A failure of any of these steps ends the container preparation with an infrastructure error, and the agent is not launched. The plan route keeps its preparation.
+- `bin/sai-state.js`: a session id must be a lowercase UUID. `emit`, `reset`, `close`, and `block` refuse any other id with a usage error on stderr and exit code 2 before any file is read, renamed, written, or deleted, and `sessionFile` refuses an invalid id as a second guard (error code `SESSION_ID_INVALID`, also mapped to exit 2). `spawn` keeps deriving the id from its key.
+- `openspec/schemas/sai-workflow/schema.yaml`: the `telemetry` artifact's description and instruction state the real scope: the close of a direct `/sai-plan` or `/sai-build` run and of the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, on Claude Code or opencode, read from the harness session data. The artifact id, template, and `requires` are unchanged.
+- `AGENTS.md`: the `/sai-build` and `/sai-plan` sections state that invoking either command also pre-authorizes the one local telemetry commit of `sai/policies/change-telemetry.md` § Commit, made only when the run records telemetry.
+- `sai/policies/worker-lifecycle.md`: the opencode `dispose` message rule is one list per stop status: none after `removed`; after `none` only when the worker's last `warming:` line was `true`; after `failed` or `unavailable` whatever the warming value, following a one-line notice. `dispose-shells.js` keeps its behavior.
+- `sai/commands/audit/worker-common.md`: one fenced `completed` shape per audit. Security `counts` carry `critical`, `high`, `medium`, and `low`; performance and accessibility add `informational`. A Not Applicable report keeps every key of its audit at zero.
+- Tests: `test/audit-worker-counts.test.js` compares each audit's `counts` keys in the card with `COMMAND_FIELDS` of `sai/tools/worker-report-validator.js`; `test/benchmark.test.js` covers the transfer preparation order and the infrastructure error on a failing `put`; `test/sai-state.test.js` covers the session id refusal; `test/cache-warmer.test.js` follows the restated dispose rule.
+
+## Capabilities
+
+### New Capabilities
+
+None
+
+### Modified Capabilities
+
+- `outcome-benchmark`: the Direct Build route stores its block through the harness temporary root, `transfer.js open`, and `transfer.js put`, and launches with the path `put` printed.
+- `stage-machine-cli-interface`: session ids are validated as lowercase UUIDs before any file operation.
+- `change-telemetry`: the schema's telemetry instruction describes the real scope, Claude Code and opencode, direct `/sai-plan` and `/sai-build`, and the `/sai-explore` Plan and Direct Build routes.
+- `unattended-audit-coordinator`: the audit worker card shows one `completed` shape per audit with the `counts` keys its validator accepts, guarded by a test.
+
+## Impact
+
+Modified files:
+- `AGENTS.md`
+- `benchmark/docker-backend.js`
+- `bin/sai-state.js`
+- `openspec/schemas/sai-workflow/schema.yaml`
+- `sai/commands/audit/worker-common.md`
+- `sai/policies/worker-lifecycle.md`
+- `test/benchmark.test.js`
+- `test/cache-warmer.test.js`
+- `test/sai-state.test.js`
+
+New files:
+- `test/audit-worker-counts.test.js`
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
+
+## Request Additional Notes
+
+Future scope, outside this change: the same review reported a benchmark resume that keeps infrastructure errors as final results, an acceptance ledger written after effects, `spawnSync` calls without a timeout, a `dispose-shells.js` spawn that may not find an `opencode.cmd` shim on Windows, a case-sensitive `SKILL.md` redirect in `fetch.js`, hard-coded global roots in the opencode wrappers and `bin/capabilities.js`, and a stale `checkpoint-plan` paragraph in `tool-resolution.md`.

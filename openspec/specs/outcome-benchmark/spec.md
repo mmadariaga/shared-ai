@@ -44,7 +44,7 @@ The runner SHALL run every configuration on the same brief in each round, rotati
 
 ### Requirement: One fresh container per run
 
-The default execution backend SHALL build the run image once per benchmark from the `Dockerfile` in `benchmark/` and start one fresh container per run, with the checkout mounted read-only. For each run it SHALL copy the base project, then the brief's fixed plan into `openspec/changes/<change>/` for the plan route or the brief's `block.md` for the Direct Build route, install the checkout's SAI for the configuration's harness, write the configuration's models as agent-file tunables, and record the project as a git baseline. Harness credentials SHALL enter only as the environment variables the configuration names, never as values written to the corpus, the output, or the report. The container SHALL be removed when the run ends, whatever its outcome. The backend SHALL be replaceable, so the tests run with a simulated backend and need neither Docker nor a model.
+The default execution backend SHALL build the run image once per benchmark from the `Dockerfile` in `benchmark/` and start one fresh container per run, with the checkout mounted read-only. For each run it SHALL copy the base project, then the brief's fixed plan into `openspec/changes/<change>/` for the plan route, install the checkout's SAI for the configuration's harness, write the configuration's models as agent-file tunables, and record the project as a git baseline. For the Direct Build route, after installing SAI, it SHALL store the brief's `block.md` through the transport users run, with every command run as the container's unprivileged user: create the harness temporary root with mode 0700 (`/tmp/claude-<uid>` for Claude Code, with the uid read with `id -u` inside the container, and `/tmp/opencode` for opencode), run `transfer.js open --harness <harness>` from the mounted checkout, copy `block.md` to a staging file owned by that user, and run `transfer.js put --dir <dir> --path block.md --input-file <staging file>`, keeping the path that `put` prints for the launch. A failure while creating the temporary root, or of `open` or `put`, SHALL end the container preparation with an infrastructure error, like any other preparation step, and the agent SHALL NOT be launched. Harness credentials SHALL enter only as the environment variables the configuration names, never as values written to the corpus, the output, or the report. The container SHALL be removed when the run ends, whatever its outcome. The backend SHALL be replaceable, so the tests run with a simulated backend and need neither Docker nor a model.
 
 #### Scenario: Missing credential is an infrastructure error
 
@@ -56,9 +56,19 @@ The default execution backend SHALL build the run image once per benchmark from 
 - **WHEN** a launch exceeds the run's time limit
 - **THEN** the container is removed
 
+#### Scenario: Direct Build block goes through the transfer transport
+
+- **WHEN** a Claude Code configuration of the Direct Build route prepares its container
+- **THEN** after the SAI installation the unprivileged user creates `/tmp/claude-<uid>` with mode 0700, runs `transfer.js open --harness claude`, and stores `block.md` with `transfer.js put` into the directory `open` returned, and no `/tmp/benchmark-brief` folder is used
+
+#### Scenario: A failing block store is an infrastructure error
+
+- **WHEN** `transfer.js put` fails while a Direct Build-route container is prepared
+- **THEN** the run returns an infrastructure error naming the failed step and the agent is not launched
+
 ### Requirement: Route launch commands
 
-A plan-route run SHALL launch `/sai-3-implement <change>`, and a Direct Build-route run SHALL launch `/sai-direct-build --block-file <path> --block-hash <sha256>` with the hash of the brief's block. The Direct Build route's command SHALL be the shipped `/sai-direct-build` command, and the closing literal the runner reads for that route SHALL be the `Direct build done.` line that command prints on completion. On Claude Code the launch SHALL use `claude -p` with `--output-format stream-json --verbose`; on opencode it SHALL use `opencode run --format json`.
+A plan-route run SHALL launch `/sai-3-implement <change>`, and a Direct Build-route run SHALL launch `/sai-direct-build --block-file <path> --block-hash <sha256>`, where `<path>` is the path that `transfer.js put` printed when the container was prepared and `<sha256>` is the host-side hash of the brief's block, the value `verify-file` compares against. The Direct Build route's command SHALL be the shipped `/sai-direct-build` command, and the closing literal the runner reads for that route SHALL be the `Direct build done.` line that command prints on completion. On Claude Code the launch SHALL use `claude -p` with `--output-format stream-json --verbose`; on opencode it SHALL use `opencode run --format json`.
 
 #### Scenario: Plan route on opencode
 
@@ -69,6 +79,11 @@ A plan-route run SHALL launch `/sai-3-implement <change>`, and a Direct Build-ro
 
 - **WHEN** the runner classifies a Direct Build-route run
 - **THEN** it launches `/sai-direct-build` and looks for `Direct build done.`, the same literal the command's coordinator card prints
+
+#### Scenario: Direct Build launch names the stored block
+
+- **WHEN** a Direct Build-route run launches after `transfer.js put` printed the path `<dir>/block.md`
+- **THEN** the prompt is `/sai-direct-build --block-file <dir>/block.md --block-hash <sha256>` with the host-side hash of the brief's `block.md`
 
 ### Requirement: Hidden suite after the run
 
