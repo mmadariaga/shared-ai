@@ -120,3 +120,17 @@ test('the archive and backfill command profiles carry the safe-operations skill'
     assert.deepEqual(profiles[`${name}-command`].skills, ['safe-operations', 'fetch']);
   }
 });
+
+test('the archive worker writes the no-specs drafts before the archive move, from a closed draft section', () => {
+  const worker = read('sai/commands/archive/worker.md');
+  assert.match(worker, /`--drafts` marker\nline after the path set/);
+  assert.match(worker, /names exactly the two destinations\n`openspec\/changes\/\{name\}\/\.openspec\.yaml` and\n`openspec\/changes\/\{name\}\/proposal\.md`/);
+  const execution = worker.slice(worker.indexOf('## Direct Build (unattended) execute continuation'));
+  const materialization = execution.indexOf('**Draft materialization**');
+  assert.ok(materialization > 0 && materialization < execution.indexOf('0. **Retirement declaration**'));
+  assert.match(execution.slice(materialization), /validate-backfill-drafts\.js check --fingerprint/);
+  assert.match(execution.slice(materialization), /transfer\.js materialize --dir\n {2}<transfer_dir> --path <path> --sha256 <sha256> --destination <destination>/);
+  assert.match(execution, /before the\n {2}CLI archive and the commit, and returns `failed` naming each destination\n {2}already written, which stays uncommitted/);
+  assert.match(execution, /A draft section is valid only when it equals the one\nreceived at prepare, reference for reference/);
+  assert.match(worker, /the draft `\.openspec\.yaml` supplies\n`backfilled`, `skip_specs`, `backlog_origin`, and `overview\.state`/);
+});

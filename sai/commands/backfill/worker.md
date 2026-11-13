@@ -156,7 +156,21 @@ authorized execution. The continuation is one opaque payload whose first line
 is exactly `--direct-build-execute`; the remaining content is a closed execution
 order containing the confirmed change name, the receiver's accepted validation
 fingerprint, and, for every prepared draft, the
-reference `{path, sha256, destination}` and no draft content. The order is not
+reference `{path, sha256, destination}` and no draft content. The coordinator
+generates the order with `validate-backfill-drafts.js order` from the accepted
+references and fingerprint, so this section is the one definition of its format:
+
+```text
+--direct-build-execute
+change_name: <name>
+fingerprint: <accepted validation fingerprint>
+drafts:
+- path: <absolute transfer file>
+  sha256: <hex>
+  destination: <openspec/changes/{name}/... path>
+```
+
+with one `- path` entry per prepared draft. The order is not
 a new plan: it must be an exact one-to-one representation of the worker's
 latest prepared references and may name only these destinations:
 

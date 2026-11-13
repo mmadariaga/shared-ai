@@ -50,3 +50,55 @@ The profile SHALL be pinned: it SHALL NOT be offered by the crystallization-clos
 
 - **WHEN** the POC lane dispatches the `--no-specs` profile after creating the POC isolation
 - **THEN** the envelope's second line is `--work-root <path>` naming the recorded worktree path, it carries no block file or hash line, and the implementer reads and writes only under that path
+
+### Requirement: Direct Build no-specs backfill route choice
+
+At Step 3 the Direct Build coordinator SHALL run `backfill-no-specs.js compose` with the verified block file and hash, the change name, and the transfer directory before any backfill worker dispatch. The no-specs route SHALL apply only when the block declares `**Specs**: none — <reason>` and `openspec/changes/{name}/specs/` holds no file; every other block, including one that declares `**Specs**: none` while `specs/` already holds files, SHALL follow the worker route through `sai-backfill-worker` unchanged. A compose error SHALL be an obstacle of `step-3`. The route choice SHALL be the same for `/sai-explore` and `/sai-direct-build` on Claude Code and opencode, and SHALL NOT change standalone `/sai-backfill` or the `--no-specs` POC lane.
+
+#### Scenario: A no-specs block with an empty specs directory takes the no-specs route
+
+- **WHEN** the verified block declares `**Specs**: none — <reason>` and `openspec/changes/{name}/specs/` holds no file
+- **THEN** `compose` answers `eligible: true` and the coordinator creates no backfill worker, opens no backfill guard window, and sends no prepare dispatch
+
+#### Scenario: Existing spec files keep the worker route
+
+- **WHEN** the block declares `**Specs**: none` but `openspec/changes/{name}/specs/` already holds a file
+- **THEN** `compose` answers `eligible: false` and the change follows the worker route
+
+#### Scenario: A block without the no-specs line keeps the worker route
+
+- **WHEN** the verified block carries no `**Specs**: none — <reason>` line
+- **THEN** `compose` answers `eligible: false` and the change follows the worker route
+
+### Requirement: The no-specs drafts derive from the verified block
+
+`backfill-no-specs.js compose` SHALL verify the block file against its hash, SHALL refuse a block that is not a valid Ready to Propose block or that names another change, and SHALL write exactly two drafts into the transfer directory with `transfer.js put`, printing one `{path, sha256, destination}` reference per draft. The `.openspec.yaml` draft SHALL carry `schema: sai-workflow`, a date-only `created`, `backfilled: true`, `prior_intent: true`, and `skip_specs: true`, plus `backlog_origin` and `explore_origin` when the block supplies them. The `proposal.md` draft SHALL open with the usable-intent post-hoc banner, SHALL carry the proposal template sections with `None` under both capability subsections, SHALL carry the block's Capabilities in scope, Edge Cases, and Key constraints under `## Impact` followed by the out-of-scope line, SHALL carry a `## Proposal Research Documentation` section listing the paths of the block's Research Leads, SHALL copy the block's Request Additional Notes verbatim into `## Request Additional Notes` when present, and SHALL carry the block's Decisions & Rationale under `## Additional Notes` when present. A supplied origin that is not valid SHALL be left out with a warning and SHALL NOT block the route.
+
+#### Scenario: Compose writes the canonical metadata and proposal
+
+- **WHEN** `compose` runs on an eligible verified block with an explore origin
+- **THEN** the transfer directory holds `.openspec.yaml` with the five canonical keys and `explore_origin`, and `proposal.md` with the post-hoc banner and the block-derived sections, and stdout lists their two references
+
+#### Scenario: A block that does not match its hash writes nothing
+
+- **WHEN** the block file does not match the supplied hash
+- **THEN** `compose` returns an error and writes no draft
+
+#### Scenario: An invalid supplied origin warns without blocking
+
+- **WHEN** `compose` receives a `--backlog-origin` value that is not a canonical issue URL
+- **THEN** the value is left out of `.openspec.yaml`, a warning names it, and the drafts are still written
+
+### Requirement: No-specs drafts are validated without a correction round
+
+On the no-specs route the coordinator SHALL run `transfer.js verify` on both references, the read-only schema review of the draft content, and `validate-backfill-drafts.js validate`, and SHALL run no scenario-preservation check, no review round, and no correction request. A draft set that fails any of these checks SHALL be an obstacle of `step-4` that escalates under the obstacle-escalation policy and writes nothing to the repository. The validation reason `openspec-cli-unavailable` SHALL stay force majeure that escalates at once. When the drafts are accepted, the coordinator SHALL retain the accepted fingerprint and references in the run state, and the `Backfill` route item SHALL converge at that acceptance.
+
+#### Scenario: Accepted no-specs drafts converge Backfill
+
+- **WHEN** both generated drafts pass verification, the schema review, and `validate-backfill-drafts.js validate`
+- **THEN** the coordinator keeps the fingerprint and references, the `Backfill` route item converges, and no backfill execute order is sent at Step 6
+
+#### Scenario: Failed no-specs drafts escalate without correction
+
+- **WHEN** a generated draft fails validation
+- **THEN** the coordinator requests no correction, writes nothing to the repository, and escalates the `step-4` obstacle

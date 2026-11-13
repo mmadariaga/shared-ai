@@ -126,3 +126,36 @@ test('M1: the archive and direct-build workers keep the question-content rule of
     assert.match(read(file), /Every `needs_input` question is shaped per `@sai\/policies\/question-context\.md`\nat its source; presentation belongs to the coordinator/, `${file} states the rule`);
   }
 });
+
+test('the no-specs route replaces the backfill worker with the compose tool and the generated orders', () => {
+  const card = read(CARD);
+  const step = number => card.slice(card.indexOf(`\n${number}. **`), card.indexOf('\n', card.indexOf(`\n${number}. **`) + 1));
+  // Step 3 chooses the route with the tool, and only the worker route dispatches the backfill worker.
+  assert.match(step(3), /`backfill-no-specs\.js`/);
+  assert.match(step(3), /`eligible: true` only for a block that declares `\*\*Specs\*\*: none — <reason>` while `openspec\/changes\/\{name\}\/specs\/` holds no file/);
+  assert.match(card, /no backfill worker is created or bound, no backfill window opens, and no prepare dispatch happens/);
+  assert.match(card, /On the worker route, the backfill window opens/);
+  // Step 4 validates the generated drafts without scenario preservation and without a correction round.
+  assert.match(card, /with no scenario-preservation check, no review round, and no correction request/);
+  assert.match(card, /the `Backfill` route item converges here/);
+  // Step 6 sends no order on the no-specs route and generates the worker order with the tool.
+  assert.match(step(6), /on the no-specs route there is no backfill worker, so no order goes out and nothing is written here/);
+  assert.match(step(6), /order --input-file <path>/);
+  assert.match(step(6), /sai\/commands\/backfill\/worker\.md` § Direct Build \(unattended\) execution continuation defines/);
+  assert.match(step(6), /References that do not match the worker's latest prepared set produce no order, and that failure is an obstacle of `step-6`/);
+  // Steps 7 and 8 carry the drafts to the archive worker, which writes them.
+  assert.match(card, /--drafts` marker line and the draft section printed by `node <tool-path> order --target archive/);
+  assert.match(card, /both draft destinations are among the order's target paths for the `order_snapshot`/);
+  assert.match(card, /a changed fingerprint or a failed materialization stops before archive and commit/);
+});
+
+test('the format of the worker-route execute order has one definition, in the backfill worker', () => {
+  const card = read(CARD);
+  assert.doesNotMatch(card, /change_name: <name>|fingerprint: <accepted validation fingerprint>/);
+  assert.match(read('sai/commands/backfill/worker.md'), /generates the order with `validate-backfill-drafts\.js order`/);
+});
+
+test('the route projection completes Backfill at draft acceptance on the no-specs route', () => {
+  assert.match(read(PIPELINE), /on the no-specs route, which creates no backfill worker, when the coordinator accepts the generated drafts at Step 4/);
+  assert.match(read('AGENTS.md'), /`\/sai-direct-build` follows the same card and gains the no-specs route/);
+});
