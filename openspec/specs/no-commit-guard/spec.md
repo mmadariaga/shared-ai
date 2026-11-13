@@ -23,6 +23,8 @@ The deterministic HEAD-immobility check SHALL be performed by `sai/tools/no-comm
 
 A guard window SHALL be the stretch between a guard `snapshot` and its `verify`, bounded by control hand-offs rather than by worker dispatches: one window SHALL span every consecutive worker stretch — fresh dispatches, same-worker continuations, and replacement workers alike — until the next boundary. The closed list of boundaries SHALL be exactly: (1) a human turn — a `needs_input` result (closed or open), a nonterminal extension whose handler hands the turn to the user, or a user interruption that is later resumed; (2) a coordinator git mutation — any git mutation the coordinator itself runs, including an implement step commit whether asked or pre-authorized, a merge launch, checkout, `git mv`, or staging, the archive CLI move and post-archive commit, a close's staging and commit, and a nonterminal extension whose handler performs one; and (3) run close — the terminal result (`completed`, `failed`, `cancelled`) or user cancellation after which the coordinator dispatches no further worker before a human turn or its own git mutation. Nothing else SHALL be a boundary: a progress event, a `notice`, a ready return, a nonterminal extension whose handler neither asks the user nor mutates git, a terminal result followed directly by the next dispatch, and a segment transition inside a composition SHALL continue the running window, and the coordinator SHALL act on them with no guard call. The coordinator SHALL open a window with `snapshot` once the first dispatch's harness-native resumable handle is retained, immediately before the worker's expensive work proceeds; after a human turn, once the answer is in and before it is forwarded to a worker; and after a coordinator git mutation, before the next dispatch or continuation. The coordinator SHALL close the window with `verify --base <guard_base>` immediately before each boundary and before acting on it. Because every coordinator git mutation is a boundary, coordinator-owned mutations SHALL always run between windows and never inside one.
 
+A window MAY open without a `snapshot`, with `guard_base` set to the `head` returned by the `clean` verify that closed the previous window, only when every operation since that verify left HEAD in place. The HEAD-preserving operations SHALL be exactly staging (`git add`, `git rm --cached`) and working-tree moves such as the `openspec archive` move. Any other coordinator git mutation (a commit, checkout, merge launch, reset, or rebase) SHALL require a fresh `snapshot`, because it can move HEAD without a worker. A human turn SHALL require a fresh `snapshot` even when the coordinator ran no git command, because a user commit made during the pause would otherwise look like a worker violation and trigger `git reset <guard_base>`. A verify with verdict `violation`, `allowed`, or `n/a` SHALL never be reused: the next window SHALL open with a fresh `snapshot`. The `allow_commit` and recovery-worker isolation rules SHALL keep their own fresh `snapshot`. These conditions SHALL be stated only in `sai/policies/no-commit-guard.md` § Window pairing: a coordinator card that opens a window SHALL open it per § Window pairing and SHALL NOT restate or override a snapshot condition, and `sai/tools/no-commit-guard.js` SHALL stay unchanged.
+
 #### Scenario: a progress event takes no guard call
 
 - **WHEN** a routed worker returns a progress event or a notice inside a running guard window
@@ -38,9 +40,34 @@ A guard window SHALL be the stretch between a guard `snapshot` and its `verify`,
 - **WHEN** a routed worker returns a result that reaches a boundary — a `needs_input` result, a run-closing terminal result, or a result followed by a coordinator git mutation
 - **THEN** the coordinator runs the guard's `verify` step before presenting input, routing the run-closing result, or running its own git mutation
 
+#### Scenario: a clean verify opens the next window across staging
+
+- **WHEN** a window closed with a `clean` verify and the coordinator only staged paths before the next dispatch
+- **THEN** the next window opens with `guard_base` set to that verify's `head` and no `snapshot` call
+
+#### Scenario: a coordinator commit requires a fresh snapshot
+
+- **WHEN** a window closed with a `clean` verify and the coordinator then ran a commit, checkout, merge launch, reset, or rebase
+- **THEN** the next window opens with a fresh `snapshot`
+
+#### Scenario: a human turn after a clean verify requires a fresh snapshot
+
+- **WHEN** a window closed with a `clean` verify before a question to the user, and the answer arrives
+- **THEN** the next window opens with a fresh `snapshot` before the answer is forwarded, even when the coordinator ran no git command
+
+#### Scenario: a non-clean verify is never reused
+
+- **WHEN** the verify that closed the previous window returned `violation`, `allowed`, or `n/a`
+- **THEN** the next window opens with a fresh `snapshot`
+
+#### Scenario: the Direct Build card defers to the policy
+
+- **WHEN** the Direct Build coordinator card describes its backfill and archive windows
+- **THEN** it opens them per § Window pairing and pins no fresh snapshot of its own
+
 ### Requirement: guard_base is invocation-scoped coordinator conversation state
 
-The baseline SHA SHALL live in coordinator conversation state as `guard_base`, exactly like `fast_track_active`: it SHALL never be written to `.openspec.yaml`, any artifact, any configuration, or any file; it SHALL never be a dispatch envelope key; it SHALL never be a reconstruction field; and it SHALL never be carried across a boundary. A replacement worker dispatched for recovery SHALL inherit the running window's `guard_base` and SHALL take no new snapshot, because no human turn and no coordinator git mutation occurs between the failed worker and its replacement. When the snapshot cannot resolve HEAD, `guard_base` SHALL be recorded as the literal `n/a`, the coordinator SHALL print one ordinary conversation line that the guard is inactive for this window — one line per window, never one per continuation — and the window's verify SHALL be skipped: no check, no auto-remediation, and the route continues. The next boundary SHALL attempt a fresh snapshot.
+The baseline SHA SHALL live in coordinator conversation state as `guard_base`, exactly like `fast_track_active`: it SHALL never be written to `.openspec.yaml`, any artifact, any configuration, or any file; it SHALL never be a dispatch envelope key; it SHALL never be a reconstruction field; and it SHALL never be carried across a boundary, except that the `head` of a `clean` verify MAY become the next window's `guard_base` across HEAD-preserving coordinator operations only, under the reuse conditions of § Window pairing. A replacement worker dispatched for recovery SHALL inherit the running window's `guard_base` and SHALL take no new snapshot, because no human turn and no coordinator git mutation occurs between the failed worker and its replacement. When the snapshot cannot resolve HEAD, `guard_base` SHALL be recorded as the literal `n/a`, the coordinator SHALL print one ordinary conversation line that the guard is inactive for this window — one line per window, never one per continuation — and the window's verify SHALL be skipped: no check, no auto-remediation, and the route continues. The next boundary SHALL attempt a fresh snapshot.
 
 #### Scenario: the guard degrades without inventing a baseline
 
@@ -51,6 +78,11 @@ The baseline SHA SHALL live in coordinator conversation state as `guard_base`, e
 
 - **WHEN** the coordinator dispatches a replacement worker for recovery inside a running guard window
 - **THEN** the replacement runs under the running window's `guard_base` and no new snapshot is taken
+
+#### Scenario: a reused head stays conversation state
+
+- **WHEN** a window opens from the `head` of a preceding `clean` verify
+- **THEN** that `guard_base` is held only in coordinator conversation state and is written to no file or envelope
 
 ### Requirement: A violation is remediated exactly once and the route continues
 
