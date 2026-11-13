@@ -95,6 +95,12 @@ takes one — never substitute one for the other.
   <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
   <project-root> --fingerprint <hash>`, with the complete reference set in
   `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
+- `backfill-no-specs.js`: `node <tool-path> compose --block-file <path>
+  --block-hash <sha256> --change-name <name> --transfer-dir <dir> [--cwd
+  <project-root>]`, adding `--backlog-origin <url>` or `--explore-origin <value>`
+  only to carry an existing origin; it prints one JSON object. The `order`
+  sub-command of `validate-backfill-drafts.js` takes `--target backfill|archive`
+  and the same `--input-file`, and prints the order text.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <terminal|progress>
   [--command <command>] --input-file <path>` with the payload in the input file (plus `--json --cwd`
   where the tool accepts them); a terminal payload needs `--command`, a progress one takes none. A worker report that travels as a report reference uses `--kind terminal
