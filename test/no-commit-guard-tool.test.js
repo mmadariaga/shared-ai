@@ -264,6 +264,35 @@ test('the guard policy bounds windows by a closed boundary list and isolates all
   }
 });
 
+test('the guard policy reuses a clean verify head only across HEAD-preserving operations', () => {
+  const policy = fs.readFileSync(POLICY, 'utf8').replace(/\s+/g, ' ');
+  for (const text of [
+    '**Reuse of a clean verify**',
+    "set `guard_base` to the `head` of that `clean` verify",
+    'staging (`git add`, `git rm --cached`) and working-tree moves such as the `openspec archive` move',
+    'Any other coordinator git mutation (a commit, checkout, merge launch, reset, or rebase)',
+    'A human turn also requires a fresh `snapshot`',
+    'A verify with verdict `violation`, `allowed`, or `n/a` is never reused',
+  ]) {
+    assert.ok(policy.includes(text), `the guard policy must state: ${text}`);
+  }
+  const agents = fs.readFileSync(path.join(REPO_ROOT, 'AGENTS.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.ok(agents.includes("a window may open from the `head` of a preceding clean verify instead of a snapshot"));
+  assert.ok(agents.includes("§ Window pairing"));
+});
+
+test('the Direct Build card opens its backfill and archive windows per Window pairing, not at a fresh snapshot', () => {
+  const card = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'commands', 'explore', 'direct-build-coordinator.md'), 'utf8')
+    .replace(/\s+/g, ' ');
+  const windows = card.slice(card.indexOf('**No-commit guard windows.**'), card.indexOf('**Block provider.**'));
+  assert.ok(windows.includes('(1) The implementer window opens at the Step 1 snapshot'));
+  assert.ok(windows.includes('and opens per § Window pairing; it spans the findings and execute continuations'));
+  assert.ok(windows.includes('(3) The archive window opens per § Window pairing immediately before the Step 7 prepare dispatch'));
+  assert.ok(windows.includes('that continuation carries `allow_commit`, opens its own window per the policy\'s `allow_commit` isolation'));
+  assert.ok(!windows.includes('fresh snapshot'), 'the card restates no snapshot condition of the policy');
+  assert.ok(!windows.includes('Reuse of a clean verify'), 'the reuse conditions stay in the policy');
+});
+
 test('the incident line is pinned in the guard policy, not restated in cards', () => {
   const guard = fs.readFileSync(POLICY, 'utf8');
   const audit = fs.readFileSync(AUDIT_POLICY, 'utf8');
