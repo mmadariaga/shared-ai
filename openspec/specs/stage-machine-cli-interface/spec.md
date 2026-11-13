@@ -141,7 +141,7 @@ Except for the identifier flag form, the Ready to Propose block file form, and t
 - without `--input-file`, the third positional argument is not `-`;
 - any positional argument follows `-`;
 - without `--input-file`, stdin is an interactive terminal.
-A missing, unreadable, or empty input file SHALL exit 2 with a stderr message that names the path and states that no transition occurred. The usage-error stderr message SHALL show the canonical form `node <tool-path> emit <id> <machineId> --input-file <path>` and state that stdin `-` is still accepted, or in progress mode the progress reference form `node <tool-path> emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>` and the progress form `node <tool-path> emit <id> <machineId> --progress --input-file <path>`. Characters degraded to `?` by the sending shell SHALL be accepted as received, without error. The `spawn`, `reset`, and `close` verbs SHALL be unchanged.
+A missing, unreadable, or empty input file SHALL exit 2 with a stderr message that names the path and states that no transition occurred. The usage-error stderr message SHALL show the canonical form `node <tool-path> emit <id> <machineId> --input-file <path>` and state that stdin `-` is still accepted, or in progress mode the progress reference form `node <tool-path> emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>` and the progress form `node <tool-path> emit <id> <machineId> --progress --input-file <path>`. Characters degraded to `?` by the sending shell SHALL be accepted as received, without error. The `spawn`, `reset`, and `close` verbs SHALL be unchanged, apart from the session id check that `emit`, `reset`, `close`, and `block` run before any file operation.
 
 #### Scenario: BOM and CRLF around a valid event are accepted
 - **WHEN** the caller pipes `﻿{"intent":"next-step"}\r\n` to `emit <id> explore-idea@1 -`, or writes the same bytes to an input file passed with `--input-file`
@@ -359,3 +359,19 @@ Each of these SHALL be a usage error that exits 2, writes no JSON payload, chang
 #### Scenario: Flag form runs through both supported shells
 - **WHEN** the flag form is run through Bash and through PowerShell 7
 - **THEN** both runs apply the same event with no quoting or escaping beyond the double-quoted `--set-path` value
+
+### Requirement: Session ids are validated before any file operation
+
+A session id SHALL be accepted only in the lowercase UUID form that `spawn` derives from its key (`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`), so it can hold no path separator and no `..`. The `emit`, `reset`, `close`, and `block` verbs (with or without `--export`) SHALL check the id through one shared helper before their first file operation, and any other value SHALL exit 2 with a usage error on stderr naming the rejected id, before any session file is read, renamed, written, or deleted, and with no JSON payload on stdout. The function that builds a session file path SHALL refuse an id that fails the same check, as a second guard, and that refusal SHALL also exit 2 with the message on stderr. `spawn` SHALL keep deriving the id from its key, so every id it returns passes the check.
+
+#### Scenario: A path-like id deletes nothing
+- **WHEN** the caller invokes `sai-state close ../x`
+- **THEN** the process exits 2 with a usage error on stderr and no file outside or inside the store is deleted
+
+#### Scenario: An uppercase or non-UUID id is refused by every session verb
+- **WHEN** the caller invokes `emit`, `reset`, `close`, or `block` with `not-a-uuid`, an uppercase UUID, or an empty id
+- **THEN** each call exits 2 before touching any file
+
+#### Scenario: A spawned id still works
+- **WHEN** the caller closes the id that `spawn --key <key>` returned
+- **THEN** the close succeeds with exit code 0

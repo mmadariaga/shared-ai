@@ -48,7 +48,29 @@ question: string
 options: {label: string, value: string}[]
 ```
 
-After the closing step, when the audit report is written and checked:
+After the closing step, when the audit report is written and checked, return the shape of your audit:
+
+The `completed` report of the security audit:
+
+```yaml
+status: completed
+summary: string
+changed_files: string[]
+report_path: string
+counts: {critical: n, high: n, medium: n, low: n}
+```
+
+The `completed` report of the performance audit:
+
+```yaml
+status: completed
+summary: string
+changed_files: string[]
+report_path: string
+counts: {critical: n, high: n, medium: n, low: n, informational: n}
+```
+
+The `completed` report of the accessibility audit:
 
 ```yaml
 status: completed
@@ -66,7 +88,7 @@ summary: string
 changed_files: string[]
 ```
 
-`counts` has no `informational` key for the security audit, and holds only zeros for a Not Applicable report. `changed_files` holds only the report path when you wrote it, and is empty otherwise (a progress report writes no file). `summary` is concrete plain English: what happened, and for a `failed` report the blocker. The retired `step-done` and `question` events are outside the schema: a report that uses either is invalid.
+`counts` carries exactly the keys of your audit's shape, and every key is zero for a Not Applicable report. `changed_files` holds only the report path when you wrote it, and is empty otherwise (a progress report writes no file). `summary` is concrete plain English: what happened, and for a `failed` report the blocker. The retired `step-done` and `question` events are outside the schema: a report that uses either is invalid.
 
 ## Questions
 

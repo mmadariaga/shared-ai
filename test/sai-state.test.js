@@ -1251,3 +1251,33 @@ test('flags (I10): the flag form runs through PowerShell 7', { skip: POWERSHELL 
     cleanup([id]);
   }
 });
+
+test('session id (E4): emit, reset, close, and block refuse any id that is not a lowercase UUID before touching a file', () => {
+  const outside = path.join(path.dirname(sessionDir()), `sai-state-id-guard-${process.pid}`);
+  const outsideFile = `${outside}.json`;
+  fs.mkdirSync(sessionDir(), { recursive: true });
+  fs.writeFileSync(outsideFile, '{}\n');
+  try {
+    const ids = [`../${path.basename(outside)}`, 'not-a-uuid', '550E8400-E29B-41D4-A716-446655440000', ''];
+    const forms = [
+      ['emit', null, 'explore-idea@1', '-'],
+      ['reset', null, 'explore-idea@1'],
+      ['close', null],
+      ['block', null, 'a-change'],
+    ];
+    for (const id of ids) {
+      for (const form of forms) {
+        const argv = form.map((part) => (part === null ? id : part));
+        const result = runCli(argv, '{}');
+        assert.equal(result.exitCode, 2, `${argv.join(' ')} should exit 2`);
+        assert.ok(fs.existsSync(outsideFile), `${argv.join(' ')} must leave the file outside the store alone`);
+      }
+    }
+    const spawned = JSON.parse(invokeCommand('spawn', '--key', 'id-guard-key').stdout);
+    assert.match(spawned.id, /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+    assert.equal(invokeCommand('close', spawned.id).exitCode, 0, 'a derived id still closes');
+    assert.throws(() => sessionFile('../x'), /lowercase UUID/);
+  } finally {
+    fs.rmSync(outsideFile, { force: true });
+  }
+});
