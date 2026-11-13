@@ -54,6 +54,10 @@ The opencode resolution rule SHALL match the Claude Code rule owned by `claude-f
 - **AND** the comparison is performed as a direct structural read of the two harness skill files against each other, and of the opencode rule against the `claude-fetch-resolution` requirement text — the Claude Code mechanics appear only in `claude-fetch-resolution`, never in a restated copy here
 - **AND** a divergence in any compared element is a defect
 
+#### Scenario: shared argument deduplication remains compatible across harnesses
+- **WHEN** the same repeated or distinct subpath argument sequence is supplied to the shared tool under Claude Code and opencode with equivalent files available
+- **THEN** both harnesses follow the argument deduplication and original-count mode contract owned by `claude-fetch-resolution`, including path-only repeated-singleton output
+
 ### Requirement: Opencode skills path resolution uses the skill tool
 
 When the opencode fetch skill encounters `Fetch @skills/<name>/SKILL.md` — with or without the "and follow those instructions exactly" suffix — it SHALL resolve the directive through the `skill` tool with skill name `<name>`, not through a file Read of `skills/<name>/SKILL.md`; the Read-then-Read rule SHALL NOT apply to skills paths. When that skill is already loaded through the `skill` tool in this conversation and its content is still in the agent's own context, the agent SHALL follow the loaded skill with no second `skill` call, as the `fetch-loaded-copy-reuse` capability defines. The Claude Code skill-tool mapping remains owned by `claude-fetch-resolution` and is not restated here.

@@ -141,7 +141,7 @@ function once(run) {
   };
 }
 
-// Path mode: one block per subpath argument, in argument order, never file content. Every subpath
+// Path mode: one block per distinct subpath, in first-occurrence order, never file content. Every subpath
 // passes the scope check before any of them touches the filesystem.
 function renderBatch({ harness, subpaths, cwd, home, env, runOpencodePaths }) {
   const checked = subpaths.map(subpath => {
@@ -176,7 +176,7 @@ function main(argv, { cwd = process.cwd(), home = os.homedir(), env = process.en
       stdout.write(render(resolved, harness));
       return 0;
     }
-    const batch = renderBatch({ harness, subpaths, cwd, home, env, runOpencodePaths: once(runOpencodePaths) });
+    const batch = renderBatch({ harness, subpaths: [...new Set(subpaths)], cwd, home, env, runOpencodePaths: once(runOpencodePaths) });
     stdout.write(batch.text);
     return batch.code;
   } catch (error) {
