@@ -53,7 +53,7 @@ root: project|global
 - When the output holds a header and a `too-large` line instead of content, the file exceeds the output cap: Read the exact `path` from the header.
 - When the tool exits with an error (the subpath is outside the scope, the file is in neither root, or the usage is wrong), stop the directive and report the tool's message.
 
-A call with two or more subpaths (path mode) prints only one block per subpath, in argument order, and never file content. A resolved subpath prints a resolution block; a subpath that failed prints an error block; one blank line separates the blocks:
+A call with two or more arguments (path mode) prints one block per distinct subpath, in first-occurrence order, and never file content. Mode is selected from the original argument count: repeat a lone subpath twice to request its location only, as a single block. Deduplication compares exact argument strings within this call, without path normalization. A resolved subpath prints a resolution block; a subpath that failed prints an error block; one blank line separates the blocks:
 
 ```
 subpath: <argument>

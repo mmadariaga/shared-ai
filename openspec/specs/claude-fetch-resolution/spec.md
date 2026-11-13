@@ -108,19 +108,35 @@ When a one-subpath call exits with an error, Claude SHALL stop the directive and
 - **AND** a subpath with `..`, an absolute path, or a prefix outside `sai/`, `commands/`, and `skills/` is still rejected
 
 ### Requirement: The fetch tool resolves two or more subpaths in path mode
-When the fetch tool receives two or more subpaths in one call, it SHALL print only one block per subpath argument, in argument order, entirely on stdout, and SHALL NOT print file content, whatever the file sizes. A resolved subpath SHALL print a resolution block of the lines `subpath: <argument>`, `path: <absolute resolved path>` with `/` separators, and `root: project` or `root: global`. A subpath that is rejected by the scope check, found in no root, or found as a file that cannot be read SHALL print an error block of the lines `subpath: <argument>` and `error: <message>`, and the other subpaths SHALL still resolve. One blank line SHALL separate the blocks. A subpath repeated in one call SHALL print one block per occurrence, with no deduplication. The tool SHALL exit with code 0 when every subpath resolved and with code 1 when at least one error block was printed.
+When the fetch tool receives two or more subpath arguments in one call, it SHALL select path mode from the original argument count before deduplicating exact argument strings. It SHALL resolve and print one block per distinct argument in first-occurrence order, entirely on stdout, without file content regardless of file sizes. Deduplication SHALL be limited to that invocation and SHALL NOT normalize paths or merge distinct argument strings that resolve to the same file. A resolved subpath SHALL print a resolution block of the lines `subpath: <argument>`, `path: <absolute resolved path>` with `/` separators, and `root: project` or `root: global`. A subpath that is rejected by the scope check, found in no root, or found as a file that cannot be read SHALL print an error block of the lines `subpath: <argument>` and `error: <message>`, and the other distinct subpaths SHALL still resolve. One blank line SHALL separate the blocks. The tool SHALL exit with code 0 when every distinct subpath resolved and with code 1 when at least one error block was printed. Exactly one original subpath argument SHALL retain the existing content mode and output cap.
 
 #### Scenario: two subpaths print resolution blocks only
 - **WHEN** the fetch tool runs with `--harness claude sai/a.md sai/b.md` and both files exist
 - **THEN** it prints a resolution block for `sai/a.md` and then one for `sai/b.md`, separated by one blank line, with no file content, and exits with code 0
 
 #### Scenario: a failing subpath prints an error block and the others resolve
-- **WHEN** the fetch tool runs with two or more subpaths and one of them is out of scope, found in no root, or found as a file that cannot be read
-- **THEN** that subpath prints an error block on stdout in its argument position, every other subpath prints its resolution block, and the tool exits with code 1
+- **WHEN** the fetch tool runs with two or more subpath arguments and one distinct argument is out of scope, found in no root, or found as a file that cannot be read
+- **THEN** that distinct argument prints one error block on stdout in first-occurrence order, every other distinct argument prints its resolution block, and the tool exits with code 1
 
 #### Scenario: a repeated subpath prints one block per occurrence
-- **WHEN** the fetch tool runs with the same subpath twice
-- **THEN** it prints two blocks for that subpath
+- **WHEN** the fetch tool runs with the same existing subpath twice
+- **THEN** the former per-occurrence output is replaced by exactly one resolution block for that argument, the subpath is resolved once, no file content is printed, and the tool exits with code 0
+
+#### Scenario: adjacent and separated duplicates preserve stable order
+- **WHEN** existing subpath arguments are supplied as A A B C C or A B A C B
+- **THEN** the tool emits exactly the three path-only blocks A B C in that order
+
+#### Scenario: distinct spellings remain distinct
+- **WHEN** `sai/a.md` and `sai\a.md` resolve to the same file and the first argument is repeated
+- **THEN** the tool emits one block for each of the two distinct argument strings without merging them by resolved path
+
+#### Scenario: repeated errors retain batch failure
+- **WHEN** missing and out-of-scope subpaths are repeated alongside an existing valid subpath
+- **THEN** each distinct failing argument emits one error block, the valid argument still resolves, and the tool exits with code 1
+
+#### Scenario: a single original argument retains content mode
+- **WHEN** exactly one existing subpath argument is supplied
+- **THEN** the tool emits its location and unchanged content, subject to the existing output cap, rather than a path-mode block
 
 ### Requirement: The fetch skill batches directives and reads returned paths in parallel
 The Claude Code fetch skill SHALL instruct the agent to collect the unconditional `Fetch @` directives known at that moment that have no loaded copy, send the subpaths of every `Fetch @<subpath>` directive of that batch in one fetch tool call, load each `Fetch @skills/<name>/SKILL.md` directive of the batch with the `Skill` tool in the same turn, and then Read every `path` the call returned in parallel, in a single turn. A directive is unconditional when no condition such as "When ..." or "Before ..." governs it; a conditional directive SHALL join a batch only once its condition holds. A one-subpath call returns its content already and needs no Read. When a call returns an error block, the agent SHALL stop only that subpath's directive and report the tool's message, and the other directives of the batch SHALL continue. When the Read of a returned `path` fails (permission rejected or file unreadable), the agent SHALL stop that directive and report the failure, and SHALL NOT compose or guess another path.
