@@ -25,11 +25,11 @@ The archive worker SHALL perform classification, completion, informational delta
 
 ### Requirement: Ordered archive mutations
 
-Authorized archive execution SHALL first, and only when the prepared plan recorded one or more `retired_capabilities`, re-check the declaration preconditions of the archive instructions against the current files: the author veto, an unhonoured `retire_capabilities` value, unaccounted content in each emptied capability's published spec, and the metadata precondition that `.openspec.yaml` exists, parses, and carries `schema:`. If any of them blocks, the worker SHALL write nothing, SHALL NOT run the CLI archive, and SHALL return a closed `failed` result naming the blocking condition and its way forward; it MUST NEVER create `.openspec.yaml` and MUST NEVER author a `schema:` value. Otherwise it SHALL write the single key `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml` through the active command-execution tool using Bash or PowerShell 7 as a parse-verified replace-in-place, judging the skip, the veto, and the unhonoured value on the parsed YAML value rather than the literal text, never appending a second entry, and adding that file to `changed_files` when it was written; after writing it SHALL re-parse the file and, if the file no longer parses or `retire_capabilities` does not read back as the boolean `true`, SHALL return a closed `failed` result that names the file it wrote and states the way forward: restore `openspec/changes/<name>/.openspec.yaml` with `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when it is tracked or by hand when it is not before `sai-archive` is rerun, without running the CLI archive and without reverting the write itself. It SHALL then run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive and SHALL parse its JSON result. After successful CLI completion, it SHALL classify every supplied approved path using deletion-aware trackedness and ignore checks before staging, stage only eligible paths, and create one local commit from staged state by passing the complete message on standard input to `git commit -F -` when eligible paths remain. Untracked ignored paths SHALL be omitted with a warning. Force-add and broad staging commands MUST NOT be used. With no recorded `retired_capabilities`, `.openspec.yaml` SHALL NOT be touched, no retirement precondition re-check SHALL run, and a failure of the CLI invocation SHALL NOT revert a written declaration.
+When the order carries the no-specs draft section, authorized archive execution SHALL first materialize those drafts as the requirement "The archive execute order materializes the no-specs drafts before the archive move" states, before every step below; that materialization is the only way the worker creates `.openspec.yaml`. Authorized archive execution SHALL then, and only when the prepared plan recorded one or more `retired_capabilities`, re-check the declaration preconditions of the archive instructions against the current files: the author veto, an unhonoured `retire_capabilities` value, unaccounted content in each emptied capability's published spec, and the metadata precondition that `.openspec.yaml` exists, parses, and carries `schema:`. If any of them blocks, the worker SHALL write nothing, SHALL NOT run the CLI archive, and SHALL return a closed `failed` result naming the blocking condition and its way forward; outside the draft materialization it MUST NEVER create `.openspec.yaml` and MUST NEVER author a `schema:` value. Otherwise it SHALL write the single key `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml` through the active command-execution tool using Bash or PowerShell 7 as a parse-verified replace-in-place, judging the skip, the veto, and the unhonoured value on the parsed YAML value rather than the literal text, never appending a second entry, and adding that file to `changed_files` when it was written; after writing it SHALL re-parse the file and, if the file no longer parses or `retire_capabilities` does not read back as the boolean `true`, SHALL return a closed `failed` result that names the file it wrote and states the way forward: restore `openspec/changes/<name>/.openspec.yaml` with `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when it is tracked or by hand when it is not before `sai-archive` is rerun, without running the CLI archive and without reverting the write itself. It SHALL then run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive and SHALL parse its JSON result. After successful CLI completion, it SHALL classify every supplied approved path using deletion-aware trackedness and ignore checks before staging, stage only eligible paths, and create one local commit from staged state by passing the complete message on standard input to `git commit -F -` when eligible paths remain. Untracked ignored paths SHALL be omitted with a warning. Force-add and broad staging commands MUST NOT be used. With no recorded `retired_capabilities`, `.openspec.yaml` SHALL NOT be touched beyond the draft materialization, no retirement precondition re-check SHALL run, and a failure of the CLI invocation SHALL NOT revert a written declaration.
 
 #### Scenario: A validated order executes once
 
-- **WHEN** the coordinator forwards a validated order whose prepared plan recorded no retired capability
+- **WHEN** the coordinator forwards a validated order whose prepared plan recorded no retired capability and that carries no draft section
 - **THEN** the worker does not touch `.openspec.yaml`, performs no retirement precondition re-check, runs the CLI archive first, then exact-path staging and at most one authorized local commit without pushing, amending, or staging unrelated files
 
 #### Scenario: A validated order with a recorded retirement executes once
@@ -198,3 +198,36 @@ When the archive worker validates a Direct Build execute order, the implementer-
 
 - **WHEN** an execute order names an owned path that is neither an allowed `openspec/` path nor a path of the implementer path set received at prepare
 - **THEN** the worker rejects the order with a closed `failed` result and executes nothing
+
+### Requirement: The archive worker accepts the no-specs draft section
+
+On the no-specs Direct Build route, the archive worker's prepare envelope SHALL carry a `--drafts` marker line after the implementer path set, followed by the draft section printed by `validate-backfill-drafts.js order --target archive`: the transfer directory, the accepted fingerprint, and one `{path, sha256, destination}` reference per draft. The section SHALL name exactly `openspec/changes/{name}/.openspec.yaml` and `openspec/changes/{name}/proposal.md`, each once; a section with any other destination SHALL be an altered envelope that returns `failed` and executes nothing. The pre-flight SHALL run `transfer.js verify` on each reference and `validate-backfill-drafts.js check --fingerprint`, and SHALL read the drafts in place of the missing change files, with the specs artifact satisfied as skipped and no delta sync or retirement. The prepared plan's owned `openspec/` paths SHALL include both draft destinations.
+
+#### Scenario: A prepare envelope with a valid draft section
+
+- **WHEN** the prepare envelope carries a `--drafts` section naming the two allowed destinations with references that verify
+- **THEN** the worker keeps the section as worker state, reads the drafts in place of the change files, and returns a plan whose owned paths include both destinations
+
+#### Scenario: A draft section with a foreign destination
+
+- **WHEN** the `--drafts` section names a destination other than `.openspec.yaml` or `proposal.md` of the change
+- **THEN** the worker returns `failed` and executes nothing
+
+### Requirement: The archive execute order materializes the no-specs drafts before the archive move
+
+A Direct Build execute order that carries a draft section SHALL be valid only when that section equals the one received at prepare, reference for reference. Before any other mutation, the worker SHALL run `validate-backfill-drafts.js check --fingerprint` with the accepted fingerprint and, when it holds, SHALL run `transfer.js materialize` for each reference and add both destinations to `changed_files`. A changed fingerprint SHALL write nothing and return `failed` naming the fingerprint check. A failed materialization SHALL stop the order before `openspec archive` and the commit and SHALL return `failed` naming each destination already written, which stays uncommitted.
+
+#### Scenario: Drafts materialize before archive
+
+- **WHEN** the execute order carries the prepared draft section and the fingerprint check holds
+- **THEN** the worker materializes both drafts byte for byte, then runs `openspec archive` and the pre-authorized commit with both destinations among the staged paths
+
+#### Scenario: A changed fingerprint stops the order
+
+- **WHEN** the fingerprint check reports changed inputs
+- **THEN** the worker writes nothing, runs no archive or commit, and returns `failed` naming the fingerprint check
+
+#### Scenario: A failed materialization stops before archive
+
+- **WHEN** one materialization fails after another destination was written
+- **THEN** the worker runs no archive and no commit and returns `failed` naming the destination already written

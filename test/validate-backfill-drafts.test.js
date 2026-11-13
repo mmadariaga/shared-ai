@@ -6,7 +6,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { makeTempDir, removeInside } = require('../sai/tools/temp-root');
 const transfer = require('../sai/tools/transfer');
-const { collect, validate } = require('../sai/tools/validate-backfill-drafts');
+const { collect, validate, order } = require('../sai/tools/validate-backfill-drafts');
+const read = file => fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8');
 const tool = path.resolve(__dirname, '../sai/tools/validate-backfill-drafts.js');
 const requirement = (name, scenarios) => `### Requirement: ${name}\nThe system SHALL perform the requested behavior reliably.\n` + scenarios.map(name => `#### Scenario: ${name}\n- **WHEN** invoked\n- **THEN** the behavior works\n`).join('');
 const original = requirement('Existing', ['One', 'Two']);
@@ -197,4 +198,55 @@ test('a draft set without skip_specs still needs a spec, and skip_specs with a s
   const withSpec = fixture(t);
   withSpec.put('.openspec.yaml', 'schema: sai-workflow\ncreated: 2026-10-25\nbackfilled: true\nskip_specs: true\n');
   assert.throws(() => collect(withSpec.input, withSpec.cwd), /declares skip_specs carries no capability spec/);
+});
+
+const FINGERPRINT = 'a'.repeat(64);
+function orderInput(f) {
+  return { change_name: 'example-change', fingerprint: FINGERPRINT, draft_references: f.input.draft_references, prepared_references: [...f.input.draft_references], transfer_dir: f.dir };
+}
+test('order prints the closed execute order of the worker route from the accepted references', t => {
+  const f = fixture(t);
+  const text = order(orderInput(f));
+  const refs = f.input.draft_references;
+  assert.equal(text, ['--direct-build-execute', 'change_name: example-change', `fingerprint: ${FINGERPRINT}`, 'drafts:',
+    ...refs.flatMap(ref => [`- path: ${ref.path}`, `  sha256: ${ref.sha256}`, `  destination: ${ref.destination}`])].join('\n'));
+  assert.match(read('sai/commands/backfill/worker.md'), /--direct-build-execute\nchange_name: <name>\nfingerprint: <accepted validation fingerprint>\ndrafts:\n- path: <absolute transfer file>\n {2}sha256: <hex>\n {2}destination: /);
+});
+test('order produces nothing when the references differ from the latest prepared set or break the allow-list', t => {
+  const f = fixture(t);
+  const input = orderInput(f);
+  const stale = f.input.draft_references.map(ref => ref.destination.endsWith('proposal.md') ? { ...ref, sha256: 'b'.repeat(64) } : ref);
+  assert.throws(() => order({ ...input, prepared_references: stale }), /do not match the latest prepared set/);
+  assert.doesNotThrow(() => order({ ...input, prepared_references: [...input.draft_references].reverse() }));
+  assert.throws(() => order({ ...input, draft_references: input.draft_references.slice(1), prepared_references: input.draft_references.slice(1) }), /Incomplete draft set/);
+  assert.throws(() => order({ ...input, draft_references: [...input.draft_references, { ...input.draft_references[0], destination: 'openspec/changes/example-change/design.md' }], prepared_references: input.draft_references }), /Invalid draft destination/);
+  assert.throws(() => order({ ...input, draft_references: [...input.draft_references, input.draft_references[0]], prepared_references: input.draft_references }), /Duplicate draft destination/);
+  assert.throws(() => order({ ...input, prepared_references: undefined }), /Expected the latest prepared_references/);
+  assert.throws(() => order({ ...input, fingerprint: 'short' }), /fingerprint/);
+  assert.throws(() => order(input, 'other'), /--target/);
+});
+test('order --target archive prints the draft section limited to the two no-specs drafts', t => {
+  const f = fixture(t);
+  noSpecsSet(f);
+  const input = orderInput(f);
+  const section = order({ ...input, prepared_references: undefined }, 'archive');
+  assert.match(section, new RegExp(`^transfer_dir: ${f.dir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\nfingerprint: ${FINGERPRINT}\ndrafts:\n- path: `));
+  assert.equal((section.match(/^- path: /gm) || []).length, 2);
+  assert.doesNotMatch(section, /--direct-build-execute/);
+  const withSpec = fixture(t);
+  assert.throws(() => order(orderInput(withSpec), 'archive'), /Invalid draft destination/);
+  assert.throws(() => order({ ...input, transfer_dir: '/elsewhere' }, 'archive'), /transfer directory/);
+  assert.throws(() => order({ ...input, transfer_dir: undefined }, 'archive'), /transfer directory/);
+});
+test('the order command line prints the raw order text, or a JSON error with exit 1', t => {
+  const f = fixture(t);
+  const inputFile = path.join(f.dir, 'order-input.json');
+  fs.writeFileSync(inputFile, JSON.stringify(orderInput(f)));
+  const good = spawnSync(process.execPath, [tool, 'order', '--input-file', inputFile], { encoding: 'utf8' });
+  assert.equal(good.status, 0, good.stdout + good.stderr);
+  assert.ok(good.stdout.startsWith('--direct-build-execute\nchange_name: example-change\n'));
+  fs.writeFileSync(inputFile, JSON.stringify({ ...orderInput(f), fingerprint: 'bad' }));
+  const bad = spawnSync(process.execPath, [tool, 'order', '--input-file', inputFile], { encoding: 'utf8' });
+  assert.equal(bad.status, 1);
+  assert.equal(JSON.parse(bad.stdout).ok, false);
 });
