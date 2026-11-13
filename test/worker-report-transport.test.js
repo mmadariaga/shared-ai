@@ -571,3 +571,23 @@ test('the commit, archive, backfill, and merge workers and commands have the rep
     assert.ok(grants('worker-report-validator.js *'), `${command} may validate a report`);
   }
 });
+
+test('terminal reports get a paired same-turn duplicate check and validation, progress reports stay sequential', () => {
+  const policy = read('sai/policies/worker-report-transport.md').replace(/\s+/g, ' ');
+  for (const text of [
+    'run the **paired check**',
+    'two independent calls issued together in one model response (a same-turn batch)',
+    'accept --check --dir <report-dir> --path <path> --sha256 <sha256>',
+    'validate --kind terminal --command <command> --json',
+    'Discard the validate result, spend no attempt, and send no continuation',
+    'is re-issued alone in the next turn. A cancellation is not an obstacle attempt',
+    'a validate result is never acted on without the `--check` answer of the same reference',
+    'The paired check covers terminal reports only.',
+    'keeps `accept --check` and `sai-state emit … --progress` in sequence',
+  ]) {
+    assert.ok(policy.includes(text), `the transport policy must state: ${text}`);
+  }
+  const receiver = policy.indexOf('## Receiver boundary');
+  const undelivered = policy.indexOf('## Undelivered reports');
+  assert.ok(policy.indexOf('accept --check', receiver) < undelivered, 'the paired check sits in § Receiver boundary');
+});

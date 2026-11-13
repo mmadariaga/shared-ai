@@ -8,7 +8,7 @@ prose misses, in every current and future worker, without new prose.
 ## The single rule
 
 HEAD must be identical at the opening and at the closing of every guard
-window. One snapshot, one verify, two git observations per window, zero project knowledge: no path lists, no scope validation, no
+window. One snapshot (or the head of a reusable clean verify), one verify, two git observations per window, zero project knowledge: no path lists, no scope validation, no
 project configuration. The threat model is accidents, not malice — a worker
 that commits and self-resets evades the guard by design.
 
@@ -61,7 +61,7 @@ replacement, the next segment of a composition), and a segment transition
 inside a composition all continue the running window: the
 coordinator acts on them with no guard call.
 
-- **Snapshot** — open a window with `snapshot` once the first dispatch's
+- **Snapshot** — open a window with `snapshot` (or from a clean verify, per **Reuse of a clean verify**) once the first dispatch's
   harness-native resumable handle is captured and retained, immediately before
   the worker's expensive work proceeds; after a human turn, once the answer is
   in and before it is forwarded to a worker; and after a coordinator git
@@ -74,6 +74,20 @@ coordinator acts on them with no guard call.
   before each boundary and **before acting on it**: before presenting a
   human-turn question, before a coordinator git mutation, and before acting on
   a run-closing result. A result that is not a boundary gets no verify.
+- **Reuse of a clean verify** — the verify that closed the previous window
+  already returned the current HEAD as `head`, so a window may open without a
+  `snapshot`: set `guard_base` to the `head` of that `clean` verify. This holds
+  only when every operation since that verify left HEAD in place. The
+  HEAD-preserving operations are staging (`git add`, `git rm --cached`) and
+  working-tree moves such as the `openspec archive` move. Any other coordinator
+  git mutation (a commit, checkout, merge launch, reset, or rebase) can move
+  HEAD without a worker, so it requires a fresh `snapshot`. A human turn also
+  requires a fresh `snapshot`, even when the coordinator ran no git command: a
+  user commit made during the pause would otherwise look like a worker
+  violation and trigger `git reset <guard_base>`, removing the user's commit
+  from the branch. A verify with verdict `violation`, `allowed`, or `n/a` is
+  never reused: the next window opens with a fresh `snapshot`. The `allow_commit`
+  and recovery-worker isolation rules below keep their own fresh `snapshot`.
 - **Batch semantics** — a concurrent batch sits inside one window: the
   coordinator neither moves HEAD nor asks anything inside it. With no window
   running at batch start, snapshot once every batch handle is captured. Verify
