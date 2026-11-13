@@ -19,7 +19,8 @@ const SUITE_TIMEOUT_MS = 10 * 60 * 1000;
 const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
 const COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
 const SUITE_RESULT_LINE = /^SUITE_RESULT\s+(\{.*\})\s*$/;
-const BRIEF_DIR = '/tmp/benchmark-brief';
+const TRANSFER_TOOL = '/opt/shared-ai/sai/tools/transfer.js';
+const BLOCK_STAGING_FILE = '/tmp/benchmark-block.md';
 // Where each harness keeps its data for the container's unprivileged user.
 const HARNESS_DATA = Object.freeze({
   claude: { container: '/home/dev/.claude/projects', local: 'projects', measure: measureClaude },
@@ -58,9 +59,9 @@ function launchCommand({ harness, prompt }) {
     : ['opencode', 'run', '--format', 'json', prompt];
 }
 
-function launchPrompt({ route, brief, blockHash }) {
+function launchPrompt({ route, brief, blockHash, blockPath }) {
   const command = ROUTES[route].command;
-  return route === 'plan' ? `${command} ${brief.changeName}` : `${command} --block-file ${BRIEF_DIR}/block.md --block-hash ${blockHash}`;
+  return route === 'plan' ? `${command} ${brief.changeName}` : `${command} --block-file ${blockPath} --block-hash ${blockHash}`;
 }
 
 function parseSuiteResult(stdout) {
@@ -109,17 +110,12 @@ class DockerBackend {
     const envArgs = configuration.env.flatMap((variable) => ['-e', variable]);
     await this.step('Starting the container', ['run', '-d', '--name', name, '-v', `${this.checkoutDir}:/opt/shared-ai:ro`, ...envArgs, IMAGE, 'sleep', 'infinity']);
     await this.step('Copying the base project', ['cp', `${path.join(corpus.dir, 'project')}${path.sep}.`, `${name}:/work`]);
-    const owned = ['/work'];
     if (route === 'plan') {
       const planDir = `/work/openspec/changes/${brief.changeName}`;
       await this.step('Creating the plan folder', ['exec', name, 'mkdir', '-p', planDir]);
       await this.step('Copying the fixed plan', ['cp', `${path.join(brief.dir, 'plan')}${path.sep}.`, `${name}:${planDir}`]);
-    } else {
-      owned.push(BRIEF_DIR);
-      await this.step('Creating the brief folder', ['exec', name, 'mkdir', '-p', BRIEF_DIR]);
-      await this.step('Copying the brief block', ['cp', path.join(brief.dir, 'block.md'), `${name}:${BRIEF_DIR}/block.md`]);
     }
-    await this.step('Setting ownership', ['exec', '-u', 'root', name, 'chown', '-R', 'dev:dev', ...owned]);
+    await this.step('Setting ownership', ['exec', '-u', 'root', name, 'chown', '-R', 'dev:dev', '/work']);
 
     const setupFile = path.join(scratch, 'setup.json');
     fs.writeFileSync(setupFile, JSON.stringify({ harness: configuration.harness, project: '/work', checkout: '/opt/shared-ai', models: configuration.models }));
@@ -127,6 +123,24 @@ class DockerBackend {
     await this.step('Installing SAI', ['exec', name, 'node', '/opt/shared-ai/benchmark/container-setup.js', '/tmp/benchmark-setup.json'], { timeoutMs: SETUP_TIMEOUT_MS });
     const cli = await this.docker(['exec', name, 'sh', '-c', `command -v ${configuration.harness}`]);
     if (cli.code !== 0) throw new Error(`the ${configuration.harness} CLI is missing in the image`);
+    return route === 'plan' ? {} : { blockPath: await this.storeBlock(name, configuration.harness, brief) };
+  }
+
+  /**
+   * Put the brief block through the transport users run: the harness temporary root, a transfer
+   * directory that `transfer.js open` returns, and `transfer.js put`. The agent is never launched
+   * with a block placed any other way. Returns the path `put` printed.
+   */
+  async storeBlock(name, harness, brief) {
+    const dev = (label, args) => this.step(label, ['exec', name, ...args]);
+    let root = '/tmp/opencode';
+    if (harness === 'claude') root = `/tmp/claude-${(await dev('Reading the container user id', ['id', '-u'])).stdout.trim()}`;
+    await dev('Creating the harness temporary root', ['mkdir', '-p', '-m', '700', root]);
+    const opened = JSON.parse((await dev('Opening the transfer directory', ['node', TRANSFER_TOOL, 'open', '--harness', harness])).stdout);
+    await this.step('Copying the brief block', ['cp', path.join(brief.dir, 'block.md'), `${name}:${BLOCK_STAGING_FILE}`]);
+    await this.step('Setting block ownership', ['exec', '-u', 'root', name, 'chown', 'dev:dev', BLOCK_STAGING_FILE]);
+    const stored = JSON.parse((await dev('Storing the brief block', ['node', TRANSFER_TOOL, 'put', '--dir', opened.dir, '--path', 'block.md', '--input-file', BLOCK_STAGING_FILE])).stdout);
+    return stored.path;
   }
 
   /**
@@ -158,13 +172,14 @@ class DockerBackend {
     const name = `sai-benchmark-${crypto.randomBytes(6).toString('hex')}`;
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-benchmark-'));
     try {
+      let prepared;
       try {
-        await this.prepareContainer(name, run, scratch);
+        prepared = await this.prepareContainer(name, run, scratch);
       } catch (error) {
         return { infraError: error.message, wallMs: 0 };
       }
       const blockHash = hashBlock(fs.readFileSync(path.join(brief.dir, 'block.md'), 'utf8'));
-      const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, blockHash }) });
+      const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, blockHash, blockPath: prepared.blockPath }) });
       const agents = await this.docker(['exec', '-w', '/work', name, ...command], { timeoutMs: timeLimitMs });
       const usage = await this.measureUsage(name, configuration.harness, scratch);
       if (agents.timedOut) return { timedOut: true, output: agents.stdout, wallMs: agents.wallMs, usage };

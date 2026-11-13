@@ -259,6 +259,53 @@ test('E4: the hidden suite enters the container only after the agents end, and c
   assert.match(flat.at(-1), /^rm -f sai-benchmark-/);
 });
 
+test('E1: the direct-build block goes through the harness temporary root, transfer open, and transfer put as the unprivileged user', async () => {
+  const transferDir = '/tmp/claude-1000/sai/sai-transfer-AbC123';
+  const calls = [];
+  const exec = async (command, args) => {
+    calls.push(args);
+    const joined = args.join(' ');
+    let stdout = '';
+    if (joined.endsWith('id -u')) stdout = '1000\n';
+    if (joined.includes('transfer.js open')) stdout = JSON.stringify({ ok: true, command: 'open', dir: transferDir });
+    if (joined.includes('transfer.js put')) stdout = JSON.stringify({ ok: true, command: 'put', path: `${transferDir}/block.md`, sha256: 'f'.repeat(64) });
+    if (args[0] === 'exec' && args.includes('-p')) stdout = outputFor('claude', 'Direct build done.');
+    if (joined.includes('SUITE_RESULT')) stdout = 'SUITE_RESULT {"passed":1,"total":1}\n';
+    return { code: 0, stdout, stderr: '', timedOut: false, wallMs: 1 };
+  };
+  const backend = new DockerBackend({ checkoutDir: repoRoot, environment: { ANTHROPIC_API_KEY: 'x' }, exec });
+  const loaded = corpus();
+  const raw = await backend.run({ corpus: loaded, configuration: loaded.configurations[0], brief: loaded.briefs[0], route: 'direct-build', timeLimitMs: 1000 });
+  assert.equal(raw.infraError, undefined);
+  const flat = calls.map((args) => args.join(' '));
+  const index = (needle) => flat.findIndex((line) => line.includes(needle));
+  const installing = index('container-setup.js');
+  const rootStep = index('mkdir -p -m 700 /tmp/claude-1000');
+  const open = index('transfer.js open --harness claude');
+  const put = index(`transfer.js put --dir ${transferDir} --path block.md --input-file`);
+  assert.ok(installing >= 0 && rootStep > installing && open > rootStep && put > open, 'root, open, and put run in order after the install');
+  assert.ok(flat.every((line) => !line.includes('benchmark-brief')), 'the old brief folder is gone');
+  assert.ok(calls[open].every((arg) => arg !== '-u') && calls[put].every((arg) => arg !== '-u'), 'open and put run as the unprivileged user');
+  const launch = flat.find((line) => line.includes('claude -p'));
+  assert.match(launch, new RegExp(`-p /sai-direct-build --block-file ${transferDir}/block.md --block-hash [0-9a-f]{64} `));
+});
+
+test('E2: a failing transfer step is an infrastructure error and the agent never launches', async () => {
+  const calls = [];
+  const exec = async (command, args) => {
+    calls.push(args);
+    const joined = args.join(' ');
+    const failing = joined.includes('transfer.js put');
+    const stdout = joined.endsWith('id -u') ? '1000\n' : joined.includes('transfer.js open') ? '{"dir":"/tmp/claude-1000/sai/sai-transfer-x"}' : '';
+    return { code: failing ? 1 : 0, stdout, stderr: failing ? 'put failed' : '', timedOut: false, wallMs: 1 };
+  };
+  const backend = new DockerBackend({ checkoutDir: repoRoot, environment: { ANTHROPIC_API_KEY: 'x' }, exec });
+  const loaded = corpus();
+  const raw = await backend.run({ corpus: loaded, configuration: loaded.configurations[0], brief: loaded.briefs[0], route: 'direct-build', timeLimitMs: 1000 });
+  assert.match(raw.infraError, /Storing the brief block failed: put failed/);
+  assert.ok(calls.every((args) => !args.includes('stream-json')), 'no launch');
+});
+
 test('E3: a timed-out launch skips the suite and still removes the container', async () => {
   const { calls, exec } = fakeDocker({ agentsTimeout: true });
   const backend = new DockerBackend({ checkoutDir: repoRoot, environment: { ANTHROPIC_API_KEY: 'x' }, exec });

@@ -194,7 +194,23 @@ function normalizeEventText(raw) {
   return t.trim();
 }
 
-function sessionFile(id) { return path.join(sessionDir(), id + '.json'); }
+// A session id is the lowercase UUID that `spawn` derives from a key, so it holds no
+// path separator and no `..`. Every verb checks it before its first file operation.
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function isSessionId(id) { return typeof id === 'string' && SESSION_ID_PATTERN.test(id); }
+
+class SessionIdError extends Error {
+  constructor(id) {
+    super('session id must be a lowercase UUID, got ' + JSON.stringify(String(id)));
+    this.code = 'SESSION_ID_INVALID';
+  }
+}
+
+function sessionFile(id) {
+  if (!isSessionId(id)) throw new SessionIdError(id);
+  return path.join(sessionDir(), id + '.json');
+}
 
 function isUuidv4(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '');
@@ -1192,6 +1208,14 @@ function main(argv) {
     }
     receivedAt = clock.generateReceivedAt();
   }
+  if (['emit', 'reset', 'close', 'block'].includes(parsed.command)) {
+    const sessionId = parsed.positional[0];
+    if (sessionId !== undefined && !isSessionId(sessionId)) {
+      process.stderr.write(parsed.command + ': ' + new SessionIdError(sessionId).message + '\n');
+      process.exitCode = 2;
+      return;
+    }
+  }
   if (parsed.command === 'spawn') {
     commandSpawn(parsed.named.key);
     return;
@@ -1258,7 +1282,7 @@ if (require.main === module) {
     main(process.argv.slice(2));
   } catch (err) {
     // A missing or unsafe temp root is a blocker with its own message, not a crash.
-    if (!(err && err.code && /^TEMP_ROOT_/.test(err.code))) throw err;
+    if (!(err && err.code && /^(TEMP_ROOT_|SESSION_ID_INVALID)/.test(err.code))) throw err;
     process.stderr.write('sai-state: ' + err.message + '\n');
     process.exitCode = 2;
   }

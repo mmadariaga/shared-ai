@@ -199,11 +199,15 @@ After a `written` outcome, the coordinator SHALL check the path with `git check-
 
 ### Requirement: The sai-workflow schema declares telemetry as an optional artifact
 
-`openspec/schemas/sai-workflow/schema.yaml` SHALL declare the artifact `telemetry` with `generates: telemetry.md`, the template `telemetry.md`, and `requires: []`, with an instruction that `change-telemetry.js` writes it and it is not written by hand. No other artifact SHALL require `telemetry`, and `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL exist.
+`openspec/schemas/sai-workflow/schema.yaml` SHALL declare the artifact `telemetry` with `generates: telemetry.md`, the template `telemetry.md`, and `requires: []`, with an instruction that `change-telemetry.js` writes it and it is not written by hand. The artifact's description and instruction SHALL state the real scope: the collector writes it at the close of a direct `/sai-plan` or `/sai-build` run and of the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, on Claude Code or opencode, from the harness session data, when `experimental.changeTelemetry` is `true`; they SHALL NOT limit it to opencode or to `opencode.db`. No other artifact SHALL require `telemetry`, and `openspec/schemas/sai-workflow/templates/telemetry.md` SHALL exist.
 
 #### Scenario: no artifact depends on telemetry
 - **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** it declares `telemetry` with `requires: []` and no artifact lists `telemetry` in its `requires`
+
+#### Scenario: the schema instruction names both harnesses and every recording route
+- **WHEN** the `telemetry` artifact's description and instruction are read
+- **THEN** they name Claude Code and opencode, direct `/sai-plan` and `/sai-build`, and the `/sai-explore` Plan - Unattended and Direct Build - Unattended routes, and name no opencode-only source
 
 ### Requirement: The tool resolution policy lists the collector
 
