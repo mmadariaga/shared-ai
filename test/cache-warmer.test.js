@@ -962,6 +962,83 @@ test('the explore command may stop its own background task: TaskStop on Claude C
 });
 
 
+test('I1 close writes closed_ms once, is idempotent, and reports absent for a chain with no record', t => {
+  const { begin, io, saiRoot, clock } = chainFixture(t);
+  const { chain } = begin();
+  clock.time = 7000;
+  assert.deepEqual(warmer.closeChain(chain, io), { status: 'closed' });
+  assert.equal(recordOf(saiRoot, chain).closed_ms, 7000);
+  clock.time = 9000;
+  assert.deepEqual(warmer.closeChain(chain, io), { status: 'already-closed' });
+  assert.equal(recordOf(saiRoot, chain).closed_ms, 7000, 'the first close keeps its instant');
+  assert.equal(fs.existsSync(path.join(saiRoot, `warm-chain-${chain}.json.lock`)), false, 'no lock outlives the close');
+  assert.deepEqual(warmer.closeChain('0123456789abcdef', io), { status: 'absent' });
+  assert.throws(() => warmer.closeChain('../escape', io), warmer.UsageError);
+});
+
+test('I3 E7 close refuses the chain of a main session and leaves it warming', async t => {
+  const { begin, io, saiRoot } = chainFixture(t);
+  const main = begin({ role: 'agent', provider: 'p', harness: 'claude', session: 'chat-1' });
+  const before = fs.readFileSync(path.join(saiRoot, `warm-chain-${main.chain}.json`), 'utf8');
+  assert.deepEqual(warmer.closeChain(main.chain, io), { status: 'refused' });
+  assert.equal(fs.readFileSync(path.join(saiRoot, `warm-chain-${main.chain}.json`), 'utf8'), before, 'the record is untouched');
+  assert.deepEqual(warmer.armCheck(main.chain, io), armResult(true));
+  assert.equal((await warmer.warmOnce({ chain: main.chain }, io)).status, 'continue');
+});
+
+test('E4 I2 a closed chain ends warming: arm launches nothing and both warm forms finish, with a live lease and an open window', async t => {
+  const open = leasedChain(t);
+  open.clock.time = 5000;
+  assert.deepEqual(warmer.armCheck(open.chain, open.io), armResult(false), 'the live lease is reused before the close');
+  assert.deepEqual(warmer.closeChain(open.chain, open.io), { status: 'closed' });
+  assert.deepEqual(warmer.armCheck(open.chain, open.io), armResult(false), 'a live lease and an open window no longer reuse or launch');
+  const fresh = open.begin();
+  const state = { chain: fresh.chain, generation: 1, token: 'b'.repeat(16), interval_ms: 240000, max_ms: 1800000, closing_ms: 600000, armed_ms: 0 };
+  warmer.closeChain(fresh.chain, open.io);
+  const forbidden = { ...open.io, wait: async () => { throw new Error('a closed chain never waits'); } };
+  assert.deepEqual((await warmer.warmOnce({ chain: fresh.chain }, forbidden)).status, 'finished');
+  assert.deepEqual((await warmer.warmOnce({ state }, forbidden)).status, 'finished');
+  assert.equal(recordOf(open.saiRoot, fresh.chain).owner, undefined, 'a refused arm takes no ownership');
+});
+
+test('E4 I2 a wait already in flight finishes at its next renewal once its chain is closed', async t => {
+  const { io, clock, begin, saiRoot } = chainFixture(t);
+  const { chain } = begin();
+  let chunks = 0;
+  const wait = async ms => {
+    clock.time += ms;
+    chunks += 1;
+    if (chunks === 2) assert.deepEqual(warmer.closeChain(chain, io), { status: 'closed' });
+  };
+  const result = await warmer.warmOnce({ chain }, { ...io, wait });
+  assert.equal(result.status, 'finished');
+  assert.equal(result.waited_ms, 2 * warmer.TICK_MS, 'it stopped within one chunk of the close');
+  assert.equal(chunks, 2);
+  assert.equal(recordOf(saiRoot, chain).owner, null, 'the retired wait released its lease');
+  assert.ok(recordOf(saiRoot, chain).closed_ms !== undefined, 'releasing the lease keeps the closed marker');
+  assert.deepEqual(warmer.armCheck(chain, io), armResult(false));
+});
+
+test('I1 the CLI closes a chain, reports its status as JSON, and exits 2 without the chain', t => {
+  const saiRoot = require('../sai/tools/temp-root').resolveTempRoot('claude');
+  const began = warmer.beginOnce({ agent: 'budget-explorer', harness: 'claude' }, { saiRoot, resolve: () => ON, agentFolders: [] });
+  const file = path.join(saiRoot, `warm-chain-${began.chain}.json`);
+  t.after(() => fs.rmSync(file, { force: true }));
+  const run = args => spawnSync(process.execPath, [WAIT, ...args], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(run(['close', '--chain', began.chain]).stdout), { status: 'closed' });
+  assert.deepEqual(JSON.parse(run(['close', '--chain', began.chain]).stdout), { status: 'already-closed' });
+  assert.equal(run(['close']).status, 2);
+  assert.equal(run(['close', '--chain', '../x']).status, 2);
+});
+
+test('I4 the --state decoder is the inverse of the token encoder and rejects what is not a state', () => {
+  const state = { chain: '0123456789abcdef', generation: 3 };
+  assert.deepEqual(warmer.decodeStateToken(warmer.stateToken(state)), state);
+  for (const token of ['!!', '', Buffer.from('7').toString('base64url'), Buffer.from('[1]').toString('base64url')]) {
+    assert.equal(warmer.decodeStateToken(token), null, token);
+  }
+});
+
 test('the benchmark override writes the cutoff file that the warmer reads', () => {
   assert.equal(require('../skills/universal/sai-context-cache-ttl-benchmark/warming_override').CUTOFF_FILE, warmer.CUTOFF_FILE);
 });

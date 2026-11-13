@@ -558,6 +558,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
 - [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
 - [0219 — Coordinators recover undelivered worker reports with a background watch](./0219-coordinators-recover-undelivered-worker-reports-with-a-background-watch.md) — Refs 0214, Refs 0218
+- [0220 — opencode dispose closes the worker's cache-warm chain](./0220-opencode-dispose-closes-the-workers-cache-warm-chain.md) — **Amends** 0213
 
 ### Testability routing & RED → GREEN
 
