@@ -859,7 +859,7 @@ test('the lifecycle policy disposes unconditionally, names the Claude Code stop 
   assert.match(lifecycle, /unconditional action that ends a worker or helper[\s\S]*whatever the warming setting/);
   assert.match(lifecycle, /spends no attempt and triggers no retry/);
   assert.match(lifecycle, /TaskStop\(task_id: "<captured agent ID>"\)/);
-  assert.match(lifecycle, /node <tool-path> --session <sessionID> --cwd <project-root>[\s\S]*`dispose-shells\.js`/);
+  assert.match(lifecycle, /node <tool-path> --session <sessionID> \[--session <sessionID> \.\.\.\] --cwd <project-root>[\s\S]*`dispose-shells\.js`/);
   assert.match(lifecycle, /`removed`, `none`, `failed`, or `unavailable`|"removed" \| "none" \| "failed" \| "unavailable"/);
   assert.match(lifecycle, /Send the message `dispose` when the status is `none` and the `warming:` line of the worker's last real message was `true`[\s\S]*and when the status is `failed` or `unavailable`/);
   assert.match(lifecycle, /a worker that never sent the line[\s\S]{0,120}receives none/);
@@ -867,6 +867,17 @@ test('the lifecycle policy disposes unconditionally, names the Claude Code stop 
   assert.match(lifecycle, /No `session\.interrupt` call exists/);
   assert.doesNotMatch(lifecycle, /api\/session\/:sessionID\/interrupt/);
   assert.match(lifecycle, /answer each later wake of a wait you armed with `ok` alone/);
+});
+
+test('E14 E16 the lifecycle policy batches the stops and closes of a point and re-issues a cancelled call alone', () => {
+  const lifecycle = fs.readFileSync(path.resolve(__dirname, '../sai/policies/worker-lifecycle.md'), 'utf8');
+  assert.match(lifecycle, /## Same-turn batch/);
+  assert.match(lifecycle, /`transfer\.js close`, `temp-root\.js remove`/);
+  assert.match(lifecycle, /`No task found` counts as a result/);
+  assert.match(lifecycle, /re-issues that call alone in the next turn[\s\S]*A cancellation is not an obstacle attempt/);
+  assert.match(lifecycle, /envelope `\{"status", "results"/);
+  const direct = fs.readFileSync(path.resolve(__dirname, '../sai/commands/explore/direct-build-coordinator.md'), 'utf8');
+  assert.match(direct, /dispose every worker and helper still alive under `worker-lifecycle\.md` in one same-turn batch/);
 });
 
 test('helper contracts and budget skills send the switch only to agents their coordinator disposes, and never to the executor', () => {
