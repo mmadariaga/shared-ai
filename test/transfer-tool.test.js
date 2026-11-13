@@ -497,3 +497,22 @@ test('the watch defaults are 60 seconds to settle and 30 minutes to the maximum'
   assert.equal(transfer.parseDuration('30m', '--max'), 1800000);
   assert.equal(transfer.parseDuration('0', '--settle'), 0);
 });
+
+test('E12 a repeated single-value flag is a usage error that changes nothing', () => {
+  const dir = transfer.open('claude').dir;
+  try {
+    for (const args of [
+      ['close', '--dir', dir, '--dir', dir],
+      ['put', '--dir', dir, '--path', 'a.json', '--path', 'b.json', '--input-file', __filename],
+      ['verify', '--dir', dir, '--path', '/x', '--sha256', 'a', '--sha256', 'b'],
+    ]) {
+      const result = cli(args);
+      assert.equal(result.status, 2, args.join(' '));
+      assert.match(result.json.error, /accepts one value/);
+    }
+    assert.ok(fs.existsSync(dir), 'the repeated --dir closed nothing');
+    assert.deepEqual(fs.readdirSync(dir).filter(name => name.endsWith('.json')), [], 'the repeated --path wrote nothing');
+  } finally {
+    transfer.close(dir);
+  }
+});

@@ -173,3 +173,15 @@ On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. O
 
 - **WHEN** on Windows `remove` receives a directory that resolves outside the SAI temp root
 - **THEN** it rejects the path with `REJECTED_PATH` and deletes nothing
+
+### Requirement: Temp root CLI rejects repeated single-value flags
+
+`temp-root.js` SHALL reject a repeated `--harness`, `--prefix`, or `--dir` flag as a usage error: it SHALL print `ok: false` with code `USAGE` and an error naming the flag (`<flag> accepts one value`), exit 2, and create or remove nothing. It SHALL NOT silently keep the last value of a repeated flag.
+
+#### Scenario: Repeated --dir on remove
+- **WHEN** `remove --harness claude --dir /a --dir /b` runs
+- **THEN** it exits 2 with code `USAGE`, the error says `--dir accepts one value`, and no directory is removed
+
+#### Scenario: Repeated --harness or --prefix on mkdtemp
+- **WHEN** `mkdtemp` runs with `--harness` or `--prefix` given twice
+- **THEN** it exits 2 with code `USAGE` and creates no directory

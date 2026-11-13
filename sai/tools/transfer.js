@@ -380,6 +380,7 @@ function parseArgs(argv) {
     }
     if (FLAGS[arg]) {
       if (i + 1 >= argv.length) return { error: `missing value for ${arg}` };
+      if (opts[FLAGS[arg]] !== undefined) return { error: `${arg} accepts one value` };
       opts[FLAGS[arg]] = argv[++i];
     } else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
     else if (opts.command === null) opts.command = arg;
