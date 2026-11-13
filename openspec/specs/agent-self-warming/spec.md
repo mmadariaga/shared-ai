@@ -370,3 +370,51 @@ On Claude Code and opencode, `wait.js` SHALL add one textual `reminder` to every
 #### Scenario: Coverage does not claim model compliance
 - **WHEN** regression tests exercise reminder output and E1–E7 continuation scenarios
 - **THEN** they check output fields, CLI transport, state isolation, and instruction coverage while distinguishing those checks from observing model compliance
+
+### Requirement: Closed chain never warms again
+
+`skills/sai-cache-warmer/wait.js` SHALL provide a `close --chain <id>` verb, exported as `closeChain`, that writes a `closed_ms` marker into the chain record under the chain's lock and prints one JSON object `{status}`. The status SHALL be `closed` when it wrote the marker, `already-closed` when the record already carried it, `absent` when no chain record exists, and `refused` when the record's `identity.role` is `agent`, the role a main session's `begin` records. The verb SHALL be idempotent, SHALL exit 1 only for `refused`, and SHALL exit 2 with a usage error when `--chain` is missing.
+
+`wait.js` SHALL check the closed marker before any lease, timing, window, or cutoff rule. For a closed chain the arm check SHALL print `launch: false`, `warm --chain` and `warm --state` SHALL return `finished`, a wake SHALL not keep ownership, and the lease renewal of a wait already in flight SHALL fail, so that wait returns `finished` at its next renewal. These decisions SHALL hold even while the lease of a killed wait still looks live and even when the chain's window has not ended. The window, lease, timings, and cutoff rules SHALL stay unchanged for a chain that is not closed. `wait.js` SHALL export `decodeStateToken`, the decoder its `--state` parse uses, which returns `null` for a token that is not the encoding of a state object.
+
+On Claude Code no chain SHALL be closed: `TaskStop` ends the agent and its wait together.
+
+#### Scenario: Close a subagent chain
+- **WHEN** `wait.js close --chain <id>` runs for a subagent chain that is not closed
+- **THEN** it writes `closed_ms` into the record and prints `closed`
+
+#### Scenario: Close is idempotent
+- **WHEN** `close` runs again for the same chain
+- **THEN** it prints `already-closed` and changes nothing
+
+#### Scenario: Close of a missing chain
+- **WHEN** `close` runs for a chain id that has no record
+- **THEN** it prints `absent`
+
+#### Scenario: Main-session chain is never closed
+- **WHEN** `close` runs for a chain whose `identity.role` is `agent`
+- **THEN** it prints `refused`, exits 1, and leaves the chain open, so a later command in the same chat keeps warming
+
+#### Scenario: Arm check on a closed chain
+- **WHEN** the arm check runs for a closed chain whose last wait still has a live lease
+- **THEN** it prints `launch: false`
+
+#### Scenario: Warm on a closed chain
+- **WHEN** `warm --chain` or `warm --state` runs for a closed chain inside its window
+- **THEN** it returns `finished` and waits for nothing
+
+#### Scenario: Wait in flight when the chain closes
+- **WHEN** a chain closes while one of its waits is running
+- **THEN** that wait's next lease renewal fails and the wait returns `finished`
+
+### Requirement: Error wake is treated as a dispose
+
+`sai/policies/cache-warming.md` § Wake SHALL state that a wake that is not the JSON `wait.js` prints (a shell error such as `Shell.NotFoundError`, a non-zero exit, or output that does not parse) means the agent's shell was removed by a dispose, and that the agent SHALL treat it as the `dispose` message: reply `ok`, run no tool, arm nothing again, and answer each later wake with `ok`. The policy SHALL describe this rule as a fallback to the opencode dispose closing the chain. `sai/policies/cache-warming.md` § Dispose SHALL state that the opencode removal closes the chain of each `wait.js warm` shell it removes and that the main session's chain is never closed.
+
+#### Scenario: Shell error wake
+- **WHEN** a warming subagent is woken by `Shell.NotFoundError` instead of the `wait.js` JSON
+- **THEN** it replies `ok`, runs no tool, and arms nothing again
+
+#### Scenario: Later wakes after an error wake
+- **WHEN** another wake reaches the agent after it treated an error wake as a dispose
+- **THEN** it replies `ok` and arms nothing

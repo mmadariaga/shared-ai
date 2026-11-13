@@ -101,9 +101,11 @@ Coordinators SHALL dispose every worker they create, under `sai/policies/worker-
 
 `sai/tools/dispose-shells.js` SHALL take one or more `--session <sessionID>` flags and one `--cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals a given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, and list again. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any session it was not given. A per-session `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal or its removal was refused, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing.
 
-With one `--session` the tool SHALL print one JSON object `{status, removed, failed}` and SHALL exit 0 for `removed` and `none` and 1 for `failed` and `unavailable`, as before this change. With two or more `--session` flags it SHALL read the listing once to find the running shells, partition them by `metadata.sessionID` in the client, remove every target shell, verify with one more listing, and print the envelope `{status, results}`, where `results` holds one entry `{session, status, removed, failed}` per distinct session in the order given; the output shape SHALL follow the number of `--session` flags, so a session named twice yields one entry inside the envelope. The top `status` SHALL be the worst entry, in the order `unavailable` > `failed` > `removed` > `none`, and SHALL set the exit code as for a single session. A refused removal in one session SHALL NOT stop the removals of the other sessions, and each entry SHALL carry its own status.
+With one `--session` the tool SHALL print one JSON object `{status, removed, failed, closed, close_failed}` and SHALL exit 0 for `removed` and `none` and 1 for `failed` and `unavailable`. With two or more `--session` flags it SHALL read the listing once to find the running shells, partition them by `metadata.sessionID` in the client, remove every target shell, verify with one more listing, and print the envelope `{status, results}`, where `results` holds one entry `{session, status, removed, failed, closed, close_failed}` per distinct session in the order given; the output shape SHALL follow the number of `--session` flags, so a session named twice yields one entry inside the envelope. The top `status` SHALL be the worst entry, in the order `unavailable` > `failed` > `removed` > `none`, and SHALL set the exit code as for a single session. A refused removal in one session SHALL NOT stop the removals of the other sessions, and each entry SHALL carry its own status.
 
-It SHALL validate every argument before any removal and SHALL exit 2 with a usage error, removing nothing, for a session id that is not a plain identifier, a missing `--cwd`, a repeated `--cwd`, or an unknown flag. `--session` SHALL be the only flag that accepts several values. The existing `sai-tools` projection SHALL install it with no new shell grant, and `sai/policies/tool-resolution.md` SHALL list it among the resolvable tools. Its tests SHALL stub the `opencode` CLI.
+The tool SHALL read each running shell's launch line from the listing's `command` field and SHALL split it into arguments with a quote-aware tokenizer (double and single quotes group one argument, and either path separator stays literal). A shell whose arguments hold one whose base name is `wait.js`, followed by `warm`, SHALL be a cache-warm shell; its chain id SHALL be the value of `--chain <id>`, or the `chain` of the state that the `--state <token>` value decodes to through the decoder `wait.js` exports. After the removal, and whatever its outcome, the tool SHALL close each distinct chain of a session's removed cache-warm shells once, through the `closeChain` export of the installed `wait.js` module located through `resolveGlobalRoot('opencode')`. A close answered `closed` or `already-closed` SHALL be listed in `closed`; any other answer, a missing `close` export, or a thrown error SHALL be listed in `close_failed`. A shell that is not a cache-warm shell, a listing entry without a `command`, and a `--state` token that does not decode SHALL close no chain. The close SHALL NOT change `status` or the exit code.
+
+It SHALL validate every argument before any removal and SHALL exit 2 with a usage error, removing nothing, for a session id that is not a plain identifier, a missing `--cwd`, a repeated `--cwd`, or an unknown flag. `--session` SHALL be the only flag that accepts several values. The existing `sai-tools` projection SHALL install it with no new shell grant, and `sai/policies/tool-resolution.md` SHALL list it among the resolvable tools. Its tests SHALL stub the `opencode` CLI and the `wait.js` module.
 
 #### Scenario: Worker with running shells
 - **WHEN** the tool runs for a session that has running shells, its armed cache-warm wait included
@@ -144,6 +146,34 @@ It SHALL validate every argument before any removal and SHALL exit 2 with a usag
 #### Scenario: Malformed argument removes nothing
 - **WHEN** one of several `--session` values is not a plain identifier, or `--cwd` is given twice
 - **THEN** the tool exits 2 with a usage error and removes no shell
+
+#### Scenario: Removed warm shell closes its chain
+- **WHEN** a removed shell's `command` is `wait.js warm --chain <id>` or `wait.js warm --state <token>` whose state names chain `<id>`
+- **THEN** the tool closes chain `<id>` after the removal and lists it in `closed`
+
+#### Scenario: Quoted path with spaces
+- **WHEN** the `command` names `wait.js` through a quoted Windows path that contains spaces
+- **THEN** the tool still recognizes the cache-warm shell and closes its chain
+
+#### Scenario: Two shells of the same chain
+- **WHEN** two removed shells of a session name the same chain
+- **THEN** the tool closes that chain once and lists it once in `closed`
+
+#### Scenario: Shell that is not a warm wait
+- **WHEN** a removed shell runs another command, such as `transfer.js watch`, or its listing entry has no `command`
+- **THEN** the tool removes it as before and closes no chain
+
+#### Scenario: Warm shell that survives the removal
+- **WHEN** a cache-warm shell is still listed after its removal
+- **THEN** the tool prints `failed` and still closes that shell's chain
+
+#### Scenario: Failed close leaves the status
+- **WHEN** the close of a chain fails
+- **THEN** the chain is listed in `close_failed`, and `status` and the exit code stay those of the removal
+
+#### Scenario: No running shell closes no chain
+- **WHEN** the session has no running shell
+- **THEN** the tool prints `none` with empty `closed` and `close_failed` lists
 
 ### Requirement: Same-turn batch at dispose and close points
 
