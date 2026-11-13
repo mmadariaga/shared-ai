@@ -99,7 +99,11 @@ Coordinators SHALL dispose every worker they create, under `sai/policies/worker-
 
 ### Requirement: opencode shell removal tool
 
-`sai/tools/dispose-shells.js` SHALL take `--session <sessionID> --cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals the given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, list again, and print one JSON object `{status, removed, failed}`. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any other session. `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing. It SHALL exit 0 for `removed` and `none`, 1 for `failed` and `unavailable`, and 2 for a usage error (a session id that is not a plain identifier, or a missing `--cwd`). The existing `sai-tools` projection SHALL install it with no new shell grant, and `sai/policies/tool-resolution.md` SHALL list it among the resolvable tools. Its tests SHALL stub the `opencode` CLI.
+`sai/tools/dispose-shells.js` SHALL take one or more `--session <sessionID>` flags and one `--cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals a given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, and list again. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any session it was not given. A per-session `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal or its removal was refused, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing.
+
+With one `--session` the tool SHALL print one JSON object `{status, removed, failed}` and SHALL exit 0 for `removed` and `none` and 1 for `failed` and `unavailable`, as before this change. With two or more `--session` flags it SHALL read the listing once to find the running shells, partition them by `metadata.sessionID` in the client, remove every target shell, verify with one more listing, and print the envelope `{status, results}`, where `results` holds one entry `{session, status, removed, failed}` per distinct session in the order given; the output shape SHALL follow the number of `--session` flags, so a session named twice yields one entry inside the envelope. The top `status` SHALL be the worst entry, in the order `unavailable` > `failed` > `removed` > `none`, and SHALL set the exit code as for a single session. A refused removal in one session SHALL NOT stop the removals of the other sessions, and each entry SHALL carry its own status.
+
+It SHALL validate every argument before any removal and SHALL exit 2 with a usage error, removing nothing, for a session id that is not a plain identifier, a missing `--cwd`, a repeated `--cwd`, or an unknown flag. `--session` SHALL be the only flag that accepts several values. The existing `sai-tools` projection SHALL install it with no new shell grant, and `sai/policies/tool-resolution.md` SHALL list it among the resolvable tools. Its tests SHALL stub the `opencode` CLI.
 
 #### Scenario: Worker with running shells
 - **WHEN** the tool runs for a session that has running shells, its armed cache-warm wait included
@@ -120,3 +124,51 @@ Coordinators SHALL dispose every worker they create, under `sai/policies/worker-
 #### Scenario: Shell of another session
 - **WHEN** the listing holds running shells of other sessions
 - **THEN** the tool leaves them running
+
+#### Scenario: Several sessions share two listings
+- **WHEN** the tool runs with two `--session` values that both have running shells
+- **THEN** it lists the shells once, removes the shells of both sessions, verifies with one more listing, and prints `{status, results}` with one entry per session in the order given
+
+#### Scenario: Worst entry sets the top status
+- **WHEN** one envelope entry is `failed` and another is `removed`
+- **THEN** the top `status` is `failed` and the tool exits 1
+
+#### Scenario: Failure isolated to one session
+- **WHEN** the removal of a shell of one session is refused in a multi-session call
+- **THEN** the other sessions' shells are still removed and each entry reports its own status
+
+#### Scenario: Session named twice
+- **WHEN** the tool runs with the same `--session` value twice
+- **THEN** it prints the envelope with one entry for that session
+
+#### Scenario: Malformed argument removes nothing
+- **WHEN** one of several `--session` values is not a plain identifier, or `--cwd` is given twice
+- **THEN** the tool exits 2 with a usage error and removes no shell
+
+### Requirement: Same-turn batch at dispose and close points
+
+`sai/policies/worker-lifecycle.md` SHALL be the single source of the same-turn batch: independent tool calls issued together in one model response. At each dispose point a coordinator SHALL issue every stop of that point in one same-turn batch, and at each close point every directory close and removal of that point (`transfer.js close`, `temp-root.js remove`) in one same-turn batch, on Claude Code and opencode alike. On Claude Code the batch SHALL hold one `TaskStop` call per worker; on opencode it SHALL hold one `dispose-shells.js` call with one `--session` per worker to dispose. Directory closes and removals SHALL stay one call per directory. A batch SHALL NOT hold a call that needs the result of another call of the same batch. A `TaskStop` answered with `No task found` SHALL count as a result, and that worker SHALL count as disposed. When a call of a batch returns cancelled or without a result, the coordinator SHALL re-issue that call alone in the next turn; the point SHALL be complete only when every stop and close of it has a result, and a cancellation SHALL NOT be an obstacle attempt. On opencode the `dispose` message fallback SHALL stay per worker and SHALL read that worker's own entry of the envelope. The close sentences of `sai/commands/explore/direct-build-coordinator.md`, `sai/commands/implement/coordinator.md`, `sai/commands/merge/coordinator.md`, and `sai/commands/plan/cycle.md` SHALL issue their stops, closes, and removals in one same-turn batch and point to `worker-lifecycle.md` for the rule.
+
+#### Scenario: Claude Code disposes several workers at one point
+- **WHEN** a Claude Code coordinator reaches a dispose point with the RED worker, the GREEN worker, and the live explorer still alive
+- **THEN** it issues the three `TaskStop` calls in one model response
+
+#### Scenario: opencode disposes several workers with one call
+- **WHEN** an opencode coordinator reaches a dispose point with two workers still alive
+- **THEN** it runs one `dispose-shells.js` call with both captured `sessionID` values and reads each worker's status from its own envelope entry
+
+#### Scenario: Directory closes in one batch
+- **WHEN** a completed run reaches its close point with a report directory and a run directory to remove
+- **THEN** the coordinator issues `transfer.js close` and `temp-root.js remove` as parallel calls in one model response, one call per directory
+
+#### Scenario: Cancelled call in a batch
+- **WHEN** one call of a same-turn batch returns cancelled or without a result
+- **THEN** the coordinator re-issues that call alone in the next turn, the point is complete only after it has a result, and no obstacle attempt is spent
+
+#### Scenario: Finished worker in a batch
+- **WHEN** a `TaskStop` of a same-turn batch is answered with `No task found`
+- **THEN** that worker counts as disposed and the call is not re-issued
+
+#### Scenario: Per-worker fallback from the envelope
+- **WHEN** an opencode envelope entry reports `none` for a worker whose last real message carried `warming: true`, or `failed` or `unavailable` for any worker
+- **THEN** the coordinator sends the message `dispose` to that worker only, after a one-line notice for `failed` or `unavailable`

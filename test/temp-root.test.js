@@ -236,6 +236,14 @@ test('--help prints the usage and exits 0 without a harness, while unknown argum
   assert.deepEqual([rejected.status, rejected.json.code], [2, 'USAGE']);
 });
 
+test('E12 a repeated single-value flag is a usage error', () => {
+  for (const args of [['remove', '--harness', 'claude', '--dir', '/a', '--dir', '/b'], ['mkdtemp', '--harness', 'claude', '--harness', 'opencode'], ['mkdtemp', '--harness', 'claude', '--prefix', 'a-', '--prefix', 'b-']]) {
+    const rejected = cli(args);
+    assert.deepEqual([rejected.status, rejected.json.code], [2, 'USAGE'], args.join(' '));
+    assert.match(rejected.json.error, /accepts one value/);
+  }
+});
+
 const { harnessFromInstalledPath } = require(TOOL);
 
 test('the harness derives from the installed root a tool runs from', () => {

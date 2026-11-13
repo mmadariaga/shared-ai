@@ -178,3 +178,15 @@ Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/
 
 - **WHEN** the directory holds a file whose name contains `.draft.`
 - **THEN** `watch` never lists it
+
+### Requirement: Transfer CLI rejects repeated single-value flags
+
+`transfer.js` SHALL reject any of its single-value flags given more than once as a usage error: it SHALL print a JSON object with `ok: false` and an error naming the flag (`<flag> accepts one value`), exit 2, and change nothing. It SHALL NOT silently keep the last value of a repeated flag.
+
+#### Scenario: Repeated --dir on close
+- **WHEN** `close --dir <dir> --dir <dir>` runs on an existing transfer directory
+- **THEN** it exits 2, the error says `--dir accepts one value`, and the directory still exists
+
+#### Scenario: Repeated --path on put
+- **WHEN** `put` runs with `--path` given twice
+- **THEN** it exits 2 and writes no file
