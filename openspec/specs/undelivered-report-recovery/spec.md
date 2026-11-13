@@ -21,12 +21,12 @@ TBD - created by archiving change recover-undelivered-worker-reports. Update Pur
 
 ### Requirement: Accepted references are recorded and duplicates ignored
 
-After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. Before it validates any reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`; a reference already in the ledger (same `path` and `sha256`) SHALL be treated like an `ok`: no validation, no event emitted, no attempt spent, and no continuation sent. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
+After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like an `ok`: no validation result acted on, no event emitted, no attempt spent, and no continuation sent. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
 
 #### Scenario: A repeated reference costs nothing
 
 - **WHEN** a worker's wake repeats a reference that the coordinator already accepted
-- **THEN** the coordinator validates nothing, emits nothing, spends no attempt, and sends no continuation
+- **THEN** the coordinator acts on no validation result, emits nothing, spends no attempt, and sends no continuation
 
 #### Scenario: Acceptance survives compaction
 
@@ -89,3 +89,27 @@ The shared `coordinator` capability profile in `sai/install-manifest.json` SHALL
 
 - **WHEN** the capability profiles are compiled for a coordinator command
 - **THEN** its shell grants include `transfer.js accept` and `transfer.js watch`
+
+### Requirement: Terminal reports run a paired same-turn duplicate check and validation
+
+For each terminal report reference after ready, the coordinator SHALL run the paired check of `sai/policies/worker-report-transport.md` § Receiver boundary: `transfer.js accept --check` and `worker-report-validator.js validate --kind terminal --command <command>` issued as two independent calls in one model response (a same-turn batch), on Claude Code and opencode alike. The coordinator SHALL read no field of the report before it has both answers. When `--check` answers `already: true`, the coordinator SHALL discard the validate result, spend no attempt, and send no continuation. On any other `--check` answer, the coordinator SHALL handle the validate result by the existing receiver rules, invalid-report recovery included. A call of the batch that comes back cancelled or without a result SHALL be re-issued alone in the next turn; that cancellation SHALL NOT be an obstacle attempt, and a validate result SHALL never be acted on without the `--check` answer of the same reference. The paired check SHALL cover terminal reports only: a `progress-` report SHALL keep `accept --check` and `sai-state emit … --progress` in sequence, because the emit advances the step machine and never runs speculatively. The paired check SHALL be stated only in that policy, and `sai/tools/transfer.js` and `sai/tools/worker-report-validator.js` SHALL stay unchanged.
+
+#### Scenario: A duplicate terminal report discards its validation
+
+- **WHEN** the paired check runs for a terminal reference and `accept --check` answers `already: true`
+- **THEN** the coordinator discards the validate result, spends no attempt, and sends no continuation
+
+#### Scenario: A new terminal report follows the receiver rules
+
+- **WHEN** the paired check runs for a terminal reference and `accept --check` does not answer `already: true`
+- **THEN** the coordinator handles the validate result by the existing receiver rules, including invalid-report recovery
+
+#### Scenario: A cancelled call of the pair is re-issued alone
+
+- **WHEN** one call of the paired batch comes back cancelled or without a result
+- **THEN** the coordinator re-issues that call alone in the next turn, counts no obstacle attempt, and acts on no validate result before it has the `--check` answer of the same reference
+
+#### Scenario: A progress report keeps the sequential order
+
+- **WHEN** the coordinator receives a `progress-` report reference
+- **THEN** it runs `accept --check` first and runs `sai-state emit … --progress` only after the check does not answer `already: true`
