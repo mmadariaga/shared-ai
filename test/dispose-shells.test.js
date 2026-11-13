@@ -33,7 +33,7 @@ function server(shells, { refuseDelete = [], failListing = false, failAfterDelet
 
 test('E8 it removes every running shell of the session and no shell of another session', () => {
   const { run, calls } = server([shell('sh_a', 'ses_1'), shell('sh_b', 'ses_2'), shell('sh_c', 'ses_1'), shell('sh_d', 'ses_1', 'exited')]);
-  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'removed', removed: ['sh_a', 'sh_c'], failed: [] });
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'removed', removed: ['sh_a', 'sh_c'], failed: [], closed: [], close_failed: [] });
   const deletes = calls.filter(([method]) => method === 'DELETE').map(([, apiPath]) => apiPath);
   assert.deepEqual(deletes, ['/api/shell/sh_a?location[directory]=%2Fhome%2Fuser%2Fmy%20project', '/api/shell/sh_c?location[directory]=%2Fhome%2Fuser%2Fmy%20project']);
   assert.ok(calls.every(([, apiPath]) => apiPath.includes('?location[directory]=%2Fhome%2Fuser%2Fmy%20project')), 'every call carries the URL-encoded directory inline');
@@ -41,17 +41,17 @@ test('E8 it removes every running shell of the session and no shell of another s
 
 test('E15 a worker with no running shell is reported as none, and nothing is deleted', () => {
   const { run, calls } = server([shell('sh_b', 'ses_2'), shell('sh_x', 'ses_1', 'killed')]);
-  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'none', removed: [], failed: [] });
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'none', removed: [], failed: [], closed: [], close_failed: [] });
   assert.deepEqual(calls.map(([method]) => method), ['GET']);
 });
 
 test('E15 a shell still listed after its removal is failed, and the others are removed', () => {
   const { run } = server([shell('sh_a', 'ses_1'), shell('sh_b', 'ses_1')], { refuseDelete: ['sh_b'] });
-  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'failed', removed: ['sh_a'], failed: ['sh_b'] });
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run), { status: 'failed', removed: ['sh_a'], failed: ['sh_b'], closed: [], close_failed: [] });
 });
 
 test('E14 an unreachable server or a failed second listing is unavailable', () => {
-  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, server([], { failListing: true }).run), { status: 'unavailable', removed: [], failed: [] });
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, server([], { failListing: true }).run), { status: 'unavailable', removed: [], failed: [], closed: [], close_failed: [] });
   const after = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, server([shell('sh_a', 'ses_1')], { failAfterDelete: true }).run);
   assert.equal(after.status, 'unavailable');
   assert.deepEqual(after.removed, [], 'nothing is reported removed that the second listing did not confirm');
@@ -86,7 +86,7 @@ console.log(JSON.stringify({ location: { directory: '/tmp' }, data: shells }));
   const run = args => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', env });
   const removed = run(['--session', 'ses_1', '--cwd', '/tmp']);
   assert.equal(removed.status, 0);
-  assert.deepEqual(JSON.parse(removed.stdout), { status: 'removed', removed: ['sh_a'], failed: [] });
+  assert.deepEqual(JSON.parse(removed.stdout), { status: 'removed', removed: ['sh_a'], failed: [], closed: [], close_failed: [] });
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), [
     'api GET /api/shell?location[directory]=%2Ftmp', 'api DELETE /api/shell/sh_a?location[directory]=%2Ftmp', 'api GET /api/shell?location[directory]=%2Ftmp',
   ]);
@@ -107,9 +107,9 @@ test('E9 several sessions share one running listing and one verifying listing, a
   assert.deepEqual(result, {
     status: 'removed',
     results: [
-      { session: 'ses_2', status: 'removed', removed: ['sh_b'], failed: [] },
-      { session: 'ses_1', status: 'removed', removed: ['sh_a', 'sh_d'], failed: [] },
-      { session: 'ses_4', status: 'none', removed: [], failed: [] },
+      { session: 'ses_2', status: 'removed', removed: ['sh_b'], failed: [], closed: [], close_failed: [] },
+      { session: 'ses_1', status: 'removed', removed: ['sh_a', 'sh_d'], failed: [], closed: [], close_failed: [] },
+      { session: 'ses_4', status: 'none', removed: [], failed: [], closed: [], close_failed: [] },
     ],
   });
   assert.equal(listings(calls), 2, 'two listings whatever the number of sessions');
@@ -132,8 +132,8 @@ test('E10 a refused delete in one session leaves the other sessions removed, eac
   const result = disposeShells({ sessions: ['ses_1', 'ses_2'], cwd: DIRECTORY }, run);
   assert.equal(result.status, 'failed');
   assert.deepEqual(result.results, [
-    { session: 'ses_1', status: 'removed', removed: ['sh_a', 'sh_c'], failed: [] },
-    { session: 'ses_2', status: 'failed', removed: [], failed: ['sh_b'] },
+    { session: 'ses_1', status: 'removed', removed: ['sh_a', 'sh_c'], failed: [], closed: [], close_failed: [] },
+    { session: 'ses_2', status: 'failed', removed: [], failed: ['sh_b'], closed: [], close_failed: [] },
   ]);
 });
 
@@ -143,7 +143,7 @@ test('E11 every argument is validated before any delete, and a session named twi
   assert.throws(() => disposeShells({ sessions: ['ses_1', 'ses_2'], cwd: '' }, run), UsageError);
   assert.deepEqual(calls, [], 'nothing was listed or removed');
   const twice = disposeShells(parseArguments(['--session', 'ses_1', '--session', 'ses_1', '--cwd', DIRECTORY]), run);
-  assert.deepEqual(twice, { status: 'removed', results: [{ session: 'ses_1', status: 'removed', removed: ['sh_a'], failed: [] }] });
+  assert.deepEqual(twice, { status: 'removed', results: [{ session: 'ses_1', status: 'removed', removed: ['sh_a'], failed: [], closed: [], close_failed: [] }] });
 });
 
 test('E12 a repeated --cwd is a usage error, and the shape follows the number of --session flags', () => {
@@ -176,7 +176,135 @@ console.log(JSON.stringify({ location: { directory: '/tmp' }, data: shells }));
   assert.equal(removed.status, 0);
   assert.deepEqual(JSON.parse(removed.stdout), {
     status: 'removed',
-    results: [{ session: 'ses_1', status: 'removed', removed: ['sh_a'], failed: [] }, { session: 'ses_2', status: 'removed', removed: ['sh_b'], failed: [] }],
+    results: [{ session: 'ses_1', status: 'removed', removed: ['sh_a'], failed: [], closed: [], close_failed: [] }, { session: 'ses_2', status: 'removed', removed: ['sh_b'], failed: [], closed: [], close_failed: [] }],
   });
   assert.equal(fs.readFileSync(log, 'utf8').trim().split('\n').filter(line => line.startsWith('api GET')).length, 2);
+});
+
+// ---- closing the cache-warm chain of a removed `wait.js warm` shell ----
+const { stateToken, decodeStateToken } = require('../skills/universal/sai-cache-warmer/wait');
+const { splitCommand, warmChain } = require('../sai/tools/dispose-shells');
+
+const CHAIN_A = '0123456789abcdef';
+const CHAIN_B = 'fedcba9876543210';
+const withCommand = (id, session, command, status = 'running') => ({ ...shell(id, session, status), command });
+
+/** A stubbed warmer: the real token decoder, and a record of each chain it was asked to close. */
+function warmer(answers = {}) {
+  const closes = [];
+  return {
+    closes,
+    decode: decodeStateToken,
+    close: chain => {
+      closes.push(chain);
+      const answer = answers[chain] ?? 'closed';
+      if (answer instanceof Error) throw answer;
+      return answer;
+    },
+  };
+}
+
+test('E1 E9 a removed warm shell with --chain closes its chain once the shell is gone', () => {
+  const { run, calls } = server([withCommand('sh_a', 'ses_1', `node "/home/u/.config/opencode/skills/sai-cache-warmer/wait.js" warm --chain ${CHAIN_A}`)]);
+  const stub = warmer();
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub);
+  assert.deepEqual(result, { status: 'removed', removed: ['sh_a'], failed: [], closed: [CHAIN_A], close_failed: [] });
+  assert.deepEqual(stub.closes, [CHAIN_A]);
+  assert.equal(calls.at(-1)[0], 'GET', 'the close follows the verifying listing');
+});
+
+test('E1 the --state form decodes the token that wait.js exports and closes that chain', () => {
+  const token = stateToken({ chain: CHAIN_B, generation: 2, token: 't', interval_ms: 1, closing_ms: 2, armed_ms: 0 });
+  const { run } = server([withCommand('sh_a', 'ses_1', `node /x/wait.js warm --state ${token}`)]);
+  const stub = warmer();
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub).closed, [CHAIN_B]);
+  assert.deepEqual(stub.closes, [CHAIN_B]);
+});
+
+test('E9 I7 a quoted Windows path with spaces and backslashes is split into arguments', () => {
+  const script = 'C:\\Users\\Jane Doe\\.config\\opencode\\skills\\sai-cache-warmer\\wait.js';
+  const command = `node "${script}" warm --chain ${CHAIN_A}`;
+  assert.deepEqual(splitCommand(command), ['node', script, 'warm', '--chain', CHAIN_A]);
+  assert.equal(warmChain(command, decodeStateToken), CHAIN_A);
+  assert.equal(warmChain(`node "D:/my tools/wait.js" warm --chain ${CHAIN_A}`, decodeStateToken), CHAIN_A);
+  assert.equal(warmChain(`node 'D:/my tools/wait.js' warm --chain ${CHAIN_A}`, decodeStateToken), CHAIN_A);
+  const { run } = server([withCommand('sh_a', 'ses_1', command)]);
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, warmer()).closed, [CHAIN_A]);
+});
+
+test('E2 a shell that is not a wait.js warm command, has no command, or has an undecodable token closes no chain', () => {
+  const { run } = server([
+    withCommand('sh_a', 'ses_1', 'node /x/transfer.js watch --dir /tmp/d'),
+    shell('sh_b', 'ses_1'),
+    withCommand('sh_c', 'ses_1', 'node /x/wait.js warm --state !!not-a-token'),
+    withCommand('sh_d', 'ses_1', `node /x/wait.js arm --chain ${CHAIN_A}`),
+    withCommand('sh_e', 'ses_1', 'node /x/wait.js warm --chain ../escape'),
+  ]);
+  const stub = warmer();
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub);
+  assert.deepEqual(result, { status: 'removed', removed: ['sh_a', 'sh_b', 'sh_c', 'sh_d', 'sh_e'], failed: [], closed: [], close_failed: [] });
+  assert.deepEqual(stub.closes, []);
+});
+
+test('E10 several shells of the same chain close it once, and an already-closed answer counts as closed', () => {
+  const line = `node /x/wait.js warm --chain ${CHAIN_A}`;
+  const { run } = server([withCommand('sh_a', 'ses_1', line), withCommand('sh_b', 'ses_1', line)]);
+  const stub = warmer({ [CHAIN_A]: 'already-closed' });
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub);
+  assert.deepEqual(stub.closes, [CHAIN_A]);
+  assert.deepEqual([result.closed, result.close_failed], [[CHAIN_A], []]);
+  const twoSessions = server([withCommand('sh_a', 'ses_1', line), withCommand('sh_b', 'ses_2', line)]);
+  const shared = warmer();
+  const envelope = disposeShells({ sessions: ['ses_1', 'ses_2'], cwd: DIRECTORY }, twoSessions.run, shared);
+  assert.deepEqual(shared.closes, [CHAIN_A], 'a chain named by two sessions closes once');
+  assert.deepEqual(envelope.results.map(entry => entry.closed), [[CHAIN_A], [CHAIN_A]]);
+});
+
+test('E3 a failed close lands in close_failed and leaves status and the other chain untouched', () => {
+  const { run } = server([
+    withCommand('sh_a', 'ses_1', `node /x/wait.js warm --chain ${CHAIN_A}`),
+    withCommand('sh_b', 'ses_1', `node /x/wait.js warm --chain ${CHAIN_B}`),
+  ]);
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, warmer({ [CHAIN_A]: new Error('locked'), [CHAIN_B]: 'absent' }));
+  assert.deepEqual(result, { status: 'removed', removed: ['sh_a', 'sh_b'], failed: [], closed: [], close_failed: [CHAIN_A, CHAIN_B] });
+});
+
+test('E11 a warm shell that survives its removal still has its chain closed, with status failed', () => {
+  const { run } = server([withCommand('sh_a', 'ses_1', `node /x/wait.js warm --chain ${CHAIN_A}`)], { refuseDelete: ['sh_a'] });
+  const stub = warmer();
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub), { status: 'failed', removed: [], failed: ['sh_a'], closed: [CHAIN_A], close_failed: [] });
+  assert.deepEqual(stub.closes, [CHAIN_A]);
+});
+
+test('E11 a failed verifying listing is unavailable and the chain is still closed', () => {
+  const { run } = server([withCommand('sh_a', 'ses_1', `node /x/wait.js warm --chain ${CHAIN_A}`)], { failAfterDelete: true });
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, warmer());
+  assert.equal(result.status, 'unavailable');
+  assert.deepEqual(result.closed, [CHAIN_A]);
+});
+
+test('E5 a none listing closes no chain, even when the warm shell belongs to another session', () => {
+  const { run, calls } = server([withCommand('sh_a', 'ses_2', `node /x/wait.js warm --chain ${CHAIN_A}`)]);
+  const stub = warmer();
+  assert.deepEqual(disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run, stub), { status: 'none', removed: [], failed: [], closed: [], close_failed: [] });
+  assert.deepEqual(stub.closes, []);
+  assert.deepEqual(calls.map(([method]) => method), ['GET']);
+});
+
+test('E3 with no installed wait.js the default warmer reports the chain as failed, not as a status change', t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dispose-root-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const { run } = server([withCommand('sh_a', 'ses_1', `node /x/wait.js warm --chain ${CHAIN_A}`)]);
+  const saved = { XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME, PATH: process.env.PATH };
+  process.env.XDG_CONFIG_HOME = home;
+  process.env.PATH = '';
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run);
+  assert.equal(result.status, 'removed');
+  assert.deepEqual([result.closed, result.close_failed], [[], [CHAIN_A]]);
 });
