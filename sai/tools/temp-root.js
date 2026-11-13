@@ -274,6 +274,7 @@ function parseOptions(argv) {
     if (!['--harness', '--prefix', '--dir'].includes(flag) || index + 1 >= argv.length) {
       throw new TempRootError(`Unexpected argument ${flag}`, 'USAGE');
     }
+    if (options[flag.slice(2)] !== undefined) throw new TempRootError(`${flag} accepts one value`, 'USAGE');
     options[flag.slice(2)] = argv[index + 1];
   }
   return options;
