@@ -31,7 +31,27 @@ marker and keep `direct_build_mode: prepare` as worker state. The Direct Build
 envelope may then carry a `--implementer-paths` marker line followed by one
 repository-relative path per line: the implementer path set. Keep it as worker
 state. An envelope without the marker (the ordinary `/sai-archive` route) has no
-implementer path set and behaves as before. A `--direct-build-execute` marker is
+implementer path set and behaves as before.
+
+The envelope of the no-specs Direct Build route also carries a `--drafts` marker
+line after the path set, followed by the draft section that
+`validate-backfill-drafts.js order --target archive` prints, so no backfill
+worker wrote the change's files:
+
+```text
+--drafts
+transfer_dir: <absolute transfer directory>
+fingerprint: <accepted validation fingerprint>
+drafts:
+- path: <absolute transfer file>
+  sha256: <hex>
+  destination: <openspec/changes/{name}/.openspec.yaml or proposal.md>
+```
+
+Keep the section as worker state. It names exactly the two destinations
+`openspec/changes/{name}/.openspec.yaml` and
+`openspec/changes/{name}/proposal.md`, each once, and a section with any other
+destination is an altered envelope: return `failed`, executing nothing. A `--direct-build-execute` marker is
 valid only on the same-worker continuation described below, never on an initial
 dispatch.
 
@@ -95,6 +115,21 @@ Everything reads; findings travel as payload content (the AUDIT line, the
 delta-sync summary, the retired capabilities, the collision verdict) for the
 coordinator to present verbatim.
 
+When the envelope carries a draft section, the change directory holds none of
+those files yet. Run `transfer.js verify` for each reference and
+`validate-backfill-drafts.js check --fingerprint` (resolved per
+`@sai/policies/tool-resolution.md`, read-only) with the accepted fingerprint; a
+failure of either returns `failed`. Then run the pre-flight with the draft files
+standing for the missing change files: the draft `.openspec.yaml` supplies
+`backfilled`, `skip_specs`, `backlog_origin`, and `overview.state`; the draft
+`proposal.md` satisfies `proposal`; `specs` is satisfied as skipped, with no
+delta syncing and no retirement; `design`, `tasks`, and `change-overview` are
+skipped as for any backfilled change; the other AUDIT artifacts are collected
+from `openspec/changes/$ARGUMENTS/<id>.md` on disk as usual. `openspec status`
+reads the change directory and is not run. The collision check and the prepared
+plan are unchanged, and the plan's owned `openspec/` paths include both draft
+destinations.
+
 Close the run early on the CORE stop or a retirement refusal (a stop with no
 mutation plan and no execution order).
 Otherwise close with a `completed` summary restating the change name, schema,
@@ -121,8 +156,10 @@ opaque payload whose first line is exactly `--direct-build-execute`.
 The rest is a **closed execution order**, the only authority for mutation. It
 may contain only the resolved change name, the retirement declaration with the
 capabilities it retires, the exact date-prefixed archive destination, the exact
-owned staging paths, and the one pre-authorized local commit. An order carrying
-the retirement declaration is therefore not an altered order.
+owned staging paths, the one pre-authorized local commit, and, on the no-specs
+route, the draft section of the prepare envelope. An order carrying
+the retirement declaration is therefore not an altered order, and neither is one
+carrying the draft section.
 
 Validate the order before acting: complete, duplicate-free, consistent with the
 prepared plan, inside the allowed `openspec/` and implementer-owned path sets
@@ -130,12 +167,31 @@ prepared plan, inside the allowed `openspec/` and implementer-owned path sets
 prepare), and still pending. An implementer-owned path may be absent when the prepared
 diff records its deletion. Reject a missing non-deletion path, a reordered,
 foreign, already-executed, or otherwise altered order with a closed `failed`
-result, executing nothing.
+result, executing nothing. A draft section is valid only when it equals the one
+received at prepare, reference for reference, and names only the two draft
+destinations of the Invocation section.
 
 Every mutation runs through the active command-execution tool using Bash or
 PowerShell 7; this worker has no Write or Edit tool. If no supported
 command-execution tool is available, return `failed` before the first mutation
 rather than simulating a write.
+
+When the order carries a draft section, materialize the drafts first, through
+the same command-execution tool, before step 0:
+
+- **Draft materialization** — run `validate-backfill-drafts.js check --fingerprint
+  <fingerprint>` over the section's references (resolved per
+  `@sai/policies/tool-resolution.md`; its `--input-file` holds the change name,
+  the transfer directory, and the references). A changed fingerprint writes
+  nothing and returns `failed` naming the fingerprint check, so the coordinator
+  repeats its validation. When it holds, run `transfer.js materialize --dir
+  <transfer_dir> --path <path> --sha256 <sha256> --destination <destination>` for
+  each reference, which copies the verified bytes and creates only the parent
+  directories those destinations need, and add both destinations to
+  `changed_files`. A failed materialization stops the order there, before the
+  CLI archive and the commit, and returns `failed` naming each destination
+  already written, which stays uncommitted for the coordinator to report.
+
 Execute exactly this order:
 
 0. **Retirement declaration** — only when the plan recorded

@@ -5,6 +5,9 @@
 // Input: --input-file <path>; without it the input is read from stdin.
 // validate --harness claude|opencode [--cwd root]
 // check --fingerprint <successful validation fingerprint> [--cwd root]
+// order [--target backfill|archive]: input {change_name, fingerprint, draft_references, prepared_references (required for backfill), transfer_dir (archive)};
+//   stdout: the closed text of the backfill worker's `--direct-build-execute` order, or, for `archive`, the draft section of the
+//   archive worker's order, or a JSON error. The format is defined in sai/commands/backfill/worker.md.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -92,25 +95,61 @@ function validate(input, { cwd = process.cwd(), harness = harnessFromInstalledPa
   } catch (error) { return { ok: false, ...(project ? { project_dir: project } : {}), error: error.message }; }
 }
 
+const NAME_FORM = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+const HEX = /^[a-f0-9]{64}$/;
+const referenceKey = ref => JSON.stringify([ref.destination, ref.path, ref.sha256]);
+
+// The execute order of the worker route, or the draft section of the archive order of the no-specs route.
+// The order names exactly the references the worker (or the compose tool) last prepared, in the accepted set's order.
+function order(input, target = 'backfill') {
+  const { change_name: name, fingerprint, draft_references: accepted, prepared_references: prepared, transfer_dir: dir } = input;
+  if (!['backfill', 'archive'].includes(target)) throw new Error('--target must be backfill or archive');
+  if (typeof name !== 'string' || !NAME_FORM.test(name)) throw new Error('Invalid change name');
+  if (typeof fingerprint !== 'string' || !HEX.test(fingerprint)) throw new Error('Expected the accepted validation fingerprint');
+  if (!Array.isArray(accepted) || !accepted.length) throw new Error('Expected the accepted draft references');
+  // The worker route compares with the worker's latest prepared set; the no-specs route has no worker, so its compose output is the set.
+  if (target === 'backfill' && !Array.isArray(prepared)) throw new Error('Expected the latest prepared_references of the backfill worker');
+  const latest = Array.isArray(prepared) ? prepared : accepted;
+  const prefix = `openspec/changes/${name}/`;
+  const seen = new Set();
+  for (const ref of accepted) {
+    if (!ref || typeof ref.path !== 'string' || !path.isAbsolute(ref.path) || typeof ref.sha256 !== 'string' || !HEX.test(ref.sha256) || typeof ref.destination !== 'string' || !ref.destination.startsWith(prefix)) throw new Error('Invalid draft reference');
+    const relative = ref.destination.slice(prefix.length);
+    const metadataOrProposal = ['.openspec.yaml', 'proposal.md'].includes(relative);
+    if (!metadataOrProposal && (target === 'archive' || !/^specs\/[A-Za-z0-9][A-Za-z0-9_-]*\/spec\.md$/.test(relative))) throw new Error('Invalid draft destination');
+    if (seen.has(ref.destination)) throw new Error('Duplicate draft destination');
+    seen.add(ref.destination);
+  }
+  if (!seen.has(`${prefix}.openspec.yaml`) || !seen.has(`${prefix}proposal.md`)) throw new Error('Incomplete draft set');
+  if (accepted.map(referenceKey).sort().join() !== latest.map(referenceKey).sort().join()) throw new Error('The accepted references do not match the latest prepared set; no order is produced');
+  if (target === 'archive' && (typeof dir !== 'string' || !path.isAbsolute(dir) || accepted.some(ref => !ref.path.startsWith(`${dir}${path.sep}`)))) throw new Error('Expected the absolute transfer directory holding every reference');
+  const drafts = ['drafts:', ...accepted.flatMap(ref => [`- path: ${ref.path}`, `  sha256: ${ref.sha256}`, `  destination: ${ref.destination}`])];
+  const lines = target === 'archive'
+    ? [`transfer_dir: ${dir}`, `fingerprint: ${fingerprint}`, ...drafts]
+    : ['--direct-build-execute', `change_name: ${name}`, `fingerprint: ${fingerprint}`, ...drafts];
+  return lines.join('\n');
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--cwd', '--harness', '--fingerprint', '--input-file'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Expected validate|check [--cwd root] [--harness claude|opencode] [--fingerprint hash] [--input-file path]');
+    if (!['--cwd', '--harness', '--fingerprint', '--input-file', '--target'].includes(args[i]) || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('Expected validate|check|order [--cwd root] [--harness claude|opencode] [--fingerprint hash] [--input-file path] [--target backfill|archive]');
     options[args[i].slice(2)] = args[i + 1];
   }
   const input = JSON.parse(readInput(options['input-file']));
   if (command === 'validate') return validate(input, options);
+  if (command === 'order') return { ok: true, order: order(input, options.target) };
   if (command === 'check' && /^[a-f0-9]{64}$/.test(options.fingerprint || '')) {
     const current = collect(input, options.cwd || process.cwd()).fingerprint;
     return { ok: current === options.fingerprint, fingerprint: current, ...(current === options.fingerprint ? {} : { error: 'Inputs changed; repeat validation before writing' }) };
   }
-  throw new Error('Expected validate or check --fingerprint <successful validation fingerprint>');
+  throw new Error('Expected validate, order, or check --fingerprint <successful validation fingerprint>');
 }
 if (require.main === module) {
   let result;
   try { result = main(process.argv.slice(2)); } catch (error) { result = { ok: false, error: error.message }; }
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.stdout.write(result.ok && typeof result.order === 'string' ? `${result.order}\n` : `${JSON.stringify(result, null, 2)}\n`);
   process.exitCode = result.ok ? 0 : 1;
 }
-module.exports = { collect, validate, main };
+module.exports = { collect, validate, order, main };
