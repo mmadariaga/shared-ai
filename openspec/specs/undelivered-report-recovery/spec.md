@@ -21,7 +21,7 @@ TBD - created by archiving change recover-undelivered-worker-reports. Update Pur
 
 ### Requirement: Accepted references are recorded and duplicates ignored
 
-After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like an `ok`: no validation result acted on, no event emitted, no attempt spent, and no continuation sent. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
+After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
 
 #### Scenario: A repeated reference costs nothing
 
@@ -55,7 +55,7 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 
 ### Requirement: Found reports follow the delivered-report path
 
-When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the step machine's progress emit), the same invalid-report recovery that counts as an obstacle attempt, and then the record. A worker message that is neither a reference nor `ok`, such as "Ending this turn", SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed.
+When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the step machine's progress emit), the same invalid-report recovery that counts as an obstacle attempt, and then the record. A worker message that is not a reference, such as a wake acknowledgement, a translated or reworded literal, or "Ending this turn", SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed. A worker turn that ends with the wake literal, the stop literal, or `ok` instead of its report reference SHALL trigger the same recovery. `sai/policies/worker-report-transport.md` SHALL name the wake and stop literals by their term with a pointer to `sai/policies/cache-warming.md`, and SHALL spell neither literal nor a bare `ok`.
 
 #### Scenario: A found report is processed as delivered
 
@@ -69,8 +69,12 @@ When the watch ends with reports, the coordinator SHALL process each in creation
 
 #### Scenario: A non-result message keeps the wait
 
-- **WHEN** a worker sends a message that carries neither a reference nor exactly `ok`
+- **WHEN** a worker sends a message that carries no reference, such as a wake acknowledgement, a translated literal, or "Ending this turn"
 - **THEN** the coordinator records no result and keeps waiting with the watch armed
+
+#### Scenario: A literal in place of the reference
+- **WHEN** a worker's turn ends with `warming context cache up`, `cache warming stopped`, or `ok` instead of the reference of a report it saved
+- **THEN** the coordinator keeps waiting, and the watch finds the saved report, which the coordinator processes as if the worker had delivered it
 
 ### Requirement: One watch per report directory for parallel workers
 

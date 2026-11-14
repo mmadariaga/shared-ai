@@ -15,7 +15,7 @@ Dispose SHALL be the unconditional action of a dispatcher that ends a worker or 
 
 #### Scenario: opencode API unreachable
 - **WHEN** an opencode coordinator disposes a worker and `dispose-shells.js` reports `unavailable` or `failed`
-- **THEN** it prints a one-line notice and sends the message `dispose` to the worker instead, and the worker answers each later wake with `ok` and arms nothing
+- **THEN** it prints a one-line notice and sends the message `dispose` to the worker instead, and the worker answers each later wake with the stop literal `cache warming stopped` and arms nothing
 
 #### Scenario: Disposing a finished agent
 - **WHEN** a dispatcher reaches a dispose point for an agent that already finished or no longer exists
@@ -43,7 +43,7 @@ Dispose SHALL be the unconditional action of a dispatcher that ends a worker or 
 
 #### Scenario: none listing for a warming worker
 - **WHEN** an opencode coordinator disposes a worker whose last real message carried `warming: true` and `dispose-shells.js` reports `none`
-- **THEN** the coordinator sends the message `dispose` with no notice, and the worker replies `ok` and answers each later wake with `ok` and arms nothing
+- **THEN** the coordinator sends the message `dispose` with no notice, and the worker replies with the stop literal `cache warming stopped`, answers each later wake with the stop literal, and arms nothing
 
 #### Scenario: Worker that only answered the ready handshake
 - **WHEN** an opencode coordinator disposes a worker that never sent a `warming:` line and `dispose-shells.js` reports `none`
