@@ -105,8 +105,8 @@ function opencodeChildren(db, rootId) {
 // `metadata.source` is `shell` and whose `<shell ... command="...">` header runs
 // `wait.js ... warm`, and lasts to the end of its turn, the next message that
 // opens one. A wake lists the ids of the `assistant` messages of that stretch,
-// the re-arm and the `ok` reply included. The shell state (`completed`, `error`)
-// is not read: a wait that returned `finished` is a wake too. An `ok` reply alone
+// the re-arm and the reply literal included. The shell state (`completed`, `error`)
+// is not read: a wait that returned `finished` is a wake too. A reply literal alone
 // never makes one.
 function opencodeWakes(db, sessionId) {
   const opened = db.prepare("SELECT id, seq, time_created, data FROM session_message WHERE session_id = ? AND type = 'synthetic' AND data LIKE '%wait.js%' ORDER BY seq").all(sessionId);

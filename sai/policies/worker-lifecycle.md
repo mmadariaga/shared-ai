@@ -34,7 +34,7 @@ When a call of a batch returns cancelled or without a result, the coordinator re
   - `none`: send `dispose` only when the `warming:` line of the worker's last real message was `true` (keep that value with the handle; a worker that never sent the line, for example one that only answered the ready handshake, counts as not warming and receives none).
   - `failed` or `unavailable`: print a one-line notice, then send `dispose` whatever the `warming:` value was.
 
-  A worker that is not warming therefore receives no message after `removed` or `none`, so a dispose adds no turn to the common warming-off case. From then on the agent answers each wake with `ok` and arms nothing. No `session.interrupt` call exists in this stop: it returns 404 for a child session, and aimed at your own session it aborts the tool call that is running.
+  A worker that is not warming therefore receives no message after `removed` or `none`, so a dispose adds no turn to the common warming-off case. From then on the agent answers each wake with the stop literal of `@sai/policies/cache-warming.md` and arms nothing. No `session.interrupt` call exists in this stop: it returns 404 for a child session, and aimed at your own session it aborts the tool call that is running.
 
 One dispose also ends the cache-warm wait the agent armed; no second stop action follows. Neither harness sends the `dispose` message first: on opencode it follows the stop call only in the cases of § Stop call, and Claude Code never sends it.
 
@@ -50,4 +50,4 @@ Every worker and helper follows these rules.
 
 - **Shell hygiene.** Send no result, step report, or question while a command you launched is still running. Await each background command you started, or end it first (Claude Code `TaskStop` on its background task, opencode removal of its shell). End a command that does not terminate and report it as a failed command in that same message.
 - **Warm wait exemption.** The cache-warm wait that you arm after a response is exempt from the shell rule: `cache-warming.md` arms it after the message by design.
-- **`dispose` message.** A message that is exactly `dispose` is the fallback of the opencode stop call. Reply `ok`, run no tool, arm nothing again, and answer each later wake of a wait you armed with `ok` alone.
+- **`dispose` message.** A message that is exactly `dispose` is the fallback of the opencode stop call. Reply with the stop literal of `@sai/policies/cache-warming.md`, run no tool, arm nothing again, and answer each later wake of a wait you armed with the stop literal alone.

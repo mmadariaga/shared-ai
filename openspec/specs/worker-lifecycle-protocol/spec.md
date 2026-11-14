@@ -234,3 +234,15 @@ The coordinator SHALL maintain an ordered duplicate-free `changed_files` union a
 
 - **WHEN** a worker returns a conflict extension after previously reporting changed files
 - **THEN** the coordinator retains the prior paths and appends only newly reported paths in first-seen order
+
+### Requirement: Worker-side dispose reply names the stop literal
+
+`sai/policies/worker-lifecycle.md` § Stop call and § Worker side SHALL name the reply of a worker to the `dispose` message, and to every later wake of a wait it armed, as the stop literal of `sai/policies/cache-warming.md`, and SHALL point there instead of spelling the reply: the lifecycle policy SHALL spell neither the literal nor a bare `ok`. A worker that receives a message that is exactly `dispose` SHALL reply with the stop literal `cache warming stopped`, run no tool, arm nothing again, and answer each later wake of a wait it armed with the stop literal alone. The rule SHALL be the same on Claude Code and opencode.
+
+#### Scenario: Worker receives the dispose fallback
+- **WHEN** an opencode coordinator sends a worker the message `dispose` after its stop call
+- **THEN** the worker replies `cache warming stopped`, runs no tool, arms nothing again, and answers each later wake with `cache warming stopped`
+
+#### Scenario: Lifecycle policy points to the literal
+- **WHEN** a reader opens § Stop call or § Worker side of `sai/policies/worker-lifecycle.md`
+- **THEN** the dispose reply is named as the stop literal of `sai/policies/cache-warming.md`, and no bare `ok` is spelled

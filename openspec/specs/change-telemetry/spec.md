@@ -423,14 +423,14 @@ Each execution section SHALL name the harness it was collected from (`Claude Cod
 
 ### Requirement: The collector detects cache-warming wakes from the wait command on both harnesses
 
-The collector SHALL count as a wake the turn of an agent that the completion of its own `wait.js … warm` background wait opens, the main session included. It SHALL match the wait command and never the background task description or an `ok` reply. On Claude Code a wake SHALL open at the `<task-notification>` whose task id equals the background id returned for a shell `tool_use` that runs `wait.js` with `warm`; on opencode a wake SHALL open at the `synthetic` `session_message` with `metadata.source: "shell"` whose `<shell … command="…">` header runs `wait.js` with `warm`. A wake SHALL last to the next record that opens a turn, and a wait that returned `finished` SHALL still count as a wake.
+The collector SHALL count as a wake the turn of an agent that the completion of its own `wait.js … warm` background wait opens, the main session included. It SHALL match the wait command and never the background task description or a reply literal (the wake literal, the stop literal, or the legacy `ok`). On Claude Code a wake SHALL open at the `<task-notification>` whose task id equals the background id returned for a shell `tool_use` that runs `wait.js` with `warm`; on opencode a wake SHALL open at the `synthetic` `session_message` with `metadata.source: "shell"` whose `<shell … command="…">` header runs `wait.js` with `warm`. A wake SHALL last to the next record that opens a turn, and a wait that returned `finished` SHALL still count as a wake.
 
 #### Scenario: a wait task with another description is a wake
 - **WHEN** a Claude Code agent arms `wait.js warm` in a background shell whose description is not `cache-warm` and its task notification later opens a turn
 - **THEN** that turn counts as one wake of the agent
 
 #### Scenario: an ok reply alone is not a wake
-- **WHEN** an agent replies `ok` to a `dispose` message or closes a turn that no completed wait opened
+- **WHEN** an agent replies with the stop literal `cache warming stopped`, or the legacy `ok`, to a `dispose` message, or a reply closes a turn that no completed wait opened
 - **THEN** the collector counts no wake for that reply
 
 #### Scenario: a finished wait on opencode is a wake
@@ -451,7 +451,7 @@ Each per-agent table of a telemetry section SHALL carry a `Wakes` column with th
 
 ### Requirement: Each section reports the wake cost as a subset of its figures
 
-Each execution section and each exploration segment SHALL end with a `Cache-warming wakes` table that lists, per agent and for the run or exploration total, the wakes and the requests, input, output, reasoning, cache read, cache write, and cost of every request of the wake turns, the re-arm and the `ok` reply included. Wake requests SHALL stay inside the ordinary figures, so no existing total changes meaning. On Claude Code the reasoning column SHALL be unavailable, as in every Claude Code row, and the cost column SHALL be the estimate from the price table, marked `~`.
+Each execution section and each exploration segment SHALL end with a `Cache-warming wakes` table that lists, per agent and for the run or exploration total, the wakes and the requests, input, output, reasoning, cache read, cache write, and cost of every request of the wake turns, the re-arm and the wake or stop literal reply included. Wake requests SHALL stay inside the ordinary figures, so no existing total changes meaning. On Claude Code the reasoning column SHALL be unavailable, as in every Claude Code row, and the cost column SHALL be the estimate from the price table, marked `~`.
 
 #### Scenario: wake requests stay inside the totals
 - **WHEN** an agent spends two requests in one wake turn
@@ -463,11 +463,11 @@ Each execution section and each exploration segment SHALL end with a `Cache-warm
 
 ### Requirement: The wake figures are documented
 
-`sai/policies/change-telemetry.md` and the change telemetry setting documentation SHALL describe the wake definition, the `Wakes` column, the wake-cost table, and that wake figures are a subset of the existing figures.
+`sai/policies/change-telemetry.md` and the change telemetry setting documentation SHALL describe the wake definition, the `Wakes` column, the wake-cost table, and that wake figures are a subset of the existing figures. They SHALL name the reply literals of `sai/policies/cache-warming.md` instead of a bare `ok`, and SHALL state that a stop literal answering a `dispose` message is never counted as a wake.
 
 #### Scenario: the policy defines a wake
 - **WHEN** a reader opens the `Cache-warming wakes` section of `sai/policies/change-telemetry.md`
-- **THEN** it defines a wake from the wait command on both harnesses and states that an `ok` reply alone is not a wake
+- **THEN** it defines a wake from the wait command on both harnesses and states that a reply literal alone is not a wake
 
 ### Requirement: A cache miss is a request whose cached prefix shrank and had to be rewritten
 
