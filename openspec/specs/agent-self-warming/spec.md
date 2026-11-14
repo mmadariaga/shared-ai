@@ -47,33 +47,33 @@ An agent whose `begin` returned timings SHALL, before ending each turn with its 
 
 ### Requirement: Wake performs no work
 
-On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged; on `finished` it SHALL arm nothing for that wait. A main session SHALL apply the continuation check on arm responses and normal warm results: it SHALL check the current conversation and active command contract for an unhandled user response or actionable authorized work, meaning work permitted now without another response, authorization, or result. It SHALL handle that response or continue that work before ending the turn, and SHALL reply `ok` only when there is nothing to handle. The reminder SHALL grant no permission and confirm no decision. The main session SHALL preserve legitimate waits and completed commands, invent no response, repeat no already-answered question, duplicate no running work, and reopen no completed command. A `finished` result SHALL end that wait, not necessarily the command's work; it SHALL NOT revive the finished wait or disturb a newer wait.
+On a wake, an agent SHALL act on the wait result: on `continue` it SHALL re-arm at once with `warm --state <state_token>` carrying the returned token unchanged; on `finished` it SHALL arm nothing for that wait. A main session SHALL apply the continuation check on arm responses and normal warm results: it SHALL check the current conversation and active command contract for an unhandled user response or actionable authorized work, meaning work permitted now without another response, authorization, or result. It SHALL handle that response or continue that work before ending the turn, and, when the turn was opened only by its own wake (a `continue` or `finished` wake, a hand-off wait included) or by a subagent's wake acknowledgement and there is nothing to handle, SHALL print the main-session literal `➡️ Warming context cache up.` as the only text of the turn; when there is a response or work to handle, it SHALL handle it and print no literal. The reminder SHALL grant no permission and confirm no decision. The main session SHALL preserve legitimate waits and completed commands, invent no response, repeat no already-answered question, duplicate no running work, and reopen no completed command. A `finished` result SHALL end that wait, not necessarily the command's work; it SHALL NOT revive the finished wait or disturb a newer wait.
 
-A subagent SHALL reply `ok` on `continue`, except that a worker whose last real message was a result (a message that carries the reference of a saved report) and that has received no real message since SHALL reply with that last message verbatim (the same reference and the same `warming:` line, and nothing else) instead of `ok`; on `finished` it SHALL reply `ok` and arm nothing. The repeat SHALL compose nothing new, SHALL NOT be a new real message, and SHALL restart no window. Once the dispatcher sends the worker a real message, the worker's wakes SHALL reply `ok` again. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A subagent wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered `ok`, and from then on the agent SHALL answer every wake with `ok` and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting. These rules SHALL apply to Claude Code and opencode alike.
+A subagent SHALL reply with the wake literal `warming context cache up` on `continue`, except that a worker whose last real message was a result (a message that carries the reference of a saved report) and that has received no real message since SHALL reply with that last message verbatim (the same reference and the same `warming:` line, and nothing else, with no literal added) instead of the wake literal; on `finished` it SHALL reply with the wake literal and arm nothing, because `finished` also returns when a newer wait superseded the earlier one and the cache is still warm. The repeat SHALL compose nothing new, SHALL NOT be a new real message, and SHALL restart no window. Once the dispatcher sends the worker a real message, the worker's wakes SHALL reply with the wake literal again. `wait.js` SHALL resolve the timings again from the identity in the chain record at every wake: when the setting turned `off`, the wait SHALL return `finished`, and a new `interval` SHALL apply from that wait, with no agent restart. A subagent whose latest real message carried no warming switch SHALL arm nothing after it. A subagent wake SHALL run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing. A message that is exactly `dispose` SHALL be answered with the stop literal `cache warming stopped`, and from then on the agent SHALL answer every wake with the stop literal and arm nothing. A hand-off wait whose timings came from the user's answers (see the requirement "Hand-off wait with a fixed deadline") keeps those timings at every wake instead of resolving the setting. These rules SHALL apply to Claude Code and opencode alike.
 
 #### Scenario: Continue wake re-arms
 - **WHEN** a wait completes with status `continue` and the agent has no unconfirmed result to repeat or main-session response or authorized work to handle
-- **THEN** the agent re-arms with the unchanged state token and replies only `ok`
+- **THEN** the agent re-arms with the unchanged state token; a subagent replies only the wake literal `warming context cache up`, and a main session prints only the main-session literal `➡️ Warming context cache up.`
 
 #### Scenario: Dispose message ends warming
 - **WHEN** an agent receives the message `dispose`
-- **THEN** it replies `ok`, arms no further wait, and answers each later wake of a wait it armed with `ok` alone
+- **THEN** it replies with the stop literal `cache warming stopped`, arms no further wait, and answers each later wake of a wait it armed with the stop literal alone
 
 #### Scenario: Setting turned off while warming
 - **WHEN** the `warming` setting turns the agent off while its wait is armed and the agent re-arms after a wake
-- **THEN** the re-armed wait returns `finished` and the agent arms nothing for it; a subagent replies `ok`, while a main session checks for a response or actionable authorized work and replies `ok` only when there is nothing to handle
+- **THEN** the re-armed wait returns `finished` and the agent arms nothing for it; a subagent replies with the wake literal, while a main session checks for a response or actionable authorized work and prints the main-session literal only when there is nothing to handle
 
 #### Scenario: Worker repeats an unconfirmed result on a wake
 - **WHEN** a worker whose last real message carried a report reference has received no real message since and a wait completes with status `continue`
-- **THEN** the worker re-arms and replies with that last message verbatim instead of `ok`
+- **THEN** the worker re-arms and replies with that last message verbatim instead of the wake literal, with no literal added
 
 #### Scenario: A real message ends the repeat
 - **WHEN** the dispatcher has sent the worker a real message after the worker's last result and a wait completes with status `continue`
-- **THEN** the worker re-arms and replies only `ok`
+- **THEN** the worker re-arms and replies only the wake literal
 
 #### Scenario: User response arrives with a notification
 - **WHEN** a user response and a warming notification are available together to the main session
-- **THEN** the main session handles the actual response under the active command contract instead of replacing it with `ok`, and the notification supplies no decision
+- **THEN** the main session handles the actual response under the active command contract and prints no main-session literal, and the notification supplies no decision
 
 #### Scenario: Authorized work remains actionable
 - **WHEN** the main session receives an arm response or normal warm result and its current command permits pending work now without another response, authorization, or result
@@ -90,6 +90,14 @@ A subagent SHALL reply `ok` on `continue`, except that a worker whose last real 
 #### Scenario: Finished wait with unfinished command
 - **WHEN** a main-session wait returns `finished` while a user response or actionable authorized command work remains
 - **THEN** the main session handles that response or work without rearming the finished wait, and a superseded wait's result does not end a newer live wait
+
+#### Scenario: Superseded wait wakes a subagent
+- **WHEN** a subagent's wait returns `finished` because a newer wait of its chain superseded it
+- **THEN** the subagent replies with the wake literal `warming context cache up` and arms nothing for that wait
+
+#### Scenario: Turn opened only by warming in the main session
+- **WHEN** a main-session turn is opened only by its own wake or by a subagent's wake acknowledgement and the continuation check finds nothing to handle
+- **THEN** the main session prints exactly `➡️ Warming context cache up.` as the only text of the turn
 
 ### Requirement: Bounded warming window
 
@@ -189,15 +197,31 @@ On every wake, `wait.js` SHALL read the cutoff mark `warming-cutoff.json` under 
 
 ### Requirement: Wake acknowledgement is not a result
 
-A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surrounding whitespace, as the reply of a wake: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. The `ok` SHALL NOT be a real message and SHALL carry no warming field. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
+A dispatcher SHALL treat a subagent message that is the wake literal `warming context cache up`, the stop literal `cache warming stopped`, or the legacy alias `ok`, compared by normalized recognition (ignoring letter case, surrounding whitespace, and one trailing period), as the reply of a wake or of a `dispose`: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. The acknowledgement SHALL NOT be a real message and SHALL carry no warming field. The stop literal SHALL NOT decide whether an agent has ended; only the stop call of `sai/policies/worker-lifecycle.md` SHALL. Any other text, such as a translation, a paraphrase, or a literal with words added, SHALL NOT be an acknowledgement and SHALL NOT be a result either. Recognition SHALL be an instruction rule for the dispatcher, and no tool SHALL parse the literals. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
 
 #### Scenario: Worker replies ok on a wake
-- **WHEN** a coordinator waiting for a worker's result receives the message `ok`
-- **THEN** it records no result and no attempt and keeps waiting for the real result
+- **WHEN** a coordinator waiting for a worker's result receives the message `ok` from a worker of an earlier install
+- **THEN** it treats `ok` as the legacy alias, records no result and no attempt, and keeps waiting for the real result
+
+#### Scenario: Worker replies with the wake literal
+- **WHEN** a coordinator waiting for a worker's result receives exactly `warming context cache up`
+- **THEN** it records no result and no attempt, sends no continuation, and keeps waiting for the real result
+
+#### Scenario: Stop literal after a dispose
+- **WHEN** a coordinator receives exactly `cache warming stopped` from a worker
+- **THEN** it handles the message like the wake literal, and only the stop call decides whether the worker has ended
+
+#### Scenario: Normalized literal
+- **WHEN** a worker replies `Warming context cache up.` with surrounding whitespace
+- **THEN** normalized recognition treats it as the wake literal
+
+#### Scenario: Translated literal is not an acknowledgement
+- **WHEN** a worker replies with a translation or a paraphrase of a literal, or a literal with words added
+- **THEN** the coordinator treats it neither as an acknowledgement nor as a result and keeps waiting with the watch armed
 
 ### Requirement: Hand-off wait with a fixed deadline
 
-`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: an ordinary `wait.js` chain of the main session whose window is a fixed deadline that `wait.js` owns. The command SHALL settle the timings (from the `warming` setting for the `agent` role, or from the user's answers to its question) and SHALL pass them explicitly as `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. `begin` SHALL read `--interval` and `--max` with the same duration parser that `wait.js` uses for its other intervals (`intervalMilliseconds`), so each value SHALL be a positive number with an optional unit `s`, `sec`, `m`, `min`, `h`, or `hr`, a value with no unit counting in minutes (`20`, `30 min`, `4h`), and a compound such as `1h30` SHALL be refused; `begin` SHALL reject `--interval` and `--max` as a usage error unless both are given in an accepted form with `max` at least `interval`, and the usage message SHALL name the accepted forms. The chain record SHALL then hold the deadline, `max` minutes after that `begin`, and no arm or wake SHALL move it. The command SHALL run the foreground arm check and launch `warm --chain <chain>` only when it prints `launch: true`, only at the end of the hand-off close; the check SHALL reuse a live wait and never move the deadline, and after the deadline it SHALL launch nothing. A real message other than the event the command waits for SHALL re-arm nothing. The main session SHALL apply the continuation check on arm and wake responses, handling actual user responses under the active command contract while preserving the wait when the required human action has not arrived. A notification SHALL NOT supply that action, such as `next-slice`. While still waiting, a `continue` wake SHALL re-arm with `--state <state_token>` carrying the returned token unchanged, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. The timings SHALL stay as passed to `begin` at every wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed; the main session SHALL apply the continuation check and reply `ok` when there is nothing to handle. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
+`sai/policies/cache-warming.md` SHALL define a hand-off wait for a command that sends the user to another chat and waits for the user's return: an ordinary `wait.js` chain of the main session whose window is a fixed deadline that `wait.js` owns. The command SHALL settle the timings (from the `warming` setting for the `agent` role, or from the user's answers to its question) and SHALL pass them explicitly as `begin --role agent --provider <provider> [--model <model>] --harness <claude|opencode> --interval <interval> --max <max> --fixed-deadline`. `begin` SHALL read `--interval` and `--max` with the same duration parser that `wait.js` uses for its other intervals (`intervalMilliseconds`), so each value SHALL be a positive number with an optional unit `s`, `sec`, `m`, `min`, `h`, or `hr`, a value with no unit counting in minutes (`20`, `30 min`, `4h`), and a compound such as `1h30` SHALL be refused; `begin` SHALL reject `--interval` and `--max` as a usage error unless both are given in an accepted form with `max` at least `interval`, and the usage message SHALL name the accepted forms. The chain record SHALL then hold the deadline, `max` minutes after that `begin`, and no arm or wake SHALL move it. The command SHALL run the foreground arm check and launch `warm --chain <chain>` only when it prints `launch: true`, only at the end of the hand-off close; the check SHALL reuse a live wait and never move the deadline, and after the deadline it SHALL launch nothing. A real message other than the event the command waits for SHALL re-arm nothing. The main session SHALL apply the continuation check on arm and wake responses, handling actual user responses under the active command contract while preserving the wait when the required human action has not arrived. A notification SHALL NOT supply that action, such as `next-slice`. While still waiting, a `continue` wake SHALL re-arm with `--state <state_token>` carrying the returned token unchanged and the main session SHALL print the main-session literal `➡️ Warming context cache up.` when there is nothing else to handle, and the command SHALL replace the task id it holds with the new background task's id while the chain stays the same. The timings SHALL stay as passed to `begin` at every wake. At the deadline the wait SHALL return `finished` and nothing SHALL be armed; the main session SHALL apply the continuation check and print the main-session literal `➡️ Warming context cache up.` when there is nothing to handle. The task id, chain, and answers SHALL live in the conversation only, never in the `sai-state` store or a repository file. The rule SHALL be the same on Claude Code and opencode.
 
 #### Scenario: Wake with user-supplied timings
 - **WHEN** a hand-off wait whose timings came from the user's answers wakes with `continue` while the required human action has not arrived
@@ -205,7 +229,7 @@ A dispatcher SHALL treat a subagent message that is exactly `ok`, ignoring surro
 
 #### Scenario: Deadline reached
 - **WHEN** the hand-off wait reaches its deadline
-- **THEN** the wait returns `finished`, nothing is armed, and the command applies the continuation check and replies `ok` when there is nothing to handle
+- **THEN** the wait returns `finished`, nothing is armed, and the command applies the continuation check and prints the main-session literal `➡️ Warming context cache up.` when there is nothing to handle
 
 #### Scenario: Timings from the setting
 - **WHEN** the hand-off timings come from the `warming` setting for the `agent` role
@@ -353,11 +377,11 @@ The arm check SHALL reuse a live wait with a fresh owner lease, the resolved int
 
 ### Requirement: Self-contained continuation reminder in warming responses
 
-On Claude Code and opencode, `wait.js` SHALL add one textual `reminder` to every successful `arm` response and normal `warm` result, preserving existing fields. The reminder SHALL have one definition reused across those outputs and SHALL NOT enter chain records, `state`, or `state_token`. `begin`, independent `prepare` and `wait`, and usage errors SHALL keep their existing behavior.
+On Claude Code and opencode, `wait.js` SHALL add one textual `reminder` to every successful `arm` response and normal `warm` result, preserving existing fields. The reminder SHALL name the reply literals of `sai/policies/cache-warming.md`: the main-session literal when nothing is left to handle, and the wake literal and the stop literal for a subagent, so each wake delivers the exact text at the moment the agent replies. No other `wait.js` behavior SHALL change. The reminder SHALL have one definition reused across those outputs and SHALL NOT enter chain records, `state`, or `state_token`. `begin`, independent `prepare` and `wait`, and usage errors SHALL keep their existing behavior.
 
 #### Scenario: Both arm decisions carry the reminder
 - **WHEN** the arm check returns either `launch: true` or `launch: false`
-- **THEN** its JSON includes `reminder` with the exact text: "If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state. If you are a subagent, follow your existing warming protocol."
+- **THEN** its JSON includes `reminder` with the exact text: "If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up.`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`."
 
 #### Scenario: Both warm statuses carry the reminder
 - **WHEN** a normal `warm` result returns `continue` or `finished`, from a chain or returned state
@@ -409,12 +433,28 @@ On Claude Code no chain SHALL be closed: `TaskStop` ends the agent and its wait 
 
 ### Requirement: Error wake is treated as a dispose
 
-`sai/policies/cache-warming.md` § Wake SHALL state that a wake that is not the JSON `wait.js` prints (a shell error such as `Shell.NotFoundError`, a non-zero exit, or output that does not parse) means the agent's shell was removed by a dispose, and that the agent SHALL treat it as the `dispose` message: reply `ok`, run no tool, arm nothing again, and answer each later wake with `ok`. The policy SHALL describe this rule as a fallback to the opencode dispose closing the chain. `sai/policies/cache-warming.md` § Dispose SHALL state that the opencode removal closes the chain of each `wait.js warm` shell it removes and that the main session's chain is never closed.
+`sai/policies/cache-warming.md` § Wake SHALL state that a wake that is not the JSON `wait.js` prints (a shell error such as `Shell.NotFoundError`, a non-zero exit, or output that does not parse) means the agent's shell was removed by a dispose, and that the agent SHALL treat it as the `dispose` message: reply with the stop literal `cache warming stopped`, run no tool, arm nothing again, and answer each later wake with the stop literal. The policy SHALL describe this rule as a fallback to the opencode dispose closing the chain. `sai/policies/cache-warming.md` § Dispose SHALL state that the opencode removal closes the chain of each `wait.js warm` shell it removes and that the main session's chain is never closed.
 
 #### Scenario: Shell error wake
 - **WHEN** a warming subagent is woken by `Shell.NotFoundError` instead of the `wait.js` JSON
-- **THEN** it replies `ok`, runs no tool, and arms nothing again
+- **THEN** it replies with the stop literal `cache warming stopped`, runs no tool, and arms nothing again
 
 #### Scenario: Later wakes after an error wake
 - **WHEN** another wake reaches the agent after it treated an error wake as a dispose
-- **THEN** it replies `ok` and arms nothing
+- **THEN** it replies with the stop literal and arms nothing
+
+### Requirement: Warming reply literals are fixed protocol text defined once
+
+`sai/policies/cache-warming.md` SHALL be the single source of three reply literals, each defined once in its Terms: the wake literal `warming context cache up`, the subagent reply to a `continue` or `finished` wake; the stop literal `cache warming stopped`, the subagent reply to the `dispose` message, to every wake after it, and to a wake that is not the JSON `wait.js` prints; and the main-session literal `➡️ Warming context cache up.`, the main-session reply on a turn that only warming opened and that has nothing to handle. It SHALL also be the single source of normalized recognition (comparison that ignores letter case, surrounding whitespace, and one trailing period) and of the legacy alias, a bare `ok` that an agent from an earlier install still sends. The literals SHALL be fixed English protocol text under `sai/policies/public-chat.md` § Protocol preservation and SHALL never be translated or reworded. A subagent reply SHALL be plain text without the `➡️` prefix; only the main-session literal SHALL carry it. `budget-executor`, which never arms, and the user-invoked `/sai-cache-warmer` and `/sai-context-cache-ttl-benchmark` commands SHALL keep their own replies. The literals and the recognition rule SHALL be the same on Claude Code and opencode.
+
+#### Scenario: Reader looks up a reply literal
+- **WHEN** a reader looks for the text an agent replies on a wake or after a dispose
+- **THEN** `sai/policies/cache-warming.md` Terms define the wake literal, the stop literal, and the main-session literal once each, together with normalized recognition and the legacy alias `ok`
+
+#### Scenario: Subagent reply carries no prefix
+- **WHEN** a subagent answers a wake
+- **THEN** it replies with exactly `warming context cache up`, untranslated and without the `➡️` prefix
+
+#### Scenario: Commands outside the protocol keep their replies
+- **WHEN** `budget-executor`, `/sai-cache-warmer`, or `/sai-context-cache-ttl-benchmark` replies
+- **THEN** its reply is unchanged by the warming reply literals

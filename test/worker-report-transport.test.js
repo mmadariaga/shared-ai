@@ -181,7 +181,7 @@ test('the policy defines the closed schema, the file-plus-hash return, and the i
   assert.match(policy, /retired `done`, `blocked`, `step-done`, `question`, `notice`, and `conflict_detected`/);
   assert.match(policy, /Return only `\{path, sha256\}`/);
   assert.match(policy, /A message that carries its result inline is an invalid report/);
-  assert.match(policy, /`event: ready` handshake reply, the wake `ok`, the `warming:` line beside the reference, and every `budget-\*` helper result/);
+  assert.match(policy, /`event: ready` handshake reply, the wake and stop literals of `@sai\/policies\/cache-warming\.md`, the `warming:` line beside the reference, and every `budget-\*` helper result/);
   assert.match(policy, /`implement-run@1` for `\/sai-3-implement`/);
   assert.match(policy, /The coordinator validates every report before it reads any field/);
   assert.match(policy, /never interprets a report by reading it/);
