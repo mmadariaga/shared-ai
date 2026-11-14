@@ -14,7 +14,7 @@
  *
  * It also finds the wakes of cache warming: the turns that the completion of an
  * agent's own `wait.js ... warm` background wait opens, matched on the command and
- * the background task id, never on the task description or an `ok` reply.
+ * the background task id, never on the task description or a reply literal.
  *
  * `retrospective.js` uses the locating and parsing helpers; `change-telemetry.js`
  * uses `openClaudeSource`, which answers the same questions as its opencode
@@ -163,7 +163,7 @@ const opensTurn = row => row.type === 'user' && !row.sourceToolUseID && !blocks(
  * the `<task-notification>` that completes one of the agent's own wait tasks, and
  * lasts to the end of its turn, the next record that opens a turn. A wake lists
  * the request keys (`message.id`) of every model request in that stretch, the
- * re-arm and the `ok` reply included. An `ok` reply alone never makes a wake.
+ * re-arm and the reply literal included. A reply literal alone never makes a wake.
  */
 function claudeWakes(rows, tasks = claudeWaitTasks(rows)) {
   if (tasks.size === 0) return [];

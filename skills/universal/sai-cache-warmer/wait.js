@@ -27,7 +27,7 @@ const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const INSTALL_ROOT = [path.resolve(__dirname, '..', '..'), path.resolve(__dirname, '..', '..', '..')]
   .find(root => fs.existsSync(path.join(root, 'sai', 'tools', 'temp-root.js'))) ?? path.resolve(__dirname, '..', '..');
 const STDIN_GRACE_MS = 2000;
-const CONTINUATION_REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state. If you are a subagent, follow your existing warming protocol.';
+const CONTINUATION_REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up.`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
 
 /** A misuse of the command line (exit 2); every other failure exits 1. */
 class UsageError extends Error {}

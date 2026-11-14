@@ -161,7 +161,7 @@ const warmer = require('../skills/universal/sai-cache-warmer/wait');
 
 const WAIT = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
 const ON = { interval: 4, max: 30 };
-const REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state. If you are a subagent, follow your existing warming protocol.';
+const REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up.`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
 const armResult = launch => ({ launch, reminder: REMINDER });
 
 function chainFixture(t, timings = ON) {
@@ -225,7 +225,7 @@ test('E1–E7 behavioral scenarios are instruction checks, not evidence of model
     ['E2 authorized work remains', /Handle that response or continue that work[\s\S]*reminder grants no permission and confirms no decision/],
     ['E3 waiting for input or running work', /preserve that wait: invent no response, repeat no already-answered question, and duplicate no running work/],
     ['E4 command completed before a later notification', /a notification never reopens them or repeats completed actions/],
-    ['E5 subagent wakes and termination', /A subagent wake performs no work\.[\s\S]*repeat of the last result[\s\S]*answer every wake with `ok` and arm nothing again/],
+    ['E5 subagent wakes and termination', /A subagent wake performs no work\.[\s\S]*repeat of the last result[\s\S]*answer every wake with the stop literal and arm nothing again/],
     ['E6 finished wait with unfinished command', /`finished` ends that wait, not necessarily the command's work/],
     ['E7 human action still required', /A wake never supplies the required action, such as `next-slice`/],
   ];
@@ -835,12 +835,12 @@ test('the policy keeps the reduced rule set: switch, begin, arm after every resp
   assert.match(policy, /When `launch` is `false`, launch nothing/);
   assert.match(policy, /warm --chain <chain>/);
   assert.match(policy, /warm --state <state_token>/);
-  assert.match(policy, /exactly `ok`[\s\S]{0,300}not a real message/);
+  assert.match(policy, /Wake acknowledgement\.\*\* A subagent message that is the wake literal, the stop literal, or the legacy alias `ok`[\s\S]{0,700}not a real message/);
   assert.match(policy, /Claude Code `Bash` with `run_in_background: true`[\s\S]*opencode shell with `background: true`/);
   assert.match(policy, /`max` minutes have passed since your last real message, whether or not anyone disposed you/);
-  assert.match(policy, /answer every wake with `ok` and arm nothing again/, 'after a dispose every wake replies ok');
-  assert.match(policy, /replies to a `continue` wake with that message instead of `ok`/, 'an unconfirmed result is repeated on a wake');
-  assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply `ok` again/);
+  assert.match(policy, /answer every wake with the stop literal and arm nothing again/, 'after a dispose every wake replies with the stop literal');
+  assert.match(policy, /replies to a `continue` wake with that message instead of the wake literal/, 'an unconfirmed result is repeated on a wake');
+  assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply with the wake literal again/);
   assert.match(policy, /A subagent wake performs no work\./, 'subagents retain their no-work wake protocol');
   assert.match(policy, /## Warming diagnostic[\s\S]*It gates no stop and no dispatch/);
   assert.match(policy, /except, on opencode, the one of each worker's last real message, which decides whether a `none` listing still needs the `dispose` message/);
@@ -868,7 +868,7 @@ test('the lifecycle policy disposes unconditionally, names the Claude Code stop 
   assert.match(lifecycle, /`removed` is a complete dispose and prints no notice/);
   assert.match(lifecycle, /No `session\.interrupt` call exists/);
   assert.doesNotMatch(lifecycle, /api\/session\/:sessionID\/interrupt/);
-  assert.match(lifecycle, /answer each later wake of a wait you armed with `ok` alone/);
+  assert.match(lifecycle, /answer each later wake of a wait you armed with the stop literal alone/);
 });
 
 test('E14 E16 the lifecycle policy batches the stops and closes of a point and re-issues a cancelled call alone', () => {
@@ -1043,4 +1043,35 @@ test('I4 the --state decoder is the inverse of the token encoder and rejects wha
 
 test('the benchmark override writes the cutoff file that the warmer reads', () => {
   assert.equal(require('../skills/universal/sai-context-cache-ttl-benchmark/warming_override').CUTOFF_FILE, warmer.CUTOFF_FILE);
+});
+
+test('cache-warming.md is the single source of the three reply literals, their recognition, and the legacy alias', () => {
+  const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
+  assert.match(policy, /\*\*Wake literal\*\*: the subagent reply `warming context cache up` to a `continue` or `finished` wake/);
+  assert.match(policy, /\*\*Stop literal\*\*: the subagent reply `cache warming stopped` to the `dispose` message, to every wake after it, and to a wake that is not the JSON `wait\.js` prints/);
+  assert.match(policy, /\*\*Main-session literal\*\*: the main-session reply `➡️ Warming context cache up\.`/);
+  assert.match(policy, /\*\*Normalized recognition\*\*: comparison that ignores letter case, surrounding whitespace, and one trailing period/);
+  assert.match(policy, /\*\*Legacy alias\*\*: a bare `ok`/);
+  assert.match(policy, /A `finished` wake keeps the wake literal/);
+  assert.match(policy, /print the main-session literal as the only text of the turn[\s\S]{0,120}print no literal/);
+  assert.match(policy, /The stop literal never decides whether an agent has ended: only the stop call does/);
+  assert.match(policy, /Any other text, such as a translation, a paraphrase, or a literal with words added, is not an acknowledgement/);
+  assert.match(policy, /fixed English protocol text under `@sai\/policies\/public-chat\.md` § Protocol preservation[\s\S]{0,300}plain text without the `➡️` prefix/);
+  assert.match(policy, /`budget-executor`, which never arms, and the user-invoked `\/sai-cache-warmer` and `\/sai-context-cache-ttl-benchmark` commands keep their own replies/);
+  assert.match(policy, /Recognition is an instruction rule for the dispatcher; no tool parses the literals/);
+  const lifecycle = fs.readFileSync(path.resolve(__dirname, '../sai/policies/worker-lifecycle.md'), 'utf8');
+  const transport = fs.readFileSync(path.resolve(__dirname, '../sai/policies/worker-report-transport.md'), 'utf8');
+  for (const text of [lifecycle, transport]) {
+    assert.doesNotMatch(text, /`ok`/, 'the other policies name the literals through cache-warming.md and spell no bare ok');
+    for (const literal of ['warming context cache up', 'cache warming stopped']) assert.doesNotMatch(text, new RegExp(literal));
+  }
+});
+
+test('CONTINUATION_REMINDER names the reply literals of the main session and of a subagent', () => {
+  const source = fs.readFileSync(WAIT, 'utf8');
+  const reminder = source.match(/const CONTINUATION_REMINDER = '([^\n]*)';/)[1];
+  assert.equal(reminder, REMINDER);
+  assert.match(reminder, /reply with exactly `➡️ Warming context cache up\.`/);
+  assert.match(reminder, /reply to a wake with exactly `warming context cache up`/);
+  assert.match(reminder, /`dispose` and every wake after it with exactly `cache warming stopped`/);
 });

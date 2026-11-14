@@ -37,7 +37,7 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /\*\*Ledger\*\*: the reserved file `\.sai-accepted` in the report directory, the only memory of accepted references/);
   assert.match(text, /accept --dir <report-dir> --path <path> --sha256 <sha256>/);
   assert.match(text, /a reference in the ledger is not processed again/);
-  assert.match(text, /`--check`[\s\S]{0,80}`already: true`, treat the reference like an `ok`: validate nothing, emit nothing, spend no attempt, send no continuation/);
+  assert.match(text, /`--check`[\s\S]{0,80}`already: true`, treat the reference like a wake acknowledgement: validate nothing, emit nothing, spend no attempt, send no continuation/);
   assert.match(text, /watch --dir <report-dir>` in the background \(Claude Code `Bash` with `run_in_background: true`[\s\S]{0,120}opencode shell with `background: true`\)/);
   assert.match(text, /whatever the warming setting/);
   assert.match(text, /no model turn runs while nothing happens/);
@@ -45,7 +45,7 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /same invalid-report recovery with its obstacle attempt/);
   assert.match(text, /When the watch ends with an empty list, launch it again\. Send nothing to the worker and write nothing to the user/);
   assert.match(text, /stop the watch \(Claude Code `TaskStop`, opencode removal of its shell\)/);
-  assert.match(text, /neither a reference nor `ok`[\s\S]{0,80}is not a result: keep waiting with the watch armed/);
+  assert.match(text, /not a reference[\s\S]{0,120}is not a result: keep waiting with the watch armed/);
   assert.match(text, /Watch each report directory separately and attribute a report to the worker of its directory/);
   assert.match(text, /print one notice and go on without it: the run does not stop/);
   assert.match(text, /Only the watch looks for undelivered reports; a warming notification does not trigger report polling/);
@@ -66,15 +66,15 @@ test('deep-review watches each audit cycle on its own report directory', () => {
 
 test('the wake of a worker keeps its report protocol while main-session continuity does not poll for reports', () => {
   const policy = read('sai/policies/cache-warming.md');
-  assert.match(policy, /A subagent replies with the single word `ok`, or with the repeat of its last result/);
-  assert.match(policy, /\*\*Repeat the last result\.\*\* A worker whose last real message was a result[\s\S]{0,120}has received no real message since replies to a `continue` wake with that message instead of `ok`/);
+  assert.match(policy, /A subagent replies with the wake literal, or with the repeat of its last result/);
+  assert.match(policy, /\*\*Repeat the last result\.\*\* A worker whose last real message was a result[\s\S]{0,120}has received no real message since replies to a `continue` wake with that message instead of the wake literal/);
   assert.match(policy, /the same reference and the same `warming:` line, verbatim, and nothing else/);
   assert.match(policy, /A repeat is not a new real message: it restarts no window/);
-  assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply `ok` again; a `finished` wake replies `ok`, and so does every wake after a `dispose`/);
-  assert.match(policy, /\*\*Real message\*\*: any message to or from an agent except the `ok` of a wake, the `ok` of a `dispose`, and a wake's repeat of the last result\./, 'a repeat is not a real message, so it restarts no window');
+  assert.match(policy, /Once the dispatcher sends the worker a real message, the worker's wakes reply with the wake literal again; a `finished` wake replies with the wake literal, and every wake after a `dispose` replies with the stop literal/);
+  assert.match(policy, /\*\*Real message\*\*: any message to or from an agent except a wake acknowledgement \(§ Wake acknowledgement\) and a wake's repeat of the last result\./, 'a repeat is not a real message, so it restarts no window');
   assert.match(policy, /A subagent wake performs no work\. Run no tool other than the re-arm, send no report, emit no stage or progress event, and write nothing\./);
   assert.match(policy, /Main-session work comes only from the current conversation and command contract/);
-  assert.match(policy, /treats the repeat like an `ok` \(`@sai\/policies\/worker-report-transport\.md` § Undelivered reports\)/);
+  assert.match(policy, /treats the repeat like a wake acknowledgement \(`@sai\/policies\/worker-report-transport\.md` § Undelivered reports\)/);
 });
 
 test('the coordinator profile grants transfer.js accept and watch on both harnesses', () => {
