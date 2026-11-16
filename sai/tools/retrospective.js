@@ -54,8 +54,8 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
-const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
-const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents, claudeWaitTasks, claudeWakes } = require('./claude-transcripts');
+const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeSessionMessages, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
+const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents, dispatchedWorkers, claudeWaitTasks, claudeWakes } = require('./claude-transcripts');
 
 const DEFAULT_LIMIT = 5;
 const DEFAULT_COUNT = 10;
@@ -363,7 +363,45 @@ function readAgentRows(agent, reader) {
   try { return fs.existsSync(agent.file) ? readRecords(fs.readFileSync(agent.file, 'utf8')) : null; } catch { return null; }
 }
 
-function buildSession({ reader, workers, project, group, sessionDir, text, session }) {
+// The opencode database for a Claude Code run, opened read-only on first use. One that cannot be opened leaves every
+// routed worker's usage unavailable, with the reason the reader gave.
+function opencodeHandle(env, loadSqlite) {
+  let state;
+  return {
+    database() {
+      if (state === undefined) {
+        try { state = { db: openOpencodeDatabase(env, loadSqlite), error: null }; } catch (error) {
+          if (!(error instanceof OpencodeUnavailable)) throw error;
+          state = { db: null, error: error.message };
+        }
+      }
+      return state.db;
+    },
+    get error() { return state?.error ?? null; },
+    close() { state?.db?.close(); },
+  };
+}
+
+// A worker routed to opencode (sai/policies/opencode-dispatch.md) is read from opencode.db by its sessionID: its records
+// when it is a principal worker, its usage always. A currency cost of 0 is no price, so it is dropped from the figures.
+// A session that cannot be read has `usage: unavailable` and a `reason`, never a zero.
+function measureRouted(opencode, reader, worker, principal) {
+  const unavailable = reason => ({ reason, rows: null, metrics: opencodeMetrics(null, reader) });
+  if (worker.session === null) return unavailable('its sessionID is not in the transcript');
+  const db = opencode.database();
+  if (!db) return unavailable(opencode.error);
+  try {
+    const found = opencodeSessionMessages(db, worker.session);
+    if (found === null) return unavailable(`session ${worker.session} is not in opencode.db`);
+    const records = principal ? opencodeRecords(db, worker.session) : found.map(opencodeRecord);
+    const priced = { ...reader, opencodeTokens: data => { const tokens = reader.opencodeTokens(data); return tokens === UNAVAILABLE ? tokens : { ...tokens, cost: tokens.cost > 0 ? tokens.cost : null }; } };
+    return { reason: null, rows: principal ? records : null, metrics: opencodeMetrics(records, priced, opencodeWakes(db, worker.session)) };
+  } catch (error) {
+    return unavailable(`the opencode database could not be read (${error.message})`);
+  }
+}
+
+function buildSession({ reader, workers, project, group, sessionDir, text, session, opencode }) {
   const rows = readRecords(text);
   // Only a SAI command invocation starts an execution; any other slash command
   // typed during one stays inside it as an ordinary record.
@@ -397,6 +435,23 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
     }
   }
 
+  // Agents routed to opencode leave no subagent file: the dispatch results of the root and of its principal workers name them.
+  const routedUnread = [];
+  const dispatched = [
+    ...(text.includes('opencode-dispatch.js') ? dispatchedWorkers(rows).map(worker => ({ worker, owner: null })) : []),
+    ...agents.filter(agent => agent.rows).flatMap(owner => dispatchedWorkers(owner.rows).map(worker => ({ worker, owner }))),
+  ];
+  for (const { worker, owner } of dispatched) {
+    const segment = uses.get(worker.tool_use_id);
+    const routed = { agent_id: worker.session ?? `unresolved-${worker.tool_use_id}`, agent_type: worker.agent, description: 'opencode-routed worker', tool_use_id: worker.tool_use_id, parent_agent_id: owner?.agent_id ?? null, spawn_depth: owner ? (owner.spawn_depth ?? 1) + 1 : 1, finished: null, file: null, segment: segment ?? null, rows: null, routed: true };
+    if (segment === undefined) { pending.add(routed); continue; }
+    const measured = measureRouted(opencode, reader, worker, workers.has(worker.agent));
+    routed.rows = measured.rows;
+    routed.metrics = measured.metrics;
+    if (measured.reason) routedUnread.push({ kind: 'opencode-routed-worker', project, session, agent: worker.agent, opencode_session: worker.session, reason: measured.reason });
+    agents.push(routed);
+  }
+
   const executions = [];
   starts.forEach((start, k) => {
     const invocation = invocationOf(rows[start]);
@@ -404,7 +459,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
     const own = agents.filter(agent => agent.segment === k);
     const principal = own.filter(agent => workers.has(agent.agent_type));
     const auxiliary = own.filter(agent => !workers.has(agent.agent_type));
-    const scans = [scanRows(segmentRows, null), ...principal.filter(agent => agent.rows).map(agent => scanRows(agent.rows, agent.agent_id))];
+    const scans = [scanRows(segmentRows, null), ...principal.filter(agent => agent.rows).map(agent => (agent.routed ? scanOpencodeRecords(agent.rows, agent.agent_id) : scanRows(agent.rows, agent.agent_id)))];
     const lastTurn = segmentRows.findLast(row => row.type === 'assistant' || (row.type === 'user' && !row.isMeta));
     const finished = lastTurn?.type === 'assistant' && lastTurn.message?.stop_reason === 'end_turn';
     executions.push({
@@ -419,17 +474,17 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
       in_progress: k === starts.length - 1 && (own.some(agent => agent.finished === false) || !finished),
       records: { count: segmentRows.length, first: segmentRows[0].uuid, last: segmentRows.at(-1).uuid },
       coordinator: { pipeline_segment: COMMAND_SEGMENTS[invocation.command] ?? null, ...claudeMetrics(segmentRows, reader, waitTasks) },
-      principal_workers: principal.map(agent => agentSummary(agent, agent.rows)),
+      principal_workers: principal.map(agent => agentSummary(agent, agent.rows, agent.routed ? record => record.id : undefined)),
       auxiliary_agents: auxiliary.map(agent => agentSummary(agent, null)),
       loaded_instructions: scans.flatMap(scan => scan.loaded).sort(byTimeThenRecord),
       non_instruction_reads: scans.reduce((sum, scan) => sum + scan.otherReads, 0),
       tool_errors: scans.flatMap(scan => scan.errors).sort(byTimeThenRecord),
     });
   });
-  return { executions, unlinked: [...pending].map(agent => agentSummary(agent, null)), before_first_invocation: segmentOf.filter(segment => segment < 0).length };
+  return { executions, unlinked: [...pending].map(agent => agentSummary(agent, null)), before_first_invocation: segmentOf.filter(segment => segment < 0).length, routedUnread };
 }
 
-function indexProject({ reader, workers, projectsRoot, projectPath, group, target }) {
+function indexProject({ reader, workers, projectsRoot, projectPath, group, target, opencode }) {
   const folder = projectFolder(projectsRoot, projectPath);
   const result = { harness: 'claude', project: projectPath, project_group: group, status: 'analyzed', reason: null, sessions_read: 0, executions: [], unlinked_agents: [], unread: [] };
   let entries;
@@ -442,9 +497,10 @@ function indexProject({ reader, workers, projectsRoot, projectPath, group, targe
     try {
       const text = fs.readFileSync(path.join(folder, name), 'utf8');
       if (!text.includes('<command-name>')) continue;
-      const built = buildSession({ reader, workers, project: projectPath, group, sessionDir: path.join(folder, session), text, session });
+      const built = buildSession({ reader, workers, project: projectPath, group, sessionDir: path.join(folder, session), text, session, opencode });
       result.sessions_read++;
       result.executions.push(...built.executions);
+      result.unread.push(...built.routedUnread);
       if (built.executions.length && built.before_first_invocation) result.unread.push({ kind: 'records-before-first-invocation', project: projectPath, session, count: built.before_first_invocation, reason: 'these records precede the first SAI invocation of the session' });
       result.unlinked_agents.push(...built.unlinked.map(agent => ({ session, ...agent })));
     } catch (error) {
@@ -742,7 +798,7 @@ function expandProjects(projectPaths, withWorktrees, notes) {
 
 // Claude Code side of an index run. Returns its executions, or null when a
 // subagent target is in no transcript (its note is already on the output).
-function indexClaude({ target, members, reader, workers, env, output }) {
+function indexClaude({ target, members, reader, workers, env, loadSqlite, output }) {
   const projectsRoot = reader.claudeProjectsRoot(env);
   let session = target.kind === 'claude-session' ? target.session : null;
   if (target.kind === 'claude-subagent') {
@@ -756,14 +812,17 @@ function indexClaude({ target, members, reader, workers, env, output }) {
   }
   const probe = session ? { kind: 'claude-session', session } : target;
   const executions = [];
-  for (const { path: projectPath, group } of members) {
-    const project = indexProject({ reader, workers, projectsRoot, projectPath, group, target: probe });
-    const { executions: found, unlinked_agents: unlinked, unread, ...summary } = project;
-    output.projects.push(summary);
-    output.unread.push(...unread);
-    output.unlinked_agents.push(...unlinked);
-    executions.push(...found);
-  }
+  const opencode = opencodeHandle(env, loadSqlite);
+  try {
+    for (const { path: projectPath, group } of members) {
+      const project = indexProject({ reader, workers, projectsRoot, projectPath, group, target: probe, opencode });
+      const { executions: found, unlinked_agents: unlinked, unread, ...summary } = project;
+      output.projects.push(summary);
+      output.unread.push(...unread);
+      output.unlinked_agents.push(...unlinked);
+      executions.push(...found);
+    }
+  } finally { opencode.close(); }
   const analyzed = output.projects.some(project => project.harness === 'claude' && project.status === 'analyzed');
   output.harnesses.push({ harness: 'claude', status: analyzed ? 'analyzed' : 'not-analyzed', reason: analyzed ? null : 'no supplied project has a readable transcript folder' });
   return executions;
@@ -814,7 +873,7 @@ function collectExecutions({ target, members, env, loadSqlite, output, registry,
   const executions = [];
   // A session or agent ID belongs to one harness; a command name is read from both.
   if (target.kind !== 'opencode-session') {
-    const claude = indexClaude({ target, members, reader, workers: registry.workers, env, output });
+    const claude = indexClaude({ target, members, reader, workers: registry.workers, env, loadSqlite, output });
     if (claude === null) return null;
     executions.push(...claude);
   }

@@ -101,6 +101,13 @@ function opencodeChildren(db, rootId) {
     SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
 }
 
+// The assistant messages of one session in order (`id`, `type`, `time_created`, `data`), or null when the session is
+// not recorded. A session that holds no assistant message is an empty list: the caller tells the two apart.
+function opencodeSessionMessages(db, sessionId) {
+  if (!db.prepare('SELECT 1 FROM session_v2 WHERE id = ?').get(sessionId)) return null;
+  return db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId);
+}
+
 // The wakes of a session: each opens at a `synthetic` message whose
 // `metadata.source` is `shell` and whose `<shell ... command="...">` header runs
 // `wait.js ... warm`, and lasts to the end of its turn, the next message that
@@ -159,6 +166,7 @@ module.exports = {
   parseInvocation,
   opencodeRoot,
   opencodeChildren,
+  opencodeSessionMessages,
   opencodeWakes,
   changeNameFromArgs,
   writtenChanges,
