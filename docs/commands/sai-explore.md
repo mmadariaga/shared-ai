@@ -124,7 +124,8 @@ Git references internally.
 After rounds 1 and 2 finish or are skipped, choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` follows [`/sai-plan`](sai-plan.md)
 for the first pending slice: spec and design run with up to three review rounds per
-segment, one local commit per segment, then it stops for your review before `/sai-build`.
+segment, one local commit per segment (plus one for `telemetry.md` when
+[change telemetry](../project-settings.md#change-telemetry) is on), then it stops for your review before `/sai-build`.
 A worker question that nothing in the block, the artifacts, or the repository settles
 still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and two local commits

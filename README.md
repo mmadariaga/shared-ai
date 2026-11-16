@@ -117,7 +117,7 @@ Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
 | **Plan - Unattended** | The change needs careful design and you want to approve the plan before coding. More rigorous, but uses more tokens. | Runs [`/sai-plan`](docs/commands/sai-plan.md): prepares, checks, reviews, and commits specs and design, then stops for your feedback. Run `/sai-build` when ready. |
-| **Direct Build - Unattended** | The change is small and clear, such as a focused fix. Less planning overhead. | Implements and reviews the change, reconstructs specs, archives it, and makes one local commit. No push. |
+| **Direct Build - Unattended** | The change is small and clear, such as a focused fix. Less planning overhead. | Implements and reviews the change, reconstructs specs, archives it, and makes one local commit, plus a second one for the change's telemetry when [change telemetry](#change-telemetry-experimental) is on. No push. |
 | **Manual** | You want to review and control each phase separately. More interaction. | Gives you the `Ready to Propose` block for `/sai-1-spec` in a new chat. Follow the [numbered pipeline](docs/sequential-pipeline.md). |
 
 For sliced work, you choose again for each slice. Ambiguous decisions still come back to you on unattended routes.
@@ -213,6 +213,10 @@ A lower-cost agent can run tests, builds, and linters and report the result brie
 
 Small, well-scoped tasks can go to a lower-cost agent while the main agent handles decisions and synthesis. See [docs/skills.md](docs/skills.md).
 
+### Change telemetry (experimental)
+
+Measure what each change costs. With `experimental.changeTelemetry` on, `/sai-plan`, `/sai-build`, and the Plan - Unattended and Direct Build - Unattended routes of `/sai-explore` write `telemetry.md` in the change folder when they close: tokens, cache hits, cache misses and their overcost, and cost per agent, segment, and command, including the exploration that produced the change and the cache-warming wakes. Anything the harness did not record shows as `unavailable`, never zero. It is off by default; turn it on in `setup` → **Project behavior settings** → `Experimental`. See [change telemetry](docs/project-settings.md#change-telemetry).
+
 ## Project highlights
 
 ### Spec-Driven Development
@@ -242,8 +246,6 @@ Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review c
 ## Installation
 
 Requires **Node.js 22 or newer**. On opencode it requires version **2.2.0 or later** (tested on 2.2.5) with `experimental.subagent_depth` set to 2 or higher; `doctor` checks both. Provider workflows additionally need their own authenticated CLIs; SAI does not install or authenticate them.
-
-Reading opencode history with `/sai-retrospective` additionally needs Node **22.13 or newer** for `node:sqlite`; otherwise that optional data source is reported as not analyzed.
 
 Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 
@@ -342,7 +344,10 @@ symbolic links, so a linked install root is a supported layout; its scope check
 is lexical and does not compare real paths.
 
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
-**Project behavior settings**. See [project settings](docs/project-settings.md).
+**Project behavior settings**. Its `Experimental` section turns on
+[change telemetry](#change-telemetry-experimental) and opens the **Cache warming**
+screen, which sets the warming timings of each harness (Claude Code and opencode)
+separately. See [project settings](docs/project-settings.md).
 
 ### Default opencode models
 
@@ -351,9 +356,8 @@ Both Claude Code and opencode name the generic helpers `budget-explorer`,
 the [agent migration instructions](docs/skills.md#migrating-existing-opencode-agents),
 especially project-local overrides and external dispatch references.
 
-The default mix uses DeepSeek Flash for coordination and implementation
-work, GPT Luna for code review, and Muse Spark plus free models for light
-helpers. It aims for reliable results at moderate cost. See the
+The default mix uses DeepSeek V4.1 Flash for coordination, implementation, and
+the light helpers, and GPT Luna for code review. It aims for reliable results at moderate cost. See the
 [full model table](docs/models.md) or replace the mix through `setup`.
 
 ### Example presets
@@ -365,6 +369,7 @@ presets but keeps personal presets and does not change your project's selections
 | Preset | Choose it for |
 |--------|---------------|
 | `[sai-default]-oGo-Deepseek.json` | OpenCode Go models throughout: DeepSeek V4.1 Flash for every role. |
+| `[sai-default]-claude+oGo-Opus+Deepseek.json` | opencode with a Claude subscription: Claude Opus for the main coordinators (explore, plan, build, direct build, implement, review), DeepSeek V4.1 Flash for workers and helpers. |
 | `[sai-default]-oAI-LUNA.json` | OpenAI Luna for every role, with GPT-5.6 Luna for demanding work. |
 | `[sai-default]-oAI-SOL.json` | OpenAI Sol for the more demanding planning/build work, Luna for lighter tasks. |
 | `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |
@@ -397,7 +402,17 @@ Matt Pocock's **[writing-for-agents](https://github.com/mattpocock/skills)** is 
 
 ## Upgrades
 
-Run the installation script again.
+Run the installation script again, restart Claude Code or opencode, then run
+`setup` in each project and check the result with `doctor`:
+
+```bash
+npx --allow-git=all github:mmadariaga/shared-ai
+npx --allow-git=all github:mmadariaga/shared-ai setup /path/to/your/project
+npx --allow-git=all github:mmadariaga/shared-ai doctor
+```
+
+Instructions, tools, and agent files from different versions do not work
+together, so upgrade every harness you use.
 
 ## Uninstall
 

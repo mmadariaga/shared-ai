@@ -53,7 +53,7 @@ The full SAI workflow can be overkill for small changes.
   # The change name is inferred from the diff and the interview, and
   # you confirm it. The command runs a structured interview to extract intent,
   # detects conflicts with existing specs, and writes only
-  # derivable artifacts (proposal.md + specs/**).
+  # derivable artifacts (proposal.md, specs/**, and .openspec.yaml).
   ```
 
   Backfill does **not** generate `design.md`, `tasks.md`, or `interfaces.md` — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.
