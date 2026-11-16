@@ -7,7 +7,7 @@ Define the per-harness budget-subagent skill bindings for Claude Code and Openco
 ## Requirements
 
 ### Requirement: claude-code-binding
-The `skills/claude/budget-subagent/SKILL.md` file SHALL bind the "task subagent" concept to `Agent(subagent_type: budget-subagent, run_in_background: true, prompt: <prompt>)`. The model SHALL come from the `model` frontmatter of the resolved `budget-subagent.md` agent file, the project-local `.claude/agents/budget-subagent.md` taking precedence over `~/.claude/agents/budget-subagent.md`; spawns SHALL pass no per-spawn model parameter. The harness enforces no tool-call cap; the policy's approximately 30-call limit governs the task.
+The `skills/claude/budget-subagent/SKILL.md` file SHALL bind the "task subagent" concept to `Agent(subagent_type: budget-subagent, run_in_background: true, prompt: <prompt>)`. The model SHALL come from the `model` frontmatter of the resolved `budget-subagent.md` agent file, the project-local `.claude/agents/budget-subagent.md` taking precedence over `~/.claude/agents/budget-subagent.md`; spawns SHALL pass no per-spawn model parameter. When the resolved agent file carries `harness: opencode`, the route query of `sai/policies/opencode-dispatch.md` SHALL decide the dispatch, and an opencode-routed agent SHALL be created, continued, and disposed through that policy instead of the `Agent` call. The harness enforces no tool-call cap; the policy's approximately 30-call limit governs the task.
 
 The compatibility field in the YAML frontmatter MUST be `claude`. The description MUST include the trigger phrases: `"budget subagent"`, `"cheap subagent"`, `"budget task"`, `"cheap task"`.
 
@@ -19,7 +19,9 @@ The compatibility field in the YAML frontmatter MUST be `claude`. The descriptio
 - **WHEN** a main agent, routed SAI coordinator, or routed SAI worker spawns the budget-subagent
 - **THEN** the call sets `run_in_background: true` and the dispatcher awaits the result on its own turn
 
----
+#### Scenario: opencode-routed budget-subagent
+- **WHEN** the resolved `budget-subagent.md` agent file carries `harness: opencode` and the route query answers `opencode`
+- **THEN** the subagent is dispatched through `sai/policies/opencode-dispatch.md` instead of the `Agent` call
 
 ### Requirement: opencode-binding
 The `skills/opencode/budget-subagent/SKILL.md` file SHALL bind the "task subagent" concept to the Opencode `budget-subagent` agent keyword. The model SHALL be resolved from the `budget-subagent` agent file's frontmatter `model` key — the file installed at `~/.config/opencode/agents/budget-subagent.md`, seeded by the installer under the `tunable-seed` lifecycle — and it MUST NOT be hardcoded in the skill file.

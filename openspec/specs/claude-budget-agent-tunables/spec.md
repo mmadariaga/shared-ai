@@ -53,7 +53,7 @@ The install manifest SHALL declare exactly one projection per Claude generic age
 
 ### Requirement: Claude budget skills source the model from the agent files
 
-The three Claude budget skills SHALL NOT contain hardcoded model identifiers. `skills/claude/budget-explorer/SKILL.md` SHALL name the `budget-explorer` agent file as the source of the subagent model, `skills/claude/budget-executor/SKILL.md` SHALL name the `budget-executor` agent file, and `skills/claude/budget-subagent/SKILL.md` SHALL name the `budget-subagent` agent file. Agent-file references SHALL mean the resolved agent file under the standard project-local-then-user-global resolution — `.claude/agents/` before `~/.claude/agents/`. The skills SHALL NOT instruct spawns to pass a per-spawn `model:` parameter.
+The three Claude budget skills SHALL NOT contain hardcoded model identifiers. `skills/claude/budget-explorer/SKILL.md` SHALL name the `budget-explorer` agent file as the source of the subagent model, `skills/claude/budget-executor/SKILL.md` SHALL name the `budget-executor` agent file, and `skills/claude/budget-subagent/SKILL.md` SHALL name the `budget-subagent` agent file. Agent-file references SHALL mean the resolved agent file under the standard project-local-then-user-global resolution — `.claude/agents/` before `~/.claude/agents/`. The skills SHALL NOT instruct spawns to pass a per-spawn `model:` parameter. Each skill SHALL point to `sai/policies/opencode-dispatch.md` for an agent file that carries `harness: opencode`; an agent that policy routes to opencode runs on the model of the OpenCode agent of the same name.
 
 #### Scenario: no hardcoded model identifier in Claude budget skills
 
@@ -63,7 +63,7 @@ The three Claude budget skills SHALL NOT contain hardcoded model identifiers. `s
 
 #### Scenario: spawns do not pass a per-spawn model
 
-- **WHEN** a caller following a Claude budget skill spawns the budget subagent
+- **WHEN** a caller following a Claude budget skill spawns the budget subagent through the `Agent` tool
 - **THEN** the spawn carries no `model:` parameter
 - **AND** the subagent runs on the model declared in the corresponding agent file
 
@@ -72,6 +72,11 @@ The three Claude budget skills SHALL NOT contain hardcoded model identifiers. `s
 - **WHEN** a Claude budget skill names its agent file as the model source
 - **THEN** the model is read from the project-local `.claude/agents/<name>.md` when one exists
 - **AND** otherwise from the user-global `~/.claude/agents/<name>.md`
+
+#### Scenario: opencode-routed budget agent
+
+- **WHEN** the resolved budget agent file carries `harness: opencode` and the route query of `sai/policies/opencode-dispatch.md` answers `opencode`
+- **THEN** the agent is created, continued, and disposed through that policy and runs on the model of the OpenCode agent of the same name
 
 ### Requirement: Claude explorer synthesis escalation tier retired
 

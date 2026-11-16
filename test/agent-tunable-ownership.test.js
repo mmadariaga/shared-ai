@@ -82,7 +82,7 @@ function installTunableSeed(dir, sourceText, destText, harness = 'claude') {
 }
 
 test('CLAUDE_TUNABLE_KEYS and OPENCODE_TUNABLE_KEYS declare the harness tunable sets', () => {
-  assert.deepEqual(flow.CLAUDE_TUNABLE_KEYS, ['model', 'effort']);
+  assert.deepEqual(flow.CLAUDE_TUNABLE_KEYS, ['model', 'effort', 'harness']);
   assert.deepEqual(flow.OPENCODE_TUNABLE_KEYS, ['model', 'variant']);
 });
 
@@ -360,5 +360,35 @@ test('agentProjection helper resolves the managed Claude source for each worker'
     const { sourcePath, destinationPath } = agentProjection(workerName, path.join(os.tmpdir(), 'sai-tunable-helper'));
     assert.ok(fs.existsSync(sourcePath), `${workerName} should have a Claude agent source`);
     assert.equal(path.basename(destinationPath), `${workerName}.md`);
+  }
+});
+
+test('E11 a hand-set harness line in a Claude Code agent file is a user-owned tunable', () => {
+  const source = '---\nname: sai-demo-worker\nmodel: source-model\neffort: source-effort\ntools: Read\n---\n\nbody\n';
+  const handSet = '---\nname: sai-demo-worker\nmodel: tuned-model\neffort: tuned-effort\nharness: opencode\ntools: Read\n---\n\nbody\n';
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-harness-'));
+  try {
+    // A compatible file keeps the line and is reused, not overwritten.
+    const { sourcePath, destinationPath } = writeFixture(dir, source, handSet);
+    const projection = { strategy: 'tunable-seed', harness: 'claude', sourcePath, destinationPath };
+    assert.equal(flow.tunableSeedInstaller(projection), 'reused');
+    assert.equal(fs.readFileSync(destinationPath, 'utf8'), handSet);
+    // Doctor compares managed content after stripping the tunables, so the line reports no drift.
+    assert.ok(flow.managedDefinitionBytes(Buffer.from(source), flow.CLAUDE_TUNABLE_KEYS)
+      .equals(flow.managedDefinitionBytes(Buffer.from(handSet), flow.CLAUDE_TUNABLE_KEYS)));
+    // A divergent body is overwritten while the harness line survives.
+    const divergent = installTunableSeed(dir, source.replace('body', 'new body'), handSet);
+    assert.ok(divergent.includes('harness: opencode') && divergent.includes('new body'));
+    // The agent templates ship no harness line.
+    assert.ok(!/^harness:/m.test(source));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('E11 the shipped Claude Code agent sources and generated agents carry no harness line', () => {
+  const root = path.resolve(__dirname, '..');
+  for (const name of ['budget-explorer', 'budget-executor', 'budget-subagent', 'worker-template']) {
+    assert.ok(!/^harness:/m.test(fs.readFileSync(path.join(root, 'agents', 'claude', `${name}.md`), 'utf8')), name);
   }
 });

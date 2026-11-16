@@ -95,7 +95,8 @@ presets and project model selections stay unchanged until you apply a preset.
 
 Command and agent instructions remain managed even after you select a different
 model. Installation preserves the selected `model` and `effort` (Claude Code),
-or `model` and `variant` (opencode), and the exact text after
+or `model` and `variant` (opencode), a `harness: opencode` line that you add by
+hand to a Claude Code agent file (see below), and the exact text after
 `<!-- User customizations below this line -->`. The rest of each definition is
 replaced. Legacy files without the marker retain only their tunables, with no
 backup of other edits. OpenCode commands keep the variant in `model#variant`;
@@ -115,3 +116,30 @@ Only exact retired paths from the install manifest are removed.
 Only SAI commands and agents are model-customization targets. The universal
 backlog and PR workflows run with the active session's model rather than a
 separate model selection in this menu.
+
+## Run a Claude Code agent on an OpenCode model
+
+With Claude Code as your harness, you can run any agent on the model of its
+OpenCode agent. Add one line to the agent's frontmatter in
+`~/.claude/agents/<name>.md` (or the project's `.claude/agents/<name>.md`):
+
+```yaml
+harness: opencode
+```
+
+The installer never writes this line, keeps it across installs, and `doctor`
+reports no drift for it. A Claude Code coordinator then runs that agent with
+`opencode run --format json`, one process per turn, and continues it with the
+session ID. OpenCode must be installed and must have an agent of the same name;
+the model, variant, permissions, and tools come from that OpenCode agent, not
+from the Claude Code file. Without the line, or with `harness: claude`, the agent
+runs through Claude Code as before.
+
+When the `opencode` command or the same-named agent is missing, or the first turn
+fails, the agent runs through Claude Code with the `model` of its Claude Code
+file, and the coordinator prints one notice naming the agent and the cause.
+
+Limits: each turn adds a few seconds of process startup, an OpenCode-routed agent
+gets no cache warming, an `ask` permission in its OpenCode agent is rejected
+instead of prompting you (nothing is auto-approved), and an OpenCode `shell`
+deny is not a sandbox. With opencode as your harness nothing changes.

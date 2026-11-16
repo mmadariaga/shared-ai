@@ -25,17 +25,17 @@ function settings(text) {
   return result;
 }
 
-// Generated opencode agent bodies carry the platform-resolved SAI temp root; the
-// pinned hashes were taken on Linux, so projection runs as Linux. Windows has no
-// process.getuid, which the Linux Claude Code temp root needs, so supply one there.
+// Generated opencode agent bodies carry the platform-resolved SAI temp roots, the Claude Code one included, whose
+// Linux form names the user id. The pinned hashes were taken on Linux as user 1000, so projection runs as Linux with
+// that user id, whatever the host.
 function asLinux(action) {
   const original = Object.getOwnPropertyDescriptor(process, 'platform');
-  const stubUid = typeof process.getuid !== 'function';
+  const uid = Object.getOwnPropertyDescriptor(process, 'getuid');
   Object.defineProperty(process, 'platform', { value: 'linux' });
-  if (stubUid) process.getuid = () => 1000;
+  process.getuid = () => 1000;
   try { return action(); } finally {
     Object.defineProperty(process, 'platform', original);
-    if (stubUid) delete process.getuid;
+    if (uid) Object.defineProperty(process, 'getuid', uid); else delete process.getuid;
   }
 }
 
@@ -81,5 +81,5 @@ test('generated opencode agents, command wrappers, and configuration match the c
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 43);
-  assert.equal(hash(JSON.stringify(output)), 'd4563b40fb216b52ea07894a0865c2ff836a46664f514bdde7feea5b073876f9');
+  assert.equal(hash(JSON.stringify(output)), 'c1de65ca3ba843f7a284e143d360e9c0c2837f9525fe383346d997e3f804df0c');
 });

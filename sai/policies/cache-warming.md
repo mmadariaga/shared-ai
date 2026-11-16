@@ -12,6 +12,7 @@ A dispatcher that disposes an agent turns its warming on by ending the task mess
 
 - Workers and `budget-explorer` receive it. `budget-subagent` receives it only on a continuation: its one-shot task message is followed by its dispose and carries none (`skills/{claude,opencode}/budget-subagent/SKILL.md` § Warming and dispose). `budget-executor` never does: it never arms.
 - The ready-only dispatch of the two-phase handshake carries no task content and therefore no switch.
+- An opencode-routed agent (`@sai/policies/opencode-dispatch.md`) receives no switch and declares `warming: false`.
 - A dispatcher that cannot dispose (a worker that dispatches its own helpers) sends no switch, so its helpers never arm. Only an agent that disposes another one enables its warming.
 - The dispatcher resolves no timings and keeps no state about the agent's warming, except the `warming:` diagnostic of each worker's last real message, which the opencode dispose reads (§ Warming diagnostic). The agent's own `begin` reads the setting.
 

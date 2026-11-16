@@ -332,7 +332,7 @@ function managedBytesMatch(projection, destinationPath) {
     ? Buffer.from(projection.sourceText, 'utf8')
     : fs.readFileSync(projection.sourcePath);
   const destination = fs.readFileSync(destinationPath);
-  const keys = projection.harness === 'opencode' ? ['model', 'variant'] : ['model', 'effort'];
+  const keys = projection.harness === 'opencode' ? flow.OPENCODE_TUNABLE_KEYS : flow.CLAUDE_TUNABLE_KEYS;
   return flow.managedDefinitionBytes(source, keys).equals(flow.managedDefinitionBytes(destination, keys));
 }
 

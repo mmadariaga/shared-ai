@@ -7,11 +7,11 @@ User-owned tunable frontmatter lines survive managed agent installs: `model` + `
 
 ### Requirement: Claude tunable keys
 
-The Claude installer MUST declare user-owned tunable keys as exactly model and effort through one per-harness constant rather than per-projection annotations. Current Claude agent projections MUST NOT carry tunable-key metadata in the manifest.
+The Claude installer MUST declare user-owned tunable keys as exactly model, effort, and harness through one per-harness constant rather than per-projection annotations. The `harness` key is the hand-set routing key of `sai/policies/opencode-dispatch.md`. Current Claude agent projections MUST NOT carry tunable-key metadata in the manifest.
 
 #### Scenario: claude tunable set is model and effort
 - **WHEN** the Claude installer's tunable-keys constant is read
-- **THEN** it contains exactly model and effort
+- **THEN** it contains exactly model, effort, and harness
 
 #### Scenario: no Claude projection carries tunable metadata
 - **WHEN** each Claude agent projection rule is inspected
@@ -126,8 +126,20 @@ Uninstall SHALL identify matching managed agents by comparing destination body a
 
 ### Requirement: Doctor accepts tunable-only agent differences
 
-Doctor SHALL compare compiled managed agent content using the body-and-non-tunable identity rule. User-owned tunable differences SHALL NOT be reported as managed-content drift.
+Doctor SHALL compare compiled managed agent content using the body-and-non-tunable identity rule, reading the tunable keys from the per-harness tunable-key constants of the installer. User-owned tunable differences SHALL NOT be reported as managed-content drift.
 
 #### Scenario: Tuned agent passes identity inspection
-- **WHEN** doctor inspects an agent whose only differences are model or effort or variant settings
+- **WHEN** doctor inspects an agent whose only differences are model or effort or variant settings, or a hand-set `harness` line in a Claude Code agent file
 - **THEN** its managed-content identity check reports compatible content
+
+### Requirement: No shipped Claude agent carries the harness key
+
+No Claude Code agent source, agent template, or generated Claude Code agent SHALL carry a `harness:` frontmatter line. The user SHALL set it by hand, and install SHALL preserve a hand-set line as a tunable.
+
+#### Scenario: Shipped sources carry no harness line
+- **WHEN** the Claude Code agent sources, the worker template, and the generated Claude Code agents are read
+- **THEN** none of them carries a `harness:` frontmatter line
+
+#### Scenario: Hand-set harness line survives install
+- **WHEN** a user adds `harness: opencode` to an installed Claude Code agent file and installation runs again
+- **THEN** the destination keeps the `harness: opencode` line while its managed content is updated

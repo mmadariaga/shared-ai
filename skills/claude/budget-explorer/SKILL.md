@@ -14,6 +14,12 @@ metadata:
 
 "cheap research subagent" → `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)`.
 
+## Opencode routing
+
+Fetch `@sai/policies/opencode-dispatch.md`
+
+When the agent file carries `harness: opencode`, the route query of that policy decides the dispatch: an opencode-routed agent is created, continued, and disposed through it instead of the `Agent` call above.
+
 ## Model resolution
 
 The subagent model is controlled by the `model` frontmatter of the resolved `budget-explorer.md` agent file: `.claude/agents/budget-explorer.md` takes precedence over `~/.claude/agents/budget-explorer.md`. Do not pass a per-spawn model parameter.
