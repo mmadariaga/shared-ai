@@ -8,8 +8,8 @@ Reviews historical SAI command runs and discusses runtime errors, instruction dr
 
 `/sai-retrospective <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>]`
 
-- `<target>` is a Claude Code session ID, an opencode `ses_` session ID, or a `sai-` / `/sai-` command name. Without one, the command asks for it. A session ID that names a subagent (Claude Code) or a child session (opencode) resolves to its parent execution.
-- `--paths` lists project paths separated by commas; commas inside quotes do not separate. It defaults to the current project, and the command says so.
+- `<target>` is a Claude Code session ID, an opencode `ses_` session ID, or a `sai-` / `/sai-` command name. Without one, the command asks for it. A session ID that names a subagent (Claude Code) or a child session (opencode) resolves to its parent execution. An opencode `ses_` target is found by its ID, so you can run the command from any directory.
+- `--paths` lists project paths separated by commas; commas inside quotes do not separate. It defaults to the current project, and the command says so; for an opencode `ses_` target it defaults to the directory that session recorded. With `--paths`, a session outside the listed projects is reported as excluded.
 - `--with-worktrees` measures each project together with the worktrees that `git worktree list` reports for it; a sibling directory that is its own repository and a worktree already removed from disk stay out.
 - `--limit` caps command executions, in total across all supplied projects. It defaults to 5 and applies to command targets only.
 
