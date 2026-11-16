@@ -420,12 +420,12 @@ The suite SHALL run once on the final tree, after the resolution is staged for a
 
 ### Requirement: Conflict stop cycle
 
-Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write and SHALL then apply the stop shortcut, so that only the files left after it reach the worker. For those files it SHALL have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the worker's resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A stop with no file left after the shortcut SHALL go straight to continuation. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker, once one exists, when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
+Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write and SHALL then apply the stop shortcut, so that only the files left after it reach the worker. For those files it SHALL have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the worker's resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A stop with no file left after the shortcut SHALL go straight to continuation. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker, once one exists, when another conflict appears. A clean launch SHALL create no worker until the final-tree review needs a correction and SHALL go straight to the final-tree review, verification, and the collision check.
 
 #### Scenario: Clean launch needs no worker
 
-- **WHEN** the launch leaves no unmerged path
-- **THEN** no worker is created and the run proceeds to final-tree verification and the ADR/DDR collision check
+- **WHEN** the launch leaves no unmerged path and the final-tree review finds nothing to correct
+- **THEN** no worker is created and the run proceeds to the final-tree review, final-tree verification, and the ADR/DDR collision check
 
 #### Scenario: Findings open after round three are pending
 
@@ -476,7 +476,7 @@ Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch
 
 ### Requirement: Merge closing report
 
-The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, a shortcut file with the reason recorded in `stop-{n}-shortcuts.md`, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
+The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, a shortcut file with the reason recorded in `stop-{n}-shortcuts.md`, the final-tree review with each introduced duplicate block, its `path:line` occurrences, and what was done about it, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
 
 #### Scenario: Restore command for a changed branch
 
@@ -497,6 +497,11 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 - **WHEN** a stop resolved files through the stop shortcut
 - **THEN** the closing report lists each shortcut file with the reason recorded in `stop-{n}-shortcuts.md`
+
+#### Scenario: Introduced duplicate blocks are reported
+
+- **WHEN** the final-tree review judged one or more introduced duplicate blocks
+- **THEN** the closing report lists each block with its `path:line` occurrences and whether it was kept as intentional, with the reason, or corrected
 
 ### Requirement: Merge coordinator loads only its own contracts
 
@@ -684,7 +689,7 @@ The `/sai-merge` coordinator SHALL decide once per conflict stop, after the capt
 
 ### Requirement: Merge worker created at the first judgment
 
-The `/sai-merge` coordinator SHALL create the merge worker only when a step needs judgment: the strategy of a stop with files left after the shortcut, a test correction of a new failure, or a renumbering plan of a `needs-judgment` collision. A clean launch, and a run whose stops all take the shortcut and that needs no correction or renumbering plan, SHALL create no worker. Once created, one worker SHALL serve the rest of the run, and Finalize SHALL dispose it only when one was created.
+The `/sai-merge` coordinator SHALL create the merge worker only when a step needs judgment: the strategy of a stop with files left after the shortcut, a final-tree correction, a test correction of a new failure, or a renumbering plan of a `needs-judgment` collision. A clean launch, and a run whose stops all take the shortcut and that needs no final-tree correction, test correction, or renumbering plan, SHALL create no worker. Once created, one worker SHALL serve the rest of the run, and Finalize SHALL dispose it only when one was created.
 
 #### Scenario: All stops resolved by shortcut
 
@@ -695,3 +700,55 @@ The `/sai-merge` coordinator SHALL create the merge worker only when a step need
 
 - **WHEN** no worker exists and final verification finds a `new` failure
 - **THEN** the coordinator creates the worker before it sends the test-correction step
+
+#### Scenario: Final-tree correction creates the worker
+
+- **WHEN** no worker exists and the final-tree review confirms a defect to correct
+- **THEN** the coordinator creates the worker before it sends the final-correction step
+
+### Requirement: Final-tree review of the integration result
+
+Once the integration is whole (a merge with its resolution staged, a rebase after its last stop) and before the suite runs, the `/sai-merge` coordinator SHALL review the integration result as a whole: the diff of the final tree against the source branch over every file the run's commits touched, including commits replayed without conflicts and a launch without conflicts. It SHALL judge that diff against the commit intent of both sides, run `merge.js duplicates`, and write each finding and each judgment to `final-review.md` in the run directory. Each introduced duplicate block SHALL be judged: an intentional repetition SHALL stay with its reason, and a defect SHALL be corrected, never removed by a rule. A finding still open after 3 attempts SHALL be the obstacle `final-review`. Corrections SHALL follow the test-correction commit rule: on a merge they SHALL join the merge commit, and on a rebase they SHALL go in one additional local commit on top of the rebased branch.
+
+#### Scenario: Commit replayed without conflicts is reviewed
+
+- **WHEN** a rebase replays a commit without conflicts that repeats a paragraph the other side already added
+- **THEN** the final-tree review covers that commit's files and reports the repeated paragraph as a finding
+
+#### Scenario: Intentional repetition stays
+
+- **WHEN** an introduced duplicate block is judged an intentional repetition by the commit intent of both sides
+- **THEN** the block stays unchanged and its reason is recorded in `final-review.md`
+
+#### Scenario: Rebase correction is one extra commit
+
+- **WHEN** the final-tree review corrects a defect after a finished rebase
+- **THEN** the correction is made in one additional local commit on top of the rebased branch and nothing is pushed
+
+### Requirement: Introduced duplicate block detection
+
+`merge.js duplicates` SHALL take the captured provenance in `--input-file <path>` and SHALL refuse to run while the index holds an unmerged path. It SHALL examine only the files of the final tree (the index) that differ from both sides, SHALL ignore lines with no letter or digit after trimming, and SHALL list each block of 4 or more consecutive significant lines that appears at least twice in a file of the final tree and at most once in the same file on each side. A block already duplicated on one side SHALL NOT be listed. Each listed block SHALL carry every occurrence with its `path:line`, its byte range, and the file's `before_hash`. Binary, non-UTF-8, and too-large files SHALL be listed as skipped, and the result SHALL hold at most 100 blocks with `total_blocks` and `truncated` stating when more exist. The tool SHALL flag and SHALL NOT decide.
+
+#### Scenario: Block duplicated by the integration is flagged
+
+- **WHEN** a four-line paragraph appears once on each side and twice in the final tree of the same file
+- **THEN** `duplicates` lists one block with the `path:line` and byte range of both occurrences
+
+#### Scenario: Block already duplicated on one side is not flagged
+
+- **WHEN** a block appears twice in the target side's file and twice in the final tree
+- **THEN** `duplicates` does not list it
+
+#### Scenario: Short and punctuation-only lines do not count
+
+- **WHEN** a repeated block has fewer than four lines with a letter or digit, its other lines being blank or brace-only
+- **THEN** `duplicates` does not list it
+
+### Requirement: Final-tree correction through the worker
+
+The coordinator SHALL write no repository file to correct a final-tree finding. It SHALL send the worker `Active step: final-correction — follow sai/commands/merge/steps/final-correction.md` with each finding, its paths, lines, and occurrence ranges, capture the ranges the worker proposes with `merge.js correction --record <file>`, send the `apply` step with that snapshot so the worker writes through `merge.js write`, review the diff, stage it, and run the duplicates check again. The final-correction report SHALL carry `analysis` and `corrections` as byte ranges with each file's `before_hash`, and SHALL report a correction that would change a conflict strategy's decision instead of making it.
+
+#### Scenario: Defect is corrected through the existing correction path
+
+- **WHEN** the final-tree review confirms an introduced duplicate block as a defect
+- **THEN** the worker proposes the ranges in a `final-correction` report, the coordinator captures them with `merge.js correction`, and the worker writes the corrected text through `merge.js write` in its `apply` step

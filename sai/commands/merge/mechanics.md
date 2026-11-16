@@ -31,6 +31,7 @@ All calls take `--json --cwd <project-root>`.
 | `verify --baseline --record <file>` | the suite before the integration, with the failing tests named when the output allows it |
 | `verify --baseline-record <file> --baseline-hash <sha256>` | the suite compared with the baseline: a failure not in the baseline is rerun once, and `comparison.status` is `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`. `verification_result` is `failed` only for a new failure |
 | `collision` (provenance in `--input-file <path>`, `--record <file>`) | the ADR/DDR collision frontier: `not-applicable`, `no-collision`, or `needs-judgment` |
+| `duplicates` (provenance in `--input-file <path>`, `--record <file>`) | the introduced duplicate blocks of the final tree: see Introduced duplicates |
 | `status` | `HEAD`, its subject, the current branch, the staged and unmerged paths, and the operation state |
 
 `verify` reports `unavailable` with its reason when no suite is detected, several candidates are ambiguous, or the command cannot start; that is not a failing test and not a pass.
@@ -44,6 +45,12 @@ All calls take `--json --cwd <project-root>`.
 - `lines`: for a file with all three stages, `added` and `removed` (the non-blank lines the incoming change adds and removes against the common ancestor), `present_on_other_side` (how many added lines the other side already holds, with multiplicity), `missing` (the added lines it lacks, at most 50), `still_on_other_side` (how many removed lines the other side still holds), and `still`; `null` for a file without all three stages (binary, deleted on one side, renamed).
 
 The stdout summary of a file keeps at most 5 incoming commits, with `patch_id` and `same_subject` as booleans and `range_diff` as its status, the count of `upstream_touching`, and the counts of `lines` with at most 3 `missing` lines. The safety check (`stage_checkout_preserves_combined_content`) stays beside the indicators: a `false` side admits no whole-side checkout.
+
+## Introduced duplicates
+
+`duplicates` reads the final tree (the index, which must hold no unmerged path) and the two sides named by the provenance (`target_sha`, `source_sha`). It looks only at files that differ from both sides, because a file equal to one side has that side's duplicates. Per file it compares lines after trimming and ignores every line with no letter or digit (blank, brace-only, punctuation-only). A block is `min_lines` (4) consecutive significant lines. A block is **introduced** when it appears at least twice in the file of the final tree (occurrences do not overlap) and at most once in the same file on each side; a block already duplicated on one side is never listed. Consecutive flagged windows that repeat together are one block.
+
+The result lists `blocks`, at most 100 (`total_blocks` and `truncated` say when more exist), each with `significant_lines`, a `preview` of its first lines, `target_count` and `source_count`, and its `occurrences`: `location` (`path:line`), `path`, `line`, `end_line`, the byte range `start` and `end` (from the first line of the block through the newline of its last line), and the file's `before_hash`. Files it could not compare (`binary`, `not-utf-8`, `too-large`) are in `skipped`. The ranges and hash are the inputs of `correction` when the file still equals the index. The tool flags and never decides: an intentional repetition is the coordinator's judgment.
 
 ## Resolution formats
 
