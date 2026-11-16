@@ -198,14 +198,14 @@ test('install and uninstall inventories are exact and deterministic for every su
           const agentPath = path.join(destinationRoot.agents, worker.claude.agent);
           const entry = managedAgents.find(candidate => candidate.dest === agentPath);
           assert.ok(entry, `Claude should enumerate ${worker.claude.agent}`);
-          assert.deepEqual(entry.tunableKeys, ['model', 'effort'],
+          assert.deepEqual(entry.tunableKeys, ['model', 'effort', 'harness'],
             'Claude managed agent entries should declare their tunable keys');
         }
         for (const agent of ['budget-explorer.md', 'budget-executor.md', 'budget-subagent.md']) {
           const agentPath = path.join(destinationRoot.agents, agent);
           const entry = managedAgents.find(candidate => candidate.dest === agentPath);
           assert.ok(entry, `Claude should enumerate ${agent}`);
-          assert.deepEqual(entry.tunableKeys, ['model', 'effort'],
+          assert.deepEqual(entry.tunableKeys, ['model', 'effort', 'harness'],
             'Claude budget generic agent entries should declare their tunable keys');
         }
       }

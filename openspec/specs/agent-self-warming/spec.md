@@ -309,10 +309,10 @@ A dispatcher SHALL treat a subagent message that is the wake literal `warming co
 
 ### Requirement: Dispatcher sends the warming switch
 
-A dispatcher that disposes an agent SHALL end the task message and every continuation to it with the line `Warming: on, agent {agent}. Fetch @sai/policies/cache-warming.md and follow it as a subagent.`, naming the agent's installed name and carrying no timings. Workers and `budget-explorer` SHALL receive it, and a `budget-subagent` SHALL receive it only on a continuation that a card sends, because its one-shot task message is followed by its dispose. `budget-executor` SHALL never receive it and SHALL never arm. The ready-only dispatch of the two-phase handshake, a one-shot helper task, and every message of a dispatcher that cannot dispose (a worker that dispatches its own helpers) SHALL carry no switch, so only an agent that disposes another one enables its warming. A message that carries no switch SHALL arm nothing for a subagent and SHALL supersede nothing: an earlier wait of that subagent's chain SHALL keep re-arming at each wake until its window closes or the agent is disposed. The dispatcher SHALL resolve no timings and SHALL keep no state about the agent's warming, except that on opencode it SHALL keep the `warming:` line of each worker's last real message with that worker's handle, which decides only whether a `none` shell listing at dispose still needs the `dispose` message.
+A dispatcher that disposes an agent SHALL end the task message and every continuation to it with the line `Warming: on, agent {agent}. Fetch @sai/policies/cache-warming.md and follow it as a subagent.`, naming the agent's installed name and carrying no timings. Workers and `budget-explorer` SHALL receive it, and a `budget-subagent` SHALL receive it only on a continuation that a card sends, because its one-shot task message is followed by its dispose. `budget-executor` SHALL never receive it and SHALL never arm. An opencode-routed agent (`sai/policies/opencode-dispatch.md`) SHALL never receive it and SHALL declare `warming: false`. The ready-only dispatch of the two-phase handshake, a one-shot helper task, and every message of a dispatcher that cannot dispose (a worker that dispatches its own helpers) SHALL carry no switch, so only an agent that disposes another one enables its warming. A message that carries no switch SHALL arm nothing for a subagent and SHALL supersede nothing: an earlier wait of that subagent's chain SHALL keep re-arming at each wake until its window closes or the agent is disposed. The dispatcher SHALL resolve no timings and SHALL keep no state about the agent's warming, except that on opencode it SHALL keep the `warming:` line of each worker's last real message with that worker's handle, which decides only whether a `none` shell listing at dispose still needs the `dispose` message.
 
 #### Scenario: Worker continuation carries the switch
-- **WHEN** a coordinator continues a worker it will dispose
+- **WHEN** a coordinator continues a worker it will dispose that is not opencode-routed
 - **THEN** the continuation ends with the warming switch naming the worker's installed agent and carries no interval or max
 
 #### Scenario: Ready-only dispatch carries no switch
@@ -330,6 +330,10 @@ A dispatcher that disposes an agent SHALL end the task message and every continu
 #### Scenario: Message without a switch to a warming subagent
 - **WHEN** a subagent whose wait is armed receives a real message that carries no switch
 - **THEN** it arms nothing new, and its earlier wait keeps re-arming at each wake until its window closes or it is disposed
+
+#### Scenario: opencode-routed agent receives no switch
+- **WHEN** a coordinator sends a task message or continuation to an opencode-routed agent
+- **THEN** the message carries no warming switch and the agent's messages declare `warming: false`
 
 ### Requirement: Foreground arm check decides whether to launch
 

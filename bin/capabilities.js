@@ -158,6 +158,9 @@ function translate(registry, name, harness, installRoot) {
     // On Linux the literal grant above already covers the SAI temp root; other platforms need their resolved root.
     const saiGrant = `${saiTempRoot().split(path.sep).join('/')}/*`;
     if (!saiGrant.startsWith('/tmp/opencode/')) grant('external_directory', saiGrant);
+    // An opencode agent dispatched from Claude Code (`sai/policies/opencode-dispatch.md`) saves its reports in the report
+    // directory under the Claude Code SAI temp root.
+    grant('external_directory', `${saiTempRoot('claude').split(path.sep).join('/')}/*`);
     const dataRoot = process.env.XDG_DATA_HOME || '~/.local/share';
     grant('external_directory', `${dataRoot}/opencode/tool-output/*`);
     grant('external_directory', `${dataRoot}/opencode/shell/*`);

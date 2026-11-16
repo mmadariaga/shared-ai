@@ -88,6 +88,16 @@ test('contract-specific web, auxiliary and delegation access is translated separ
     && (rule.resource === `${saiTempRoot}/*` || (saiTempRoot.startsWith('/tmp/opencode/') && rule.resource === '/tmp/opencode/*'))), 'a grant covers the resolved SAI temp root');
 });
 
+test('E6 opencode agents may write the Claude Code SAI temp root, and Claude Code agents gain no such rule', () => {
+  const claudeTempRoot = path.join(harnessRoot('claude'), 'sai').split(path.sep).join('/');
+  for (const profile of ['research', registry.assignments.agents['sai-3-red-worker']]) {
+    const rules = translate(registry, profile, 'opencode').permissions;
+    assert.ok(rules.some(rule => rule.action === 'external_directory' && rule.resource === `${claudeTempRoot}/*` && rule.effect === 'allow'), `${profile} is granted ${claudeTempRoot}/*`);
+  }
+  const claude = translate(registry, 'research', 'claude');
+  assert.ok(!claude.allowedTools.includes(claudeTempRoot), 'Claude Code carries no external_directory rule');
+});
+
 test('commands have independent requirements without inventing opencode command permissions', () => {
   for (const harness of ['claude', 'opencode']) {
     const projections = projected(harness);

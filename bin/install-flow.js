@@ -17,7 +17,8 @@ try {
   jsoncParser = null;
 }
 
-const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
+// `harness` is the hand-set routing key of `sai/policies/opencode-dispatch.md`: no template ships it, and the user owns it.
+const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort', 'harness']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
 const { splitCustomizations, preserveCustomizations } = require('./managed-customizations');
 const { resolveGlobalRoot, parseOpencodeConfigLine } = require('../skills/universal/fetch/harness-root');
