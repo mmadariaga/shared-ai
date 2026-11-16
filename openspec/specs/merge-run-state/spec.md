@@ -7,7 +7,7 @@ TBD - created by archiving change sai-merge-runs-goal-driven. Update Purpose aft
 
 ### Requirement: merge-run machine holds identifiers only
 
-The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, `assumption`, and `report-dir` as paths without duplicates, the `report-dir` reference listed in the run view as `report_dirs`. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
+The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, `assumption`, `shortcut`, and `report-dir` as paths without duplicates, the `report-dir` reference listed in the run view as `report_dirs` and the `shortcut` reference, which names a stop's `stop-{n}-shortcuts.md`, as `shortcuts`. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
 
 #### Scenario: Launch records the run identifiers
 
@@ -28,6 +28,11 @@ The `sai-state` registry SHALL register a `merge-run@1` machine built on the sha
 
 - **WHEN** a running run receives `record` with ref `report-dir` and the same path twice
 - **THEN** the run view lists that path once under `report_dirs`
+
+#### Scenario: Shortcut files are recorded once
+
+- **WHEN** a running run receives `record` with ref `shortcut` and the same path twice
+- **THEN** the run view lists that path once under `shortcuts`
 
 ### Requirement: Merge run session and run directory
 
@@ -60,7 +65,7 @@ The merge coordinator SHALL keep one `sai-state` session per run under the key `
 
 ### Requirement: Interrupted merge run resumes from the store and the git state
 
-After a context compaction, or when the start finds a run of the named branch in progress, the coordinator SHALL emit `status`, read the files the state references, and compare them with the git state (`MERGE_HEAD` or the rebase directory, unmerged and staged paths, and `git log`); the git state SHALL win over the store. It SHALL continue at the first unfinished part of the stop: a written but unstaged resolution is reviewed as it stands, an unwritten stop starts at the strategy, and an operation with nothing left to resolve goes to final verification. Without the store, it SHALL rebuild from the git state and the newest `merge-*` run directory holding `provenance.json` for the branch, and a missing run directory SHALL leave the baseline unavailable. A `running` or `escalated` stored run whose git state shows no merge or rebase in progress SHALL be closed `stopped` and reported as ended outside the run. A lost worker handle SHALL be replaced by a new worker, spending no attempt, that receives a hand-over file and the report directory recorded in the store (a new one opened when the store is unavailable), and an `escalated` stage SHALL ask its question again.
+After a context compaction, or when the start finds a run of the named branch in progress, the coordinator SHALL emit `status`, read the files the state references, and compare them with the git state (`MERGE_HEAD` or the rebase directory, unmerged and staged paths, and `git log`); the git state SHALL win over the store. It SHALL continue at the first unfinished part of the stop: a written but unstaged resolution is reviewed as it stands, a file that `stop-{n}-shortcuts.md` lists as a shortcut is not decided again but checked with `--phase materialized --partial` and staged, an unwritten stop starts at the shortcut, and an operation with nothing left to resolve goes to final verification. Without the store, it SHALL rebuild from the git state and the newest `merge-*` run directory holding `provenance.json` for the branch, and a missing run directory SHALL leave the baseline unavailable. A `running` or `escalated` stored run whose git state shows no merge or rebase in progress SHALL be closed `stopped` and reported as ended outside the run. A lost worker handle SHALL be replaced by a new worker, spending no attempt, that receives a hand-over file and the report directory recorded in the store (a new one opened when the store is unavailable), and an `escalated` stage SHALL ask its question again.
 
 #### Scenario: Operation ended outside the run
 
@@ -76,6 +81,11 @@ After a context compaction, or when the start finds a run of the named branch in
 
 - **WHEN** a resumed run creates a new worker after its handle was lost
 - **THEN** the new worker's first message opens with the `--report-dir` line naming the directory that `status` lists
+
+#### Scenario: Applied shortcut is not decided again
+
+- **WHEN** an interrupted run resumes at a stop whose `stop-{n}-shortcuts.md` already lists a shortcut file
+- **THEN** the coordinator checks that file with `--phase materialized --partial` and stages it, or leaves it staged, without deciding it again
 
 ### Requirement: Merge coordinator states the merge-run event shape
 

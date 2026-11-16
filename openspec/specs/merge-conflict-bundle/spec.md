@@ -7,7 +7,7 @@ TBD - created by archiving change merge-conflict-bundle-and-tool-write. Update P
 
 ### Requirement: Conflict bundle command
 
-The merge tool SHALL provide a read-only `bundle` action that takes the conflict snapshot's `--record <reference>` and `--record-hash <sha256>` and returns the conflict bundle built from that captured record. For every conflicted file the bundle SHALL carry the path, the file category, a `conflict_category`, the permitted `resolution`, the sides present, whether a whole-side checkout preserves Git-combined content, and each side's commit messages. For every conflict region of a `text` file the bundle SHALL carry the `conflict_id`, the starting line, and the decoded `ours`, `base`, and `theirs` versions, where `ours` and `theirs` denote git stages 2 and 3. The action SHALL write no file and SHALL save no receipt.
+The merge tool SHALL provide a read-only `bundle` action that takes the conflict snapshot's `--record <reference>` and `--record-hash <sha256>` and returns the conflict bundle built from that captured record. For every conflicted file the bundle SHALL carry the path, the file category, a `conflict_category`, the permitted `resolution`, the sides present, whether a whole-side checkout preserves Git-combined content, and each side's commit messages. For every conflict region of a `text` file the bundle SHALL carry the `conflict_id`, the starting line, and the decoded `ours`, `base`, and `theirs` versions, where `ours` and `theirs` denote git stages 2 and 3. Without `--out` the action SHALL write no file and SHALL save no receipt. With `--out <file>` it SHALL write the complete bundle to that new record file outside the repository and print a summary with the record's path and hash and, per file, its path, category, conflict category, resolution, and region count; `--out` SHALL be rejected for any action other than `bundle`.
 
 #### Scenario: Text conflict carries three versions and commit messages
 
@@ -18,6 +18,11 @@ The merge tool SHALL provide a read-only `bundle` action that takes the conflict
 
 - **WHEN** `bundle` runs during a merge in progress
 - **THEN** the bundle's `sides.theirs` equals `MERGE_HEAD` and `sides.ours` equals `HEAD`
+
+#### Scenario: Bundle goes to a record file
+
+- **WHEN** the coordinator runs `bundle` with `--out <file>`
+- **THEN** the complete bundle is written to that file and stdout carries its summary with the file's hash
 
 ### Requirement: Bounded region context
 
