@@ -22,8 +22,11 @@ npx --allow-git=all github:mmadariaga/shared-ai
 # 2. In each project where you want to use shared-AI:
 npx --allow-git=all github:mmadariaga/shared-ai setup /path/to/your/project
 ```
+[More installation details](#installation).
 
-In the configured project, start with `/sai-explore`. See [Installation](#installation) for details.
+In the configured project, start with `/sai-explore`:
+
+![Workflow](workflow.png)
 
 ## Index
 
