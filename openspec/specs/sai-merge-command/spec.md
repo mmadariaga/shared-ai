@@ -128,7 +128,7 @@ The system SHALL compose the `rebase-squash` squash commit with the same informa
 
 ### Requirement: Deterministic merge mechanical evidence
 
-The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, collision, and closing status facts through `sai/tools/merge.js`, and the coordinator SHALL collect them. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets. The preflight data SHALL include `worktree_id`: the first 16 hexadecimal characters of the sha256 of the worktree's top-level path from `git rev-parse --show-toplevel`, resolved to its native real path, with `/` separators and, on Windows, lowercased, so the same folder yields the same `worktree_id` whatever its letter case or separators and two worktrees yield different values.
+The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, collision, and closing status facts through `sai/tools/merge.js`, and the coordinator SHALL collect them. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets. The containment indicators of a conflict snapshot are evidence for the coordinator's stop shortcut decision and SHALL NOT decide it. A tool whose output is large SHALL write it to a record file and print a JSON summary with the record's path and hash: `conflicts`, `correction`, and `verify` through `--record`, and `bundle` through `--out`. The preflight data SHALL include `worktree_id`: the first 16 hexadecimal characters of the sha256 of the worktree's top-level path from `git rev-parse --show-toplevel`, resolved to its native real path, with `/` separators and, on Windows, lowercased, so the same folder yields the same `worktree_id` whatever its letter case or separators and two worktrees yield different values.
 
 #### Scenario: Preflight facts are collected together
 
@@ -143,7 +143,7 @@ The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suit
 #### Scenario: Mechanical evidence does not authorize a resolution
 
 - **WHEN** an engine result establishes a repository fact
-- **THEN** semantic decisions remain worker responsibilities and approval, lifecycle validation, independent review, unrelated-change protection, HEAD checks, and Git mutations remain coordinator responsibilities
+- **THEN** semantic decisions remain worker responsibilities, except the stop shortcut that the coordinator decides from the containment indicators, and approval, lifecycle validation, independent review, unrelated-change protection, HEAD checks, and Git mutations remain coordinator responsibilities
 
 #### Scenario: Collection errors remain failures
 
@@ -420,7 +420,7 @@ The suite SHALL run once on the final tree, after the resolution is staged for a
 
 ### Requirement: Conflict stop cycle
 
-Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write, have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
+Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write and SHALL then apply the stop shortcut, so that only the files left after it reach the worker. For those files it SHALL have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the worker's resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A stop with no file left after the shortcut SHALL go straight to continuation. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker, once one exists, when another conflict appears. A clean launch SHALL create no worker and SHALL go straight to verification and the collision check.
 
 #### Scenario: Clean launch needs no worker
 
@@ -434,7 +434,7 @@ Each conflict stop SHALL be closed only when its conflicts are resolved by commi
 
 #### Scenario: Later rebase stop reuses the worker
 
-- **WHEN** `git rebase --continue` stops at another conflicted commit
+- **WHEN** `git rebase --continue` stops at another conflicted commit after a worker was created
 - **THEN** the coordinator starts a new stop with the same worker and its own obstacle budgets
 
 #### Scenario: Inherited whitespace does not block staging
@@ -476,7 +476,7 @@ Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch
 
 ### Requirement: Merge closing report
 
-The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
+The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, a shortcut file with the reason recorded in `stop-{n}-shortcuts.md`, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
 
 #### Scenario: Restore command for a changed branch
 
@@ -492,6 +492,11 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 - **WHEN** the stash reference after the rebase differs from the one recorded before the launch
 - **THEN** the closing report names the stash entry that stays and `git stash pop`
+
+#### Scenario: Shortcut decisions are reported
+
+- **WHEN** a stop resolved files through the stop shortcut
+- **THEN** the closing report lists each shortcut file with the reason recorded in `stop-{n}-shortcuts.md`
 
 ### Requirement: Merge coordinator loads only its own contracts
 
@@ -609,3 +614,84 @@ On a fresh `/sai-merge` run, the coordinator SHALL open the run state and create
 
 - **WHEN** the invocation resumes an interrupted run of the same branch
 - **THEN** the coordinator follows Resuming, skips the rest of Start, and asks no question
+
+### Requirement: Conflict snapshot containment indicators
+
+`merge.js conflicts` SHALL add containment indicators to the conflict snapshot as evidence about whether the change a stop replays (git's stage 3: the replayed commit, or the source branch in a merge) is already contained in the other side (stage 2); the indicators SHALL NOT decide it. For the stop they SHALL give the operation (`merge`, `rebase`, or `cherry-pick`), the incoming tip, the merge base, how many commits were scanned on each side, and `truncated` when a side reached the scan limit of 500 commits. For each file they SHALL give the incoming commits that touch it, each with its `patch_id` matches (upstream commits whose `git patch-id --stable` equals its own), its `same_subject` matches, and its `range_diff` pairing (`=` identical, `!` modified, or `null`); the upstream commits that touch it; and, for a file with all three stages, line indicators: the non-blank lines the incoming change adds and removes against the common ancestor, how many added lines the other side already holds counted with multiplicity, the added lines it lacks (at most 50), and the removed lines it still holds. A file without all three stages SHALL carry `null` line indicators. The record file SHALL hold the complete indicators, and stdout SHALL carry a bounded summary of at most 5 incoming commits per file, with `patch_id` and `same_subject` as booleans, `range_diff` as its status, the count of upstream commits, and at most 3 missing lines. The existing safety check `stage_checkout_preserves_combined_content` SHALL stay beside the indicators.
+
+#### Scenario: Contained replayed change shows its evidence
+
+- **WHEN** a rebase stop replays a commit whose added lines all exist on the other side and upstream holds a commit with the same subject
+- **THEN** the file's indicators name that upstream commit under `same_subject` and report every added line as present on the other side with no missing line
+
+#### Scenario: Lines the other side lacks are listed
+
+- **WHEN** the replayed commit adds lines that the other side does not hold
+- **THEN** the file's line indicators list those lines under `missing`
+
+#### Scenario: Identical patch is paired
+
+- **WHEN** upstream holds a commit with the same patch as the replayed commit
+- **THEN** the incoming commit names that upstream commit under `patch_id` and its `range_diff` pairing has status `=`
+
+#### Scenario: Record keeps the detail and stdout the summary
+
+- **WHEN** `merge.js conflicts --record <file>` captures a stop
+- **THEN** the record holds the complete indicators and stdout carries only their bounded summary
+
+#### Scenario: File without three stages has no line indicators
+
+- **WHEN** a conflicted file lacks one of the three stages
+- **THEN** it carries commit evidence and its line indicators are `null`
+
+### Requirement: Coordinator stop shortcut
+
+The `/sai-merge` coordinator SHALL decide once per conflict stop, after the capture and before any worker step, which files take a whole-side checkout without the worker. A file SHALL take the shortcut only when the safety check holds for stage 2 and the commit evidence and line indicators agree that the replayed change is already contained in the other side, allowing for an upstream version that evolved after the replayed commit; the decision SHALL come from the indicators, not from a fixed mechanical rule. A file whose safety check fails, or whose indicators are weak or contradict each other, SHALL go to the worker. In a merge the decision SHALL be made per file from the indicators of the source branch's commits. The coordinator SHALL run `git checkout --ours` for each shortcut path, check those files with `merge.js resolution --phase materialized --partial`, send a rejected file to the worker, write every file's decision and reason to `stop-{n}-shortcuts.md` in the run directory, emit `record` with `ref` `shortcut` at its first write, and stage the shortcut paths. A shortcut file SHALL have no stop review. When files remain, the coordinator SHALL capture them again with `merge.js conflicts --record <run>/stop-{n}-rest.json` and the following steps SHALL use that latest capture. The shortcut SHALL use only the already authorized whole-side checkout and the existing resolution check, and the coordinator SHALL write no repository file directly. The behavior SHALL be the same on Claude Code and opencode.
+
+#### Scenario: Contained change skips the worker
+
+- **WHEN** a file's safety check holds and its indicators agree that the replayed change is already on the other side
+- **THEN** the coordinator resolves it with `git checkout --ours`, checks it with `--phase materialized --partial`, records the decision and reason in `stop-{n}-shortcuts.md`, and stages it without sending it to the worker
+
+#### Scenario: Failed safety check goes to the worker
+
+- **WHEN** the safety check of a file fails for stage 2
+- **THEN** the file takes no shortcut and goes to the worker
+
+#### Scenario: Contradicting indicators go to the worker
+
+- **WHEN** the replayed commit adds lines that the other side lacks
+- **THEN** the coordinator takes no shortcut for that file and sends it to the worker
+
+#### Scenario: Mixed stop is split
+
+- **WHEN** a stop has both shortcut files and files that need judgment
+- **THEN** the shortcut files are resolved and staged first, the remaining files are captured again in `stop-{n}-rest.json`, and the worker receives only those files
+
+### Requirement: Partial materialized resolution check
+
+`merge.js resolution` SHALL accept `--partial`, which checks only the files the resolution source names instead of requiring the complete affected file inventory, and SHALL still fail when the source names no affected file. The coordinator's shortcut resolution source SHALL be a terminal merge report in the run directory with one `git-ours` record per shortcut file, `changed_files: []`, and no decisions, and its confirmed-decisions file SHALL be `[]`.
+
+#### Scenario: Shortcut files of a mixed stop pass alone
+
+- **WHEN** a stop has several conflicted files and the resolution source names only the shortcut files, each checked out from its captured stage
+- **THEN** `merge.js resolution --phase materialized --partial` succeeds and lists only those files as checked
+
+#### Scenario: Without partial the inventory stays complete
+
+- **WHEN** the same source is checked without `--partial`
+- **THEN** the check fails with an incomplete affected file inventory
+
+### Requirement: Merge worker created at the first judgment
+
+The `/sai-merge` coordinator SHALL create the merge worker only when a step needs judgment: the strategy of a stop with files left after the shortcut, a test correction of a new failure, or a renumbering plan of a `needs-judgment` collision. A clean launch, and a run whose stops all take the shortcut and that needs no correction or renumbering plan, SHALL create no worker. Once created, one worker SHALL serve the rest of the run, and Finalize SHALL dispose it only when one was created.
+
+#### Scenario: All stops resolved by shortcut
+
+- **WHEN** every file of every stop takes the shortcut and the final tree needs no correction or renumbering plan
+- **THEN** the run finalizes without creating a worker
+
+#### Scenario: First correction creates the worker
+
+- **WHEN** no worker exists and final verification finds a `new` failure
+- **THEN** the coordinator creates the worker before it sends the test-correction step

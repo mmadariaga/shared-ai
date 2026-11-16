@@ -44,7 +44,7 @@ test('the coordinator is one goal-driven card that loads only the six policies a
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
     assert.ok(card.includes(heading), heading);
   }
-  assert.ok(card.length < 24500, 'the coordinator stays a short goal-driven card');
+  assert.ok(card.length < 27500, 'the coordinator stays a short goal-driven card');
 });
 
 test('the wrappers load the harness fetch skill and the coordinator directly, with no boot adapter or bootstrap', () => {
@@ -153,13 +153,13 @@ test('E4: a rebase runs the suite once on the final tree and corrects a new fail
   assert.match(final, /The suite runs once, on the final tree: after the resolution is staged for a merge, and after the last stop for a rebase, never per stop/);
   assert.match(final, /the corrections go in one additional local commit on top of the rebased branch, made when verification shows no new failure/);
   assert.match(final, /On a merge the corrections join the merge commit/);
-  assert.match(coordinator(), /another unmerged stop starts a new stop with the same worker/);
+  assert.match(coordinator(), /another unmerged stop starts a new stop \(with the same worker, once one exists\)/);
   assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `new-failure`, or `collision`/);
 });
 
 test('E5, E10: commit intent that cannot decide escalates through the picker with written options, and abort is only explicit', () => {
   const card = coordinator();
-  const escalation = section(card, '3. **Escalation.**', '4. **Apply.**');
+  const escalation = section(card, '4. **Escalation.**', '5. **Apply.**');
   assert.match(escalation, /Escalate at once, without spending an attempt/);
   assert.match(escalation, /native picker with options you write/);
   assert.match(escalation, /leaving the operation in progress without finalizing/);
@@ -215,13 +215,13 @@ test('E9: a missing branch is asked, a missing ref stops with the cause, and an 
 });
 
 test('E11: review findings still open after the third round are pending and do not stop the run', () => {
-  const review = section(coordinator(), '5. **Review.**', '6. **Stage.**');
+  const review = section(coordinator(), '6. **Review.**', '7. **Stage.**');
   assert.match(review, /at most 3 fix rounds under `incremental-review\.md`/);
   assert.match(review, /fidelity to the commit intent of both sides, any change outside the conflict regions, and leftover conflict markers/);
   assert.match(review, /Findings still open after round 3 are pending: write them to `findings\.md`[\s\S]+and go on/);
   assert.match(review, /`review-delta\.js snapshot`/);
   assert.match(coordinator(), /the findings still pending after round 3/);
-  assert.match(coordinator(), /6\. \*\*Stage\.\*\* `git add` the resolved paths\. Run no `git diff --cached --check`/);
+  assert.match(coordinator(), /7\. \*\*Stage\.\*\* `git add` the resolved paths\. Run no `git diff --cached --check`/);
 });
 
 test('E12, E13, E17, E18: collision repair, local pre-authorized commits, squash method, and the restore command', () => {

@@ -12,6 +12,8 @@ The state records the exact repository, `HEAD`, index entries, refs, operation i
 
 A record is a file outside the repository, in the run directory, written exclusively and identified by its path and sha256. Verify a retained hash before using the record; a missing or changed record stops the work that depends on it. Never overwrite a conflict snapshot to make a failed comparison pass.
 
+A tool whose output is large writes it to a record file and prints a JSON summary with the record's path and hash: `conflicts`, `correction`, and `verify` through `--record`, and `bundle` through `--out`. Read the summary first and open the record only for the detail it lacks.
+
 ## Calls
 
 All calls take `--json --cwd <project-root>`.
@@ -20,9 +22,9 @@ All calls take `--json --cwd <project-root>`.
 | --- | --- |
 | `preflight` | the `worktree_id` (the first 16 hex characters of the sha256 of the worktree's real top-level path, with `/` separators and lowercased on Windows, so one folder keeps one id whatever its spelling; the card keys the run-state slot `merge-{worktree_id}-{branch}` with it), the current branch, the dirty paths with their status codes, the branches not yet merged into `HEAD` newest first (local branches, the current branch's upstream, and each remote's default branch, with name and full `ref`), and whether a merge or rebase is in progress |
 | `provenance --source-ref <full-ref> --method merge\|rebase --squash yes\|no\|not-applicable` | after checking the ref, the target, source, and merge-base shas, the source-introduced ADR/DDR records, the governing rules of each side, and the upstream facts: the current branch's upstream, how many commits a rebase or squash would rewrite, and how many of those the upstream already holds (`force_push_needed`) |
-| `conflicts --record <file>` | the conflict snapshot: affected files with category, regions, and stage OIDs, and the unrelated-content inventory, captured before any write |
-| `bundle`, `write` | the conflict bundle for the worker, and the worker's only way to change an affected file (`steps/common.md`, `steps/apply.md`) |
-| `resolution --record --record-hash --source --confirmed [--phase authored\|materialized]` | the check of a written resolution against the snapshot: complete inventory, decisions that match, text only inside the regions, unrelated content untouched, and, in `materialized`, whole-side checkouts equal to their captured stage |
+| `conflicts --record <file>` | the conflict snapshot: affected files with category, regions, stage OIDs, the safety check, and the containment indicators, and the unrelated-content inventory, captured before any write. The record holds the complete indicators; stdout carries their bounded summary |
+| `bundle [--out <file>]`, `write` | the conflict bundle for the worker (with `--out`, written to a new record file outside the repository and summarized on stdout), and the worker's only way to change an affected file (`steps/common.md`, `steps/apply.md`) |
+| `resolution --record --record-hash --source --confirmed [--phase authored\|materialized] [--partial]` | the check of a written resolution against the snapshot: complete inventory, decisions that match, text only inside the regions, unrelated content untouched, and, in `materialized`, whole-side checkouts equal to their captured stage. `--partial` checks only the files the resolution names, for the shortcut files of a mixed stop |
 | `correction --record <file>` | a snapshot of explicit byte ranges (array in `--input-file <path>`) that authorizes a correction outside the conflict regions |
 | `suite --record <file>` | the project-marker test command, when no documented command exists |
 | `verify` | one run of the fixed test command; `--command '<line>'` for a documented command, else `--suite <record> --suite-hash <sha256>` |
@@ -32,3 +34,38 @@ All calls take `--json --cwd <project-root>`.
 | `status` | `HEAD`, its subject, the current branch, the staged and unmerged paths, and the operation state |
 
 `verify` reports `unavailable` with its reason when no suite is detected, several candidates are ambiguous, or the command cannot start; that is not a failing test and not a pass.
+
+## Containment indicators
+
+`conflicts` adds `containment` to the stop (`operation`: `merge`, `rebase`, or `cherry-pick`, the incoming tip, the merge base, how many commits were scanned on each side, and `truncated` when a side exceeded 500 commits) and to each file. They are evidence about one question: is the change the stop replays (git's stage 3: the replayed commit, or the source branch in a merge) already contained in the other side (stage 2)? They never decide it. Per file:
+
+- `incoming`: the incoming commits that touch the file, each with `sha`, `subject`, `patch_id` (upstream commits whose `git patch-id --stable` equals this commit's), `same_subject` (upstream commits with the same subject), and `range_diff` (`{upstream, status}` of the `git range-diff` pairing, where `=` is an identical patch and `!` a modified one, or `null` when unpaired or skipped for size).
+- `upstream_touching`: the upstream commits that touch the file.
+- `lines`: for a file with all three stages, `added` and `removed` (the non-blank lines the incoming change adds and removes against the common ancestor), `present_on_other_side` (how many added lines the other side already holds, with multiplicity), `missing` (the added lines it lacks, at most 50), `still_on_other_side` (how many removed lines the other side still holds), and `still`; `null` for a file without all three stages (binary, deleted on one side, renamed).
+
+The stdout summary of a file keeps at most 5 incoming commits, with `patch_id` and `same_subject` as booleans and `range_diff` as its status, the count of `upstream_touching`, and the counts of `lines` with at most 3 `missing` lines. The safety check (`stage_checkout_preserves_combined_content`) stays beside the indicators: a `false` side admits no whole-side checkout.
+
+## Resolution formats
+
+**Complete resolution payload.** The resolution source of `resolution --source` is a terminal merge report (`status: completed`, `summary`, `changed_files`) whose `summary` holds one `## Complete resolution payload` heading followed by one JSON object, in a fenced block or bare, with nothing after it but another `## ` heading:
+
+```json
+{"selected_contextual_decisions": [{"conflict_id": "code:src/a.js#1", "decision": "synthesis"}],
+ "files": [{"path": "src/a.js", "category": "code", "source": "authored",
+            "regions": [{"conflict_id": "code:src/a.js#1", "text": "..."}],
+            "decisions": [{"conflict_id": "code:src/a.js#1", "decision": "synthesis"}]},
+           {"path": "src/b.js", "category": "code", "source": "git-ours", "regions": [], "decisions": []}]}
+```
+
+`category` is `specs`, `adr-ddr`, or `code`; `source` is `authored` (`changed_files` lists its path), `git-ours`, or `git-theirs` (no regions). `steps/apply.md` gives the worker's form. For a shortcut the coordinator writes the same report in the run directory with one `git-ours` record per shortcut file, `changed_files: []`, and no decisions.
+
+**`stop-{n}-confirmed.json`.** The array of decisions the check expects, `[{"conflict_id": "<category>:<path>#<n>", "decision": "ours|theirs|synthesis"}]`, one per semantic region and per whole-side file of the strategy; a file without regions is `<category>:<path>#1`. The shortcut writes `[]`.
+
+**`stop-{n}-shortcuts.md`.** One line per file of the stop, written once the shortcut files pass the materialized check and before they are staged:
+
+```text
+- <path> | shortcut ours | <reason: the evidence that the change is already contained>
+- <path> | worker | <reason: the safety check or indicator that kept it from the shortcut>
+```
+
+A `shortcut` line means the whole-side checkout was applied and checked; the closing report quotes these lines.

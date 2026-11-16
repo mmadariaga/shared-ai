@@ -276,6 +276,110 @@ function stageSplice(file, stage) {
   return Buffer.concat(parts);
 }
 
+// Containment indicators: evidence the coordinator weighs to decide whether the change a stop
+// replays (git's stage 3) is already on the other side (stage 2). They decide nothing.
+const SCAN_LIMIT = 500;
+const RANGE_DIFF_PAIRS = 10000;
+const RANGE_DIFF_LINE = /^\s*(?:-|\d+):\s+(?:([0-9a-f]+)|-+)\s+([=!<>])\s+(?:-|\d+):\s+(?:([0-9a-f]+)|-+)\s/;
+
+function commitList(cwd, range, name) {
+  return git(cwd, ['log', '--no-merges', '--format=%H%x00%s', '-n', String(SCAN_LIMIT), ...range, ...(name ? ['--', name] : [])]).split('\n')
+    .filter(Boolean).map(line => { const [sha, subject] = line.split('\0'); return { sha, subject }; });
+}
+
+function patchIds(cwd, range) {
+  const log = spawnSync('git', ['log', '--no-merges', '-p', '--no-color', '--no-ext-diff', '--no-textconv', '--format=commit %H', '-n', String(SCAN_LIMIT), ...range],
+    { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  if (log.error || log.status !== 0) return null;
+  const ids = spawnSync('git', ['patch-id', '--stable'], { cwd, input: log.stdout, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (ids.error || ids.status !== 0) return null;
+  const result = new Map();
+  for (const line of ids.stdout.split('\n').filter(Boolean)) {
+    const [id, sha] = line.split(' ');
+    result.set(sha, id);
+  }
+  return result;
+}
+
+// The commit-level facts of one stop, or null when no other side can be named.
+function incomingFacts(cwd) {
+  const rev = name => git(cwd, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`], true)?.trim() || null;
+  const merging = rev('MERGE_HEAD');
+  const replayed = merging ? null : rev('REBASE_HEAD');
+  const tip = merging || replayed || rev('CHERRY_PICK_HEAD');
+  const base = tip && (git(cwd, ['merge-base', 'HEAD', tip], true)?.trim() || null);
+  if (!base) return null;
+  const incomingRange = merging ? [`${base}..${tip}`] : [`${tip}^!`];
+  const upstreamRange = [`${base}..HEAD`];
+  const incoming = commitList(cwd, incomingRange);
+  const upstream = commitList(cwd, upstreamRange);
+  const incomingIds = patchIds(cwd, incomingRange);
+  const upstreamIds = patchIds(cwd, upstreamRange);
+  const pairs = new Map();
+  if (incoming.length && upstream.length && incoming.length * upstream.length <= RANGE_DIFF_PAIRS) {
+    const out = git(cwd, ['range-diff', '--no-color', ...incomingRange, ...upstreamRange], true) ?? '';
+    const full = (prefix, list) => prefix && list.find(item => item.sha.startsWith(prefix))?.sha;
+    for (const line of out.split('\n')) {
+      const match = RANGE_DIFF_LINE.exec(line);
+      const left = match && full(match[1], incoming);
+      const right = match && full(match[3], upstream);
+      if (left && right) pairs.set(left, { upstream: right.slice(0, 12), status: match[2] });
+    }
+  }
+  const matches = new Map(incoming.map(item => {
+    const id = incomingIds?.get(item.sha);
+    return [item.sha, { sha: item.sha.slice(0, 12), subject: item.subject,
+      patch_id: id ? upstream.filter(other => upstreamIds?.get(other.sha) === id).map(other => other.sha.slice(0, 12)) : [],
+      same_subject: upstream.filter(other => other.subject === item.subject).map(other => other.sha.slice(0, 12)),
+      range_diff: pairs.get(item.sha) ?? null }];
+  }));
+  return { operation: merging ? 'merge' : replayed ? 'rebase' : 'cherry-pick', incoming_tip: tip.slice(0, 12), merge_base: base.slice(0, 12),
+    incoming_scanned: incoming.length, upstream_scanned: upstream.length,
+    truncated: incoming.length >= SCAN_LIMIT || upstream.length >= SCAN_LIMIT, incomingRange, upstreamRange, matches };
+}
+
+// What the replayed change does to one file against the other side's version: how many of the
+// lines it adds already exist there, and how many it removes are already gone.
+function lineIndicators(cwd, file) {
+  const oid = stage => file.stages.find(item => item.stage === stage)?.oid;
+  if (!oid(1) || !oid(2) || !oid(3)) return null;
+  const blob = id => spawnSync('git', ['cat-file', 'blob', id], { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const other = blob(oid(2));
+  const diff = git(cwd, ['diff', '--no-color', '--no-ext-diff', '--no-textconv', '-U0', oid(1), oid(3)], true);
+  if (other.status !== 0 || diff === null) return null;
+  const counts = new Map();
+  for (const line of lineList(other.stdout)) { const key = line.replace(/\r?\n$/, ''); counts.set(key, (counts.get(key) || 0) + 1); }
+  const take = key => { const left = counts.get(key) || 0; if (left) counts.set(key, left - 1); return left > 0; };
+  const added = []; const removed = [];
+  for (const line of diff.split('\n')) {
+    if (/^(\+\+\+|---) /.test(line) || !/^[+-]/.test(line)) continue;
+    const text = line.slice(1).replace(/\r$/, '');
+    if (text.trim()) (line[0] === '+' ? added : removed).push(text);
+  }
+  const missing = added.filter(text => !take(text));
+  const still = removed.filter(text => (counts.get(text) || 0) > 0);
+  const clip = items => items.slice(0, 50).map(text => text.length > 200 ? text.slice(0, 200) + '…' : text);
+  return { added: added.length, present_on_other_side: added.length - missing.length, missing: clip(missing),
+    removed: removed.length, still_on_other_side: still.length, still: clip(still) };
+}
+
+function fileContainment(cwd, facts, file) {
+  const touching = new Set(commitList(cwd, facts.incomingRange, file.path).map(item => item.sha));
+  return { incoming: [...facts.matches].filter(([sha]) => touching.has(sha)).map(([, entry]) => entry),
+    upstream_touching: commitList(cwd, facts.upstreamRange, file.path).map(item => item.sha.slice(0, 12)),
+    lines: lineIndicators(cwd, file) };
+}
+
+// The bounded form printed on stdout; the record keeps the complete lists.
+function containmentSummary(entry) {
+  if (!entry) return entry;
+  const lines = entry.lines && { added: entry.lines.added, present_on_other_side: entry.lines.present_on_other_side,
+    removed: entry.lines.removed, still_on_other_side: entry.lines.still_on_other_side, missing: entry.lines.missing.slice(0, 3) };
+  return { incoming_total: entry.incoming.length, incoming: entry.incoming.slice(0, 5).map(item => ({ sha: item.sha, subject: item.subject,
+    patch_id: item.patch_id.length > 0, same_subject: item.same_subject.length > 0, range_diff: item.range_diff?.status ?? null })),
+    upstream_touching: entry.upstream_touching.length, lines };
+}
+
 function conflicts(cwd) {
   const names = split0(git(cwd, ['diff', '--name-only', '--diff-filter=U', '-z'])).sort(compare);
   return fact(cwd, 'conflicts', ['head', 'index', 'operations', 'tree', 'path:openspec', ...names.map(name => `path:${name}`)], () => {
@@ -289,13 +393,16 @@ function conflicts(cwd) {
     const categoryOf = name => /^(docs\/adr|docs\/ddr)\//.test(name) ? 'adr-ddr' : hasSpecs && name.startsWith('openspec/') ? 'specs' : 'code';
     const categories = { specs: 0, 'adr-ddr': 0, code: 0 };
     for (const name of names) categories[categoryOf(name)]++;
-    return { categories, operation: inProgress(cwd), unrelated: Object.fromEntries(inventory.filter(name => !names.includes(name)).map(name => [name, fileState(cwd, name)])), files: names.map(name => {
+    const facts = names.length ? incomingFacts(cwd) : null;
+    const stopContainment = facts && (({ incomingRange, upstreamRange, matches, ...rest }) => rest)(facts);
+    return { categories, operation: inProgress(cwd), containment: stopContainment, unrelated: Object.fromEntries(inventory.filter(name => !names.includes(name)).map(name => [name, fileState(cwd, name)])), files: names.map(name => {
       const type = fileState(cwd, name).type;
       const bytes = type === 'file' ? fs.readFileSync(localPath(cwd, name)) : null;
       const category = categoryOf(name);
       const file = { path: name, category, type, before: bytes?.toString('base64') ?? null,
         regions: bytes ? regions(bytes).map((region, i) => ({ ...region, conflict_id: `${category}:${name}#${i + 1}` })) : [],
         stages: index.filter(item => item.path === name) };
+      if (facts) file.containment = fileContainment(cwd, facts, file);
       file.stage_checkout_preserves_combined_content = {};
       for (const stage of file.stages.filter(item => item.stage !== 1)) {
         if (!file.regions.length) { file.stage_checkout_preserves_combined_content[stage.stage] = true; continue; }
@@ -605,7 +712,8 @@ function resolutionFromSource(source) {
   return { outer, payload: JSON.parse(text.slice(0, end)), source_hash: hash(source) };
 }
 
-function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored') {
+// `partial` checks only the files the resolution names: a mixed stop resolves its shortcut files first.
+function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored', partial = false) {
   const { payload, outer, source_hash: sourceHash } = resolutionFromSource(source);
   const errors = [];
   if (snapshotStale(cwd, snapshot)) errors.push('conflict snapshot HEAD/index/operation is stale');
@@ -688,7 +796,7 @@ function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored') {
       }
     }
   }
-  if (seen.size !== files.length) errors.push('incomplete affected file inventory');
+  if (partial ? !seen.size : seen.size !== files.length) errors.push('incomplete affected file inventory');
   return { outcome: errors.length ? 'failure' : 'success', source_hash: sourceHash, errors, checked_files: [...seen] };
 }
 
@@ -897,7 +1005,8 @@ function saveSnapshot(cwd, result, filename) {
   return { ...saved,
     data: { correction: result.data.correction || false, ...(result.data.categories ? { categories: result.data.categories } : {}),
       ...(result.data.operation ? { operation: result.data.operation } : {}),
-      files: result.data.files.map(({ before, ...file }) => file) } };
+      ...(result.data.containment ? { containment: result.data.containment } : {}),
+      files: result.data.files.map(({ before, containment, ...file }) => containment === undefined ? file : { ...file, containment: containmentSummary(containment) }) } };
 }
 
 // One mechanical action, with its receipt recorded when --record is given.
@@ -929,17 +1038,24 @@ function collect(action, cwd, opts, stdin) {
   }
   else if (action === 'collision') result = collision(cwd, stdin());
   else if (action === 'bundle' || action === 'write') {
+    if (opts.out && action !== 'bundle') throw new Error('--out applies to bundle only');
     const record = fs.readFileSync(opts.record);
     if (!opts['record-hash'] || hash(record) !== opts['record-hash']) throw new Error('missing or changed snapshot hash');
     result = action === 'bundle' ? bundle(cwd, JSON.parse(record), opts.context === undefined ? 3 : Number(opts.context))
       : write(cwd, JSON.parse(record), path.resolve(opts.record), stdin());
+    if (opts.out) {
+      const saved = saveReceipt(cwd, result, opts.out);
+      result = { ...saved, data: { context_lines: result.data.context_lines, sides: result.data.sides,
+        files: result.data.files.map(file => ({ path: file.path, category: file.category, conflict_category: file.conflict_category,
+          resolution: file.resolution, regions: file.regions.length })) } };
+    }
   }
   else if (action === 'resolution') {
     if (!['authored', 'materialized'].includes(opts.phase || 'authored')) throw new Error('invalid resolution phase');
     const record = fs.readFileSync(opts.record);
     if (!opts['record-hash'] || hash(record) !== opts['record-hash']) throw new Error('missing or changed snapshot hash');
     result = checkResolution(cwd, JSON.parse(record), fs.readFileSync(opts.source, 'utf8'),
-      JSON.parse(fs.readFileSync(opts.confirmed, 'utf8')), opts.phase || 'authored');
+      JSON.parse(fs.readFileSync(opts.confirmed, 'utf8')), opts.phase || 'authored', Boolean(opts.partial));
   } else throw new Error(`unknown action: ${action}`);
   if (opts.record && !['conflicts', 'correction', 'resolution', 'bundle', 'write'].includes(action)) {
     result = saveReceipt(cwd, result, opts.record);
@@ -955,11 +1071,12 @@ function collect(action, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file', 'out'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
     if (arg === '--baseline') { opts.baseline = true; continue; }
+    if (arg === '--partial') { opts.partial = true; continue; }
     if (arg === '--help') {
       process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
@@ -967,9 +1084,10 @@ function main(argv) {
         + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
         + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
-        + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages)\n'
+        + 'conflicts: the record holds the complete containment indicators of each file; stdout carries their bounded summary\n'
+        + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] [--out <external-new-file>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages; with --out the bundle goes to the file and stdout prints its summary and hash)\n'
         + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
-        + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
+        + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized] [--partial] (--partial checks only the files the resolution names)\n'
         + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
       return 0;
     }
