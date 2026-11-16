@@ -1514,3 +1514,105 @@ test('by command: sections written before the miss figures make the new figures 
     assert.match(total[8], /^≥\$|^unavailable$/);
   } finally { f.close(); }
 });
+
+// ---------------------------------------------------------------------------
+// opencode-routed workers: their tokens come from opencode.db by sessionID (E12)
+// ---------------------------------------------------------------------------
+
+const ROUTED_AGENT = 'sai-1-spec-proposal-worker';
+const dispatchCommand = (kind, tail) => `node "/home/u/.claude/sai/tools/opencode-dispatch.js" ${kind} ${tail}`;
+const dispatchNotice = (taskId, toolUseId, file) => `<task-notification>\n<task-id>${taskId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>${file}</output-file>\n<status>completed</status>\n<summary>Background command "opencode-${ROUTED_AGENT}" completed (exit code 0)</summary>\n</task-notification>`;
+
+// A /sai-plan run on Claude Code whose spec worker ran through `opencode-dispatch.js` (one `start`, one `continue`).
+// `where` is how the result of the start reaches the transcript: its output file on disk, a Read of that file, or nowhere.
+// `session` puts the worker's session in a scratch opencode.db, and `costs` are the cost of its two requests.
+function routedFixture({ where = 'disk', session = true, costs = [0, 0] } = {}) {
+  const f = claudeScratch();
+  const oc = scratch();
+  if (session) {
+    oc.session('ses_spec', null, ROUTED_AGENT, 5);
+    oc.request('ses_spec', 6, { tokens: { input: 30, output: 3, reasoning: 1, cache: { read: 300, write: 10 } }, cost: costs[0], content: [tool('write')] });
+    oc.request('ses_spec', 8, { tokens: { input: 31, output: 4, reasoning: 0, cache: { read: 0, write: 0 } }, cost: costs[1] });
+  }
+  const root = f.root('cs-root');
+  const out = path.join(f.base, 'start.output');
+  const line = JSON.stringify({ status: 'ok', sessionID: 'ses_spec', text: 'ready', tokens: { input: 1, output: 1, reasoning: 0, cache_read: 0, cache_write: 0 }, cost: 0, exit_code: 0, error: null });
+  if (where === 'disk') fs.writeFileSync(out, `${line}\n`);
+  f.command(root, 'cs-root', 1, 'sai-plan', 'demo');
+  f.request(root, 'cs-root', 2, { tools: [
+    use('Bash', { command: dispatchCommand('route', `--agent ${ROUTED_AGENT} --cwd ${f.project}`) }),
+    use('Bash', { command: dispatchCommand('start', `--agent ${ROUTED_AGENT} --input-file /tmp/m/1.txt --cwd ${f.project}`), run_in_background: true }, { id: 'toolu_start', result: `Command running in background with ID: bgstart. Output is being written to: ${out}. You will be notified when it completes.` }),
+  ] });
+  f.user(root, 'cs-root', 10, dispatchNotice('bgstart', 'toolu_start', out));
+  if (where === 'read') f.request(root, 'cs-root', 12, { tools: [use('Read', { file_path: out }, { result: `     1→${line}` })] });
+  f.request(root, 'cs-root', 14, { tools: [use('Bash', { command: dispatchCommand('continue', `--session ses_spec --agent ${ROUTED_AGENT} --input-file /tmp/m/2.txt --cwd ${f.project}`), run_in_background: true }, { id: 'toolu_cont', result: 'Command running in background with ID: bgcont. Output is being written to: /nowhere/cont.output.' })] });
+  f.request(root, 'cs-root', 20, { tools: [use('Bash', { command: 'node change-telemetry.js collect' })], pending: true });
+  const env = { ...f.env, XDG_DATA_HOME: oc.env.XDG_DATA_HOME };
+  return { f, oc, env, close: () => { oc.close(); f.close(); } };
+}
+
+const routedRow = text => metricCells(text, 'Spec', ROUTED_AGENT);
+const specRows = text => section(text, 'Spec').split('\n').filter(line => /^\| (?:↳ )?(?:unavailable \()?sai-1-spec-proposal-worker/.test(line));
+
+sqliteTest('claude collect: an opencode-routed worker is a row of its own with the tokens of its opencode session, a continue adding no second row (E12)', () => {
+  const r = routedFixture();
+  try {
+    assert.equal(collect(claudeOptions(r.f), { env: r.env }).outcome, 'written');
+    const text = telemetryOf(r.f);
+    const row = routedRow(text);
+    assert.deepEqual({ model: row.model, requests: row.requests, input: row.input, output: row.output, reasoning: row.reasoning, cacheRead: row.cacheRead, cacheWrite: row.cacheWrite, toolCalls: row.toolCalls, wakes: row.wakes }, { model: 'model-a', requests: '2', input: '61', output: '7', reasoning: '1', cacheRead: '300', cacheWrite: '10', toolCalls: '1', wakes: '0' });
+    assert.equal(specRows(text).length, 1, 'start and continue are one worker');
+    // The provider recorded no price (cost 0): the cost is unavailable, never $0, and never estimated from the Claude table.
+    assert.equal(row.cost, 'unavailable');
+    assert.ok(!/\$0\.0000/.test(text));
+  } finally { r.close(); }
+});
+
+sqliteTest('claude collect: a price the provider recorded for the routed worker is kept (E12)', () => {
+  const r = routedFixture({ costs: [0.5, 0.75] });
+  try {
+    collect(claudeOptions(r.f), { env: r.env });
+    assert.equal(routedRow(telemetryOf(r.f)).cost, '$1.2500');
+  } finally { r.close(); }
+});
+
+sqliteTest('claude collect: the result of the start is found in a Read of its output file when the file is gone (E12)', () => {
+  const r = routedFixture({ where: 'read' });
+  try {
+    collect(claudeOptions(r.f), { env: r.env });
+    const row = routedRow(telemetryOf(r.f));
+    assert.deepEqual([row.requests, row.input], ['2', '61']);
+  } finally { r.close(); }
+});
+
+sqliteTest('claude collect: a session that opencode.db does not hold is an unavailable row and a partial total, never zero (E12)', () => {
+  const r = routedFixture({ session: false });
+  try {
+    collect(claudeOptions(r.f), { env: r.env });
+    const text = telemetryOf(r.f);
+    assert.deepEqual(specRows(text).map(line => line.split(' | ')[0]), [`| unavailable (${ROUTED_AGENT}: session ses_spec is not in opencode.db)`]);
+    assert.match(text.split('\n').find(line => /^\| ≥?\d/.test(line)), /unavailable/);
+  } finally { r.close(); }
+});
+
+test('claude collect: an opencode.db that cannot be read says why on the unavailable row (E12)', () => {
+  const r = routedFixture({ session: false });
+  try {
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'no-opencode-'));
+    try {
+      collect(claudeOptions(r.f), { env: { ...r.f.env, XDG_DATA_HOME: empty } });
+      assert.match(telemetryOf(r.f), new RegExp(`unavailable \\(${ROUTED_AGENT}: session ses_spec is not in opencode\\.db \\(No opencode database was found at`));
+    } finally { fs.rmSync(empty, { recursive: true, force: true }); }
+  } finally { r.close(); }
+});
+
+sqliteTest('claude collect: a start whose sessionID is nowhere in the transcript is an unavailable worker (E12)', () => {
+  const r = routedFixture({ where: 'nowhere' });
+  try {
+    collect(claudeOptions(r.f), { env: r.env });
+    const text = telemetryOf(r.f);
+    assert.match(text, new RegExp(`unavailable \\(${ROUTED_AGENT}: its sessionID is not in the transcript\\)`));
+    // The continue names its session, so that worker is measured from opencode.db.
+    assert.equal(routedRow(text).requests, '2');
+  } finally { r.close(); }
+});

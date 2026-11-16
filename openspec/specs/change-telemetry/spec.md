@@ -395,7 +395,7 @@ On Claude Code the collector SHALL anchor a direct `/sai-plan` or `/sai-build` e
 
 ### Requirement: Claude Code figures come only from what the transcripts record
 
-On Claude Code each request SHALL be one assistant `message.id`, however many transcript lines repeat it; each tool call SHALL count once by its `tool_use` id; and a `tool_result` with `is_error: true` SHALL count as one tool error of the tool call it answers. `Cache write` SHALL be the sum of the 5-minute and 1-hour cache creation tokens, or the unsplit cache creation value when the transcript has no split. `reasoning` and `variant` SHALL be `unavailable` in every Claude Code row and total, never `0`. The transcripts record no cost, so the cost of each Claude Code request SHALL be estimated from its tokens and the dated price table `sai/tools/model-prices.js`, and every estimated figure SHALL carry `~`. Each Claude Code section SHALL carry a note that states the price table date and that the transcripts record no cost, reasoning, or variant. A model with no price entry, or whose entry lacks the price of a token type the request used, SHALL have an `unavailable` cost, never zero, and every total that includes it SHALL be marked partial with `≥`. No other figure SHALL be estimated.
+On Claude Code each request SHALL be one assistant `message.id`, however many transcript lines repeat it; each tool call SHALL count once by its `tool_use` id; and a `tool_result` with `is_error: true` SHALL count as one tool error of the tool call it answers. `Cache write` SHALL be the sum of the 5-minute and 1-hour cache creation tokens, or the unsplit cache creation value when the transcript has no split. `reasoning` and `variant` SHALL be `unavailable` in every Claude Code row and total, never `0`. The transcripts record no cost, so the cost of each Claude Code request SHALL be estimated from its tokens and the dated price table `sai/tools/model-prices.js`, and every estimated figure SHALL carry `~`. Each Claude Code section SHALL carry a note that states the price table date and that the transcripts record no cost, reasoning, or variant. A model with no price entry, or whose entry lacks the price of a token type the request used, SHALL have an `unavailable` cost, never zero, and every total that includes it SHALL be marked partial with `≥`. No other figure SHALL be estimated. These rules cover the requests the Claude Code transcripts record; the requests of an opencode-routed worker of a Claude Code run SHALL come from `opencode.db` and SHALL carry their own tokens, reasoning, and recorded cost, never an estimate from the price table.
 
 #### Scenario: repeated lines of one response are one request
 - **WHEN** a subagent transcript holds three lines with the same `message.id`
@@ -536,3 +536,31 @@ A section written before the `rewritten` and `overcost` figures existed SHALL ke
 #### Scenario: the policy defines the cache figures
 - **WHEN** a reader opens `sai/policies/change-telemetry.md`
 - **THEN** it has a `## Cache and cost` section that defines a cache miss, the overcost, `Overcost/miss`, and `Cache hit`, and a `## By command` section
+
+### Requirement: Claude Code telemetry rows include opencode-routed workers
+
+When the collector reads a Claude Code run, it SHALL report each worker that the run's root session or one of its subagents dispatched through `opencode-dispatch.js` as an agent row of its own, below the dispatching session. It SHALL take the worker's `sessionID` from the dispatch result recorded in the transcript (the result of the `start` call, the output file of its background task, or a later call that read that file), count every `continue` of that session as the same worker, and read the worker's requests from `opencode.db` read-only.
+
+#### Scenario: a routed worker's tokens appear on its row
+- **WHEN** a Claude Code run started a worker with `opencode-dispatch.js start`, its result names a `sessionID`, and `opencode.db` holds that session
+- **THEN** the telemetry section lists that worker with the tokens of its opencode session's assistant messages, and a `continue` of the same session adds no second row
+
+### Requirement: An opencode-routed worker whose session cannot be read is unavailable
+
+The collector SHALL report an opencode-routed worker as an `unavailable (<agent>: <reason>)` row with unknown figures, never as a row of zero tokens, when its `sessionID` is not in the transcript, when `opencode.db` does not hold its session, or when `opencode.db` cannot be opened; the reason SHALL name the cause, including the reader's message when the database cannot be opened.
+
+#### Scenario: a session missing from opencode.db
+- **WHEN** a Claude Code run dispatched an opencode-routed worker whose session is not in `opencode.db`
+- **THEN** its row reads `unavailable (<agent>: session <sessionID> is not in opencode.db)` and the section total is partial
+
+#### Scenario: an opencode.db that cannot be read
+- **WHEN** the run dispatched an opencode-routed worker and `opencode.db` cannot be opened
+- **THEN** the worker's row is unavailable and its reason carries the reader's message
+
+### Requirement: An opencode-routed worker's zero cost is no price
+
+The collector SHALL use the cost recorded in `opencode.db` for an opencode-routed worker's request only when it is above zero. A recorded cost of 0 SHALL make that request's cost unavailable, and the price table of the Claude models SHALL NOT estimate it.
+
+#### Scenario: a provider that reports no price
+- **WHEN** every request of an opencode-routed worker records a cost of 0
+- **THEN** the worker's row shows its tokens with an unavailable cost, never `$0.0000`

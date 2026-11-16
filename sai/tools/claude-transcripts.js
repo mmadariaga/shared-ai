@@ -16,6 +16,11 @@
  * agent's own `wait.js ... warm` background wait opens, matched on the command and
  * the background task id, never on the task description or a reply literal.
  *
+ * An agent routed to opencode (sai/policies/opencode-dispatch.md) leaves no
+ * subagent file: `dispatchedWorkers` finds its session through the dispatch tool's
+ * results, and `openClaudeSource` reads that session's requests from `opencode.db`
+ * through `opencode-db.js`, read-only.
+ *
  * `retrospective.js` uses the locating and parsing helpers; `change-telemetry.js`
  * uses `openClaudeSource`, which answers the same questions as its opencode
  * source.
@@ -24,6 +29,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, opencodeSessionMessages } = require('./opencode-db');
 
 const UNAVAILABLE = 'unavailable';
 const OPEN_END = Number.MAX_SAFE_INTEGER;
@@ -180,6 +186,96 @@ function claudeWakes(rows, tasks = claudeWaitTasks(rows)) {
 }
 
 // ---------------------------------------------------------------------------
+// opencode-routed workers: the sessions `opencode-dispatch.js` ran for the agent
+// ---------------------------------------------------------------------------
+
+/**
+ * The opencode-routed workers a transcript dispatched (sai/policies/opencode-dispatch.md). A worker runs as an
+ * `opencode run` session, not as a Claude Code subagent, so no `subagents/` file records it: its trace is the shell
+ * calls of `opencode-dispatch.js start|continue` and the one JSON object each prints (`sessionID`, `tokens`, ...).
+ * The object of a call is read where it landed: the result of the call itself, the output file of its background task
+ * (named by the call's result and by the task notification, read from disk when it is still there), or the later call
+ * that read that file. A `continue` names its session in its own command line. A worker is one session; its first call
+ * names the agent and the time. A `start` whose `sessionID` cannot be found is a worker with `session: null`: its
+ * tokens are unavailable, never zero. Returns `[{ session, agent, tool_use_id, time, calls }]` in time order.
+ */
+const DISPATCH_CALL = /node(?:\.exe)?["']?\s+["']?[^\s"']*opencode-dispatch\.js["']?\s+(start|continue)\b/;
+const OUTPUT_FILE = /Output is being written to:\s*(\S+?\.output)/;
+const NOTIFIED_TOOL_USE = /<tool-use-id>\s*([^<\s]+)\s*<\/tool-use-id>/;
+const NOTIFIED_OUTPUT = /<output-file>\s*([^<\s]+)\s*<\/output-file>/;
+// Claude Code's Read and `cat -n` prefix each line with its number.
+const LINE_NUMBER = /^\s*\d+[\t→]\s?/;
+
+function flagValue(command, flag) {
+  const match = command.match(new RegExp(`${flag}[ \\t]+("([^"]+)"|'([^']+)'|(\\S+))`));
+  return match ? (match[2] ?? match[3] ?? match[4]) : null;
+}
+
+// The dispatch result objects in a text: JSON lines with a `sessionID` and a `tokens` object.
+function dispatchResultsIn(text) {
+  const found = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    const candidate = line.replace(LINE_NUMBER, '').trim();
+    if (!candidate.startsWith('{') || !candidate.includes('"sessionID"')) continue;
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed?.sessionID === 'string' && parsed.sessionID && parsed.tokens && typeof parsed.tokens === 'object') found.push(parsed);
+    } catch { /* a line that is not a result object */ }
+  }
+  return found;
+}
+
+function dispatchedWorkers(rows, { readFile = file => fs.readFileSync(file, 'utf8') } = {}) {
+  const calls = new Map(), uses = [], results = new Map(), outputs = new Map();
+  for (const row of rows) {
+    if (row.type === 'assistant') {
+      for (const block of blocks(row)) {
+        if (block?.type !== 'tool_use' || !block.id) continue;
+        uses.push({ id: block.id, input: block.input });
+        const command = SHELL_TOOLS.has(block.name) && typeof block.input?.command === 'string' ? block.input.command : '';
+        const kind = command.match(DISPATCH_CALL)?.[1];
+        if (kind) calls.set(block.id, { id: block.id, kind, agent: flagValue(command, '--agent'), session: kind === 'continue' ? flagValue(command, '--session') : null, time: timeOf(row) ?? 0 });
+      }
+    } else if (row.type === 'user') {
+      for (const block of blocks(row)) if (block?.type === 'tool_result' && block.tool_use_id) results.set(block.tool_use_id, toolResultText(block));
+      const notice = textOf(row);
+      if (notice.includes('<task-notification>')) {
+        const id = notice.match(NOTIFIED_TOOL_USE)?.[1], file = notice.match(NOTIFIED_OUTPUT)?.[1];
+        if (id && file) outputs.set(id, file);
+      }
+    }
+  }
+  if (calls.size === 0) return [];
+
+  // The text each later call read, by call: the result objects a Read or `cat` of a task output file shows.
+  const resultOf = call => {
+    const own = dispatchResultsIn(results.get(call.id) ?? '')[0];
+    if (own) return own;
+    const file = outputs.get(call.id) ?? results.get(call.id)?.match(OUTPUT_FILE)?.[1];
+    if (!file) return null;
+    try { const read = dispatchResultsIn(readFile(file))[0]; if (read) return read; } catch { /* the file is gone: a call that read it still holds the object */ }
+    for (const use of uses) {
+      if (calls.has(use.id) || !JSON.stringify(use.input ?? {}).includes(file)) continue;
+      const seen = dispatchResultsIn(results.get(use.id) ?? '')[0];
+      if (seen) return seen;
+    }
+    return null;
+  };
+
+  const workers = new Map(), list = [];
+  for (const call of [...calls.values()].sort((a, b) => a.time - b.time)) {
+    const session = call.kind === 'start' ? resultOf(call)?.sessionID ?? null : call.session;
+    const key = session ?? `unresolved:${call.id}`;
+    const worker = workers.get(key);
+    if (worker) { worker.calls++; worker.agent ??= call.agent; continue; }
+    const created = { session, agent: call.agent, tool_use_id: call.id, time: call.time, calls: 1 };
+    workers.set(key, created);
+    list.push(created);
+  }
+  return list;
+}
+
+// ---------------------------------------------------------------------------
 // Requests: one per assistant `message.id`
 // ---------------------------------------------------------------------------
 
@@ -282,9 +378,13 @@ function firstTimestamp(file) {
 /**
  * The transcripts of one project folder as the telemetry source: root sessions
  * (one per `<session>.jsonl`), their subagents as children, and requests by
- * time window. A session or agent ID is its UUID or agent ID.
+ * time window. A session or agent ID is its UUID or agent ID. The opencode-routed workers
+ * of a session are its children too: their ID is the opencode `sessionID`, and
+ * `opencodeRequest` shapes the rows of their session (a child that carries `store` is
+ * read from there, and `unavailable` says why a child has no session to read). A caller
+ * that passes no `opencodeRequest` gets the subagents alone.
  */
-function openClaudeSource({ cwd, env = process.env }) {
+function openClaudeSource({ cwd, env = process.env, loadSqlite = defaultLoadSqlite, opencodeRequest = null }) {
   const projects = claudeProjectsRoot(env);
   const folder = projectFolder(projects, cwd);
   let entries;
@@ -353,13 +453,59 @@ function openClaudeSource({ cwd, env = process.env }) {
     return wakeCache.get(sessionId);
   }
 
+  // The opencode-routed workers. `opencode.db` is opened on first use, read-only; one that cannot be read leaves the
+  // sessions unavailable with its message, and a session it does not hold is unavailable too, never an empty one.
+  const routedSessions = new Set(), dispatchCache = new Map(), childCache = new Map();
+  let opencode;
+  const opencodeDatabase = () => {
+    if (opencode === undefined) {
+      try { opencode = { db: openOpencodeDatabase(env, loadSqlite), error: null }; } catch (error) {
+        if (!(error instanceof OpencodeUnavailable)) throw error;
+        opencode = { db: null, error: error.message };
+      }
+    }
+    return opencode;
+  };
+  const routedMessages = sessionId => {
+    const { db } = opencodeDatabase();
+    if (!db) return null;
+    try { return opencodeSessionMessages(db, sessionId); } catch { return null; }
+  };
+
+  // The workers an owner session (a root or one of its subagents) dispatched through `opencode-dispatch.js`.
+  function dispatchesOf(ownerId) {
+    if (!opencodeRequest) return [];
+    if (!dispatchCache.has(ownerId)) {
+      let found = [];
+      const file = roots.has(ownerId) ? path.join(folder, `${ownerId}.jsonl`) : findAgent(ownerId)?.file;
+      try { if (file && fs.readFileSync(file, 'utf8').includes('opencode-dispatch.js')) found = dispatchedWorkers(sessionRecords(ownerId).rows ?? []); } catch { /* an unreadable transcript holds no dispatch */ }
+      dispatchCache.set(ownerId, found);
+    }
+    return dispatchCache.get(ownerId);
+  }
+
+  function routedChild(worker, owner) {
+    let unavailable = null;
+    if (worker.session === null) unavailable = 'its sessionID is not in the transcript';
+    else {
+      routedSessions.add(worker.session);
+      if (routedMessages(worker.session) === null) unavailable = `session ${worker.session} is not in opencode.db${opencode.error ? ` (${opencode.error})` : ''}`;
+    }
+    return { id: worker.session ?? `unresolved-${worker.tool_use_id}`, parent_id: owner.id, agent: worker.agent, time_created: worker.time, depth: owner.depth + 1, store: 'opencode.db', ...(unavailable ? { unavailable } : {}) };
+  }
+
+  function routedRequests(sessionId) {
+    if (!requestCache.has(sessionId)) requestCache.set(sessionId, opencodeRequest ? (routedMessages(sessionId) ?? []).map(opencodeRequest) : []);
+    return requestCache.get(sessionId);
+  }
+
   return {
     name: 'Claude Code',
     store: 'the Claude Code transcripts',
-    close() {},
+    close() { if (opencode?.db) opencode.db.close(); },
     roots: () => [...roots].map(id => ({ id })),
     isRoot: id => roots.has(id),
-    hasSession: id => roots.has(id) || findAgent(id) !== null,
+    hasSession: id => roots.has(id) || findAgent(id) !== null || (routedSessions.has(id) && routedMessages(id) !== null),
     // A transcript without `<command-name>` holds no command invocation and is never parsed.
     invocations(sessionId) {
       if (!roots.has(sessionId) || !rootHasCommands(sessionId)) return [];
@@ -370,15 +516,16 @@ function openClaudeSource({ cwd, env = process.env }) {
       }).filter(invocation => invocation.time !== null);
     },
     routeId: (rootId, anchorId) => `${rootId}:${anchorId}`,
-    requests: (sessionId, from, to) => allRequests(sessionId).filter(request => request.time >= from && request.time < to),
+    requests: (sessionId, from, to) => (routedSessions.has(sessionId) ? routedRequests(sessionId) : allRequests(sessionId)).filter(request => request.time >= from && request.time < to),
     // The wakes that opened in [from, to): `{ record, time, keys }`.
     wakes: (sessionId, from, to) => allWakes(sessionId).filter(wake => wake.time >= from && wake.time < to),
     userTexts(sessionId) {
       const { rows } = sessionRecords(sessionId);
       return (rows ?? []).filter(row => row.type === 'user' && !blocks(row).some(block => block?.type === 'tool_result')).map(textOf);
     },
-    // Every subagent below a root, parents before their children.
+    // Every subagent below a root, parents before their children, and the opencode-routed workers each of them dispatched.
     children(rootId) {
+      if (childCache.has(rootId)) return childCache.get(rootId);
       const agents = agentsOfRoot(rootId);
       const depths = new Map();
       const depthOf = agent => {
@@ -388,13 +535,18 @@ function openClaudeSource({ cwd, env = process.env }) {
         depths.set(agent.agent_id, depth);
         return depth;
       };
-      return agents.map(agent => ({
+      const subagents = agents.map(agent => ({
         id: agent.agent_id,
         parent_id: agent.parent_agent_id ?? rootId,
         agent: agent.agent_type,
         time_created: firstTimestamp(agent.file) ?? OPEN_END,
         depth: depthOf(agent),
-      })).sort((a, b) => a.depth - b.depth || a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
+      }));
+      const owners = [{ id: rootId, depth: 0 }, ...agents.map(agent => ({ id: agent.agent_id, depth: depthOf(agent) }))];
+      const routed = owners.flatMap(owner => dispatchesOf(owner.id).map(worker => routedChild(worker, owner)));
+      const children = [...subagents, ...routed].sort((a, b) => a.depth - b.depth || a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
+      childCache.set(rootId, children);
+      return children;
     },
   };
 }
@@ -412,6 +564,7 @@ module.exports = {
   readAgents,
   claudeWaitTasks,
   claudeWakes,
+  dispatchedWorkers,
   transcriptRequests,
   openClaudeSource,
 };

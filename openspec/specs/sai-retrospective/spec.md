@@ -91,7 +91,7 @@ The collector SHALL start a Claude Code execution only at a non-`isMeta` user re
 
 ### Requirement: Principal workers and auxiliary agents
 
-The collector SHALL link each Claude Code subagent to its execution through `subagents/agent-<agentId>.meta.json` `toolUseId`, including subagents dispatched by a principal worker. It SHALL link each opencode child session, found through `session_v2.parent_id` below the root session, to the execution that began at or before the child's creation, a nested child following its parent; the child's session ID SHALL be its agent ID and its `agent` its agent type. A subagent or child session whose agent type names a `sai-*` agent in the SAI worker registry beside the tool (`capability-requirements.json`, else `install-manifest.json`) SHALL be a principal worker whose records are read; every other linked subagent or child session SHALL be an auxiliary agent whose records are not read and is listed as an unread `auxiliary-agents` portion. Subagents and child sessions that cannot be linked SHALL be reported as unlinked agents.
+The collector SHALL link each Claude Code subagent to its execution through `subagents/agent-<agentId>.meta.json` `toolUseId`, including subagents dispatched by a principal worker. It SHALL link each opencode child session, found through `session_v2.parent_id` below the root session, to the execution that began at or before the child's creation, a nested child following its parent; the child's session ID SHALL be its agent ID and its `agent` its agent type. A subagent or child session whose agent type names a `sai-*` agent in the SAI worker registry beside the tool (`capability-requirements.json`, else `install-manifest.json`) SHALL be a principal worker whose records are read; every other linked subagent or child session SHALL be an auxiliary agent whose records are not read and is listed as an unread `auxiliary-agents` portion. On Claude Code, an opencode-routed worker, which has no `meta.json` file, SHALL be linked to its execution through the `opencode-dispatch.js` call that started it, and SHALL be a principal or auxiliary agent by the same registry rule. Subagents and child sessions that cannot be linked SHALL be reported as unlinked agents.
 
 #### Scenario: Worker and auxiliary dispatched by one execution
 - **WHEN** an execution dispatches a `sai-direct-build-worker` and a `budget-explorer`
@@ -291,7 +291,7 @@ For every execution, on Claude Code and opencode, the collector SHALL report the
 
 ### Requirement: Dispatched agents linked to their dispatcher
 
-The collector SHALL report each agent that another agent dispatched as its own entry carrying `parent_agent_id`, taken from `parentAgentId` in `subagents/agent-<id>.meta.json` on Claude Code and from `session_v2.parent_id` on opencode, and `null` when the main session dispatched it. A dispatched agent's figures SHALL NOT be added to the figures of the agent that dispatched it.
+The collector SHALL report each agent that another agent dispatched as its own entry carrying `parent_agent_id`, taken from `parentAgentId` in `subagents/agent-<id>.meta.json` on Claude Code and from `session_v2.parent_id` on opencode, and `null` when the main session dispatched it. An opencode-routed worker of a Claude Code run SHALL carry the principal worker whose transcript holds its dispatch as `parent_agent_id`, and `null` when the main session dispatched it. A dispatched agent's figures SHALL NOT be added to the figures of the agent that dispatched it.
 
 #### Scenario: Explorer dispatched by a worker
 - **WHEN** a design worker dispatches a `budget-explorer`
@@ -364,3 +364,31 @@ The `cost` report SHALL add `wakes` and `wake_usage` per agent and per segment r
 #### Scenario: Markdown baseline format
 - **WHEN** the cost report is printed with `--format markdown`
 - **THEN** it declares baseline format 2 and shows a cache-warming wakes table per run
+
+### Requirement: opencode-routed workers in the Claude Code execution index
+
+For a Claude Code execution, the collector SHALL add each worker that the root session or one of its principal workers dispatched through `opencode-dispatch.js` to the execution's agents, with the opencode `sessionID` from the dispatch result recorded in the transcript as its agent ID, the dispatching principal worker as `parent_agent_id` (null for the root session), and the pipeline segment of its dispatch. It SHALL read the worker's `usage` and `tool_calls` from `opencode.db` read-only by that `sessionID`, and SHALL scan a principal routed worker's records for loaded instructions and tool errors. A `continue` of the same session SHALL add no second agent.
+
+#### Scenario: a routed worker carries its opencode usage
+- **WHEN** a Claude Code `/sai-3-implement` run started `sai-3-red-worker` through `opencode-dispatch.js`, continued it once, and `opencode.db` holds its session
+- **THEN** the execution lists one `sai-3-red-worker` principal worker whose `usage` and `tool_calls` come from that opencode session, and the coordinator's own usage is unchanged
+
+### Requirement: An unreadable opencode-routed worker is unavailable and unread
+
+When an opencode-routed worker's `sessionID` is not in the transcript, its session is not in `opencode.db`, or `opencode.db` cannot be read, the collector SHALL report its `usage` as `unavailable` and its `tool_calls` as null, never as zero, and SHALL add an `unread` entry of kind `opencode-routed-worker` that names the agent, the opencode session, and the reason.
+
+#### Scenario: a worker whose sessionID never reached the transcript
+- **WHEN** a routed `start` call's result holds no dispatch result object
+- **THEN** that worker's `usage` is `unavailable` and an `unread` entry names it with `opencode_session` null and the reason `its sessionID is not in the transcript`
+
+#### Scenario: an opencode database that cannot be opened
+- **WHEN** the run dispatched an opencode-routed worker and `node:sqlite` is not available
+- **THEN** the worker's `usage` is `unavailable` and its `unread` entry carries the reader's message
+
+### Requirement: A routed worker's zero currency cost is dropped
+
+The collector SHALL drop a currency cost of 0 recorded for an opencode-routed worker from its figures, because a recorded 0 is no price.
+
+#### Scenario: a provider that reports no price
+- **WHEN** an opencode-routed worker's requests record a cost of 0
+- **THEN** its `usage` carries its token figures and no currency cost

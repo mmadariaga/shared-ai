@@ -1273,3 +1273,77 @@ test('cost: usage errors name their code and exit 2', () => {
     assert.equal(JSON.parse(result.stdout).error.code, code);
   }
 });
+
+// ---------------------------------------------------------------------------
+// opencode-routed workers of a Claude Code run: their usage is read from opencode.db by sessionID (E12)
+// ---------------------------------------------------------------------------
+
+const ROUTED_SESSION = '1b000000-0000-4000-8000-000000000001';
+const RT = { red: 'ses_routedred1', green: 'ses_routedgrn1' };
+const routedCommand = (kind, tail) => `node "/home/u/.claude/sai/tools/opencode-dispatch.js" ${kind} ${tail}`;
+const dispatchResult = (sessionID) => JSON.stringify({ status: 'ok', sessionID, text: 'ready', tokens: { input: 1, output: 1, reasoning: 0, cache_read: 0, cache_write: 0 }, cost: 0, exit_code: 0, error: null });
+
+// A /sai-3-implement run on Claude Code that started a RED worker through opencode-dispatch.js (the result is in the
+// result of its call), continued it, and started a GREEN worker whose result never reaches the transcript.
+function makeRoutedClaude(config, { withSession = true } = {}) {
+  const S = ROUTED_SESSION;
+  const folder = projectFolder(path.join(config, 'projects'), PROJECT);
+  writeSession(folder, S, [
+    invocationLine(S, 'rt-inv', '2026-03-01T10:00:00.000Z', 'sai-3-implement', 'routed-change'),
+    turnLine(S, null, 'rt-1', '2026-03-01T10:00:01.000Z', 'rtm-1', usage(5, 5, 50, 5, 0), [{ type: 'tool_use', id: 'tu-red', name: 'Bash', input: { command: routedCommand('start', `--agent sai-3-red-worker --input-file /tmp/m/red.txt --cwd ${PROJECT}`) } }]),
+    toolResult('rt-r1', '2026-03-01T10:00:20.000Z', 'tu-red', dispatchResult(RT.red)),
+    turnLine(S, null, 'rt-2', '2026-03-01T10:00:21.000Z', 'rtm-2', usage(5, 5, 50, 5, 0), [
+      { type: 'tool_use', id: 'tu-red2', name: 'Bash', input: { command: routedCommand('continue', `--session ${RT.red} --agent sai-3-red-worker --input-file /tmp/m/red2.txt --cwd ${PROJECT}`) } },
+      { type: 'tool_use', id: 'tu-green', name: 'Bash', input: { command: routedCommand('start', `--agent sai-3-green-worker --input-file /tmp/m/green.txt --cwd ${PROJECT}`) } },
+    ]),
+    toolResult('rt-r2', '2026-03-01T10:00:40.000Z', 'tu-red2', dispatchResult(RT.red)),
+    toolResult('rt-r3', '2026-03-01T10:00:41.000Z', 'tu-green', 'opencode run was killed'),
+    turnLine(S, null, 'rt-3', '2026-03-01T10:00:50.000Z', 'rtm-3', usage(5, 5, 50, 5, 0), [{ type: 'text', text: 'done' }], 'end_turn'),
+  ]);
+  if (!withSession) return null;
+  const row = (id, session, seq, clock, data) => ({ id, session, seq, type: 'assistant', time: at(clock), data: JSON.stringify(data) });
+  const message = (clock, tokens, cost, content = []) => ({ time: { created: at(clock), completed: at(clock) + 1 }, agent: 'sai-3-red-worker', model: { id: 'model-a' }, tokens, cost, content });
+  return makeOpencodeDb(config, {
+    sessions: [[RT.red, null, 'sai-3-red-worker', PROJECT, '10:00:05.000']],
+    rows: [
+      row('msg_red_1', RT.red, 1, '10:00:06.000', message('10:00:06.000', { input: 30, output: 3, reasoning: 1, cache: { read: 300, write: 10 } }, 0, [tool('t1', 'bash', { status: 'completed', input: {}, content: [] })])),
+      row('msg_red_2', RT.red, 2, '10:00:30.000', message('10:00:30.000', { input: 31, output: 4, reasoning: 0, cache: { read: 0, write: 0 } }, 0)),
+    ],
+  });
+}
+
+opencodeTest('cost: an opencode-routed worker of a Claude Code run carries the usage of its opencode session, a continue adding no second agent (E12)', () => {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-routed-'));
+  try {
+    makeRoutedClaude(config);
+    const { executions, unread } = index(['sai-3-implement', '--paths', PROJECT], envFor(config), realSqlite);
+    const run = executions.find(execution => execution.harness === 'claude');
+    const red = agentOf(run, RT.red);
+    assert.equal(red.agent_type, 'sai-3-red-worker');
+    assert.equal(red.parent_agent_id, null);
+    assert.equal(red.pipeline_segment, 'implement');
+    assert.ok(run.principal_workers.includes(red));
+    // No currency cost: the provider recorded 0, which is no price.
+    assert.deepEqual(red.usage, { requests: 2, input: 61, output: 7, reasoning: 1, cache_read: 300, cache_write: 10 });
+    assert.equal(red.tool_calls, 1);
+    assert.equal(run.principal_workers.filter(agent => agent.agent_type === 'sai-3-red-worker').length, 1);
+    // The coordinator's own usage stays its own.
+    assert.equal(run.coordinator.usage.requests, 3);
+    // E12: the GREEN worker's sessionID is nowhere in the transcript, so its usage is unavailable, never zero, and unread.
+    const green = run.principal_workers.find(agent => agent.agent_type === 'sai-3-green-worker');
+    assert.equal(green.usage, 'unavailable');
+    assert.equal(green.tool_calls, null);
+    assert.deepEqual(unread.filter(entry => entry.kind === 'opencode-routed-worker').map(entry => [entry.agent, entry.opencode_session, entry.reason]), [['sai-3-green-worker', null, 'its sessionID is not in the transcript']]);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+test('cost: an opencode-routed worker whose database cannot be read is unavailable with the reader\'s reason (E12)', () => {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-routed-'));
+  try {
+    makeRoutedClaude(config, { withSession: false });
+    const { executions, unread } = index(['sai-3-implement', '--paths', PROJECT], envFor(config), unavailableSqlite);
+    const red = agentOf(executions[0], RT.red);
+    assert.equal(red.usage, 'unavailable');
+    assert.match(unread.find(entry => entry.opencode_session === RT.red).reason, /node:sqlite is not available/);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});

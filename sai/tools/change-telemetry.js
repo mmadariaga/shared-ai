@@ -261,7 +261,8 @@ function agentRow(name, depth, requests, wakes) {
   return { name, depth, figures: figuresOf(requests, wakes), wake: wakeFiguresOf(requests), model: distinct(requests, 'model'), variant: distinct(requests, 'variant'), tools: toolBreakdown(requests) };
 }
 
-const missingRow = (session, depth, store) => ({ name: `${UNAVAILABLE} (session ${session} is not in ${store})`, depth, figures: UNKNOWN_FIGURES, wake: UNKNOWN_WAKE, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
+const unavailableRow = (reason, depth) => ({ name: `${UNAVAILABLE} (${reason})`, depth, figures: UNKNOWN_FIGURES, wake: UNKNOWN_WAKE, model: UNAVAILABLE, variant: UNAVAILABLE, tools: UNAVAILABLE });
+const missingRow = (session, depth, store) => unavailableRow(`session ${session} is not in ${store}`, depth);
 
 // ---------------------------------------------------------------------------
 // Sources: finding the execution and reading its sessions
@@ -317,11 +318,20 @@ function opencodeSource(db) {
   };
 }
 
+// A request of an opencode-routed worker, read from opencode.db for a Claude Code run. Its cost is the one the provider
+// recorded when that is a price (above zero): a model whose provider reports none records 0, which is no price, so the
+// cost is unavailable, and the price table of the Claude models never estimates it.
+function routedRequest(row) {
+  const request = toRequest(row);
+  return { ...request, cost: request.cost > 0 ? request.cost : null, routed: true };
+}
+
 // The Claude Code source with the cost of each request estimated from the price table (the transcripts record none).
 function estimatingSource(source) {
   return {
     ...source,
     requests: (sessionId, from, to) => source.requests(sessionId, from, to).map(request => {
+      if (request.routed) return request;
       const cost = estimateCost(request);
       return { ...request, cost, estimated: cost !== null };
     }),
@@ -329,7 +339,7 @@ function estimatingSource(source) {
 }
 
 function openSource(harness, { cwd, env, loadSqlite }) {
-  return harness === 'claude' ? estimatingSource(openClaudeSource({ cwd, env })) : opencodeSource(openOpencodeDatabase(env, loadSqlite));
+  return harness === 'claude' ? estimatingSource(openClaudeSource({ cwd, env, loadSqlite, opencodeRequest: routedRequest })) : opencodeSource(openOpencodeDatabase(env, loadSqlite));
 }
 
 const isSourceUnavailable = error => error instanceof OpencodeUnavailable || error instanceof ClaudeUnavailable;
@@ -563,6 +573,8 @@ function subagentRows(source, root, requests, children, segmentFor) {
     segmentOfSession.set(child.id, segment);
     depthOf.set(child.id, child.depth);
     requestsOf.set(child.id, source.requests(child.id, 0, OPEN_END));
+    // A worker routed to opencode whose session cannot be read is an unavailable row, never a zero.
+    if (child.unavailable) { rows.get(segment).push(unavailableRow(`${child.agent ?? UNAVAILABLE}: ${child.unavailable}`, child.depth)); continue; }
     rows.get(segment).push(agentRow(`${child.depth > 1 ? '↳ ' : ''}${child.agent ?? UNAVAILABLE}`, child.depth, requestsOf.get(child.id), source.wakes(child.id, 0, OPEN_END).length));
   }
   // A dispatch whose child session is not recorded is an unavailable subagent.
