@@ -40,7 +40,7 @@ The merge worker SHALL keep the name `sai-merge-worker` and its worker-matrix ke
 
 ### Requirement: Merge worker steps arrive by pointer
 
-The first message to a merge worker, and the first message to a replacement, SHALL open with the line `--report-dir <path>`, which the worker SHALL strip and keep for every later message; no later message SHALL carry it. Each message SHALL then open with `Active step: <id> — follow <path>` naming one of `sai/commands/merge/steps/strategy.md`, `apply.md`, `test-correction.md`, or `renumbering-plan.md`, followed by a complete brief: the method, the provenance file, the stop number, the snapshot record and its hash, and the run directory. The worker SHALL fetch the named step file once per session, read the shared definitions in `steps/common.md` once, do the step, and save the report it names. A message without a pointer line SHALL leave the active step unchanged as a fix round or an answer.
+The first message to a merge worker, and the first message to a replacement, SHALL open with the line `--report-dir <path>`, which the worker SHALL strip and keep for every later message; no later message SHALL carry it. Each message SHALL then open with `Active step: <id> — follow <path>` naming one of `sai/commands/merge/steps/strategy.md`, `apply.md`, `final-correction.md`, `test-correction.md`, or `renumbering-plan.md`, followed by a complete brief: the method, the provenance file, the stop number, the snapshot record and its hash, and the run directory. The worker SHALL fetch the named step file once per session, read the shared definitions in `steps/common.md` once, do the step, and save the report it names. A message without a pointer line SHALL leave the active step unchanged as a fix round or an answer.
 
 #### Scenario: Fix round keeps the active step
 
@@ -51,6 +51,11 @@ The first message to a merge worker, and the first message to a replacement, SHA
 
 - **WHEN** the coordinator sends the first brief to a new or replacement merge worker
 - **THEN** the message opens with `--report-dir <path>` before the pointer line, and later messages carry only the pointer line and brief
+
+#### Scenario: Final-tree correction arrives by pointer
+
+- **WHEN** the final-tree review needs a correction
+- **THEN** the coordinator sends `Active step: final-correction — follow sai/commands/merge/steps/final-correction.md` with the findings and their occurrence ranges
 
 ### Requirement: Merge worker reports are run-directory files
 

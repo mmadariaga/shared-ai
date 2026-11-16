@@ -853,6 +853,114 @@ function collision(cwd, captured) {
   return receipt;
 }
 
+// Introduced duplicates: a block of significant lines that the final tree holds twice in one file
+// although each side holds it at most once there. Language-agnostic by design: lines compare after
+// trimming, and a line with no letter or digit (blank, brace, punctuation) is not significant.
+const DUPLICATE_MIN_LINES = 4;
+const DUPLICATE_MAX_BLOCKS = 100;
+const DUPLICATE_MAX_BYTES = 2 * 1024 * 1024;
+
+// Decoded text of a stored file, `null` for an absent one, or the reason it cannot be compared.
+function comparableText(bytes) {
+  if (bytes === null) return { text: '' };
+  if (bytes.length > DUPLICATE_MAX_BYTES) return { skip: 'too-large' };
+  if (bytes.includes(0)) return { skip: 'binary' };
+  try { return { text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes) }; } catch { return { skip: 'not-utf-8' }; }
+}
+
+// Every line of the text with its 1-based number and the byte range of the line, newline included.
+function numberedLines(text) {
+  let offset = 0;
+  const raw = text.split('\n');
+  return raw.map((line, index) => {
+    const start = offset;
+    offset += Buffer.byteLength(line) + (index < raw.length - 1 ? 1 : 0);
+    return { line: index + 1, text: line.trim(), start, end: offset };
+  });
+}
+
+const significant = text => numberedLines(text).filter(item => /[\p{L}\p{N}]/u.test(item.text));
+
+// Start index (into the significant lines) of every window of DUPLICATE_MIN_LINES lines, by content.
+function windows(lines) {
+  const found = new Map();
+  for (let i = 0; i + DUPLICATE_MIN_LINES <= lines.length; i++) {
+    const key = lines.slice(i, i + DUPLICATE_MIN_LINES).map(item => item.text).join('\n');
+    if (!found.has(key)) found.set(key, []);
+    found.get(key).push(i);
+  }
+  return found;
+}
+
+// Occurrences that do not overlap each other, counted left to right.
+function separate(positions) {
+  const kept = [];
+  for (const position of positions) if (!kept.length || position - kept[kept.length - 1] >= DUPLICATE_MIN_LINES) kept.push(position);
+  return kept;
+}
+
+const sameShifted = (next, current) => next.length === current.length && next.every((value, i) => value === current[i] + 1);
+
+function duplicateBlocks(finalLines, sides, name, beforeHash) {
+  const finalWindows = windows(finalLines);
+  const sideWindows = sides.map(lines => windows(lines));
+  const flagged = new Map();
+  for (const [key, positions] of finalWindows) {
+    if (separate(positions).length < 2) continue;
+    const counts = sideWindows.map(index => separate(index.get(key) ?? []).length);
+    if (counts.some(count => count > 1)) continue;
+    for (const position of positions) flagged.set(position, { positions, counts });
+  }
+  const consumed = new Set();
+  const blocks = [];
+  for (const first of [...flagged.keys()].sort((a, b) => a - b)) {
+    if (consumed.has(first)) continue;
+    let last = first;
+    while (flagged.has(last + 1) && sameShifted(flagged.get(last + 1).positions, flagged.get(last).positions)) last++;
+    const { positions } = flagged.get(first);
+    const size = last - first + DUPLICATE_MIN_LINES;
+    for (const position of positions) for (let k = first; k <= last; k++) consumed.add(position + k - first);
+    const counts = [0, 1].map(side => Math.max(...Array.from({ length: last - first + 1 }, (_, k) => flagged.get(first + k).counts[side])));
+    const clip = text => text.length > 200 ? `${text.slice(0, 200)}…` : text;
+    blocks.push({ significant_lines: size, preview: finalLines.slice(first, first + 3).map(item => clip(item.text)),
+      target_count: counts[0], source_count: counts[1],
+      occurrences: positions.map(position => {
+        const head = finalLines[position]; const tail = finalLines[position + size - 1];
+        return { location: `${name}:${head.line}`, path: name, line: head.line, end_line: tail.line, start: head.start, end: tail.end, before_hash: beforeHash };
+      }) });
+  }
+  return blocks;
+}
+
+// The final tree is the index. Only a file that differs from both sides can hold a block the
+// integration introduced: a file equal to one side has the duplicates of that side.
+function duplicates(cwd, captured) {
+  const given = captured?.data;
+  if (captured?.action !== 'provenance' || !/^[0-9a-f]{40,64}$/.test(given?.target_sha ?? '') || !/^[0-9a-f]{40,64}$/.test(given?.source_sha ?? '')) {
+    throw new Error('captured provenance required');
+  }
+  return fact(cwd, 'duplicates', ['head', 'index', 'operations'], () => {
+    if (split0(git(cwd, ['ls-files', '--unmerged', '-z'])).length) throw new Error('duplicates requires the final resolved integration state');
+    const changed = sha => new Set(split0(git(cwd, ['diff', '--cached', '--name-only', '--diff-filter=ACMRT', '-z', sha])));
+    const fromSource = changed(given.source_sha);
+    const files = [...changed(given.target_sha)].filter(name => fromSource.has(name)).sort(compare);
+    const blob = spec => {
+      const run = spawnSync('git', ['cat-file', 'blob', spec], { cwd, maxBuffer: 64 * 1024 * 1024 });
+      return run.status === 0 ? run.stdout : null;
+    };
+    const skipped = []; const blocks = [];
+    for (const name of files) {
+      const finalBytes = blob(`:${name}`);
+      const versions = [finalBytes, blob(`${given.target_sha}:${name}`), blob(`${given.source_sha}:${name}`)].map(bytes => finalBytes === null ? { skip: 'absent' } : comparableText(bytes));
+      const reason = versions.find(item => item.skip)?.skip;
+      if (reason) { skipped.push({ path: name, reason }); continue; }
+      blocks.push(...duplicateBlocks(significant(versions[0].text), [versions[1], versions[2]].map(item => significant(item.text)), name, hash(finalBytes)));
+    }
+    return { min_lines: DUPLICATE_MIN_LINES, files_examined: files.filter(name => !skipped.some(item => item.path === name)), skipped,
+      blocks: blocks.slice(0, DUPLICATE_MAX_BLOCKS), total_blocks: blocks.length, truncated: blocks.length > DUPLICATE_MAX_BLOCKS };
+  });
+}
+
 // cmd.exe reports an unknown command with exit 1 and a localized message, so
 // on Windows the command word is resolved against PATH instead.
 const CMD_BUILTINS = ['call', 'cd', 'chdir', 'echo', 'for', 'if', 'pushd', 'rem', 'set', 'setlocal', 'type'];
@@ -1037,6 +1145,7 @@ function collect(action, cwd, opts, stdin) {
     } else result = verify(cwd, opts.command, fixed);
   }
   else if (action === 'collision') result = collision(cwd, stdin());
+  else if (action === 'duplicates') result = duplicates(cwd, stdin());
   else if (action === 'bundle' || action === 'write') {
     if (opts.out && action !== 'bundle') throw new Error('--out applies to bundle only');
     const record = fs.readFileSync(opts.record);
@@ -1078,9 +1187,9 @@ function main(argv) {
     if (arg === '--baseline') { opts.baseline = true; continue; }
     if (arg === '--partial') { opts.partial = true; continue; }
     if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
+      process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|duplicates|status> --cwd <root> [--json]\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
-        + 'valid/collision: receipt JSON in --input-file <path> (stdin also accepted); conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
+        + 'valid/collision/duplicates: receipt JSON in --input-file <path> (stdin also accepted); duplicates takes the captured provenance and, with --record <external-new-file>, saves its receipt; conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
         + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
         + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
@@ -1088,6 +1197,7 @@ function main(argv) {
         + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] [--out <external-new-file>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages; with --out the bundle goes to the file and stdout prints its summary and hash)\n'
         + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
         + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized] [--partial] (--partial checks only the files the resolution names)\n'
+        + 'duplicates: the blocks of 4 or more significant lines (blank and punctuation-only lines excluded) that the final tree (the index) holds twice in one file while each side holds them at most once there, with the path:line and byte range of every occurrence\n'
         + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
       return 0;
     }
@@ -1132,4 +1242,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, status, state, main };
+module.exports = { preflight, provenance, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, duplicates, status, state, main };

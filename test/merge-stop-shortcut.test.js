@@ -226,7 +226,7 @@ test('I3, I5, I10: the coordinator card decides the shortcut once per stop and c
   assert.match(stop, /stage_checkout_preserves_combined_content/);
   assert.match(section(card, '## Resuming', '## Close'), /lists as a shortcut is not decided again/);
   assert.ok(stop.indexOf('**Shortcut.**') < stop.indexOf('**Strategy.**'), 'the shortcut precedes the worker');
-  assert.match(card, /A run whose stops all take the shortcut and need no correction or renumbering plan creates no worker/);
+  assert.match(card, /A run whose stops all take the shortcut and need no final-tree correction, test correction, or renumbering plan creates no worker/);
   assert.match(card, /Create the worker when none exists, at the first step that needs judgment/);
 });
 

@@ -44,7 +44,7 @@ test('the coordinator is one goal-driven card that loads only the six policies a
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
     assert.ok(card.includes(heading), heading);
   }
-  assert.ok(card.length < 27500, 'the coordinator stays a short goal-driven card');
+  assert.ok(card.length < 30000, 'the coordinator stays a short goal-driven card');
 });
 
 test('the wrappers load the harness fetch skill and the coordinator directly, with no boot adapter or bootstrap', () => {
@@ -128,9 +128,9 @@ test('E9: the docs, both wrappers, and AGENTS.md describe the command as asking 
 
 test('E1: a launch with no conflict creates no worker and goes straight to verification and the collision check', () => {
   const card = coordinator();
-  assert.match(card, /A clean launch has no stop and no worker: it goes straight to Final\./);
+  assert.match(card, /A clean launch has no stop and no worker until Final needs one: it goes straight to Final\./);
   assert.match(card, /Create the worker when none exists/);
-  assert.match(section(card, '## Final', '## Commit messages'), /\*\*Verify\.\*\*[\s\S]+\*\*Collision\.\*\*[\s\S]+\*\*Finalize\.\*\*/);
+  assert.match(section(card, '## Final', '## Commit messages'), /\*\*Final-tree review\.\*\*[\s\S]+\*\*Verify\.\*\*[\s\S]+\*\*Collision\.\*\*[\s\S]+\*\*Finalize\.\*\*/);
 });
 
 test('E2, E3: the baseline is taken once at HEAD before the launch, and verification compares only new failures', () => {
@@ -154,7 +154,7 @@ test('E4: a rebase runs the suite once on the final tree and corrects a new fail
   assert.match(final, /the corrections go in one additional local commit on top of the rebased branch, made when verification shows no new failure/);
   assert.match(final, /On a merge the corrections join the merge commit/);
   assert.match(coordinator(), /another unmerged stop starts a new stop \(with the same worker, once one exists\)/);
-  assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `new-failure`, or `collision`/);
+  assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `final-review`, `new-failure`, or `collision`/);
 });
 
 test('E5, E10: commit intent that cannot decide escalates through the picker with written options, and abort is only explicit', () => {
