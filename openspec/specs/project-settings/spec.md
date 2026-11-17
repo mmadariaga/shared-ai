@@ -204,3 +204,22 @@ Every catalogue key that the project behavior settings screen shows SHALL declar
 #### Scenario: Warming carries presentation fields for its section
 - **WHEN** the catalogue is read
 - **THEN** `warming` has the label `Cache warming`, the section `Cache warming`, and the absent text `off`
+
+### Requirement: Plan publication answer setting
+
+The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan`. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
+
+#### Scenario: Yes is normalized
+
+- **WHEN** `get pr.publishAfterRun --json --cwd <root>` runs in a project whose settings file sets `pr.publishAfterRun` to `" YES "`
+- **THEN** the CLI prints `value: yes` with `source: setting` and no warnings
+
+#### Scenario: Invalid value warns
+
+- **WHEN** the settings file sets `pr.publishAfterRun` to `"later"`
+- **THEN** the reader returns no value for it and a warning that it must be yes, no, or ask
+
+#### Scenario: Not a destination field
+
+- **WHEN** the settings file sets `pr.publishAfterRun` and `pr.repository`
+- **THEN** `readPr` returns `pr.repository` and does not return `pr.publishAfterRun`

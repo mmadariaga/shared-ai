@@ -141,6 +141,12 @@ const CATALOGUE = {
       : nonEmptyString,
     ...(field === 'provider' ? { label: 'Provider', section: 'Pull requests' } : {}),
   }])),
+  // The answer to the publication question of `/sai-plan`; `ask` and an absent key leave the question normal. It is
+  // not a destination field of `/to-pr`, so `readPr` never returns it. The screen does not list it: it stays hand-edited.
+  'pr.publishAfterRun': {
+    validate: value => (typeof value === 'string' && ['yes', 'no'].some(answer => isKeyword(value, answer)) ? null : 'must be yes, no, or ask'),
+    normalize: value => value.trim().toLowerCase(),
+  },
   // An absent key reads as false.
   'experimental.changeTelemetry': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),

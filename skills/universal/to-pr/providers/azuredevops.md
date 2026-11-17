@@ -42,3 +42,8 @@ Descriptions over 4000 UTF-16 units fail locally at query and again at publish,
 before approval or a dependent push. Exactly 4000 is valid. The error includes
 provider, length, limit and excess. The shared description format owns the
 optional risk-comment authoring choice; a still-oversized description stays blocked.
+
+For the unattended mode only, the adapter also reads the branch's completed and abandoned
+pull requests (`searchCriteria.status=all`, filtered by the exact source and target branch),
+reporting them as merged and closed, so such a request is reported and never reopened. A
+failed read is a blocker.

@@ -1,12 +1,14 @@
 ---
 name: to-pr
-description: Use when the user requests PR/MR publication or accepts the completed sai-plan draft-publication offer. Prepare, create or update a registered provider's request from committed Git changes, with explicit approval before remote operations.
+description: Use when the user requests PR/MR publication, or when a SAI coordinator holds a recorded yes answer to its publication question (unattended mode). Prepare, create or update a registered provider's request from committed Git changes, with explicit approval before remote operations.
 ---
 
 # Publish a PR/MR
 
 A PR/MR is a request to incorporate committed branch changes: a pull request on
-GitHub or Azure Repos, or a merge request on GitLab. Invocation permits preparation only.
+GitHub or Azure Repos, or a merge request on GitLab. Invocation permits preparation only;
+the one exception is § 5, the unattended mode of a SAI coordinator that holds a recorded
+publication answer.
 Load `safe-operations`. Use Claude Code's `AskUserQuestion` or OpenCode's
 `question` for closed choices; use conversation text for open clarification.
 Stop with the draft and concrete blocker if required access, CLI or authentication
@@ -136,8 +138,9 @@ answer. Cancel runs none of the operations in that question and keeps the draft.
 applies the edits, then returns to `query` and `push-query`, complete presentation and
 fresh approval. Any content, destination, baseline or HEAD change after approval
 returns to complete presentation and fresh approval of the operations still pending
-only; a completed push is never repeated. Invocation, unattended mode and prior
-general grants never authorize these operations.
+only; a completed push is never repeated. Invocation and prior general grants never
+authorize these operations, and neither does the unattended mode of § 5 outside the
+coordinator it names.
 **Complete when:** explicit approval binds the full proposal, the `publish token` and,
 when a push is needed, the exact push and its `push token`, or cancel ends.
 
@@ -182,3 +185,37 @@ content and destination again and ask for approval of that operation only. Run
 that approval. It never pushes or repeats PR publication. With no continuation,
 clarify uncertain or divergent state instead of retrying a comment creation.
 **Complete when:** publication is verified or uncertainty is accurately reported.
+
+## 5. Unattended publication
+
+Only a SAI coordinator that holds a recorded publication answer of `yes` may use this
+mode: today `/sai-plan`, through `sai/commands/plan/publication.md`, after its start-of-run
+question, its `--publish yes` argument, or its `pr.publishAfterRun` setting recorded the
+answer. That answer is the held confirmation of `safe-operations` for exactly the local plan
+commit, the non-force push of the current branch, and the creation or update of its request.
+A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes`
+stay on sections 1 to 4: they get no unattended mode.
+
+Run sections 1 and 2 as written, with these changes: ask nothing (an ambiguous remote or
+target branch, an unresolved provider, or a missing plan skips the publication and names the
+fact), and send `draft:true` in `query` and `publish`. Then add the `--unattended` flag to
+exactly three operations: `plan-commit`, `push`, and `publish`
+(`node <tool-path> <operation> --unattended <registry-path>`; every other operation refuses
+the flag, and a field named `unattended` in the input never enables it). The flag replaces the
+`approved` and `confirmation` fields of those operations and keeps every other check:
+the plan's staged-content check and recheck, the verification of the remote branch after the
+push, the exact baseline reread, the closing-reference and description checks, and the
+receipt. The tool refuses, with `status: blocked` and a `refusal` field, a force push
+(`force-push`), the provider's default branch (`default-branch`), a detached HEAD
+(`detached-head`), a publication of a branch that is not at the pushed commit
+(`not-published`), and a branch whose last request was merged or closed and has no open
+one (`request-merged`, `request-closed`; the result's `request` names it, and no request is
+reopened or duplicated). An open request is updated and keeps its draft or ready state;
+`draft:true` decides only the state of a request created now.
+
+Report each refusal or failure as the cause of a skipped publication, never retry it, never
+retry a refused or rejected push with force, and never ask. After `publish`, read the result
+as section 4 says, with `recover` read-only on `uncertain` or `partial_failure`. The
+interactive flow of sections 1 to 4 is unchanged for every other invocation.
+**Complete when:** the request is verified as published, or the cause of the skipped or
+uncertain publication is reported with the effects that did complete.

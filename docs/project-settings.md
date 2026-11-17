@@ -25,6 +25,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `pr.repository` | Repository address | `/to-pr` |
 | `pr.organization` | Organization address | `/to-pr` |
 | `pr.project` | Project name or address | `/to-pr` |
+| `pr.publishAfterRun` | `ask`, `yes`, or `no`; an absent key means `ask` | `/sai-plan` publication question (see [Plan publication answer](#plan-publication-answer)) |
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
@@ -155,11 +156,15 @@ With `true`, a direct `/sai-plan` or `/sai-build` run on Claude Code or opencode
 - Precedence: an explicit override (an invocation flag, a direct statement in the conversation, or for `/from-backlog` the issue URL itself) beats a project setting, which beats a fast-track fixed value, which beats the normal question.
 - When a setting answers a question, the command prints one line naming the setting id and its value.
 - The explore language questions follow the same order. The crystallization language question takes the user's explicit statement, then `explore.readyToProposeLanguage`, then the normal question. The overview-language question takes `--overview-lang` or the user's explicit statement, then a value already resolved for the same crystallized set, then `explore.overviewLanguage`, then the normal question. Both read the setting only; an answer to the normal question stays in the conversation.
-- Settings answer preferences only. Authorization gates (commit authorization, publication confirmation, safe-operations confirmations, route selection) always ask.
+- Settings answer preferences only. Authorization gates (commit authorization, publication confirmation, safe-operations confirmations, route selection) always ask. The one exception is `pr.publishAfterRun`: its `yes` or `no` is the answer of `/sai-plan`'s start-of-run publication question, which is the authorization the run holds.
 
 `/from-backlog` resolves a bare `N` or `#N` in `backlog.provider`: GitLab and GitHub against the repository of the Git remotes, Azure DevOps against `backlog.organization` and `backlog.project` when both are set, otherwise against its existing context. Without the setting a bare reference keeps its current resolution. A full URL that matches a provider positively keeps that provider, and the command prints a line saying that the setting was overridden. Among providers that accept a URL only as a fallback, the setting breaks the tie. When the setting names a provider that does not accept the reference, the command stops with `provider-destination-conflict`.
 
 `/to-pr` takes its code host from the `pr.*` keys, never from `backlog.*`: the backlog provider and the code host can differ (for example Azure Boards with the code on GitLab). The order is an explicit provider or repository, then `pr.*`, then `.to-pr.json`, then Git remotes. An explicit value that differs from a `pr.*` key wins, and the command prints a line saying so. With `pr.provider` set, a self-hosted host needs no provider question. `.to-pr.json` is deprecated: it works only when no valid `pr.*` key is set, with a warning, and `.to-backlog.json` is no longer read.
+
+### Plan publication answer
+
+`pr.publishAfterRun` answers the question `/sai-plan` asks at the start of a run: whether to publish a draft PR/MR of the plan when the run ends. `yes` and `no` remove the question; `ask`, an absent key, and an invalid value (which also prints the warning) leave it normal. It is not a destination field of `/to-pr`, so it never changes how the destination is resolved, and the screen does not list it: it stays hand-edited. An explicit `--publish yes|no` argument of `/sai-plan` wins over it, and so does the answer a resumed run already recorded. Command invocation, a stale conversation, or a general grant never stand in for the answer: only the argument, the recorded answer, this setting, or the question itself do.
 
 ## Location
 
@@ -194,7 +199,7 @@ Run `npx --allow-git=all github:mmadariaga/shared-ai setup` and choose **Project
 - **Change telemetry** under `Experimental` (`experimental.changeTelemetry`): `On` or `Off`; the screen shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.
 - **Cache warming** under `Experimental`: not a value row. It opens the cache warming screen; leaving that screen returns here. Edits made there and edits pending here both save: the warming screen saves its own `warming` key, and this screen saves its changed keys when you leave it.
 
-`backlog.repository`, `backlog.project`, `backlog.organization`, and the other `pr.*` keys stay hand-edited. A typed language name is checked like the reader checks it, and an entry that is not accepted is asked again. The screen writes the canonical form (`English`, `None`).
+`backlog.repository`, `backlog.project`, `backlog.organization`, and the other `pr.*` keys (`pr.publishAfterRun` included) stay hand-edited. A typed language name is checked like the reader checks it, and an entry that is not accepted is asked again. The screen writes the canonical form (`English`, `None`).
 
 Choosing `ask` writes the string `"ask"`, which keeps the normal question and keeps the key's comment in the file. A stored value outside its allowed set shows with the reader's warning, and you may replace it.
 

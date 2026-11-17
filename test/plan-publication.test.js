@@ -46,20 +46,46 @@ test('changed content or exact file list invalidates inclusion approval; unsafe 
     await assert.rejects(async () => await tool.query(request, io), /Linked/);
   }
 });
-test('only composed Plan owns the once-only accepted publication continuation', () => {
+test('I6 I7 E1 E2 E12: only composed Plan owns the start-of-run publication answer, and the closing offer is gone', () => {
   const plan = fs.readFileSync('sai/commands/plan/coordinator.md', 'utf8');
   const explore = fs.readFileSync('sai/commands/explore/steps/pipeline-plan-unattended.md', 'utf8');
-  assert.equal(plan.match(/Create or update a draft PR\/MR/g).length, 1);
-  assert.match(plan, /Only after `Publish draft plan`, Fetch/);
-  assert.match(plan, /After successful completion only/);
+  assert.doesNotMatch(plan, /Not now|sole optional offer|post-completion offer|After successful completion only/);
+  assert.equal(plan.match(/Publish a draft PR\/MR of the plan for \{name\} when this run ends\?/g).length, 1);
+  assert.match(plan, /`Publish draft plan`, `Do not publish`/);
+  assert.match(plan, /## Publication answer/);
+  assert.ok(plan.indexOf('## Publication answer') < plan.indexOf('## Segments'));
+  // E2: argument, run state, setting, question, in that order.
+  const order = ['`--publish yes|no` argument', 'recorded in the run state', '`pr.publishAfterRun` setting', 'The question below'].map(text => plan.indexOf(text));
+  assert.ok(order.every(position => position > 0) && order.every((position, index) => !index || position > order[index - 1]));
+  assert.match(plan, /Resolve it once, after the input checks have passed/);
+  assert.match(plan, /before the first worker is created, so a run that ends at those checks asks nothing/);
+  assert.match(plan, /--set kind=publication --set value=<yes\|no>/);
+  assert.match(plan, /An explicit `--publish` value wins over the recorded answer and replaces it/);
+  assert.match(plan, /the closing report says that the argument replaced it/);
+  assert.doesNotMatch(plan, /ignored for this run/);
+  assert.match(plan, /branch \{branch\}, remote \{remote\}|Branch \{branch\}, remote \{remote\}/);
+  assert.match(plan, /AskUserQuestion.*question|`question`/);
+  assert.match(plan, /A run that fails, is stopped, or ends on an unanswered escalation publishes nothing, whatever the answer/);
   assert.match(plan, /close the planning report with exactly ``Plan done in openspec\/changes\/\{name\}\/\. Review it and run `\/sai-build \{name\}` in a new chat when ready\.``/);
   assert.match(plan, /This literal closes the planning report, not the command interaction/);
-  assert.match(plan, /planning is now complete\s+and its run is closed; continue to the sole optional offer/);
-  assert.match(plan, /On failure, stop\s+after closing the run: no publication offer or continuation runs/);
-  assert.ok(plan.indexOf('Close the run per') < plan.indexOf('After successful completion only'));
+  assert.match(plan, /--publish <answer>/);
+  assert.ok(plan.indexOf('**Telemetry.**') < plan.indexOf('**Publication.**') && plan.indexOf('**Publication.**') < plan.indexOf('Close the run per the cycle'));
   assert.doesNotMatch(plan, /end with exactly ``Plan done/);
-  assert.match(explore, /asks no second publication question/);
-  for (const phase of ['spec', 'design']) assert.doesNotMatch(fs.readFileSync(`sai/commands/${phase}/coordinator.md`, 'utf8'), /Create or update a draft PR\/MR/);
+  assert.match(explore, /asks its start question inside this route/);
+  assert.match(explore, /Explore asks no second\s+publication question/);
+  for (const phase of ['spec', 'design']) assert.doesNotMatch(fs.readFileSync(`sai/commands/${phase}/coordinator.md`, 'utf8'), /Publish a draft PR\/MR|publication answer/);
+  const claude = fs.readFileSync('commands/claude/sai-plan.md', 'utf8');
+  assert.match(claude, /^argument-hint: .*\[--publish yes\|no\]"$/m);
+  assert.doesNotMatch(fs.readFileSync('commands/opencode/sai-plan.md', 'utf8'), /^argument-hint:/m);
+});
+test('I6: the publication continuation is unattended and asks neither the inclusion nor the remote question', () => {
+  const publication = fs.readFileSync('sai/commands/plan/publication.md', 'utf8');
+  assert.doesNotMatch(publication, /AskUserQuestion|Commit listed plan documents|Cancel`/);
+  assert.match(publication, /asks the user nothing, and never stops the run/);
+  assert.match(publication, /`plan-commit --unattended`/);
+  assert.match(publication, /`push --unattended`/);
+  assert.match(publication, /`publish --unattended`/);
+  assert.match(publication, /never retried with force|no force push, no automatic retry/i);
 });
 test('both harnesses can reach the accepted publication workflow through manifest-declared profiles', () => {
   const { translate } = require('../bin/capabilities');
@@ -176,4 +202,31 @@ test('I7: plan publication starts no process outside the bounded runner', () => 
   const source = fs.readFileSync(path.join(__dirname, '../sai/tools/plan-publication.js'), 'utf8');
   assert.doesNotMatch(source, /execFileSync|execSync|spawnSync/);
   assert.match(source, /require\('\.\/backlog-process'\)/);
+});
+
+test('I1 E11: unattended plan-commit needs no approval token, commits only the listed plan documents and keeps unrelated staging and work', async t => {
+  const { cwd, git, request, io } = fixture(t);
+  const staged = git('diff', '--cached'), unstaged = git('diff');
+  await assert.rejects(async () => await tool.commit(request, io), /approval/);
+  await assert.rejects(async () => await tool.commit({ ...request, unattended: false, approved: false }, io), /approval/);
+  const result = await tool.commit({ ...request, unattended: true }, io);
+  assert.equal(result.status, 'complete');
+  assert.equal(result.files.length, 7);
+  assert.equal(git('diff', '--cached'), staged);
+  assert.equal(git('diff'), unstaged);
+  assert.equal(git('show', 'HEAD:other.txt'), 'base');
+  assert.match(git('ls-tree', '-r', '--name-only', 'HEAD'), /openspec\/changes\/example\/specs\/example\/spec\.md/);
+  assert.ok(!git('ls-tree', '-r', '--name-only', 'HEAD').includes('foreign'));
+  assert.equal(fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8'), 'openspec/changes/**\n');
+  assert.equal((await tool.commit({ ...request, unattended: true }, io)).status, 'no_changes');
+});
+
+test('I1 E11: unattended plan-commit keeps the staged-content check that protects unrelated staging', async t => {
+  const { cwd, git, write, request, io } = fixture(t);
+  write(owned, 'staged version'); git('add', '-f', owned); write(owned, 'working version');
+  const head = git('rev-parse', 'HEAD'), index = git('ls-files', '--stage');
+  await assert.rejects(async () => await tool.commit({ ...request, unattended: true }, io), /differs from both HEAD and the working tree/);
+  assert.equal(git('rev-parse', 'HEAD'), head);
+  assert.equal(git('ls-files', '--stage'), index);
+  assert.equal(fs.readFileSync(path.join(cwd, owned), 'utf8'), 'working version');
 });

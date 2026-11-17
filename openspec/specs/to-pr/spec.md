@@ -7,7 +7,7 @@ Prepare, review, create, and update GitHub pull requests and GitLab merge reques
 
 ### Requirement: Committed Git preparation with optional OpenSpec context
 
-The to-pr skill SHALL prepare titles and descriptions primarily from committed branch history and diff against a verified target ref. It SHALL distinguish pending staged, unstaged, and untracked files, SHALL NOT automatically include or commit pending files, and SHALL NOT require OpenSpec or generate pr.md. The accepted completed-plan continuation MAY create one exact authorized current-change plan commit before fresh collection. Relevant OpenSpec documents MAY supply supporting context but MUST NOT override Git evidence. Existing user documents SHALL be preserved.
+The to-pr skill SHALL prepare titles and descriptions primarily from committed branch history and diff against a verified target ref. It SHALL distinguish pending staged, unstaged, and untracked files, SHALL NOT automatically include or commit pending files, and SHALL NOT require OpenSpec or generate pr.md. The unattended plan publication of a SAI coordinator that holds a recorded `yes` publication answer MAY create one current-change plan commit of exactly the paths `plan-query` lists before fresh collection. Relevant OpenSpec documents MAY supply supporting context but MUST NOT override Git evidence. Existing user documents SHALL be preserved.
 
 #### Scenario: Prepare without OpenSpec
 - **WHEN** a Git repository has committed branch changes but no relevant OpenSpec documents
@@ -22,8 +22,8 @@ The to-pr skill SHALL prepare titles and descriptions primarily from committed b
 - **THEN** preparation stops or asks how to obtain the ref rather than inventing a diff.
 
 #### Scenario: Authorized completed-plan inclusion precedes collection
-- **WHEN** the user accepts the completed-plan action and approves the exact current-change documents and content for local inclusion
-- **THEN** only those documents can enter the inclusion commit, after which publication recollects the committed branch against the same destination.
+- **WHEN** a SAI coordinator that holds a recorded `yes` publication answer runs the plan publication
+- **THEN** only the current-change documents that `plan-query` lists can enter the inclusion commit, after which publication recollects the committed branch against the same destination.
 
 ### Requirement: Create or update the exact matching request
 
@@ -53,7 +53,7 @@ When `push-query` returns `ready`, the skill SHALL also show the exact remote, p
 
 When `push-query` returns `no_changes`, the skill SHALL use the exact base question "Publish this exact title and description to this destination?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
-The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation, unattended mode, and general prior grants SHALL NOT authorize these operations. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
+The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation and general prior grants SHALL NOT authorize these operations, and neither SHALL the unattended mode outside the SAI coordinator that holds a recorded publication answer. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
 
 Changed content, destination, baseline, or HEAD SHALL invalidate stale approval and require full presentation and renewed approval for still-pending operations only. A completed push SHALL NOT be repeated.
 
@@ -91,7 +91,7 @@ Changed content, destination, baseline, or HEAD SHALL invalidate stale approval 
 
 ### Requirement: Independent non-force push authorization
 
-The system SHALL retain independent tokens and validation for a necessary non-force push and publication while permitting one explicit human approval to authorize both exact operations. Before that approval, the skill SHALL show the exact remote, push URL, branch, commit, and complete publication proposal and SHALL name both operations in the combined question.
+Outside the unattended mode, the system SHALL retain independent tokens and validation for a necessary non-force push and publication while permitting one explicit human approval to authorize both exact operations. Before that approval, the skill SHALL show the exact remote, push URL, branch, commit, and complete publication proposal and SHALL name both operations in the combined question.
 
 The same explicit answer SHALL authorize `approved:true` separately for the push token and publication token. Tokens SHALL NOT be combined or interchangeable. The existing token derivation and validation SHALL remain unchanged.
 
@@ -583,7 +583,7 @@ The tool SHALL accept draft:true for explicit draft requests on GitHub, GitLab a
 
 ### Requirement: Explicit three-provider draft publication
 
-The shared publisher SHALL support explicit `draft:true` creation and conversion on GitHub, GitLab and Azure DevOps. Complete presentation and exact publication approval SHALL bind the requested state and any conversion of an existing ready request. Without an explicit request, ordinary creation behavior and existing draft state SHALL be preserved. False or other unsupported draft values SHALL be rejected.
+The shared publisher SHALL support explicit `draft:true` creation and conversion on GitHub, GitLab and Azure DevOps. Complete presentation and exact publication approval SHALL bind the requested state and any conversion of an existing ready request. Without an explicit request, ordinary creation behavior and existing draft state SHALL be preserved. In the unattended mode, `draft:true` SHALL decide only the state of a request created then: an open request SHALL keep its draft or ready state and SHALL NOT be converted. False or other unsupported draft values SHALL be rejected.
 
 #### Scenario: GitHub draft creation
 - **WHEN** an approved explicit draft request has no matching GitHub PR
@@ -608,6 +608,10 @@ The shared publisher SHALL support explicit `draft:true` creation and conversion
 #### Scenario: Draft approval changes
 - **WHEN** publication's requested draft state or conversion differs from the exact approved proposal
 - **THEN** the prior confirmation is rejected before mutation and complete renewed approval is required.
+
+#### Scenario: Unattended update keeps a ready request ready
+- **WHEN** an unattended `draft:true` publication matches one open ready request
+- **THEN** the publisher updates that request without converting it to draft.
 
 ### Requirement: Verify draft state independently of request content
 
@@ -648,3 +652,51 @@ The request status SHALL become `complete` only when its approved content and an
 
 - **WHEN** a later resume or recovery confirms the requested draft state of that request
 - **THEN** the risk comment is written exactly once.
+
+### Requirement: Unattended mode for a SAI coordinator with a recorded publication answer
+
+`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`); in that mode it SHALL ask nothing, SHALL send `draft:true` in `query` and `publish`, SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
+
+#### Scenario: The flag replaces the approval tokens
+- **WHEN** `push --unattended` runs without `approved` or `confirmation` fields on a publishable branch
+- **THEN** the push runs without force and the remote branch is verified as for an approved push
+
+#### Scenario: The flag is refused on other operations
+- **WHEN** `query --unattended` is invoked
+- **THEN** the tool returns `status: blocked` naming the three operations that accept the flag
+
+#### Scenario: A request field does not enable the mode
+- **WHEN** `push` runs with `unattended: true` in its input and no flag
+- **THEN** the approval token check applies as in the interactive flow
+
+### Requirement: Unattended mode refuses unsafe publications
+
+In the unattended mode, `to-pr.js` SHALL return `status: blocked` with a `refusal` field, and SHALL perform no mutation, for a force push (`force-push`), a detached HEAD (`detached-head`), the provider's default branch (`default-branch`), a provider adapter that cannot report merged and closed requests (`provider-unsupported`), a publication of a branch that is not at the pushed commit (`not-published`), and a branch that has no open request and whose request was merged or closed (`request-merged`, `request-closed`, with the result's `request` naming it). An open request of the branch SHALL be updated and SHALL NOT trigger the merged or closed refusal.
+
+#### Scenario: Default branch is refused
+- **WHEN** `push --unattended` runs on the provider's default branch
+- **THEN** the result is `blocked` with `refusal: default-branch` and nothing is pushed
+
+#### Scenario: Detached HEAD is refused
+- **WHEN** `plan-commit --unattended` runs on a detached HEAD
+- **THEN** the result is `blocked` with `refusal: detached-head` and no commit is created
+
+#### Scenario: Merged request is not reopened
+- **WHEN** `publish --unattended` runs for a branch with no open request and a merged request
+- **THEN** the result is `blocked` with `refusal: request-merged` and the `request` it names, and no request is created or reopened
+
+#### Scenario: Unpushed branch is refused
+- **WHEN** `publish --unattended` runs while the remote branch does not hold the commit to publish
+- **THEN** the result is `blocked` with `refusal: not-published`
+
+### Requirement: Provider adapters report merged and closed requests of the branch
+
+The GitHub, GitLab, and Azure DevOps adapters SHALL each provide a closed-request query for the unattended mode that returns the merged and closed requests whose source and target repository and branches match exactly, as `{number, url, state}` with `state` `merged` or `closed`. GitHub SHALL read `state=closed` pull requests and SHALL mark one with `merged_at` as merged. GitLab SHALL read `state=merged` and `state=closed` merge requests. Azure DevOps SHALL report `completed` pull requests as merged and `abandoned` ones as closed. A failed read SHALL be a blocker.
+
+#### Scenario: GitHub merged pull request
+- **WHEN** the branch's only GitHub pull request is closed with `merged_at` set
+- **THEN** the query returns it with `state: merged`
+
+#### Scenario: Azure abandoned pull request
+- **WHEN** the branch's only Azure DevOps pull request is abandoned
+- **THEN** the query returns it with `state: closed`

@@ -1,53 +1,12 @@
-# Optional completed-plan publication
+# Unattended completed-plan publication
 
-The plan is already complete. This action publishes its review copy on the current
-change branch, which later implementation reuses. It starts no implementation and
-never marks a request ready. Acceptance of the offer authorizes preparation only.
+The plan is already complete and its run holds the answer `yes` to the publication question of its Start (`@sai/commands/plan/coordinator.md` § Publication answer). That answer is the held confirmation for the operations below on the current change branch, which later implementation reuses: the local plan commit, the non-force push, and the creation or update of one draft request. This action starts no implementation, never marks a request ready, asks the user nothing, and never stops the run: every failure is a skipped publication with its reason in the closing report.
 
-Load the `to-pr` skill and follow its destination, content, approval and recovery
-workflow with the completed change name and an explicit `draft:true` request.
-Use the same installed `to-pr.js` and provider registry that the skill resolves.
-The following inclusion step runs after destination selection and before drafting
-the final request. It is the only exception to ordinary planning's ignored-file rule.
+Load the `to-pr` skill and follow its destination, content and recovery workflow with its § Unattended publication, with the completed change name and an explicit `draft:true` request. Use the same installed `to-pr.js` and provider registry that the skill resolves. The inclusion step below runs after destination selection and before drafting the final request. It is the only exception to ordinary planning's ignored-file rule.
 
-1. Run `plan-query` with `{change: name}`. Show every `proposal.files` path, which
-   are excluded by Git (`ignored`), their pending content and deletions, and the
-   source branch. Read the listed documents and show their diff against HEAD;
-   new or ignored documents need their content shown, not an empty Git diff.
-   Include `.openspec.yaml`, all specifications, and an overview when present.
-   Show the entire branch diff and commits against the resolved target as well:
-   warn that all other committed changes on this branch also enter the request.
-   This is not necessarily a documents-only request. A detached HEAD, unavailable
-   destination/access, missing plan or uninspectable target blocks only publication.
-2. Ask through Claude Code's `AskUserQuestion` or opencode's `question` for approval
-   of this exact file list and content in one local plan commit, explicitly naming
-   each excluded path that will be force-included. Options: `Commit listed plan
-   documents`, `Cancel`. Without approval, run no `plan-commit`, push or publish.
-   Do not stage unrelated files, change ignore rules, or use a separate branch.
-3. After approval, run `plan-commit` with `{change: name, harness: "claude"|"opencode",
-   approved: true, confirmation: <plan-query token>}`. It uses a private Git index
-   and preserves unrelated staging and working files. Only the authorized excluded
-   paths may bypass ignore rules. A changed plan, HEAD or owned index entry requires
-   renewed file review and approval. A `no_changes` result needs no new commit.
-   A `blocked` `plan-query` result or a blocked `plan-commit` names owned paths
-   whose staged content differs from both HEAD and the working tree: the commit
-   would drop that staging, so tell the user to commit, unstage or discard it and
-   query again. Every git call runs for at most 120 s; an `uncertain` result
-   (a commit that reached that bound) carries the HEAD read back and is never
-   repeated on its own. If the operation fails, inspect HEAD and the exact-path
-   diff before retrying; report an already-created commit separately and never
-   repeat it blindly.
-4. Continue `/to-pr` with fresh collection against the same destination and branch.
-   Keep `draft:true` in query and publication. Show the complete branch changes,
-   included files, content, destination and branches in the final exact confirmation.
-   A unique ready request requires explicit authorization of conversion to draft
-   within that same confirmation; an existing draft is reused. Multiple matches
-   require clarification, never duplicate creation. Changes to any approved details
-   renew confirmation. The initial offer and local commit approval authorize neither
-   push nor request mutation. Never force push or accept a normal request as success.
+1. **Destination.** Run `collect`, `resolve` and `destination` as the skill's § Resolve the destination says, without asking: an unresolved provider, an ambiguous remote or target branch, or a destination that needs a question skips the publication and names the missing fact. The target branch is the one `destination` returns for the provider's default branch unless the run was given another. A detached HEAD, missing access, or an unavailable provider skips the publication the same way.
+2. **Plan inclusion.** Run `plan-query` with `{change: name}` and read its result: every `proposal.files` path (ignored ones included, `.openspec.yaml`, all specifications, and an overview when present), the source branch, and any `blocked` result. A `blocked` result names owned paths whose staged content differs from both HEAD and the working tree: the commit would drop that staging, so skip the publication and name the paths so the user can commit, unstage or discard them. Otherwise run `plan-commit --unattended` with `{change: name, harness: "claude"|"opencode", provider, repository, remote, base}` taken from the destination. It uses a private Git index, takes only the paths `plan-query` lists, force-adds only the listed ignored ones, and leaves every other uncommitted file where it is, staging included. A `no_changes` result needs no new commit. Every git call runs for at most 120 s; an `uncertain` result (a commit that reached that bound) carries the HEAD read back and is never repeated: inspect HEAD and the exact-path diff, report an already-created commit separately, and skip the rest of the publication. A refusal (`refusal` in the blocked result: `default-branch`, `detached-head`, `request-merged`, `request-closed`) skips the publication; for a merged or closed request, name it from the result's `request`.
+3. **Request content.** Continue the skill with fresh collection against the same destination and branch: the title, the description (all other committed changes on this branch also enter the request, so the description does not claim a documents-only request), the ratings block, `query` with `draft:true`, and `push-query`. The unattended publish keeps an open request in its draft or ready state: `draft:true` only decides the state of a request that does not exist yet. Multiple matches skip the publication; never create a duplicate.
+4. **Push and publish.** Run `push --unattended`, then `prepare`, then `publish --unattended` with `draft:true` and the receipt, as the skill's § Unattended publication says. No force push, no automatic retry of a refused or rejected push, no authentication change or installation. On `uncertain` or `partial_failure`, run `recover` once, which is read-only, and report what it verified; never repeat a creation.
 
-Cancellation after the local commit keeps it and stops pending operations. Report
-local inclusion, branch push, request content and verified draft state separately.
-On unavailable publication or uncertain effects, keep the completed plan and any
-confirmed commit/push, explain the blocker and how to continue with `/to-pr` on this
-same branch requesting a draft. Use read-only recovery before repeating remote work.
+Report, in one short paragraph, the local inclusion (the commit, or that nothing changed), the branch push, the request URL with its verified draft or ready state, and every warning of the `query`, `publish` and `recover` results. When the publication was skipped or ended uncertain, report the completed steps separately from the failed one, keep the completed plan and any confirmed commit or push, and say how to continue by hand with `/to-pr` on this same branch requesting a draft.

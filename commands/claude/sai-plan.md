@@ -1,6 +1,6 @@
 ---
 description: Plan a change in one run — /sai-1-spec then /sai-2-design from a Ready to Propose block, each segment reviewed, checked, and committed locally, with no stop between segments.
-argument-hint: "[Ready to Propose block | --block-file <path> --block-hash <sha256> | change-name] [--overview-lang <language>]"
+argument-hint: "[Ready to Propose block | --block-file <path> --block-hash <sha256> | change-name] [--overview-lang <language>] [--publish yes|no]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}

@@ -123,6 +123,27 @@ async function pushQuery(request, io) {
   const remoteHead = rows ? rows.split(/\s+/)[0] : null;
   return { status: remoteHead === proposal.head ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
 }
+// Unattended mode (`--unattended` on plan-commit, push and publish) is for a SAI coordinator that holds a recorded
+// publication answer of `yes`: it replaces the approval and confirmation tokens and keeps every other check. A refusal
+// names its cause in `refusal`; the tool never retries one.
+const UNATTENDED_OPERATIONS = ['plan-commit', 'push', 'publish'];
+const refuse = (refusal, message, extra = {}) => Object.assign(new Error(message), { refusal, ...extra });
+async function unattendedGuard(request, io) {
+  if (request.force !== undefined && request.force !== false) throw refuse('force-push', 'Unattended publication never force pushes');
+  let source = '';
+  try { source = (await io.run('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim(); } catch { /* A detached HEAD has no branch name. */ }
+  if (!source) throw refuse('detached-head', 'Unattended publication refuses a detached HEAD: only a branch is published');
+  const proposal = await destination(request, io);
+  if (proposal.source === proposal.target.defaultBranch) throw refuse('default-branch', `Unattended publication refuses the default branch ${proposal.source}`);
+  const provider = adapter(request.provider, io);
+  if (typeof provider.closedRequests !== 'function') throw refuse('provider-unsupported', 'The provider cannot report merged and closed requests, so it cannot publish unattended');
+  // An open request is updated. Without one, a merged or closed request of this branch is never reopened or duplicated.
+  if (!(await provider.list(proposal.target, proposal.source, proposal.base, io)).length) {
+    const [closed] = await provider.closedRequests(proposal.target, proposal.source, proposal.base, io);
+    if (closed) throw refuse(`request-${closed.state}`, `Request ${closed.url} of branch ${proposal.source} was ${closed.state}, so no request is created or updated for it`, { request: closed });
+  }
+  return proposal;
+}
 // A push that reached the process bound may still have reached the remote: its outcome is read back, never assumed,
 // and the push is never repeated on its own. A surviving git process may still be pushing, so the readback proves nothing final.
 async function pushTimedOut(request, ready, io) {
@@ -134,8 +155,10 @@ async function pushTimedOut(request, ready, io) {
     message: `The push to ${remote} did not finish within the process limit and was stopped. ${seen} A git process may still be pushing, so the push is not repeated automatically; read the remote again before approving another push.` };
 }
 async function push(request, io) {
+  const unattended = request.unattended === true;
+  if (unattended) await unattendedGuard(request, io);
   const ready = await pushQuery(request, io);
-  if (request.approved !== true || ready.confirmation !== request.confirmation) throw new Error('Independent exact remote and branch push approval required');
+  if (!unattended && (request.approved !== true || ready.confirmation !== request.confirmation)) throw new Error('Independent exact remote and branch push approval required');
   if (ready.status === 'no_changes') return ready;
   try { await io.run('git', ['push', ready.proposal.remote, `${ready.proposal.head}:refs/heads/${ready.proposal.source}`]); }
   catch (error) {
@@ -240,6 +263,8 @@ async function prepareQuery(request, io) {
   const provider = adapter(request.provider, io);
   const rows = await provider.list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
+  // Unattended: `draft:true` asks for a draft creation only. An open request keeps its draft or ready state.
+  if (request.unattended === true && rows[0] && request.draft === true && rows[0].isDraft !== true) request = { ...request, draft: undefined };
   const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = await withClosingBlock(request, selected, io);
   validateDescription(request.provider, description, request.risk_placement === 'comment' ? request.description_overflow?.limit : undefined);
@@ -295,12 +320,17 @@ function labellingOutcome(outcome, proposal, result, notices = []) {
   return warnings.length ? { ...outcome, warnings } : outcome;
 }
 async function publish(request, io) {
+  const unattended = request.unattended === true;
+  if (unattended) await unattendedGuard(request, io);
   const prepared = await prepareQuery(request, io);
-  const ready = approvedWithFailedReads(prepared, request);
+  const ready = unattended ? prepared.ready : approvedWithFailedReads(prepared, request);
   const rereadNotices = ready === prepared.ready ? [] : ready.warnings.slice(-1);
-  if (request.approved !== true || request.confirmation !== ready.confirmation) throw new Error('Exact destination, baseline and content approval required; review again');
+  if (!unattended && (request.approved !== true || request.confirmation !== ready.confirmation)) throw new Error('Exact destination, baseline and content approval required; review again');
   if (ready.status === 'no_changes') return ready;
-  if ((await pushQuery(request, io)).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
+  if ((await pushQuery(request, io)).status !== 'no_changes') {
+    if (unattended) throw refuse('not-published', 'Branch is not published at the commit to publish; push it first');
+    throw new Error('Branch is not published at the approved commit; obtain independent push approval');
+  }
   request = { ...request, receipt: receiptPath(request.receipt) };
   const provider = adapter(request.provider, io);
   const receipt = { proposal: ready.proposal, pr: { status: prepared.prMatches ? 'complete' : 'pending' }, comment: { status: ready.proposal.inherent_risk?.required ? 'pending' : 'not_required', attempted: false }, ...(provider.publicationEvidence ? { evidence: await provider.publicationEvidence(ready.proposal, io) } : {}) };
@@ -386,11 +416,19 @@ async function resume(request, io) {
 async function main(rawArgv) {
   let request;
   try {
-    const { argv, inputFile } = extractInputFile(rawArgv);
+    const unattended = rawArgv.includes('--unattended');
+    const { argv, inputFile } = extractInputFile(rawArgv.filter(argument => argument !== '--unattended'));
     const [operation, registryPath] = argv;
-    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume, 'plan-query': planPublication.query, 'plan-commit': planPublication.commit };
-    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit <registry.json>; JSON in --input-file <path> (stdin also accepted)');
+    if (unattended && !UNATTENDED_OPERATIONS.includes(operation)) throw new Error(`--unattended applies only to ${UNATTENDED_OPERATIONS.join(', ')}`);
+    const planCommit = async (planRequest, planIo) => {
+      if (planRequest.unattended === true) await unattendedGuard(planRequest, planIo);
+      return await planPublication.commit(planRequest, planIo);
+    };
+    const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume, 'plan-query': planPublication.query, 'plan-commit': planCommit };
+    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit [--unattended: plan-commit, push and publish only] <registry.json>; JSON in --input-file <path> (stdin also accepted)');
     request = JSON.parse(readInput(inputFile));
+    // Only the flag enables unattended mode, never a field of the request.
+    if (unattended) request.unattended = true; else delete request.unattended;
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const io = { registry, cwd: process.cwd(), run: async (command, args, input) => await backlog.run(command, args, process.cwd(), input) };
     let result;
@@ -399,7 +437,7 @@ async function main(rawArgv) {
     } else result = await operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;
-  } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
+  } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(error.refusal ? { refusal: error.refusal, ...(error.request ? { request: error.request } : {}) } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
 }
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, resume, validateDescription, main };

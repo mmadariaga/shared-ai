@@ -313,6 +313,40 @@ test('plan-run@1 is a run machine over the shared core with the segments spec an
   assert.equal(planRun.transition(closed.state, { kind: 'status' }).run.status, 'completed');
 });
 
+test('I5: plan-run@1 records the publication answer, an explicit value replaces it, and the run view returns it', () => {
+  assert.equal(planRun.initialState.publication, '');
+  assert.equal(planRun.transition(planRun.initialState, { kind: 'publication', value: 'yes' }).rejected, 'run is not running');
+  let run = planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-p' });
+  assert.equal(run.run.publication, '');
+  assert.equal(planRun.project(run.state).run.publication, '');
+  for (const value of ['maybe', '', undefined, true]) assert.equal(planRun.transition(run.state, { kind: 'publication', value }).rejected, 'publication must be yes or no');
+  run = planRun.transition(run.state, { kind: 'publication', value: 'yes' });
+  assert.equal(run.run.publication, 'yes');
+  assert.equal(run.state.publication, 'yes');
+  assert.equal(planRun.transition(run.state, { kind: 'publication', value: 'yes' }).run.publication, 'yes', 'the same answer again changes nothing');
+  const replaced = planRun.transition(run.state, { kind: 'publication', value: 'no' });
+  assert.equal(replaced.rejected, undefined);
+  assert.equal(replaced.run.publication, 'no', 'an explicit --publish replaces the recorded answer');
+  assert.equal(planRun.transition(replaced.state, { kind: 'publication', value: 'yes' }).run.publication, 'yes');
+  assert.equal(planRun.project(replaced.state).run.publication, 'no');
+  assert.equal(planRun.project(run.state).run.publication, 'yes', 'a resumed run reads the recorded answer');
+  assert.equal(planRun.transition(run.state, { kind: 'status' }).run.publication, 'yes');
+  const escalated = planRun.transition(run.state, { kind: 'escalate', obstacle: 'checks' });
+  assert.equal(escalated.run.publication, 'yes');
+  assert.equal(planRun.transition(escalated.state, { kind: 'publication', value: 'yes' }).rejected, 'run is not running');
+  const closed = planRun.transition(run.state, { kind: 'close', outcome: 'completed' });
+  assert.equal(closed.run.publication, 'yes');
+  assert.equal(planRun.transition(closed.state, { kind: 'start', dir: '/tmp/plan-q' }).run.publication, '', 'a fresh run has no answer');
+  assert.equal(planRun.transition(planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-r' }).state, { kind: 'publication', value: 'no' }).run.publication, 'no');
+  // Only the machines that opt in carry the field.
+  for (const name of ['implement-run', 'merge-run']) {
+    const machine = require(`../sai-state/machines/${name}.js`);
+    const started = machine.transition(machine.initialState, { kind: 'start', dir: `/tmp/${name}-x` });
+    assert.equal(Object.hasOwn(started.run, 'publication'), false, name);
+    assert.equal(machine.transition(started.state, { kind: 'publication', value: 'yes' }), null, name);
+  }
+});
+
 test('the implement-run machine keeps its behavior over the same core', () => {
   const implementRun = require('../sai-state/machines/implement-run.js');
   assert.equal(implementRun.machineId, 'implement-run@1');

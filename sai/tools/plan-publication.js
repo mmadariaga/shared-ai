@@ -85,7 +85,11 @@ async function commit(request, io) {
   const ready = await query(request, io);
   // Staged content the commit would drop is data loss that cannot be undone: nothing is written and the real index stays as it is.
   if (ready.status === 'blocked') throw Object.assign(new Error(ready.message), { reason: ready.reason, staged_conflicts: ready.staged_conflicts });
-  if (request.approved !== true || request.confirmation !== ready.confirmation) throw new Error('Exact plan files, excluded files and content approval required; review again');
+  // Unattended mode (a coordinator holding a recorded publication answer) replaces the approval token with the plan
+  // just queried: the recheck below still ends the commit when the plan, the index or HEAD change while it is prepared.
+  const unattended = request.unattended === true;
+  if (!unattended && (request.approved !== true || request.confirmation !== ready.confirmation)) throw new Error('Exact plan files, excluded files and content approval required; review again');
+  const bound = unattended ? ready.confirmation : request.confirmation;
   const cwd = io.cwd || process.cwd(), proposal = ready.proposal;
   const directory = makeTempDir(request.harness, 'plan-publication-');
   const env = { GIT_INDEX_FILE: path.join(directory, 'index') };
@@ -99,7 +103,7 @@ async function commit(request, io) {
     }
     if ((await git(cwd, ['write-tree'], env)).trim() === (await git(cwd, ['rev-parse', `${proposal.head}^{tree}`])).trim()) return { status: 'no_changes', head: proposal.head, files: paths };
     // Recheck after snapshotting: content, index and HEAD changes require renewed approval.
-    if ((await query(request, io)).confirmation !== request.confirmation) throw new Error('Plan changed while preparing the commit; review again');
+    if ((await query(request, io)).confirmation !== bound) throw new Error('Plan changed while preparing the commit; review again');
     try { await git(cwd, ['commit', '-m', `docs: publish plan for ${request.change}`], env); }
     catch (error) {
       if (error.reason !== 'process-timeout') throw error;

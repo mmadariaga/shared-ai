@@ -164,9 +164,9 @@ presentation. Panel absence remains adapter-owned.
 - **Questions and assumptions.** The coordinator answers a worker question from the `Ready to Propose` block, the change's artifacts, or the repository, and records the answer as an assumption with its source. A question that none of them answers and whose answer would change the artifacts is force majeure and escalates through the native picker. Assumptions live in the run directory and the closing report only; they are never persisted in the repository.
 - **Checks and review.** Each segment runs mechanical checks through the budget executor (`openspec validate <name>`, `check-delta-headers.js`, `check-cited-paths.js`, and in design `file-manifest.js verify`); a failing check is an obstacle with a budget of 3 attempts, never a finding, and a segment does not close while one fails. The coordinator then reviews the segment's artifacts in up to 3 incremental rounds (`review-delta.js` snapshots over the artifact paths, `incremental-review.md`, finding shape from `artifact-review-contract.md`) against fidelity to the input, excess scope, internal consistency, and consistency across artifacts. Findings still open after the third round are pending, listed in the closing report, and never stop the run.
 - **Commits.** Each segment commits only its own paths locally, checking each with `git check-ignore` first and never force-adding; a segment whose paths are all ignored closes without a commit and says so. Nothing is pushed. Invoking `/sai-plan` also pre-authorizes the one local telemetry commit of `sai/policies/change-telemetry.md` § Commit, made only when the run records telemetry.
-- **Resilience.** The `plan-run@1` machine (`sai-state/machines/plan-run.js`, on the shared run core `run-core.js`, session key `plan-{name}`, segments `spec` and `design`) is the coordinator's memory outside its context. It holds identifiers and paths only; free text lives in a run directory created by `temp-root.js mkdtemp --prefix plan-{name}-`, and the report directory opened with `transfer.js open` is recorded as `report-dir`, reused by a replacement worker and a resumed run. Each obstacle has a budget of 3 attempts, an invalid report included; the exhausted budget escalates at once through the native picker with a stop option. An interrupted run resumes from the store, or from the artifacts on disk and `git log` without it, and the disk wins. A run started under an earlier session key does not resume.
+- **Resilience.** The `plan-run@1` machine (`sai-state/machines/plan-run.js`, on the shared run core `run-core.js`, session key `plan-{name}`, segments `spec` and `design`) is the coordinator's memory outside its context. It holds identifiers and paths only, and the publication answer (`yes` or `no`, replaced only by an explicit `--publish`); free text lives in a run directory created by `temp-root.js mkdtemp --prefix plan-{name}-`, and the report directory opened with `transfer.js open` is recorded as `report-dir`, reused by a replacement worker and a resumed run. Each obstacle has a budget of 3 attempts, an invalid report included; the exhausted budget escalates at once through the native picker with a stop option. An interrupted run resumes from the store, or from the artifacts on disk and `git log` without it, and the disk wins. A run started under an earlier session key does not resume.
 - **Specs approval.** Invoking `/sai-2-design` or `/sai-plan` is the approval of the specs: the design worker writes `approval.specs.approved_at` in `.openspec.yaml` only when it is absent or empty. A change with `skip_specs: true` has no specs to approve, so the design worker writes no approval key for it. The overview is a separate continuation that the design coordinator sends, naming `design/steps/overview.md`, only when `--overview-lang` is set.
-- **Flags.** The three commands accept and ignore `--fast-track` and `--supervised` and print no banner; `/sai-2-design` is no longer a member of the fast-track parser. `/sai-1-spec` and `/sai-plan` also accept `--block-file <path> --block-hash <sha256>`, which the spec coordinator verifies with `ready-to-propose.js verify-file`.
+- **Flags.** The three commands accept and ignore `--fast-track` and `--supervised` and print no banner; `/sai-2-design` is no longer a member of the fast-track parser. `/sai-1-spec` and `/sai-plan` also accept `--block-file <path> --block-hash <sha256>`, which the spec coordinator verifies with `ready-to-propose.js verify-file`. `/sai-plan` also accepts `--publish yes|no` (§ Optional plan publication).
 - **Explore.** The `Plan - Unattended` route follows the `/sai-plan` coordinator for the first pending slice (`pipeline-plan-unattended.md`), emitting the `explore-slice@1` intents; it writes the run directory through the budget executor and gains no direct write tool. The `Manual` route still hands the block to `/sai-1-spec` in a new chat.
 
 **Step-gated instruction delivery:** `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility` split each worker's instruction mass into one file per plan step under `sai/commands/{security,performance,accessibility}/steps/` (`common.md` plus per-id step files; each audit's leading scope step is fileless). Each worker card loads `sai/commands/audit/worker-common.md` and its `steps/common.md` at creation; the shared audit coordinator delivers each step file by pointer through that audit's `security-steps@1`, `performance-steps@1`, or `accessibility-steps@1` machine (`sai-state/machines/linear-steps.js`). The first filed step's pointer, returned by the cycle's `sai-state reset`, opens the task message: the worker runs the fileless first step inline and reports it with the first filed step in its first progress report. A batch that skips stages carries every skipped id, so the next pointer lands on the step that still has work. When the store fails the coordinator sends the pointer from the static order.
@@ -176,19 +176,31 @@ Two additional step libraries are not worker-instruction delivery: `/sai-explore
 
 ### Optional plan publication
 
-After a successful `/sai-plan`, its coordinator owns one optional draft PR/MR
-offer, including when Explore follows it. Only acceptance loads
-`sai/commands/plan/publication.md`, which reuses `/to-pr` on the same change branch.
-Standalone spec/design gain no offer. Planning is complete before publication;
-declining, cancelling or unavailable publication preserves that state.
+`/sai-plan` resolves its publication answer at its start, after its input checks pass
+and before the first worker is created: the `--publish yes|no` argument, then the answer
+recorded in `plan-run@1` (the `publication` field of the run view; an explicit `--publish` replaces it), then
+the `pr.publishAfterRun` project setting (`ask`, `yes`, `no`), then one question that names
+the branch, its remote, and the draft state. The first value found wins. The answer is the
+held confirmation for the plan-document commit, the non-force push, and the creation or
+update of the request, in the same way the Direct Build route selection pre-authorizes its
+local commits (ADR 0222 supersedes ADR 0209b decision 4, separate and exact remote approval, for
+a run that holds a recorded answer; the interactive `/to-pr` flow keeps it). A `yes` run
+publishes after its last local commit, the telemetry commit included, by following
+`sai/commands/plan/publication.md`, which runs `to-pr.js plan-commit`, `push`, and `publish`
+with `--unattended` and asks nothing. The flag replaces the approval and confirmation tokens
+and keeps every other check; the tool refuses a force push, the default branch, a detached
+HEAD, a branch not at the pushed commit, and a request that was merged or closed. A failed or
+skipped publication never stops the run. A run that fails, stops, or ends on an unanswered
+escalation publishes nothing. Standalone spec/design ask nothing. Explore's Plan route asks
+the same start question inside the route until Explore hands over `--publish`.
 `to-pr.js plan-query` and `plan-commit` bind exact current-change document content,
-including control files and an optional overview. Explicit local inclusion approval
-alone permits force-adding the listed ignored paths through a private index;
-unrelated staging and working files stay untouched. Ordinary segment ignore rules
-remain unchanged. Separate exact remote approval includes any conversion to draft.
+including control files and an optional overview; unattended `plan-commit` takes only the
+paths `plan-query` lists, ignored ones included, through a private index, and unrelated
+staging and working files stay untouched. Ordinary segment ignore rules remain unchanged.
 GitHub (REST creation, GraphQL conversion), GitLab (Draft title write) and Azure
-DevOps (isDraft write) require verified draft readback. Claude Code and opencode
-share the manifest capability profiles and installed tool/skill contracts.
+DevOps (isDraft write) require verified draft readback, and each provider adapter reports
+merged and closed requests of the branch. Claude Code and opencode share the manifest
+capability profiles and installed tool/skill contracts.
 
 ### Audit coordinators and workers
 `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility` run outside the shared orchestration, in the shape of `/sai-4-review`: one goal-driven, unattended coordinator, `sai/commands/audit/coordinator.md`, serves the three audits. The wrappers load the harness fetch skill and that coordinator, with the audit in `command_name`. The coordinator loads only `public-chat`, `remember`, `safe-operations`, `tool-resolution`, `obstacle-escalation`, `finding-state`, and `cache-warming` (never `no-commit-guard`, `bounded-dispatch-retry`, or `composition.md`), reads `sai/commands/{audit}/options.md`, and runs under the `audit-command` capability profile (coordinator plus write, shell, and `safe-operations`, so it can verify and commit). These boundaries apply equally to Claude Code and opencode.
