@@ -24,7 +24,7 @@ function section(text, startHeading, endHeading) {
 
 const fetches = text => text.split('\n').filter(line => /^Fetch `?@/.test(line)).map(line => line.replace(/ and .*$/, '').trim());
 const coordinator = () => read('sai/commands/merge/coordinator.md');
-const STEPS = ['strategy', 'apply', 'test-correction', 'renumbering-plan'];
+const STEPS = ['strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan'];
 
 test('the coordinator is one goal-driven card that loads only the six policies and no budget binding', () => {
   const card = coordinator();
@@ -159,7 +159,7 @@ test('E4: a rebase runs the suite once on the final tree and corrects a new fail
 
 test('E5, E10: commit intent that cannot decide escalates through the picker with written options, and abort is only explicit', () => {
   const card = coordinator();
-  const escalation = section(card, '4. **Escalation.**', '5. **Apply.**');
+  const escalation = section(card, '5. **Escalation.**', '6. **Review.**');
   assert.match(escalation, /Escalate at once, without spending an attempt/);
   assert.match(escalation, /native picker with options you write/);
   assert.match(escalation, /leaving the operation in progress without finalizing/);
@@ -253,9 +253,10 @@ test('the worker contract: one standalone worker, steps by pointer, writes only 
     assert.ok(exists(`sai/commands/merge/steps/${step}.md`), step);
     assert.ok(card.includes(`sai/commands/merge/steps/${step}.md`), `the coordinator names the ${step} step by pointer`);
   }
-  assert.match(card, /Active step: strategy — follow sai\/commands\/merge\/steps\/strategy\.md/);
+  assert.match(card, /Active step: resolve — follow sai\/commands\/merge\/steps\/resolve\.md/);
+  assert.match(card, /Active step: reuse — follow sai\/commands\/merge\/steps\/reuse\.md/);
   assert.match(card, /Fetch @sai\/orchestration\/workers\/bindings\/merge-worker\.md and use it\./);
-  assert.match(read('sai/commands/merge/steps/apply.md'), /Edit an affected file only through this call/);
+  assert.match(read('sai/commands/merge/steps/resolve.md'), /Edit an affected file only through this call/);
 });
 
 test('E15: the retired cards, entry points, and shared surfaces other commands use', () => {
@@ -284,6 +285,18 @@ test('E15: the retired cards, entry points, and shared surfaces other commands u
     assert.equal(entry.destination.class, 'sai');
   }
   assert.doesNotMatch(JSON.stringify(manifest.capabilities.profiles['merge-command']), /transfer\.js/);
+});
+
+test('the retired apply step is declared for both harnesses with the hashes of its historical versions', () => {
+  const manifest = JSON.parse(read('sai/install-manifest.json'));
+  const entry = manifest.retirements.find(item => item.destination.path === 'commands/merge/steps/apply.md');
+  assert.ok(entry, 'the apply step has a retirement entry');
+  assert.equal(entry.destination.class, 'sai');
+  assert.deepEqual(entry.harnesses, ['claude', 'opencode']);
+  assert.ok(entry.managedHashes.length >= 1 && entry.managedHashes.every(value => /^[0-9a-f]{64}$/.test(value)));
+  assert.ok(!exists('sai/commands/merge/steps/apply.md'), 'the source no longer carries the apply step');
+  assert.ok(exists('sai/commands/merge/steps/resolve.md'));
+  assert.doesNotMatch(read('sai/commands/merge/mechanics.md'), /steps\/apply\.md/);
 });
 
 test('E14: fast-track no longer lists /sai-merge, and the guard policy drops merge\'s language-question example', () => {

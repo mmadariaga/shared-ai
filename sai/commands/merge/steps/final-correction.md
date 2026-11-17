@@ -17,7 +17,7 @@ corrections: {path: string, category: specs|adr-ddr|code, before_hash: string, r
 ```
 
 - `analysis`: for each finding, which text stays, which goes, and the commit intent that decides it.
-- `corrections`: the edit as byte ranges the coordinator can protect before you write, one entry per file. `before_hash` is the sha256 of the file's current bytes, `start` and `end` are ordered, disjoint byte offsets, and each `conflict_id` starts with `<category>:<path>#`. Use the ranges the brief gives for a duplicate block, widened to take one neighboring blank line when removing the block would leave two. You write nothing here: the coordinator captures the ranges with `merge.js correction` and sends the `apply` step with the snapshot, and you then write the corrected text of each range through `merge.js write` (empty text removes the range).
+- `corrections`: the edit as byte ranges the coordinator can protect before you write, one entry per file. `before_hash` is the sha256 of the file's current bytes, `start` and `end` are ordered, disjoint byte offsets, and each `conflict_id` starts with `<category>:<path>#`. Use the ranges the brief gives for a duplicate block, widened to take one neighboring blank line when removing the block would leave two. You write nothing here: the coordinator captures the ranges with `merge.js correction` and sends the `resolve` step with the snapshot, and you then write the corrected text of each range through `merge.js write` (empty text removes the range).
 - `failed`: no correction within the touched files fixes a finding, or a finding is not a defect; say which, with the evidence.
 
 When a correction would change what a conflict strategy decided, report that instead of correcting: the coordinator decides.

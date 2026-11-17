@@ -498,7 +498,7 @@ test('the policy covers the commit, archive, backfill, and merge workers on thei
   assert.match(policy, /the commit, archive, backfill, and merge workers of `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and `\/sai-merge`/);
   assert.match(policy, /`commit`, `archive`, `backfill`, or `merge` for the worker of that command/);
   assert.match(policy, /\| `backfill` \| backfill \| `resolved_change_name`, `draft_references`, `corrected_specs`, `failure_class`, `unrecoverable` \|/);
-  assert.match(policy, /\| `merge` \| merge \| `strategy`, `decisions`, `escalations`, `analysis`, `corrections`, `applicability`, `renames`, `reference_updates` \|/);
+  assert.match(policy, /\| `merge` \| merge \| `strategy`, `decisions`, `escalations`, `analysis`, `corrections`, `applicability`, `renames`, `reference_updates`, `recipe` \|/);
   assert.doesNotMatch(policy, /standalone backfill and archive commands keep their existing transport/);
 });
 

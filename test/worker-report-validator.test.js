@@ -504,7 +504,7 @@ const CONTRACT_REPORTS = {
   commit: base(),
   archive: base({ resolved_change_name: 'x' }),
   backfill: base({ resolved_change_name: 'x', draft_references: [{ path: '/tmp/a', sha256: 'f'.repeat(64), destination: 'openspec/changes/x/proposal.md' }], corrected_specs: [{ destination: 'd', content: 'c' }] }),
-  merge: base({ strategy: 's', decisions: [{ conflict_id: 'code:a#1', decision: 'ours' }], escalations: [], analysis: 'a', corrections: [], applicability: 'no-collision', renames: [], reference_updates: [] }),
+  merge: base({ strategy: 's', decisions: [{ conflict_id: 'code:a#1', decision: 'ours' }], escalations: [], analysis: 'a', corrections: [], applicability: 'no-collision', renames: [], reference_updates: [], recipe: [{ path: '/tmp/run/recipes/lock.md', signature: 'a'.repeat(64) }] }),
   'direct-build': base({ resolved_change_name: 'x' }),
 };
 
@@ -529,6 +529,9 @@ test('E1: a role field of the wrong type is rejected, and a missing required one
   assert.ok(verdict({ status: 'needs_input', summary: 's', changed_files: [], question: 'q', options: [] }, 'archive').errors.includes('resolved_change_name is missing'));
   assert.ok(verdict(base({ ...CONTRACT_REPORTS.spec, warnings: [{ spec_assertion: 'a' }] }), 'spec').errors.some((e) => e.startsWith('warnings[0] must have exactly the keys')));
   assert.ok(verdict(base({ ...CONTRACT_REPORTS.merge, applicability: 'maybe' }), 'merge').errors.some((e) => e.startsWith('applicability must be one of')));
+  assert.ok(verdict(base({ ...CONTRACT_REPORTS.merge, recipe: [{ path: '/tmp/r.md' }] }), 'merge').errors.some((e) => e.startsWith('recipe[0] must have exactly the keys')));
+  assert.ok(verdict(base({ ...CONTRACT_REPORTS.merge, recipe: '/tmp/r.md' }), 'merge').errors.includes('recipe must be an array, got string'));
+  assert.ok(verdict({ status: 'failed', summary: 's', changed_files: [], recipe: [] }, 'merge').errors.length > 0, 'a recipe belongs to a completed report');
 });
 
 test('a review report that carries an outcome owes no role field, and a failed or needs_input one owes none either', () => {

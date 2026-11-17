@@ -2,7 +2,7 @@
 
 Fetch `@sai/commands/merge/steps/common.md` and read it once.
 
-Goal: decide how every conflict of this stop resolves, by commit intent, before anything is written.
+Goal: decide how every conflict of this stop resolves, by commit intent, before anything is written. `steps/resolve.md` decides by these rules and goes on to write; this file is the whole step only for a report that carries `escalations`, because nothing is written until the user has answered.
 
 Read the bundle of the snapshot in the brief. For every affected file and region, reconstruct what each side meant to achieve, classify the region as obvious or semantic, and choose the outcome that serves the intent of both sides:
 
@@ -27,4 +27,4 @@ escalations: {conflict_id: string, sides: string, recommendation: string}[]
 - `decisions`: one entry per semantic region, and one per whole-side file. `ours` and `theirs` are git stages (see Sides).
 - `status`: `failed` when the bundle or snapshot cannot be read, with the blocker and the affected path in `summary` and no `strategy`, `decisions`, or `escalations`; `completed` otherwise, with a non-empty `escalations` when any escalation exists. You write nothing to the repository in this step, so `changed_files` is empty.
 
-When a later message gives new evidence, a review finding, or a corrected snapshot, rebuild the strategy from what you already retained and the new input, and report again.
+When a later message gives the user's answer, new evidence, a review finding, or a corrected snapshot, the coordinator sends the `resolve` step with it, and you decide again from what you already retained and the new input.

@@ -159,6 +159,7 @@ const COMMAND_FIELDS = Object.freeze({
     applicability: { type: oneOf('not-applicable', 'no-collision', 'repair-required', 'escalation-required') },
     renames: { type: OBJECT_LIST },
     reference_updates: { type: OBJECT_LIST },
+    recipe: { type: records('path', 'signature'), only: ['completed'] },
   },
   'direct-build': {
     resolved_change_name: { type: STRING },

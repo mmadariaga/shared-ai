@@ -22,8 +22,8 @@ All calls take `--json --cwd <project-root>`.
 | --- | --- |
 | `preflight` | the `worktree_id` (the first 16 hex characters of the sha256 of the worktree's real top-level path, with `/` separators and lowercased on Windows, so one folder keeps one id whatever its spelling; the card keys the run-state slot `merge-{worktree_id}-{branch}` with it), the current branch, the dirty paths with their status codes, the branches not yet merged into `HEAD` newest first (local branches, the current branch's upstream, and each remote's default branch, with name and full `ref`), and whether a merge or rebase is in progress |
 | `provenance --source-ref <full-ref> --method merge\|rebase --squash yes\|no\|not-applicable` | after checking the ref, the target, source, and merge-base shas, the source-introduced ADR/DDR records, the governing rules of each side, and the upstream facts: the current branch's upstream, how many commits a rebase or squash would rewrite, and how many of those the upstream already holds (`force_push_needed`) |
-| `conflicts --record <file>` | the conflict snapshot: affected files with category, regions, stage OIDs, the safety check, and the containment indicators, and the unrelated-content inventory, captured before any write. The record holds the complete indicators; stdout carries their bounded summary |
-| `bundle [--out <file>]`, `write` | the conflict bundle for the worker (with `--out`, written to a new record file outside the repository and summarized on stdout), and the worker's only way to change an affected file (`steps/common.md`, `steps/apply.md`) |
+| `conflicts --record <file>` | the conflict snapshot: affected files with category, regions, stage OIDs, the safety check, the containment indicators, and the conflict signature, and the unrelated-content inventory, captured before any write. The record holds the complete indicators; stdout carries their bounded summary and each file's signature |
+| `bundle [--out <file>]`, `write` | the conflict bundle for the worker (with `--out`, written to a new record file outside the repository and summarized on stdout), and the worker's only way to change an affected file (`steps/common.md`, `steps/resolve.md`) |
 | `resolution --record --record-hash --source --confirmed [--phase authored\|materialized] [--partial]` | the check of a written resolution against the snapshot: complete inventory, decisions that match, text only inside the regions, unrelated content untouched, and, in `materialized`, whole-side checkouts equal to their captured stage. `--partial` checks only the files the resolution names, for the shortcut files of a mixed stop |
 | `correction --record <file>` | a snapshot of explicit byte ranges (array in `--input-file <path>`) that authorizes a correction outside the conflict regions |
 | `suite --record <file>` | the project-marker test command, when no documented command exists |
@@ -46,6 +46,33 @@ All calls take `--json --cwd <project-root>`.
 
 The stdout summary of a file keeps at most 5 incoming commits, with `patch_id` and `same_subject` as booleans and `range_diff` as its status, the count of `upstream_touching`, and the counts of `lines` with at most 3 `missing` lines. The safety check (`stage_checkout_preserves_combined_content`) stays beside the indicators: a `false` side admits no whole-side checkout.
 
+## Conflict signature
+
+`conflicts` gives every file a `signature`: `path`, `category`, `regions` (the number of conflict regions), `region_lines` (per region, `[ours_lines, theirs_lines]`, the line counts of the two sides git wrote between the markers, the base version left out), and `id`, the sha256 of the JSON array `[path, category, region_lines]`. The region text is not part of it, so a conflict whose text changes at every stop (a regenerated hash or version) keeps its signature, and a file whose shape changes does not. Two files have the same signature exactly when their `id` is equal: the tool decides that, never a worker and never the coordinator's reading. A file with no region (binary, deleted on one side, renamed) has `regions: 0`.
+
+## Recipes
+
+A recipe is a saved procedure: a Markdown file the worker writes in `<run directory>/recipes/` (outside the repository) for a file it resolved by a method that repeats. It never holds resolution text to paste: reuse writes through `merge.js write` like every resolution, and its result passes `merge.js resolution` like every resolution.
+
+```text
+signature: <the signature id of the file, copied from the snapshot>
+file: <repository-relative path>
+
+## Procedure
+<per region position (`region 1`, `region 2`): the segments to compose or the rule that derives the text from the two sides>
+
+## Why it repeats
+<the intent the procedure serves, so a reviewer can tell a misapplied recipe>
+```
+
+A completed `resolve` report may carry `recipe`, a list of `{path, signature}`: the recipe file and the `signature.id` the worker copied. The coordinator accepts an entry only when that id is the id of a file the same stop record resolved by the worker's own decision, and keeps it in `recipes.md` in the run directory, one line per recipe, which is what a replacement worker and a resumed run read:
+
+```text
+- <signature id> | <file path> | <recipe path>
+```
+
+A stop whose record holds a file with a listed id sends that file to the `reuse` step with the recipe path. A recipe that failed at a stop (its report left the file untouched, the resolution check rejected it, or the review pass found a defect) is removed from `recipes.md`.
+
 ## Introduced duplicates
 
 `duplicates` reads the final tree (the index, which must hold no unmerged path) and the two sides named by the provenance (`target_sha`, `source_sha`). It looks only at files that differ from both sides, because a file equal to one side has that side's duplicates. Per file it compares lines after trimming and ignores every line with no letter or digit (blank, brace-only, punctuation-only). A block is `min_lines` (4) consecutive significant lines. A block is **introduced** when it appears at least twice in the file of the final tree (occurrences do not overlap) and at most once in the same file on each side; a block already duplicated on one side is never listed. Consecutive flagged windows that repeat together are one block.
@@ -64,7 +91,7 @@ The result lists `blocks`, at most 100 (`total_blocks` and `truncated` say when 
            {"path": "src/b.js", "category": "code", "source": "git-ours", "regions": [], "decisions": []}]}
 ```
 
-`category` is `specs`, `adr-ddr`, or `code`; `source` is `authored` (`changed_files` lists its path), `git-ours`, or `git-theirs` (no regions). `steps/apply.md` gives the worker's form. For a shortcut the coordinator writes the same report in the run directory with one `git-ours` record per shortcut file, `changed_files: []`, and no decisions.
+`category` is `specs`, `adr-ddr`, or `code`; `source` is `authored` (`changed_files` lists its path), `git-ours`, or `git-theirs` (no regions). `steps/resolve.md` gives the worker's form. For a shortcut the coordinator writes the same report in the run directory with one `git-ours` record per shortcut file, `changed_files: []`, and no decisions.
 
 **`stop-{n}-confirmed.json`.** The array of decisions the check expects, `[{"conflict_id": "<category>:<path>#<n>", "decision": "ours|theirs|synthesis"}]`, one per semantic region and per whole-side file of the strategy; a file without regions is `<category>:<path>#1`. The shortcut writes `[]`.
 

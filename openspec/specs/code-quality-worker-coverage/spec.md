@@ -25,18 +25,18 @@ The Direct Build worker SHALL explicitly load `sai/policies/code-quality-priorit
 
 ### Requirement: Merge Loads the Policy Before Code Authorship
 
-Merge's writing-resolution instructions SHALL require loading `sai/policies/code-quality-priority-stack.md` before authoring a code resolution or coordinator-authorized code correction. Its test-correction instructions SHALL require the same load before authoring a proposed code correction. The approved strategy and behavior-preservation requirements SHALL prevail over the policy. Application SHALL remain within authorized ranges, and proposed correction guidance SHALL grant no write permission: the coordinator MUST authorize and capture correction ranges before application.
+Merge's writing-resolution instructions (`sai/commands/merge/steps/resolve.md`) SHALL require loading `sai/policies/code-quality-priority-stack.md` before authoring a code resolution or coordinator-authorized code correction. Its test-correction instructions SHALL require the same load before authoring a proposed code correction. In the `resolve` step the worker's decisions by commit intent, and in test-correction the approved strategy, together with behavior-preservation requirements SHALL prevail over the policy. Application SHALL remain within authorized ranges, and proposed correction guidance SHALL grant no write permission: the coordinator MUST authorize and capture correction ranges before application.
 
 Choosing a complete existing version through `git-ours` or `git-theirs` alone SHALL require no policy load.
 
 #### Scenario: Merge authors a resolution
 
 - **WHEN** the merge worker authors a code resolution or coordinator-authorized code correction
-- **THEN** the writing-resolution instructions require the existing policy load while preserving the approved strategy, behavior, and authorized ranges
+- **THEN** the writing-resolution instructions require the existing policy load while preserving the worker's decisions by commit intent, behavior, and authorized ranges
 
 #### Scenario: Merge proposes a correction after whole-side selection
 
-- **WHEN** merge enters test-correction to author a proposed code correction after a whole-side-only apply
+- **WHEN** merge enters test-correction to author a proposed code correction after a whole-side-only resolution
 - **THEN** the test-correction instructions require the existing policy load without granting write permission before coordinator authorization and range capture
 
 #### Scenario: Merge selects an existing version without authoring code
@@ -57,8 +57,8 @@ Tests SHALL verify the intended Fetch-reference holders, merge stage disclosure,
 
 #### Scenario: Merge discloses conditional loads only to code-authoring stages
 
-- **WHEN** the merge instruction tool discloses strategy, apply, test-correction, and renumbering-plan stages
-- **THEN** the policy Fetch appears in apply and test-correction but not strategy or renumbering-plan
+- **WHEN** the tests read the merge `common`, `strategy`, `resolve`, `reuse`, `test-correction`, and `renumbering-plan` step files
+- **THEN** the policy Fetch appears in `resolve` and `test-correction` and in no other merge step file
 
 #### Scenario: Both harnesses receive the same shared instructions
 

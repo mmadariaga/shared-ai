@@ -32,7 +32,7 @@ test('merge provenance is read from the captured file and its definition lives o
   assert.doesNotMatch(coordinator, /--find-copies-harder/, 'the coordinator captures through the tool instead of restating the definition');
   assert.match(coordinator, /Run `merge\.js provenance` for the method/);
   assert.match(coordinator, /keep its receipt as `provenance\.json` in the run directory/);
-  for (const step of ['strategy', 'apply', 'test-correction', 'renumbering-plan']) {
+  for (const step of ['strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan']) {
     assert.match(read(`sai/commands/merge/steps/${step}.md`), /Fetch `@sai\/commands\/merge\/steps\/common\.md`/, step);
   }
 });
