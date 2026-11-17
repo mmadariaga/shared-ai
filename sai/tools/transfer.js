@@ -44,6 +44,15 @@
  *       exit, or print an empty `reports` list at `--max` (default 30m). A
  *       duration is a whole number followed by ms, s, m, or h. Draft files
  *       (`*.draft.*`), the marker, and the ledger are never reports.
+ *   retire-handle --dir <dir> --handle <id>
+ *       Record a worker handle (the agent ID on Claude Code, the sessionID on opencode) as retired in the
+ *       reserved file `.sai-retired` inside `<dir>`, beside the ledger. Recording a recorded handle changes
+ *       nothing. Returns `already` and `recorded`. A coordinator runs it at every replacement and dispose of
+ *       a worker that holds the directory.
+ *   live --dir <dir> [--harness <claude|opencode>]
+ *       Report whether the caller's run is still live: `state` is `gone` when the directory no longer exists,
+ *       `retired` when the caller's own harness session (`harness-session.js`) is recorded as retired, and
+ *       `live` otherwise, also when the session cannot be read. Exit 0 for every state.
  *   close --dir <dir>
  *       Remove only that transfer directory. A directory already gone is not
  *       an error.
@@ -52,6 +61,9 @@
  * `.sai-transfer` marker file written by `open`, and (POSIX) ownership by the
  * current user, so `verify`, `materialize`, and `close` need no harness flag
  * and refuse any other directory.
+ *
+ * `put` refuses a write from a handle recorded as retired (exit 1, nothing written); when the caller's session
+ * cannot be read, the check is skipped.
  *
  * Exit codes: 0 = success; 1 = check failure (missing, outside, symbolic
  * link, sha256 mismatch, invalid directory); 2 = usage error or IO failure,
@@ -63,10 +75,12 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { makeTempDir, TempRootError } = require('./temp-root');
 const { readInputBytes } = require('./input-reader');
+const { agentSession, SESSION } = require('./harness-session');
 
 const MARKER = '.sai-transfer';
 const LEDGER = '.sai-accepted';
-const RESERVED = [MARKER, LEDGER];
+const RETIRED = '.sai-retired';
+const RESERVED = [MARKER, LEDGER, RETIRED];
 const DEFAULT_SETTLE_MS = 60 * 1000;
 const DEFAULT_MAX_MS = 30 * 60 * 1000;
 const DEFAULT_POLL_MS = 5 * 1000;
@@ -142,8 +156,9 @@ function relativeSegments(value) {
  * the file is created by one exclusive-create open, so an existing name (a file, a
  * symbolic link, anything) fails atomically and nothing is replaced.
  */
-function put(dir, relative, bytes, { io = fs, exclusive = false } = {}) {
+function put(dir, relative, bytes, { io = fs, exclusive = false, session = null } = {}) {
   const root = checkTransferDir(dir, { io });
+  if (session && readRetired(root, { io }).has(session)) throw new CheckError('The calling worker is retired: its coordinator replaced or ended it, so put writes nothing');
   const segments = relativeSegments(relative);
   let current = root;
   for (const segment of segments.slice(0, -1)) {
@@ -248,6 +263,56 @@ function accept(dir, reference, { io = fs, check = false } = {}) {
   if (!already) io.appendFileSync(path.join(root, LEDGER), `${JSON.stringify({ path: verified.path, sha256 })}\n`, { mode: 0o600 });
   return { path: verified.path, sha256, already, recorded: !already };
 }
+
+/** The handles recorded as retired in a transfer directory. */
+function readRetired(root, { io = fs } = {}) {
+  let text;
+  try {
+    text = io.readFileSync(path.join(root, RETIRED), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return new Set();
+    throw error;
+  }
+  return new Set(text.split('\n').filter(line => line !== ''));
+}
+
+/** Record a worker handle as retired. The handle is the id its coordinator captured when it created the worker. */
+function retireHandle(dir, handle, { io = fs } = {}) {
+  const root = checkTransferDir(dir, { io });
+  if (typeof handle !== 'string' || !SESSION.test(handle)) throw new UsageError('retire-handle requires --handle as the agent ID or sessionID of the worker');
+  const already = readRetired(root, { io }).has(handle);
+  if (!already) io.appendFileSync(path.join(root, RETIRED), `${handle}\n`, { mode: 0o600 });
+  return { handle, already, recorded: !already };
+}
+
+/**
+ * Whether the caller's run is live: `gone` when the transfer directory does not exist (or is no longer one), `retired`
+ * when the caller's own session is recorded as retired, `live` otherwise (an unreadable session is never refused).
+ */
+function live(dir, { io = fs, session = null } = {}) {
+  let root;
+  try {
+    root = checkTransferDir(dir, { io });
+  } catch (error) {
+    if (error instanceof CheckError && typeof dir === 'string' && path.isAbsolute(dir) && !lstatOrNull(path.resolve(dir), io)) return { state: 'gone' };
+    throw error;
+  }
+  return { state: session && readRetired(root, { io }).has(session) ? 'retired' : 'live' };
+}
+
+/** The harness this tool serves: `--harness` first, else the install root it runs from; `null` when neither names one. */
+function callerHarness(flag) {
+  if (flag !== undefined) return flag;
+  try {
+    const { harnessFromInstalledPath } = require('./temp-root');
+    return harnessFromInstalledPath(__filename);
+  } catch (error) {
+    return null;
+  }
+}
+
+/** The caller's own harness session, or `null` when it cannot be read. */
+const callerSession = (flag, env = process.env) => agentSession(callerHarness(flag), env);
 
 /** Parse a duration written as a whole number and a unit (ms, s, m, h); a bare 0 is 0 ms. */
 function parseDuration(value, flag) {
@@ -357,13 +422,15 @@ function usage() {
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
     '  node transfer.js accept --dir <dir> --path <absolute> --sha256 <hex> [--check]',
     '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]',
+    '  node transfer.js retire-handle --dir <dir> --handle <id>',
+    '  node transfer.js live --dir <dir> [--harness <claude|opencode>]',
     '  node transfer.js close --dir <dir>',
     '',
     'Exit codes: 0 = success; 1 = check failure; 2 = usage error or IO failure.',
   ].join('\n');
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--settle': 'settle', '--max': 'max', '--poll': 'poll' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -409,7 +476,7 @@ function execute(opts) {
       return open(opts.harness);
     case 'put':
       require_(opts, ['dir', 'path']);
-      return put(opts.dir, opts.path, opts.inputFile ? readInputBytes(opts.inputFile) : readStdin(), { exclusive: opts.exclusive === true });
+      return put(opts.dir, opts.path, opts.inputFile ? readInputBytes(opts.inputFile) : readStdin(), { exclusive: opts.exclusive === true, session: callerSession(opts.harness) });
     case 'verify': {
       require_(opts, ['dir', 'path', 'sha256']);
       const { path: verified, sha256 } = verify(opts.dir, { path: opts.path, sha256: opts.sha256 });
@@ -421,6 +488,12 @@ function execute(opts) {
     case 'accept':
       require_(opts, ['dir', 'path', 'sha256']);
       return accept(opts.dir, { path: opts.path, sha256: opts.sha256 }, { check: opts.check === true });
+    case 'retire-handle':
+      require_(opts, ['dir', 'handle']);
+      return retireHandle(opts.dir, opts.handle);
+    case 'live':
+      require_(opts, ['dir']);
+      return live(opts.dir, { session: callerSession(opts.harness) });
     case 'close':
       require_(opts, ['dir']);
       return close(opts.dir);
@@ -473,4 +546,4 @@ async function run(argv) {
 
 if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });
 
-module.exports = { MARKER, LEDGER, CheckError, UsageError, checkTransferDir, open, put, verify, accept, watch, parseDuration, materialize, close, parseArgs, main, run };
+module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, accept, retireHandle, live, watch, parseDuration, materialize, close, parseArgs, main, run };

@@ -25,7 +25,7 @@ The first response of an agent that received the switch (or of a main session th
 
 `begin` prints `{"chain": "<id>", "warming": {"interval", "max"}}` in minutes, or `{"chain": null, "warming": "off"}`. Keep the chain for the whole session.
 
-- `off` (the setting turns the agent off, or has no entry for it): arm nothing for the session. Nothing warms until the user enables it.
+- `off` (the setting turns the agent off, or has no entry for it, or a subagent's own harness session already had its chain closed by a dispose, which means its harness revived an ended worker): arm nothing for the session. Nothing warms until the user enables it. A subagent whose own harness session cannot be read gets a fresh chain as before.
 - A non-zero exit (for example the harness temporary root is missing on Linux, which SAI never creates, or a main session has no harness session id): print one line that names the message `begin` printed, arm nothing, and finish the task unchanged.
 
 A main session's chain follows its harness session id (`CLAUDE_CODE_SESSION_ID` on Claude Code, `OPENCODE_SESSION_ID` on opencode, or `--session <id>`), so `begin` in a later command invocation of the same chat returns the chain the chat already owns (and clears the retire mark of § Retire at terminal output), and at most one wait of the main session is live. A main-session `begin` without a session id exits non-zero with a message that names the variable and arms nothing, because a new chain for each call would break that rule: the session runs without warming. A subagent `begin` needs no session id.

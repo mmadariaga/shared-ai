@@ -1164,3 +1164,37 @@ test('CONTINUATION_REMINDER names the reply literals of the main session and of 
   assert.match(reminder, /reply to a wake with exactly `warming context cache up`/);
   assert.match(reminder, /`dispose` and every wake after it with exactly `cache warming stopped`/);
 });
+
+test('E5 a subagent begin records its harness session, and a begin from a session whose chain a dispose closed returns off', t => {
+  const { begin: beginWith, saiRoot, io } = chainFixture(t);
+  const folder = path.join(saiRoot, 'agents');
+  fs.mkdirSync(folder);
+  fs.writeFileSync(path.join(folder, 'budget-explorer.md'), '---\nmodel: deepseek/deepseek-v4\n---\n');
+  const begin = (input, extra) => beginWith(input, { agentFolders: [folder], ...extra });
+  const env = { OPENCODE_SESSION_ID: 'ses_worker_1' };
+  const opencode = { agent: 'budget-explorer', harness: 'opencode' };
+  const first = begin(opencode, { env });
+  assert.equal(recordOf(saiRoot, first.chain).agent_session, 'opencode:ses_worker_1');
+  assert.equal(begin(opencode, { env }).warming.interval, 4, 'a live session keeps beginning');
+  assert.deepEqual(warmer.closeChain(first.chain, io), { status: 'closed' });
+  assert.deepEqual(begin(opencode, { env }), { chain: null, warming: 'off' }, 'a revived worker arms nothing');
+  assert.equal(recordOf(saiRoot, first.chain).agent_session, 'opencode:ses_worker_1', 'the close keeps the session on the record');
+  assert.equal(begin(opencode, { env: { OPENCODE_SESSION_ID: 'ses_worker_2' } }).warming.interval, 4, 'another session is unaffected');
+  assert.equal(begin({ agent: 'budget-explorer', harness: 'claude' }, { env }).warming.interval, 4, 'a session of the other harness is unaffected');
+  const claude = { agent: 'sai-3-green-worker', harness: 'claude' };
+  const claudeFirst = begin(claude, { env: { CLAUDE_CODE_AGENT_ID: 'agent-1' } });
+  assert.equal(recordOf(saiRoot, claudeFirst.chain).agent_session, 'claude:agent-1');
+  warmer.closeChain(claudeFirst.chain, io);
+  assert.equal(begin(claude, { env: { CLAUDE_CODE_AGENT_ID: 'agent-1' } }).chain, null);
+});
+
+test('E6 a subagent begin whose harness session cannot be read keeps a fresh chain with no refusal', t => {
+  const { begin, saiRoot, io } = chainFixture(t);
+  const first = begin(undefined, { env: {} });
+  assert.equal('agent_session' in recordOf(saiRoot, first.chain), false);
+  warmer.closeChain(first.chain, io);
+  const second = begin(undefined, { env: {} });
+  assert.match(second.chain, /^[0-9a-f]{16}$/);
+  assert.notEqual(second.chain, first.chain);
+  assert.match(begin(undefined, { env: { CLAUDE_CODE_AGENT_ID: '  ' } }).chain, /^[0-9a-f]{16}$/);
+});

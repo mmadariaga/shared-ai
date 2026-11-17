@@ -345,6 +345,25 @@ function agentIdentity(name, harness, { cwd, folders = agentFolders(harness, cwd
   return { provider: model.slice(0, slash), model: model.slice(slash + 1) };
 }
 
+/** The harness-qualified key of a subagent's own session (`--session` first, then the environment), or `null` when unreadable. */
+function subagentSessionKey(harness, session, env) {
+  const { agentSession, SESSION } = require(path.resolve(INSTALL_ROOT, 'sai', 'tools', 'harness-session.js'));
+  const given = session === undefined ? undefined : String(session).trim();
+  const id = given === undefined ? agentSession(harness, env) : SESSION.test(given) ? given : null;
+  return id ? `${harness}:${id}` : null;
+}
+
+/** Whether a chain that carries this session key was closed by a dispose. */
+function sessionChainClosed(saiRoot, agentKey) {
+  try {
+    return fs.readdirSync(saiRoot).some(name => {
+      if (!name.startsWith(CHAIN_PREFIX)) return false;
+      const record = readJson(path.join(saiRoot, name));
+      return record?.agent_session === agentKey && chainClosed(record);
+    });
+  } catch { return false; }
+}
+
 /**
  * The foreground start of an agent's warming. A subagent names its installed agent file (`agent`); the main session
  * names its provider and model (`role: 'agent'`). Prints `{ chain, warming }`: `off` (no chain, nothing to arm) or
@@ -376,6 +395,11 @@ function beginOnce(input, io = {}) {
   const warming = (io.resolve ?? defaultResolve)(identity);
   if (warming === 'off') return { chain: null, warming: 'off' };
   const saiRoot = io.saiRoot ?? defaultSaiRoot();
+  // A subagent records its own harness session on its chain. A session whose chain a dispose closed is a worker that was
+  // ended and then revived by its harness: it gets no chain, so it arms nothing. Without a readable session nothing is
+  // refused and the chain is a fresh one, as before.
+  const agentKey = identity.role === 'subagent' ? subagentSessionKey(harness, input.session, io.env ?? process.env) : null;
+  if (agentKey && sessionChainClosed(saiRoot, agentKey)) return { chain: null, warming: 'off' };
   // The main session's chain follows its harness session id; without one every call would open a new chain and break the
   // one-live-wait rule, so the call fails instead.
   const sessionVariable = harness === 'claude' ? 'CLAUDE_CODE_SESSION_ID' : 'OPENCODE_SESSION_ID';
@@ -394,7 +418,7 @@ function beginOnce(input, io = {}) {
     const kept = input.fixedDeadline || !held ? {} : {
       owner: held.owner ?? null, interval_ms: held.interval_ms, max_ms: held.max_ms, closing_ms: held.closing_ms,
     };
-    writeAtomic(file, `${JSON.stringify({ generation: Number.isSafeInteger(held?.generation) ? held.generation : 0, updated_ms: now(), identity, ...deadline, ...kept })}\n`);
+    writeAtomic(file, `${JSON.stringify({ generation: Number.isSafeInteger(held?.generation) ? held.generation : 0, updated_ms: now(), identity, ...deadline, ...kept, ...(agentKey ? { agent_session: agentKey } : {}) })}\n`);
     return null;
   });
   pruneChains(saiRoot, now());
