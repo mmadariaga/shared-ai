@@ -75,3 +75,18 @@ The checker at `sai/tools/check-cited-paths.js` SHALL use the working directory 
 
 - **WHEN** the checker is run with `--help`
 - **THEN** the `--root` entry states that the default is the working directory
+
+### Requirement: Test-assertion paths are read from the label line and its list items
+In `interfaces.md`, the checker SHALL extract cited paths of the `**Test assertions**` field from the field's label line and from every line below it, up to the next Markdown heading or the next line that starts a `**Label**` field. Paths cited in list items, marked `[smoke-test]` or unmarked, SHALL be checked like paths cited on the label line in the earlier prose form. Paths of other fields, such as `**Interfaces**`, SHALL NOT be extracted.
+
+#### Scenario: List items are checked
+- **WHEN** a step's `**Test assertions**` is a list whose marked and unmarked items cite backticked paths
+- **THEN** the checker extracts the path of every item
+
+#### Scenario: Earlier prose form is still checked
+- **WHEN** a step's `**Test assertions**` cites a path on its label line in the earlier prose form
+- **THEN** the checker extracts that path
+
+#### Scenario: The list ends at the next field
+- **WHEN** a `**Label**` field line follows the `**Test assertions**` list
+- **THEN** the checker extracts no path from that field or from items below it

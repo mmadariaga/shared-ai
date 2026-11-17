@@ -182,6 +182,7 @@ function collectFromContent(content, fileLabel) {
   let inPreciseLocations = false;
   let inFilesAffected = false;
   let inLocalField = false;
+  let inTestAssertions = false;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i].replace(/\r$/, '');
@@ -248,9 +249,15 @@ function collectFromContent(content, fileLabel) {
       continue;
     }
 
-    if (isInterfaces && /\*\*Test assertions\*\*/.test(raw)) {
-      for (const p of extractPathsFromText(raw)) {
-        out.push({ cited: p, kind: 'EVIDENCE', line: i + 1 });
+    if (isInterfaces) {
+      // The field spans its label line and the list items below it, up to the
+      // next heading or `**Label**` field line.
+      if (/\*\*Test assertions\*\*/.test(raw)) inTestAssertions = true;
+      else if (/^#{1,6}\s+/.test(trimmed) || /^\*\*\S/.test(trimmed)) inTestAssertions = false;
+      if (inTestAssertions) {
+        for (const p of extractPathsFromText(raw)) {
+          out.push({ cited: p, kind: 'EVIDENCE', line: i + 1 });
+        }
       }
     }
   }
