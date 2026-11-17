@@ -268,6 +268,12 @@ function reusable(record, saiRoot, timings, now) {
 /** Whether the record carries the closed marker that `close` writes: a closed chain never warms again. */
 const chainClosed = record => record?.closed_ms !== undefined;
 
+/**
+ * Whether the record carries the retired marker that `retire` writes: a retired chain launches and re-arms nothing, and
+ * its live wait finishes its interval and answers `finished`. A main-session `begin` rewrites the record without it.
+ */
+const chainRetired = record => record?.retired_ms !== undefined;
+
 /** Renew a live wait's lease under the record's lock; `null` when this wait no longer owns the chain or it is closed. */
 function renewLease(saiRoot, state, now) {
   const file = chainFile(saiRoot, state.chain);
@@ -418,6 +424,30 @@ function closeChain(chain, io = {}) {
 }
 
 /**
+ * Retire the main session's chain when its command prints its terminal output: `retired_ms` goes into the record under
+ * its lock, and from then on the arm check launches nothing and every arm and re-arm answers `finished`. The wait that
+ * is live is not stopped: it finishes its interval, which keeps the cache warm for an immediate next command, and then
+ * answers `finished`. A later main-session `begin` on the same chain clears the mark. Prints `{ status }`: `retired`,
+ * `already-retired` (idempotent), `absent` (no record), or `refused` (a subagent's chain, which its dispatcher ends
+ * with a dispose and `close`).
+ */
+function retireChain(chain, io = {}) {
+  const now = io.now ?? Date.now;
+  const saiRoot = io.saiRoot ?? defaultSaiRoot();
+  const file = chainFile(saiRoot, chain);
+  const status = withChainLock(file, () => {
+    const record = readJson(file);
+    if (!record?.identity) return 'absent';
+    if (record.identity.role !== 'agent') return 'refused';
+    if (chainRetired(record)) return 'already-retired';
+    const at = now();
+    writeAtomic(file, `${JSON.stringify({ ...record, retired_ms: at, updated_ms: at })}\n`);
+    return 'retired';
+  });
+  return { status };
+}
+
+/**
  * The foreground arm check (I2): after each response the agent asks whether it must launch a wait. A live wait with a
  * live lease, the same timings and no newer cutoff mark is reused, and the check extends its window to now plus `max`;
  * every other answer tells the agent to launch a background `warm`, which takes the chain's ownership. Prints `{launch}`.
@@ -428,7 +458,7 @@ function armCheck(chain, io = {}) {
   const file = chainFile(saiRoot, chain);
   const launch = withChainLock(file, () => {
     const record = chainRecord(saiRoot, chain);
-    if (chainClosed(record)) return false;
+    if (chainClosed(record) || chainRetired(record)) return false;
     const timings = (io.resolve ?? defaultResolve)(record.identity);
     if (timings === 'off') return false;
     const at = now();
@@ -454,7 +484,7 @@ async function armOnce(chain, io) {
   const file = chainFile(saiRoot, chain);
   const acquired = withChainLock(file, () => {
     const record = chainRecord(saiRoot, chain);
-    if (chainClosed(record)) return { result: { status: 'finished', waited_ms: 0, state: { chain } } };
+    if (chainClosed(record) || chainRetired(record)) return { result: { status: 'finished', waited_ms: 0, state: { chain } } };
     const timings = (io.resolve ?? defaultResolve)(record.identity);
     if (timings === 'off') return { result: { status: 'finished', waited_ms: 0, state: { chain } } };
     const base = warmState(timings, now());
@@ -505,7 +535,7 @@ async function wakeOnce(state, io) {
   const file = chainFile(saiRoot, state.chain);
   const resumed = withChainLock(file, () => {
     const record = chainRecord(saiRoot, state.chain);
-    if (chainClosed(record)) return { lost: true };
+    if (chainClosed(record) || chainRetired(record)) return { lost: true };
     // E10: a re-arm keeps ownership only while its generation is still current.
     if (record.generation !== state.generation) return { lost: true };
     const cutoff = cutoffMark(saiRoot);
@@ -545,7 +575,8 @@ async function waitOwned(state, io) {
     const at = now();
     if (at >= state.closing_ms) return done('finished');
     const left = state.interval_ms - waited;
-    if (left <= 0) return done('continue');
+    // A retired chain lets the live wait finish its interval, and the wake then answers `finished` instead of `continue`.
+    if (left <= 0) return done(chainRetired(readJson(chainFile(saiRoot, state.chain))) ? 'finished' : 'continue');
     const chunk = Math.min(left, state.closing_ms - at, TICK_MS);
     await wait(chunk);
     waited += chunk;
@@ -560,9 +591,10 @@ const FLAGS = {
   arm: ['--chain'],
   warm: ['--chain', '--state'],
   close: ['--chain'],
+  retire: ['--chain'],
 };
 /** Flags that take no value. */
-const SWITCHES = { begin: ['--fixed-deadline'], arm: [], warm: [], close: [] };
+const SWITCHES = { begin: ['--fixed-deadline'], arm: [], warm: [], close: [], retire: [] };
 
 /** The state of a `state_token`, or `null` when the token is not the encoding of a state object. */
 function decodeStateToken(token) {
@@ -637,6 +669,13 @@ if (require.main === module) {
       console.log(JSON.stringify(result));
       return void (process.exitCode = result.status === 'refused' ? 1 : 0);
     }
+    if (command === 'retire') {
+      const values = parseFlags('retire', args);
+      if (values.chain === undefined) throw new UsageError('retire needs --chain <id> from begin.');
+      const result = retireChain(values.chain);
+      console.log(JSON.stringify(result));
+      return void (process.exitCode = result.status === 'refused' ? 1 : 0);
+    }
     if (command === 'warm' && args.length && !args.some(isInputFile)) {
       const result = await warmOnce(inputFromArgv(args));
       return console.log(JSON.stringify({ ...result, state_token: stateToken(result.state) }));
@@ -661,5 +700,5 @@ if (require.main === module) {
 module.exports = {
   UsageError, inputFromArgv, beginInputFromArgv, armInputFromArgv, stateToken, CUTOFF_FILE, CHAIN_STALE_MS, TICK_MS,
   LEASE_STALE_MS, newChainId, sessionChainId, intervalMilliseconds, splitArguments, prepare, waitOnce, warmState,
-  beginOnce, armCheck, warmOnce, closeChain, decodeStateToken, frontmatterModel, agentIdentity,
+  beginOnce, armCheck, warmOnce, closeChain, retireChain, decodeStateToken, frontmatterModel, agentIdentity,
 };

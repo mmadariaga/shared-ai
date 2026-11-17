@@ -23,7 +23,7 @@ TBD - created by archiving change subagent-cache-warming-core. Update Purpose af
 
 ### Requirement: Arm after each response
 
-An agent whose `begin` returned timings SHALL, before ending each turn with its response, run the foreground arm check `node "<wait-path>" arm --chain <chain>`, and SHALL launch one background wait without awaiting it only when the check prints `launch: true`: `node "<wait-path>" warm --chain <chain>`, through Claude Code `Bash` with `run_in_background: true` and the description `cache-warm`, or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. `warm` SHALL take no `--interval` or `--max`. The JSON forms of `warm` (`--input-file <path>` or stdin) SHALL stay accepted but SHALL NOT be prescribed. It SHALL arm after every response, a result, a question (`needs_input`), and a step report alike, until its dispatcher disposes it or its `max` window closes; a main session, which is never disposed, SHALL keep arming after its closing report until its window closes. When the check or the launch fails (no shell, a permission refusal, a missing script, or an earlier installed `wait.js` that does not know `begin` or `arm`), the agent SHALL stop warming without retrying, a subagent SHALL declare `warming: false` in that same message, and its task outcome and report SHALL NOT otherwise change. The same rule SHALL apply on Claude Code and opencode. A completed wait SHALL return `state_token`, the returned state encoded as one base64url token with no brace or quote, beside `status`, `waited_ms`, and `state`, and a re-arm SHALL pass it unchanged as `--state <state_token>` with no other flag. A hand-off wait (see the requirement "Hand-off wait with a fixed deadline") is the exception for a main session: it arms only at the end of the hand-off close, not after later responses.
+An agent whose `begin` returned timings SHALL, before ending each turn with its response, run the foreground arm check `node "<wait-path>" arm --chain <chain>`, and SHALL launch one background wait without awaiting it only when the check prints `launch: true`: `node "<wait-path>" warm --chain <chain>`, through Claude Code `Bash` with `run_in_background: true` and the description `cache-warm`, or the opencode background shell, where `<wait-path>` is the installed `sai-cache-warmer/wait.js`. `warm` SHALL take no `--interval` or `--max`. The JSON forms of `warm` (`--input-file <path>` or stdin) SHALL stay accepted but SHALL NOT be prescribed. It SHALL arm after every response, a result, a question (`needs_input`), and a step report alike, until its dispatcher disposes it or its `max` window closes; a main session, which is never disposed, SHALL instead retire its chain at its command's terminal output (see the requirement "Main session retires its chain at terminal output") and SHALL NOT keep arming after it. When the check or the launch fails (no shell, a permission refusal, a missing script, or an earlier installed `wait.js` that does not know `begin` or `arm`), the agent SHALL stop warming without retrying, a subagent SHALL declare `warming: false` in that same message, and its task outcome and report SHALL NOT otherwise change. The same rule SHALL apply on Claude Code and opencode. A completed wait SHALL return `state_token`, the returned state encoded as one base64url token with no brace or quote, beside `status`, `waited_ms`, and `state`, and a re-arm SHALL pass it unchanged as `--state <state_token>` with no other flag. A hand-off wait (see the requirement "Hand-off wait with a fixed deadline") is the exception for a main session: it arms only at the end of the hand-off close, not after later responses.
 
 #### Scenario: Worker arms after its report
 - **WHEN** a worker whose `begin` returned timings returns a step report, a `needs_input` question, or a terminal result
@@ -44,6 +44,10 @@ An agent whose `begin` returned timings SHALL, before ending each turn with its 
 #### Scenario: Malformed state token is rejected
 - **WHEN** `warm --state` receives a value that does not decode to a state object
 - **THEN** `wait.js` fails with exit 2 and an error that names `--state`, and arms no wait
+
+#### Scenario: Main session after its terminal output
+- **WHEN** a main session has retired its chain at its command's terminal output
+- **THEN** it launches no further wait for that chain until a later command invocation runs `begin`
 
 ### Requirement: Wake performs no work
 
@@ -462,3 +466,43 @@ On Claude Code no chain SHALL be closed: `TaskStop` ends the agent and its wait 
 #### Scenario: Commands outside the protocol keep their replies
 - **WHEN** `budget-executor`, `/sai-cache-warmer`, or `/sai-context-cache-ttl-benchmark` replies
 - **THEN** its reply is unchanged by the warming reply literals
+
+### Requirement: Main session retires its chain at terminal output
+
+`sai/policies/cache-warming.md` SHALL single-source, in a `## Retire at terminal output` section, the rule that the main session ends its warming when its command finishes: right before it prints the terminal output of a SAI command (a completed close, a stop, a block, or an escalation the user leaves unanswered), the main session SHALL run `node "<wait-path>" retire --chain <chain>` in the foreground with the chain its `begin` returned. A main session with no chain (`begin` printed `off` or failed) SHALL retire nothing, and a failed `retire` call SHALL print one line while the terminal output goes on. The live wait SHALL NOT be stopped: it SHALL finish its interval and its wake SHALL return `finished`. Only the last message of the outermost command SHALL retire the chain; the close of a segment of `/sai-plan`, `/sai-build`, or `/sai-deep-review` SHALL NOT. The `/sai-explore` hand-off close SHALL keep arming its fixed-deadline hand-off wait and SHALL NOT retire, and an ordinary `/sai-explore` discussion turn SHALL NOT count as a terminal output. The "Terminal output" bullet of `sai/policies/remember.md` SHALL point to that section without restating the rule, and the rule SHALL add no user question. Claude Code and opencode SHALL run the same call, with no task handle and no shell removal.
+
+#### Scenario: Command prints its terminal output
+- **WHEN** a main session whose `begin` returned a chain is about to print its command's terminal output
+- **THEN** it runs `retire --chain <chain>` in the foreground first, and its live wait finishes its interval, wakes with `finished`, and nothing is re-armed
+
+#### Scenario: Hand-off close is not a retire
+- **WHEN** `/sai-explore` reaches its hand-off close
+- **THEN** the main session arms its fixed-deadline hand-off wait and does not run `retire`
+
+#### Scenario: Remember points to the single source
+- **WHEN** a reader looks up the "Terminal output" bullet of `sai/policies/remember.md`
+- **THEN** it directs the main session to retire its chain as `sai/policies/cache-warming.md` § Retire at terminal output says, without restating the rule
+
+### Requirement: Retired chain refuses re-arming until the next begin
+
+`wait.js` SHALL provide `retire --chain <chain>`, which SHALL write a retired mark into a main-session chain record under the chain lock and print `{"status"}`: `retired` on the first call, `already-retired` on a repeat that keeps the first mark, `absent` when no record exists, and `refused` with exit 1 for a subagent chain, whose record SHALL stay untouched. `retire` without `--chain`, or with a path-like chain id, SHALL fail as a usage error with exit 2. On a retired chain, the foreground arm check SHALL return `launch: false`, and `warm --chain` and `warm --state` SHALL return `finished` without waiting and without taking ownership of the chain. A wait that was live when the chain was retired SHALL run its whole interval and SHALL then return `finished` instead of `continue`, releasing its lease. A main-session `begin` on the same chain SHALL clear the retired mark, so the chain arms and re-arms again. The same behavior SHALL apply on Claude Code and opencode.
+
+#### Scenario: Retire is idempotent
+- **WHEN** `retire` runs twice on the same main-session chain
+- **THEN** the first call prints `retired`, the second prints `already-retired`, and the record keeps the instant of the first call
+
+#### Scenario: Retire of a subagent chain
+- **WHEN** `retire` runs on a chain whose identity is a subagent
+- **THEN** it prints `refused`, exits 1, and leaves the record unchanged
+
+#### Scenario: Arm and warm on a retired chain
+- **WHEN** the arm check, `warm --chain`, or `warm --state` runs on a retired chain
+- **THEN** the arm check returns `launch: false`, and both warm forms return `finished` without waiting and without changing the chain's generation
+
+#### Scenario: Live wait finishes its interval after the retire
+- **WHEN** a chain is retired while its wait is in flight
+- **THEN** the wait runs its whole interval, returns `finished`, and releases its lease
+
+#### Scenario: Next command reactivates the chain
+- **WHEN** a later command invocation in the same chat runs a main-session `begin` on the retired chain
+- **THEN** the retired mark is cleared, the arm check returns `launch: true`, and the next wake returns `continue`

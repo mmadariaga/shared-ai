@@ -1033,6 +1033,95 @@ test('I1 the CLI closes a chain, reports its status as JSON, and exits 2 without
   assert.equal(run(['close', '--chain', '../x']).status, 2);
 });
 
+const MAIN = { role: 'agent', provider: 'anthropic', harness: 'claude', session: 'chat-retire' };
+
+test('I1 retire marks a main-session chain once, is idempotent, reports absent, and refuses a subagent chain', t => {
+  const { begin, io, saiRoot, clock } = chainFixture(t);
+  const main = begin(MAIN);
+  clock.time = 7000;
+  assert.deepEqual(warmer.retireChain(main.chain, io), { status: 'retired' });
+  assert.equal(recordOf(saiRoot, main.chain).retired_ms, 7000);
+  clock.time = 9000;
+  assert.deepEqual(warmer.retireChain(main.chain, io), { status: 'already-retired' });
+  assert.equal(recordOf(saiRoot, main.chain).retired_ms, 7000, 'the first retire keeps its instant');
+  assert.equal(fs.existsSync(path.join(saiRoot, `warm-chain-${main.chain}.json.lock`)), false, 'no lock outlives the retire');
+  assert.deepEqual(warmer.retireChain('0123456789abcdef', io), { status: 'absent' });
+  assert.throws(() => warmer.retireChain('../escape', io), warmer.UsageError);
+  const sub = begin();
+  const before = fs.readFileSync(path.join(saiRoot, `warm-chain-${sub.chain}.json`), 'utf8');
+  assert.deepEqual(warmer.retireChain(sub.chain, io), { status: 'refused' });
+  assert.equal(fs.readFileSync(path.join(saiRoot, `warm-chain-${sub.chain}.json`), 'utf8'), before, 'a subagent record is untouched');
+});
+
+test('E2 a retired chain refuses re-arming in the tool: arm launches nothing and both warm forms finish without a wait', async t => {
+  const { begin, io, saiRoot } = chainFixture(t);
+  const main = begin(MAIN);
+  const armed = await warmer.warmOnce({ chain: main.chain }, io);
+  assert.equal(armed.status, 'continue');
+  assert.deepEqual(warmer.retireChain(main.chain, io), { status: 'retired' });
+  assert.deepEqual(warmer.armCheck(main.chain, io), armResult(false), 'the check launches nothing on a retired chain');
+  const forbidden = { ...io, wait: async () => { throw new Error('a retired chain never waits'); } };
+  const generation = recordOf(saiRoot, main.chain).generation;
+  assert.equal((await warmer.warmOnce({ chain: main.chain }, forbidden)).status, 'finished');
+  assert.equal((await warmer.warmOnce({ state: armed.state }, forbidden)).status, 'finished');
+  assert.equal(recordOf(saiRoot, main.chain).generation, generation, 'a refused arm takes no ownership');
+});
+
+test('E1 the live wait of a retiring chain finishes its interval, then answers finished with nothing re-armed', async t => {
+  const { begin, io, clock, saiRoot } = chainFixture(t);
+  const main = begin(MAIN);
+  let chunks = 0;
+  const wait = async ms => {
+    clock.time += ms;
+    chunks += 1;
+    if (chunks === 2) assert.deepEqual(warmer.retireChain(main.chain, io), { status: 'retired' });
+  };
+  const result = await warmer.warmOnce({ chain: main.chain }, { ...io, wait });
+  assert.equal(result.status, 'finished');
+  assert.equal(result.waited_ms, ON.interval * 60000, 'the wait ran its whole interval and was not stopped early');
+  assert.equal(recordOf(saiRoot, main.chain).owner, null, 'the finished wait released its lease');
+  assert.deepEqual(warmer.armCheck(main.chain, io), armResult(false));
+  assert.equal((await warmer.warmOnce({ state: result.state }, io)).status, 'finished');
+});
+
+test('E3 begin on the same chat clears the retired mark, so the chain arms and re-arms again', async t => {
+  const { begin, io, saiRoot } = chainFixture(t);
+  const main = begin(MAIN);
+  warmer.retireChain(main.chain, io);
+  assert.equal(begin(MAIN).chain, main.chain, 'the same chat owns the same chain');
+  assert.equal(Object.hasOwn(recordOf(saiRoot, main.chain), 'retired_ms'), false);
+  assert.deepEqual(warmer.armCheck(main.chain, io), armResult(true));
+  const armed = await warmer.warmOnce({ chain: main.chain }, io);
+  assert.equal(armed.status, 'continue');
+  assert.equal((await warmer.warmOnce({ state: armed.state }, io)).status, 'continue');
+});
+
+test('I1 the CLI retires a chain, reports its status as JSON, and exits 2 without the chain', t => {
+  const saiRoot = require('../sai/tools/temp-root').resolveTempRoot('claude');
+  const began = warmer.beginOnce({ ...MAIN, session: `cli-${process.pid}` }, { saiRoot, resolve: () => ON });
+  const file = path.join(saiRoot, `warm-chain-${began.chain}.json`);
+  t.after(() => fs.rmSync(file, { force: true }));
+  const run = args => spawnSync(process.execPath, [WAIT, ...args], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(run(['retire', '--chain', began.chain]).stdout), { status: 'retired' });
+  assert.deepEqual(JSON.parse(run(['retire', '--chain', began.chain]).stdout), { status: 'already-retired' });
+  assert.deepEqual(JSON.parse(run(['arm', '--chain', began.chain]).stdout).launch, false);
+  assert.equal(run(['retire']).status, 2);
+  assert.equal(run(['retire', '--chain', '../x']).status, 2);
+});
+
+test('I2 cache-warming.md single-sources the retire rule and remember.md points to it without restating it', () => {
+  const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
+  assert.match(policy, /## Retire at terminal output/);
+  assert.match(policy, /runs `node "<wait-path>" retire --chain <chain>` in the foreground/);
+  assert.match(policy, /On a retired chain `arm` returns `launch: false` and `warm --state` returns `finished`/);
+  assert.match(policy, /The `\/sai-explore` hand-off close arms its fixed-deadline hand-off wait[\s\S]{0,120}does not retire/);
+  assert.match(policy, /Claude Code and opencode run the same call/);
+  assert.doesNotMatch(policy, /keeps arming until `max` minutes have passed since its last real message/);
+  const remember = fs.readFileSync(path.resolve(__dirname, '../sai/policies/remember.md'), 'utf8');
+  assert.match(remember, /\*\*Terminal output\.\*\*[^\n]*`@sai\/policies\/cache-warming\.md` § Retire at terminal output/);
+  assert.doesNotMatch(remember, /retire --chain/);
+});
+
 test('I4 the --state decoder is the inverse of the token encoder and rejects what is not a state', () => {
   const state = { chain: '0123456789abcdef', generation: 3 };
   assert.deepEqual(warmer.decodeStateToken(warmer.stateToken(state)), state);
