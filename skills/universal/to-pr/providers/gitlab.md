@@ -25,3 +25,8 @@ with `PUT merge_requests/{number}/notes/{id}`. These are separate approved
 operations, not extra MR fields. An unavailable author or ambiguous note blocks
 comment work; the assignment-read warning rule does not authorize an unidentified
 note edit. Verify the complete body on read-back; recovery stays read-only.
+
+For the unattended mode only, the adapter also reads the branch's merged and closed merge
+requests (`state=merged` and `state=closed` with the exact source and target project ids and
+branch names), so a merged or closed request is reported and never reopened. A failed read
+is a blocker.

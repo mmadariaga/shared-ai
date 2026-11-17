@@ -54,6 +54,24 @@ async function list(target, source, base, io) {
     if (batch.length < 100) return rows;
   }
 }
+// The merged and closed merge requests of the branch, for the unattended publication refusal.
+async function closedRequests(target, source, base, io) {
+  const rows = [], seen = new Set();
+  for (const state of ['merged', 'closed']) {
+    for (let page = 1; ; page++) {
+      const batch = await api(target, `projects/${target.id}/merge_requests?state=${state}&source_branch=${encodeURIComponent(source)}&target_branch=${encodeURIComponent(base)}&per_page=100&page=${page}`, io);
+      if (!Array.isArray(batch)) throw new Error('Invalid GitLab MR list');
+      for (const row of batch) {
+        identity(row);
+        if (seen.has(row.iid)) throw new Error('Repeated GitLab MR in paginated response');
+        seen.add(row.iid);
+        if (row.source_project_id === target.id && row.target_project_id === target.id && row.source_branch === source && row.target_branch === base) rows.push({ number: row.iid, url: row.web_url, state });
+      }
+      if (batch.length < 100) break;
+    }
+  }
+  return rows;
+}
 async function mutate(proposal, io) {
   const endpoint = `projects/${proposal.target.id}/merge_requests`;
   return identity(await api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PUT' : 'POST', proposal.existing
@@ -82,4 +100,4 @@ async function comments(target, request, io) {
 async function writeComment(target, request, previous, body, io) {
   return await api(target, `projects/${target.id}/merge_requests/${request.number}/notes${previous ? `/${previous.id}` : ''}`, io, previous ? 'PUT' : 'POST', { body });
 }
-module.exports = { inspect, resolve, list, currentUser, labels, mutate, closing, commentActor, comments, writeComment };
+module.exports = { inspect, resolve, list, closedRequests, currentUser, labels, mutate, closing, commentActor, comments, writeComment };

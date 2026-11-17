@@ -43,7 +43,7 @@ The coordinator SHALL run `change-telemetry.js collect --harness <claude|opencod
 
 ### Requirement: /sai-plan collects before its run directory is removed
 
-`/sai-plan` SHALL run the collector before its run is closed and before its closing line and publication offer, passing `--run-dir` set to the run directory, which still holds the review round files. The Plan - Unattended route SHALL do the same inside the explore session with `--command sai-explore-plan`. `/sai-build` SHALL run the collector after its decision records and before its report, with no `--run-dir`.
+`/sai-plan` SHALL run the collector before its run is closed and before its publication and its closing line, passing `--run-dir` set to the run directory, which still holds the review round files. The Plan - Unattended route SHALL do the same inside the explore session with `--command sai-explore-plan`. `/sai-build` SHALL run the collector after its decision records and before its report, with no `--run-dir`.
 
 #### Scenario: the plan collector reads the run directory
 - **WHEN** a `/sai-plan` run with the setting enabled reaches its close

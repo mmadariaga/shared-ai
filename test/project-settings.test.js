@@ -608,3 +608,23 @@ test('I3: experimental.changeTelemetry is a boolean that reads as absent until s
   assert.match(invalid.warnings.join('\n'), /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
   assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Change telemetry', section: 'Experimental', absent: 'off' });
 });
+
+test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and an invalid value as the question, and is no destination field', () => {
+  const file = value => project({ '.sai/settings.jsonc': `{ "pr": { "publishAfterRun": ${value}, "provider": "github" } }` });
+  const get = value => settings.get('pr.publishAfterRun', { cwd: file(value) });
+  assert.deepEqual(settings.get('pr.publishAfterRun', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
+  assert.deepEqual([get('"yes"').value, get('"no"').value, get('"YES"').value, get('" No "').value], ['yes', 'no', 'yes', 'no']);
+  assert.deepEqual(get('"ask"'), { value: null, source: 'absent', warnings: [] });
+  for (const value of ['"maybe"', 'true', '1', '""']) {
+    const result = get(value);
+    assert.equal(result.value, null, value);
+    assert.deepEqual(result.warnings, ['Setting pr.publishAfterRun in .sai/settings.jsonc must be yes, no, or ask; its question stays normal.'], value);
+  }
+  // The key is not a destination field: `/to-pr` still reads only its own keys, and the screen keeps it hand-edited.
+  assert.deepEqual(settings.readPr({ cwd: file('"yes"'), providerIds: ['github'] }).config, { provider: 'github' });
+  assert.equal(settings.CATALOGUE['pr.publishAfterRun'].label, undefined);
+  const local = project({ '.sai/settings.jsonc': '{ "pr": { "publishAfterRun": "yes" } }', '.sai/settings.local.jsonc': '{ "pr": { "publishAfterRun": "no" } }' });
+  assert.equal(settings.get('pr.publishAfterRun', { cwd: local }).value, 'no');
+  const row = fs.readFileSync(path.join(__dirname, '../docs/project-settings.md'), 'utf8').split('\n').find(line => line.startsWith('| `pr.publishAfterRun`'));
+  assert.match(row, /`ask`, `yes`, or `no`/);
+});

@@ -24,3 +24,7 @@ with `PATCH issues/comments/{id}`. These are separate approved operations, not
 extra PR fields. An unavailable author or ambiguous comment blocks comment work;
 the assignment-read warning rule does not authorize an unidentified comment edit.
 Verify the complete comment body on read-back; recovery stays read-only.
+
+For the unattended mode only, the adapter also reads the branch's closed pull requests
+(`state=closed` with the same head and base; `merged_at` marks a merged one), so a merged
+or closed request is reported and never reopened. A failed read is a blocker.

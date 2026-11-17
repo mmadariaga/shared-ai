@@ -132,7 +132,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
-| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally offer a draft PR/MR | `proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`, and one local commit per segment; publication requires separate approval |
+| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`, and one local commit per segment; a `yes` answer to the start question is the only approval publication needs |
 | [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings it judges justified, with no human in the loop | Reports, a commit per audit report, and one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |

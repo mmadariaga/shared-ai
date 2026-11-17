@@ -650,7 +650,7 @@ test('I2 I10: references are branch-specific, approval limitations precede appro
   assert.ok(skill.indexOf('proposal.concurrency_warning') < skill.indexOf('Then ask:'));
   assert.match(fs.readFileSync('skills/universal/to-backlog/SKILL.md', 'utf8'), /disable-model-invocation: true/);
   assert.doesNotMatch(skill, /disable-model-invocation: true/);
-  assert.match(skill, /accepts the completed sai-plan draft-publication offer/);
+  assert.match(skill, /or when a SAI coordinator holds a recorded yes answer to its publication question/);
   const { expandInstallManifest, loadInstallManifest } = require('../bin/install-manifest');
   const manifest = loadInstallManifest(process.cwd());
   for (const harness of ['claude', 'opencode']) {

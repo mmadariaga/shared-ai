@@ -495,7 +495,7 @@ Every Direct Build response SHALL reach the active validator exactly as received
 
 ### Requirement: Plan - Unattended follows the /sai-plan coordinator
 
-The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, and the run state. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
+The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, the run state, and the publication answer: when no answer is handed over, it SHALL ask its start question inside this route, and Explore SHALL ask no second publication question and SHALL hand over no `--publish` line. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
 
 #### Scenario: Plan route follows the plan coordinator
 
@@ -506,6 +506,11 @@ The explore route `Plan - Unattended` SHALL export the first pending slice's sto
 
 - **WHEN** the spec segment of the followed `/sai-plan` run ends stopped
 - **THEN** explore emits `{intent: fail}`, no design segment starts, and a later `Plan - Unattended` answer retries the slice
+
+#### Scenario: the start question is asked inside the route
+
+- **WHEN** the user selects `Plan - Unattended` and no `--publish` answer, recorded answer, or `pr.publishAfterRun` value of `yes` or `no` exists
+- **THEN** the plan coordinator asks its publication question inside the route before its first worker starts, and Explore asks none
 
 ### Requirement: Direct Build - Unattended follows the Direct Build coordinator card
 

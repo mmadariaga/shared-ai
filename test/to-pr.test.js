@@ -596,7 +596,7 @@ test('I2 / I10: skill presents full content before one combined approval, covers
   assert.match(text, /returned `instructions` reference/);
   assert.doesNotMatch(text, /providers\/(?:github|gitlab|azuredevops)\.md/);
   assert.doesNotMatch(text, /disable-model-invocation: true/);
-  assert.match(text, /user requests PR\/MR publication or accepts the completed sai-plan draft-publication offer/);
+  assert.match(text, /user requests PR\/MR publication, or when a SAI coordinator holds a recorded yes answer to its publication question/);
   assert.ok(text.replace(/\s+/g, ' ').includes('Push this commit to this remote branch without force and publish the title and description above?'));
   assert.match(text, /"Approve PR message and push branch", "Edit", "Cancel"/);
   assert.match(text, /"Approve PR message", "Edit", "Cancel"/);
@@ -1087,4 +1087,119 @@ test('the resolve CLI reads pr.* from the project root, not the subdirectory', t
   const output = JSON.parse(result.stdout);
   assert.deepEqual([output.status, output.provider, output.repository], ['resolved', 'github', 'other/repo']);
   assert.deepEqual(output.notices, ['Project setting pr.provider: github', 'Project setting pr.repository: other/repo']);
+});
+
+// Unattended mode (`--unattended` on plan-commit, push and publish): a SAI coordinator that holds a recorded
+// publication answer replaces the tokens; every other check stays, and each refusal names its cause.
+const refusal = cause => error => error.refusal === cause;
+function closedFixture(provider, existing = false, closed = []) {
+  const made = fixture(provider, existing), run = made.io.run;
+  const github = provider === 'github';
+  const closedRow = ({ number, state }) => github
+    ? { number, node_id: `PR_${number}`, draft: false, html_url: `https://github.com/team/repo/pull/${number}`, title: 'feat: earlier', body: 'Earlier', updated_at: 'v', merged_at: state === 'merged' ? '2020-01-01T00:00:00Z' : null, head: { ref: 'feature', repo: { id: 9 } }, base: { ref: 'main' } }
+    : { iid: number, state, draft: false, web_url: `https://gitlab.example.com/team/repo/-/merge_requests/${number}`, title: 'feat: earlier', description: 'Earlier', updated_at: 'v', source_project_id: 9, target_project_id: 9, source_branch: 'feature', target_branch: 'main' };
+  made.state.closedQueries = [];
+  made.io.run = (command, args, input) => {
+    const endpoint = args[1] || '';
+    if (command !== 'git' && args[args.indexOf('--method') + 1] === 'GET') {
+      const asked = github ? /\/pulls\?state=closed/.test(endpoint) && 'closed' : /merge_requests\?state=(merged|closed)/.exec(endpoint)?.[1];
+      if (asked) {
+        made.state.closedQueries.push(endpoint);
+        return JSON.stringify(closed.filter(row => github || row.state === asked).map(closedRow));
+      }
+    }
+    return run(command, args, input);
+  };
+  return made;
+}
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} unattended push and publish need no tokens, never force, and publish a draft`, async t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const input = { ...request, draft: true, unattended: true };
+    await assert.rejects(async () => await tool.publish({ ...input, receipt: receipt(t) }, io), refusal('not-published'));
+    assert.equal(state.mutations.length, 0);
+    await assert.rejects(async () => await tool.push({ ...request, draft: true }, io), /push approval/);
+    assert.equal((await tool.push(input, io)).status, 'complete');
+    assert.equal(state.mutations[0].command, 'git');
+    assert.deepEqual(state.mutations[0].args, ['push', 'origin', `${state.head}:refs/heads/feature`]);
+    assert.ok(!state.mutations[0].args.some(arg => /force|^\+|--/.test(arg)));
+    assert.equal((await tool.push(input, io)).status, 'no_changes');
+    await assert.rejects(async () => await tool.publish({ ...request, draft: true, receipt: receipt(t) }, io), /approval/);
+    const result = await tool.publish({ ...input, approved: false, confirmation: 'stale', receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.request.isDraft, true);
+    assert.equal(state.rows.length, 1);
+  });
+  test(`${provider} unattended publication refuses a force push, a detached HEAD and the default branch before any write`, async t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const input = { ...request, draft: true, unattended: true, receipt: receipt(t) };
+    for (const operation of [tool.push, tool.publish]) {
+      await assert.rejects(async () => await operation({ ...input, force: true }, io), refusal('force-push'));
+    }
+    const run = io.run;
+    io.run = (command, args, body) => command === 'git' && args[0] === 'symbolic-ref' ? (() => { throw new Error('fatal: ref HEAD is not a symbolic ref'); })() : run(command, args, body);
+    for (const operation of [tool.push, tool.publish]) await assert.rejects(async () => await operation(input, io), refusal('detached-head'));
+    io.run = (command, args, body) => command === 'git' && args[0] === 'symbolic-ref' ? 'main\n' : run(command, args, body);
+    for (const operation of [tool.push, tool.publish]) await assert.rejects(async () => await operation({ ...input, base: 'develop' }, io), refusal('default-branch'));
+    assert.equal(state.mutations.length, 0);
+    assert.equal(fs.existsSync(input.receipt), false);
+  });
+  for (const closedState of ['merged', 'closed']) {
+    test(`${provider} unattended publication never reopens a ${closedState} request and names it`, async t => {
+      const { request, io, state } = closedFixture(provider, false, [{ number: 3, state: closedState }]);
+      state.remoteHead = null;
+      const input = { ...request, draft: true, unattended: true, receipt: receipt(t) };
+      for (const operation of [tool.push, tool.publish]) {
+        await assert.rejects(async () => await operation(input, io), error => error.refusal === `request-${closedState}` && error.request.number === 3 && error.request.state === closedState && /\/3 of branch feature/.test(error.message));
+      }
+      assert.ok(state.closedQueries.length >= 2);
+      assert.equal(state.mutations.length, 0);
+    });
+  }
+  test(`${provider} unattended publication updates an open request even when an earlier one was merged, and keeps its ready state`, async t => {
+    const { request, io, state } = closedFixture(provider, true, [{ number: 3, state: 'merged' }]);
+    const result = await tool.publish({ ...request, draft: true, unattended: true, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.request.number, 7);
+    assert.equal(result.request.isDraft, false);
+    assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
+    assert.equal(state.closedQueries.length, 0, 'an open request ends the search before the closed ones are read');
+    state.rows[0].draft = true;
+    const again = await tool.publish({ ...request, title: 'feat: add feature again', draft: true, unattended: true, receipt: receipt(t) }, io);
+    assert.equal(again.status, 'complete');
+    assert.equal(again.request.isDraft, true);
+  });
+  test(`${provider} an unattended read of closed requests that fails blocks publication`, async t => {
+    const { request, io, state } = fixture(provider);
+    const run = io.run;
+    io.run = (command, args, body) => { if (command !== 'git' && /state=(closed|merged)/.test(args[1] || '')) throw new Error('Closed list unavailable'); return run(command, args, body); };
+    await assert.rejects(async () => await tool.publish({ ...request, unattended: true, receipt: receipt(t) }, io), /Closed list unavailable/);
+    assert.equal(state.mutations.length, 0);
+  });
+}
+test('I1: the unattended flag applies to plan-commit, push and publish only, and a field of the input never enables it', () => {
+  const run = (...args) => spawnSync(process.execPath, [path.join(__dirname, '../sai/tools/to-pr.js'), ...args], { encoding: 'utf8' });
+  for (const operation of ['query', 'push-query', 'collect', 'recover', 'prepare']) {
+    const result = run(operation, '--unattended', path.join(__dirname, '../skills/universal/to-pr/providers/registry.json'));
+    assert.equal(result.status, 2, operation);
+    assert.match(JSON.parse(result.stdout).message, /--unattended applies only to plan-commit, push, publish/);
+  }
+  const source = fs.readFileSync(path.join(__dirname, '../sai/tools/to-pr.js'), 'utf8');
+  assert.match(source, /if \(unattended\) request\.unattended = true; else delete request\.unattended;/);
+});
+test('I3: the three provider adapters report merged and closed requests of a branch', async t => {
+  for (const id of ['github', 'gitlab', 'azuredevops']) assert.equal(typeof require(`../sai/tools/to-pr-${id}`).closedRequests, 'function', id);
+  const azureAdapter = require('../sai/tools/to-pr-azuredevops');
+  const azureTool = require('../sai/tools/azure-publication');
+  const original = azureTool.api;
+  t.after(() => { azureTool.api = original; });
+  const row = (id, status) => ({ pullRequestId: id, repository: { id: 'repo-id', project: { id: 'project-id' } }, title: `PR ${id}`, description: '', sourceRefName: 'refs/heads/feature', targetRefName: 'refs/heads/main', status, createdBy: { id: 'actor' }, lastMergeSourceCommit: { commitId: 'c'.repeat(40) } });
+  const queries = [];
+  azureTool.api = async (target, client, resource, route, io, method, body, query) => { queries.push(query); const value = [row(1, 'completed'), row(2, 'abandoned'), row(3, 'active')]; return { value, count: value.length }; };
+  const target = { id: 'repo-id', projectId: 'project-id', project: 'Team', url: 'https://dev.azure.com/org/Team/_git/Repo' };
+  const found = await azureAdapter.closedRequests(target, 'feature', 'main', {});
+  assert.deepEqual(found.map(({ number, state }) => [number, state]), [[1, 'merged'], [2, 'closed']]);
+  assert.equal(queries[0]['searchCriteria.status'], 'all');
 });

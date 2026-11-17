@@ -7,7 +7,9 @@ The plan segment cycle is the shared unattended run of a `/sai-1-spec` or `/sai-
 
 ### Requirement: Plan run state lives in plan-run@1 and a private run directory
 
-The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the `plan-run@1` machine, built on the shared run core, with the segments `spec` and `design` and the events `start`, `segment-start`, `segment-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. The state SHALL hold identifiers and paths only. The session key SHALL be `plan-{name}`, shared by `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`. A fresh run SHALL create its run directory outside the repository with `temp-root.js mkdtemp --harness <claude|opencode> --prefix plan-{name}-`, passing no other argument (in particular no `--cwd`), and free text (assumptions, reports, findings, baselines, hand-over files) SHALL live in files in that directory. Whoever opened the run SHALL close it: inside `/sai-plan` the plan coordinator opens and closes the run and each segment only emits `segment-start` and `segment-done`. `implement-run@1` SHALL keep its behavior.
+The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the `plan-run@1` machine, built on the shared run core, with the segments `spec` and `design` and the events `start`, `segment-start`, `segment-done`, `attempt`, `escalate`, `answer`, `record`, `publication`, `close`, and `status`. The state SHALL hold identifiers and paths only, and the run's publication answer. The session key SHALL be `plan-{name}`, shared by `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`. A fresh run SHALL create its run directory outside the repository with `temp-root.js mkdtemp --harness <claude|opencode> --prefix plan-{name}-`, passing no other argument (in particular no `--cwd`), and free text (assumptions, reports, findings, baselines, hand-over files) SHALL live in files in that directory. Whoever opened the run SHALL close it: inside `/sai-plan` the plan coordinator opens and closes the run and each segment only emits `segment-start` and `segment-done`. `implement-run@1` SHALL keep its behavior.
+
+The shared run core SHALL offer the `publication` event only to a machine built with `publication: true`. Such a machine SHALL hold a `publication` state field, `''` until answered, SHALL accept `publication` with `value` `yes` or `no` only while the run is running, SHALL let a later explicit value replace the recorded one, and SHALL return the field in its `run` view. `plan-run@1` SHALL be built with `publication: true`.
 
 #### Scenario: a fresh run opens a private run directory
 
@@ -23,6 +25,16 @@ The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the
 
 - **WHEN** the segment cycle instruction tells a fresh run to create its run directory
 - **THEN** the `mkdtemp` invocation carries only `--harness <claude|opencode>` and `--prefix plan-{name}-`, and no `--cwd`
+
+#### Scenario: the publication answer is recorded
+
+- **WHEN** a running `plan-run@1` receives `publication` with `value` `yes`
+- **THEN** the `run` view returns `publication: yes`, and a later `publication` with `value` `no` replaces it
+
+#### Scenario: an invalid publication answer is rejected
+
+- **WHEN** a running `plan-run@1` receives `publication` with a value other than `yes` or `no`, or a run that is not running receives it
+- **THEN** the event is rejected and the recorded answer is unchanged
 
 ### Requirement: Segment workers are standalone and report through a file
 
@@ -67,7 +79,7 @@ The coordinator SHALL review the segment's artifacts itself, following `sai/poli
 
 ### Requirement: Each segment commits only its own paths locally
 
-Each segment SHALL check every commit path with `git check-ignore -q`, stage only the paths that are not ignored without force-adding, leave out paths that were already modified before the segment began and are not its artifacts, and commit locally with `git commit -m "<subject>" -- <paths>`. Unrelated changes in the working tree SHALL stay unstaged. A segment whose commit paths are all ignored SHALL close without a commit and say so in its report. Invoking the command SHALL authorize these local commits only, and nothing SHALL be pushed.
+Each segment SHALL check every commit path with `git check-ignore -q`, stage only the paths that are not ignored without force-adding, leave out paths that were already modified before the segment began and are not its artifacts, and commit locally with `git commit -m "<subject>" -- <paths>`. Unrelated changes in the working tree SHALL stay unstaged. A segment whose commit paths are all ignored SHALL close without a commit and say so in its report. Invoking the command SHALL authorize these local commits only, and no segment SHALL push. Only the `/sai-plan` publication of a run that holds a recorded `yes` publication answer SHALL push the branch, after the last segment.
 
 #### Scenario: an ignored change directory leaves no commit
 

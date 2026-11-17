@@ -31,6 +31,22 @@ async function list(target, source, base, io) {
     if (batch.length < 100) return rows;
   }
 }
+// The merged and closed pull requests of the branch, for the unattended publication refusal: GitHub lists a merged
+// pull request as closed with `merged_at` set. A request whose head repository is gone is not one of this branch.
+async function closedRequests(target, source, base, io) {
+  const rows = [], seen = new Set();
+  for (let page = 1; ; page++) {
+    const batch = await api(target, `repos/${target.repository}/pulls?state=closed&head=${encodeURIComponent(target.repository.split('/')[0] + ':' + source)}&base=${encodeURIComponent(base)}&per_page=100&page=${page}`, io);
+    if (!Array.isArray(batch)) throw new Error('Invalid GitHub PR list');
+    for (const row of batch) {
+      identity(row);
+      if (seen.has(row.number)) throw new Error('Repeated GitHub PR in paginated response');
+      seen.add(row.number);
+      if (row.head?.repo?.id === target.id && row.head.ref === source && row.base?.ref === base) rows.push({ number: row.number, url: row.html_url, state: row.merged_at ? 'merged' : 'closed' });
+    }
+    if (batch.length < 100) return rows;
+  }
+}
 function identity(row) {
   if (!Number.isSafeInteger(row.number) || typeof row.html_url !== 'string' || typeof row.title !== 'string' || (row.body !== null && typeof row.body !== 'string')) throw new Error('Incomplete GitHub PR response');
   return { number: row.number, url: row.html_url, title: row.title, description: row.body ?? '', version: row.updated_at,
@@ -97,4 +113,4 @@ async function comments(target, request, io) {
 async function writeComment(target, request, previous, body, io) {
   return await api(target, previous ? `repos/${target.repository}/issues/comments/${previous.id}` : `repos/${target.repository}/issues/${request.number}/comments`, io, previous ? 'PATCH' : 'POST', { body });
 }
-module.exports = { inspect, list, currentUser, labels, mutate, closing, commentActor, comments, writeComment };
+module.exports = { inspect, list, closedRequests, currentUser, labels, mutate, closing, commentActor, comments, writeComment };

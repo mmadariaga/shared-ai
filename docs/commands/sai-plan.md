@@ -8,24 +8,36 @@ Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then
 
 - A `Ready to Propose` block from [`/sai-explore`](sai-explore.md), pasted or passed as `--block-file <path> --block-hash <sha256>`, which is what `sai-state block --export` produces. Without a block, give the name of a change that already has `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`.
 - `--overview-lang <language>`: generates `change-overview.md` at the end of the design segment, in that language. Without it, no overview is generated.
+- `--publish yes|no`: answers the publication question below in advance. Any other value ends the run before anything is written.
 
 ## In detail
 
-After successful planning, one optional offer creates or updates a **draft PR/MR**
-on GitHub, GitLab or Azure DevOps through [`/to-pr`](to-pr.md). This also applies
-when Explore runs Plan; standalone spec and design do not offer it. Declining or
-cancelling keeps the completed plan and makes no publication changes.
+The command asks one question at its start: whether to publish a **draft PR/MR** of the plan
+on GitHub, GitLab or Azure DevOps when the run ends, through [`/to-pr`](to-pr.md). It asks
+after its input checks pass (the block and its hash, the change name) and before the first
+worker starts, and it names the current branch, its remote, and the request state: a new
+request is created as a draft, and an open request of the branch is updated and keeps its
+draft or ready state. The answer comes from, in this order, the `--publish yes|no` argument,
+the answer a resumed run already recorded, the [`pr.publishAfterRun`](../project-settings.md#plan-publication-answer)
+setting when it reads `yes` or `no`, and then the question; the first value found wins and
+nothing later is asked. The same start question applies when Explore runs Plan; standalone
+spec and design ask nothing.
 
-Accepting only starts preparation. You review the exact current-change documents
-(including ignored files, `.openspec.yaml`, specifications and an optional overview)
-before authorizing their local inclusion commit. Unrelated staging and work stay
-untouched, and ordinary planning still never force-adds ignored files. You then
-approve the exact non-force push and draft publication separately from local inclusion.
-All committed branch changes are disclosed: this need not be a documents-only PR/MR.
-An existing matching request is reused; converting a ready request to draft needs
-explicit approval. A later cancellation or failure keeps any confirmed commit or push.
-Publication problems do not undo planning. Implementation uses this same branch
-and request later, without automatically marking it ready.
+With `no`, nothing is published and nothing is asked again. With `yes`, the answer is the
+authorization for exactly three operations on the current branch, and nothing asks you again:
+one local commit of the plan documents (the exact files `plan-query` lists, including ignored
+files, `.openspec.yaml`, specifications and an optional overview; unrelated staging and work stay
+untouched, and ordinary planning still never force-adds ignored files), a push without force,
+and the creation or update of the request. The run publishes after its last local commit, the
+telemetry commit included, and prints the verified request URL or the reason nothing was
+published. A run that fails, stops, or ends on an unanswered escalation publishes nothing,
+whatever the answer. On the default branch or a detached HEAD, with no provider or remote, a
+failed authentication, a rejected push (never retried with force), or a branch whose request
+was merged or closed (never reopened), publication is skipped with its reason and the run still
+counts as completed. All committed branch changes enter the request: it need not be
+documents-only. Implementation uses this same branch and request later, without automatically
+marking it ready. An unattended run publishes without a final look at the request text; you
+accept that when you answer `yes`.
 
 The command runs the spec segment and the design segment in the same session, with no approval between segments. The behavior, checks, and stops of each segment are the ones described in [`/sai-1-spec`](sai-1-spec.md) and [`/sai-2-design`](sai-2-design.md). Invoking the command approves the specs.
 
@@ -35,4 +47,4 @@ When the change already has `proposal.md` and a spec file, or `proposal.md` and 
 
 With `experimental.changeTelemetry` on, the command records the run's cost in `telemetry.md` in the change folder at its close, and invoking it pre-authorizes one more local commit for that file; see [change telemetry](../project-settings.md#change-telemetry).
 
-The assumptions and the findings left open are reported once, in the closing report, and are not written to the repository. When both segments ended normally, the planning report closes with `Plan done in openspec/changes/{change-name}/. Review it and run /sai-build {change-name} in a new chat when ready.` This closes the report, not the command interaction: planning completes and its run closes first, then the sole optional publication offer and any accepted continuation run. Otherwise the command prints the reports so far and ends without the closing line or publication offer.
+The assumptions and the findings left open are reported once, in the closing report, and are not written to the repository. When both segments ended normally, the planning report closes with `Plan done in openspec/changes/{change-name}/. Review it and run /sai-build {change-name} in a new chat when ready.` A publication that was answered `yes` runs before this line and prints its outcome with the reports. Otherwise the command prints the reports so far and ends without the closing line, and publishes nothing.

@@ -12,13 +12,16 @@
   --overview-lang <overview_language>
   ```
 
-  **Optional publication.** The plan coordinator owns its one successful-close
-  draft PR/MR offer, including this route. Let it finish that optional action before
-  the handoff; Explore asks no second publication question. Planning completion and
-  the slice transition remain successful if publication is declined, cancelled or
-  unavailable. Only the accepted publication action may include the exact authorized
-  current-change plan paths through `to-pr.js plan-commit`; this gives Explore no
-  direct repository write authority and changes no ordinary segment ignore rule.
+  **Optional publication.** The plan coordinator owns the publication answer, including
+  in this route: when none is handed over (no `--publish` line in `arguments_value`, no
+  answer recorded by a resumed run, no `pr.publishAfterRun` value of `yes` or `no`), it
+  asks its start question inside this route, in place of the closing offer it replaced,
+  and publishes unattended at its end with no further confirmation. Explore asks no second
+  publication question and hands over no `--publish` line until its own round carries the
+  answer. Planning completion and the slice transition remain successful whatever the
+  publication does. The accepted answer authorizes the exact current-change plan paths
+  through `to-pr.js plan-commit --unattended`; this gives Explore no direct repository
+  write authority and changes no ordinary segment ignore rule.
 
   The last line is present only when `overview_language` is not the literal `None`. The plan coordinator verifies the block file and ends with its own errors when the block does not verify. The exported file stays in place for the whole run, including for a replacement spec worker; export anew only for a fresh Plan selection or after an amendment, per `@sai/policies/ready-to-propose-format.md` § Stored block transport. It treats a slice whose proposal and specs already exist on disk as a spec segment already done, so a slice parked at `sai-2` resumes at design.
 

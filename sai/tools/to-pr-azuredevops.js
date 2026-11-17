@@ -39,6 +39,11 @@ async function list(target, source, base, io, all = false) {
     if (!page.value.length) throw new Error('Azure pagination did not advance');
   }
 }
+// The completed (merged) and abandoned (closed) pull requests of the branch, for the unattended publication refusal.
+async function closedRequests(target, source, base, io) {
+  const state = { completed: 'merged', abandoned: 'closed' };
+  return (await list(target, source, base, io, true)).filter(row => state[row.status]).map(row => ({ number: row.number, url: row.url, state: state[row.status] }));
+}
 async function mutate(proposal, io) {
   const p = proposal;
   const row = await azure.api(p.target, 'git', 'pullrequests', { project: p.target.project, repositoryId: p.target.id,
@@ -89,5 +94,5 @@ async function writeComment(target, request, previous, body, io) {
     ? await azure.api(target, 'git', 'pullRequestThreadComments', { ...route, threadId: previous.threadId, commentId: previous.commentId }, io, 'PATCH', { content: body })
     : await azure.api(target, 'git', 'pullRequestThreads', route, io, 'POST', { comments: [{ parentCommentId: 0, content: body, commentType: 1 }], status: 1 });
 }
-module.exports = { classify, resolve, inspect, sameRepository, list, mutate, publicationEvidence, recoverPublication, commentActor, comments, writeComment,
+module.exports = { classify, resolve, inspect, sameRepository, list, closedRequests, mutate, publicationEvidence, recoverPublication, commentActor, comments, writeComment,
   concurrencyWarning: 'Azure PR updates reread before writing, but a concurrent edit between that read and the PATCH is not protected. Approve only if you accept this interval.' };

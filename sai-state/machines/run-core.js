@@ -13,6 +13,9 @@
 //   record     {ref, path}            appends a path to the list the ref kind names
 //   close      {outcome}              outcome: completed | escalated | stopped
 //   status     {}                     changes nothing; returns the run state
+//   publication {value}               only for a machine built with `publication: true`: records
+//                                     the run's publication answer (yes | no); an explicit later
+//                                     value replaces the recorded one
 //
 // A run machine built on the core adds only its own vocabulary:
 //   refs         ref kind -> state list field that `record` appends to
@@ -22,9 +25,13 @@
 //   handleRecord (ctx, current, sig) for a `record` whose ref is not in `refs`; returns an
 //                outcome, or null to leave the ref unknown
 //   onClose      (current) called when the run closes
+//   publication  true when the run carries a publication answer: the `publication` state field
+//                ('' until answered, then `yes` or `no`), the `publication` event, and the field in the
+//                `run` view. The answer survives a resumption; a fresh run starts with none.
 
 const ATTEMPT_BUDGET = 3;
 const STAGES = Object.freeze(['idle', 'running', 'escalated', 'completed', 'stopped']);
+const PUBLICATION_ANSWERS = Object.freeze(['yes', 'no']);
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 
 function strings(value) {
@@ -39,8 +46,9 @@ function usablePath(value) {
   return typeof value === 'string' && value.trim() !== '' && !/[\r\n]/.test(value) ? value.trim() : null;
 }
 
-function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose }) {
-  const extra = Object.freeze(Object.assign({}, extraState));
+function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, publication }) {
+  const withPublication = publication === true;
+  const extra = Object.freeze(Object.assign({}, extraState, withPublication ? { publication: '' } : {}));
   const refFields = Object.freeze(Object.assign({}, refs));
   const fieldNames = Object.keys(extra).concat(Object.keys(refFields).map((kind) => refFields[kind]));
 
@@ -190,6 +198,14 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
         if (!path) return reject('path required');
         if (current.stage === 'idle') return reject('run is not started');
         if (current[field].indexOf(path) === -1) current[field].push(path);
+        return outcome(current);
+      }
+
+      case 'publication': {
+        if (!withPublication) return handleEvent ? handleEvent({ outcome, reject, running, usableId, usablePath }, current, sig) : null;
+        if (!running) return reject('run is not running');
+        if (PUBLICATION_ANSWERS.indexOf(sig.value) === -1) return reject('publication must be yes or no');
+        current.publication = sig.value;
         return outcome(current);
       }
 
