@@ -44,7 +44,7 @@ test('the coordinator is one goal-driven card that loads only the six policies a
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
     assert.ok(card.includes(heading), heading);
   }
-  assert.ok(card.length < 30000, 'the coordinator stays a short goal-driven card');
+  assert.ok(card.length < 32000, 'the coordinator stays a short goal-driven card');
 });
 
 test('the wrappers load the harness fetch skill and the coordinator directly, with no boot adapter or bootstrap', () => {
@@ -76,9 +76,9 @@ test('arguments: the branch is optional, --squash wins, and --fast-track is acce
   assert.match(card, /You write in the language of the chat/);
 });
 
-test('start: the method question joins the branch question, and autostash is asked right after it, before the baseline', () => {
+test('start: the method is asked after the branch and the simulation, and autostash is asked right after it, before the baseline', () => {
   const start = section(coordinator(), '## Start', '## A conflict stop');
-  assert.match(start, /Without `--rebase` or `--squash`, ask the method in the same call: merge, rebase, or squash/);
+  assert.match(start, /Without `--rebase` or `--squash`, ask the method: merge, rebase, or squash/);
   assert.match(start, /When the native picker is unavailable the method is a merge and the run goes on/);
   assert.match(start, /Cancelling either question ends the run with nothing launched and nothing written/);
   assert.match(start, /the method comes from the store and nothing is asked/);
@@ -340,8 +340,8 @@ test('the run state, review, and report: merge-run@1, review-delta, and the goal
   assert.match(card, /The `merge-run@1` machine in `sai-state` is your memory outside the conversation/);
   assert.match(card, /key `merge-\{worktree_id\}-\{branch\}`/);
   assert.match(card, /`temp-root\.js mkdtemp --harness <claude\|opencode> --prefix merge-`/);
-  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, and close the report directory with `transfer\.js close --dir <report directory>`, only when the run completed/);
-  assert.match(card, /A stopped, escalated, or unanswered run keeps both directories/);
+  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, remove the simulation directory the same way, and close the report directory with `transfer\.js close --dir <report directory>`, only when the run completed/);
+  assert.match(card, /A stopped, escalated, or unanswered run keeps its directories/);
   assert.match(card, /A run that finalized the integration ends with exactly `Merge done\.`/);
   const close = section(card, '## Close', null);
   for (const fact of ['the method, the target and source branches', 'the conflicts resolved per stop', 'the verification against the baseline',

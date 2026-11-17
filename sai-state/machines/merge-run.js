@@ -7,7 +7,8 @@
 // adds the merge vocabulary: the method and branch of the run, the `HEAD`
 // recorded before the launch, the baseline record, the conflict stop now being
 // worked, and the reference kinds whose free text lives in files inside the run
-// directory (the `shortcut` kind names a stop's `stop-{n}-shortcuts.md`).
+// directory (the `shortcut` kind names a stop's `stop-{n}-shortcuts.md`), except the
+// `simulation` kind: the pre-launch simulation file sits in its own private directory under the SAI temp root.
 //
 // Events, all JSON with a `kind`:
 //   start      {dir}                                  opens the run; `dir` is the run directory;
@@ -19,7 +20,7 @@
 //   attempt    {obstacle}                             spends one of the obstacle's attempts
 //   escalate   {obstacle}                             the run waits for the user's answer
 //   answer     {obstacle, choice}                     `continue` resets the obstacle, `stop` stops the run
-//   record     {ref, path}                            ref: obstacle | finding | assumption | report-dir | shortcut
+//   record     {ref, path}                            ref: obstacle | finding | assumption | report-dir | shortcut | simulation
 //   close      {outcome}                              outcome: completed | escalated | stopped
 //   status     {}                                     changes nothing; returns the run state
 
@@ -35,6 +36,7 @@ const REFS = Object.freeze({
   assumption: 'assumptions',
   'report-dir': 'report_dirs',
   shortcut: 'shortcuts',
+  simulation: 'simulations',
 });
 
 const COMMIT_ID = /^[0-9a-f]{7,64}$/;

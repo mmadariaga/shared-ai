@@ -486,7 +486,7 @@ Invoking `/sai-merge` SHALL authorize exactly these local operations: the launch
 
 ### Requirement: Merge closing report
 
-The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the conflicts resolved per stop with how each file was decided, a shortcut file with the reason recorded in `stop-{n}-shortcuts.md`, the final-tree review with each introduced duplicate block, its `path:line` occurrences, and what was done about it, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
+The run SHALL close when the integration is finalized, when the branch was already integrated, when the user chose to leave the operation in progress or abort it, or when an escalation was dismissed. The closing report, in the chat language, SHALL state the method, target and source branches, the operation with the resulting `HEAD` and the subject of each commit the run made, the prediction of the pre-launch simulation (the method it simulated, its predicted stops, and its repeated files) beside the stops that happened or that the prediction was unavailable, the conflicts resolved per stop with how each file was decided, a shortcut file with the reason recorded in `stop-{n}-shortcuts.md`, the final-tree review with each introduced duplicate block, its `path:line` occurrences, and what was done about it, the verification against the baseline naming every `new`, `flaky`, `preexisting`, and `not-comparable` test or that it was unavailable and why, the pending findings, the collision repairs and reported escalations, the assumptions, and the escalations with their answers. For every run that changed the branch, it SHALL name the `HEAD` recorded before the launch and the command `git reset --hard <sha>` that restores it, and when the provenance's `upstream.force_push_needed` is true it SHALL say that the next push needs a force push. When autostash could not reapply the changes, it SHALL name the stash entry that stays and the command `git stash pop` that restores it. A run that did not complete SHALL add the blocker, the options offered, and the answer. A run that finalized the integration SHALL end with exactly `Merge done.`, and every other run SHALL end with its report and no closing line.
 
 #### Scenario: Restore command for a changed branch
 
@@ -512,6 +512,11 @@ The run SHALL close when the integration is finalized, when the branch was alrea
 
 - **WHEN** the final-tree review judged one or more introduced duplicate blocks
 - **THEN** the closing report lists each block with its `path:line` occurrences and whether it was kept as intentional, with the reason, or corrected
+
+#### Scenario: Prediction is shown beside the real stops
+
+- **WHEN** a run finalizes after a simulation that predicted stops
+- **THEN** the closing report shows the simulated method, the predicted stops, and the repeated files beside the stops that happened
 
 ### Requirement: Merge coordinator loads only its own contracts
 
@@ -556,12 +561,12 @@ Claude Code and opencode SHALL run `/sai-merge` from the same coordinator, worke
 
 ### Requirement: Start questions precede the baseline
 
-When the invocation leaves the branch or the method open, the coordinator SHALL ask what is open in one native picker call before it fixes the test command and takes the baseline: the branch when no branch argument is given, and the method (merge, rebase, or squash) when neither `--rebase` nor `--squash` is given. When the native picker is unavailable, the method SHALL be a merge and the run SHALL go on. Cancelling either question SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
+When the invocation leaves the branch or the method open, the coordinator SHALL settle what is open before it fixes the test command and takes the baseline, in this order: the branch through the native picker when no branch argument is given; then the pre-launch simulation; then the method (merge, rebase, or squash) when neither `--rebase` nor `--squash` is given. When the branch is missing and the method is open, the branch and the method SHALL be two consecutive questions; with the branch in the arguments the method SHALL be the only question. When the native picker is unavailable, the method SHALL be a merge and the run SHALL go on. Cancelling either question SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
 
 #### Scenario: Method is asked with the branch before the baseline
 
 - **WHEN** `/sai-merge` is invoked with no arguments on a harness with a native picker
-- **THEN** the branch and method questions are asked in one picker call before the test command is fixed and before the baseline suite run
+- **THEN** the branch is asked first, the simulation runs, and the method is asked next, all before the test command is fixed and before the baseline suite run
 
 #### Scenario: No picker falls back to a merge
 
@@ -819,3 +824,60 @@ A completed `resolve` report MAY carry `recipe`, a list of `{path, signature}` e
 
 - **WHEN** a failed merge report carries `recipe`
 - **THEN** the validator rejects the report
+
+### Requirement: Pre-launch stop simulation
+
+Before the launch, once the branch is known, the `/sai-merge` coordinator SHALL run `merge.js simulate --source-ref <full-ref> --method merge|rebase|squash`, with the method of the arguments or `rebase` while the method is still open. The simulation SHALL use `git merge-tree --write-tree` and SHALL change no working tree, index, or ref. A merge SHALL be one step (`HEAD` with the source); a squash SHALL be one step (the current branch's own commits since the merge base as one change replayed on the source), and none when there is nothing to squash; a rebase SHALL be one step per commit `git rebase` would replay, oldest first, leaving out merges and commits whose patch the source already holds. After a predicted stop, the next step SHALL start from the merged tree with the current tip's version (`ours`, the upstream side) of each conflicted file, built in a temporary index and never the real one, so the prediction runs to the end of the range and later commits that change the same lines of that file are predicted to stop again. The tool SHALL write the detail as `simulation.json` (every predicted stop with its position, commit, subject, and conflicted files) in a private directory under the SAI temp root, because the run directory does not exist yet, and SHALL print a summary with `predicted_stops`, `repeated_files` (each file with 3 or more predicted stops and its count, most stops first), and the `record` path and `record_hash` of the detail file. A simulation that cannot run SHALL report `not-applicable` with `data.status: unavailable` and a `reason`, SHALL write no file, and SHALL NOT be a failed check: the run SHALL go on. The prediction SHALL be advisory: when the real stops differ from the predicted ones, the real stops govern.
+
+#### Scenario: Rebase predicts one stop per conflicting replayed commit
+
+- **WHEN** `simulate --method rebase` runs on a range where two replayed commits conflict with the source
+- **THEN** it predicts two stops and the working tree, the index, and every ref are unchanged
+
+#### Scenario: Repeated stops on one file are predicted
+
+- **WHEN** several replayed commits change the same lines of a file that conflicted at an earlier predicted stop
+- **THEN** the simulation continues from the current tip's version of that file and predicts a stop at each of those commits
+
+#### Scenario: Detail stays outside the repository
+
+- **WHEN** a simulation succeeds
+- **THEN** its `simulation.json` sits in a private directory under the SAI temp root and stdout carries only the summary with the file's path and hash
+
+#### Scenario: Unavailable simulation lets the run go on
+
+- **WHEN** git has no `merge-tree --write-tree` or cannot read the source ref
+- **THEN** `simulate` reports `not-applicable` with a reason, writes no file, and the run continues
+
+### Requirement: Squash recommendation in the method question
+
+When the arguments carry neither `--rebase` nor `--squash`, the coordinator SHALL ask the method (merge, rebase, or squash) after the branch is known and the simulation has run, and SHALL mark squash as recommended in that question, naming the file and its predicted stops, when the simulation summary lists `repeated_files`. An explicit method option SHALL add no question: its prediction SHALL go in the closing report. An unavailable simulation SHALL drop only the recommendation.
+
+#### Scenario: Repeated stops recommend squash
+
+- **WHEN** no method option is given and the simulation predicts 3 or more stops on one file
+- **THEN** the method question marks squash as recommended and names that file and its predicted stops
+
+#### Scenario: Explicit method adds no question
+
+- **WHEN** `/sai-merge feature --rebase` is invoked and the simulation predicts repeated stops on one file
+- **THEN** no method question is asked and the prediction appears in the closing report
+
+#### Scenario: Unavailable simulation asks without a recommendation
+
+- **WHEN** no method option is given and the simulation is unavailable
+- **THEN** the method question is asked with no recommendation and the closing report says that the prediction was unavailable
+
+### Requirement: Simulation file in the merge run state
+
+When Start produced a simulation file, the coordinator SHALL emit `record` (`simulation`) to `merge-run@1` with its path once the run state opens. A completed run SHALL remove the simulation directory with `temp-root.js remove` in the same close batch as the run directory; a stopped, escalated, or unanswered run SHALL keep it. A run that ends before the run state opens SHALL remove the simulation directory.
+
+#### Scenario: Simulation file is recorded when the run state opens
+
+- **WHEN** a fresh run opens its run state after a simulation wrote its file
+- **THEN** the coordinator emits `record` with ref `simulation` and that file's path
+
+#### Scenario: Cancelled method question removes the simulation directory
+
+- **WHEN** the user cancels the method question after the simulation wrote its file
+- **THEN** the run ends with nothing launched and the simulation directory is removed
