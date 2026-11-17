@@ -396,7 +396,7 @@ The coordinator SHALL fix the test command once before anything runs and SHALL t
 
 ### Requirement: Final-tree verification against the baseline
 
-The suite SHALL run once on the final tree, after the resolution is staged for a merge and after the last stop for a rebase, never per stop, through `merge.js verify --baseline-record <file> --baseline-hash <sha256>`. The tool SHALL refuse a baseline record whose bytes do not match the hash or that is not a baseline. A failing test that is not in the baseline SHALL be rerun once with the whole suite and SHALL count as a new failure only when it fails on both runs; the comparison status SHALL be `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`, and `verification_result` SHALL be `failed` only for a new failure. When the suite names no individual test and the baseline already failed, the result SHALL be not comparable. Failing tests SHALL be named from the output formats of common runners, and a runner's summary header ending with a colon SHALL NOT count as a test name. Only a new failure SHALL block: it SHALL be the obstacle `new-failure`, corrected through the worker's test-correction and apply steps; on a merge the correction SHALL join the merge commit, and on a rebase it SHALL be one additional local commit on top of the rebased branch.
+The suite SHALL run once on the final tree, after the resolution is staged for a merge and after the last stop for a rebase, never per stop, through `merge.js verify --baseline-record <file> --baseline-hash <sha256>`. The tool SHALL refuse a baseline record whose bytes do not match the hash or that is not a baseline. A failing test that is not in the baseline SHALL be rerun once with the whole suite and SHALL count as a new failure only when it fails on both runs; the comparison status SHALL be `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`, and `verification_result` SHALL be `failed` only for a new failure. When the suite names no individual test and the baseline already failed, the result SHALL be not comparable. Failing tests SHALL be named from the output formats of common runners, and a runner's summary header ending with a colon SHALL NOT count as a test name. Only a new failure SHALL block: it SHALL be the obstacle `new-failure`, corrected through the worker's test-correction and `resolve` steps; on a merge the correction SHALL join the merge commit, and on a rebase it SHALL be one additional local commit on top of the rebased branch.
 
 #### Scenario: Failure that passes on the rerun is flaky
 
@@ -420,7 +420,7 @@ The suite SHALL run once on the final tree, after the resolution is staged for a
 
 ### Requirement: Conflict stop cycle
 
-Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write and SHALL then apply the stop shortcut, so that only the files left after it reach the worker. For those files it SHALL have the worker report a strategy covering every affected file, write the accepted decisions to a confirmed-decisions file, have the worker apply them, and check the apply report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the worker's resolution as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A stop with no file left after the shortcut SHALL go straight to continuation. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker, once one exists, when another conflict appears. A clean launch SHALL create no worker until the final-tree review needs a correction and SHALL go straight to the final-tree review, verification, and the collision check.
+Each conflict stop SHALL be closed only when its conflicts are resolved by commit intent, checked, reviewed, and staged. The coordinator SHALL capture the stop with `merge.js conflicts --record` before any worker write and SHALL then apply the stop shortcut, so that only the files left after it reach the worker, and then the saved-procedure reuse, so that only the files left after it take the `resolve` step. For those files it SHALL send the worker `Active step: resolve — follow sai/commands/merge/steps/resolve.md` with the files it resolves, and the worker SHALL decide every conflict by commit intent and write the resolution through `merge.js write` in that one step, with no pause for approval of a strategy. The coordinator SHALL write the accepted report's `decisions` to a confirmed-decisions file and check the report with `merge.js resolution --phase authored`, returning a rejection to the worker as a corrected instruction. For each whole-side file the coordinator SHALL run `git checkout --ours` or `--theirs` and check with `--phase materialized`. It SHALL review the worker's resolution, the decisions together with the written text, as a separate session for at most three fix rounds under `incremental-review.md`, using `review-delta.js` snapshots and reading both sides from `merge.js bundle`, against fidelity to both sides' intent, changes outside the conflict regions, and leftover markers. Findings still open after round three SHALL be written to `findings.md`, listed in the closing report, and SHALL NOT stop the run. The stop SHALL then be staged with `git add` of the resolved paths and SHALL NOT run `git diff --cached --check`, because `write` and `resolution` already reject conflict markers and whitespace that either side carried passes unchanged. A stop with no file left after the shortcut SHALL go straight to continuation. A rebase SHALL continue with `GIT_EDITOR=true git rebase --continue`, starting a new stop with the same worker, once one exists, when another conflict appears. A clean launch SHALL create no worker until the final-tree review needs a correction and SHALL go straight to the final-tree review, verification, and the collision check.
 
 #### Scenario: Clean launch needs no worker
 
@@ -442,14 +442,24 @@ Each conflict stop SHALL be closed only when its conflicts are resolved by commi
 - **WHEN** a rebase stop's resolved file keeps trailing whitespace that the replayed commit already carried
 - **THEN** the coordinator stages the resolved paths with `git add` and continues the rebase without a whitespace check
 
+#### Scenario: A stop that needs no escalation takes one worker step
+
+- **WHEN** a stop has files left after the shortcut and reuse, and commit intent decides every conflict
+- **THEN** the worker decides and writes them in one `resolve` step, and the coordinator checks and reviews that single report
+
 ### Requirement: Escalation when commit intent cannot decide
 
-When the worker's strategy report lists an escalation because commit intent cannot decide between two sides, the coordinator SHALL decide nothing by itself and SHALL escalate at once, without spending an attempt, through the native picker with options it writes: at least resolving for the current branch's behavior, resolving for the selected branch's behavior, leaving the operation in progress without finalizing, and aborting it with `git merge --abort` or `git rebase --abort`. The run SHALL abort only when the user chose that option. A chosen resolution SHALL be sent back to the worker's strategy step as the decision for those conflicts. A whole-side-only conflict that commit intent cannot decide SHALL follow the same escalation.
+When the worker's report lists an escalation because commit intent cannot decide between two sides, that report SHALL be the strategy-only report of `sai/commands/merge/steps/strategy.md`, with nothing written, and the coordinator SHALL decide nothing by itself and SHALL escalate at once, without spending an attempt, through the native picker with options it writes: at least resolving for the current branch's behavior, resolving for the selected branch's behavior, leaving the operation in progress without finalizing, and aborting it with `git merge --abort` or `git rebase --abort`. The run SHALL abort only when the user chose that option. A chosen resolution SHALL be sent to the worker's `resolve` step as the decision for those conflicts, and the coordinator SHALL accept no `recipe` from that stop. A whole-side-only conflict that commit intent cannot decide SHALL follow the same escalation.
 
 #### Scenario: Abort happens only on explicit choice
 
 - **WHEN** an escalation is answered with the option that leaves the operation in progress
 - **THEN** the merge or rebase stays in progress, nothing is aborted, and the run closes with its report
+
+#### Scenario: The user's answer is written by the resolve step
+
+- **WHEN** the user chooses a side for an escalated conflict
+- **THEN** the coordinator sends the `resolve` step with that decision, and the worker writes it as given
 
 ### Requirement: Merge obstacles and escalation
 
@@ -462,7 +472,7 @@ An obstacle SHALL be anything that prevents closing a stop or the run, including
 
 #### Scenario: A failed worker report is an obstacle of its step
 
-- **WHEN** the merge worker returns a validated `failed` report for a strategy or apply step
+- **WHEN** the merge worker returns a validated `failed` report for a `resolve` step
 - **THEN** the coordinator handles it as an obstacle of that stop, spending one attempt, instead of treating it as a planned stop
 
 ### Requirement: Command-local authority of a merge run
@@ -689,7 +699,7 @@ The `/sai-merge` coordinator SHALL decide once per conflict stop, after the capt
 
 ### Requirement: Merge worker created at the first judgment
 
-The `/sai-merge` coordinator SHALL create the merge worker only when a step needs judgment: the strategy of a stop with files left after the shortcut, a final-tree correction, a test correction of a new failure, or a renumbering plan of a `needs-judgment` collision. A clean launch, and a run whose stops all take the shortcut and that needs no final-tree correction, test correction, or renumbering plan, SHALL create no worker. Once created, one worker SHALL serve the rest of the run, and Finalize SHALL dispose it only when one was created.
+The `/sai-merge` coordinator SHALL create the merge worker only when a step needs judgment: the `resolve` or `reuse` step of a stop with files left after the shortcut, a final-tree correction, a test correction of a new failure, or a renumbering plan of a `needs-judgment` collision. A clean launch, and a run whose stops all take the shortcut and that needs no final-tree correction, test correction, or renumbering plan, SHALL create no worker. Once created, one worker SHALL serve the rest of the run, and Finalize SHALL dispose it only when one was created.
 
 #### Scenario: All stops resolved by shortcut
 
@@ -746,9 +756,66 @@ Once the integration is whole (a merge with its resolution staged, a rebase afte
 
 ### Requirement: Final-tree correction through the worker
 
-The coordinator SHALL write no repository file to correct a final-tree finding. It SHALL send the worker `Active step: final-correction — follow sai/commands/merge/steps/final-correction.md` with each finding, its paths, lines, and occurrence ranges, capture the ranges the worker proposes with `merge.js correction --record <file>`, send the `apply` step with that snapshot so the worker writes through `merge.js write`, review the diff, stage it, and run the duplicates check again. The final-correction report SHALL carry `analysis` and `corrections` as byte ranges with each file's `before_hash`, and SHALL report a correction that would change a conflict strategy's decision instead of making it.
+The coordinator SHALL write no repository file to correct a final-tree finding. It SHALL send the worker `Active step: final-correction — follow sai/commands/merge/steps/final-correction.md` with each finding, its paths, lines, and occurrence ranges, capture the ranges the worker proposes with `merge.js correction --record <file>`, send the `resolve` step with that snapshot so the worker writes through `merge.js write`, review the diff, stage it, and run the duplicates check again. The final-correction report SHALL carry `analysis` and `corrections` as byte ranges with each file's `before_hash`, and SHALL report a correction that would change a conflict strategy's decision instead of making it.
 
 #### Scenario: Defect is corrected through the existing correction path
 
 - **WHEN** the final-tree review confirms an introduced duplicate block as a defect
-- **THEN** the worker proposes the ranges in a `final-correction` report, the coordinator captures them with `merge.js correction`, and the worker writes the corrected text through `merge.js write` in its `apply` step
+- **THEN** the worker proposes the ranges in a `final-correction` report, the coordinator captures them with `merge.js correction`, and the worker writes the corrected text through `merge.js write` in its `resolve` step
+
+### Requirement: Conflict signature in the stop snapshot
+
+`merge.js conflicts` SHALL give every conflicted file a `signature` in the stop record and in its stdout summary, holding `path`, `category`, `regions` (the number of conflict regions), `region_lines` (per region, `[ours_lines, theirs_lines]`, the line counts of the two sides between the markers, with the base version left out), and `id`, the sha256 of the JSON array `[path, category, region_lines]`. The region text SHALL NOT be part of the signature. A file with no conflict region SHALL have `regions: 0`. Two files SHALL have the same signature exactly when their `id` values are equal, and that comparison SHALL decide reuse, never a worker's or the coordinator's reading.
+
+#### Scenario: Changed region text keeps the signature
+
+- **WHEN** two stops conflict on the same file with the same category and the same per-region line counts but different region text
+- **THEN** `merge.js conflicts` reports the same signature `id` for that file at both stops
+
+#### Scenario: A different conflict shape changes the signature
+
+- **WHEN** a later stop conflicts on the same file with a different number of regions or different per-region line counts
+- **THEN** the file's signature `id` differs from the earlier one
+
+#### Scenario: File without regions
+
+- **WHEN** a conflicted file has no conflict region, such as a binary file or a deletion on one side
+- **THEN** its signature has `regions: 0` and an empty `region_lines`
+
+### Requirement: Saved procedure reuse at a later stop
+
+A completed `resolve` report MAY carry `recipe`, a list of `{path, signature}` entries naming a saved procedure the worker wrote as a Markdown file in `<run directory>/recipes/` and the signature `id` of the file it was saved from. The coordinator SHALL accept an entry only when that `id` belongs to a file the same stop record resolved by the worker's own decision, and SHALL keep each accepted entry as one line of `recipes.md` in the run directory, so a replacement worker and a resumed run still reuse it. A recipe SHALL hold no resolution text to paste: reuse SHALL write through `merge.js write`, and its result SHALL pass `merge.js resolution`. At a later stop, each file left after the shortcut whose signature `id` equals a `recipes.md` line SHALL go to the worker with `Active step: reuse — follow sai/commands/merge/steps/reuse.md` and its recipe path, and the files without a matching line SHALL take the `resolve` step. The coordinator SHALL write the reuse report's `decisions` to `stop-{n}-reuse-confirmed.json`, check the report with `merge.js resolution --partial`, and review the written files once under the stop review criteria with no fix rounds. A failed reuse report, a file the worker left untouched, a rejected check, or a review finding SHALL send those files to the `resolve` step with the same record and the findings, and SHALL remove their recipe line from `recipes.md`. A stop that went through an escalation SHALL save no recipe.
+
+#### Scenario: Matching file reuses its recipe
+
+- **WHEN** a later rebase stop holds a file whose signature `id` equals a line of `recipes.md`
+- **THEN** the coordinator sends that file to the `reuse` step with the recipe path, checks the written result with `merge.js resolution --partial`, and reviews it in one pass with no fix rounds
+
+#### Scenario: Only part of a stop matches
+
+- **WHEN** a stop holds some files whose signature matches a saved recipe and other files that match none
+- **THEN** the matching files take the `reuse` step and the remaining files take the `resolve` step
+
+#### Scenario: Failed reuse returns to the normal step
+
+- **WHEN** the reused procedure's result fails the `merge.js resolution` check or the single review pass finds a defect
+- **THEN** the coordinator sends those files to the `resolve` step with the same record and the findings and removes their recipe line from `recipes.md`
+
+#### Scenario: Escalated stop saves no recipe
+
+- **WHEN** a stop is resolved after an escalation answered by the user
+- **THEN** the coordinator accepts no `recipe` from that stop, so a later stop with the same signature gets its own decision
+
+### Requirement: Merge recipe role field
+
+`recipe` SHALL be one of the closed merge role fields in `sai/tools/worker-report-validator.js` and `sai/policies/worker-report-transport.md`: a list of `{path, signature}` records, accepted only on a `completed` report. A merge report that carries `recipe` with any other status or shape SHALL be invalid.
+
+#### Scenario: Recipe on a completed report validates
+
+- **WHEN** a completed merge report carries `recipe` as a list of `{path, signature}` records
+- **THEN** `worker-report-validator.js validate --kind terminal --command merge` accepts it
+
+#### Scenario: Recipe on a failed report is rejected
+
+- **WHEN** a failed merge report carries `recipe`
+- **THEN** the validator rejects the report

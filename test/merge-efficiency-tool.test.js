@@ -584,6 +584,39 @@ test('the tool has no stage entry points: instructions travel by pointer and the
   }
 });
 
+test('conflicts reports a signature of path, category, and region shape that survives changed region text', t => {
+  const first = fixture(t);
+  const stop = cli(first.cwd, ['provenance', '--source-ref', 'refs/heads/feature', '--method', 'merge', '--squash', 'not-applicable']);
+  assert.equal(stop.status, 0, stop.payload.error);
+  assert.equal(git(first.cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/feature'], true).status, 1);
+  const captured = cli(first.cwd, ['conflicts', '--record', path.join(first.parent, 'stop-1.json')]);
+  const signature = captured.payload.data.files[0].signature;
+  const body = { path: 'f.txt', category: 'code', regions: 1, region_lines: [[1, 1]] };
+  assert.deepEqual(signature, { ...body, id: hash(JSON.stringify([body.path, body.category, body.region_lines])) });
+  assert.deepEqual(JSON.parse(fs.readFileSync(captured.payload.record)).data.files[0].signature, signature, 'the record holds it too');
+
+  // The same file and shape with other text on both sides keeps the id.
+  const other = fixture(t, true);
+  launch(other.cwd);
+  const again = merge.conflicts(other.cwd).data.files[0].signature;
+  assert.equal(again.id, signature.id);
+
+  // A different number of lines on one side is a different shape.
+  const parent = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'sai-merge-signature-'));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const cwd = path.join(parent, 'repo');
+  fs.mkdirSync(cwd);
+  git(cwd, ['init', '-b', 'main']); git(cwd, ['config', 'user.name', 'Test']); git(cwd, ['config', 'user.email', 'test@example.com']);
+  git(cwd, ['config', 'core.autocrlf', 'false']);
+  fs.writeFileSync(path.join(cwd, 'f.txt'), 'one\ntwo\nthree\n'); git(cwd, ['add', '.']); git(cwd, ['commit', '-m', 'base']);
+  git(cwd, ['checkout', '-b', 'feature']); fs.writeFileSync(path.join(cwd, 'f.txt'), 'one\nA1\nA2\nthree\n'); git(cwd, ['commit', '-am', 'source']);
+  git(cwd, ['checkout', 'main']); fs.writeFileSync(path.join(cwd, 'f.txt'), 'one\nB1\nthree\n'); git(cwd, ['commit', '-am', 'target']);
+  git(cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/feature'], true);
+  const shaped = merge.conflicts(cwd).data.files[0].signature;
+  assert.deepEqual(shaped.region_lines, [[1, 2]]);
+  assert.notEqual(shaped.id, signature.id);
+});
+
 test('one preflight, provenance, conflicts, resolution, collision and status sequence works through the CLI alone', t => {
   const { cwd, parent } = fixture(t);
   const start = cli(cwd, ['preflight']);
@@ -648,7 +681,7 @@ test('existing projections install the tool and every merge card for both harnes
     const destinationRoot = Object.fromEntries(['commands', 'sai', 'skills', 'agents', 'config', 'root'].map(name => [name, path.join(root, name)]));
     const expanded = expandInstallManifest(loadInstallManifest(ROOT), { harness, repoRoot: ROOT, destinationRoot });
     for (const name of ['tools/merge.js', 'commands/merge/coordinator.md', 'commands/merge/worker.md', 'commands/merge/mechanics.md',
-      'commands/merge/steps/common.md', 'commands/merge/steps/strategy.md', 'commands/merge/steps/apply.md',
+      'commands/merge/steps/common.md', 'commands/merge/steps/strategy.md', 'commands/merge/steps/resolve.md', 'commands/merge/steps/reuse.md',
       'commands/merge/steps/test-correction.md', 'commands/merge/steps/renumbering-plan.md']) {
       assert.ok(expanded.some(item => item.harness === harness && item.destinationPath === path.join(destinationRoot.sai, name)), `${harness}: ${name}`);
     }
@@ -678,9 +711,9 @@ test('equivalent preflight measurement separates tool execution from instruction
   assert.equal(baseline.instruction_bytes, 30208);
   assert.match(baseline.source_revision, /^[0-9a-f]{40}$/);
   assert.match(baseline.source_sha256, /^[0-9a-f]{64}$/);
-  // The worker's first step is its judgment-point reading: the common file plus the strategy step.
+  // The worker's first step is its judgment-point reading: the common file, the resolve step, and the strategy rules it follows.
   const step = name => fs.readFileSync(path.join(ROOT, 'sai/commands/merge/steps', `${name}.md`), 'utf8');
-  const disclosed = Buffer.byteLength(step('common')) + Buffer.byteLength(step('strategy'));
+  const disclosed = ['common', 'resolve', 'strategy'].reduce((sum, name) => sum + Buffer.byteLength(step(name)), 0);
   assert.ok(disclosed < baseline.instruction_bytes);
   t.diagnostic(JSON.stringify({ case: 'same-clean-preflight', node: process.version,
     baseline_revision: baseline.source_revision, baseline_source_sha256: baseline.source_sha256,

@@ -381,7 +381,7 @@ test('the resolution check names the first differing byte and both code points',
 test('the worker steps name the bundle and the tool-owned write', () => {
   const read = name => fs.readFileSync(path.join(__dirname, '..', 'sai/commands/merge/steps', `${name}.md`), 'utf8');
   const common = read('common');
-  const apply = read('apply');
+  const apply = read('resolve');
   assert.match(common, /merge-tool> bundle --record/);
   assert.match(apply, /merge-tool> write --record/);
   assert.match(apply, /--input <payload-file>/);

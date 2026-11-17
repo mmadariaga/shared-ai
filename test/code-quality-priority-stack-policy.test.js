@@ -16,9 +16,9 @@ const CODE_WRITERS = [
   'sai/commands/explore/direct-build-worker.md',
   'sai/commands/implement/worker-common.md',
 ];
-const MERGE_APPLY = 'sai/commands/merge/steps/apply.md';
+const MERGE_RESOLVE = 'sai/commands/merge/steps/resolve.md';
 const MERGE_TEST_CORRECTION = 'sai/commands/merge/steps/test-correction.md';
-const MERGE_STEPS = [MERGE_APPLY, MERGE_TEST_CORRECTION];
+const MERGE_STEPS = [MERGE_RESOLVE, MERGE_TEST_CORRECTION];
 
 function walk(dir) {
   const out = [];
@@ -58,10 +58,10 @@ test('code-writing workers explicitly load the single-source policy within their
 });
 
 test('merge loads the policy conditionally for code resolutions and proposed corrections', () => {
-  const writing = read(MERGE_APPLY);
+  const writing = read(MERGE_RESOLVE);
   assert.ok(writing.includes(FETCH_LINE));
   assert.match(writing, /Before authoring a code resolution or a coordinator-authorized code correction/);
-  assert.match(writing, /accepted strategy, behavior-preservation requirements/);
+  assert.match(writing, /your decisions by commit intent, behavior-preservation requirements/);
   assert.match(writing, /authorized ranges; those restrictions prevail/);
   assert.match(writing, /complete existing version.*\) alone requires no policy load/);
   const correction = read(MERGE_TEST_CORRECTION);
@@ -85,10 +85,10 @@ test('policy references are limited to the intended planning, review, and code-w
   }
 });
 
-test('only the apply and test-correction merge steps load the policy', () => {
-  for (const step of ['common', 'strategy', 'apply', 'test-correction', 'renumbering-plan']) {
+test('only the resolve and test-correction merge steps load the policy', () => {
+  for (const step of ['common', 'strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan']) {
     const source = read(`sai/commands/merge/steps/${step}.md`);
-    assert.equal(source.includes(FETCH_LINE), ['apply', 'test-correction'].includes(step), step);
+    assert.equal(source.includes(FETCH_LINE), ['resolve', 'test-correction'].includes(step), step);
   }
 });
 

@@ -265,6 +265,22 @@ function regionSides(bytes, region) {
     theirs: body.slice(separator.index + separator[0].length, finish) };
 }
 
+const lineCount = text => (text.match(/\n/g) || []).length + (text && !text.endsWith('\n') ? 1 : 0);
+
+// The conflict signature of one file: its path, its conflict category, and the number and line
+// counts of its regions (ours and theirs, the base version excluded because Git writes it only in
+// some conflict styles). Region text is left out, so a conflict that repeats with regenerated
+// content keeps its signature. `id` is the sha256 of that shape, the value a saved procedure is
+// matched by; the tool, never a model, decides whether two stops share it.
+function conflictSignature(file, bytes) {
+  const region_lines = bytes ? file.regions.map(region => {
+    const sides = regionSides(bytes, region);
+    return [lineCount(sides.ours), lineCount(sides.theirs)];
+  }) : [];
+  return { path: file.path, category: file.category, regions: region_lines.length, region_lines,
+    id: hash(JSON.stringify([file.path, file.category, region_lines])) };
+}
+
 function stageSplice(file, stage) {
   const bytes = Buffer.from(file.before, 'base64');
   const parts = []; let cursor = 0;
@@ -402,6 +418,7 @@ function conflicts(cwd) {
       const file = { path: name, category, type, before: bytes?.toString('base64') ?? null,
         regions: bytes ? regions(bytes).map((region, i) => ({ ...region, conflict_id: `${category}:${name}#${i + 1}` })) : [],
         stages: index.filter(item => item.path === name) };
+      file.signature = conflictSignature(file, bytes);
       if (facts) file.containment = fileContainment(cwd, facts, file);
       file.stage_checkout_preserves_combined_content = {};
       for (const stage of file.stages.filter(item => item.stage !== 1)) {
@@ -1193,7 +1210,7 @@ function main(argv) {
         + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
         + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
-        + 'conflicts: the record holds the complete containment indicators of each file; stdout carries their bounded summary\n'
+        + 'conflicts: the record holds the complete containment indicators of each file; stdout carries their bounded summary and the conflict signature of each file (path, category, region count, ours and theirs line counts per region, and the id a saved procedure is matched by)\n'
         + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] [--out <external-new-file>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages; with --out the bundle goes to the file and stdout prints its summary and hash)\n'
         + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
         + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized] [--partial] (--partial checks only the files the resolution names)\n'
