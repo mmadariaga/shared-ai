@@ -13,14 +13,18 @@ Each step that introduces a new/modified public interface or a testable assertio
 
 **Interfaces**: <new or modified public signatures introduced in this step — function/method signatures, exported types, class or module public surface. Signatures only, no implementation body.>
 
-**Test assertions**: <the exact assertions that verify this step — expected input → expected output/behavior — each anchored to a `specs/**/*.md` requirement or scenario by path, or to a `proposal.md` statement when the change declares `skip_specs`.>
+**Test assertions**:
+- [smoke-test] <an assertion marked as smoke-test — expected input → expected output/behavior, anchored to a `specs/**/*.md` requirement or scenario by path, or to a `proposal.md` statement when the change declares `skip_specs`>
+- <an unmarked assertion, same shape>
 ```
 
 ## Field rules
 
 - **Section heading**: `## Step N: <title>` uses the corresponding step's integer from `tasks.md`.
 - **Interfaces** contains signatures only, with no implementation body.
-- **Test assertions** contains concrete expected inputs and outputs or behaviors, each citing a `specs/**/*.md` requirement or scenario by path. A change whose `.openspec.yaml` sets `skip_specs: true` has no spec file: each assertion cites a statement of `proposal.md` instead, by its section heading and the statement's wording.
+- **Test assertions** is a Markdown list with one assertion per item. Each item holds concrete expected inputs and outputs or behaviors and cites a `specs/**/*.md` requirement or scenario by path. A change whose `.openspec.yaml` sets `skip_specs: true` has no spec file: each assertion cites a statement of `proposal.md` instead, by its section heading and the statement's wording.
+- **Smoke-test mark**: an item may start with the prefix `[smoke-test]`. The mark means the assertion guards critical behavior: its failure leaves the system useless for its main purpose, or the behavior charges, pays, moves, or computes money. An item that meets neither condition carries no mark. This policy is the single source of the mark and its criterion.
+- **Earlier prose form**: a `**Test assertions**` field written as one prose paragraph, with no list, stays valid and carries no mark.
 
 ## Omission rule
 

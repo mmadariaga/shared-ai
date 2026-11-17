@@ -10,7 +10,17 @@ Write to `openspec/changes/{resolved_change_name}/interfaces.md`.
 
 Fetch `@sai/policies/step-contract-format.md`. A change whose `.openspec.yaml` sets `skip_specs: true` has no spec scenarios: anchor each assertion to a statement of `proposal.md`, as that policy says.
 
-Emit one section per qualifying step, keyed by the same integer as `tasks.md`; apply the fetched policy's format and omission rules in full.
+Emit one section per qualifying step, keyed by the same integer as `tasks.md`; apply the fetched policy's format and omission rules in full. Write each step's `**Test assertions**` as the policy's list, and put its smoke-test mark on every assertion that meets the policy's criterion.
+
+## Smoke-test tagging line
+
+When at least one assertion of `interfaces.md` carries the smoke-test mark, add the field `**Smoke-test tagging**` to `## Implementation Context` in `tasks.md`, after `**Test Command**`, and keep the `**Test Command**` field unchanged. The `tasks` step ran first and already researched the project's test runner: choose the mechanism from that research, and write one line that names one of these:
+
+- the project's native tag mechanism for the test runner, with its concrete syntax (for example a trait, category, marker, or tag annotation);
+- `[smoke-test]` in the test name, when the runner has no native tag mechanism and its test names can hold the text;
+- that the tests stay untagged, when the runner has neither.
+
+When no assertion is marked, or `interfaces.md` holds the `None — no step contracts` sentinel, `tasks.md` carries no `**Smoke-test tagging**` field; remove one that an earlier run wrote.
 
 ## Cited-path existence gate (blocking)
 
