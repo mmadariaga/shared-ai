@@ -633,7 +633,9 @@ test('watch counts a changed writable path and a new draft as activity, and an o
       },
     });
     assert.equal(drafting.ended, 'silent');
-    assert.ok(at - started >= 35 * MINUTE, 'the draft restarted the window');
+    // Without the restart the window closes at minute 20; a file system that stores mtime in whole
+    // seconds can move the draft's activity back by up to a second, so allow that much slack.
+    assert.ok(at - started >= 35 * MINUTE - 1000, 'the draft restarted the window');
 
     const fresh = await transfer.watch(dir, { settleMs: 0, maxMs: 40, pollMs: 10, writablePaths: [target] });
     assert.deepEqual(fresh, { reports: [], ended: 'max' }, 'an old mtime is not silence at once: the window starts with the watch');
