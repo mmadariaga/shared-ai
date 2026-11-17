@@ -189,16 +189,20 @@ clarify uncertain or divergent state instead of retrying a comment creation.
 ## 5. Unattended publication
 
 Only a SAI coordinator that holds a recorded publication answer of `yes` may use this
-mode: today `/sai-plan`, through `sai/commands/plan/publication.md`, after its start-of-run
-question, its `--publish yes` argument, or its `pr.publishAfterRun` setting recorded the
-answer. That answer is the held confirmation of `safe-operations` for exactly the local plan
-commit, the non-force push of the current branch, and the creation or update of its request.
+mode: today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build`, through
+`sai/commands/build/publication.md`, after the start-of-run question, the `--publish yes`
+argument, or the `pr.publishAfterRun` setting recorded the answer. That answer is the held
+confirmation of `safe-operations` for exactly the operations of that command: for `/sai-plan`
+the local plan commit, the non-force push of the current branch, and the creation or update of
+its request as a draft; for `/sai-build` the non-force push of the current branch and the
+creation or update of its request as a request that is ready for review.
 A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes`
 stay on sections 1 to 4: they get no unattended mode.
 
 Run sections 1 and 2 as written, with these changes: ask nothing (an ambiguous remote or
 target branch, an unresolved provider, or a missing plan skips the publication and names the
-fact), and send `draft:true` in `query` and `publish`. Then add the `--unattended` flag to
+fact), and send `draft:true` in `query` and `publish` for `/sai-plan`, or `ready:true` in both
+for `/sai-build` (never both fields). Then add the `--unattended` flag to
 exactly three operations: `plan-commit`, `push`, and `publish`
 (`node <tool-path> <operation> --unattended <registry-path>`; every other operation refuses
 the flag, and a field named `unattended` in the input never enables it). The flag replaces the
@@ -211,7 +215,13 @@ receipt. The tool refuses, with `status: blocked` and a `refusal` field, a force
 (`not-published`), and a branch whose last request was merged or closed and has no open
 one (`request-merged`, `request-closed`; the result's `request` names it, and no request is
 reopened or duplicated). An open request is updated and keeps its draft or ready state;
-`draft:true` decides only the state of a request created now.
+`draft:true` decides only the state of a request created now. `ready:true`, which only
+`publish --unattended` accepts (any other publish refuses it), creates a missing request ready
+for review, updates an open request and marks a draft one ready for review, and leaves an open
+ready request ready. Its readback must show the request ready: the `publish` or `recover`
+result carries `ready` with its `status`, and `pending` means the request is still a draft,
+reported as such without a retry. On GitHub the content update runs first and then the
+`markPullRequestReadyForReview` mutation, so a failed conversion leaves the update in place.
 
 Report each refusal or failure as the cause of a skipped publication, never retry it, never
 retry a refused or rejected push with force, and never ask. After `publish`, read the result

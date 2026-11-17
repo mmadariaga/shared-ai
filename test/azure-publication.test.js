@@ -146,6 +146,30 @@ test('Azure explicit draft create/conversion is approval-bound, omitted otherwis
   assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false);
   assert.equal(state.rows[0].isDraft, true);
 });
+test('Azure unattended ready:true marks an existing draft ready with isDraft false and verifies the readback', async () => {
+  const { io, state, pr } = fixture();
+  state.rows = [{ ...pr('old', 'old'), isDraft: true }];
+  const file = receipt();
+  const request = { ...prRequest, ready: true, unattended: true, receipt: file };
+  assert.equal((await prs.publish(request, io)).status, 'complete');
+  assert.equal(state.writes[0].body.isDraft, false);
+  assert.equal(state.rows[0].isDraft, false);
+  assert.equal(state.writes.length, 1);
+  state.rows[0].isDraft = true;
+  const unverified = await prs.recover({ receipt: file }, io);
+  assert.equal(unverified.status, 'uncertain');
+  assert.equal(unverified.pr.status, 'pending');
+  assert.equal(unverified.ready.status, 'pending');
+  assert.equal(state.writes.length, 1);
+  state.rows[0].isDraft = false;
+  assert.equal((await prs.recover({ receipt: file }, io)).status, 'complete');
+});
+test('Azure unattended ready:true creates a ready request and sends no draft flag', async () => {
+  const { io, state } = fixture();
+  assert.equal((await prs.publish({ ...prRequest, ready: true, unattended: true, receipt: receipt() }, io)).status, 'complete');
+  assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false);
+  assert.notEqual(state.rows[0].isDraft, true);
+});
 test('Azure risk thread is complete, authored, updated in place and still blocks insufficient relocation', async () => {
   const made = fixture(), { io, state } = made, baseRun = io.run;
   const threads = [], calls = [];

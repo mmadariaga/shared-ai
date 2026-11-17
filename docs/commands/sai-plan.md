@@ -35,8 +35,8 @@ whatever the answer. On the default branch or a detached HEAD, with no provider 
 failed authentication, a rejected push (never retried with force), or a branch whose request
 was merged or closed (never reopened), publication is skipped with its reason and the run still
 counts as completed. All committed branch changes enter the request: it need not be
-documents-only. Implementation uses this same branch and request later, without automatically
-marking it ready. An unattended run publishes without a final look at the request text; you
+documents-only. Implementation uses this same branch and request later; the plan never marks the
+request ready, and [`/sai-build`](sai-build.md) marks it ready only when it holds its own `yes` answer. An unattended run publishes without a final look at the request text; you
 accept that when you answer `yes`.
 
 The command runs the spec segment and the design segment in the same session, with no approval between segments. The behavior, checks, and stops of each segment are the ones described in [`/sai-1-spec`](sai-1-spec.md) and [`/sai-2-design`](sai-2-design.md). Invoking the command approves the specs.

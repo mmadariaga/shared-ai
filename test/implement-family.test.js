@@ -85,6 +85,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/commands/implement/coordinator.md',
     '@sai/commands/review/coordinator.md',
     '@sai/commands/review/options.md',
+    '@sai/commands/build/publication.md',
     '@sai/policies/cache-warming.md',
     '@sai/policies/worker-report-transport.md',
   ];

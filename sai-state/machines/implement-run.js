@@ -22,6 +22,8 @@
 //                                        role under reason create is recorded and answered with the
 //                                        warning WORKER_HANDLE_CHANGED (`warnings` in the response)
 //   close      {outcome}                 outcome: completed | escalated | stopped
+//   publication {value}                  records the publication answer (yes | no) of `/sai-build`; an
+//                                        explicit later value replaces it; no other command emits it
 //   status     {}                        changes nothing; returns the run state
 
 const { createRunMachine } = require('./run-core.js');
@@ -91,6 +93,7 @@ module.exports = createRunMachine({
   hint: 'implement run state — no fetch',
   refs: REFS,
   extraState: { step: '', committed: [], workers: [] },
+  publication: true,
   handleEvent,
   handleRecord,
   onClose(current) {

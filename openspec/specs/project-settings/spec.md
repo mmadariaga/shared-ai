@@ -207,7 +207,7 @@ Every catalogue key that the project behavior settings screen shows SHALL declar
 
 ### Requirement: Plan publication answer setting
 
-The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan`. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
+The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan` and `/sai-build`. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
 
 #### Scenario: Yes is normalized
 

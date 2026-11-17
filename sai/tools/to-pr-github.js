@@ -72,6 +72,15 @@ async function labels(target, io) {
     if (batch.length < 100) return [...new Set(names)];
   }
 }
+async function markReady(proposal, io) {
+  try {
+    if (!proposal.existing.nodeId) throw new Error('Cannot mark a GitHub PR ready without its verified node ID');
+    await api(proposal.target, 'graphql', io, 'POST', {
+      query: 'mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{id isDraft}}}',
+      variables: { id: proposal.existing.nodeId }
+    });
+  } catch (error) { throw new Error(`The pull request content was updated, but marking it ready for review failed: ${error.message}`); }
+}
 async function mutate(proposal, io) {
   const endpoint = `repos/${proposal.target.repository}/pulls`;
   if (proposal.draft === true && proposal.existing && proposal.existing.isDraft !== true) {
@@ -84,7 +93,12 @@ async function mutate(proposal, io) {
   const row = identity(await api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PATCH' : 'POST', proposal.existing
     ? { title: proposal.title, body: proposal.description }
     : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base, ...(proposal.draft === true ? { draft: true } : {}) }));
-  if (proposal.existing) return row;
+  if (proposal.existing) {
+    // Mark ready, after the content update so that the update stands when the conversion fails; the caller's readback
+    // (`recover`) verifies the resulting state.
+    if (proposal.ready === true && proposal.existing.isDraft === true) await markReady(proposal, io);
+    return row;
+  }
   // A pull request has no assignee or label field at creation: a second call on its issue sets them.
   const body = { ...(proposal.assignee ? { assignees: [proposal.assignee.login] } : {}), ...(proposal.labels?.length ? { labels: proposal.labels } : {}) };
   if (!Object.keys(body).length) return row;

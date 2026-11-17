@@ -1,6 +1,6 @@
 ---
 description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments).
-argument-hint: "[change-name]"
+argument-hint: "[change-name] [--publish yes|no]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}

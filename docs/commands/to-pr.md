@@ -119,13 +119,17 @@ that reaches the 120 s process limit is read back from the remote and reported a
 never as blocked and never repeated on its own; the process group of the push ends with it.
 
 **Unattended mode.** A SAI coordinator that holds a recorded `yes` answer to its own
-publication question ([`/sai-plan`](sai-plan.md) today) runs `plan-commit`, `push` and
-`publish` with the `--unattended` flag, which replaces the approval tokens and keeps every
-other check. Your own `/to-pr` invocations never use it and keep the approvals above. The
+publication question ([`/sai-plan`](sai-plan.md) and [`/sai-build`](sai-build.md) today)
+runs `plan-commit` (`/sai-plan` only), `push` and `publish` with the `--unattended` flag,
+which replaces the approval tokens and keeps every other check. Your own `/to-pr` invocations never use it and keep the approvals above. The
 tool refuses a force push, the provider's default branch, a detached HEAD, a branch that is
 not at the pushed commit, and a branch whose request was merged or closed and has no open
 request; each refusal names its cause and ends the publication with no retry. An open request
-is updated and keeps its draft or ready state; a request created now is a draft.
+is updated and keeps its draft or ready state; a request created now is a draft. `/sai-build`
+asks for a ready request instead: a request created now is ready for review and an open draft
+request is marked ready for review, with a read-back of the ready state on GitHub, GitLab and
+Azure DevOps. A ready state that the read-back does not show is reported as a request that
+stays a draft, and the push and the content update stand.
 
 Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only

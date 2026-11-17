@@ -43,8 +43,10 @@ function fixture(provider, existing = false) {
     state.mutations.push({ command, method, endpoint, body });
     if (endpoint === 'graphql') {
       assert.equal(body.variables.id, 'PR_7');
-      state.rows[0].draft = true;
-      return JSON.stringify({ data: { convertPullRequestToDraft: { pullRequest: { id: 'PR_7', isDraft: true } } } });
+      if (state.markReadyFails) throw new Error('GraphQL refused');
+      const markReady = /markPullRequestReadyForReview/.test(body.query);
+      state.rows[0].draft = state.keepDraft ? true : !markReady;
+      return JSON.stringify({ data: markReady ? { markPullRequestReadyForReview: { pullRequest: { id: 'PR_7', isDraft: false } } } : { convertPullRequestToDraft: { pullRequest: { id: 'PR_7', isDraft: true } } } });
     }
     if (provider === 'github' && /\/issues\/\d+$/.test(endpoint)) {
       // Second call after creation: the assignee and labels of the created pull request.
@@ -1170,6 +1172,83 @@ for (const provider of ['github', 'gitlab']) {
     const again = await tool.publish({ ...request, title: 'feat: add feature again', draft: true, unattended: true, receipt: receipt(t) }, io);
     assert.equal(again.status, 'complete');
     assert.equal(again.request.isDraft, true);
+  });
+  test(`${provider} unattended ready:true creates a ready request, marks an existing draft ready and verifies the readback`, async t => {
+    const created = fixture(provider);
+    const input = { ...created.request, ready: true, unattended: true };
+    const queried = await tool.query({ ...created.request, ready: true }, created.io);
+    assert.equal(queried.proposal.ready, true);
+    assert.equal(Object.hasOwn(queried.proposal, 'draft'), false);
+    const first = await tool.publish({ ...input, receipt: receipt(t) }, created.io);
+    assert.equal(first.status, 'complete');
+    assert.equal(first.request.isDraft, false);
+    const creation = created.state.mutations.find(row => row.method === 'POST');
+    if (provider === 'github') assert.equal(Object.hasOwn(creation.body, 'draft'), false);
+    else assert.equal(creation.body.title, 'feat: add feature');
+    const { request, io, state } = fixture(provider, true);
+    state.rows[0].draft = true;
+    if (provider === 'gitlab') state.rows[0].title = 'Draft: feat: old content';
+    const result = await tool.publish({ ...request, ready: true, unattended: true, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.request.isDraft, false);
+    assert.equal(state.rows[0].draft, false);
+    assert.equal(state.rows.length, 1);
+    assert.equal(state.mutations.some(row => row.endpoint === 'graphql' && /markPullRequestReadyForReview/.test(row.body.query)), provider === 'github');
+    if (provider === 'gitlab') assert.equal(state.mutations.at(-1).body.title, 'feat: add feature');
+    assert.equal((await tool.query({ ...request, ready: true }, io)).status, 'no_changes');
+  });
+  test(`${provider} unattended ready:true on a ready request updates it without marking anything`, async t => {
+    const { request, io, state } = fixture(provider, true);
+    const result = await tool.publish({ ...request, ready: true, unattended: true, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.request.isDraft, false);
+    assert.equal(state.mutations.some(row => row.endpoint === 'graphql'), false);
+  });
+  test(`${provider} a ready state that the readback does not show stays uncertain and recovers read-only`, async t => {
+    const { request, io, state } = fixture(provider, true);
+    state.rows[0].draft = true;
+    state.keepDraft = true;
+    const file = receipt(t);
+    const input = { ...request, ready: true, unattended: true, receipt: file };
+    if (provider === 'gitlab') {
+      // GitLab's draft flag follows the title; a title that keeps its prefix keeps the request a draft.
+      const run = io.run;
+      io.run = (command, args, body) => command !== 'git' && args.includes('PUT') && body ? run(command, args, JSON.stringify({ ...JSON.parse(body), title: 'Draft: feat: add feature' })) : run(command, args, body);
+    }
+    const result = await tool.publish(input, io);
+    assert.equal(result.status, 'uncertain');
+    assert.equal(result.pr.status, 'uncertain');
+    assert.equal(result.ready.status, 'pending');
+    const count = state.mutations.length;
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'uncertain');
+    assert.equal(state.mutations.length, count);
+    state.rows[0].draft = false;
+    state.rows[0].title = 'feat: add feature';
+    assert.equal((await tool.recover({ receipt: file }, io)).status, 'complete');
+    assert.equal(state.mutations.length, count);
+  });
+  if (provider === 'github') test('github a failed mark-ready leaves the updated content and a draft request, and recovery reports the pending ready state', async t => {
+    const { request, io, state } = fixture(provider, true);
+    state.rows[0].draft = true;
+    state.markReadyFails = true;
+    const file = receipt(t);
+    const result = await tool.publish({ ...request, ready: true, unattended: true, receipt: file }, io);
+    assert.equal(result.status, 'uncertain');
+    assert.match(result.message, /content was updated, but marking it ready for review failed: GraphQL refused/);
+    assert.equal(state.rows[0].title, 'feat: add feature');
+    assert.equal(state.rows[0].draft, true);
+    const count = state.mutations.length;
+    const recovered = await tool.recover({ receipt: file }, io);
+    assert.equal(recovered.status, 'uncertain');
+    assert.equal(recovered.ready.status, 'pending');
+    assert.equal(state.mutations.length, count);
+  });
+  test(`${provider} ready:true is never combined with draft:true, never malformed, and never published without the unattended flag`, async t => {
+    const { request, io, state } = fixture(provider, true);
+    await assert.rejects(async () => await tool.query({ ...request, ready: true, draft: true }, io), /never both/);
+    await assert.rejects(async () => await tool.query({ ...request, ready: false }, io), /ready:true/);
+    await assert.rejects(async () => await tool.publish({ ...request, ready: true, approved: true, confirmation: 'x', receipt: receipt(t) }, io), /only to an unattended publication/);
+    assert.equal(state.mutations.length, 0);
   });
   test(`${provider} an unattended read of closed requests that fails blocks publication`, async t => {
     const { request, io, state } = fixture(provider);

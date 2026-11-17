@@ -338,13 +338,14 @@ test('I5: plan-run@1 records the publication answer, an explicit value replaces 
   assert.equal(closed.run.publication, 'yes');
   assert.equal(planRun.transition(closed.state, { kind: 'start', dir: '/tmp/plan-q' }).run.publication, '', 'a fresh run has no answer');
   assert.equal(planRun.transition(planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-r' }).state, { kind: 'publication', value: 'no' }).run.publication, 'no');
-  // Only the machines that opt in carry the field.
-  for (const name of ['implement-run', 'merge-run']) {
-    const machine = require(`../sai-state/machines/${name}.js`);
-    const started = machine.transition(machine.initialState, { kind: 'start', dir: `/tmp/${name}-x` });
-    assert.equal(Object.hasOwn(started.run, 'publication'), false, name);
-    assert.equal(machine.transition(started.state, { kind: 'publication', value: 'yes' }), null, name);
-  }
+  // Only the machines that opt in carry the field: plan-run and implement-run (read by `/sai-build`) do, merge-run does not.
+  const merge = require('../sai-state/machines/merge-run.js');
+  const merged = merge.transition(merge.initialState, { kind: 'start', dir: '/tmp/merge-run-x' });
+  assert.equal(Object.hasOwn(merged.run, 'publication'), false);
+  assert.equal(merge.transition(merged.state, { kind: 'publication', value: 'yes' }), null);
+  const implement = require('../sai-state/machines/implement-run.js');
+  assert.equal(implement.initialState.publication, '');
+  assert.equal(Object.hasOwn(implement.transition(implement.initialState, { kind: 'start', dir: '/tmp/implement-run-x' }).run, 'publication'), true);
 });
 
 test('the implement-run machine keeps its behavior over the same core', () => {
