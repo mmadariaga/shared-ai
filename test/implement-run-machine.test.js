@@ -236,3 +236,44 @@ test('the emit response carries WORKER_HANDLE_CHANGED and the handles survive a 
     call(['close', id]);
   }
 });
+
+test('implement-run@1 carries the publication answer of /sai-build: recorded, replaced, resumed, and fresh on a new run', () => {
+  assert.equal(machine.initialState.publication, '');
+  assert.equal(machine.transition(machine.initialState, { kind: 'publication', value: 'yes' }).rejected, 'run is not running');
+  const started = run(start);
+  assert.equal(started.run.publication, '', 'a direct /sai-3-implement run carries an unused empty field');
+  for (const value of ['maybe', '', undefined, true]) assert.equal(machine.transition(started.state, { kind: 'publication', value }).rejected, 'publication must be yes or no');
+  const yes = machine.transition(started.state, { kind: 'publication', value: 'yes' });
+  assert.equal(yes.run.publication, 'yes');
+  assert.equal(machine.project(yes.state).run.publication, 'yes', 'a resumed run reads the recorded answer');
+  assert.equal(machine.transition(yes.state, { kind: 'publication', value: 'no' }).run.publication, 'no');
+  const withWorker = machine.transition(yes.state, { kind: 'record', ref: 'worker', role: 'red', handle: 'ses_1', reason: 'create' });
+  assert.equal(withWorker.run.publication, 'yes', 'the other events leave the answer alone');
+  const closed = machine.transition(yes.state, { kind: 'close', outcome: 'completed' });
+  assert.equal(closed.run.publication, 'yes');
+  const carried = machine.transition(closed.state, { kind: 'start', dir: '/tmp/claude-1000/sai/implement-demo-2c3d' });
+  assert.equal(carried.run.status, 'running');
+  assert.equal(carried.run.publication, '', 'a completed run starts fresh, so /sai-build records the answer again in segment 3');
+  assert.equal(machine.transition(carried.state, { kind: 'publication', value: 'yes' }).run.publication, 'yes');
+});
+
+test('the emit of the publication event reaches the store and survives a resumed run', () => {
+  const call = (args) => {
+    const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...args], { encoding: 'utf8' });
+    return { status: result.status, payload: result.stdout.trim() ? JSON.parse(result.stdout) : null };
+  };
+  const key = `implement-run-publication-test-${process.pid}-${Date.now()}`;
+  const id = call(['spawn', '--key', key]).payload.id;
+  try {
+    call(['emit', id, 'implement-run@1', '--set', 'kind=start', '--set-path', `dir=${start.dir}`]);
+    const recorded = call(['emit', id, 'implement-run@1', '--set', 'kind=publication', '--set', 'value=yes']);
+    assert.equal(recorded.status, 0);
+    assert.equal(recorded.payload.run.publication, 'yes');
+    const status = call(['emit', id, 'implement-run@1', '--set', 'kind=status']).payload;
+    assert.equal(status.run.publication, 'yes');
+    const replaced = call(['emit', id, 'implement-run@1', '--set', 'kind=publication', '--set', 'value=no']);
+    assert.equal(replaced.payload.run.publication, 'no');
+  } finally {
+    call(['close', id]);
+  }
+});

@@ -11,6 +11,9 @@ An explicit draft request uses GitLab's supported `Draft: ` title prefix for bot
 creation and conversion, bound to the publication approval. Read-back must confirm
 `draft` (or the older `work_in_progress`) is true; a title alone is not verification.
 Omitting the draft request preserves existing draft behavior.
+For the unattended `ready:true` request only, the title is written without the `Draft: `
+prefix, which marks an existing draft MR ready and creates a new MR ready; read-back must
+show `draft` (or `work_in_progress`) false, and a title alone is not verification.
 For assignment on creation only, the authenticated user (`GET user`) and every page of project labels
 are read; the same `POST merge_requests` carries `assignee_ids` and the chosen existing
 labels as a comma-separated `labels` value. No label is ever created.

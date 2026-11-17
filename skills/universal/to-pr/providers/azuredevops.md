@@ -20,7 +20,10 @@ binds the baseline but Azure PATCH leaves an unprotected concurrent-edit interva
 between reread and write, unlike Boards' atomic revision test. Title and
 description are updated; explicit `draft:true` additionally sets `isDraft:true`
 on creation or update, and verification must read back `isDraft:true`. Without
-that request the field is omitted and an existing state is preserved. Reviewers
+that request the field is omitted and an existing state is preserved. For the
+unattended `ready:true` request only, an update of a draft request sets
+`isDraft:false`, a creation omits the field, and verification must read back a request
+that is not a draft. Reviewers
 and other fields stay unchanged. Managed Inherent Risk comments use PR threads
 and update only the authenticated author's uniquely marked comment. Azure Repos
 requests get no assignee (a reviewer means approval, not ownership) and no labels;

@@ -9,6 +9,10 @@ explicitly requested. Update PATCH writes title and body. Explicit conversion of
 ready PR uses GraphQL `convertPullRequestToDraft` with the verified PR node ID.
 Reuse an existing draft without conversion. Read-back must confirm `draft:true`;
 unverified draft state is uncertain, never permission to create a duplicate.
+For the unattended `ready:true` request only, a draft PR is marked ready after its content
+update with GraphQL `markPullRequestReadyForReview` and the verified PR node ID; a creation
+sends no `draft` field. Read-back must show `draft:false`, and a failed conversion leaves the
+updated content and reports the ready state as pending.
 For assignment on creation only, the authenticated user (`GET user`) and every page of repository
 labels are read; after the `POST pulls`, one `PATCH issues/{number}` sets the assignee
 and the chosen existing labels, and is skipped when both are empty. Its failure is a

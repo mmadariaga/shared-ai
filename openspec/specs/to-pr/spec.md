@@ -655,7 +655,7 @@ The request status SHALL become `complete` only when its approved content and an
 
 ### Requirement: Unattended mode for a SAI coordinator with a recorded publication answer
 
-`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`); in that mode it SHALL ask nothing, SHALL send `draft:true` in `query` and `publish`, SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
+`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build`, through `sai/commands/build/publication.md`); in that mode it SHALL ask nothing, SHALL send `draft:true` in `query` and `publish` for `/sai-plan` and `ready:true` in both for `/sai-build`, never both fields, SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
 
 #### Scenario: The flag replaces the approval tokens
 - **WHEN** `push --unattended` runs without `approved` or `confirmation` fields on a publishable branch
@@ -668,6 +668,10 @@ The request status SHALL become `complete` only when its approved content and an
 #### Scenario: A request field does not enable the mode
 - **WHEN** `push` runs with `unattended: true` in its input and no flag
 - **THEN** the approval token check applies as in the interactive flow
+
+#### Scenario: Build publication sends the ready state
+- **WHEN** `/sai-build` publishes in the unattended mode
+- **THEN** the skill sends `ready:true` in `query` and `publish` and sends no `draft` field
 
 ### Requirement: Unattended mode refuses unsafe publications
 
@@ -700,3 +704,32 @@ The GitHub, GitLab, and Azure DevOps adapters SHALL each provide a closed-reques
 #### Scenario: Azure abandoned pull request
 - **WHEN** the branch's only Azure DevOps pull request is abandoned
 - **THEN** the query returns it with `state: closed`
+
+### Requirement: Unattended ready request state with verified mark-ready
+
+`to-pr.js` SHALL accept an explicit `ready:true` request state only on `publish --unattended`; any other `ready` value, a `ready:true` outside the unattended mode, and `ready:true` combined with `draft:true` SHALL be rejected. With `ready:true` the publisher SHALL create a missing request ready for review, SHALL update an open request and mark a draft one ready for review, and SHALL leave an open ready request ready. GitHub SHALL mark a draft ready with the GraphQL `markPullRequestReadyForReview` mutation and the verified node ID after the content update, so a failed conversion leaves the update in place; GitLab SHALL write the title without the `Draft: ` prefix; Azure DevOps SHALL set `isDraft:false` on an update of a draft request and omit the field on creation. Publication and read-only recovery SHALL require readback showing the request not a draft, and SHALL report a `ready` field with `requested: true` and `status` `complete` or `pending`; a `pending` ready state SHALL keep the request status `pending`, SHALL be reported as a request that stays a draft, and SHALL NOT be retried. Without `ready`, the rule that an open request keeps its draft or ready state SHALL stay in force.
+
+#### Scenario: GitHub draft is marked ready after the update
+
+- **WHEN** an unattended `ready:true` publication matches one open GitHub draft pull request
+- **THEN** the adapter updates its content and then runs `markPullRequestReadyForReview` with its verified node ID
+
+#### Scenario: GitLab draft loses its prefix
+
+- **WHEN** an unattended `ready:true` publication matches one open GitLab draft merge request
+- **THEN** the wire title carries no `Draft: ` prefix and readback must show `draft` false
+
+#### Scenario: Azure draft is set ready
+
+- **WHEN** an unattended `ready:true` publication updates an Azure DevOps draft pull request
+- **THEN** the update sends `isDraft:false` and recovery reports `ready.status: complete` only when readback shows the request is not a draft
+
+#### Scenario: Ready and draft together are refused
+
+- **WHEN** a request carries both `draft:true` and `ready:true`
+- **THEN** the tool rejects it before any mutation
+
+#### Scenario: Interactive publish refuses ready
+
+- **WHEN** `publish` runs with `ready:true` and without `--unattended`
+- **THEN** the tool rejects the request

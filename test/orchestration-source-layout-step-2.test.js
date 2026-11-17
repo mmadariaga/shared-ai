@@ -130,7 +130,7 @@ test('grouped design and implementation phase assets preserve their former sourc
     {
       name: 'build',
       directory: path.join(repoRoot, 'sai', 'commands', 'build'),
-      cardContents: ['coordinator.md'],
+      cardContents: ['coordinator.md', 'publication.md'],
     },
   ];
 

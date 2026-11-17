@@ -88,7 +88,9 @@ Start with an idea in `/sai-explore`, or import existing work using the
 `/sai-build` authorizes local commits as it works: it runs
 [`/sai-3-implement`](docs/commands/sai-3-implement.md), one
 [`/sai-4-review`](docs/commands/sai-4-review.md) pass, and a second implement run
-for the findings it judges justified. Run those two commands on their own for
+for the findings it judges justified. It asks one start question, answered in
+advance with `--publish yes|no` or the `pr.publishAfterRun` setting, about publishing
+a PR/MR ready for review when the run ends. Run those two commands on their own for
 step-by-step control.
 
 Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-deep-review`.
