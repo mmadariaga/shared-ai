@@ -190,3 +190,47 @@ Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/
 #### Scenario: Repeated --path on put
 - **WHEN** `put` runs with `--path` given twice
 - **THEN** it exits 2 and writes no file
+
+### Requirement: Retire-handle records retired worker handles
+
+`sai/tools/transfer.js` SHALL provide `retire-handle --dir <dir> --handle <id>`, which records a worker handle as retired in the reserved file `.sai-retired` inside the transfer directory, beside the `.sai-accepted` ledger. The handle SHALL be the agent ID on Claude Code or the `sessionID` on opencode, and a handle outside the accepted identifier pattern SHALL be a usage error with exit 2. Recording a handle that is already recorded SHALL change nothing. The result SHALL carry `handle`, `already`, and `recorded`. `.sai-retired` SHALL be a reserved name that is never treated as a report.
+
+#### Scenario: A handle is recorded once
+- **WHEN** `retire-handle` runs twice with the same handle in one transfer directory
+- **THEN** the first call returns `recorded: true`, the second returns `already: true`, and `.sai-retired` holds the handle once
+
+#### Scenario: Invalid handle is refused
+- **WHEN** `retire-handle` runs with a handle that does not match the accepted identifier pattern
+- **THEN** it exits 2 and records nothing
+
+### Requirement: Live reports the caller's run state
+
+`sai/tools/transfer.js` SHALL provide `live --dir <dir> [--harness <claude|opencode>]`, which reports `state` for the caller's own harness session, read through `sai/tools/harness-session.js` for the harness named by `--harness` or, without the flag, the harness of the install root the tool runs from. The state SHALL be `gone` when the directory no longer exists, `retired` when the caller's session is recorded in `.sai-retired`, and `live` otherwise, including when the session cannot be read. `live` SHALL exit 0 for every state.
+
+#### Scenario: Live for an active worker
+- **WHEN** `live` runs in an existing transfer directory and the caller's session is not recorded as retired
+- **THEN** it reports `live` and exits 0
+
+#### Scenario: Retired for a retired worker
+- **WHEN** `live` runs and the caller's session is recorded in `.sai-retired`
+- **THEN** it reports `retired` and exits 0
+
+#### Scenario: Gone for a closed directory
+- **WHEN** `live` runs for a transfer directory that no longer exists
+- **THEN** it reports `gone` and exits 0
+
+#### Scenario: Unreadable session is live
+- **WHEN** `live` runs and the caller's session cannot be read
+- **THEN** it reports `live`
+
+### Requirement: Put refuses a retired handle
+
+`transfer.js put` SHALL refuse a write when the caller's own harness session is recorded as retired in the transfer directory: it SHALL exit 1 with a check failure and write nothing. When the caller's session cannot be read, `put` SHALL skip the check and write as before.
+
+#### Scenario: Put from a retired handle writes nothing
+- **WHEN** a caller whose session is recorded in `.sai-retired` runs `put`
+- **THEN** `put` exits 1 and no file is created
+
+#### Scenario: Put without a readable session
+- **WHEN** a caller whose session cannot be read runs `put` in a directory that records retired handles
+- **THEN** the write succeeds as before

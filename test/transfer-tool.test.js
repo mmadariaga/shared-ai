@@ -516,3 +516,56 @@ test('E12 a repeated single-value flag is a usage error that changes nothing', (
     transfer.close(dir);
   }
 });
+
+test('E7 a retired handle is recorded beside the ledger and put from it writes nothing', () => {
+  const dir = transfer.open('claude').dir;
+  try {
+    const retire = cli(['retire-handle', '--dir', dir, '--handle', 'ses_old_worker']);
+    assert.equal(retire.status, 0, retire.stderr);
+    assert.deepEqual([retire.json.handle, retire.json.already, retire.json.recorded], ['ses_old_worker', false, true]);
+    assert.equal(cli(['retire-handle', '--dir', dir, '--handle', 'ses_old_worker']).json.already, true, 'recording twice changes nothing');
+    assert.equal(fs.readFileSync(path.join(dir, transfer.RETIRED), 'utf8'), 'ses_old_worker\n');
+    assert.equal(cli(['retire-handle', '--dir', dir, '--handle', 'bad handle']).status, 2);
+    assert.equal(cli(['retire-handle', '--dir', dir]).status, 2);
+
+    const report = path.join(dir, '..', 'retired-input.json');
+    fs.writeFileSync(report, '{"status":"completed"}');
+    try {
+      const refused = cli(['put', '--dir', dir, '--path', 'r.json', '--input-file', report, '--harness', 'opencode'], { env: { OPENCODE_SESSION_ID: 'ses_old_worker' } });
+      assert.equal(refused.status, 1);
+      assert.match(refused.json.error, /retired/);
+      assert.equal(fs.existsSync(path.join(dir, 'r.json')), false, 'nothing was written');
+
+      const other = cli(['put', '--dir', dir, '--path', 'r.json', '--input-file', report, '--harness', 'opencode'], { env: { OPENCODE_SESSION_ID: 'ses_new_worker' } });
+      assert.equal(other.status, 0, other.stderr);
+      const unreadable = cli(['put', '--dir', dir, '--path', 'u.json', '--input-file', report, '--harness', 'opencode'], { env: { OPENCODE_SESSION_ID: '' } });
+      assert.equal(unreadable.status, 0, 'E6: without a readable session the check is skipped');
+    } finally {
+      fs.rmSync(report, { force: true });
+    }
+    assert.throws(() => transfer.put(dir, `${transfer.RETIRED}`, Buffer.from('x')), /reserved name/);
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('E8 live reports live, retired, or gone for the caller\'s own harness session', () => {
+  const dir = transfer.open('claude').dir;
+  const env = session => ({ OPENCODE_SESSION_ID: session });
+  try {
+    assert.equal(cli(['live', '--dir', dir, '--harness', 'opencode'], { env: env('ses_a') }).json.state, 'live');
+    assert.equal(cli(['live', '--dir', dir, '--harness', 'opencode'], { env: env('') }).json.state, 'live', 'an unreadable session is never refused');
+    cli(['retire-handle', '--dir', dir, '--handle', 'ses_a']);
+    const retired = cli(['live', '--dir', dir, '--harness', 'opencode'], { env: env('ses_a') });
+    assert.equal(retired.status, 0);
+    assert.equal(retired.json.state, 'retired');
+    assert.equal(cli(['live', '--dir', dir, '--harness', 'opencode'], { env: env('ses_b') }).json.state, 'live');
+    assert.equal(cli(['live', '--dir', dir, '--harness', 'claude'], { env: { CLAUDE_CODE_AGENT_ID: 'ses_a' } }).json.state, 'retired', 'Claude Code reads its agent ID');
+  } finally {
+    transfer.close(dir);
+  }
+  const gone = cli(['live', '--dir', dir, '--harness', 'opencode'], { env: env('ses_a') });
+  assert.equal(gone.status, 0);
+  assert.equal(gone.json.state, 'gone');
+  assert.equal(cli(['live']).status, 2);
+});

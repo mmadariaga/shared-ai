@@ -506,3 +506,23 @@ On Claude Code no chain SHALL be closed: `TaskStop` ends the agent and its wait 
 #### Scenario: Next command reactivates the chain
 - **WHEN** a later command invocation in the same chat runs a main-session `begin` on the retired chain
 - **THEN** the retired mark is cleared, the arm check returns `launch: true`, and the next wake returns `continue`
+
+### Requirement: Revived subagent session gets no chain
+
+A subagent `begin` of `skills/sai-cache-warmer/wait.js` SHALL read the agent's own harness session through `sai/tools/harness-session.js` (`OPENCODE_SESSION_ID` on opencode, `CLAUDE_CODE_AGENT_ID` on Claude Code), or take it from an explicit `--session <id>`, which SHALL win over the environment. A session value that does not match the accepted identifier pattern SHALL count as unreadable. With a readable session, `begin` SHALL store the harness-qualified key `<harness>:<id>` on the chain record as `agent_session`. When a chain record that carries the same `agent_session` was closed by a dispose, `begin` SHALL print `{"chain": null, "warming": "off"}` and the agent SHALL arm nothing, because a worker whose chain a dispose closed and that starts warming again is a worker its harness revived after it was ended. When the session cannot be read, `begin` SHALL return a fresh chain with no refusal, as before. `sai/policies/cache-warming.md` § Begin SHALL document this `off` case and the unreadable-session fallback.
+
+#### Scenario: Begin records the subagent session
+- **WHEN** a subagent runs `begin` with a readable harness session and warming on
+- **THEN** it returns a chain whose record carries `agent_session` as `<harness>:<id>`
+
+#### Scenario: Begin from a session whose chain a dispose closed
+- **WHEN** a subagent runs `begin` with a readable harness session and a chain record of that same session carries the closed marker
+- **THEN** it prints `{"chain": null, "warming": "off"}` and the agent arms nothing
+
+#### Scenario: Unreadable session keeps a fresh chain
+- **WHEN** a subagent runs `begin` and its harness session is absent or does not match the accepted identifier pattern
+- **THEN** it returns a fresh chain with no refusal
+
+#### Scenario: Explicit session wins over the environment
+- **WHEN** a subagent runs `begin --session <id>` while the environment names another session
+- **THEN** the chain record and the closed-chain check use the explicit session

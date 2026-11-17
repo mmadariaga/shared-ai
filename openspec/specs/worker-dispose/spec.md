@@ -177,7 +177,7 @@ It SHALL validate every argument before any removal and SHALL exit 2 with a usag
 
 ### Requirement: Same-turn batch at dispose and close points
 
-`sai/policies/worker-lifecycle.md` SHALL be the single source of the same-turn batch: independent tool calls issued together in one model response. At each dispose point a coordinator SHALL issue every stop of that point in one same-turn batch, and at each close point every directory close and removal of that point (`transfer.js close`, `temp-root.js remove`) in one same-turn batch, on Claude Code and opencode alike. On Claude Code the batch SHALL hold one `TaskStop` call per worker; on opencode it SHALL hold one `dispose-shells.js` call with one `--session` per worker to dispose. Directory closes and removals SHALL stay one call per directory. A batch SHALL NOT hold a call that needs the result of another call of the same batch. A `TaskStop` answered with `No task found` SHALL count as a result, and that worker SHALL count as disposed. When a call of a batch returns cancelled or without a result, the coordinator SHALL re-issue that call alone in the next turn; the point SHALL be complete only when every stop and close of it has a result, and a cancellation SHALL NOT be an obstacle attempt. On opencode the `dispose` message fallback SHALL stay per worker and SHALL read that worker's own entry of the envelope. The close sentences of `sai/commands/explore/direct-build-coordinator.md`, `sai/commands/implement/coordinator.md`, `sai/commands/merge/coordinator.md`, and `sai/commands/plan/cycle.md` SHALL issue their stops, closes, and removals in one same-turn batch and point to `worker-lifecycle.md` for the rule.
+`sai/policies/worker-lifecycle.md` SHALL be the single source of the same-turn batch: independent tool calls issued together in one model response. At each dispose point a coordinator SHALL issue every stop and every `transfer.js retire-handle` call of that point in one same-turn batch, and at each close point every directory close and removal of that point (`transfer.js close`, `temp-root.js remove`) in one same-turn batch, on Claude Code and opencode alike. On Claude Code the batch SHALL hold one `TaskStop` call per worker; on opencode it SHALL hold one `dispose-shells.js` call with one `--session` per worker to dispose. The batch SHALL also hold one `retire-handle` call per disposed worker that holds a report directory, independent of its stop call. Directory closes and removals SHALL stay one call per directory. A batch SHALL NOT hold a call that needs the result of another call of the same batch. A `TaskStop` answered with `No task found` SHALL count as a result, and that worker SHALL count as disposed. When a call of a batch returns cancelled or without a result, the coordinator SHALL re-issue that call alone in the next turn; the point SHALL be complete only when every stop and close of it has a result, and a cancellation SHALL NOT be an obstacle attempt. On opencode the `dispose` message fallback SHALL stay per worker and SHALL read that worker's own entry of the envelope. The close sentences of `sai/commands/explore/direct-build-coordinator.md`, `sai/commands/implement/coordinator.md`, `sai/commands/merge/coordinator.md`, and `sai/commands/plan/cycle.md` SHALL issue their stops, closes, and removals in one same-turn batch and point to `worker-lifecycle.md` for the rule.
 
 #### Scenario: Claude Code disposes several workers at one point
 - **WHEN** a Claude Code coordinator reaches a dispose point with the RED worker, the GREEN worker, and the live explorer still alive
@@ -202,3 +202,43 @@ It SHALL validate every argument before any removal and SHALL exit 2 with a usag
 #### Scenario: Per-worker fallback from the envelope
 - **WHEN** an opencode envelope entry reports `none` for a worker whose last real message carried `warming: true`, or `failed` or `unavailable` for any worker
 - **THEN** the coordinator sends the message `dispose` to that worker only, after a one-line notice for `failed` or `unavailable`
+
+#### Scenario: Retire calls share the dispose batch
+- **WHEN** a coordinator reaches a dispose point with two workers that each hold a report directory
+- **THEN** it issues both stop calls and both `transfer.js retire-handle` calls in one model response
+
+### Requirement: Coordinators retire the handle of a replaced or disposed worker
+
+`sai/policies/worker-lifecycle.md` SHALL require that every replacement and every dispose of a worker that holds a report directory also records that worker's handle as retired, with `node <tool-path> retire-handle --dir <report-dir> --handle <handle>` of `sai/tools/transfer.js`, resolved per `sai/policies/tool-resolution.md`. The handle SHALL be the one the coordinator captured when it created the worker: the agent ID on Claude Code, the `sessionID` on opencode. The call SHALL run in the same same-turn batch as the worker's stop call and before the report directory is closed. A coordinator that fetches `worker-lifecycle.md` SHALL inherit the call from that policy without restating it. When the harness exposes no readable handle to the worker's shell, the record SHALL have no effect on `put`, and the run SHALL be unchanged.
+
+#### Scenario: Replaced worker is retired before the directory closes
+- **WHEN** a coordinator replaces a worker that holds a report directory
+- **THEN** it runs `transfer.js retire-handle` with that worker's captured handle in the batch of the stop call, before the report directory is closed
+
+#### Scenario: Revived worker cannot save a report
+- **WHEN** a worker whose handle was retired is revived by its harness and runs `transfer.js put` in its report directory with a readable session
+- **THEN** the put is refused and writes nothing
+
+#### Scenario: Unreadable handle keeps the run unchanged
+- **WHEN** a coordinator retires a worker whose shell exposes no readable harness session
+- **THEN** the record is written, a later `put` from that worker is not refused, and the run outcome does not change
+
+### Requirement: Worker liveness guard before writing
+
+`sai/policies/worker-lifecycle.md` § Worker side SHALL require that a worker that holds a report directory (the `--report-dir` line of its task) runs `node <tool-path> live --dir <report-dir>` of `sai/tools/transfer.js` before the first file write that follows a shell command, and before it saves a report. On `retired` or `gone` the worker SHALL write no file, save no report, arm no cache-warm wait, and end with one stop line, the stop literal of `sai/policies/cache-warming.md`. On `live` the worker SHALL go on. A worker without a report directory, and a `live` call that cannot run, SHALL change nothing: the guard SHALL NOT stop a run on its own failure. Read-only commands before that first check SHALL stay allowed. The guard SHALL rest on the report directory and the retired-handle record, never on HEAD movement, so a coordinator that commits while other workers keep working stops no healthy worker.
+
+#### Scenario: Retired worker stops before writing
+- **WHEN** a revived worker returns from a shell command, is about to write a file, and `transfer.js live` reports `retired`
+- **THEN** it writes no file, saves no report, arms no wait, and ends with the stop literal
+
+#### Scenario: Closed run stops the worker
+- **WHEN** a worker is about to save a report and `transfer.js live` reports `gone` because the report directory was closed
+- **THEN** it saves no report, arms no wait, and ends with the stop literal
+
+#### Scenario: Live worker continues
+- **WHEN** `transfer.js live` reports `live`
+- **THEN** the worker writes its file or saves its report as before
+
+#### Scenario: Guard failure does not stop the run
+- **WHEN** the `live` call cannot run, or the worker holds no report directory
+- **THEN** the worker goes on unchanged
