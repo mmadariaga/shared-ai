@@ -569,3 +569,152 @@ test('E8 live reports live, retired, or gone for the caller\'s own harness sessi
   assert.equal(gone.json.state, 'gone');
   assert.equal(cli(['live']).status, 2);
 });
+
+// ─── silent workers and relative report references ───────────────────────────
+
+test('watch ends silent once neither the report directory nor a writable path changed for the window', async () => {
+  const { dir } = transfer.open('claude');
+  const box = sandbox();
+  try {
+    const target = path.join(box.project, 'src', 'a.js');
+    fs.mkdirSync(path.dirname(target));
+    fs.writeFileSync(target, 'a');
+    age(target, 3600000);
+    age(path.dirname(target), 3600000);
+    let at = Date.now();
+    const quiet = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 3 * 3600000, pollMs: 60000, silentMs: 20 * 60000, writablePaths: [path.join(box.project, 'src')],
+      now: () => at, sleep: async milliseconds => { at += milliseconds; },
+    });
+    assert.equal(quiet.ended, 'silent');
+    assert.deepEqual(quiet.reports, []);
+    assert.ok(quiet.silent_for_ms >= 20 * 60000 && quiet.silent_for_ms < 21 * 60000, 'it names how long the worker was quiet');
+  } finally {
+    transfer.close(dir);
+    box.cleanup();
+  }
+});
+
+test('watch counts a changed writable path and a new draft as activity, and an old mtime is no silence at once', async () => {
+  const { dir } = transfer.open('claude');
+  const box = sandbox();
+  try {
+    const MINUTE = 60000;
+    const target = path.join(box.project, 'work.txt');
+    fs.writeFileSync(target, 'w');
+    age(target, 7200000);
+    const started = Date.now();
+    let at = started;
+    const writes = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 6 * 60 * MINUTE, pollMs: MINUTE, silentMs: 20 * MINUTE, writablePaths: [target, path.join(box.project, 'not-yet')],
+      now: () => at,
+      sleep: async milliseconds => {
+        at += milliseconds;
+        if (at < started + 60 * MINUTE) fs.utimesSync(target, new Date(at), new Date(at));
+      },
+    });
+    assert.equal(writes.ended, 'silent');
+    assert.ok(at - started >= 78 * MINUTE, 'every write inside the window postponed the silence');
+    assert.ok(writes.silent_for_ms >= 20 * MINUTE && writes.silent_for_ms < 21 * MINUTE);
+
+    at = started;
+    let drafted = false;
+    const draft = path.join(dir, 'step-1-red-1.draft.json');
+    const drafting = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 6 * 60 * MINUTE, pollMs: MINUTE, silentMs: 20 * MINUTE,
+      now: () => at,
+      sleep: async milliseconds => {
+        at += milliseconds;
+        if (!drafted && at >= started + 15 * MINUTE) {
+          drafted = true;
+          fs.writeFileSync(draft, 'draft');
+          fs.utimesSync(draft, new Date(at), new Date(at));
+        }
+      },
+    });
+    assert.equal(drafting.ended, 'silent');
+    assert.ok(at - started >= 35 * MINUTE, 'the draft restarted the window');
+
+    const fresh = await transfer.watch(dir, { settleMs: 0, maxMs: 40, pollMs: 10, writablePaths: [target] });
+    assert.deepEqual(fresh, { reports: [], ended: 'max' }, 'an old mtime is not silence at once: the window starts with the watch');
+  } finally {
+    transfer.close(dir);
+    box.cleanup();
+  }
+});
+
+test('watch still reports a settled report before it reports silence, and the ledger is no activity', async () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'completed-1.json', Buffer.from('r'), { exclusive: true });
+    age(saved.path, 120000);
+    const found = await transfer.watch(dir, { settleMs: 60000, maxMs: 1000, pollMs: 10, silentMs: 1 });
+    assert.equal(found.ended, 'found');
+    transfer.accept(dir, saved);
+    let at = Date.now();
+    const quiet = await transfer.watch(dir, { settleMs: 0, maxMs: 3600000, pollMs: 60000, silentMs: 20 * 60000, now: () => at, sleep: async milliseconds => { at += milliseconds; } });
+    assert.equal(quiet.ended, 'silent');
+  } finally {
+    transfer.close(dir);
+  }
+});
+
+test('watch parses the silence window and the writable paths of its input file', () => {
+  assert.equal(transfer.parseSilentAfter('20'), 20 * 60000);
+  assert.equal(transfer.parseSilentAfter('90s'), 90000);
+  assert.equal(transfer.parseSilentAfter('2h'), 7200000);
+  for (const bad of ['0', '0m', 'soon', '-5', '1.5']) assert.throws(() => transfer.parseSilentAfter(bad), /positive whole number of minutes/, bad);
+  assert.match(fs.readFileSync(TOOL, 'utf8'), /DEFAULT_SILENT_MS = 20 \* 60 \* 1000/);
+  const cwd = path.resolve('/project/root');
+  assert.deepEqual(transfer.parseWritablePaths(Buffer.from('["a/b.js", "/abs/c"]'), cwd), [path.join(cwd, 'a', 'b.js'), path.resolve('/abs/c')]);
+  assert.deepEqual(transfer.parseWritablePaths(Buffer.from('{"paths": ["x"]}'), cwd), [path.join(cwd, 'x')]);
+  for (const bad of ['not json', '{"paths": "x"}', '[1]', '[""]', '{}']) assert.throws(() => transfer.parseWritablePaths(Buffer.from(bad), cwd), /array of paths/, bad);
+});
+
+test('the watch sub-command ends silent from the command line and refuses a bad silence window or input file', () => {
+  const { dir } = transfer.open('claude');
+  const box = sandbox();
+  try {
+    const input = path.join(box.base, 'paths.json');
+    fs.writeFileSync(input, JSON.stringify(['file.txt']));
+    fs.writeFileSync(path.join(box.project, 'file.txt'), 'x');
+    age(path.join(box.project, 'file.txt'), 3600000);
+    const silent = cli(['watch', '--dir', dir, '--settle', '0', '--max', '5s', '--poll', '20ms', '--silent-after', '150ms', '--input-file', input, '--cwd', box.project]);
+    assert.equal(silent.status, 0, silent.stderr);
+    assert.equal(silent.json.ended, 'silent');
+    assert.deepEqual(silent.json.reports, []);
+    assert.equal(typeof silent.json.silent_for_ms, 'number');
+    const bare = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms']);
+    assert.equal(bare.json.ended, 'max', 'the default window is twenty minutes');
+    assert.equal(cli(['watch', '--dir', dir, '--silent-after', '0']).status, 2);
+    fs.writeFileSync(input, 'nonsense');
+    assert.equal(cli(['watch', '--dir', dir, '--input-file', input]).status, 2);
+    assert.equal(cli(['watch', '--dir', dir, '--input-file', path.join(box.base, 'absent.json')]).status, 2);
+  } finally {
+    transfer.close(dir);
+    box.cleanup();
+  }
+});
+
+test('accept resolves a relative path against the report directory and keeps containment and hash checks', () => {
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'sub/completed-1.json', Buffer.from('rel'), { exclusive: true });
+    assert.equal(transfer.resolveReferencePath(dir, 'sub/completed-1.json'), saved.path);
+    assert.equal(transfer.resolveReferencePath(dir, saved.path), saved.path, 'an absolute path is untouched');
+    assert.deepEqual(transfer.accept(dir, { path: 'sub/completed-1.json', sha256: saved.sha256 }, { check: true }),
+      { path: saved.path, sha256: saved.sha256, already: false, recorded: false });
+    assert.deepEqual(transfer.accept(dir, { path: 'sub/completed-1.json', sha256: saved.sha256 }),
+      { path: saved.path, sha256: saved.sha256, already: false, recorded: true });
+    assert.equal(transfer.accept(dir, saved, { check: true }).already, true, 'the ledger key is the absolute path');
+    assert.throws(() => transfer.accept(dir, { path: 'sub/completed-1.json', sha256: sha('wrong') }), /sha256 differs/);
+    assert.throws(() => transfer.accept(dir, { path: '../escape.json', sha256: saved.sha256 }), /outside the transfer directory/);
+    assert.throws(() => transfer.accept(dir, { path: transfer.LEDGER, sha256: saved.sha256 }), /outside the transfer directory/);
+    const viaCli = cli(['accept', '--dir', dir, '--path', 'sub/completed-1.json', '--sha256', saved.sha256, '--check']);
+    assert.equal(viaCli.status, 0, viaCli.stderr);
+    assert.equal(viaCli.json.already, true);
+    assert.equal(cli(['accept', '--dir', dir, '--path', '../escape.json', '--sha256', saved.sha256]).status, 1);
+  } finally {
+    transfer.close(dir);
+  }
+});

@@ -35,7 +35,7 @@ After a coordinator has processed a report reference, it SHALL record it with `t
 
 ### Requirement: Background watch while waiting for a worker
 
-Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir>` in the background with its defaults (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting. When the watch ends with an empty list, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
+Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir>` in the background with its defaults (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting; for a worker that writes files outside the report directory it SHALL add the paths the worker's brief lets it write through `--input-file` and `--cwd <project root>`. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
 
 #### Scenario: The watch runs with warming off
 - **WHEN** a coordinator with cache warming off waits for a worker's result
@@ -52,6 +52,10 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 #### Scenario: Continuation check does not poll for reports
 - **WHEN** a coordinator receives a warming notification while waiting for a worker
 - **THEN** it follows the applicable warming protocol without polling for undelivered reports or duplicating running work, leaving report discovery to the watch
+
+#### Scenario: A silent watch is an obstacle, not a relaunch
+- **WHEN** the watch ends with `ended: silent`
+- **THEN** the coordinator spends one attempt of the step's obstacle and asks the same worker once for its report instead of relaunching silently
 
 ### Requirement: Found reports follow the delivered-report path
 

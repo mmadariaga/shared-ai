@@ -29,14 +29,17 @@
  *       Verify, then copy the verified bytes to the destination (resolved
  *       against --cwd, default cwd, and required to stay inside it), creating
  *       missing parent directories.
- *   accept --dir <dir> --path <absolute> --sha256 <hex> [--check]
+ *   accept --dir <dir> --path <path> --sha256 <hex> [--check]
  *       Record a reference the coordinator has dealt with in the ledger `.sai-accepted`
- *       inside `<dir>`, after verifying it like `verify`. Recording an already
+ *       inside `<dir>`, after verifying it like `verify`. A relative `--path` resolves
+ *       against `<dir>` first; the containment and hash checks are unchanged, so a path
+ *       that escapes `<dir>` is refused. Recording an already
  *       recorded reference changes nothing. Returns `already` (it was recorded
  *       before) and `recorded` (this call recorded it). With `--check` the call only
  *       looks the reference up in the ledger: it reads no report, records nothing,
  *       and answers `already`.
  *   watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]
+ *         [--silent-after <minutes>] [--input-file <paths>] [--cwd <root>]
  *       Poll `<dir>` inside this process (every `--poll`, default 5s) until it holds
  *       a report that is not in the ledger and has been on disk for at least the
  *       settle delay (default 60s), then print those references (`reports`, each
@@ -44,6 +47,14 @@
  *       exit, or print an empty `reports` list at `--max` (default 30m). A
  *       duration is a whole number followed by ms, s, m, or h. Draft files
  *       (`*.draft.*`), the marker, and the ledger are never reports.
+ *       The watch also ends with `ended: silent` (an empty `reports` list and
+ *       `silent_for_ms`) when, for `--silent-after` (default 20; a bare number is
+ *       minutes, units are accepted), no file of `<dir>` (the marker and the ledger
+ *       aside) was created or changed and no file of the paths named by `--input-file`
+ *       changed (`mtime`). The input file is JSON: an array of strings, or an object
+ *       with a `paths` array, each path absolute or relative to `--cwd` (default cwd);
+ *       a directory counts every file below it. The window starts when the watch
+ *       starts, so a path untouched before the watch is not silent at once.
  *   retire-handle --dir <dir> --handle <id>
  *       Record a worker handle (the agent ID on Claude Code, the sessionID on opencode) as retired in the
  *       reserved file `.sai-retired` inside `<dir>`, beside the ledger. Recording a recorded handle changes
@@ -84,6 +95,9 @@ const RESERVED = [MARKER, LEDGER, RETIRED];
 const DEFAULT_SETTLE_MS = 60 * 1000;
 const DEFAULT_MAX_MS = 30 * 60 * 1000;
 const DEFAULT_POLL_MS = 5 * 1000;
+const DEFAULT_SILENT_MS = 20 * 60 * 1000;
+const ACTIVITY_WALK_LIMIT = 5000;
+const ACTIVITY_SKIPPED_DIRS = new Set(['.git', 'node_modules']);
 const DIR_PREFIX = 'sai-transfer-';
 const DIR_NAME = /^sai-transfer-[A-Za-z0-9]{6}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -223,6 +237,16 @@ function verify(dir, reference, { io = fs } = {}) {
   return { path: resolved, sha256, bytes };
 }
 
+/**
+ * A reference path written relative to the report directory resolves against it. The result goes
+ * through the containment and hash checks unchanged, so a path that escapes the directory is refused there.
+ */
+function resolveReferencePath(dir, target) {
+  if (typeof target !== 'string' || target === '' || path.isAbsolute(target)) return target;
+  if (typeof dir !== 'string' || !path.isAbsolute(dir)) return target;
+  return path.resolve(dir, target);
+}
+
 const referenceKey = (target, sha256) => `${path.resolve(target)}\n${sha256}`;
 
 /** The references recorded in the ledger of a transfer directory, as a set of keys. */
@@ -252,13 +276,14 @@ function readLedger(root, { io = fs } = {}) {
  */
 function accept(dir, reference, { io = fs, check = false } = {}) {
   const root = checkTransferDir(dir, { io });
-  const { path: target, sha256 } = reference;
+  const { sha256 } = reference;
+  const target = resolveReferencePath(root, reference.path);
   if (check) {
     if (typeof target !== 'string' || !path.isAbsolute(target)) throw new CheckError('Reference path must be an absolute path');
     if (typeof sha256 !== 'string' || !SHA256.test(sha256)) throw new CheckError('Reference sha256 must be 64 lowercase hex characters');
     return { path: path.resolve(target), sha256, already: readLedger(root, { io }).has(referenceKey(target, sha256)), recorded: false };
   }
-  const verified = verify(dir, reference, { io });
+  const verified = verify(dir, { path: target, sha256 }, { io });
   const already = readLedger(root, { io }).has(referenceKey(verified.path, sha256));
   if (!already) io.appendFileSync(path.join(root, LEDGER), `${JSON.stringify({ path: verified.path, sha256 })}\n`, { mode: 0o600 });
   return { path: verified.path, sha256, already, recorded: !already };
@@ -322,6 +347,35 @@ function parseDuration(value, flag) {
   return Number(match[1]) * unit;
 }
 
+/**
+ * Parse the silence window: a whole number of minutes (a bare number), or a whole number followed by
+ * ms, s, m, or h. It must be positive.
+ */
+function parseSilentAfter(value, flag = '--silent-after') {
+  const match = /^(\d+)(ms|s|m|h)?$/.exec(String(value));
+  const milliseconds = match ? Number(match[1]) * { ms: 1, s: 1000, m: 60 * 1000, h: 60 * 60 * 1000 }[match[2] || 'm'] : 0;
+  if (!match || milliseconds <= 0) throw new UsageError(`${flag} must be a positive whole number of minutes, or a whole number followed by ms, s, m, or h`);
+  return milliseconds;
+}
+
+/**
+ * Read the writable paths of a worker's brief from the bytes of a watch input file: a JSON array of
+ * strings, or an object with a `paths` array. Relative paths resolve against `cwd`.
+ */
+function parseWritablePaths(bytes, cwd = process.cwd()) {
+  let parsed;
+  try {
+    parsed = JSON.parse(Buffer.from(bytes).toString('utf8'));
+  } catch (error) {
+    throw new UsageError('watch --input-file must hold JSON: an array of paths, or an object with a paths array');
+  }
+  const list = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' && Array.isArray(parsed.paths) ? parsed.paths : null;
+  if (!list || list.some(entry => typeof entry !== 'string' || entry === '' || entry.includes('\0'))) {
+    throw new UsageError('watch --input-file must hold JSON: an array of paths, or an object with a paths array');
+  }
+  return list.map(entry => path.resolve(cwd, entry));
+}
+
 /** Regular files of the directory (any depth) that can be reports, in creation order. */
 function candidateReports(root, io) {
   const found = [];
@@ -362,26 +416,74 @@ function undelivered(root, settleMs, io, at) {
 
 const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+/** The newest modification time (ms) of a regular file below `start`, or 0; a path that is gone is skipped. */
+function newestMtime(start, io, { top = null } = {}) {
+  let newest = 0;
+  let visited = 0;
+  const walk = current => {
+    if (visited++ >= ACTIVITY_WALK_LIMIT) return;
+    const stat = lstatOrNull(current, io);
+    if (!stat || stat.isSymbolicLink()) return;
+    if (stat.isFile()) {
+      newest = Math.max(newest, stat.mtimeMs);
+      return;
+    }
+    if (!stat.isDirectory()) return;
+    if (current !== top) newest = Math.max(newest, stat.mtimeMs);
+    let entries;
+    try {
+      entries = io.readdirSync(current, { withFileTypes: true });
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      if (current === top && RESERVED.includes(entry.name)) continue;
+      if (ACTIVITY_SKIPPED_DIRS.has(entry.name)) continue;
+      walk(path.join(current, entry.name));
+    }
+  };
+  walk(start);
+  return newest;
+}
+
 /**
- * Wait until the directory holds an undelivered report or `maxMs` has passed. The process owns the
- * polling, so the caller spends no model turn while nothing happens. A directory that disappears
- * ends the watch with an empty list.
+ * The newest sign of life of a worker: a file created or changed in the report directory (a draft
+ * included, the marker and the ledger aside), or a file changed below one of the writable paths.
  */
-async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS, pollMs = DEFAULT_POLL_MS, io = fs, now = Date.now, sleep = defaultSleep } = {}) {
+function latestActivity(root, writablePaths, io) {
+  let newest = newestMtime(root, io, { top: root });
+  for (const target of writablePaths) newest = Math.max(newest, newestMtime(target, io));
+  return newest;
+}
+
+/**
+ * Wait until the directory holds an undelivered report, the worker has been silent for `silentMs`,
+ * or `maxMs` has passed. The process owns the polling, so the caller spends no model turn while
+ * nothing happens. A directory that disappears ends the watch with an empty list. Silence is measured
+ * from the later of the watch start and the newest activity (`latestActivity`).
+ */
+async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS, pollMs = DEFAULT_POLL_MS, silentMs = DEFAULT_SILENT_MS, writablePaths = [], io = fs, now = Date.now, sleep = defaultSleep } = {}) {
   const root = checkTransferDir(dir, { io });
-  const deadline = now() + maxMs;
+  const started = now();
+  const deadline = started + maxMs;
   for (;;) {
     let reports;
+    let activity;
     try {
       reports = undelivered(root, settleMs, io, now());
+      if (reports.length === 0) activity = latestActivity(root, writablePaths, io);
     } catch (error) {
       if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return { reports: [], ended: 'closed' };
       throw error;
     }
     if (reports.length > 0) return { reports, ended: 'found' };
-    const remaining = deadline - now();
+    const current = now();
+    const silentFor = current - Math.max(started, activity);
+    if (silentFor >= silentMs) return { reports: [], ended: 'silent', silent_for_ms: silentFor };
+    const remaining = deadline - current;
     if (remaining <= 0) return { reports: [], ended: 'max' };
-    await sleep(Math.min(pollMs, remaining));
+    await sleep(Math.min(pollMs, remaining, silentMs - silentFor));
   }
 }
 
@@ -420,8 +522,8 @@ function usage() {
     '  node transfer.js put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]   (content in the input file, else on stdin)',
     '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
-    '  node transfer.js accept --dir <dir> --path <absolute> --sha256 <hex> [--check]',
-    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]',
+    '  node transfer.js accept --dir <dir> --path <path> --sha256 <hex> [--check]   (a relative --path resolves against --dir)',
+    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--input-file <paths>] [--cwd <root>]',
     '  node transfer.js retire-handle --dir <dir> --handle <id>',
     '  node transfer.js live --dir <dir> [--harness <claude|opencode>]',
     '  node transfer.js close --dir <dir>',
@@ -430,7 +532,7 @@ function usage() {
   ].join('\n');
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -536,6 +638,8 @@ async function run(argv) {
       settleMs: opts.settle === undefined ? DEFAULT_SETTLE_MS : parseDuration(opts.settle, '--settle'),
       maxMs: opts.max === undefined ? DEFAULT_MAX_MS : parseDuration(opts.max, '--max'),
       pollMs: opts.poll === undefined ? DEFAULT_POLL_MS : Math.max(1, parseDuration(opts.poll, '--poll')),
+      silentMs: opts.silentAfter === undefined ? DEFAULT_SILENT_MS : parseSilentAfter(opts.silentAfter),
+      writablePaths: opts.inputFile ? parseWritablePaths(readInputBytes(opts.inputFile), opts.cwd || process.cwd()) : [],
     });
     return respond({ ok: true, command: 'watch', ...result }, 0);
   } catch (error) {
@@ -546,4 +650,4 @@ async function run(argv) {
 
 if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });
 
-module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, accept, retireHandle, live, watch, parseDuration, materialize, close, parseArgs, main, run };
+module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, resolveReferencePath, accept, retireHandle, live, watch, parseDuration, parseSilentAfter, parseWritablePaths, materialize, close, parseArgs, main, run };

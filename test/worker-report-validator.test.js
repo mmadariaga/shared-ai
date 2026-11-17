@@ -633,3 +633,28 @@ test('every role field a worker card shapes is in its command\'s table', () => {
     }
   }
 });
+
+test('a relative report file resolves against the report directory, with containment and hash checks unchanged', () => {
+  const transfer = require('../sai/tools/transfer.js');
+  const { dir } = transfer.open('claude');
+  try {
+    const saved = transfer.put(dir, 'step-1-red-1.json', Buffer.from(JSON.stringify(base({ test_command: 't', notes: '' }))), { exclusive: true });
+    const absolute = validator.validateFile(dir, saved, 'terminal', { command: 'implement' });
+    const relative = validator.validateFile(dir, { path: 'step-1-red-1.json', sha256: saved.sha256 }, 'terminal', { command: 'implement' });
+    assert.equal(absolute.outcome, 'accepted');
+    assert.deepEqual(relative, absolute);
+    const wrongHash = validator.validateFile(dir, { path: 'step-1-red-1.json', sha256: 'f'.repeat(64) }, 'terminal', { command: 'implement' });
+    assert.equal(wrongHash.outcome, 'delivery-failed');
+    assert.match(wrongHash.errors[0], /sha256 differs/);
+    for (const escaping of ['../step-1-red-1.json', 'sub/../../x.json', '.sai-accepted']) {
+      const refused = validator.validateFile(dir, { path: escaping, sha256: saved.sha256 }, 'terminal', { command: 'implement' });
+      assert.equal(refused.outcome, 'delivery-failed', escaping);
+      assert.match(refused.errors[0], /outside the transfer directory/, escaping);
+    }
+    const cli = spawnSync(process.execPath, [path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'), 'validate', '--kind', 'terminal', '--command', 'implement', '--json', '--report-dir', dir, '--report-file', 'step-1-red-1.json', '--report-hash', saved.sha256], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.equal(JSON.parse(cli.stdout).outcome, 'accepted');
+  } finally {
+    transfer.close(dir);
+  }
+});
