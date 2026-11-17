@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-resilience. Update Purpose after
 
 ### Requirement: Identifiers-only run state
 
-The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, the report directory, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` (kinds `deviation`, `override`, `report`, `report-dir`, `finding`, and `baseline`) SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
+The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, the report directory, the handle of each worker per role, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` (kinds `deviation`, `override`, `report`, `report-dir`, `finding`, and `baseline`) SHALL keep each path once, `record` with kind `worker` SHALL take `role`, `handle`, and `reason` instead of a path, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
 
 #### Scenario: A second start is rejected
 - **WHEN** the coordinator emits `start` to a run that is already running
@@ -60,7 +60,7 @@ When an obstacle's budget is exhausted, the coordinator SHALL escalate at once, 
 
 ### Requirement: Broken worker replacement
 
-A worker that returns no ready, whose report does not validate, that stays silent past what the step needs, or that drifts from its instruction SHALL be an obstacle. The coordinator SHALL first ask the same worker again, returning the validator's errors for an invalid report; when that does not help, and at the latest at a second consecutive invalid report from that worker, it SHALL create a new worker for that role, which receives the ready handshake and a hand-over summary the coordinator writes in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). The old worker's history SHALL NOT be forwarded and the working-tree files SHALL stay as they are. Each response, including the worker change, SHALL count as an attempt.
+A worker that returns no ready, whose report does not validate, that the report watch reports `silent`, or that drifts from its instruction SHALL be an obstacle. The coordinator SHALL first ask the same worker again, returning the validator's errors for an invalid report; when that does not help, and at the latest at a second consecutive invalid report or a second consecutive `silent` watch end from that worker, it SHALL create a new worker for that role, which receives the ready handshake and a hand-over summary the coordinator writes in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom), and SHALL register it with reason `replace`. The old worker's history SHALL NOT be forwarded and the working-tree files SHALL stay as they are. Each response, including the worker change, SHALL count as an attempt.
 
 #### Scenario: Asking again does not help
 
@@ -107,7 +107,7 @@ When a run closes `completed`, the coordinator SHALL remove its run directory wi
 
 ### Requirement: Shared run core
 
-The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`, which SHALL export `createRunMachine`. The core SHALL own the attempt budget of 3 per obstacle, the stages `idle`, `running`, `escalated`, `completed`, and `stopped`, the identifiers-only state (the run directory, the open escalation, the attempts per obstacle, and the path lists named by the machine's reference kinds), and the events `start`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. A machine built on the core SHALL supply only its machine id, its next-step hint, its reference kinds, its extra state fields, a handler for the events the core does not own, and an optional close hook. `implement-run@1` SHALL be built on the core, adding the `step` and `committed` state fields, the `step-start` and `step-done` events, and clearing the current step at close, and SHALL keep its id, events, rejections, and emit responses unchanged.
+The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`, which SHALL export `createRunMachine`. The core SHALL own the attempt budget of 3 per obstacle, the stages `idle`, `running`, `escalated`, `completed`, and `stopped`, the identifiers-only state (the run directory, the open escalation, the attempts per obstacle, and the path lists named by the machine's reference kinds), and the events `start`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. A machine built on the core SHALL supply only its machine id, its next-step hint, its reference kinds, its extra state fields, a handler for the events the core does not own, an optional handler for a `record` whose reference kind is not one of its path kinds, and an optional close hook. `implement-run@1` SHALL be built on the core, adding the `step`, `committed`, and `workers` state fields, the `step-start` and `step-done` events, the `worker` record kind, and clearing the current step at close, and SHALL keep its id, events, rejections, and emit responses otherwise unchanged.
 
 #### Scenario: Implement events outside the core reach the implement machine
 
@@ -118,3 +118,39 @@ The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`
 
 - **WHEN** the coordinator emits `close` with outcome `completed` while a step is current
 - **THEN** the core sets the stage to `completed` and the implement close hook clears the current step.
+
+### Requirement: The implement run SHALL record each worker handle by role
+
+The `implement-run@1` machine SHALL accept `record` with `ref=worker`, a `role`, a `handle`, and a `reason` of `create`, `replace`, or `resume`, and SHALL keep the handles of each role, in registration order, in its `workers` state list, so they survive a resumed store. A record on a run that has not started, without a usable role (a role containing `:` is unusable), without a handle, or with another reason MUST be rejected. A record whose handle equals the role's current handle MUST change nothing.
+
+#### Scenario: First handle of a role is registered
+- **WHEN** a started run receives `record` with `ref=worker`, `role=red`, `handle=a1`, and `reason=create`
+- **THEN** the run state lists `red:a1` and the response carries no `WORKER_HANDLE_CHANGED` warning
+
+#### Scenario: Incomplete worker record is rejected
+- **WHEN** a `record` with `ref=worker` lacks a role, a handle, or a reason in `create|replace|resume`, or the run is idle
+- **THEN** the machine rejects the event and the run state is unchanged
+
+#### Scenario: Repeat of the current handle is a no-op
+- **WHEN** the run receives `record` with `ref=worker` for a role whose current handle is the same handle
+- **THEN** the run state is unchanged and no warning is returned
+
+### Requirement: A second handle of a role under create SHALL return WORKER_HANDLE_CHANGED
+
+When a `record` with `ref=worker` and `reason=create` names a handle different from the role's current handle, the machine SHALL record it and SHALL return `WORKER_HANDLE_CHANGED` in the `warnings` list of the response. A new handle under `replace` or `resume` MUST be recorded without that warning. `bin/sai-state.js` MUST carry the machine's `warnings` onto the emit response, merged without duplicates with the store warnings.
+
+#### Scenario: Unexpected re-creation is visible
+- **WHEN** a role already holds handle `a1` and the run receives `record` with `ref=worker`, the same role, `handle=a2`, and `reason=create`
+- **THEN** the emit response's `warnings` list holds `WORKER_HANDLE_CHANGED` and the run state lists both handles
+
+#### Scenario: Replacement and resume do not warn
+- **WHEN** a role already holds a handle and the run records a different handle with `reason=replace` or `reason=resume`
+- **THEN** the handle is recorded and the response carries no `WORKER_HANDLE_CHANGED` warning
+
+### Requirement: The implement coordinator SHALL register every worker it creates
+
+The `/sai-3-implement` coordinator SHALL emit `record` with `ref=worker` right after each RED or GREEN worker's `ready`, with the captured agent ID on Claude Code or the `sessionID` on opencode as the handle, and the reason `create` for the role's first worker of the run, `replace` for a worker that takes the place of one disposed under an obstacle attempt, and `resume` for a worker created after a compaction.
+
+#### Scenario: Replacement worker is registered as replace
+- **WHEN** the coordinator creates a new GREEN worker to replace one it disposed under an obstacle attempt
+- **THEN** it records the new handle with `role=green` and `reason=replace` after the new worker's `ready`

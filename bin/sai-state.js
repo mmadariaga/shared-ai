@@ -316,16 +316,18 @@ function seedFromRecord(session, record) {
 
 function withWarnings(payload, warnings) {
   if (!warnings || warnings.length === 0) return payload;
-  return Object.assign({}, payload, { warnings });
+  const machineWarnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+  return Object.assign({}, payload, { warnings: warnings.concat(machineWarnings.filter((entry) => !warnings.includes(entry))) });
 }
 
 // Machine-authored observability fields carried verbatim onto the emit wire.
 // The set is closed: budget tallies, the name of the exhausted budget, scope
 // entry outcomes, the apply-only authorized retry grant/history, and the
 // apply-only worker veto record/override outcomes, the `/sai-3-implement`
-// run view (identifiers and paths only), and the unknown step ids of a rejected
-// step report.
-const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run', 'unknown_ids'];
+// run view (identifiers and paths only), the unknown step ids of a rejected
+// step report, and the machine warnings (`warnings`, a list of identifiers such
+// as WORKER_HANDLE_CHANGED, which the response merges with the store warnings).
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run', 'unknown_ids', 'warnings'];
 
 function attachObservabilityFields(target, source) {
   if (!target || !source) return target;

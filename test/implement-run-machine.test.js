@@ -170,3 +170,69 @@ test('a finished run does not block the next start; an interrupted one still res
   assert.equal(machine.transition(escalated.state, next).rejected, 'ALREADY_RUNNING');
   assert.equal(machine.transition(escalated.state, next).state.dir, start.dir);
 });
+
+test('worker handles are registered per role and a second handle without a replacement warns', () => {
+  const create = (role, handle, reason = 'create') => ({ kind: 'record', ref: 'worker', role, handle, reason });
+  const first = run(start, create('red', 'agent-red-1'), create('green', 'agent-green-1'));
+  assert.equal(first.warnings, undefined);
+  assert.deepEqual(first.run.workers, ['red:agent-red-1', 'green:agent-green-1']);
+
+  const repeated = machine.transition(first.state, create('red', 'agent-red-1'));
+  assert.equal(repeated.warnings, undefined, 'the same handle is registered once, without a warning');
+  assert.deepEqual(repeated.run.workers, ['red:agent-red-1', 'green:agent-green-1']);
+
+  const drift = machine.transition(first.state, create('red', 'agent-red-2'));
+  assert.deepEqual(drift.warnings, ['WORKER_HANDLE_CHANGED']);
+  assert.equal(drift.rejected, undefined, 'the warning rejects nothing');
+  assert.deepEqual(drift.run.workers, ['red:agent-red-1', 'green:agent-green-1', 'red:agent-red-2']);
+
+  for (const reason of ['replace', 'resume']) {
+    const planned = machine.transition(first.state, create('red', 'agent-red-2', reason));
+    assert.equal(planned.warnings, undefined, `${reason} is a planned change`);
+    assert.deepEqual(planned.run.workers.slice(-1), ['red:agent-red-2']);
+  }
+
+  const afterReplace = run(start, create('red', 'a1'), create('red', 'a2', 'replace'));
+  assert.deepEqual(machine.transition(afterReplace.state, create('red', 'a2')).warnings, undefined);
+  assert.deepEqual(machine.transition(afterReplace.state, create('red', 'a3')).warnings, ['WORKER_HANDLE_CHANGED'], 'only the current handle of the role is compared');
+});
+
+test('a worker record needs a run, a role, a handle, and a reason', () => {
+  const create = (fields) => ({ kind: 'record', ref: 'worker', ...fields });
+  assert.equal(machine.transition(machine.initialState, create({ role: 'red', handle: 'h1', reason: 'create' })).rejected, 'run is not started');
+  const running = run(start).state;
+  assert.equal(machine.transition(running, create({ handle: 'h1', reason: 'create' })).rejected, 'role required');
+  assert.equal(machine.transition(running, create({ role: 'r:ed', handle: 'h1', reason: 'create' })).rejected, 'role required');
+  assert.equal(machine.transition(running, create({ role: 'red', reason: 'create' })).rejected, 'handle required');
+  assert.equal(machine.transition(running, create({ role: 'red', handle: 'h1', reason: 'again' })).rejected, 'reason must be create, replace, or resume');
+  assert.equal(machine.transition(running, create({ role: 'red', handle: 'h1' })).rejected, 'reason must be create, replace, or resume');
+  assert.equal(machine.transition(running, { kind: 'record', ref: 'essay', path: '/x' }).rejected, 'unknown reference kind');
+  assert.deepEqual(run(start).run.workers, []);
+});
+
+test('the emit response carries WORKER_HANDLE_CHANGED and the handles survive a resumed store', () => {
+  const call = (args) => {
+    const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...args], { encoding: 'utf8' });
+    return { status: result.status, payload: result.stdout.trim() ? JSON.parse(result.stdout) : null };
+  };
+  const key = `implement-run-workers-test-${process.pid}-${Date.now()}`;
+  const id = call(['spawn', '--key', key]).payload.id;
+  try {
+    call(['emit', id, 'implement-run@1', '--set', 'kind=start', '--set-path', `dir=${start.dir}`]);
+    const record = (handle, reason) => call(['emit', id, 'implement-run@1', '--set', 'kind=record', '--set', 'ref=worker', '--set', 'role=red', '--set', `handle=${handle}`, '--set', `reason=${reason}`]);
+    const first = record('ses_abc123', 'create');
+    assert.equal(first.status, 0);
+    assert.equal(first.payload.warnings, undefined);
+    const changed = record('ses_def456', 'create');
+    assert.equal(changed.status, 0);
+    assert.deepEqual(changed.payload.warnings, ['WORKER_HANDLE_CHANGED']);
+    assert.deepEqual(changed.payload.run.workers, ['red:ses_abc123', 'red:ses_def456']);
+    const planned = record('ses_ghi789', 'replace');
+    assert.equal(planned.payload.warnings, undefined);
+    const status = call(['emit', id, 'implement-run@1', '--set', 'kind=status']).payload;
+    assert.equal(status.warnings, undefined, 'a status read repeats no earlier warning');
+    assert.equal(status.run.workers.length, 3);
+  } finally {
+    call(['close', id]);
+  }
+});

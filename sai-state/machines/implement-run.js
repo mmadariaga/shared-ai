@@ -16,6 +16,11 @@
 //   escalate   {obstacle}                the run waits for the user's answer
 //   answer     {obstacle, choice}        `continue` resets the obstacle, `stop` stops the run
 //   record     {ref, path}               ref: deviation | override | report | report-dir | finding | baseline
+//   record     {ref: worker, role, handle, reason}
+//                                        registers the handle of the worker of a role; reason:
+//                                        create | replace | resume. A second distinct handle for a
+//                                        role under reason create is recorded and answered with the
+//                                        warning WORKER_HANDLE_CHANGED (`warnings` in the response)
 //   close      {outcome}                 outcome: completed | escalated | stopped
 //   status     {}                        changes nothing; returns the run state
 
@@ -31,6 +36,31 @@ const REFS = Object.freeze({
   finding: 'findings',
   baseline: 'baselines',
 });
+
+const WORKER_REASONS = Object.freeze(['create', 'replace', 'resume']);
+const WORKER_HANDLE_CHANGED = 'WORKER_HANDLE_CHANGED';
+
+// `workers` lists `role:handle` entries in registration order; the last entry of a role is its current handle.
+function handlesOf(current, role) {
+  const prefix = role + ':';
+  return current.workers.filter((entry) => entry.indexOf(prefix) === 0).map((entry) => entry.slice(prefix.length));
+}
+
+function handleRecord(ctx, current, sig) {
+  if (sig.ref !== 'worker') return null;
+  if (current.stage === 'idle') return ctx.reject('run is not started');
+  const role = ctx.usableId(sig.role);
+  if (!role || role.indexOf(':') !== -1) return ctx.reject('role required');
+  const handle = ctx.usableId(sig.handle);
+  if (!handle) return ctx.reject('handle required');
+  if (WORKER_REASONS.indexOf(sig.reason) === -1) return ctx.reject('reason must be create, replace, or resume');
+  const handles = handlesOf(current, role);
+  const previous = handles.length > 0 ? handles[handles.length - 1] : '';
+  if (previous === handle) return ctx.outcome(current);
+  current.workers.push(role + ':' + handle);
+  if (previous !== '' && sig.reason === 'create') return ctx.outcome(current, { warnings: [WORKER_HANDLE_CHANGED] });
+  return ctx.outcome(current);
+}
 
 function handleEvent(ctx, current, sig) {
   switch (sig.kind) {
@@ -60,8 +90,9 @@ module.exports = createRunMachine({
   machineId,
   hint: 'implement run state — no fetch',
   refs: REFS,
-  extraState: { step: '', committed: [] },
+  extraState: { step: '', committed: [], workers: [] },
   handleEvent,
+  handleRecord,
   onClose(current) {
     current.step = '';
   },

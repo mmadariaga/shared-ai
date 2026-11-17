@@ -19,6 +19,8 @@
 //   extraState   its own state fields, each a string ('') or a list of strings ([])
 //   handleEvent  (ctx, current, sig) for the events the core does not own; returns
 //                an outcome, or null for an unknown event
+//   handleRecord (ctx, current, sig) for a `record` whose ref is not in `refs`; returns an
+//                outcome, or null to leave the ref unknown
 //   onClose      (current) called when the run closes
 
 const ATTEMPT_BUDGET = 3;
@@ -37,7 +39,7 @@ function usablePath(value) {
   return typeof value === 'string' && value.trim() !== '' && !/[\r\n]/.test(value) ? value.trim() : null;
 }
 
-function createRunMachine({ machineId, hint, refs, extraState, handleEvent, onClose }) {
+function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose }) {
   const extra = Object.freeze(Object.assign({}, extraState));
   const refFields = Object.freeze(Object.assign({}, refs));
   const fieldNames = Object.keys(extra).concat(Object.keys(refFields).map((kind) => refFields[kind]));
@@ -179,6 +181,10 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, onCl
 
       case 'record': {
         const field = Object.prototype.hasOwnProperty.call(refFields, sig.ref) ? refFields[sig.ref] : null;
+        if (!field && handleRecord) {
+          const handled = handleRecord({ outcome, reject, running, usableId, usablePath }, current, sig);
+          if (handled) return handled;
+        }
         const path = usablePath(sig.path);
         if (!field) return reject('unknown reference kind');
         if (!path) return reject('path required');

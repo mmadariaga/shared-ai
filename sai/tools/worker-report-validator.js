@@ -27,7 +27,9 @@
  * Sub-commands:
  *   validate                   Read a closed payload from stdin and validate it.
  *   validate --report-dir <dir> --report-file <path> --report-hash <sha256>
- *                              Verify a private reference and validate the same bytes.
+ *                              Verify a private reference and validate the same bytes. A relative
+ *                              --report-file resolves against --report-dir before the containment
+ *                              and hash checks, which are unchanged.
  *
  * Usage:
  *   node sai/tools/worker-report-validator.js validate --kind <kind> [--command <name>] --input-file <path> [--json] [--cwd <dir>]
@@ -723,12 +725,14 @@ async function commandValidate(kind, inputFile, options = {}) {
   return validateText(text, kind, options);
 }
 
-/** Verify once and validate that exact buffer; never read the report again. */
+/** Verify once and validate that exact buffer; never read the report again. A relative `path` resolves against `dir`. */
 function validateFile(dir, reference, kind, options = {}) {
   const { command, ...transferOptions } = options;
   let verified;
   try {
-    verified = require('./transfer').verify(dir, reference, transferOptions);
+    const transfer = require('./transfer');
+    // A report file written relative to the report directory resolves against it; containment and hash checks follow unchanged.
+    verified = transfer.verify(dir, { ...reference, path: transfer.resolveReferencePath(dir, reference.path) }, transferOptions);
   } catch (error) {
     return { ok: false, action: 'validate', kind, outcome: 'delivery-failed', errors: [error.message] };
   }
@@ -754,6 +758,7 @@ function usage() {
     '  --input-file <path>      File holding the payload; without it the payload is read from stdin.',
     '  --report-dir <dir> --report-file <path> --report-hash <sha256>',
     '                           Instead verify a private transfer file and validate the same bytes.',
+    '                           A relative --report-file resolves against --report-dir; a path that escapes it is refused.',
     '                           All three flags are required together; stdin is not read.',
     '                           JSON includes outcome and, only on acceptance, the parsed payload.',
     '',
