@@ -11,7 +11,7 @@ The user can override any of the three rules explicitly.
 ## Scope
 
 - **Write scope.** Write only what your command's contract assigns. Production code changes only under a contract that assigns them (apply, Direct Build implementation, review fixes, merge resolution); every other command creates artifacts or prints information.
-- **Terminal output.** End on the terminal output your command defines, with no follow-up task of your own.
+- **Terminal output.** End on the terminal output your command defines, with no follow-up task of your own. Before you print it, the main session retires its cache-warming chain as `@sai/policies/cache-warming.md` § Retire at terminal output directs.
 - **Checkbox discipline.** When you execute or modify an artifact with task-list checkboxes, mark each `- [ ]` as `- [x]` as soon as its task is verified complete. Read-only references (specs, proposals, designs) keep their checkboxes as they are.
 
 ## Cost discipline
