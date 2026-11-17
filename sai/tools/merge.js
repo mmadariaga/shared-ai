@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
 const { validateText, parsePayloadText } = require('./worker-report-validator');
+const { makeTempDir, removeInside, harnessFromInstalledPath } = require('./temp-root');
 
 const RECORD = /^docs\/(adr|ddr)\/(\d{4})([a-z]*)-(.+)\.md$/;
 const MARKER = /^(<{7,}|={7,}|>{7,}|\|{7,})(?: .*)?\r?$/m;
@@ -15,8 +16,8 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const split0 = value => value.split('\0').filter(Boolean);
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
-function git(cwd, args, optional = false) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+function git(cwd, args, optional = false, extra = {}) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...extra });
   if (result.error || result.status !== 0 && !optional) {
     throw new Error(`git ${args[0]}: ${result.error?.message || result.stderr.trim() || `exit ${result.status}`}`);
   }
@@ -216,6 +217,106 @@ function provenance(cwd, sourceRef, method, squash) {
       target_rules: rules(targetSha), source_rules: rules(sourceSha),
       upstream: upstreamFacts(cwd, method, targetSha, base) };
   });
+}
+
+const SOURCE_REF = /^refs\/(heads|remotes\/[^/]+)\/.+/;
+// Predicted stops on one file at which the card recommends a squash over a rebase.
+const REPEATED_STOPS = 3;
+
+// One `git merge-tree --write-tree` step. It writes objects only: no working tree, index, or ref changes.
+function mergeTree(cwd, ours, theirs, base) {
+  const args = ['merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', ...(base ? [`--merge-base=${base}`] : []), ours, theirs];
+  const run = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (run.error || run.status !== 0 && run.status !== 1) {
+    throw new Error(`git merge-tree --write-tree: ${run.error?.message || run.stderr.trim() || `exit ${run.status}`}`);
+  }
+  const [tree, ...names] = run.stdout.split('\0').filter(Boolean);
+  return { tree, conflicted: run.status === 1, files: [...new Set(names)].sort(compare) };
+}
+
+// The tree the next replayed commit starts from after a predicted stop: the merged tree, with the current
+// tip's version (`ours`, the upstream side) of each conflicted file, which is how the whole-side shortcut
+// resolves a stop, so later commits that change the same lines stop again. Built in a temporary index,
+// never the real one.
+function takeTipVersions(cwd, indexFile, tree, tip, files) {
+  const env = { ...process.env, GIT_INDEX_FILE: indexFile };
+  const lines = files.map(name => {
+    const entry = split0(git(cwd, ['ls-tree', '-z', '--full-tree', tip, '--', name])).map(line => {
+      const [meta, entryPath] = [line.slice(0, line.indexOf('\t')), line.slice(line.indexOf('\t') + 1)];
+      const [mode, type, oid] = meta.split(' ');
+      return { mode, type, oid, path: entryPath };
+    }).find(item => item.path === name && item.type !== 'tree');
+    return entry ? `${entry.mode} ${entry.oid}\t${name}\0` : `0 ${'0'.repeat(tree.length)}\t${name}\0`;
+  });
+  git(cwd, ['read-tree', tree], false, { env });
+  git(cwd, ['update-index', '-z', '--index-info'], false, { env, input: lines.join('') });
+  return git(cwd, ['write-tree'], false, { env }).trim();
+}
+
+// The commits `git rebase` would replay onto the source, oldest first, and the one merge or squash step.
+function replayedSteps(cwd, method, targetSha, sourceSha, base) {
+  if (method === 'merge') return [{ commit: sourceSha, subject: 'merge of the source branch', parent: null }];
+  if (method === 'squash') {
+    const own = git(cwd, ['rev-list', '--count', `${base}..${targetSha}`]).trim();
+    return base === targetSha ? [] : [{ commit: targetSha, subject: `squash of ${own} commits`, parent: base }];
+  }
+  return split0(git(cwd, ['log', '-z', '--reverse', '--no-merges', '--cherry-pick', '--right-only', '--format=%H%x1f%P%x1f%s', `${sourceSha}...${targetSha}`]))
+    .map(record => {
+      const [commit, parents, subject] = record.split('\x1f');
+      if (!parents) throw new Error(`root commit ${commit} cannot be replayed`);
+      return { commit, subject, parent: parents };
+    });
+}
+
+// The files with REPEATED_STOPS or more predicted stops, most stops first.
+function repeatedFiles(stops) {
+  const counts = new Map();
+  for (const file of stops.flatMap(stop => stop.files)) counts.set(file, (counts.get(file) || 0) + 1);
+  return [...counts].filter(([, count]) => count >= REPEATED_STOPS)
+    .sort((a, b) => b[1] - a[1] || compare(a[0], b[0])).map(([file, count]) => ({ path: file, stops: count }));
+}
+
+function predictStops(cwd, sourceRef, method, indexFile) {
+  const targetSha = git(cwd, ['rev-parse', '--verify', 'HEAD']).trim();
+  const sourceSha = git(cwd, ['rev-parse', '--verify', `${sourceRef}^{commit}`]).trim();
+  const base = git(cwd, ['merge-base', targetSha, sourceSha]).trim();
+  const steps = replayedSteps(cwd, method, targetSha, sourceSha, base);
+  const stops = [];
+  let tip = sourceSha;
+  try {
+    steps.forEach((step, position) => {
+      const merged = method === 'merge' ? mergeTree(cwd, targetSha, sourceSha) : mergeTree(cwd, tip, step.commit, step.parent);
+      if (merged.conflicted) stops.push({ position: position + 1, commit: step.commit, subject: step.subject, files: merged.files });
+      tip = merged.conflicted && method !== 'merge' ? takeTipVersions(cwd, indexFile, merged.tree, tip, merged.files) : merged.tree;
+    });
+  } finally { fs.rmSync(indexFile, { force: true }); }
+  return { status: 'ok', method, target_sha: targetSha, source_sha: sourceSha, merge_base: base, replayed: steps.length,
+    predicted_stops: stops.length, repeated_files: repeatedFiles(stops), repeated_threshold: REPEATED_STOPS, stops };
+}
+
+// The pre-launch prediction of the stops, advisory: hooks, autostash, and rerere can change what git does.
+// It writes its detail to a private file under the SAI temp root, because the run directory does not exist yet.
+// A simulation that cannot run (git without `merge-tree --write-tree`, a failure) is `not-applicable`.
+function simulate(cwd, sourceRef, method, harness) {
+  if (typeof sourceRef !== 'string' || !SOURCE_REF.test(sourceRef) || sourceRef.includes('\0')) throw new Error('full branch source_ref required');
+  if (!['merge', 'rebase', 'squash'].includes(method)) throw new Error('simulate --method must be merge, rebase, or squash');
+  const chosen = harness || harnessFromInstalledPath(__filename);
+  const dir = makeTempDir(chosen, 'merge-simulation-');
+  let result;
+  try {
+    result = fact(cwd, 'simulate', ['head', 'refs', 'index', 'operations'], () => {
+      try { return predictStops(cwd, sourceRef, method, path.join(dir, 'index.tmp')); }
+      catch (error) { return { status: 'unavailable', method, reason: error.message }; }
+    });
+  } catch (error) { removeInside(chosen, dir); throw error; }
+  if (result.data.status !== 'ok') {
+    removeInside(chosen, dir);
+    return { ...result, outcome: 'not-applicable' };
+  }
+  const record = path.join(dir, 'simulation.json');
+  fs.writeFileSync(record, JSON.stringify(result), { flag: 'wx', mode: 0o600 });
+  const { stops, ...summary } = result.data;
+  return { ...result, data: summary, record, record_hash: hash(fs.readFileSync(record)) };
 }
 
 // Offsets are bytes (latin1 gives one JS character per byte), including marker lines.
@@ -1140,7 +1241,10 @@ function collect(action, cwd, opts, stdin) {
   if (action === 'preflight') result = preflight(cwd);
   else if (action === 'status') result = status(cwd);
   else if (action === 'provenance') result = provenance(cwd, opts['source-ref'], opts.method, opts.squash);
-  else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd), opts.record);
+  else if (action === 'simulate') {
+    if (opts.record) throw new Error('simulate writes its own file: --record does not apply');
+    result = simulate(cwd, opts['source-ref'], opts.method, opts.harness);
+  } else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd), opts.record);
   else if (action === 'correction') result = saveSnapshot(cwd, correction(cwd, stdin()), opts.record);
   else if (action === 'valid') result = valid(cwd, stdin());
   else if (action === 'suite') result = suite(cwd);
@@ -1197,15 +1301,16 @@ function collect(action, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file', 'out'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file', 'out', 'harness'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
     if (arg === '--baseline') { opts.baseline = true; continue; }
     if (arg === '--partial') { opts.partial = true; continue; }
     if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|duplicates|status> --cwd <root> [--json]\n'
+      process.stdout.write('Usage: node merge.js <preflight|provenance|simulate|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|duplicates|status> --cwd <root> [--json]\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
+        + 'simulate: --source-ref <full-ref> --method merge|rebase|squash [--harness claude|opencode] (before the launch: predicts the stops with git merge-tree --write-tree, one step per replayed commit for rebase and squash and one for merge, never touching the working tree, the index, or a ref; after a predicted stop the next step starts from the current tip\'s version of each conflicted file, as the whole-side shortcut resolves it; writes the detail to a private file under the SAI temp root and prints the summary, the repeated files, and the file\'s path and hash; not-applicable with a reason when the prediction cannot run)\n'
         + 'valid/collision/duplicates: receipt JSON in --input-file <path> (stdin also accepted); duplicates takes the captured provenance and, with --record <external-new-file>, saves its receipt; conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
         + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
@@ -1259,4 +1364,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, duplicates, status, state, main };
+module.exports = { preflight, provenance, simulate, repeatedFiles, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, duplicates, status, state, main };

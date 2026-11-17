@@ -7,7 +7,7 @@ TBD - created by archiving change sai-merge-runs-goal-driven. Update Purpose aft
 
 ### Requirement: merge-run machine holds identifiers only
 
-The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, `assumption`, `shortcut`, and `report-dir` as paths without duplicates, the `report-dir` reference listed in the run view as `report_dirs` and the `shortcut` reference, which names a stop's `stop-{n}-shortcuts.md`, as `shortcuts`. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
+The `sai-state` registry SHALL register a `merge-run@1` machine built on the shared run core `sai-state/machines/run-core.js`. It SHALL accept the events `start {dir}`, `launch {method, branch, head, baseline}`, `stop {stop}`, `attempt {obstacle}`, `escalate {obstacle}`, `answer {obstacle, choice}`, `record {ref, path}`, `close {outcome}`, and `status {}`. `launch` SHALL require a method of `merge`, `rebase`, or `rebase-squash`, a branch, a pre-launch `HEAD` of 7 to 64 lowercase hex characters, an optional baseline path, and a running run. `stop` SHALL require a positive integer and a running run, and `close` SHALL clear the stop index. `record` SHALL accept the references `obstacle`, `finding`, `assumption`, `shortcut`, `simulation`, and `report-dir` as paths without duplicates, the `report-dir` reference listed in the run view as `report_dirs`, the `shortcut` reference, which names a stop's `stop-{n}-shortcuts.md`, as `shortcuts`, and the `simulation` reference, which names the pre-launch simulation file in its own private directory under the SAI temp root, as `simulations`. Each obstacle SHALL have a budget of three attempts, and an `answer` SHALL reset only that obstacle. Free text SHALL live in files in the run directory and never in an event.
 
 #### Scenario: Launch records the run identifiers
 
@@ -33,6 +33,11 @@ The `sai-state` registry SHALL register a `merge-run@1` machine built on the sha
 
 - **WHEN** a running run receives `record` with ref `shortcut` and the same path twice
 - **THEN** the run view lists that path once under `shortcuts`
+
+#### Scenario: The simulation file is recorded once
+
+- **WHEN** a running run receives `record` with ref `simulation` and the same path twice
+- **THEN** the run view lists that path once under `simulations`
 
 ### Requirement: Merge run session and run directory
 

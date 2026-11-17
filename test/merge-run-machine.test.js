@@ -101,6 +101,12 @@ test('the report directory is recorded as a path and kept for a replacement work
   assert.deepEqual(result.run.report_dirs, [dir]);
 });
 
+test('the pre-launch simulation file is recorded as a path, once', () => {
+  const file = '/tmp/claude-1000/sai/merge-simulation-abc123/simulation.json';
+  const result = run(start, { kind: 'record', ref: 'simulation', path: file }, { kind: 'record', ref: 'simulation', path: file });
+  assert.deepEqual(result.run.simulations, [file]);
+});
+
 test('a finished run does not block the next start; an interrupted one still resumes', () => {
   const next = { kind: 'start', dir: '/tmp/claude-1000/sai/merge-3c4d' };
   const finished = run(start, launch, { kind: 'stop', stop: 1 }, { kind: 'close', outcome: 'completed' });
