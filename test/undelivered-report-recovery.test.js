@@ -38,7 +38,12 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /accept --dir <report-dir> --path <path> --sha256 <sha256>/);
   assert.match(text, /a reference in the ledger is not processed again/);
   assert.match(text, /`--check`[\s\S]{0,80}`already: true`, treat the reference like a wake acknowledgement: validate nothing, emit nothing, spend no attempt, send no continuation/);
-  assert.match(text, /watch --dir <report-dir>` in the background \(Claude Code `Bash` with `run_in_background: true`[\s\S]{0,120}opencode shell with `background: true`\)/);
+  assert.match(text, /watch --dir <report-dir> --input-file <paths-file> --cwd <project-root>` in the background \(Claude Code `Bash` with `run_in_background: true`[\s\S]{0,120}opencode shell with `background: true`\)/);
+  assert.doesNotMatch(text, /with its defaults/);
+  assert.match(text, /`--input-file` is required: a watch without it exits 2 naming the flag and starts nothing, and the relaunch with the file spends no obstacle attempt/);
+  assert.match(text, /`\[\]` is valid when the report directory is the only place the worker writes/);
+  assert.match(text, /Every relaunch of a watch for the same worker task[\s\S]{0,120}passes the same file/);
+  assert.match(text, /`walk_limited`/);
   assert.match(text, /whatever the warming setting/);
   assert.match(text, /no model turn runs while nothing happens/);
   assert.match(text, /process each in creation order exactly as if the worker had delivered it/);
@@ -61,7 +66,7 @@ test('every report-receiving coordinator points to the reception section and doe
 });
 
 test('deep-review watches each audit cycle on its own report directory', () => {
-  assert.match(read('sai/commands/deep-review/coordinator.md'), /one watch per cycle on that cycle's own report directory: a report found there belongs to that cycle's worker/);
+  assert.match(read('sai/commands/deep-review/coordinator.md'), /one watch per cycle on that cycle's own report directory and its own writable paths \(that audit's report and scratch folder only\): a report found there belongs to that cycle's worker/);
 });
 
 test('the wake of a worker keeps its report protocol while main-session continuity does not poll for reports', () => {
@@ -95,5 +100,25 @@ test('the coordinator profile grants transfer.js accept and watch on both harnes
   for (const verb of ['accept', 'watch']) {
     assert.ok(grants.allowedTools.includes(`Bash(node ~/.claude/sai/tools/transfer.js ${verb}:*)`), `claude ${verb}`);
     assert.ok(opencode.permissions.some(rule => rule.action === 'shell' && rule.resource === `node ~/.config/opencode/sai/tools/transfer.js ${verb} *` && rule.effect === 'allow'), `opencode ${verb}`);
+  }
+});
+
+test('every report-receiving coordinator states the writable paths of its worker as a fact of its card', () => {
+  for (const file of COORDINATORS) {
+    assert.match(read(file), /writable paths|`--input-file`/, `${file} names the writable paths of its worker`);
+  }
+  for (const file of ['sai/commands/review/coordinator.md', 'sai/commands/audit/coordinator.md']) {
+    assert.match(read(file), /scratch folder/, `${file} opens a scratch folder`);
+    assert.match(read(file), /transfer\.js open/, file);
+  }
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`Scratch folder: <path>` line/);
+});
+
+test('the worker lifecycle policy sends long command output to the scratch folder of the brief', () => {
+  const text = read('sai/policies/worker-lifecycle.md');
+  assert.match(text, /A worker whose brief names a scratch folder sends the output of any command that can run long[\s\S]{0,200}to a log in that folder/);
+  assert.match(text, /A worker whose brief names no scratch folder has no such duty/);
+  for (const file of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/plan/worker-common.md', 'sai/commands/review/worker.md', 'sai/commands/audit/worker-common.md', 'sai/commands/merge/worker.md']) {
+    assert.match(read(file), /[Ss]cratch folder/, `${file} receives a scratch folder`);
   }
 });

@@ -20,7 +20,7 @@ The task arrives in the next message to you, and every later step arrives the sa
 
 ## Step message
 
-Your first task message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. Each message then opens with the pointer line `Active step: <id> — follow <path>`. The first one also carries the brief: the change name, the `--parent-branch` value when one was given, and the path of `review.md`. The brief is complete; ask nothing.
+Your first task message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. Each message then opens with the pointer line `Active step: <id> — follow <path>`. The first one also carries the brief: the change name, the `--parent-branch` value when one was given, the path of `review.md`, and the path of your scratch folder. The brief is complete; ask nothing. Send the output of any command that can run long to a log in your scratch folder, per `@sai/policies/worker-lifecycle.md` § Worker side.
 
 1. Run `review-intake` inline: read the brief and the change artifacts `common.md` names.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do that step.

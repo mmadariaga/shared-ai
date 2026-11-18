@@ -35,7 +35,7 @@ After a coordinator has processed a report reference, it SHALL record it with `t
 
 ### Requirement: Background watch while waiting for a worker
 
-Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir>` in the background with its defaults (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting; for a worker that writes files outside the report directory it SHALL add the paths the worker's brief lets it write through `--input-file` and `--cwd <project root>`. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
+Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project root>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting, with the input file holding the paths the worker's brief lets it write, or `[]` when the report directory is the only place the worker writes. Every relaunch of a watch for the same worker task (after an empty end, after a first `silent`, and for a replacement worker) SHALL pass the same input file. When the watch exits 2 because `--input-file` is missing, the coordinator SHALL relaunch it with the file and SHALL spend no obstacle attempt. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
 
 #### Scenario: The watch runs with warming off
 - **WHEN** a coordinator with cache warming off waits for a worker's result
@@ -56,6 +56,14 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 #### Scenario: A silent watch is an obstacle, not a relaunch
 - **WHEN** the watch ends with `ended: silent`
 - **THEN** the coordinator spends one attempt of the step's obstacle and asks the same worker once for its report instead of relaunching silently
+
+#### Scenario: Every relaunch reuses the same writable paths
+- **WHEN** the coordinator relaunches the watch after an empty end, after a first `silent`, or for a replacement worker of the same task
+- **THEN** the relaunch passes the same input file as the first watch
+
+#### Scenario: A watch launched without its writable paths
+- **WHEN** a watch exits 2 because `--input-file` is missing
+- **THEN** the coordinator relaunches it with the file and records no obstacle attempt
 
 ### Requirement: Found reports follow the delivered-report path
 
@@ -82,12 +90,17 @@ When the watch ends with reports, the coordinator SHALL process each in creation
 
 ### Requirement: One watch per report directory for parallel workers
 
-When several workers run in parallel, the coordinator SHALL watch each report directory separately and SHALL attribute a report to the worker of its directory. In `/sai-deep-review`, each audit cycle SHALL have one watch on that cycle's own report directory, and the driving session SHALL process the found reports in the fixed order of its `sai-state` calls and commits.
+When several workers run in parallel, the coordinator SHALL watch each report directory separately and SHALL attribute a report to the worker of its directory. In `/sai-deep-review`, each audit cycle SHALL have one watch on that cycle's own report directory, whose writable paths SHALL list only that audit's report and scratch folder, so the activity of one audit never delays the `silent` end of another, and the driving session SHALL process the found reports in the fixed order of its `sai-state` calls and commits.
 
 #### Scenario: Parallel audits are watched separately
 
 - **WHEN** `/sai-deep-review` runs several audit cycles at once
 - **THEN** each cycle's report directory has its own watch and a report found there belongs to that cycle's worker
+
+#### Scenario: One audit's activity does not hide another's silence
+
+- **WHEN** the security audit writes to its report while the performance worker writes nothing for a whole window
+- **THEN** the performance cycle's watch ends `silent`, because its writable paths list only the performance report and its own scratch folder
 
 ### Requirement: Coordinator profiles grant the recovery verbs
 
@@ -121,3 +134,42 @@ For each terminal report reference after ready, the coordinator SHALL run the pa
 
 - **WHEN** the coordinator receives a `progress-` report reference
 - **THEN** it runs `accept --check` first and runs `sai-state emit … --progress` only after the check does not answer `already: true`
+
+### Requirement: Each coordinator SHALL state its worker's writable paths as a fact of its own card
+
+Every report-receiving coordinator card SHALL name the writable paths of its worker as a fact of that card, while the watch mechanics SHALL stay single-sourced in `sai/policies/worker-report-transport.md` § Undelivered reports. The paths SHALL reach the watch as the required input file, written once per worker task in a directory outside the report directory. The facts SHALL be:
+
+- `/sai-3-implement`: the paths the step's brief lets the worker write, plus the worker's scratch folder in the run directory.
+- Direct Build: for the implementer, the repository paths the verified block cites, written without their `:line` ranges, plus its scratch folder `scratch-implementer` in the slice run directory; for the backfill worker, its transfer directory; for the archive worker, `[]`.
+- `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`: `openspec/changes/{name}/`, `GLOSSARY.md` in the spec segment, plus the scratch folder `scratch-{segment}` in the run directory.
+- `/sai-merge`: the files the worker's brief names, plus the scratch folder `scratch` in the run directory.
+- `/sai-4-review`: `openspec/changes/{name}/review.md` plus a scratch folder opened with `transfer.js open`.
+- The audit coordinator: the audit's report plus a scratch folder opened with `transfer.js open`.
+- `/sai-commit` and `/sai-archive`: `[]`.
+- `/sai-backfill`: its transfer directory.
+
+The rule SHALL be the same on Claude Code and opencode.
+
+#### Scenario: Direct Build implementer paths drop line ranges
+- **WHEN** the verified block cites `sai/tools/transfer.js:41-57`
+- **THEN** the implementer's writable paths list `sai/tools/transfer.js`, without the line range, beside its scratch folder
+
+#### Scenario: A short-lived worker passes an empty list
+- **WHEN** `/sai-commit` waits for its worker's result
+- **THEN** its watch receives an input file that holds `[]`, written in a directory other than the report directory
+
+#### Scenario: Watch mechanics are not restated
+- **WHEN** a reader opens a coordinator card's undelivered-report paragraph
+- **THEN** it names its worker's writable paths and points to `worker-report-transport.md` § Undelivered reports for the watch mechanics
+
+### Requirement: A coordinator SHALL name a scratch folder in its run directory without creating it
+
+A worker that can run a long command SHALL receive a scratch folder: a private folder outside the repository that its brief names and its writable paths list. When the scratch folder is a path inside the coordinator's run directory (Direct Build, the plan cycle, and `/sai-merge`), the coordinator SHALL only name it, and the worker SHALL create it when it does not exist. `/sai-4-review` and the audit coordinator SHALL open the scratch folder with `transfer.js open`, give a replacement worker the same folder, and close it with the report directory in one same-turn batch; in `/sai-deep-review` each cycle's scratch folder SHALL close with that cycle's report directory.
+
+#### Scenario: The worker creates a named scratch folder
+- **WHEN** the Direct Build coordinator sends the implementer a `Scratch folder: <path>` line for a path that does not exist
+- **THEN** the coordinator has created nothing at that path and the worker creates the folder before logging to it
+
+#### Scenario: Review closes its scratch folder with the report directory
+- **WHEN** a `/sai-4-review` run ends with `Review done.`
+- **THEN** the coordinator closes the report directory and the scratch folder in one same-turn batch

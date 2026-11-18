@@ -34,6 +34,12 @@ tasks artifacts exist, no conversation context is forwarded, and none may be
 inferred from repository discovery beyond what implementing the block
 requires. Binding metadata remains outside the worker request.
 
+A task message may close with a `Scratch folder: <path>` line (outside the
+envelope, after the block reference lines): strip it, keep it, create the folder when it does not exist, and follow
+`@sai/policies/worker-lifecycle.md` § Worker side for it. Every command that
+can run long, such as the test suite, sends its output to a log in that
+folder, so the coordinator's watch counts the running command as activity.
+
 ## Block-driven direct implementation
 
 Implement the change directly from the block. Work from **Capabilities in

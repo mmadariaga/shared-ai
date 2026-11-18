@@ -246,3 +246,19 @@ The coordinator SHALL maintain an ordered duplicate-free `changed_files` union a
 #### Scenario: Lifecycle policy points to the literal
 - **WHEN** a reader opens § Stop call or § Worker side of `sai/policies/worker-lifecycle.md`
 - **THEN** the dispose reply is named as the stop literal of `sai/policies/cache-warming.md`, and no bare `ok` is spelled
+
+### Requirement: A worker with a scratch folder SHALL log long command output there
+
+`sai/policies/worker-lifecycle.md` § Worker side SHALL require a worker whose brief names a scratch folder to send the output of any command that can run long (a test suite, a build, a scan) to a log in that folder, in the same command line, creating the folder first when it does not exist yet, and to read the log when it needs the output. A worker whose brief names no scratch folder SHALL have no such duty. The worker contracts that receive a scratch folder SHALL name it in their brief and point to that rule without restating it; the Direct Build implementer SHALL receive it as a `Scratch folder: <path>` line that closes its task message, outside the envelope, and SHALL strip and keep that line. The rule SHALL be the same on Claude Code and opencode.
+
+#### Scenario: A worker runs the test suite with a scratch folder
+- **WHEN** a worker whose brief names a scratch folder runs the test suite
+- **THEN** it creates the folder when missing and streams the suite's output into a log in that folder
+
+#### Scenario: A worker without a scratch folder
+- **WHEN** a worker's brief names no scratch folder
+- **THEN** the worker has no obligation to log its commands
+
+#### Scenario: The Direct Build implementer receives its scratch folder
+- **WHEN** the implementer's task message closes with a `Scratch folder: <path>` line after the block reference lines
+- **THEN** the implementer strips the line from the envelope, keeps the path, and logs its long commands there

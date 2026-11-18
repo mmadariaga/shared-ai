@@ -462,10 +462,13 @@ test('watch ends at its maximum without a report, and ends empty when the direct
 
 test('the watch and accept sub-commands run from the command line with duration flags', () => {
   const { dir } = transfer.open('claude');
+  const box = sandbox();
   try {
     const saved = transfer.put(dir, 'completed-1.json', Buffer.from('cli'), { exclusive: true });
     age(saved.path, 5000);
-    const found = cli(['watch', '--dir', dir, '--settle', '1s', '--max', '2s', '--poll', '50ms']);
+    const empty = path.join(box.base, 'paths.json');
+    fs.writeFileSync(empty, '[]');
+    const found = cli(['watch', '--dir', dir, '--settle', '1s', '--max', '2s', '--poll', '50ms', '--input-file', empty]);
     assert.equal(found.status, 0, found.stderr);
     assert.equal(found.json.ok, true);
     assert.equal(found.json.command, 'watch');
@@ -474,18 +477,19 @@ test('the watch and accept sub-commands run from the command line with duration 
     assert.equal(accepted.status, 0, accepted.stderr);
     assert.equal(accepted.json.recorded, true);
     assert.equal(cli(['accept', '--dir', dir, '--path', saved.path, '--sha256', saved.sha256, '--check']).json.already, true);
-    const none = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms']);
+    const none = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms', '--input-file', empty]);
     assert.deepEqual(none.json.reports, []);
     assert.equal(none.json.ended, 'max');
     for (const bad of [['--settle', '60'], ['--max', 'soon'], ['--poll', '1d']]) {
-      const refused = cli(['watch', '--dir', dir, ...bad]);
+      const refused = cli(['watch', '--dir', dir, '--input-file', empty, ...bad]);
       assert.equal(refused.status, 2, bad.join(' '));
       assert.match(refused.json.error, /whole number followed by ms, s, m, or h/);
     }
     assert.equal(cli(['watch']).status, 2, 'watch needs --dir');
-    assert.equal(cli(['watch', '--dir', path.join(dir, 'missing')]).status, 1);
+    assert.equal(cli(['watch', '--dir', path.join(dir, 'missing'), '--input-file', empty]).status, 1);
   } finally {
     transfer.close(dir);
+    box.cleanup();
   }
 });
 
@@ -687,7 +691,20 @@ test('the watch sub-command ends silent from the command line and refuses a bad 
     assert.deepEqual(silent.json.reports, []);
     assert.equal(typeof silent.json.silent_for_ms, 'number');
     const bare = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms']);
-    assert.equal(bare.json.ended, 'max', 'the default window is twenty minutes');
+    assert.equal(bare.status, 2, 'a watch without --input-file starts nothing');
+    assert.match(bare.json.error, /--input-file/, 'the usage error names the missing flag');
+    assert.equal(bare.json.reports, undefined);
+    const empty = path.join(box.base, 'empty.json');
+    fs.writeFileSync(empty, '[]');
+    const none = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms', '--input-file', empty]);
+    assert.equal(none.status, 0, none.stderr);
+    assert.equal(none.json.ended, 'max', 'an empty list is valid and the default window is twenty minutes');
+    assert.equal(none.json.walk_limited, undefined);
+    const missing = path.join(box.base, 'paths-missing.json');
+    fs.writeFileSync(missing, JSON.stringify(['not-yet/created.txt']));
+    const absent = cli(['watch', '--dir', dir, '--settle', '0', '--max', '100ms', '--poll', '20ms', '--input-file', missing, '--cwd', box.project]);
+    assert.equal(absent.status, 0, 'a listed path that does not exist yet is never an error');
+    assert.equal(absent.json.ended, 'max');
     assert.equal(cli(['watch', '--dir', dir, '--silent-after', '0']).status, 2);
     fs.writeFileSync(input, 'nonsense');
     assert.equal(cli(['watch', '--dir', dir, '--input-file', input]).status, 2);
@@ -695,6 +712,61 @@ test('the watch sub-command ends silent from the command line and refuses a bad 
   } finally {
     transfer.close(dir);
     box.cleanup();
+  }
+});
+
+test('watch names the listed paths whose activity walk stopped at the entry limit', async () => {
+  const { dir } = transfer.open('claude');
+  const box = sandbox();
+  try {
+    const big = path.join(box.project, 'big');
+    const small = path.join(box.project, 'small');
+    fs.mkdirSync(big);
+    fs.mkdirSync(small);
+    for (let index = 0; index < 5100; index++) fs.writeFileSync(path.join(big, `f${index}.txt`), 'x');
+    fs.writeFileSync(path.join(small, 'a.txt'), 'x');
+    for (const target of [big, small]) { age(target, 3600000); }
+    let at = Date.now();
+    const quiet = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 3 * 3600000, pollMs: 60000, silentMs: 20 * 60000, writablePaths: [big, small],
+      now: () => at, sleep: async milliseconds => { at += milliseconds; },
+    });
+    assert.equal(quiet.ended, 'silent');
+    assert.deepEqual(quiet.walk_limited, [big], 'only the path whose walk stopped at the limit is named');
+    const narrow = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 3 * 3600000, pollMs: 60000, silentMs: 20 * 60000, writablePaths: [small],
+      now: () => at, sleep: async milliseconds => { at += milliseconds; },
+    });
+    assert.equal(narrow.walk_limited, undefined, 'a narrow list reports no truncated walk');
+  } finally {
+    transfer.close(dir);
+    box.cleanup();
+  }
+});
+
+test('a log streamed into a watched scratch folder keeps the watch from ending silent until the output stops', async () => {
+  const { dir } = transfer.open('claude');
+  const scratch = transfer.open('claude').dir;
+  try {
+    const MINUTE = 60000;
+    const log = path.join(scratch, 'suite.log');
+    fs.writeFileSync(log, 'start');
+    age(log, 3600000);
+    const started = Date.now();
+    let at = started;
+    const result = await transfer.watch(dir, {
+      settleMs: 0, maxMs: 6 * 60 * MINUTE, pollMs: MINUTE, silentMs: 20 * MINUTE, writablePaths: [scratch],
+      now: () => at,
+      sleep: async milliseconds => {
+        at += milliseconds;
+        if (at < started + 90 * MINUTE) fs.utimesSync(log, new Date(at), new Date(at));
+      },
+    });
+    assert.equal(result.ended, 'silent', 'a command that writes nothing for a whole window still ends silent');
+    assert.ok(at - started >= 108 * MINUTE, 'every line of output inside the window postponed the silence');
+  } finally {
+    transfer.close(dir);
+    transfer.close(scratch);
   }
 });
 

@@ -20,7 +20,7 @@ The task arrives in the next message to you, and every later step arrives the sa
 
 ## Step message
 
-Each message opens with the pointer line `Active step: <id> — follow <path>`. The first one is preceded by the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. The first one also carries the brief: the change name, the options of the run as given, and the path of the audit report. The brief is complete.
+Each message opens with the pointer line `Active step: <id> — follow <path>`. The first one is preceded by the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. The first one also carries the brief: the change name, the options of the run as given, the path of the audit report, and the path of your scratch folder. The brief is complete. Send the output of any command that can run long (a scanner, a profiler, a test run) to a log in your scratch folder, per `@sai/policies/worker-lifecycle.md` § Worker side.
 
 1. Run the audit's scope step inline: it has no file. Read the brief and the change artifacts your `steps/common.md` names, and resolve the selected scope.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do that step.

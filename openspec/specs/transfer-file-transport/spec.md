@@ -157,7 +157,7 @@ Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/
 
 ### Requirement: Watch reports undelivered reports
 
-`transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <window>] [--input-file <paths>] [--cwd <root>]` SHALL poll the transfer directory inside its own process, every `--poll` (default 5s), until the directory holds at least one report that is not in the ledger and whose file has not changed for at least the settle delay (default 60s). It SHALL then print those reports as `reports`, each `{path, sha256}` with the sha256 computed by the tool, in creation order, and exit 0. When the worker shows no activity for the silence window (`--silent-after`, default 20 minutes), it SHALL print an empty `reports` list with `ended: silent` and `silent_for_ms` and exit 0. When `--max` (default 30m) passes first, it SHALL print an empty `reports` list and exit 0. A duration SHALL be a whole number followed by `ms`, `s`, `m`, or `h`, and any other value SHALL be a usage error. Draft files (a name that contains `.draft.`), symbolic links, the transfer marker, and the ledger SHALL never be reported. A directory that disappears during the watch SHALL end it with an empty list.
+`transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <window>] --input-file <paths> [--cwd <root>]` SHALL poll the transfer directory inside its own process, every `--poll` (default 5s), until the directory holds at least one report that is not in the ledger and whose file has not changed for at least the settle delay (default 60s). It SHALL then print those reports as `reports`, each `{path, sha256}` with the sha256 computed by the tool, in creation order, and exit 0. `--input-file` SHALL be required: without it the call SHALL exit 2 with a usage error that names the flag and SHALL start no watch, and a file that holds `[]` SHALL be valid. When the worker shows no activity for the silence window (`--silent-after`, default 20 minutes), it SHALL print an empty `reports` list with `ended: silent` and `silent_for_ms` and exit 0. When `--max` (default 30m) passes first, it SHALL print an empty `reports` list and exit 0. A `silent` or `max` result SHALL carry `walk_limited`, the listed writable paths whose activity walk stopped at the entry limit, when there are any. A duration SHALL be a whole number followed by `ms`, `s`, `m`, or `h`, and any other value SHALL be a usage error. Draft files (a name that contains `.draft.`), symbolic links, the transfer marker, and the ledger SHALL never be reported. A directory that disappears during the watch SHALL end it with an empty list.
 
 #### Scenario: A settled unaccepted report is found
 
@@ -188,6 +188,11 @@ Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/
 
 - **WHEN** no file of the directory and no file of the listed writable paths changes for the silence window, before `--max`
 - **THEN** `watch` exits 0 with an empty `reports` list, `ended: silent`, and `silent_for_ms`
+
+#### Scenario: A watch without its writable paths is refused
+
+- **WHEN** `watch` is invoked without `--input-file`
+- **THEN** it exits 2 with a usage error that names the flag and starts no watch
 
 ### Requirement: Transfer CLI rejects repeated single-value flags
 
