@@ -21,6 +21,13 @@ destination, because the backlog provider and the code host can differ. For exam
 about on every run. A `.to-pr.json` in the project root is deprecated: it still
 works when no `pr.*` key is set, with a warning, and is ignored when one is.
 
+The `pr.language` key of `.sai/settings.jsonc` sets the language of the title subject and
+the description that `/to-pr` drafts; without it they are English. A language you
+explicitly request for the PR/MR in the conversation wins for that publication, and the
+unattended publications of [`/sai-plan`](sai-plan.md), [`/sai-build`](sai-build.md), and
+the [`/sai-explore`](sai-explore.md) Plan and Direct Build routes use the setting. The `type(scope):` title prefix, closing keywords, and the ratings block
+stay verbatim; see [PR/MR language](../project-settings.md#prmr-language).
+
 GitLab uses its project address as `repository`; Azure DevOps Services accepts
 organization/project/repository context. The selected provider requires an
 authenticated `gh`, `glab`, or Azure CLI with the azure-devops extension,

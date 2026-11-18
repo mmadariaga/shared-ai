@@ -51,7 +51,10 @@ Read `description-format.md` beside this skill before drafting.
 Run `collect` with `{base,change?}`. `base` is a verified local target ref; if only a
 remote-tracking ref exists, use it for collection while keeping the actual target
 branch name for publication. If missing, stop or ask how to obtain it; do not invent
-a diff. The primary source is committed branch log and diff against the target.
+a diff. Print the `warnings` of both `collect` calls verbatim, one line each: an invalid
+`pr.language` appears there, and the draft then falls back to English. Draft in the
+language `description-format.md` resolves from `collect`'s `language` field.
+The primary source is committed branch log and diff against the target.
 If the user names a relevant OpenSpec change, pass `change`; otherwise use relevant
 OpenSpec documents only when their relationship to the committed diff is clear.
 Missing OpenSpec is normal. Optional context cannot add uncommitted work or override

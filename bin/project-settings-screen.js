@@ -11,7 +11,7 @@ const { CATALOGUE, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require(
 const { checkValue, readStored, storedValue, saveSettings } = require('./project-settings-writer.js');
 const { BACK } = require('./install-flow.js');
 
-const LANGUAGE_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage']);
+const LANGUAGE_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language']);
 const BACKLOG_PR_IDS = Object.freeze(['backlog.provider', 'pr.provider']);
 const TELEMETRY_ID = 'experimental.changeTelemetry';
 const SETTING_IDS = Object.freeze([...LANGUAGE_IDS, ...BACKLOG_PR_IDS, TELEMETRY_ID]);
@@ -55,7 +55,8 @@ function valueChoices(id, providerIds, prProviderIds) {
   if (BOOLEAN_IDS.includes(id)) return [ON, OFF];
   if (id === 'backlog.provider') return [ASK, ...providerIds];
   if (id === 'pr.provider') return [ASK, ...prProviderIds];
-  return [absentText(id), 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE];
+  // `pr.language` reads `English` when absent, so its first choice and `English` are one.
+  return [...new Set([absentText(id), 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE])];
 }
 
 const colorEnabled = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;

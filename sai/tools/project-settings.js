@@ -126,7 +126,8 @@ function resolveWarmingValue(value, { provider, model, role, harness }) {
 // The setting id catalogue: the single source of known ids, their validation, and
 // their presentation. An entry may add `normalize`, which maps a valid value to the one
 // the gates compare. `label` and `section` place a key in the post-setup menu; `absent` is
-// the text the menu shows for a key with no value, where `ask` does not fit.
+// the text the menu shows for a key with no value, where `ask` does not fit. `fallback` words what an invalid value
+// leads to in its warning, for a key with no question.
 const CATALOGUE = {
   warming: { validate: validateWarming, label: 'Cache warming', section: 'Cache warming', absent: 'off' },
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
@@ -146,6 +147,16 @@ const CATALOGUE = {
   'pr.publishAfterRun': {
     validate: value => (typeof value === 'string' && ['yes', 'no'].some(answer => isKeyword(value, answer)) ? null : 'must be yes, no, or ask'),
     normalize: value => value.trim().toLowerCase(),
+  },
+  // The language of the PR/MR title subject and the SAI-drafted description. Like `pr.publishAfterRun`, it is not a destination
+  // field of `/to-pr`, so `readPr` never returns it; `to-pr.js collect` reads it. `none` has no meaning for a request language.
+  'pr.language': {
+    validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
+    normalize: languageName,
+    label: 'PR/MR language',
+    section: 'Pull requests',
+    absent: 'English',
+    fallback: 'the draft falls back to English',
   },
   // An absent key reads as false.
   'experimental.changeTelemetry': {
@@ -230,7 +241,7 @@ function validate(parsed, label, ids, effect = BASE_EFFECT) {
     present.add(id);
     if (typeof value === 'string' && isKeyword(value, 'ask')) continue;
     const problem = CATALOGUE[id].validate(value, ids);
-    if (problem) warnings.push(`Setting ${id} in ${label} ${problem}; its question stays normal.`);
+    if (problem) warnings.push(`Setting ${id} in ${label} ${problem}; ${CATALOGUE[id].fallback ?? 'its question stays normal'}.`);
     else values[id] = CATALOGUE[id].normalize ? CATALOGUE[id].normalize(value) : value;
   }
   return { values, present, warnings };

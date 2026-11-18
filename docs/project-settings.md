@@ -25,6 +25,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `pr.repository` | Repository address | `/to-pr` |
 | `pr.organization` | Organization address | `/to-pr` |
 | `pr.project` | Project name or address | `/to-pr` |
+| `pr.language` | A language name, preferably its endonym (`Español`), or `English`; an absent key means `English` | `/to-pr` and the unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore` Plan and Direct Build routes (see [PR/MR language](#prmr-language)) |
 | `pr.publishAfterRun` | `ask`, `yes`, or `no`; an absent key means `ask` | `/sai-plan` and `/sai-build` publication question, and the `/sai-explore` round-3 publication question (see [Plan publication answer](#plan-publication-answer)) |
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
@@ -32,11 +33,13 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `warming` | An object with `defaults` and `rules`, or one block per harness (`claude`, `opencode`) with that shape and a global fallback; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
 | `experimental.changeTelemetry` | `true` or `false`; see [Change telemetry](#change-telemetry) | `/sai-plan`, `/sai-build`, and the `/sai-explore` in-session routes, on Claude Code and opencode |
 
-All three `explore.*` ids accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage` and `explore.chatPublicLanguage`, `none` is invalid.
+All three `explore.*` ids and `pr.language` accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage`, `explore.chatPublicLanguage`, and `pr.language`, `none` is invalid.
 
 `explore.overviewLanguage` answers only the overview question that the route round asks beside the route choice, and it takes effect only when the route is Plan - Unattended. Direct Build, Manual, and standalone `/sai-2-design` ignore it. The artifact-review language question has no setting. The `**Overview language**` field of a `Ready to Propose` block shows only the `--overview-lang` value or `None`, whatever the settings hold.
 
 `explore.chatPublicLanguage` is the language that `/sai-explore` uses with you. It is the same as writing "let's talk in <language>" right after the command loads, before any idea or change is discussed. It always wins over the language you write in, so the chat stays in that language until you ask for another one; without the setting, `/sai-explore` follows the language you write in. Only explanatory chat text changes: reasoning stays English, fixed literals such as STOP notices, halt messages, and picker labels stay as written, and the `Ready to Propose` block, the change overview, and every artifact keep the languages that their own settings and gates choose.
+
+`pr.language` is the language of the PR/MR title subject and of the description that SAI drafts; see [PR/MR language](#prmr-language).
 
 The work-item type has no setting; it is chosen at each creation. Provider ids come from the provider registries, never from this page.
 
@@ -166,6 +169,17 @@ With `true`, a direct `/sai-plan` or `/sai-build` run on Claude Code or opencode
 
 `pr.publishAfterRun` answers the question `/sai-plan` and `/sai-build` ask at the start of a run, and `/sai-explore` asks once per crystallized set in round 3 of its route question: whether to publish a PR/MR when the run ends (a draft of the plan for `/sai-plan` and an Explore Plan slice, a request ready for review for `/sai-build` and an Explore Direct Build slice). `yes` and `no` remove the question; `ask`, an absent key, and an invalid value (which also prints the warning) leave it normal. It is not a destination field of `/to-pr`, so it never changes how the destination is resolved, and the screen does not list it: it stays hand-edited. An explicit `--publish yes|no` argument of `/sai-plan` or `/sai-build` wins over it, and so does the answer a resumed run already recorded. Command invocation, a stale conversation, or a general grant never stand in for the answer: only the argument, the recorded answer, this setting, or the question itself do.
 
+### PR/MR language
+
+`pr.language` selects the language that SAI uses for the title subject and the description of a PR/MR. The language in force for one publication is, in this order: a language you explicitly request for the PR/MR in the conversation with `/to-pr` (for that publication only; the setting stays unchanged), else `pr.language`, else English. The language you chat in and `explore.chatPublicLanguage` do not count as a request. `/sai-plan`, `/sai-build`, and the `/sai-explore` Plan and Direct Build routes publish without a conversation, so they use `pr.language` when it is set and English otherwise, and ask no language question.
+
+- The `type(scope):` prefix of the title stays English so that changelog and release tooling keep parsing it. Only the subject follows the language, and the title rules (imperative, at most 70 characters, no trailing period) still apply. The description's section headings follow the language too.
+- Machine-read content stays verbatim: closing keywords such as `Closes #473`, and the stored inherent-risk ratings block with its markers.
+- On update, `/to-pr` drafts only its own content in the language; text it preserves stays as written.
+- `pr.language` is not a destination field of `/to-pr`, so it never changes how the destination is resolved. `to-pr.js collect` returns the resolved value as `language`, with `English` for an absent or invalid key, and carries the settings `warnings`, which the skill and the unattended closing reports print, so an invalid value never falls back to English silently. A value that fails validation (empty, not a string, or `none`) is refused when you write it with the menu, and counts as absent when read. The value `English` behaves like an absent key.
+- The setting does not change the language of commit messages, OpenSpec artifacts, or the `Ready to Propose` block, and `explore.readyToProposeLanguage` has no effect on the PR/MR.
+- After a squash merge, the commit subject that the provider takes from the request title is in this language.
+
 ## Location
 
 Every reader looks for `.sai/settings.jsonc` in the git top-level directory of the working directory, so a subdirectory works. In a linked worktree that has no file of its own, the readers use the main worktree's file and print a notice, because `.sai/` is often untracked; a worktree's own file wins. Outside a git repository only the working directory is read.
@@ -192,7 +206,7 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 Run `npx --allow-git=all github:mmadariaga/shared-ai setup`. When `setup` finishes in an interactive terminal, the `Post-setup customization:` menu lists these entries, in this order:
 
 - **Model customization**: opens a submenu with `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`; see [Model customization](models.md). When an action finishes or is cancelled, the menu returns to the main menu.
-- **Language settings**: opens a submenu with `Ready to Propose language`, `Change overview language`, and `Chat language`.
+- **Language settings**: opens a submenu with `Ready to Propose language`, `Change overview language`, `Chat language`, and `PR/MR language`.
 - **Backlog and PR settings**: opens a submenu with `Backlog provider` and `Pull requests provider`.
 - **Telemetry: on|off**: a value row that opens the `On`/`Off` picker and returns to the main menu with the new value.
 - **Cache warming**: opens the [cache warming screen](#cache-warming-screen); leaving it returns to the main menu.
@@ -203,6 +217,7 @@ Each submenu row shows `<label>: <current value>`, and choosing a row opens that
 - **Ready to Propose language** (`explore.readyToProposeLanguage`): `ask`, `English`, or a language name you type.
 - **Change overview language** (`explore.overviewLanguage`): `ask`, `English`, `none`, or a language name you type.
 - **Chat language** (`explore.chatPublicLanguage`): `follow my language`, `English`, or a language name you type. `follow my language` removes the key from the file that holds it.
+- **PR/MR language** (`pr.language`): `English` or a language name you type. `English` removes the key from the file that holds it, because an absent key reads as `English`.
 - **Backlog provider** (`backlog.provider`): `ask` or a provider id from the provider registries.
 - **Pull requests provider** (`pr.provider`): `ask` or a provider id from the `/to-pr` registry.
 - **Telemetry** (`experimental.changeTelemetry`): `On` or `Off`; the row shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.

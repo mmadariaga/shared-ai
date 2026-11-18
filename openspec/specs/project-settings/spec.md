@@ -195,11 +195,11 @@ The reader SHALL read an optional `.sai/settings.local.jsonc` from the same `.sa
 
 ### Requirement: Catalogue presentation fields
 
-Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; `pr.provider` as `Provider` in section `Pull requests`; and `experimental.changeTelemetry` as `Telemetry` in section `Experimental`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, and `experimental.changeTelemetry` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label or section.
+Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; `pr.provider` as `Provider` and `pr.language` as `PR/MR language`, both in section `Pull requests`; and `experimental.changeTelemetry` as `Telemetry` in section `Experimental`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, `pr.language` SHALL declare `English`, and `experimental.changeTelemetry` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label or section.
 
 #### Scenario: Screen keys carry labels and sections
 - **WHEN** the catalogue is read
-- **THEN** each of the six menu keys has the label and section above, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, and `experimental.changeTelemetry` has the absent text `off`
+- **THEN** each of the seven menu keys has the label and section above, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, `pr.language` has the label `PR/MR language`, the section `Pull requests`, and the absent text `English`, and `experimental.changeTelemetry` has the absent text `off`
 
 #### Scenario: Warming carries presentation fields for its section
 - **WHEN** the catalogue is read
@@ -223,3 +223,23 @@ The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run pu
 
 - **WHEN** the settings file sets `pr.publishAfterRun` and `pr.repository`
 - **THEN** `readPr` returns `pr.repository` and does not return `pr.publishAfterRun`
+
+### Requirement: PR/MR language setting
+
+The catalogue SHALL hold `pr.language`, the language of the PR/MR title subject and of the description that SAI drafts. The reader SHALL accept any non-empty string as a language name, SHALL trim it, SHALL NOT check it against a list of languages, and SHALL return `English` in canonical form when the value equals `English` case-insensitively. `none` compared case-insensitively, an empty string, and a non-string value SHALL be invalid and dropped with a warning naming `pr.language` that says the draft falls back to English. An absent key SHALL mean English. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it. A catalogue entry MAY declare a `fallback` text that words what an invalid value leads to in its warning; an entry without one SHALL keep the warning ending `its question stays normal`.
+
+#### Scenario: Language name is normalized
+- **WHEN** the settings file sets `pr.language` to `" eNGLISH "` or to `" Español "`
+- **THEN** `get pr.language` returns `English` or `Español` respectively, with `source: setting` and no warnings
+
+#### Scenario: None is invalid
+- **WHEN** the settings file sets `pr.language` to `"none"`
+- **THEN** the reader returns no value and the warning `Setting pr.language in .sai/settings.jsonc must name a language, not none; the draft falls back to English.`
+
+#### Scenario: Other keys keep their warning ending
+- **WHEN** the settings file sets `explore.chatPublicLanguage` to `"none"`
+- **THEN** its warning still ends with `its question stays normal.`
+
+#### Scenario: Not a destination field of readPr
+- **WHEN** the settings file sets `pr.language` and `pr.provider`
+- **THEN** `readPr` returns `pr.provider` and does not return `pr.language`

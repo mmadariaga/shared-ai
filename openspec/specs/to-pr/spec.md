@@ -733,3 +733,59 @@ The GitHub, GitLab, and Azure DevOps adapters SHALL each provide a closed-reques
 
 - **WHEN** `publish` runs with `ready:true` and without `--unattended`
 - **THEN** the tool rejects the request
+
+### Requirement: Resolved drafting language for the title subject and description
+
+The `to-pr` skill SHALL draft the PR/MR title subject and the SAI-drafted description in the resolved language: the language the user explicitly requests in the conversation for the PR/MR of this publication, else the `language` field that `to-pr.js collect` returns, else English. Only a stated request for the PR/MR language SHALL count as an explicit request; the language the user writes in and `explore.chatPublicLanguage` SHALL NOT change the resolved language. A request SHALL apply to that publication only and SHALL NOT change the setting. The Conventional Commit `type(scope):` prefix of the title SHALL stay English, and the title rules (imperative, at most 70 characters, no emoji, no trailing period) SHALL apply to the subject in any language. The description's section headings SHALL be drafted in the resolved language. The closing keywords, the closing block the tool adds, and the inherent-risk ratings block with its markers SHALL stay verbatim whatever the language. On update, only the content SAI drafts SHALL follow the resolved language, and text the tool preserves SHALL stay as written.
+
+#### Scenario: No setting drafts in English
+- **WHEN** `pr.language` is absent and the user requests no language for the PR/MR
+- **THEN** the title subject and the description are drafted in English
+
+#### Scenario: Setting selects the drafting language
+- **WHEN** `collect` returns `language: Español` and the user requests no language for the PR/MR
+- **THEN** the title subject, the description prose, and its section headings are drafted in Spanish, and the title keeps its English `type(scope):` prefix
+
+#### Scenario: Explicit request wins for one publication
+- **WHEN** `pr.language` is `Español` and the user explicitly asks for the PR/MR in English
+- **THEN** that publication is drafted in English and `pr.language` stays `Español`
+
+#### Scenario: Chat language is not a request
+- **WHEN** the user chats in Spanish, `explore.chatPublicLanguage` is set, and `pr.language` is absent
+- **THEN** the title subject and the description are drafted in English
+
+#### Scenario: Machine-read content stays verbatim
+- **WHEN** a description is drafted in a resolved language other than English
+- **THEN** the closing keywords such as `Closes #123`, the tool's closing block, and the stored inherent-risk ratings block with its markers appear unchanged
+
+#### Scenario: Update keeps preserved text
+- **WHEN** `/to-pr` updates an existing request whose description holds text the tool preserves
+- **THEN** only the SAI-drafted content follows the resolved language and the preserved text stays as written
+
+### Requirement: Collect returns the draft language with the settings warnings
+
+`sai/tools/to-pr.js collect` SHALL return a `language` field in both output shapes, with and without `base`: the normalized `pr.language` value, or `English` when the key is absent or invalid. When reading the setting produces warnings, `collect` SHALL return them in a `warnings` field; otherwise it SHALL return no `warnings` field. The `to-pr` skill SHALL print the `warnings` of both `collect` calls verbatim, one line each, so an invalid value never falls back to English silently.
+
+#### Scenario: Absent setting returns English without warnings
+- **WHEN** `collect` runs in a project whose settings file does not set `pr.language`
+- **THEN** both output shapes carry `language: English` and no `warnings` field
+
+#### Scenario: Set value is returned normalized
+- **WHEN** the settings file sets `pr.language` to `" español "` or to `"english"`
+- **THEN** both output shapes carry `language: español` or `language: English` respectively
+
+#### Scenario: Invalid value returns English with a warning
+- **WHEN** the settings file sets `pr.language` to `"none"`
+- **THEN** both output shapes carry `language: English` and a warning naming `pr.language` that says it must name a language, not none, and that the draft falls back to English
+
+### Requirement: Unattended publications use the language setting and report its warnings
+
+The unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore` Plan and Direct Build routes SHALL draft in the language `collect` returns, which is `pr.language` when it is set and valid and English otherwise, and SHALL ask no language question. `sai/commands/plan/publication.md` and `sai/commands/build/publication.md` SHALL hold no language logic of their own and SHALL list the warnings of the `collect` results in their closing report beside the warnings of the `query`, `publish`, and `recover` results.
+
+#### Scenario: Unattended publication drafts in the setting
+- **WHEN** a `/sai-build` run with a `yes` publication answer publishes in a project whose `pr.language` is `Euskara`
+- **THEN** the request title subject and description are drafted in Basque and no language question is asked
+
+#### Scenario: Invalid setting reaches the publication outcome
+- **WHEN** a `/sai-plan` run with a `yes` publication answer publishes in a project whose `pr.language` is `""`
+- **THEN** the request is drafted in English and the run's publication report lists the `collect` warning for `pr.language`
