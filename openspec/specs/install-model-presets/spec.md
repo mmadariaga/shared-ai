@@ -78,3 +78,27 @@ The personal-preset save flow SHALL reject a destination whose basename, after p
 
 - **WHEN** a user supplies a non-reserved personal name after a reserved-name rejection
 - **THEN** the save flow SHALL continue its normal preview and confirmation process in the previously selected harness
+
+### Requirement: Claude preset entries carry the passthrough state
+
+A Claude Code preset entry SHALL accept an optional `harness` key whose value is `"opencode"` or `null`; preset validation MUST reject any other value. "Save preset" SHALL write the key on every new Claude Code entry, `"opencode"` when the agent file routes the agent through opencode and `null` otherwise. "Load preset" SHALL write the `harness: opencode` line for an agent entry whose value is `"opencode"`, SHALL remove the line for an entry whose value is `null`, and SHALL leave the line as it is for an entry without the key. The state of a command row SHALL NOT be applied.
+
+#### Scenario: Save records the routing state
+
+- **WHEN** the user saves a Claude Code preset while one agent is routed through opencode and another is not
+- **THEN** the routed agent's entry carries `"harness": "opencode"` and the other entry carries `"harness": null`
+
+#### Scenario: Load applies the routing state
+
+- **WHEN** the user loads a Claude Code preset whose agent entries carry `"harness": "opencode"` and `"harness": null`
+- **THEN** the first agent file gains the `harness: opencode` line and the second loses its `harness:` line
+
+#### Scenario: Older entry leaves the routing line
+
+- **WHEN** the user loads a Claude Code preset entry that has no `harness` key
+- **THEN** the agent file keeps its current `harness:` line, present or absent
+
+#### Scenario: Invalid harness value rejected
+
+- **WHEN** a Claude Code preset entry carries a `harness` value other than `"opencode"` or `null`
+- **THEN** preset validation rejects the entry

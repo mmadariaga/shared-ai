@@ -104,6 +104,24 @@ function fallback(agent, cause) {
   };
 }
 
+/** The fallback cause of `agent` against one probe result, or `null` when opencode can run it. */
+function missingCause(agent, { available, agents }) {
+  if (!available) return 'opencode-missing';
+  if (agents === null) return 'opencode-agents-unavailable';
+  if (!agents.includes(agent)) return 'opencode-agent-missing';
+  return null;
+}
+
+/**
+ * The opencode check of `route`, for several agents with one probe: `{ [agent]: cause | null }`, where a cause is one of
+ * the fallback causes of `route` (`FALLBACK_CAUSES`) and `null` means opencode runs the agent. Setup calls it once per
+ * apply and warns from the causes; it never reads an agent file or decides a route.
+ */
+function checkAgents(agents, { cwd = process.cwd() } = {}, { probe = defaultProbe } = {}) {
+  const result = probe(cwd);
+  return Object.fromEntries(agents.map(agent => [agent, missingCause(agent, result)]));
+}
+
 /** The route of `agent`: `{ route, cause, agent, notice? }`. */
 function route({ agent, cwd }, { root = claudeRoot, probe = defaultProbe } = {}) {
   const text = readAgentFile(agent, cwd, root);
@@ -111,10 +129,8 @@ function route({ agent, cwd }, { root = claudeRoot, probe = defaultProbe } = {})
   const harness = harnessOf(text);
   if (harness === null) return { route: 'claude', cause: 'no-harness-key', agent };
   if (harness !== 'opencode') return { route: 'claude', cause: 'harness-not-opencode', agent };
-  const { available, agents } = probe(cwd);
-  if (!available) return fallback(agent, 'opencode-missing');
-  if (agents === null) return fallback(agent, 'opencode-agents-unavailable');
-  if (!agents.includes(agent)) return fallback(agent, 'opencode-agent-missing');
+  const cause = missingCause(agent, probe(cwd));
+  if (cause !== null) return fallback(agent, cause);
   return { route: 'opencode', cause: 'harness-opencode', agent };
 }
 
@@ -245,4 +261,4 @@ if (require.main === module) {
   main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 }
 
-module.exports = { route, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError };
+module.exports = { route, checkAgents, FALLBACK_CAUSES, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError };
