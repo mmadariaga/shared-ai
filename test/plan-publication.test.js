@@ -71,8 +71,10 @@ test('I6 I7 E1 E2 E12: only composed Plan owns the start-of-run publication answ
   assert.match(plan, /--publish <answer>/);
   assert.ok(plan.indexOf('**Telemetry.**') < plan.indexOf('**Publication.**') && plan.indexOf('**Publication.**') < plan.indexOf('Close the run per the cycle'));
   assert.doesNotMatch(plan, /end with exactly ``Plan done/);
-  assert.match(explore, /asks its start question inside this route/);
-  assert.match(explore, /Explore asks no second\s+publication question/);
+  assert.match(explore, /--publish <yes\|no>/);
+  assert.match(explore, /the plan coordinator asks no publication question of its own/);
+  assert.doesNotMatch(explore, /asks its start question inside this route/);
+  assert.doesNotMatch(fs.readFileSync('AGENTS.md', 'utf8'), /Plan route asks\s+the same start question inside the route/);
   for (const phase of ['spec', 'design']) assert.doesNotMatch(fs.readFileSync(`sai/commands/${phase}/coordinator.md`, 'utf8'), /Publish a draft PR\/MR|publication answer/);
   const claude = fs.readFileSync('commands/claude/sai-plan.md', 'utf8');
   assert.match(claude, /^argument-hint: .*\[--publish yes\|no\]"$/m);

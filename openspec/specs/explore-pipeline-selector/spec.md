@@ -95,7 +95,7 @@ Plan and Direct Build SHALL select only the first pending slice from `last_cryst
 
 ### Requirement: Preserve deterministic Direct Build continuation
 
-After a clean Direct Build slice completion, Explore SHALL preserve crystallization order, exclude completed changes, and resolve the authoritative continuation state to `auto_continue` or `route_choice`. `auto_continue` SHALL start the first pending slice as Direct Build by emitting `intent: auto-continue` with no pick. With the `per-slice` branch strategy, `auto_continue` SHALL first prepare that slice's chained branch without a further prompt, before `intent: auto-continue` is emitted and before any worker dispatch; when that preparation stops on uncommitted changes, Explore SHALL emit nothing, start nothing, and present the native route picker for that slice instead. `route_choice` SHALL present a fresh native picker and SHALL start no later slice until a valid picker answer arrives. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL not start a later slice.
+After a clean Direct Build slice completion, Explore SHALL preserve crystallization order, exclude completed changes, and resolve the authoritative continuation state to `auto_continue` or `route_choice`. `auto_continue` SHALL start the first pending slice as Direct Build by emitting `intent: auto-continue` with no pick. With the `per-slice` branch strategy, `auto_continue` SHALL first prepare that slice's chained branch without a further prompt, before `intent: auto-continue` is emitted and before any worker dispatch; when that preparation stops on uncommitted changes, Explore SHALL emit nothing, start nothing, and present the native route picker for that slice instead. `route_choice` SHALL present a fresh native picker and SHALL start no later slice until a valid picker answer arrives. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL not start a later slice. An automatically started slice SHALL push only by the set's recorded publication answer.
 
 #### Scenario: pending slices retain explicit authorization
 - **WHEN** a Direct Build slice completes cleanly while another crystallized slice remains pending
@@ -104,7 +104,7 @@ After a clean Direct Build slice completion, Explore SHALL preserve crystallizat
 #### Scenario: Authorized continuation starts next slice in order
 
 - **WHEN** the continuation state resolves to `auto_continue` with pending slices remaining
-- **THEN** the first pending slice starts as Direct Build with two local commits authorized — the archived change and its change telemetry — and no push
+- **THEN** the first pending slice starts as Direct Build with two local commits authorized — the archived change and its change telemetry — and no push other than the publication the set's recorded publication answer authorizes
 
 #### Scenario: Chained branch stop falls back to the route picker
 

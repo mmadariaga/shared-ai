@@ -9,21 +9,13 @@
   ```text
   --block-file <absolute path returned by export>
   --block-hash <sha256 returned by export>
+  --publish <yes|no>
   --overview-lang <overview_language>
   ```
 
-  **Optional publication.** The plan coordinator owns the publication answer, including
-  in this route: when none is handed over (no `--publish` line in `arguments_value`, no
-  answer recorded by a resumed run, no `pr.publishAfterRun` value of `yes` or `no`), it
-  asks its start question inside this route, in place of the closing offer it replaced,
-  and publishes unattended at its end with no further confirmation. Explore asks no second
-  publication question and hands over no `--publish` line until its own round carries the
-  answer. Planning completion and the slice transition remain successful whatever the
-  publication does. The accepted answer authorizes the exact current-change plan paths
-  through `to-pr.js plan-commit --unattended`; this gives Explore no direct repository
-  write authority and changes no ordinary segment ignore rule.
+  **Optional publication.** The publication answer is the set-wide answer of `route-selector.md` § Publication question, recorded in `explore-slice@1` before this route started: the `--publish` line carries it, and the plan coordinator asks no publication question of its own and reads no `pr.publishAfterRun` setting in this route. The accepted answer authorizes the exact current-change plan paths through `to-pr.js plan-commit --unattended`; this gives Explore no direct repository write authority and changes no ordinary segment ignore rule. Planning completion and the slice transition remain successful whatever the publication does.
 
-  The last line is present only when `overview_language` is not the literal `None`. The plan coordinator verifies the block file and ends with its own errors when the block does not verify. The exported file stays in place for the whole run, including for a replacement spec worker; export anew only for a fresh Plan selection or after an amendment, per `@sai/policies/ready-to-propose-format.md` § Stored block transport. It treats a slice whose proposal and specs already exist on disk as a spec segment already done, so a slice parked at `sai-2` resumes at design.
+  The `--publish` line carries the answer the set holds (a detached HEAD leaves the set without one, and the line is omitted). The last line is present only when `overview_language` is not the literal `None`. The plan coordinator verifies the block file and ends with its own errors when the block does not verify. The exported file stays in place for the whole run, including for a replacement spec worker; export anew only for a fresh Plan selection or after an amendment, per `@sai/policies/ready-to-propose-format.md` § Stored block transport. It treats a slice whose proposal and specs already exist on disk as a spec segment already done, so a slice parked at `sai-2` resumes at design.
 
   **Slice machine.** On a **Plan - Unattended** selection the selector already emitted `{intent: plan}` to `explore-slice@1` per `@sai/policies/stage-machine.md`; a response that carries `rejected: ALREADY_RUNNING` is acknowledged as already running with nothing dispatched. When the spec segment completes, or counted as done, emit `{intent: complete}` (`sai-1` → `sai-2`) before the design segment starts, and consume the returned stage. When the design segment completes, emit `{intent: complete}` (`sai-2` → `implement`). When a segment fails, is stopped, or ends on an unanswered escalation, emit `{intent: fail}` after its report, parking the slice on its current stage per `slice.md`; a later **Plan - Unattended** choice with a fresh picker answer retries it, and the plan coordinator resumes from the artifacts on disk. On store failure, a `rejected` emit, or a degraded store, hold the stage, present no next-slice selector, close nothing as complete, report the degradation, and wait for instruction without deriving the transition in prose.
 

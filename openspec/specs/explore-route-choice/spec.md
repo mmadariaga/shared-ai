@@ -26,7 +26,7 @@ The Explore route-choice capability SHALL accept route input only after the shar
 
 ### Requirement: Later route replies recognize exactly one fixed route
 
-The route-choice capability SHALL present exactly one native single-select route question with the fixed English labels `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`, in that order, as round 3 under `sai/policies/question-rounds.md`; the conditional Direct Build continuation question MAY join the same native call as a separate question. Claude Code SHALL use `AskUserQuestion` and opencode SHALL use the `question` tool. Their stable identities SHALL remain `plan-unattended`, `direct-build-unattended`, and `manual`. Only an exact returned fixed label SHALL map to an identity. A cancelled, absent, `Other` or free-text, ambiguous, or multi-route response SHALL select no route and SHALL preserve the waiting inventory.
+The route-choice capability SHALL present exactly one native single-select route question with the fixed English labels `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`, in that order, as round 3 under `sai/policies/question-rounds.md`; the conditional Direct Build continuation question, change overview question, and publication question MAY join the same native call as separate questions. Claude Code SHALL use `AskUserQuestion` and opencode SHALL use the `question` tool. Their stable identities SHALL remain `plan-unattended`, `direct-build-unattended`, and `manual`. Only an exact returned fixed label SHALL map to an identity. A cancelled, absent, `Other` or free-text, ambiguous, or multi-route response SHALL select no route and SHALL preserve the waiting inventory.
 
 #### Scenario: Clear Plan reply
 
@@ -42,6 +42,11 @@ The route-choice capability SHALL present exactly one native single-select route
 
 - **WHEN** round 3 is presented for a set with more than one pending slice
 - **THEN** the route question stays one single-select question with the fixed labels, and the continuation question is a separate question in the same native call
+
+#### Scenario: Publication question shares the round 3 call
+
+- **WHEN** the first round 3 of a set is presented and nothing resolves the publication answer
+- **THEN** the route question stays one single-select question with the fixed labels, and the publication question is a separate question in the same native call
 
 ### Requirement: Explicit route choice remains the delegated-write gate
 
