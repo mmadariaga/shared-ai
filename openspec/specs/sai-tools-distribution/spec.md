@@ -62,3 +62,11 @@ The `sai-tools` projection SHALL install `sai/tools/review-delta.js` into `sai/t
 #### Scenario: the tool is projected and documented
 - **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
 - **THEN** `review-delta.js` is installed under both harness roots as a managed file
+
+### Requirement: scenario-coverage.js joins the registered deterministic tool roster
+
+The `sai-tools` projection SHALL install `sai/tools/scenario-coverage.js` and its shared parser `sai/tools/spec-scenarios.js` into `sai/tools/` under both harness roots as managed, content-tracked files, with no manifest edit required because the projection installs every `*.js` under `sai/tools/`. The `AGENTS.md` tools-directory row SHALL register `scenario-coverage.js` with its `step` and `change` sub-commands and its output fields, and `sai/policies/tool-resolution.md` SHALL list its invocation form.
+
+#### Scenario: The tool is projected and documented
+- **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
+- **THEN** `scenario-coverage.js` is installed under both harness roots as a managed file with no `sai/install-manifest.json` change, and the row and the tool-resolution invocation list name the tool

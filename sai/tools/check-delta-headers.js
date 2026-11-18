@@ -39,65 +39,14 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SECTION_RE = /^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\s*$/;
-const ANY_H2_RE = /^##\s+/;
-const REQUIREMENT_PREFIX = '### Requirement:';
-
-// Examples in fenced code are not specification structure. Preserve line numbers.
-function structuralLines(content) {
-  let fence = null;
-  const lines = content.split('\n').map((raw) => {
-    const line = raw.replace(/\r$/, '');
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (marker && !fence) { fence = marker[1]; return ''; }
-    if (fence) {
-      if (new RegExp(`^ {0,3}${fence[0]}{${fence.length},}\\s*$`).test(line)) fence = null;
-      return '';
-    }
-    return line;
-  });
-  if (fence) throw new Error('unterminated fenced code block');
-  return lines;
-}
-
-function collectScenarioRequirements(content) {
-  const requirements = new Map();
-  let current = null;
-  for (const line of structuralLines(content)) {
-    const name = extractRequirementName(line);
-    if (name !== null) {
-      current = { scenarios: new Set(), invalid: !name || requirements.has(name) };
-      if (requirements.has(name)) current.invalid = true;
-      requirements.set(name, current);
-    } else if (current && /^#{1,6}\s+Scenario\b/.test(line) && !/^#### Scenario: /.test(line)) {
-      current.invalid = true;
-    } else if (/^#{1,3}\s/.test(line)) {
-      current = null;
-    } else if (current && /^####\s/.test(line)) {
-      const scenario = line.match(/^#### Scenario: (\S(?:.*\S)?)\s*$/);
-      if (!scenario || current.scenarios.has(scenario[1])) current.invalid = true;
-      else current.scenarios.add(scenario[1]);
-    }
-  }
-  return requirements;
-}
-
-function readSpec(file) {
-  return new TextDecoder('utf-8', { fatal: true }).decode(fs.readFileSync(file));
-}
-
-/**
- * Extract the verbatim requirement name from a source line, or null when the
- * line is not a requirement heading. Strips exactly one leading separator
- * space/tab and trailing line whitespace; everything else is byte-exact.
- */
-function extractRequirementName(line) {
-  if (!line.startsWith(REQUIREMENT_PREFIX)) return null;
-  let name = line.slice(REQUIREMENT_PREFIX.length);
-  if (name.startsWith(' ') || name.startsWith('\t')) name = name.slice(1);
-  return name.replace(/[\r\t ]+$/, '');
-}
+const {
+  SECTION_RE,
+  ANY_H2_RE,
+  structuralLines,
+  extractRequirementName,
+  collectScenarioRequirements,
+  readSpec,
+} = require('./spec-scenarios.js');
 
 /**
  * Collect {name, section, line} for every requirement under an
