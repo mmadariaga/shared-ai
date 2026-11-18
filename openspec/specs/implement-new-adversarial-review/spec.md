@@ -62,3 +62,31 @@ The coordinator SHALL record each pass's ledger in `reviews/step-{n}-round-{k}.m
 #### Scenario: A problem the step did not cause
 - **WHEN** the step review finds a problem that also exists at HEAD before the step
 - **THEN** the coordinator marks it `Pre-existing` in the round file, sends it to no worker, and the review can still converge
+
+### Requirement: Step review runs the scenario coverage check
+
+The structural check of each `/sai-3-implement` step review pass SHALL start with `scenario-coverage.js` in step mode, run with `--cwd <project root>` on an input file in the run directory that lists the brief's scenario titles, for a step whose brief lists spec scenarios and whose RED was not skipped by a recorded deviation. A change whose `.openspec.yaml` sets `skip_specs: true` SHALL keep the inferential check alone. Each `missing` entry and each `ambiguous` group SHALL become a finding in the artifact review contract's shape that names the scenario title and goes through RED first. An `ambiguous` finding SHALL close once RED has written one test for each scenario of the group. A tool error SHALL be an obstacle of the step, never a finding. Whether a test proves its scenario SHALL stay the coordinator's inferential judgment.
+
+#### Scenario: A brief scenario has no test
+- **WHEN** step mode reports a brief scenario title as `missing`
+- **THEN** the coordinator records a finding naming that title and sends it to RED first
+
+#### Scenario: RED was skipped
+- **WHEN** a step's RED was skipped by a recorded deviation
+- **THEN** the step review does not run step mode
+
+#### Scenario: The tool fails
+- **WHEN** step mode exits 2
+- **THEN** the coordinator handles it as an obstacle of the step and records no finding
+
+### Requirement: Change-wide scenario coverage check after every task
+
+After every task is checked and before the audit reports are applied, the `/sai-3-implement` coordinator SHALL run `scenario-coverage.js change <name> --cwd <project root>` once. Each `missing` entry and each `ambiguous` group SHALL become a finding that goes through the audit-finding cycle, with a brief carrying the scenario title, capability, and requirement in place of tasks, and through RED first. The steps that fix these findings SHALL run step mode in their own review, and change mode SHALL NOT run again. A tool error SHALL be an obstacle named `scenario-coverage`.
+
+#### Scenario: A scenario was left out of every brief
+- **WHEN** every task is checked and change mode reports a changed scenario as `missing`
+- **THEN** the coordinator fixes it in a step whose RED writes the test, before applying the audit reports
+
+#### Scenario: A resumed run sees earlier tests
+- **WHEN** a second `/sai-3-implement` run of the same change runs change mode
+- **THEN** the tests committed by the first run since the change base count as coverage

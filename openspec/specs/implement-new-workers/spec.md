@@ -77,3 +77,11 @@ The implement coordinator SHALL treat a `completed` report as the close of the w
 
 - **WHEN** RED reports `needs_input` about a contradiction that `interfaces.md` resolves
 - **THEN** the coordinator answers from `interfaces.md`, records the answer as a deviation, and continues the same worker without escalating or spending an attempt
+
+### Requirement: RED test names contain their scenario title
+
+The RED worker SHALL name each test it writes for a spec scenario so that the test name contains that scenario's title, carried as words separated by spaces (in a description string, display name, or docstring where the language's identifiers cannot hold it), because the scenario coverage check matches the title literally, ignoring case, punctuation, and extra whitespace.
+
+#### Scenario: RED writes a test for a scenario
+- **WHEN** RED writes a test for a spec scenario of its brief
+- **THEN** the test name contains the scenario title as words separated by spaces
