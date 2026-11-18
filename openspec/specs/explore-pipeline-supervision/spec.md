@@ -139,9 +139,9 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 ### Requirement: Direct Build - Unattended eight-step unattended flow
 
-On a Direct Build - Unattended selection, explore SHALL follow the Direct Build coordinator card and run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the archived change's pre-authorized local commit. After that clean `completed` result, the flow SHALL record the change telemetry with its own route command and make the second pre-authorized local commit before the terminal report. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
+On a Direct Build - Unattended selection, explore SHALL follow the Direct Build coordinator card and run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review and the Step 2b suite gate, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the archived change's pre-authorized local commit. After that clean `completed` result, the flow SHALL record the change telemetry with its own route command and make the second pre-authorized local commit before the terminal report. When the crystallized set's recorded publication answer is `yes`, the coordinator SHALL then, before the slice transition, push the branch without force and publish a ready-for-review request by following `sai/commands/build/publication.md`; this is the only push of the flow, the archive worker SHALL never push, and a failed or skipped publication SHALL NOT stop the slice. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push except for that publication, or amend.
 
-At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and the local commit short SHA and subject of the archived change and of its change telemetry and state `Nothing was pushed.` If archiving or a commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. After an escalation, the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate question; cancellation and a stop the user chose SHALL get no options.
+At the existing completed or stopped terminal close, the full route SHALL use `sai/policies/implementation-closing-report.md` as its single format authority. What you need to know SHALL summarize material repository changes and, on success, name the archive destination and the local commit short SHA and subject of the archived change and of its change telemetry and state the publication outcome: the request URL with its verified state after a publication, the skip or failure reason when a `yes` answer did not publish, and `Nothing was pushed.` when the answer was `no`, when none was recorded, or when no publication ran. If archiving or a commit did not complete, the report SHALL use the stopped status and identify completed and remaining work. Relevant verification limitations, pre-existing or new failures, and incidents with their known effects SHALL appear in the concise summary before Execution details. Next step SHALL retain existing outcome-appropriate navigation and retry guidance. After an escalation, the options of `sai/policies/obstacle-escalation.md` SHALL follow Execution details as a separate question; cancellation and a stop the user chose SHALL get no options.
 
 Execution details SHALL preserve the work and commit record, original tool-generated commit reports, and the Verification and Incidents diagnostic records. Verification SHALL always state the Step 2b suite-gate command and its observed result (green, red with the failing tests, cannot run with the error, or `no test suite found`), SHALL list pre-existing failures classified at `base_sha` separately from failures introduced or worsened by the run, and SHALL list every test file the implementer touched in a gate round. It SHALL state `No known verification issues.` only when the suite gate ran green, no pre-existing failure was found, and no test file was touched in a gate round. A pre-existing test failure SHALL remain a verification limitation, not an incident. Incidents SHALL report run-caused execution problems and contract violations with their violated rule and known effect and identify expected generated files excluded from the commit with their reasons.
 
@@ -149,23 +149,28 @@ The report SHALL omit routine execution telemetry and verbatim worker summaries 
 
 #### Scenario: Unattended run reaches an archived, committed change
 
-- **WHEN** the eight Direct Build steps complete without an escalation
+- **WHEN** the eight Direct Build steps complete without an escalation and the set's publication answer is `no`
 - **THEN** the flow presents the shared outcome-first report, names the archive destination and the local commit short SHAs and subjects of the archived change and its change telemetry, states `Nothing was pushed.`, and reaches the terminal archived-and-committed state
 
 #### Scenario: Direct Build reports a completed archive and commit
 
 - **WHEN** the final archive execution returns a clean terminal `completed` result and no uncompleted slice remains
-- **THEN** explore presents the shared report with the archive destination, the local commit short SHAs and subjects of the archived change and its change telemetry, and `Nothing was pushed.` in What you need to know and preserves diagnostic records in Execution details last
+- **THEN** explore presents the shared report with the archive destination, the local commit short SHAs and subjects of the archived change and its change telemetry, and the publication outcome in What you need to know and preserves diagnostic records in Execution details last
 
 #### Scenario: Direct Build reports incomplete terminal work
 
 - **WHEN** archiving or a local commit does not complete
-- **THEN** explore uses the stopped report, states what completed and what remains, does not describe the run as completed, and preserves existing non-clean failure handling and commit ownership
+- **THEN** explore uses the stopped report, states what completed and what remains, does not describe the run as completed, publishes nothing, and preserves existing non-clean failure handling and commit ownership
 
 #### Scenario: Verification reports the observed suite gate
 
 - **WHEN** the terminal report is presented after a suite gate that found pre-existing failures
 - **THEN** What you need to know identifies the verification limitation and Verification within Execution details names the suite command and observed result, lists the pre-existing failures classified at `base_sha`, and does not state `No known verification issues.`
+
+#### Scenario: Yes answer publishes after the telemetry commit
+
+- **WHEN** a Direct Build slice reaches its telemetry commit with the set's publication answer `yes`
+- **THEN** the coordinator pushes the branch without force and publishes a ready-for-review request before the slice transition, and the report gives the request URL or the reason it was not published
 
 ### Requirement: Direct Build slice completion transition
 On a Direct Build - Unattended selection, explore SHALL execute the existing eight-step worker flow in fixed order for the first pending slice. After, and only after, the final direct-build-execute archive worker returns a clean terminal completed result, explore SHALL record that result in the first-seen changed-file union, add the selected change to completed_changes, preserve the completed slice progress states, and enter the completion transition exactly once. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL NOT mark the slice completed or start a later slice. The transition SHALL preserve existing worker order, worker payloads, commit ownership, and failure semantics.
@@ -495,12 +500,12 @@ Every Direct Build response SHALL reach the active validator exactly as received
 
 ### Requirement: Plan - Unattended follows the /sai-plan coordinator
 
-The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, the run state, and the publication answer: when no answer is handed over, it SHALL ask its start question inside this route, and Explore SHALL ask no second publication question and SHALL hand over no `--publish` line. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
+The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, `--publish <yes|no>` carrying the publication answer recorded for the crystallized set in `explore-slice@1` (omitted only when a detached HEAD left the set without one), and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, and the run state, and SHALL ask no publication question of its own in this route: Explore asked it in round 3. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
 
 #### Scenario: Plan route follows the plan coordinator
 
 - **WHEN** the user selects `Plan - Unattended` for a dispatchable slice
-- **THEN** explore exports the slice's block and follows `/sai-plan` with the block reference, without dispatching spec or design workers outside the plan coordinator
+- **THEN** explore exports the slice's block and follows `/sai-plan` with the block reference and the set's `--publish` answer, without dispatching spec or design workers outside the plan coordinator
 
 #### Scenario: a failed segment parks the slice
 
@@ -509,8 +514,8 @@ The explore route `Plan - Unattended` SHALL export the first pending slice's sto
 
 #### Scenario: the start question is asked inside the route
 
-- **WHEN** the user selects `Plan - Unattended` and no `--publish` answer, recorded answer, or `pr.publishAfterRun` value of `yes` or `no` exists
-- **THEN** the plan coordinator asks its publication question inside the route before its first worker starts, and Explore asks none
+- **WHEN** the user selects `Plan - Unattended` and no recorded answer or `pr.publishAfterRun` value of `yes` or `no` resolved the publication answer before round 3
+- **THEN** the publication question was asked in round 3 of the Explore route, the answer reaches the plan coordinator as `--publish`, and the plan coordinator asks no publication question before its first worker starts
 
 ### Requirement: Direct Build - Unattended follows the Direct Build coordinator card
 

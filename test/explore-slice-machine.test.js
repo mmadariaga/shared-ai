@@ -515,3 +515,53 @@ test('auto-continue on an exhausted set rejects with NO_PENDING_SLICE', () => {
   const finished = finishDirectBuild(selectRoute(recorded.state, 'direct-build').state);
   assert.equal(slice.transition(finished, { intent: 'auto-continue' }).rejected, 'NO_PENDING_SLICE');
 });
+
+test('the set-wide publication answer is recorded once, read back, and cleared with the inventory', () => {
+  assert.equal(slice.initialState.publication, '');
+  assert.deepEqual(slice.project(slice.initialState).run, { publication: '' });
+
+  const premature = slice.transition(slice.initialState, { intent: 'publication', value: 'yes' });
+  assert.equal(premature.rejected, 'INVENTORY_NOT_READY');
+  assert.equal(premature.state.publication, '');
+
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
+  assert.deepEqual(recorded.run, { publication: '' });
+  assert.equal(slice.transition(recorded.state, { intent: 'publication', value: 'maybe' }).rejected, 'INVALID_PUBLICATION');
+  assert.equal(slice.transition(recorded.state, { intent: 'publication', value: '' }).rejected, 'INVALID_PUBLICATION');
+
+  const answered = slice.transition(recorded.state, { intent: 'publication', value: 'yes' });
+  assert.equal(answered.rejected, undefined);
+  assert.equal(answered.state.publication, 'yes');
+  assert.deepEqual(answered.run, { publication: 'yes' });
+  assert.equal(answered.state.blockEmissionTurnClosed, true, 'the answer opens no route gate');
+  assert.equal(answered.state.stage, 'waiting');
+
+  const second = slice.transition(answered.state, { intent: 'publication', value: 'no' });
+  assert.equal(second.rejected, 'PUBLICATION_ALREADY_RECORDED');
+  assert.equal(second.state.publication, 'yes');
+
+  const read = slice.transition(answered.state, { intent: 'publication' });
+  assert.equal(read.rejected, undefined);
+  assert.deepEqual(read.run, { publication: 'yes' });
+  assert.deepEqual(read.state, answered.state);
+
+  // The answer outlives route choices, a running slice, and a finished slice.
+  let state = slice.transition(answered.state, { intent: 'route-choice' }).state;
+  state = slice.transition(state, { intent: 'direct-build' }).state;
+  assert.equal(state.publication, 'yes');
+  state = slice.transition(state, { intent: 'fail' }).state;
+  assert.equal(slice.project(state).run.publication, 'yes');
+  assert.equal(slice.transition(state, { amend: 'a' }).state.publication, 'yes');
+
+  // A new inventory replaces the set, and its answer with it.
+  const replaced = slice.transition(state, { recordedList: ['c'] });
+  assert.equal(replaced.state.publication, '');
+  assert.deepEqual(replaced.run, { publication: '' });
+});
+
+test('a stored state that predates the publication field reads as unanswered', () => {
+  const legacy = { stage: 'waiting', set: ['a'], inventoryReady: true, active: null, done: [], mode: null, parked: {} };
+  assert.deepEqual(slice.project(legacy).run, { publication: '' });
+  assert.equal(slice.transition(legacy, { intent: 'publication', value: 'no' }).state.publication, 'no');
+  assert.equal(slice.project({ stage: 'waiting', set: ['a'], publication: 'bogus' }).run.publication, '');
+});

@@ -8,6 +8,7 @@ const DIRECT_BUILD_MODE = 'direct-build';
 const PLAN_MODE = 'plan';
 const DIRECT_BUILD_STEPS = Object.freeze(['build-implement', 'backfill', 'archive']);
 const PLAN_STEPS = Object.freeze(['sai-1', 'sai-2', 'implement']);
+const PUBLICATION_ANSWERS = Object.freeze(['yes', 'no']);
 
 const SLICE_STEP = 'sai/commands/explore/steps/slice.md';
 const ROUTE_SELECTOR_STEP = 'sai/commands/explore/steps/route-selector.md';
@@ -53,6 +54,7 @@ const initialState = Object.freeze({
   done: [],
   mode: null,
   parked: {},
+  publication: '',
 });
 
 // A parked slice is pending with a saved cursor: `fail` or `cancel` parked it,
@@ -68,6 +70,11 @@ function cloneParked(src) {
     parked[name] = { mode: entry.mode, stage: entry.stage };
   }
   return parked;
+}
+
+// The set-wide publication answer: '' until recorded, then 'yes' or 'no'.
+function clonePublication(value) {
+  return PUBLICATION_ANSWERS.indexOf(value) === -1 ? '' : value;
 }
 
 function cloneState(state) {
@@ -93,7 +100,8 @@ function cloneState(state) {
   const done = Array.isArray(src.done) ? src.done.slice() : [];
   const mode = typeof src.mode === 'string' ? src.mode : null;
   const parked = cloneParked(src.parked);
-  return { stage, set, inventoryReady, inventoryVersion, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked };
+  const publication = clonePublication(src.publication);
+  return { stage, set, inventoryReady, inventoryVersion, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked, publication };
 }
 
 function snapshotOf(current) {
@@ -108,7 +116,13 @@ function snapshotOf(current) {
     done: current.done.slice(),
     mode: current.mode,
     parked: cloneParked(current.parked),
+    publication: current.publication,
   };
+}
+
+// Identifiers only: the set-wide answer travels to the coordinators as this view.
+function viewOf(current) {
+  return { publication: current.publication };
 }
 
 function hintFor(stage, follow) {
@@ -129,6 +143,7 @@ function outcome(current, rejected) {
     state,
     snapshot: { state: snapshotOf(state), machineId },
     next: nextForState(state),
+    run: viewOf(state),
   };
   if (rejected) result.rejected = rejected;
   return result;
@@ -220,6 +235,7 @@ function project(state) {
   return {
     snapshot: { state: snapshotOf(current), machineId },
     next: nextForState(current),
+    run: viewOf(current),
   };
 }
 
@@ -241,6 +257,8 @@ function transition(state, signal) {
     // name appeared in an earlier crystallization.
     current.done = [];
     current.parked = {};
+    // The publication answer belongs to the set it was asked for.
+    current.publication = '';
     if (current.active == null) {
       current.stage = WAITING_STAGE;
       current.mode = null;
@@ -284,6 +302,27 @@ function transition(state, signal) {
     }
     // Resumption consumes the saved cursor, not a new route authorization.
     return beginSlice(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS);
+  }
+
+  if (intent === 'publication') {
+    // One answer per recorded set; a new inventory clears it, so a slice chain
+    // reads it back without asking again, also after a context compaction. An
+    // event without `value` records nothing and returns the run view: that is
+    // how a coordinator reads the answer.
+    if (sig.value === undefined) {
+      return outcome(current);
+    }
+    if (!current.inventoryReady) {
+      return outcome(current, 'INVENTORY_NOT_READY');
+    }
+    if (PUBLICATION_ANSWERS.indexOf(sig.value) === -1) {
+      return outcome(current, 'INVALID_PUBLICATION');
+    }
+    if (current.publication !== '') {
+      return outcome(current, 'PUBLICATION_ALREADY_RECORDED');
+    }
+    current.publication = sig.value;
+    return outcome(current);
   }
 
   if (intent === 'route-choice') {

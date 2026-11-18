@@ -21,7 +21,7 @@ test('the normal flow is three conditional rounds in a fixed question order', ()
   assert.match(actions, /three conditional question rounds/);
   assert.match(actions, /\*\*round 1\*\* asks the backlog, branch and assignment questions/);
   assert.match(actions, /\*\*round 2\*\* asks publication approval and the branch base/);
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation/);
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, and the publication question/);
   assert.match(actions, /not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures add interactions/);
   const order = ['1. **Backlog question:**', '2. **Branch question:**', '3. **Assignment question:**'].map(label => round1.indexOf(label));
   assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1]);
@@ -83,7 +83,7 @@ test('recovery never repeats completed actions and execution follows dependency 
 });
 
 test('round 3 carries the continuation question only for a multi-slice Direct Build', () => {
-  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question and the change overview question below join the same round only when their conditions are met/);
+  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question, the change overview question, and the publication question below join the same round only when their conditions are met/);
   assert.match(continuation, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/);
   assert.match(continuation, /takes effect only when the same round's route answer is Direct Build/);
   assert.match(continuation, /When the route answer is Plan or Manual, or no valid route was answered, ignore the continuation answer: it authorizes nothing/);
@@ -92,9 +92,9 @@ test('round 3 carries the continuation question only for a multi-slice Direct Bu
 });
 
 test('round 3 carries the overview question as a conditional question resolved once per set', () => {
-  const overview = selector.slice(selector.indexOf('\n## Change overview question'), selector.indexOf('\n## Selection, panel, and route state'));
+  const overview = selector.slice(selector.indexOf('\n## Change overview question'), selector.indexOf('\n## Publication question'));
 
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation and the change overview question/);
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, and the publication question/);
   assert.match(overview, /Round 3 carries it as a conditional question beside the route question/);
   assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?round 3 carries the overview question/);
   assert.match(overview, /first match wins and no overview question joins the round/);
@@ -102,6 +102,29 @@ test('round 3 carries the overview question as a conditional question resolved o
   assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and the fallback ask below asks gate 9 on its own before the plan coordinator is followed/);
   assert.match(overview, /resolved once per set/);
   assert.match(overview, /Direct Build and Manual never generate a change overview, and no overview question runs at block emission/);
+});
+
+test('round 3 carries the publication question once per set and records it in explore-slice@1', () => {
+  const publication = selector.slice(selector.indexOf('\n## Publication question'), selector.indexOf('\n## Selection, panel, and route state'));
+  const afterAnswer = selector.slice(selector.indexOf('\n## After a valid answer'), selector.indexOf('\n## Direct Build continuation'));
+
+  assert.match(publication, /Round 3 carries its question as a conditional question beside the route question/);
+  assert.match(publication, /asked once for the whole `last_crystallization_set`, in the first round 3 of the set, whatever route that slice takes, Manual included/);
+  assert.match(publication, /Later round-3 groups of the same set never ask it again/);
+  const order = ['1. An answer `explore-slice@1` already holds', '2. Fetch `@sai/policies/tool-resolution.md`', '3. With neither answering'].map(label => publication.indexOf(label));
+  assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1]);
+  assert.match(publication, /get pr\.publishAfterRun --json --cwd <project-root>/);
+  assert.match(publication, /A returned `yes` or `no` is the answer/);
+  assert.match(publication, /`ask`, an absent key, an invalid value, and a tool that cannot run leave the question normal/);
+  assert.match(publication, /emit <id> explore-slice@1 --set intent=publication --set value=<yes\|no>/);
+  assert.match(publication, /PUBLICATION_ALREADY_RECORDED/);
+  assert.match(publication, /clears it together with the slice inventory/);
+  assert.match(publication, /A declined, cancelled, or non-committal answer to this question resolves `no`/);
+  assert.match(publication, /`AskUserQuestion` on Claude Code, `question` on opencode/);
+  assert.match(publication, /\*\*Manual\*\* ignores the answer/);
+  assert.match(publication, /Standalone `\/sai-direct-build` takes no publication answer and publishes nothing/);
+  assert.match(afterAnswer, /record the set's publication answer when round 3 resolved one that `explore-slice@1` does not hold yet/);
+  assert.ok(afterAnswer.indexOf('publication answer') < afterAnswer.indexOf('emit `{intent: route-choice}`'));
 });
 
 test('the slice-set branch question and the per-slice chain use the generic supplied-base capability', () => {

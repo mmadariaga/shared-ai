@@ -75,7 +75,14 @@ for several pending slices, whether later Direct Build slices start automaticall
 (ignored unless you choose Direct Build); and, when unresolved, whether to create
 `change-overview.md` and in which language (applies only to Plan). An explicit
 overview language, a previously resolved answer, or a project setting answers
-the overview question in advance. Each
+the overview question in advance. Round 3 also asks once per crystallized set
+whether the slices publish a request when their route ends, unless the
+[`pr.publishAfterRun`](../project-settings.md#plan-publication-answer) setting
+answers it. A Plan slice hands the answer to `/sai-plan`, which publishes a draft
+request; a Direct Build slice pushes its branch without force and publishes a
+request ready for review after its telemetry commit; a Manual slice ignores it.
+The answer is kept for the whole set, so later slices ask nothing, and a failed
+publication never stops a slice. Standalone `/sai-direct-build` publishes nothing. Each
 answer authorizes only its own action; a missing or ambiguous answer leaves it
 pending, and cancelling publication skips only the publication. Publication
 runs first, then the branch is named with the created issue's identifier and
