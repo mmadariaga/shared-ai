@@ -389,6 +389,27 @@ for (const provider of ['github', 'gitlab']) {
   });
 }
 
+test('collect returns the resolved draft language in both output shapes, with the settings warnings', async t => {
+  const { io } = fixture('github');
+  const directory = temporaryDirectory(t, 'to-pr-language-');
+  io.cwd = directory;
+  const both = async () => [await tool.collect({}, io), await tool.collect({ base: 'main' }, io)];
+  for (const result of await both()) {
+    assert.equal(result.language, 'English');
+    assert.equal(Object.hasOwn(result, 'warnings'), false);
+  }
+  const write = text => { fs.mkdirSync(path.join(directory, '.sai'), { recursive: true }); fs.writeFileSync(path.join(directory, '.sai/settings.jsonc'), text); };
+  write('{"pr":{"language":" español "}}');
+  for (const result of await both()) assert.equal(result.language, 'español');
+  write('{"pr":{"language":"english"}}');
+  for (const result of await both()) assert.equal(result.language, 'English');
+  write('{"pr":{"language":"none"}}');
+  for (const result of await both()) {
+    assert.equal(result.language, 'English');
+    assert.match(result.warnings.join('\n'), /pr\.language.*not none/);
+  }
+});
+
 test('collect reports the stored inherent-risk block as fresh, stale, or absent against the base', async t => {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'to-pr-risk-'));
   t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));

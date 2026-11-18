@@ -83,13 +83,19 @@ function inherentRisk(review, base, cwd) {
     return state === 'fresh' ? { state, block } : { state };
   } catch { return { state: 'absent' }; }
 }
+// The language the SAI-drafted title subject and description use: the normalized `pr.language`, or English when the key is absent
+// or invalid. The settings warnings travel with it, so an invalid value never falls back to English silently.
+function draftLanguage(cwd) {
+  const { value, warnings } = projectSettings.get('pr.language', { cwd });
+  return { language: value ?? 'English', ...(warnings.length ? { warnings } : {}) };
+}
 async function collect(request, io) {
   const git = async args => (await io.run('git', args)).trim();
   const source = ref(await git(['symbolic-ref', '--quiet', '--short', 'HEAD']));
   const head = await git(['rev-parse', 'HEAD']);
   const remotes = [];
   for (const name of (await git(['remote'])).split('\n').filter(Boolean)) remotes.push({ name, url: await git(['remote', 'get-url', name]), pushUrl: await git(['remote', 'get-url', '--push', name]) });
-  const state = { source, head, remotes, pending: await git(['status', '--porcelain=v1']) };
+  const state = { source, head, remotes, pending: await git(['status', '--porcelain=v1']), ...draftLanguage(io.cwd || process.cwd()) };
   if (!request.base) return state;
   const base = ref(request.base);
   await git(['rev-parse', '--verify', `${base}^{commit}`]);

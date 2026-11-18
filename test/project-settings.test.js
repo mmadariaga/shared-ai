@@ -628,3 +628,22 @@ test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and a
   const row = fs.readFileSync(path.join(__dirname, '../docs/project-settings.md'), 'utf8').split('\n').find(line => line.startsWith('| `pr.publishAfterRun`'));
   assert.match(row, /`ask`, `yes`, or `no`/);
 });
+
+test('pr.language: a language name, normalized like the explore languages, none invalid, and never a destination field of readPr', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"pr":{"language":" eNGLISH ","provider":"github"}}' });
+  assert.deepEqual(settings.get('pr.language', { cwd }), { value: 'English', source: 'setting', warnings: [] });
+  assert.equal(settings.get('pr.language', { cwd: project({ '.sai/settings.jsonc': '{"pr":{"language":" Español "}}' }) }).value, 'Español');
+  assert.equal(settings.get('pr.language', { cwd: project() }).value, null);
+  for (const bad of ['"none"', '""', '3']) {
+    const result = settings.get('pr.language', { cwd: project({ '.sai/settings.jsonc': `{"pr":{"language":${bad}}}` }) });
+    assert.equal(result.value, null, bad);
+    assert.match(result.warnings.join('\n'), /pr\.language/, bad);
+  }
+  assert.match(settings.get('pr.language', { cwd: project({ '.sai/settings.jsonc': '{"pr":{"language":"NONE"}}' }) }).warnings.join('\n'), /not none/);
+  assert.deepEqual(settings.get('pr.language', { cwd: project({ '.sai/settings.jsonc': '{"pr":{"language":"none"}}' }) }).warnings,
+    ['Setting pr.language in .sai/settings.jsonc must name a language, not none; the draft falls back to English.']);
+  assert.deepEqual(settings.get('explore.chatPublicLanguage', { cwd: project({ '.sai/settings.jsonc': '{"explore":{"chatPublicLanguage":"none"}}' }) }).warnings,
+    ['Setting explore.chatPublicLanguage in .sai/settings.jsonc must name a language, not none; its question stays normal.']);
+  assert.deepEqual(settings.readPr({ cwd, providerIds }).config, { provider: 'github' });
+  assert.deepEqual([settings.CATALOGUE['pr.language'].label, settings.CATALOGUE['pr.language'].section], ['PR/MR language', 'Pull requests']);
+});

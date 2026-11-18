@@ -1,9 +1,24 @@
 # Description format
 
 Title: imperative Conventional Commit (`feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert`,
-optional scope), at most 70 characters, no emoji, no trailing period. Draft in English unless the user requests another language. Ground each
+optional scope), at most 70 characters, no emoji, no trailing period. Ground each
 claim in committed Git changes or clearly identified supporting context; exclude
 credentials and incidental private data.
+
+Language: draft the title subject and the SAI-drafted description in the resolved
+language. It is, in this order, the language the user explicitly requests in the
+conversation for the PR/MR of this publication, else the `language` field of `collect`
+(the normalized `pr.language` setting; `English` when the key is absent or invalid),
+else English. Only a stated request for the PR/MR language is an explicit request: the
+language the user writes in, and `explore.chatPublicLanguage`, change nothing. A request
+applies to this publication only and never changes the setting. A SAI coordinator that
+runs unattended (§ 5 of `SKILL.md`) has no conversation to ask in: it uses the
+`language` field. The `type(scope):` prefix of the title stays English so changelog
+and release tooling keep parsing it; the title rules above apply to the subject in any
+language. Machine-read content stays verbatim whatever the language: the closing
+keywords (`Closes #123`), the closing block the tool adds, and the ratings block of
+`sai/policies/inherent-risk.md` with its markers. On update, only the content you draft
+follows the resolved language; retained text stays as written.
 
 Allow human coauthor credits. Omit AI authorship credits by default, including
 AI `Co-Authored-By` lines and generated-with footers. Include them only when
@@ -14,7 +29,8 @@ in the JSON for every `query` and `publish`. The exception skips only this
 description check; title rules, full-content approval, and push approval remain.
 This applies to both creation and updates, including retained description text.
 
-Use these headings:
+Use these headings, written in the resolved language (no tool parses them; the list
+gives their English form):
 
 - `## Summary`: user-facing outcomes, not a file inventory.
 - `## Goal`: purpose in one or two sentences.

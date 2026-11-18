@@ -135,14 +135,14 @@ test('writer: CRLF files keep CRLF in inserted text', () => {
   assert.equal(read(directory).replace(/\r\n/g, '').includes('\n'), false);
 });
 
-test('E4: the Language settings submenu lists its three rows with today\'s value texts and no headers', async () => {
+test('E4: the Language settings submenu lists its four rows with today\'s value texts and no headers', async () => {
   const directory = project('{"explore":{"overviewLanguage":"English"}}');
   const seen = [];
   const result = await editor(directory, [BACK], [], { seen }).runSection(LANGUAGE);
   assert.equal(result.status, 'back');
   assert.equal(seen[0].question, 'Language settings:');
-  assert.deepEqual(seen[0].options, ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage']);
-  assert.deepEqual(texts(seen[0]), ['Ready to Propose language: ask', 'Change overview language: English', 'Chat language: follow my language']);
+  assert.deepEqual(seen[0].options, ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language']);
+  assert.deepEqual(texts(seen[0]), ['Ready to Propose language: ask', 'Change overview language: English', 'Chat language: follow my language', 'PR/MR language: English']);
   assert.equal(seen[0].navigator.groupHeaders, undefined);
   assert.equal(fs.existsSync(path.join(directory, FILE)), true);
 });
@@ -171,6 +171,22 @@ test('E16: provider choices are ask plus the registry ids; language choices diff
   assert.deepEqual(pickers[1].options, ['ask', 'English', screen.OTHER_LANGUAGE]);
   assert.deepEqual(pickers[2].options, ['follow my language', 'English', screen.OTHER_LANGUAGE]);
   assert.equal(fs.existsSync(path.join(directory, '.sai')), false, 'backing out of every picker writes nothing');
+});
+
+test('E10: the PR/MR language picker offers English and a typed language; English removes the key and a typed name is saved', async () => {
+  const directory = project();
+  const seen = [];
+  await editor(directory, [pick('pr.language'), screen.OTHER_LANGUAGE, BACK], [' español '], { seen }).runSection(LANGUAGE);
+  const picker = seen.find(call => call.question === 'PR/MR language:');
+  assert.deepEqual(picker.options, ['English', screen.OTHER_LANGUAGE]);
+  assert.deepEqual(writer.parseText(read(directory)).root, { pr: { language: 'español' } });
+  const shown = [];
+  await editor(directory, [pick('pr.language'), 'English', BACK], [], { seen: shown }).runSection(LANGUAGE);
+  assert.ok(texts(shown[0]).includes('PR/MR language: español'));
+  assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.pr ?? {}, 'language'), false);
+  const messages = [];
+  await editor(project(), [pick('pr.language'), screen.OTHER_LANGUAGE, BACK], ['none', 'Euskara'], { log: message => messages.push(message) }).runSection(LANGUAGE);
+  assert.equal(messages.filter(message => message.startsWith('Rejected')).length, 1);
 });
 
 test('E16: a rejected free-text language is asked again and an accepted one is saved in canonical form', async () => {
@@ -716,8 +732,8 @@ test('E9: Cache warming opens the warming flow from the main menu, and Back retu
   assert.deepEqual(warmingOf(directory), { claude: { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] } });
 });
 
-test('E12: the menus show only the six settings, none of the repository, project, organization, or publication keys', async () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
+test('E12: the menus show only the seven settings, none of the repository, project, organization, or publication keys', async () => {
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
   const seen = [];
   await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Exit'], seen);
   assert.deepEqual([...seen[1].options, ...seen[3].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));
