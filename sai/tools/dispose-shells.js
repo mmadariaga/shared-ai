@@ -38,6 +38,7 @@
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { resolveOpencode } = require('./opencode-launcher');
 
 const CHAIN_ID = /^[0-9a-f]{16}$/;
 const SESSION = /^[A-Za-z0-9_-]+$/;
@@ -53,7 +54,9 @@ const location = directory => `location[directory]=${encodeURIComponent(director
 
 /** One `opencode api` call: `{ ok, body }`, where `body` is the parsed JSON of a response that has one. */
 function defaultRun(method, apiPath) {
-  const result = spawnSync('opencode', ['api', method, apiPath], { encoding: 'utf8', timeout: CALL_TIMEOUT_MS });
+  const { command } = resolveOpencode();
+  if (command === null) return { ok: false };
+  const result = spawnSync(command, ['api', method, apiPath], { encoding: 'utf8', timeout: CALL_TIMEOUT_MS });
   if (result.error || result.status !== 0) return { ok: false };
   const text = result.stdout.trim();
   if (!text) return { ok: true };

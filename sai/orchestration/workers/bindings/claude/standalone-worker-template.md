@@ -8,7 +8,7 @@ to replace it, and what each message carries.
 
 Fetch `@sai/policies/opencode-dispatch.md`
 
-When its route query answers `opencode`, create, continue, and dispose the worker as that policy says, with the same ready prompt and the same messages, instead of the `Agent` and `SendMessage` calls below.
+Before every creation of the worker, a replacement included, run the route query of that policy (§ Route). The query reads the agent file, so never decide the route yourself. When it answers `opencode`, create, continue, and dispose the worker as that policy says, with the same ready prompt and the same messages, instead of the `Agent` and `SendMessage` calls below; when it answers `claude`, use those calls.
 
 Create the worker with the ready prompt alone. The returned agent ID is its
 handle for the whole run. A replacement worker is created with the same call.

@@ -18,7 +18,7 @@ metadata:
 
 Fetch `@sai/policies/opencode-dispatch.md`
 
-When the agent file carries `harness: opencode`, the route query of that policy decides the dispatch: an opencode-routed agent is created, continued, and disposed through it instead of the `Agent` call above.
+Before every creation of this agent, run the route query of that policy (§ Route). The query reads the agent file, so never decide the route yourself. It answers `claude`, and the `Agent` call above creates the agent, or `opencode`, and the policy creates, continues, and disposes the agent instead of that call.
 
 ## Model resolution
 

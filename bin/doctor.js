@@ -12,6 +12,7 @@ const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
 const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
+const { resolveOpencode } = require('../sai/tools/opencode-launcher');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
@@ -521,7 +522,7 @@ function defaultExecOpencode(args) {
   if (process.platform === 'win32') {
     return childProcess.spawnSync(['opencode', ...args].join(' '), { encoding: 'utf8', shell: true });
   }
-  return childProcess.spawnSync('opencode', args, { encoding: 'utf8' });
+  return childProcess.spawnSync(resolveOpencode().command, args, { encoding: 'utf8' });
 }
 
 function compareVersions(a, b) {
