@@ -5,13 +5,15 @@
 Quality bar for the `sai-1-spec` outcome: a capped, artifact-derived decision summary, proposal-to-spec self-consistency, and source-grounding of spec-pinned literals.
 
 ## Requirements
+
 ### Requirement: Decision summary printed at end of spec phase
 
-The `sai-1-spec` validation step's `## Completion` section (`sai/commands/spec/steps/validation.md`) SHALL define a structured decision summary that the worker returns as the `summary` of the phase's `completed` result and the coordinator prints before the mandatory stop message. The summary is derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — not from prior conversation.
+The `sai-1-spec` validation step's `## Completion` section (`sai/commands/spec/steps/validation.md`) SHALL define a structured decision summary that the worker returns as the `summary` of the phase's `completed` result and the coordinator prints before the mandatory stop message. The Scope and Requirements blocks are derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — not from prior conversation.
 
-The summary SHALL contain two blocks:
+The summary SHALL contain these blocks:
 - **Scope**: one line per capability listed in the proposal's Capabilities section (new and modified).
 - **Requirements**: one line per requirement across all spec files, grouped by capability.
+- **Assumptions**: one line per unsourced value and one line per difference between the block's value and the current code's value, kept from the specs step, in the forms `Unsourced value: <capability> / <scenario title>: <value>` and `Input differs from code: <capability> / <scenario title>: input <value>, code <value>`. The block is omitted when it is empty.
 
 #### Scenario: Summary printed before mandatory stop message
 - **WHEN** the worker returns the phase's `completed` result
@@ -19,11 +21,15 @@ The summary SHALL contain two blocks:
 
 #### Scenario: Summary respects hard line cap
 - **WHEN** the decision summary is composed
-- **THEN** the total output SHALL NOT exceed 15 lines (excluding blank separator lines)
+- **THEN** the total output SHALL NOT exceed 15 lines, excluding blank separator lines and the Assumptions lines
 
 #### Scenario: Summary is derived from artifacts, not conversation
 - **WHEN** the agent generates the decision summary
-- **THEN** every line in the summary SHALL trace to content in `proposal.md` or `specs/**/*.md` just written; no information from prior conversation SHALL appear
+- **THEN** every Scope and Requirements line SHALL trace to content in `proposal.md` or `specs/**/*.md` just written, every Assumptions line SHALL trace to a value the specs step kept, and no information from prior conversation SHALL appear
+
+#### Scenario: Assumptions block lists unsourced values and differences
+- **WHEN** the specs step kept one unsourced value and one input-versus-code difference
+- **THEN** the summary's Assumptions block SHALL contain exactly one `Unsourced value:` line and one `Input differs from code:` line, each naming the capability, the scenario title, and the value or values
 
 ### Requirement: One line per decision in summary
 
@@ -43,15 +49,19 @@ Each capability in the Scope block and each requirement in the Requirements bloc
 
 ### Requirement: Items omitted under the hard cap are signaled
 
-When the total count of scope and requirements items would exceed the hard 15-line cap, the agent SHALL compress by trimming only the largest block(s) (preserving the highest-priority items — capabilities before requirements), reserve one slot for a single trailing signal line of the form `+N more — see openspec/changes/{name}/specs/**` (where N is the count of omitted items), and emit that signal line as the last line of the summary block. Silent drops are forbidden.
+When the total count of scope and requirements items would exceed the hard 15-line cap, the agent SHALL compress by trimming only the largest block(s) (preserving the highest-priority items — capabilities before requirements), reserve one slot for a single trailing signal line of the form `+N more — see openspec/changes/{name}/specs/**` (where N is the count of omitted items), and emit that signal line as the last line of the summary block. Silent drops are forbidden. Assumptions lines SHALL NOT count toward the cap and SHALL never be trimmed.
 
 #### Scenario: Overflow produces a signal line
 - **WHEN** the change has more than 15 scope+requirements items combined
-- **THEN** the summary SHALL print up to 14 content lines plus one `+N more — see …` line, never exceeding 15 non-blank lines total, and SHALL NOT silently omit items without the signal
+- **THEN** the summary SHALL print up to 14 content lines plus one `+N more — see …` line, never exceeding 15 non-blank lines total excluding Assumptions lines, and SHALL NOT silently omit items without the signal
 
 #### Scenario: No overflow when items fit
 - **WHEN** the change has 15 or fewer scope+requirements items combined
 - **THEN** the summary SHALL print exactly one line per item with no `+N more` signal
+
+#### Scenario: Assumptions lines are never trimmed
+- **WHEN** the change has more than 15 scope+requirements items and the specs step kept 3 assumptions
+- **THEN** the summary SHALL print all 3 Assumptions lines in addition to the at most 15 capped lines
 
 ### Requirement: Proposal-to-spec self-consistency gate at Completion
 
@@ -142,3 +152,71 @@ The warning is additive and SHALL NEVER be silently swallowed, and it SHALL be s
 #### Scenario: No literal, no read
 - **WHEN** the specs written during the change pin no preserved or ambiguous literal
 - **THEN** the agent SHALL NOT perform any source-grounding read
+
+### Requirement: Exact observable values in spec scenario THEN clauses
+
+The spec worker's specs step (`sai/commands/spec/steps/specs.md`, section `## Exact values in scenarios`) SHALL require that each scenario's THEN states the exact observable values its behavior produces: a literal a test can compare the output with, such as a status or error code, a header, a configuration key, a field name, or an output format. The rule SHALL NOT change any scenario title, because `sai/tools/scenario-coverage.js` links tests to scenarios by normalized title. The worker SHALL NOT ask the coordinator a question for an unsourced value. A refinement run SHALL apply the rule to every scenario of the change's delta specs, including the scenarios the feedback does not touch.
+
+#### Scenario: Sourced value is written literally
+- **WHEN** the Ready to Propose block or the repository gives the exact observable value a behavior produces
+- **THEN** the scenario's THEN SHALL carry that value literally, as the source states it, for every such value the behavior produces, and the literal SHALL stay under Rule #2 of `sai/commands/spec/steps/common.md`
+
+#### Scenario: Per-run value is stated by its format
+- **WHEN** a behavior produces a value that varies per run, such as a timestamp or a generated identifier
+- **THEN** the scenario's THEN SHALL state the value's format, such as `ISO 8601` or `UUID v4`, instead of a literal value
+
+#### Scenario: Behavior without an exact value keeps its THEN
+- **WHEN** a behavior produces no exact observable value, such as an ordering or the presence of an element
+- **THEN** the scenario's THEN SHALL stay as written
+
+#### Scenario: Unsourced value follows project conventions
+- **WHEN** a behavior needs an exact observable value that neither the block nor the repository provides
+- **THEN** the spec worker SHALL write a value that follows the project's conventions in the THEN and SHALL keep the capability, the scenario title, and the value for the decision summary's `Unsourced value:` line
+
+#### Scenario: Input value differs from the code value
+- **WHEN** the block's value for a behavior differs from the value the current code produces
+- **THEN** the scenario's THEN SHALL carry the block's value, and the spec worker SHALL keep both values for the decision summary's `Input differs from code:` line
+
+#### Scenario: Scenario titles stay unchanged
+- **WHEN** the spec worker makes a THEN exact under this rule
+- **THEN** the scenario's `#### Scenario:` title SHALL stay byte-identical
+
+#### Scenario: Refinement covers untouched scenarios
+- **WHEN** a refinement run applies feedback that touches only some scenarios of the change's delta specs
+- **THEN** the spec worker SHALL apply the exact-value rule to every scenario of those delta specs, including the untouched ones
+
+### Requirement: Spec review reports inexact THEN clauses
+
+The **Review criteria** paragraph of `sai/commands/spec/coordinator.md` SHALL include the exactness of each scenario's THEN as a criterion, with severity per `sai/policies/artifact-review-contract.md` § Severity, which this change leaves unchanged. On refinement the criterion SHALL cover every scenario of the change's delta specs, including the untouched ones.
+
+#### Scenario: Inexact THEN is a Medium finding
+- **WHEN** the review finds a THEN that cannot be checked against a concrete value while its behavior has one
+- **THEN** the review SHALL report a `Medium` finding
+
+#### Scenario: Untestable THEN is a High finding
+- **WHEN** an inexact THEN leaves the required behavior too untestable to implement reliably
+- **THEN** the review SHALL report a `High` finding
+
+#### Scenario: Exempt THEN clauses raise no finding
+- **WHEN** a THEN belongs to a behavior that produces no exact value, states the format of a per-run value, or carries a conventional value the worker declared as an assumption
+- **THEN** the review SHALL report no exactness finding for that THEN
+
+#### Scenario: Refinement review covers untouched scenarios
+- **WHEN** the review runs on a refinement of an existing change
+- **THEN** the exactness criterion SHALL cover every scenario of the change's delta specs, including the scenarios the refinement did not touch
+
+### Requirement: Decision-summary assumptions recorded by the spec coordinator
+
+When an accepted spec worker report's decision summary carries `Assumptions` lines, the spec coordinator (`sai/commands/spec/coordinator.md`, **Decision-summary assumptions**) SHALL append each line to `assumptions.md` in the run directory and SHALL emit `record` (`assumption`) the first time that file is written. The closing report SHALL list these lines among the assumptions, and the review SHALL NOT treat them as excess scope. The worker report schema in `sai/tools/worker-report-validator.js` stays unchanged.
+
+#### Scenario: Unsourced value is recorded with source judgment
+- **WHEN** the decision summary carries a line `Unsourced value: <capability> / <scenario title>: <value>`
+- **THEN** the coordinator SHALL append it to `assumptions.md` with the source `judgment`
+
+#### Scenario: Input-versus-code difference is recorded with the block as source
+- **WHEN** the decision summary carries a line `Input differs from code: <capability> / <scenario title>: input <value>, code <value>`
+- **THEN** the coordinator SHALL append it to `assumptions.md` with the source `Ready to Propose block`
+
+#### Scenario: First assumption write emits the record event
+- **WHEN** the coordinator writes `assumptions.md` for the first time in the run
+- **THEN** it SHALL emit `record` with `assumption`, and later appends SHALL NOT emit it again
