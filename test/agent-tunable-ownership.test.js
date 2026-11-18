@@ -386,6 +386,26 @@ test('E11 a hand-set harness line in a Claude Code agent file is a user-owned tu
   }
 });
 
+test('E7 the harness line that setup writes stays a user-owned tunable, and setup removes it again', () => {
+  const { patchFrontmatter } = require('../bin/model-customization.js');
+  const keys = flow.CLAUDE_TUNABLE_KEYS;
+  const source = '---\nname: sai-demo-worker\nmodel: source-model\neffort: source-effort\ntools: Read\n---\n\nbody\n';
+  const routed = patchFrontmatter(source, keys, { harness: 'opencode' });
+  assert.ok(routed.includes('\nharness: opencode\n'));
+  assert.ok(flow.managedDefinitionBytes(Buffer.from(source), keys).equals(flow.managedDefinitionBytes(Buffer.from(routed), keys)),
+    'the line setup writes is no drift for doctor');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-setup-harness-'));
+  try {
+    const divergent = installTunableSeed(dir, source.replace('body', 'new body'), routed);
+    assert.ok(divergent.includes('harness: opencode') && divergent.includes('new body'), 'a reinstall keeps the routing');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  // Choosing a Claude model removes the line, so the file is the factory shape again.
+  assert.equal(patchFrontmatter(routed, keys, { model: 'source-model', effort: 'source-effort' }), source);
+  assert.ok(!/^harness:/m.test(source), 'the installer itself still writes no default line');
+});
+
 test('E11 the shipped Claude Code agent sources and generated agents carry no harness line', () => {
   const root = path.resolve(__dirname, '..');
   for (const name of ['budget-explorer', 'budget-executor', 'budget-subagent', 'worker-template']) {

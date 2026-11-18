@@ -236,6 +236,7 @@ The target checklist SHALL keep stable family-prefixed selection values separate
 
 ### Requirement: Claude settings selection
 For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST present dependent navigable single-select screens in this order: `Model for <subset>:` followed by `Effort for <subset>:`. Model options MUST be unique model identifiers derived from valid entries in the adapter-owned static Claude settings catalog. The effort screen MUST offer only effort values belonging to the selected model; for a model entry without an `efforts` array, it MUST offer exactly one display option, `Default (no effort)`. The built-in catalog MUST contain `haiku` with exactly `low`, `medium`, `high`, `xhigh`, and `max`, so the built-in Haiku selection MUST NOT offer a model-only row or `Default (no effort)`. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only injected catalog entry. Legacy `{ model: 'haiku' }` settings are accepted separately for loading existing configurations and are not produced by the built-in Haiku selector. `Default (no effort)` MUST NOT become an effort value, and Haiku MUST NOT return `effort: default`.
+When at least one selected target is an agent file (an AGENT or WORKER row), the model screen MUST list `OpenCode passthrough` before the catalog models; it is a routing choice, not a catalog member. Choosing it MUST skip the effort screen and return exactly `{ harness: 'opencode' }`, which the post-setup menu SHALL accept as a valid setting and forward to the persistent local-override operation. When no selected target is an agent file, the model screen MUST NOT offer it.
 Back navigation from the effort screen MUST reopen the model screen. Selecting a model after navigating back MUST derive its effort options anew without retaining another model's effort selection. Back navigation from the model screen MUST return control to target selection. Cancellation on either screen MUST return the cancellation outcome without saving the current selection.
 If the catalog is unavailable or contains no valid model entries, or the selector returns a null or invalid setting, the post-setup menu SHALL return status `failed` with a diagnostic naming the cause and SHALL configure no target on that path. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation only after both screens complete. The OpenCode adapter MUST continue to use its existing dependent provider-to-model-to-variant selection rather than the Claude static catalog.
 #### Scenario: Static Claude catalog contains the current model and effort set
@@ -271,6 +272,9 @@ If the catalog is unavailable or contains no valid model entries, or the selecto
 #### Scenario: Invalid screen choices produce no settings
 - **WHEN** either Claude screen returns a choice absent from its displayed catalog-derived options
 - **THEN** the selector SHALL return no usable settings and SHALL NOT configure any target
+#### Scenario: OpenCode passthrough returns a routing-only setting
+- **WHEN** a Claude Code subset that includes an AGENT or WORKER row reaches settings selection and the user confirms `OpenCode passthrough` on the model screen
+- **THEN** the selector SHALL return exactly `{ harness: 'opencode' }` without presenting the effort screen
 
 ### Requirement: Cyclic post-setup customization passes
 
@@ -537,10 +541,13 @@ The reset-targets screen SHALL enumerate All targets via enumerateTargets plus b
 - **THEN** each row SHALL display the factory model plus effort/variant setting with plain-text unavailable fallback and no ANSI wrappers
 
 ### Requirement: Tunable-only factory restore
-The reset operation SHALL read factory tunables from the installed global source and patch only model plus effort/variant into the existing project-local file via patchFrontmatter plus atomicReplace, preserving remaining local content and reporting persisted, skipped, or persistence-failed with Post-setup customization diagnostics.
+The reset operation SHALL read factory tunables from the installed global source and patch only model plus effort/variant into the existing project-local file via patchFrontmatter plus atomicReplace, removing a Claude Code agent file's `harness:` line because the factory definition carries none, and preserving remaining local content and reporting persisted, skipped, or persistence-failed with Post-setup customization diagnostics.
 #### Scenario: Selected reset targets are restored from factory sources
 - **WHEN** confirmed reset targets are processed for the selected harness
 - **THEN** each target SHALL have only its tunable keys overwritten from the global source while non-tunable local content is preserved
+#### Scenario: Claude Code reset removes the routing line
+- **WHEN** a confirmed Claude Code reset target's local agent file carries `harness: opencode`
+- **THEN** the restored file SHALL carry the factory model and effort and no `harness:` line
 
 ### Requirement: Reset pass outcome and menu re-entry
 A reset pass with zero persistence-failed results SHALL return to Post-setup customization while a pass with failures SHALL terminate without re-entry, with empty sets returning to harness selection, per-target skips continuing the pass, and Exit returning the final skipped/cancelled outcome.

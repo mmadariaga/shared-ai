@@ -134,7 +134,7 @@ Doctor SHALL compare compiled managed agent content using the body-and-non-tunab
 
 ### Requirement: No shipped Claude agent carries the harness key
 
-No Claude Code agent source, agent template, or generated Claude Code agent SHALL carry a `harness:` frontmatter line. The user SHALL set it by hand, and install SHALL preserve a hand-set line as a tunable.
+No Claude Code agent source, agent template, or generated Claude Code agent SHALL carry a `harness:` frontmatter line, and installation SHALL NOT write a default `harness:` line. The line SHALL be set only by the user: by hand, or by the setup "Customize models" menu when the user chooses `OpenCode passthrough`, which also removes it when the user chooses a Claude model or resets to default models. Install SHALL preserve the line as a tunable, whichever way it was set.
 
 #### Scenario: Shipped sources carry no harness line
 - **WHEN** the Claude Code agent sources, the worker template, and the generated Claude Code agents are read
@@ -143,3 +143,7 @@ No Claude Code agent source, agent template, or generated Claude Code agent SHAL
 #### Scenario: Hand-set harness line survives install
 - **WHEN** a user adds `harness: opencode` to an installed Claude Code agent file and installation runs again
 - **THEN** the destination keeps the `harness: opencode` line while its managed content is updated
+
+#### Scenario: Setup-written harness line survives install
+- **WHEN** setup writes `harness: opencode` in a Claude Code agent file and installation runs again with a changed managed body
+- **THEN** the destination keeps the `harness: opencode` line and doctor reports no drift for it

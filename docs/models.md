@@ -13,7 +13,8 @@ Each query has a 30-second limit. While it runs, **Esc** goes back and **q** or
 no model settings and retains the selected targets for an explicit retry. Cleanup
 targets only the query's own process tree and has a one-second wait limit.
 Time spent choosing a provider, model, or variant does not count toward a query's
-limit. Claude Code's model and effort selection is unchanged.
+limit. Claude Code's model and effort selection is unchanged; its agent rows also
+offer **OpenCode passthrough** (see [below](#run-a-claude-code-agent-on-an-opencode-model)).
 
 The opencode defaults below balance cost and reasoning demand. The command
 coordinates the run; its worker does the technical work. Configure these roles
@@ -95,8 +96,9 @@ presets and project model selections stay unchanged until you apply a preset.
 
 Command and agent instructions remain managed even after you select a different
 model. Installation preserves the selected `model` and `effort` (Claude Code),
-or `model` and `variant` (opencode), a `harness: opencode` line that you add by
-hand to a Claude Code agent file (see below), and the exact text after
+or `model` and `variant` (opencode), the `harness: opencode` line of a Claude Code
+agent file, whether you chose **OpenCode passthrough** in setup or added it by
+hand (see below), and the exact text after
 `<!-- User customizations below this line -->`. The rest of each definition is
 replaced. Legacy files without the marker retain only their tunables, with no
 backup of other edits. OpenCode commands keep the variant in `model#variant`;
@@ -120,15 +122,41 @@ separate model selection in this menu.
 ## Run a Claude Code agent on an OpenCode model
 
 With Claude Code as your harness, you can run any agent on the model of its
-OpenCode agent. Add one line to the agent's frontmatter in
-`~/.claude/agents/<name>.md` (or the project's `.claude/agents/<name>.md`):
+OpenCode agent. In `setup`, choose **Customize models**, then **Claude Code**,
+select agent rows (AGENT and WORKER), and pick **OpenCode passthrough** as the
+first setting option. Setup then writes one line in the project's
+`.claude/agents/<name>.md`:
 
 ```yaml
 harness: opencode
 ```
 
-The installer never writes this line, keeps it across installs, and `doctor`
-reports no drift for it. A Claude Code coordinator then runs that agent with
+You can also add the line by hand to `~/.claude/agents/<name>.md` or to the
+project file. Setup writes it only when you choose **OpenCode passthrough**;
+installation never writes a default `harness:` line, keeps the line across
+installs, and `doctor` reports no drift for it.
+
+The option only routes the agent. It leaves the `model` and `effort` lines of
+the Claude Code file as they are, because the runtime uses them as the fallback
+model, and it does not edit OpenCode configuration: configure the routed model in
+the OpenCode screen of the same menu, on the agent of the same name. The SETTING
+column of a routed row reads `-> opencode: <model> (<variant>)` from that
+OpenCode agent file, or `-> opencode: (unresolved)` when the file cannot be read
+(for example an agent defined only in `opencode.json`, which still routes at
+runtime). ORCHESTRATOR and UTILITY rows are command wrappers and are never
+routed; in a selection that mixes both kinds, the option applies to the agent rows
+only and a warning names the others. If the `opencode` command or the same-named
+OpenCode agent is missing, setup still writes the line and warns, naming the agent
+and the missing piece.
+
+Choosing a Claude model on a routed row writes `model` and `effort` and removes
+the `harness:` line. **Reset to default models** also removes it. **Save preset**
+records for each Claude Code agent whether it is routed (`"harness": "opencode"`
+or `null`), and **Load preset** writes or removes the line from that value; an
+entry of an older preset without the value leaves the line as it is. The OpenCode
+screen of the menu is unchanged.
+
+A Claude Code coordinator then runs that agent with
 `opencode run --format json`, one process per turn, and continues it with the
 session ID. OpenCode must be installed and must have an agent of the same name;
 the model, variant, permissions, and tools come from that OpenCode agent, not
