@@ -6,9 +6,9 @@ Terms. **opencode-routed agent**: an agent whose Claude Code agent file carries 
 
 ## Route
 
-Before creating an agent, resolve `sai/tools/opencode-dispatch.js` (`<dispatch-path>`) per `@sai/policies/tool-resolution.md` and run `node <dispatch-path> route --agent <name> --cwd <project-root>`. It prints `{route, cause, agent, notice?}`:
+Before creating an agent, every time and with no check of the agent file first, resolve `sai/tools/opencode-dispatch.js` (`<dispatch-path>`) per `@sai/policies/tool-resolution.md` and run `node <dispatch-path> route --agent <name> --cwd <project-root>`. It prints `{route, cause, agent, notice?}`:
 
-- `claude`: dispatch through the `Agent` tool exactly as the dispatch site says. An agent file without the `harness:` key, or with `harness: claude`, always takes this branch. When the answer carries a `notice` (the `opencode` command is missing, or it has no agent of that name), print it once as one visible message.
+- `claude`: dispatch through the `Agent` tool exactly as the dispatch site says. An agent file without the `harness:` key, or with `harness: claude`, always takes this branch. When the answer carries a `notice` (the `opencode` command is missing, its shim names no executable that exists, or it has no agent of that name), print it once as one visible message.
 - `opencode`: dispatch as below.
 
 The route is asked again for every created worker, a replacement included. A continuation follows the route its worker was created with.

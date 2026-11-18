@@ -9,7 +9,8 @@
  * turn, so the model comes from the OpenCode agent of the same name. The tool decides the route, runs one turn, and
  * prints one JSON object. It never passes `--auto`: an `ask` permission is rejected without hanging the turn. It never
  * opens a shell: the worker message travels as one `spawn` argument, after `--`, so free text is never re-quoted and a
- * message that starts with `--` is never read as an option.
+ * message that starts with `--` is never read as an option. The command it spawns is the one `opencode-launcher.js`
+ * resolves, which on Windows is the `.exe` behind npm's `.cmd` shim.
  *
  *   node opencode-dispatch.js route --agent <name> [--cwd <project-root>]
  *   node opencode-dispatch.js start --agent <name> --input-file <path> [--cwd <project-root>]
@@ -34,6 +35,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { extractInputFile, readInputFile, InputFileError } = require('./input-reader');
+const { resolveOpencode, SHIM_UNRESOLVED } = require('./opencode-launcher');
 
 const AGENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SESSION = /^[A-Za-z0-9_-]+$/;
@@ -76,12 +78,17 @@ function readAgentFile(agent, cwd, root) {
   return null;
 }
 
-/** `opencode --version` and `opencode debug agents`, run without a shell: `{ available, agents }`, `agents` null on failure. */
+/**
+ * `opencode --version` and `opencode debug agents`, run without a shell through the opencode launcher:
+ * `{ available, agents }`, `agents` null on failure. An unavailable opencode may add the launcher's `cause` and `shim`.
+ */
 function defaultProbe(cwd) {
+  const launched = resolveOpencode();
+  if (launched.command === null) return { available: false, agents: null, cause: launched.cause, shim: launched.shim };
   const options = { cwd, encoding: 'utf8', timeout: PROBE_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'pipe'] };
-  const version = spawnSync('opencode', ['--version'], options);
+  const version = spawnSync(launched.command, ['--version'], options);
   if (version.error || version.status !== 0) return { available: false, agents: null };
-  const listing = spawnSync('opencode', ['debug', 'agents'], options);
+  const listing = spawnSync(launched.command, ['debug', 'agents'], options);
   if (listing.error || listing.status !== 0) return { available: true, agents: null };
   try {
     const parsed = JSON.parse(listing.stdout);
@@ -93,20 +100,22 @@ function defaultProbe(cwd) {
 
 const FALLBACK_CAUSES = {
   'opencode-missing': 'the opencode command is not available',
+  [SHIM_UNRESOLVED]: 'the opencode shim does not name an executable that exists',
   'opencode-agent-missing': 'opencode has no agent of that name',
   'opencode-agents-unavailable': 'opencode did not list its agents',
 };
 
-function fallback(agent, cause) {
+function fallback(agent, cause, shim) {
+  const detail = shim ? ` (${shim})` : '';
   return {
     route: 'claude', cause, agent,
-    notice: `Agent ${agent} is set to run through opencode, but ${FALLBACK_CAUSES[cause]}. It runs through Claude Code with the model of its Claude Code agent file.`,
+    notice: `Agent ${agent} is set to run through opencode, but ${FALLBACK_CAUSES[cause]}${detail}. It runs through Claude Code with the model of its Claude Code agent file.`,
   };
 }
 
 /** The fallback cause of `agent` against one probe result, or `null` when opencode can run it. */
-function missingCause(agent, { available, agents }) {
-  if (!available) return 'opencode-missing';
+function missingCause(agent, { available, agents, cause }) {
+  if (!available) return cause ?? 'opencode-missing';
   if (agents === null) return 'opencode-agents-unavailable';
   if (!agents.includes(agent)) return 'opencode-agent-missing';
   return null;
@@ -129,8 +138,9 @@ function route({ agent, cwd }, { root = claudeRoot, probe = defaultProbe } = {})
   const harness = harnessOf(text);
   if (harness === null) return { route: 'claude', cause: 'no-harness-key', agent };
   if (harness !== 'opencode') return { route: 'claude', cause: 'harness-not-opencode', agent };
-  const cause = missingCause(agent, probe(cwd));
-  if (cause !== null) return fallback(agent, cause);
+  const result = probe(cwd);
+  const cause = missingCause(agent, result);
+  if (cause !== null) return fallback(agent, cause, result.shim);
   return { route: 'opencode', cause: 'harness-opencode', agent };
 }
 
@@ -176,7 +186,13 @@ function readEvents(stdout) {
 /** One `opencode run` process, never through a shell and never with a stdin to wait on: `{ status, stdout, error }`. */
 function defaultRun(args, cwd) {
   return new Promise(resolve => {
-    const child = spawn('opencode', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const launched = resolveOpencode();
+    if (launched.command === null) {
+      const detail = launched.shim ? ` (${launched.shim})` : '';
+      resolve({ status: null, stdout: '', error: `${FALLBACK_CAUSES[launched.cause]}${detail}` });
+      return;
+    }
+    const child = spawn(launched.command, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     const chunks = [];
     let failure = null;
     let settled = false;

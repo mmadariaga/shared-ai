@@ -7,7 +7,7 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 
 ### Requirement: Route by the hand-set harness key
 
-`sai/tools/opencode-dispatch.js route --agent <name> [--cwd <project-root>]` SHALL print one JSON object `{route, cause, agent, notice?}` and exit 0. It SHALL read the `harness:` key from the frontmatter of the agent file Claude Code resolves, `<project-root>/.claude/agents/<name>.md` first and then the `agents/` directory of the Claude Code global root. It SHALL answer `route: opencode` only when that key's value is `opencode`, the `opencode` binary runs, and opencode lists an agent of the same name. Every other case SHALL answer `route: claude`.
+`sai/tools/opencode-dispatch.js route --agent <name> [--cwd <project-root>]` SHALL print one JSON object `{route, cause, agent, notice?}` and exit 0. It SHALL read the `harness:` key from the frontmatter of the agent file Claude Code resolves, `<project-root>/.claude/agents/<name>.md` first and then the `agents/` directory of the Claude Code global root. It SHALL answer `route: opencode` only when that key's value is `opencode`, the opencode command that `sai/tools/opencode-launcher.js` resolves runs, and opencode lists an agent of the same name. Every other case SHALL answer `route: claude`. When the launcher resolves an `opencode` shim that names no executable that exists, the cause SHALL be `opencode-shim-unresolved` and the `notice` SHALL name the shim path, so a broken resolution is never reported as a missing install. The setup passthrough warning SHALL use the same probe, so setup and the route query report the same cause for the same machine.
 
 #### Scenario: Agent file without the key or with harness claude
 - **WHEN** the resolved agent file carries no `harness:` key, or carries `harness: claude`
@@ -25,9 +25,13 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 - **WHEN** the agent file carries `harness: opencode` and the `opencode` binary is missing, opencode lists no agent of that name, or opencode does not list its agents
 - **THEN** the route is `claude` with a `notice` that names the agent and the cause
 
+#### Scenario: Unresolved shim falls back with its own cause
+- **WHEN** the agent file carries `harness: opencode` and the launcher finds an `opencode` shim whose `.exe` it cannot read or that does not exist, such as a pnpm, yarn, or scoop shim or a `.ps1`-only install
+- **THEN** the route query and the setup passthrough warning both report the cause `opencode-shim-unresolved`, the route is `claude`, and the `notice` names the shim path
+
 ### Requirement: One opencode run turn per message
 
-`opencode-dispatch.js start --agent <name> --input-file <path>` and `continue --session <sessionID> --input-file <path> [--agent <name>]` SHALL each run exactly one `opencode run --format json` process, never through a shell, never with `--auto`, and without input to wait on. The message SHALL reach opencode exactly as the input file holds it, as the single argument after `--`. Each command SHALL print one JSON object `{status, sessionID, text, tokens, cost, exit_code, error}`, where `sessionID` is the one of the first output event, `text` is the text of the turn's last message, and `tokens` and `cost` sum the turn's steps. A turn SHALL be `failed` on a non-zero exit, an `error` event, or, for `start`, no `sessionID`. The tool SHALL exit 0 for `ok`, 1 for `failed`, and 2 for a usage error, and stopping the tool SHALL stop its `opencode run` process.
+`opencode-dispatch.js start --agent <name> --input-file <path>` and `continue --session <sessionID> --input-file <path> [--agent <name>]` SHALL each run exactly one `opencode run --format json` process, launched as the command `sai/tools/opencode-launcher.js` resolves, never through a shell, never with `--auto`, and without input to wait on. The message SHALL reach opencode exactly as the input file holds it, as the single argument after `--`. Each command SHALL print one JSON object `{status, sessionID, text, tokens, cost, exit_code, error}`, where `sessionID` is the one of the first output event, `text` is the text of the turn's last message, and `tokens` and `cost` sum the turn's steps. A turn SHALL be `failed` on a non-zero exit, an `error` event, a launcher that resolves no command, or, for `start`, no `sessionID`. The tool SHALL exit 0 for `ok`, 1 for `failed`, and 2 for a usage error, and stopping the tool SHALL stop its `opencode run` process.
 
 #### Scenario: Message starting with double dash passes intact
 - **WHEN** the input file holds a message whose first line starts with `--`
@@ -47,11 +51,11 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 
 ### Requirement: Dispatch policy is the single source
 
-`sai/policies/opencode-dispatch.md` SHALL be the single source for how a Claude Code coordinator, or a Claude Code worker that dispatches helpers, creates, continues, and disposes an opencode-routed agent. The Claude Code routed-worker binding template, the three Claude Code budget skills, and the design overview step SHALL point to it instead of restating it. With opencode as the main harness, dispatch SHALL stay as each card and skill write it, and opencode dispatch sites and templates SHALL NOT carry the routing key.
+`sai/policies/opencode-dispatch.md` SHALL be the single source for how a Claude Code coordinator, or a Claude Code worker that dispatches helpers, creates, continues, and disposes an opencode-routed agent. The Claude Code routed-worker binding template, the three Claude Code budget skills, the design overview step, and the Claude Code creation step of explore's explorer two-phase startup SHALL point to it instead of restating it, and each SHALL state the route query of that policy as an unconditional step before every creation of the agent, a replacement included, without reading the agent file to decide whether the route applies: the `Agent` call creates the agent when the query answers `claude`, and the policy creates, continues, and disposes it when the query answers `opencode`. With opencode as the main harness, dispatch SHALL stay as each card and skill write it, and opencode dispatch sites and templates SHALL NOT carry the routing key.
 
 #### Scenario: Dispatch sites point to the policy
-- **WHEN** the Claude Code standalone worker binding template, the Claude Code `budget-explorer`, `budget-executor`, and `budget-subagent` skills, and `sai/commands/design/steps/overview.md` are read
-- **THEN** each points to `sai/policies/opencode-dispatch.md` for an agent whose file carries `harness: opencode`
+- **WHEN** the Claude Code standalone worker binding template, the Claude Code `budget-explorer`, `budget-executor`, and `budget-subagent` skills, `sai/commands/design/steps/overview.md`, and the Claude Code creation step of § Explorer two-phase startup in `sai/commands/explore/body.md` are read
+- **THEN** each points to `sai/policies/opencode-dispatch.md` and states its route query as an unconditional step before the agent is created, never conditional on the agent file
 
 #### Scenario: opencode as main harness is unchanged
 - **WHEN** the opencode dispatch sites and templates are read
@@ -124,3 +128,31 @@ The `coordinator` capability profile of `sai/install-manifest.json` SHALL allow 
 #### Scenario: Coordinator profile shell rules
 - **WHEN** the `coordinator` profile's shell rules are read
 - **THEN** they include `node {sai}/tools/opencode-dispatch.js *`
+
+### Requirement: One opencode launcher for every opencode spawn
+
+`sai/tools/opencode-launcher.js` SHALL decide which opencode executable runs, and every SAI tool under `sai/tools/` and `bin/` that starts opencode SHALL spawn the command it returns, without a shell: the route probe and the `start` and `continue` turns of `sai/tools/opencode-dispatch.js`, the setup passthrough warning that shares that probe, and the `opencode api` calls of `sai/tools/dispose-shells.js`. Its resolution SHALL take the platform, the environment, and the file-system reads as injectable inputs. On Linux and macOS the command SHALL be `opencode`, found on `PATH` by the spawn itself. On Windows the launcher SHALL walk the `PATH` directories in order without spawning a process, and in the first directory that holds an `opencode` entry SHALL take `opencode.exe` when present, otherwise the first quoted `.exe` path that `opencode.cmd` names, with a leading `%dp0%` or `%~dp0` replaced by the shim's directory and `node.exe` skipped, accepted only when that `.exe` exists. It SHALL skip an extensionless entry. A `.cmd` shim whose `.exe` cannot be read or does not exist, and an `opencode.ps1` entry without a `.exe` or `.cmd`, SHALL resolve to no command with the cause `opencode-shim-unresolved` and the shim path; no entry on `PATH` SHALL resolve to no command with the cause `opencode-missing`. A tool that receives no command SHALL start no process: `dispose-shells.js` SHALL treat the call as unanswered, and a `start` or `continue` turn SHALL fail with the cause and the shim path.
+
+#### Scenario: Linux and macOS keep the PATH command
+- **WHEN** the launcher resolves opencode on a platform other than `win32`
+- **THEN** the command is `opencode` with no shim and no cause
+
+#### Scenario: Windows executable on PATH runs directly
+- **WHEN** on Windows the first `PATH` directory with an `opencode` entry holds `opencode.exe`
+- **THEN** the launcher returns that `.exe` as the command, and `PATH` order decides which install runs
+
+#### Scenario: npm cmd shim resolves to the executable it names
+- **WHEN** on Windows the first `PATH` directory with an `opencode` entry holds an npm `opencode.cmd` whose quoted `.exe` path starts with `%dp0%` or `%~dp0`, beside an extensionless sh shim, in a directory whose path may contain spaces
+- **THEN** the launcher returns the `.exe` under the shim's own directory, skips the extensionless shim, and the worker message reaches opencode as one argument, byte for byte, including line breaks, `%`, `^`, and quotes
+
+#### Scenario: No opencode entry on PATH
+- **WHEN** on Windows no `PATH` directory holds an `opencode` entry, whatever the case of the `PATH` key
+- **THEN** the launcher returns no command with the cause `opencode-missing`
+
+#### Scenario: Turns and stops use the same launcher
+- **WHEN** the route query answers `opencode`
+- **THEN** the `start` and `continue` turns and the `dispose-shells.js` calls launch the command the same launcher resolves
+
+#### Scenario: Guard against a direct opencode spawn
+- **WHEN** a file under `sai/tools/` or `bin/` other than the launcher calls `spawn`, `spawnSync`, `execFile`, or `execFileSync` with the literal `'opencode'` as its first argument
+- **THEN** the guard test fails
