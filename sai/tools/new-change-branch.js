@@ -48,9 +48,37 @@ function name(cwd, input) {
   return branch;
 }
 
-function inspect(cwd) {
+const FETCH_TIMEOUT_MS = 30000;
+
+function fetchEnvironment(cwd) {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  if (!env.GIT_SSH_COMMAND && !git(cwd, ['config', '--get', 'core.sshCommand']).out) env.GIT_SSH_COMMAND = 'ssh -o BatchMode=yes';
+  return env;
+}
+
+function fetchFailure(result) {
+  if (result.error) return result.error.code === 'ETIMEDOUT' ? 'timeout' : result.error.message;
+  return (result.stderr || '').split('\n').map((line) => line.trim()).find(Boolean) || `git fetch exited with status ${result.status}`;
+}
+
+function refreshRemotes(cwd) {
+  const remotes = required(cwd, ['remote']).split('\n').filter(Boolean);
+  const env = fetchEnvironment(cwd);
+  const failed = [];
+  for (const remote of remotes) {
+    const result = spawnSync('git', ['fetch', '--prune', '--', remote], {
+      cwd, env, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], timeout: FETCH_TIMEOUT_MS,
+    });
+    if (result.error || result.status !== 0) failed.push({ remote, reason: fetchFailure(result) });
+  }
+  const status = !remotes.length ? 'none' : !failed.length ? 'updated' : failed.length === remotes.length ? 'failed' : 'partial';
+  return { status, failed };
+}
+
+function inspect(cwd, options = {}) {
   const head = commit(cwd, 'HEAD');
   if (busy(cwd)) throw new Error('A merge or rebase is in progress. Finish it before creating a branch.');
+  const fetch = options.fetch === false ? undefined : refreshRemotes(cwd);
   const current = git(cwd, ['symbolic-ref', '--quiet', 'HEAD']).out || null;
   const refs = required(cwd, ['for-each-ref', '--format=%(refname)\t%(objectname)\t%(symref)', 'refs/heads', 'refs/remotes'])
     .split('\n').filter(Boolean).map((line) => {
@@ -63,9 +91,9 @@ function inspect(cwd) {
     const match = refs.find((r) => r.ref !== current && r.sha === sha);
     if (match) { parent = match.ref; break; }
   }
-  const options = [current, parent, ...refs.filter((r) => r.ref.endsWith('/main')).map((r) => r.ref),
+  const bases = [current, parent, ...refs.filter((r) => r.ref.endsWith('/main')).map((r) => r.ref),
     ...refs.filter((r) => r.ref.endsWith('/master')).map((r) => r.ref)].filter(Boolean);
-  return { status: 'ready', head, current: active(cwd), parent, bases: [...new Set(options)] };
+  return { status: 'ready', head, current: active(cwd), parent, bases: [...new Set(bases)], ...(fetch && { fetch }) };
 }
 
 function execute(operation, input = {}, cwd = process.cwd()) {
@@ -74,7 +102,7 @@ function execute(operation, input = {}, cwd = process.cwd()) {
   try {
     if (input.cancelled === true) return { status: 'cancelled', created: false, active_branch: active(cwd) };
     required(cwd, ['rev-parse', '--show-toplevel']);
-    if (operation === 'inspect') return inspect(cwd);
+    if (operation === 'inspect') return inspect(cwd, input);
     if (operation === 'name') return { status: 'ready', branch: name(cwd, input) };
     if (operation === 'base') return { status: 'ready', base: input.base, sha: commit(cwd, input.base) };
     if (operation !== 'create') throw new Error('Use inspect, name, base, or create.');

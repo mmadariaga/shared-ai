@@ -18,8 +18,13 @@ information is missing or ambiguous.
 - Base: you always choose a suggested reference or enter one. Suggestions include
   the current branch, a detected parent, and available `main`/`master` references.
   A detected parent is the nearest tip among the 20 most recent first-parent
-  commits, a convenience and not proof of historical origin. Existing
-  remote-tracking references may be stale; the skill does not fetch. In both
+  commits, a convenience and not proof of historical origin. Just before the
+  question, the tool refreshes every remote with `git fetch --prune`, without
+  interaction and with a 30-second limit per remote, so remote options carry no
+  staleness note. When a remote cannot be refreshed, the question still appears
+  with the existing references and one warning naming that remote and the
+  reason; only that remote's options are marked. A workflow that supplies the
+  base skips the question and the fetch. In both
   Claude Code and opencode, suggested options show short names such as `main`
   and `origin/main`, with localized local/remote qualifiers when names coincide.
   Each option still selects its full, exact Git reference. This display change
@@ -45,4 +50,7 @@ the standalone flow keeps its behavior.
 
 Success reports the verified active branch and selected base. A failed operation
 reports whether creation occurred and which branch remains active. There is no
-automatic cleanup or retry, remote tracking, commit, push, or remote refresh.
+automatic cleanup or retry, remote tracking, commit, or push. The only remote
+operation is the base-list fetch, which changes remote-tracking references
+only; its prune removes references of branches deleted on the server, never
+local branches.

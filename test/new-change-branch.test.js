@@ -251,6 +251,128 @@ test('CLI uses stdin JSON and reports invalid input without creating a branch', 
   assert.equal(refs(cwd), before);
 });
 
+function remote(t) {
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'new-change-branch-remote-'));
+  t.after(() => fs.rmSync(bare, { recursive: true, force: true }));
+  git(bare, 'init', '--bare', '-b', 'main');
+  return { bare };
+}
+function connect(cwd, name, bare, branches = ['main']) {
+  git(cwd, 'remote', 'add', name, bare);
+  for (const branch of branches) git(cwd, 'push', name, `HEAD:refs/heads/${branch}`);
+  git(cwd, 'fetch', name);
+}
+function advance(t, bare, branch = 'main') {
+  const clone = fixture(t, false);
+  git(clone, 'clone', bare, 'work');
+  const work = path.join(clone, 'work');
+  git(work, 'config', 'user.name', 'Test');
+  git(work, 'config', 'user.email', 'test@example.invalid');
+  git(work, 'checkout', branch);
+  git(work, 'commit', '--allow-empty', '-m', 'upstream');
+  git(work, 'push', 'origin', branch);
+  return git(work, 'rev-parse', 'HEAD');
+}
+
+test('fetch: a successful refresh updates remote references and reports no failure', (t) => {
+  const cwd = fixture(t);
+  const { bare } = remote(t);
+  connect(cwd, 'origin', bare);
+  const upstream = advance(t, bare);
+  const r = execute('inspect', {}, cwd);
+  assert.equal(r.status, 'ready');
+  assert.deepEqual(r.fetch, { status: 'updated', failed: [] });
+  assert.equal(git(cwd, 'rev-parse', 'refs/remotes/origin/main'), upstream);
+  assert.ok(r.bases.includes('refs/remotes/origin/main'));
+});
+
+test('fetch: an unreachable remote never blocks inspect and names the remote and the reason', (t) => {
+  const cwd = fixture(t);
+  git(cwd, 'remote', 'add', 'origin', path.join(cwd, 'missing-remote'));
+  git(cwd, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+  const r = execute('inspect', {}, cwd);
+  assert.equal(r.status, 'ready');
+  assert.equal(r.fetch.status, 'failed');
+  assert.equal(r.fetch.failed.length, 1);
+  assert.equal(r.fetch.failed[0].remote, 'origin');
+  assert.match(r.fetch.failed[0].reason, /\S/);
+  assert.equal(r.fetch.failed[0].reason.includes('\n'), false);
+  assert.deepEqual(r.bases, ['refs/heads/main', 'refs/remotes/origin/main']);
+  assert.equal(create(cwd).status, 'completed');
+});
+
+test('fetch: a partial failure lists only the failed remotes', (t) => {
+  const cwd = fixture(t);
+  const { bare } = remote(t);
+  connect(cwd, 'origin', bare);
+  git(cwd, 'remote', 'add', 'broken', path.join(cwd, 'missing-remote'));
+  const r = execute('inspect', {}, cwd);
+  assert.equal(r.fetch.status, 'partial');
+  assert.deepEqual(r.fetch.failed.map((f) => f.remote), ['broken']);
+});
+
+test('fetch: a repository without remotes runs no fetch and reports none', (t) => {
+  const cwd = fixture(t);
+  const r = execute('inspect', {}, cwd);
+  assert.deepEqual(r.fetch, { status: 'none', failed: [] });
+  assert.deepEqual(r.bases, ['refs/heads/main']);
+});
+
+test('fetch: prune removes a remote-tracking reference deleted on the server', (t) => {
+  const cwd = fixture(t);
+  const { bare } = remote(t);
+  connect(cwd, 'origin', bare, ['main', 'master']);
+  assert.ok(execute('inspect', {}, cwd).bases.includes('refs/remotes/origin/master'));
+  git(bare, 'update-ref', '-d', 'refs/heads/master');
+  const r = execute('inspect', {}, cwd);
+  assert.equal(r.fetch.status, 'updated');
+  assert.equal(spawnSync('git', ['show-ref', '--verify', '--quiet', 'refs/remotes/origin/master'], { cwd }).status, 1);
+  assert.deepEqual(r.bases, ['refs/heads/main', 'refs/remotes/origin/main']);
+  assert.equal(execute('base', { base: 'origin/master' }, cwd).status, 'failed');
+});
+
+test('fetch: leaves local branches, the working tree, the index and the stash untouched', (t) => {
+  const cwd = fixture(t);
+  const { bare } = remote(t);
+  connect(cwd, 'origin', bare);
+  advance(t, bare);
+  fs.writeFileSync(path.join(cwd, 'file'), 'staged');
+  git(cwd, 'add', 'file');
+  fs.writeFileSync(path.join(cwd, 'file'), 'unstaged');
+  fs.writeFileSync(path.join(cwd, 'untracked'), 'keep');
+  const status = git(cwd, 'status', '--porcelain');
+  const local = git(cwd, 'for-each-ref', '--format=%(refname):%(objectname)', 'refs/heads', 'refs/stash');
+  assert.equal(execute('inspect', {}, cwd).fetch.status, 'updated');
+  assert.equal(git(cwd, 'status', '--porcelain'), status);
+  assert.equal(git(cwd, 'show', ':file'), 'staged');
+  assert.equal(git(cwd, 'for-each-ref', '--format=%(refname):%(objectname)', 'refs/heads', 'refs/stash'), local);
+  assert.equal(fs.readFileSync(path.join(cwd, 'file'), 'utf8'), 'unstaged');
+});
+
+test('fetch: {fetch:false}, base and create run no fetch and keep the unchanged-base check', (t) => {
+  const cwd = fixture(t);
+  const { bare } = remote(t);
+  connect(cwd, 'origin', bare);
+  const before = git(cwd, 'rev-parse', 'refs/remotes/origin/main');
+  advance(t, bare);
+  const skipped = execute('inspect', { fetch: false }, cwd);
+  assert.equal(skipped.status, 'ready');
+  assert.equal(Object.hasOwn(skipped, 'fetch'), false);
+  assert.equal(execute('base', { base: 'refs/remotes/origin/main' }, cwd).sha, before);
+  assert.equal(create(cwd).status, 'completed');
+  assert.equal(git(cwd, 'rev-parse', 'refs/remotes/origin/main'), before);
+  git(cwd, 'remote', 'set-url', 'origin', path.join(cwd, 'missing-remote'));
+  assert.equal(execute('inspect', { fetch: false }, cwd).status, 'ready');
+  const moved = execute('create', { type: 'feat', name: 'again', base: 'main', sha: '0'.repeat(40) }, cwd);
+  assert.equal(moved.status, 'failed');
+});
+
+test('fetch: {fetch:false} still stops on a merge or rebase in progress', (t) => {
+  const cwd = fixture(t);
+  fs.mkdirSync(path.join(cwd, '.git', 'rebase-merge'));
+  assert.equal(execute('inspect', { fetch: false }, cwd).status, 'failed');
+});
+
 test('suggested base labels are short, collision-safe and mapped to exact references', () => {
   const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/new-change-branch/SKILL.md'), 'utf8');
   const step = skill.split('## 2. Select and resolve the base')[1].split('## 3. Create once and verify')[0];
@@ -271,7 +393,8 @@ test('instruction checks cover context questions, native pickers, safety and bot
   for (const pattern of [/explicit user request/, /relevant conversation context/,
     /Ask only for missing or ambiguous/, /references describe different/, /Preserve the selected identifier exactly/,
     /AskUserQuestion/, /opencode.*question/, /free-text/, /paginate/, /never automatically choose a base/i,
-    /safe-operations/, /tool-resolution.md/, /without fetching/, /without calling `create`/,
+    /safe-operations/, /tool-resolution.md/, /`git fetch --prune`/, /`\{"fetch": false\}`/, /`inspect\.fetch\.failed`/,
+    /`base` and\s+`create` never fetch/, /without calling `create`/,
     /never discard work or automatically stash/, /Do not clean up or retry automatically/]) assert.match(skill, pattern);
   const repoRoot = path.resolve(__dirname, '..');
   for (const harness of ['claude', 'opencode']) {
