@@ -21,7 +21,7 @@ The task arrives in the next message to you, and every later message arrives the
 
 ## Messages
 
-Your first message opens with the line `--report-dir <path>`, the report directory of the run (a replacement's first message opens with it too, and no later message does): strip it, keep it for every later message, and save each report there. Each message then opens with the pointer line `Active step: <id> — follow <path>`, then a brief: the method, the provenance file, the stop number, the snapshot record and its hash, and the run directory. The brief is complete; ask nothing of the user, because nobody is there to answer.
+Your first message opens with the line `--report-dir <path>`, the report directory of the run (a replacement's first message opens with it too, and no later message does): strip it, keep it for every later message, and save each report there. Each message then opens with the pointer line `Active step: <id> — follow <path>`, then a brief: the method, the provenance file, the stop number, the snapshot record and its hash, the run directory, and, in your first brief, the path of your scratch folder. The brief is complete; ask nothing of the user, because nobody is there to answer. Send the output of any command that can run long to a log in your scratch folder, per `@sai/policies/worker-lifecycle.md` § Worker side.
 
 1. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do that step.
 2. Do the step, then save the report it names.

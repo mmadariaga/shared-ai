@@ -39,7 +39,7 @@
  *       looks the reference up in the ledger: it reads no report, records nothing,
  *       and answers `already`.
  *   watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>]
- *         [--silent-after <minutes>] [--input-file <paths>] [--cwd <root>]
+ *         [--silent-after <minutes>] --input-file <paths> [--cwd <root>]
  *       Poll `<dir>` inside this process (every `--poll`, default 5s) until it holds
  *       a report that is not in the ledger and has been on disk for at least the
  *       settle delay (default 60s), then print those references (`reports`, each
@@ -51,10 +51,16 @@
  *       `silent_for_ms`) when, for `--silent-after` (default 20; a bare number is
  *       minutes, units are accepted), no file of `<dir>` (the marker and the ledger
  *       aside) was created or changed and no file of the paths named by `--input-file`
- *       changed (`mtime`). The input file is JSON: an array of strings, or an object
- *       with a `paths` array, each path absolute or relative to `--cwd` (default cwd);
- *       a directory counts every file below it. The window starts when the watch
- *       starts, so a path untouched before the watch is not silent at once.
+ *       changed (`mtime`). `--input-file` is required, so a forgotten list fails at launch
+ *       (exit 2, naming the flag) instead of producing a false `silent` end; `[]` is valid
+ *       and leaves the report directory as the only activity source. The input file is
+ *       JSON: an array of strings, or an object with a `paths` array, each path absolute
+ *       or relative to `--cwd` (default cwd); a directory counts every file below it, up
+ *       to ACTIVITY_WALK_LIMIT entries per listed path. A path that does not exist yet is
+ *       never an error: it counts from the moment it appears. The window starts when the
+ *       watch starts, so a path untouched before the watch is not silent at once. When
+ *       the walk of a listed path stopped at the limit, the result carries `walk_limited`,
+ *       the list of those paths, so a `silent` end that may have missed activity is visible.
  *   retire-handle --dir <dir> --handle <id>
  *       Record a worker handle (the agent ID on Claude Code, the sessionID on opencode) as retired in the
  *       reserved file `.sai-retired` inside `<dir>`, beside the ledger. Recording a recorded handle changes
@@ -416,12 +422,19 @@ function undelivered(root, settleMs, io, at) {
 
 const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-/** The newest modification time (ms) of a regular file below `start`, or 0; a path that is gone is skipped. */
+/**
+ * The newest modification time (ms) of a regular file below `start` (0 when none), and whether the
+ * walk stopped at ACTIVITY_WALK_LIMIT (`limited`); a path that is gone is skipped.
+ */
 function newestMtime(start, io, { top = null } = {}) {
   let newest = 0;
   let visited = 0;
+  let limited = false;
   const walk = current => {
-    if (visited++ >= ACTIVITY_WALK_LIMIT) return;
+    if (visited++ >= ACTIVITY_WALK_LIMIT) {
+      limited = true;
+      return;
+    }
     const stat = lstatOrNull(current, io);
     if (!stat || stat.isSymbolicLink()) return;
     if (stat.isFile()) {
@@ -444,24 +457,32 @@ function newestMtime(start, io, { top = null } = {}) {
     }
   };
   walk(start);
-  return newest;
+  return { newest, limited };
 }
 
 /**
  * The newest sign of life of a worker: a file created or changed in the report directory (a draft
- * included, the marker and the ledger aside), or a file changed below one of the writable paths.
+ * included, the marker and the ledger aside), or a file changed below one of the writable paths. The
+ * writable paths whose walk stopped at ACTIVITY_WALK_LIMIT come back as `limited`, so a `silent` end that
+ * may have missed activity can be named.
  */
 function latestActivity(root, writablePaths, io) {
-  let newest = newestMtime(root, io, { top: root });
-  for (const target of writablePaths) newest = Math.max(newest, newestMtime(target, io));
-  return newest;
+  let { newest } = newestMtime(root, io, { top: root });
+  const limited = [];
+  for (const target of writablePaths) {
+    const walked = newestMtime(target, io);
+    newest = Math.max(newest, walked.newest);
+    if (walked.limited) limited.push(target);
+  }
+  return { newest, limited };
 }
 
 /**
  * Wait until the directory holds an undelivered report, the worker has been silent for `silentMs`,
  * or `maxMs` has passed. The process owns the polling, so the caller spends no model turn while
  * nothing happens. A directory that disappears ends the watch with an empty list. Silence is measured
- * from the later of the watch start and the newest activity (`latestActivity`).
+ * from the later of the watch start and the newest activity (`latestActivity`). A `silent` or `max` result
+ * carries `walk_limited`, the writable paths whose walk stopped at ACTIVITY_WALK_LIMIT, when there are any.
  */
 async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS, pollMs = DEFAULT_POLL_MS, silentMs = DEFAULT_SILENT_MS, writablePaths = [], io = fs, now = Date.now, sleep = defaultSleep } = {}) {
   const root = checkTransferDir(dir, { io });
@@ -469,7 +490,7 @@ async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS
   const deadline = started + maxMs;
   for (;;) {
     let reports;
-    let activity;
+    let activity = { newest: 0, limited: [] };
     try {
       reports = undelivered(root, settleMs, io, now());
       if (reports.length === 0) activity = latestActivity(root, writablePaths, io);
@@ -478,11 +499,12 @@ async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS
       throw error;
     }
     if (reports.length > 0) return { reports, ended: 'found' };
+    const limited = activity.limited.length > 0 ? { walk_limited: activity.limited } : {};
     const current = now();
-    const silentFor = current - Math.max(started, activity);
-    if (silentFor >= silentMs) return { reports: [], ended: 'silent', silent_for_ms: silentFor };
+    const silentFor = current - Math.max(started, activity.newest);
+    if (silentFor >= silentMs) return { reports: [], ended: 'silent', silent_for_ms: silentFor, ...limited };
     const remaining = deadline - current;
-    if (remaining <= 0) return { reports: [], ended: 'max' };
+    if (remaining <= 0) return { reports: [], ended: 'max', ...limited };
     await sleep(Math.min(pollMs, remaining, silentMs - silentFor));
   }
 }
@@ -523,7 +545,7 @@ function usage() {
     '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
     '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
     '  node transfer.js accept --dir <dir> --path <path> --sha256 <hex> [--check]   (a relative --path resolves against --dir)',
-    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--input-file <paths>] [--cwd <root>]',
+    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] --input-file <paths> [--cwd <root>]   (--input-file is required; [] is valid)',
     '  node transfer.js retire-handle --dir <dir> --handle <id>',
     '  node transfer.js live --dir <dir> [--harness <claude|opencode>]',
     '  node transfer.js close --dir <dir>',
@@ -634,12 +656,13 @@ async function run(argv) {
   };
   try {
     require_(opts, ['dir']);
+    if (!opts.inputFile) throw new UsageError('watch requires --input-file <paths>: a JSON array of the paths the worker may write ([] when the report directory is the only activity source)');
     const result = await watch(opts.dir, {
       settleMs: opts.settle === undefined ? DEFAULT_SETTLE_MS : parseDuration(opts.settle, '--settle'),
       maxMs: opts.max === undefined ? DEFAULT_MAX_MS : parseDuration(opts.max, '--max'),
       pollMs: opts.poll === undefined ? DEFAULT_POLL_MS : Math.max(1, parseDuration(opts.poll, '--poll')),
       silentMs: opts.silentAfter === undefined ? DEFAULT_SILENT_MS : parseSilentAfter(opts.silentAfter),
-      writablePaths: opts.inputFile ? parseWritablePaths(readInputBytes(opts.inputFile), opts.cwd || process.cwd()) : [],
+      writablePaths: parseWritablePaths(readInputBytes(opts.inputFile), opts.cwd || process.cwd()),
     });
     return respond({ ok: true, command: 'watch', ...result }, 0);
   } catch (error) {

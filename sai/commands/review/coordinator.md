@@ -24,7 +24,7 @@ Review a change's diff against its parent branch in a fresh worker and leave the
 3. An empty change name takes the only change directory under `openspec/changes/` (archive excluded) that has a `proposal.md`. When there are none or several, print this and end the run, without escalating and writing nothing: `Cannot start /sai-4-review: name the change ({candidates, or none}).`
 4. The change is startable when `openspec/changes/{name}/proposal.md` exists. Otherwise print this and end the run, writing nothing: `Cannot start /sai-4-review for {name}: missing proposal.md.`
 5. Open the step machine. `spawn` a `sai-state` session (key: `review-{name}`) and `reset` `review-steps@1`, resolving the CLI per `tool-resolution.md`. The `reset` response names the first pointer, `establish-diff-scope`. When the store fails, carry on with the static order: `establish-diff-scope`, `resolve-review-analysis`, `close-review-outcome`, each at `sai/commands/review/steps/{step}.md`.
-6. Open the report directory of the run with `transfer.js open --harness <claude|opencode>` (resolved per `tool-resolution.md`) and keep the `dir` it returns in the conversation, as the run's only memory of it. When the tool cannot open the directory, print its error and end the run before any dispatch, writing nothing.
+6. Open the report directory of the run with `transfer.js open --harness <claude|opencode>` (resolved per `tool-resolution.md`) and keep the `dir` it returns in the conversation, as the run's only memory of it. Open a second directory the same way as the worker's scratch folder and keep its `dir` with it. When the tool cannot open either directory, print its error and end the run before any dispatch, writing nothing.
 
 ## The worker
 
@@ -34,7 +34,7 @@ Create `sai-4-review-worker` once for the run. The creation dispatch carries onl
 
 **Warm and dispose.** Following `cache-warming.md`, end every task message and continuation to the worker with the warming switch the policy defines. Under `worker-lifecycle.md`, dispose the worker when a new worker replaces it and, in every outcome, at the close of the run or of this segment inside `/sai-build` or `/sai-deep-review`, before the next segment starts. Dispose each executor after its result and each explorer you dispatched at that close. The `warming` declaration gates no dispose.
 
-The task message opens with the line `--report-dir <report directory>` (a replacement's first message opens with it too, and no later message does), then `Active step: establish-diff-scope — follow <pointer>`, then names the change, the `--parent-branch` value when one was given, and the path `openspec/changes/{name}/review.md`.
+The task message opens with the line `--report-dir <report directory>` (a replacement's first message opens with it too, and no later message does), then `Active step: establish-diff-scope — follow <pointer>`, then names the change, the `--parent-branch` value when one was given, the path `openspec/changes/{name}/review.md`, and the scratch folder.
 
 The worker saves each report as a new file in the report directory and returns only the reference `{path, sha256}` and its `warming` line, which you keep per `cache-warming.md`, and ends its turn. Before you read any field, validate every response after ready with `worker-report-validator.js` (resolved per `tool-resolution.md`), as `worker-report-transport.md` says, and act on the `payload` of an accepted verdict without reading the file again. The file name tells the kind: a name that starts with `progress-` is a progress report, which the machine emit below verifies and validates itself, so you run no `validate` call for it; any other report is terminal, validated with `validate --kind terminal --command review --json --report-dir <report directory> --report-file <path> --report-hash <sha256>`. When the validator cannot be resolved, the run stops on that obstacle: you never interpret a report by reading it. A message that carries its result inline, including the retired `event: step-done`, is an invalid report. The accepted reports are:
 
@@ -66,7 +66,7 @@ summary: string
 changed_files: string[]
 ```
 
-**Undelivered reports.** While you wait for the worker's result, follow `worker-report-transport.md` § Undelivered reports: watch the report directory, ignore a reference you already accepted, and record each reference you process.
+**Undelivered reports.** While you wait for the worker's result, follow `worker-report-transport.md` § Undelivered reports: watch the report directory, ignore a reference you already accepted, and record each reference you process. The worker writes `openspec/changes/{name}/review.md` and its scratch folder only, so those two paths are the writable paths of the watch: write them once as the JSON array of its `--input-file` in the scratch folder, and reuse that file for every relaunch and for a replacement worker.
 
 A `completed` report without `outcome` carries the review's role fields; the validator admits no `outcome` but `no-changes` for this command. A `needs_input` or `cancelled` report is an obstacle of the run, because the review asks nothing and is never told to abandon.
 
@@ -93,9 +93,9 @@ Obstacles, the budget of 3 attempts, force majeure, and escalation follow `@sai/
 The approaches are:
 
 - a corrected instruction to the same worker that names the defect and where it is, which includes asking again when the worker is silent or drifted; the first invalid report goes back to the same worker with the validator's errors, and a second consecutive invalid report from that worker replaces it;
-- a new worker, created the same way as the first. It receives a hand-over note you write that names the symptom, and it reviews from the first step;
+- a new worker, created the same way as the first. It receives a hand-over note you write that names the symptom, and the same report and scratch folders, and it reviews from the first step;
 - a mechanical repair you write yourself when the defect is only mechanical, such as a `Summary:` tally that miscounts the findings. A repair never adds, removes, or rewrites a finding.
 
 When escalating, say that nothing is committed. A `stop`, or a question dismissed without an answer, ends the run with the report so far and no closing line. A report the worker never produced leaves no `review.md` and no commit.
 
-Before ending in any outcome, dispose the worker as Warm and dispose says, and `close` the `sai-state` session. A run that ended with `Review done.` also closes its report directory with `transfer.js close --dir <report directory>`; a failed, stopped, or unanswered run keeps it.
+Before ending in any outcome, dispose the worker as Warm and dispose says, and `close` the `sai-state` session. A run that ended with `Review done.` also closes its report directory with `transfer.js close --dir <report directory>`, and its scratch folder the same way, in one same-turn batch; a failed, stopped, or unanswered run keeps it.

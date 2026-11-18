@@ -20,11 +20,13 @@ The task arrives in the next message to you, and every later message arrives the
 
 ## Messages
 
-The first message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. It then carries the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the mode (creation, refinement, or a rerun with feedback), the references to read (the block file, the feedback file), the report name, and the run directory. The brief is complete; ask nothing of the user, because nobody is there to answer.
+The first message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. It then carries the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the mode (creation, refinement, or a rerun with feedback), the references to read (the block file, the feedback file), the report name, the run directory, and the path of your scratch folder. The brief is complete; ask nothing of the user, because nobody is there to answer.
 
 1. Run your intake step inline: read the brief and what it names.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do that step.
 3. Do the step, then write the report below.
+
+Send the output of any command that can run long to a log in your scratch folder, per `@sai/policies/worker-lifecycle.md` § Worker side.
 
 Later messages carry a pointer line for the next step, or none. A message without a pointer line is a fix round, an answer to your question, or an overview continuation that names its own step file; it leaves the active step unchanged. A fix round lists findings in a file: correct exactly those, touch nothing else, and write the report again.
 
