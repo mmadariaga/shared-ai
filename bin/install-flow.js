@@ -1031,6 +1031,7 @@ async function runNavigator({
   header,
   toggleAll = false,
   groupHeaders = [],
+  initial,
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
@@ -1046,6 +1047,9 @@ async function runNavigator({
     let cursor = 0;
     while (cursor < options.length && isFixedRow(options[cursor])) cursor += 1;
     if (cursor >= options.length && options.length > 0) cursor = 0;
+    // `initial` names the option the cursor starts on, so a menu reopened after its submenu keeps its place.
+    const initialIndex = initial === undefined ? -1 : options.indexOf(initial);
+    if (initialIndex !== -1 && !isFixedRow(options[initialIndex])) cursor = initialIndex;
     let previousRows = 0;
     let viewStart = 0;
     let settled = false;
@@ -1227,11 +1231,13 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
 }
 
 // `navigatorOptions.groupHeaders` lists options that render as non-selectable group header rows;
-// `navigatorOptions.displayOptions` gives each option's visible text, index-aligned with `options`.
+// `navigatorOptions.displayOptions` gives each option's visible text, index-aligned with `options`;
+// `navigatorOptions.initial` names the option the cursor starts on.
 async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND, distinguishClosedInput = false, navigatorOptions = undefined) {
   const outcome = await runNavigator({
     mode: 'single', question, options, defaultSelected: [], input, footer,
     groupHeaders: navigatorOptions?.groupHeaders, displayOptions: navigatorOptions?.displayOptions,
+    initial: navigatorOptions?.initial,
   });
   if (outcome.status === 'back') return BACK;
   if (outcome.status === 'input-closed') return distinguishClosedInput ? INPUT_CLOSED : null;

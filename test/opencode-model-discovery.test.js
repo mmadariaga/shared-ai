@@ -336,7 +336,7 @@ test('failure and query cancellation preserve targets without writes, then expli
     },
     createLocalOverride: () => { writes += 1; return { status: 'persisted' }; },
   });
-  const choices = ['Customize models', 'OpenCode', 'Workers', 'Customize models', 'OpenCode', 'Workers', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
+  const choices = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
   try {
     const outcome = await customization.runPostSetupMenu({
       isTTY: true,

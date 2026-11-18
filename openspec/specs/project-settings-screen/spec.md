@@ -5,29 +5,21 @@ Lets a user see and edit the project settings that pre-answer command questions 
 
 ## Requirements
 
-### Requirement: Project settings screen contents
-
-The `Project behavior settings` screen in `bin/project-settings-screen.js` SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `explore.chatPublicLanguage`, `backlog.provider`, `pr.provider`, and `experimental.changeTelemetry`, in that order, each as a row `<label>: <current value>` using the catalogue label, followed by the `Cache warming` action row and a `Done` row. A section header row `-- <section> --` SHALL precede the first key of each catalogue section (`Explore`, `Backlog`, `Pull requests`, `Experimental`); a header row SHALL be non-selectable, so the cursor skips it and it can never be chosen. The current value SHALL be the value edited in this session. Otherwise it SHALL be the reader's normalized value, the key's absence text (`ask`, `follow my language` for `explore.chatPublicLanguage`, or `off` for `experimental.changeTelemetry`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, and `pr.project` SHALL NOT appear on the screen. The value prompt title SHALL be `<label>:`. The screen SHALL read the settings files of the project path it was given, without the git top-level or main-worktree lookup.
-
-#### Scenario: Rows show current values
-- **WHEN** the screen opens on a settings file that sets only `backlog.provider` to `gitlab`
-- **THEN** the rows are `-- Explore --`, `Ready to Propose language: ask`, `Change overview language: ask`, `Chat language: follow my language`, `-- Backlog --`, `Provider: gitlab`, `-- Pull requests --`, `Provider: ask`, `-- Experimental --`, `Change telemetry: off`, `Cache warming`, and `Done`, and the four header rows are non-selectable
-
 ### Requirement: Value choices per setting
 
-Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `pr.provider` SHALL offer `ask` followed by the provider ids in `skills/universal/to-pr/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `explore.chatPublicLanguage` SHALL offer `follow my language`, `English`, and `Other language...`, where `follow my language` SHALL remove the key from the file that holds it, leaving the rest of that file intact. `experimental.changeTelemetry` SHALL offer `On` and `Off`. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, and an accepted value SHALL be recorded in the canonical form the catalogue returns. Back from a value prompt SHALL return to the rows without recording a change.
+Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `pr.provider` SHALL offer `ask` followed by the provider ids in `skills/universal/to-pr/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `explore.chatPublicLanguage` SHALL offer `follow my language`, `English`, and `Other language...`, where `follow my language` SHALL remove the key from the file that holds it, leaving the rest of that file intact. `experimental.changeTelemetry` SHALL offer `On` and `Off`. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, an empty free-text entry SHALL save nothing, and an accepted value SHALL be saved in the canonical form the catalogue returns. Back from a value prompt SHALL return to the submenu without saving a change. The provider registries SHALL be read when a picker needs them, so drawing a row never fails on them.
 
 #### Scenario: Provider choices come from the registries
-- **WHEN** the user selects the `backlog.provider` row and the registries list `github`, `gitlab`, and `azuredevops`
+- **WHEN** the user selects the `Backlog provider` row and the registries list `github`, `gitlab`, and `azuredevops`
 - **THEN** the choices are `ask`, `github`, `gitlab`, and `azuredevops`
 
 #### Scenario: Code-host choices come from the to-pr registry
-- **WHEN** the user selects the `pr.provider` row and the to-pr registry lists `github`, `gitlab`, and `azuredevops`
+- **WHEN** the user selects the `Pull requests provider` row and the to-pr registry lists `github`, `gitlab`, and `azuredevops`
 - **THEN** the choices are `ask`, `github`, `gitlab`, and `azuredevops`
 
 #### Scenario: Rejected language is asked again
-- **WHEN** the user chooses `Other language...` for `explore.readyToProposeLanguage` and types a blank entry, then `none`, then ` english `
-- **THEN** the first two entries are reported as rejected and the setting is saved as `English`
+- **WHEN** the user chooses `Other language...` for `explore.readyToProposeLanguage` and types `none`, then ` english `
+- **THEN** the first entry is reported as rejected and the setting is saved as `English`
 
 #### Scenario: Free-text language keeps its spelling
 - **WHEN** the user types ` Español ` for `explore.readyToProposeLanguage` and chooses `none` for `explore.overviewLanguage`
@@ -45,49 +37,17 @@ Choosing `ask` for an id SHALL record the string `"ask"` under that id rather th
 - **WHEN** the stored `backlog.provider` is `gitlab` with a trailing comment and the user chooses `ask`
 - **THEN** the saved file differs from the previous one only in `"gitlab"` becoming `"ask"`
 
-### Requirement: Saving on leaving the screen
-
-Leaving the screen with `Done` or Back SHALL save every recorded change through the settings writer when at least one value differs from the stored value, and SHALL report the number of saved settings. Choosing the value that is already stored SHALL record no change. A session with no change SHALL NOT create, write, or touch any file.
-
-#### Scenario: No change leaves the filesystem untouched
-- **WHEN** the user leaves the screen without changing a value, or chooses the value already stored
-- **THEN** no `.sai/` directory is created and an existing settings file keeps its content and modification time
-
-#### Scenario: Back saves like Done
-- **WHEN** the user sets `backlog.provider` to `github` and leaves the screen with Back
-- **THEN** the setting is saved
-
 ### Requirement: Invalid stored values
 
-When a stored value is outside its allowed set, the screen SHALL print the reader's warning when it opens and SHALL show that row as invalid, and the user SHALL be able to replace the value.
+When a stored value is outside its allowed set, a submenu SHALL print the reader's warnings for its own keys when it opens and SHALL show that row as invalid, and the user SHALL be able to replace the value.
 
 #### Scenario: Invalid provider is replaced
-- **WHEN** the stored `backlog.provider` is `jira`, which no registry lists, and the user chooses `github`
-- **THEN** the reader's warning is printed, the row shows `backlog.provider: "jira" (invalid)`, and the saved file differs only in `"jira"` becoming `"github"`
-
-### Requirement: Saves that cannot complete
-
-An unparseable `.sai/settings.jsonc` or `.sai/settings.local.jsonc` SHALL be reported when the screen opens, before any prompt, naming the file, and the screen SHALL return to the menu without editing. An interrupt (a null prompt answer such as Ctrl-C) SHALL discard every recorded change, report that nothing was saved, and return to the menu. A write error SHALL be reported and return to the menu. In every one of these cases both settings files SHALL stay byte-identical.
-
-#### Scenario: Unparseable file at open
-- **WHEN** the screen opens on a settings file containing `{ nope`
-- **THEN** it reports `Cannot edit .sai/settings.jsonc` before any prompt and the file is unchanged
-
-#### Scenario: Interrupt discards edits
-- **WHEN** the user records a change and then interrupts a prompt
-- **THEN** the screen reports `Interrupted: the edits were discarded and nothing was saved.`, the file is unchanged, and the post-setup menu is presented again
-
-#### Scenario: Write error
-- **WHEN** saving fails with a write error
-- **THEN** the screen reports that the project settings were not saved, names the error, and leaves the file unchanged
-
-#### Scenario: Unparseable local file at open
-- **WHEN** the screen opens with a valid base file and a `.sai/settings.local.jsonc` that cannot be parsed
-- **THEN** it reports `Cannot edit .sai/settings.local.jsonc` before any prompt and neither file changes
+- **WHEN** the stored `backlog.provider` is `jira`, which no registry lists, and the user opens `Backlog and PR settings` and chooses `github`
+- **THEN** the reader's warning is printed, the row shows `Backlog provider: "jira" (invalid)`, and the saved file differs only in `"jira"` becoming `"github"`
 
 ### Requirement: Injectable prompts and TTY gating
 
-The screen SHALL take its single-select and free-text prompts, project path, package root, and log function as injectable parameters so tests drive it. It SHALL run only from the post-setup menu, so without a TTY it SHALL be skipped together with that menu.
+The settings editor (`createSettingsEditor`) SHALL take its single-select and free-text prompts, project path, package root, and log function as injectable parameters so tests drive it. It SHALL run only from the post-setup menu, so without a TTY it SHALL be skipped together with that menu.
 
 #### Scenario: No TTY
 - **WHEN** the post-setup menu runs without a TTY
@@ -95,11 +55,11 @@ The screen SHALL take its single-select and free-text prompts, project path, pac
 
 ### Requirement: Local override rows and save target
 
-A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row, even when its local value equals the base value: the base value struck through with ANSI SGR 9, then the local value, then the marker `(local)`. When styling is off, meaning standard output is not a TTY or `NO_COLOR` is set, the row SHALL read `<base> -> <local> (local)`. A base value that is absent SHALL show as the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`). Leaving the screen SHALL save a changed key that the local file holds to the local file and leave the base file unchanged, and SHALL save every other changed key to the base file, which is created when missing. The screen SHALL NOT create the local file. Removing a key from the local file SHALL show the base value again. The save report SHALL name the files that were written. Without a local file, no row SHALL show an override.
+A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row, even when its local value equals the base value: the base value struck through with ANSI SGR 9, then the local value, then the marker `(local)`. When styling is off, meaning standard output is not a TTY or `NO_COLOR` is set, the row SHALL read `<base> -> <local> (local)`. A base value that is absent SHALL show as the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`). Choosing a value SHALL save a key that the local file holds to the local file and leave the base file unchanged, and SHALL save every other key to the base file, which is created when missing. The editor SHALL NOT create the local file. Removing a key from the local file SHALL show the base value again. Without a local file, no row SHALL show an override.
 
 #### Scenario: Override row with styling
 - **WHEN** the base file sets `backlog.provider` to `github`, the local file sets it to `gitlab`, and styling is on
-- **THEN** the `Provider` row under `Backlog` shows `github` struck through, then `gitlab (local)`
+- **THEN** the `Backlog provider` row shows `github` struck through, then `gitlab (local)`
 
 #### Scenario: Override row without styling
 - **WHEN** the same files are shown without a TTY or with `NO_COLOR` set
@@ -110,53 +70,93 @@ A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row
 - **THEN** the row shows `follow my language` struck through, followed by the local value and `(local)`
 
 #### Scenario: Overridden key saves to the local file
-- **WHEN** the user changes a key that the local file holds and another key that it does not hold, then leaves the screen
+- **WHEN** the user chooses a value for a key that the local file holds and a value for another key that it does not hold
 - **THEN** the first key is saved to `.sai/settings.local.jsonc`, the second to `.sai/settings.jsonc`, and the local file keeps its comments
 
 #### Scenario: Local file is never created
-- **WHEN** no local file exists and the user changes a setting
+- **WHEN** no local file exists and the user chooses a value
 - **THEN** only `.sai/settings.jsonc` is written and `.sai/settings.local.jsonc` does not exist afterwards
 
 #### Scenario: No local file means no override rows
-- **WHEN** the screen opens without `.sai/settings.local.jsonc`
+- **WHEN** a submenu opens without `.sai/settings.local.jsonc`
 - **THEN** no row shows strikethrough or the `(local)` marker
 
 ### Requirement: Change telemetry boolean editing
 
-The screen SHALL edit `experimental.changeTelemetry` as a boolean. Its row SHALL show `on` when the effective value is `true`, and `off` when the key is absent or `false`. Selecting the row SHALL offer exactly the choices `On` and `Off`, and SHALL NOT offer `ask`. Choosing `On` SHALL record `true`. Choosing `Off` SHALL remove the key from `.sai/settings.jsonc` when the key is saved to the base file, and SHALL record an explicit `false` when the key is saved to `.sai/settings.local.jsonc`, so that a `true` in the base file cannot apply. A stored value that is not a boolean SHALL follow the screen's invalid-value handling, and any choice SHALL replace it.
+The `Telemetry` row of the post-setup main menu SHALL edit `experimental.changeTelemetry` as a boolean. Its row SHALL read `Telemetry: on` when the effective value is `true`, and `Telemetry: off` when the key is absent or `false`. Selecting the row SHALL open a picker titled `Telemetry:` that offers exactly the choices `On` and `Off`, and SHALL NOT offer `ask`. Choosing `On` SHALL save `true` at once. Choosing `Off` SHALL remove the key from `.sai/settings.jsonc` when the key is saved to the base file, and SHALL save an explicit `false` when the key is saved to `.sai/settings.local.jsonc`, so that a `true` in the base file cannot apply. After the choice the user SHALL return to the main menu. A stored value that is not a boolean SHALL follow the invalid-value handling, and any choice SHALL replace it.
 
 #### Scenario: Telemetry row shows on or off
-- **WHEN** the screen opens on a settings file where `experimental.changeTelemetry` is `true`, `false`, or absent
-- **THEN** the row reads `Change telemetry: on` for `true` and `Change telemetry: off` for `false` or an absent key
+- **WHEN** the main menu is drawn on a settings file where `experimental.changeTelemetry` is `true`, `false`, or absent
+- **THEN** the row reads `Telemetry: on` for `true` and `Telemetry: off` for `false` or an absent key
 
 #### Scenario: Telemetry offers only On and Off
-- **WHEN** the user selects the `Change telemetry` row
-- **THEN** the prompt title is `Change telemetry:` and the choices are exactly `On` and `Off`
+- **WHEN** the user selects the `Telemetry` row
+- **THEN** the prompt title is `Telemetry:` and the choices are exactly `On` and `Off`
 
 #### Scenario: On saves true and Off removes the base key
-- **WHEN** the user chooses `On` and leaves the screen, then reopens it, chooses `Off`, and leaves again
-- **THEN** the first save writes `true` to `.sai/settings.jsonc`, and the second save removes `experimental.changeTelemetry` from that file and keeps its other keys
+- **WHEN** the user chooses `On`, then selects the row again and chooses `Off`
+- **THEN** the first choice writes `true` to `.sai/settings.jsonc`, and the second removes `experimental.changeTelemetry` from that file and keeps its other keys
 
 #### Scenario: Off on an absent key changes nothing
-- **WHEN** `experimental.changeTelemetry` is absent and the user chooses `Off` and leaves the screen
-- **THEN** the screen reports no change and writes no file
+- **WHEN** `experimental.changeTelemetry` is absent and the user chooses `Off`
+- **THEN** no file is written and the row still reads `Telemetry: off`
 
 #### Scenario: Off saves an explicit false in the local file
-- **WHEN** both settings files set `experimental.changeTelemetry` to `true` and the user chooses `Off` and leaves the screen
-- **THEN** the row shows `on -> off (local)` before saving, `.sai/settings.local.jsonc` holds `false`, and `.sai/settings.jsonc` is unchanged
+- **WHEN** both settings files set `experimental.changeTelemetry` to `true` and the user chooses `Off`
+- **THEN** `.sai/settings.local.jsonc` holds `false`, `.sai/settings.jsonc` is unchanged, and the row reads `Telemetry: on -> off (local)` without styling
 
 #### Scenario: Non-boolean telemetry value is replaced
 - **WHEN** the stored `experimental.changeTelemetry` is `"yes"`
-- **THEN** the screen prints the reader's warning, the row shows `Change telemetry: "yes" (invalid)`, choosing `On` saves `true`, and choosing `Off` removes the key
+- **THEN** the reader's warning is printed, the row shows `Telemetry: "yes" (invalid)`, choosing `On` saves `true`, and choosing `Off` removes the key
 
-### Requirement: Cache warming action row
+### Requirement: Section submenu contents
 
-The screen SHALL show a `Cache warming` action row in the `Experimental` section, after the `Change telemetry` row and before `Done`. The row SHALL NOT be a value row. The screen SHALL take an `openCacheWarming` callback as an injectable parameter and SHALL hold no knowledge of harness roots. Selecting the row SHALL call that callback once and then present the settings screen again, with every pending edit kept. The pending edits SHALL be saved when the user leaves the settings screen, and a save made inside the warming screen SHALL persist together with them.
+`bin/project-settings-screen.js` SHALL provide the `Language settings` and `Backlog and PR settings` section submenus of the post-setup menu, under the prompt titles `Language settings:` and `Backlog and PR settings:`. The `Language settings` submenu SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, and `explore.chatPublicLanguage`, in that order; the `Backlog and PR settings` submenu SHALL list exactly `backlog.provider` and `pr.provider`, in that order. Each row SHALL read `<label>: <current value>`, where the label is the catalogue label, except that `backlog.provider` reads `Backlog provider` and `pr.provider` reads `Pull requests provider`. A submenu SHALL show no section header row and no `Done` row. The current value SHALL be read from the settings files each time the submenu is drawn: the reader's normalized value, the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, `pr.project`, and `pr.publishAfterRun` SHALL NOT appear in any submenu. The value prompt title SHALL be `<row label>:`. The submenus SHALL read the settings files of the project path they were given, without the git top-level or main-worktree lookup.
 
-#### Scenario: Cache warming row returns to the settings screen
-- **WHEN** the user selects `Cache warming` and then `Done`
-- **THEN** the injected callback is called once, the settings screen is presented again after it returns, and the screen reports no change
+#### Scenario: Submenu rows show current values
 
-#### Scenario: Telemetry edit and nested warming save both persist
-- **WHEN** the user chooses `On` for `Change telemetry`, selects `Cache warming`, enables `Default for agent` in the warming screen, and then leaves the settings screen with `Done`
-- **THEN** `.sai/settings.jsonc` holds `experimental.changeTelemetry: true` and the new `warming` value, and its other keys are unchanged
+- **WHEN** a settings file sets only `backlog.provider` to `gitlab` and the user opens `Backlog and PR settings`, then `Language settings`
+- **THEN** the first submenu rows are `Backlog provider: gitlab` and `Pull requests provider: ask`, and the second are `Ready to Propose language: ask`, `Change overview language: ask`, and `Chat language: follow my language`, with no header row and no `Done` row
+
+### Requirement: Immediate saving of each value choice
+
+Choosing a value in a value picker SHALL save it at once through the settings writer, so no edit waits in memory and leaving a submenu saves or discards nothing. After a save the user SHALL stay in the same submenu, with the cursor on the edited row, and the row SHALL show the new value. Choosing the value that is already stored SHALL write no file. Leaving a value picker with Back or Esc, or leaving the `Other language...` free text empty, SHALL save nothing and return to the submenu with the previous value. A session with no saved value SHALL NOT create, write, or touch any file.
+
+#### Scenario: A chosen value is saved at once
+
+- **WHEN** the user opens `Backlog and PR settings`, selects `Backlog provider`, and chooses `github`
+- **THEN** `.sai/settings.jsonc` holds `backlog.provider: "github"` before the submenu is drawn again, and the submenu shows `Backlog provider: github`
+
+#### Scenario: Esc in a picker saves nothing
+
+- **WHEN** the user opens a value picker and leaves it with Esc
+- **THEN** no file is written and the submenu shows the previous value
+
+#### Scenario: Empty language name saves nothing
+
+- **WHEN** the user chooses `Other language...` and leaves the language name empty
+- **THEN** no file is written and the submenu shows the previous value
+
+#### Scenario: Choosing the stored value writes nothing
+
+- **WHEN** the user chooses the value already stored, or leaves the submenu without choosing a value
+- **THEN** no `.sai/` directory is created and an existing settings file keeps its content and modification time
+
+### Requirement: Edits that cannot be saved
+
+An unparseable `.sai/settings.jsonc` or `.sai/settings.local.jsonc` SHALL be reported when a submenu opens or the `Telemetry` row is selected, before any value prompt, naming the file, and the user SHALL return to the main menu without editing. A write error SHALL be reported, naming the error, the value SHALL stay as it was, and the user SHALL stay in the submenu. An interrupt (a null prompt answer such as Ctrl+C) SHALL close the menu; values chosen before it SHALL stay saved, because no edit is pending. In the unparseable and write-error cases both settings files SHALL stay byte-identical.
+
+#### Scenario: Unparseable base file
+
+- **WHEN** a submenu opens on a settings file containing `{ nope`
+- **THEN** it reports `Cannot edit .sai/settings.jsonc` before any value prompt, the file is unchanged, and the main menu is presented again
+
+#### Scenario: Unparseable local file
+
+- **WHEN** a submenu opens with a valid base file and a `.sai/settings.local.jsonc` that cannot be parsed
+- **THEN** it reports `Cannot edit .sai/settings.local.jsonc` before any value prompt and neither file changes
+
+#### Scenario: Write error keeps the user in the submenu
+
+- **WHEN** saving a chosen value fails with a write error
+- **THEN** the submenu reports that the project settings were not saved, names the error, leaves the file unchanged, and presents the same submenu again with the previous value

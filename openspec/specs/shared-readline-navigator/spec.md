@@ -218,3 +218,15 @@ The shared raw-readline navigator SHALL accept an optional `groupHeaders` list o
 #### Scenario: Without group headers nothing changes
 - **WHEN** `promptSelect` runs without `navigatorOptions`
 - **THEN** it renders and resolves exactly as before
+
+### Requirement: Initial cursor option
+
+The shared raw-readline navigator SHALL accept an optional `initial` value that names the option the cursor starts on, so a menu that is drawn again after its submenu keeps its place. `promptSelect` SHALL forward `navigatorOptions.initial` to the engine. When `initial` names a selectable option, the cursor SHALL start on it; when it is absent, names no option, or names a group header or separator, the cursor SHALL start on the first selectable option as before. The resolved value SHALL stay the option string.
+
+#### Scenario: Cursor starts on the named option
+- **WHEN** `promptSelect` runs with options `A`, `B`, and `C`, `navigatorOptions.initial` is `B`, and the user presses Enter at start
+- **THEN** the cursor starts on `B` and `B` is resolved
+
+#### Scenario: Unknown initial option is ignored
+- **WHEN** `promptSelect` runs with `navigatorOptions.initial` set to a value that names no option
+- **THEN** the cursor starts on the first selectable option

@@ -442,7 +442,7 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
     return makeFakeAdapter(CLAUDE_AGENTS, claudeOps);
   });
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -492,7 +492,7 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
       return makeFakeAdapter(CLAUDE_WORKERS, claudeOps, { model: 'sonnet', effort: 'medium' });
   });
   try {
-    const answers = ['Customize models', 'Claude Code', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'Claude Code', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -790,7 +790,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
         { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
       ]));
 
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
     const overrides = [];
     const originalOpencode = modelCustomization.createOpencodeAdapter;
     const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => {
@@ -888,7 +888,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
       makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, { model: 'opencode-go/test-model' }, COMMANDS));
     const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
     try {
-      const answers = ['Customize models', 'OpenCode', item.scope, 'Exit'];
+      const answers = ['Model customization', 'Customize models', 'OpenCode', item.scope, 'Exit'];
       const promptChoice = async () => answers.shift() ?? '<model>';
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
@@ -918,7 +918,7 @@ test('checklist receives the canonical legend string as its footer argument', as
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -945,7 +945,7 @@ test('model target checklists enable Ctrl+A and advertise it for both harnesses'
     const restore = patchFactory(factoryName, () => adapter);
     const checklistCalls = [];
     try {
-      const answers = ['Customize models', harness, 'Workers'];
+      const answers = ['Model customization', 'Customize models', harness, 'Workers'];
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
         isTTY: true,
@@ -973,7 +973,7 @@ test('model target checklists enable Ctrl+A and advertise it for both harnesses'
     const restore = patchFactory(factoryName, () => adapter);
     const checklistCalls = [];
     try {
-      const answers = ['Reset to default models', harness];
+      const answers = ['Model customization', 'Reset to default models', harness];
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
         isTTY: true,
@@ -1017,8 +1017,8 @@ test('production prompt bindings retain the expected shared-selector surface and
   const defaultPromptSelectBindings = customizationSource.match(/\bpromptChoice\s*=\s*promptSelect\b/g) || [];
   const noFooterOverrides = customizationSource.match(/\bpromptChoice\s*\([^)]*\bnull\b[^)]*\)/g) || [];
 
-  assert.equal(promptChoiceInvocations.length, 12,
-    'the model-customization flow has twelve promptChoice invocations, including Claude model/effort and OpenCode provider/model/variant');
+  assert.equal(promptChoiceInvocations.length, 13,
+    'the model-customization flow has thirteen promptChoice invocations, including the Model customization submenu, Claude model/effort and OpenCode provider/model/variant');
   assert.equal(defaultPromptSelectBindings.length, 2,
     'the two adapter selectors retain default promptSelect bindings; the menu wraps its selector to detect input closure');
   assert.match(customizationSource, /promptChoice: selectChoice = promptSelect/);
@@ -1035,7 +1035,7 @@ test('scope Workers presents worker identities and scope Orchestrators presents 
     makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, { model: 'opencode-go/test-model' }, COMMANDS));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const workerAnswers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const workerAnswers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
     const workerChecklist = [];
     const workersResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1051,7 +1051,7 @@ test('scope Workers presents worker identities and scope Orchestrators presents 
     assert.deepEqual(workerChecklist[0][1], OPENCODE_AGENTS.map(name => `worker:${name}`),
       'every worker is pre-selected by default in the Workers scope');
 
-    const commandAnswers = ['Customize models', 'OpenCode', 'Orchestrators', 'Exit'];
+    const commandAnswers = ['Model customization', 'Customize models', 'OpenCode', 'Orchestrators', 'Exit'];
     const commandChecklist = [];
     const commandsResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1079,7 +1079,7 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
     makeFakeAdapter(SCRAMBLED_WORKERS, opencodeOps, { model: 'opencode-go/test-model' }, SCRAMBLED_COMMANDS));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'All', 'Exit'];
     const checklistCalls = [];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1113,7 +1113,7 @@ test('the implement and review workers follow their commands in All and stay alp
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(workers, ops, { model: 'opencode-go/test-model' }, commands));
     try {
-      const answers = ['Customize models', harness, 'All', 'Exit'];
+      const answers = ['Model customization', 'Customize models', harness, 'All', 'Exit'];
       const checklistCalls = [];
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
@@ -1141,7 +1141,7 @@ test('the implement and review workers follow their commands in All and stay alp
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(agents, ops, { model: 'opencode-go/test-model' }, COMMANDS));
     try {
-      const answers = ['Customize models', harness, 'Workers', 'Exit'];
+      const answers = ['Model customization', 'Customize models', harness, 'Workers', 'Exit'];
       const checklistCalls = [];
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
@@ -1165,7 +1165,7 @@ test('the implement and review workers follow their commands in All and stay alp
       const restore = patchFactory(factoryName, () => makeFakeAdapter(
         [present], ops, { model: 'opencode-go/test-model' }, ['sai-3-implement', 'sai-5-security']));
       try {
-        const answers = ['Customize models', harness, 'All', 'Exit'];
+        const answers = ['Model customization', 'Customize models', harness, 'All', 'Exit'];
         const checklistCalls = [];
         await runPostSetupMenu({
           projectPath: REPO_ROOT,
@@ -1191,7 +1191,7 @@ test('injected checklist seam renders context before difficulty in both harnesse
     ));
     try {
       const checklistCalls = [];
-      const answers = ['Customize models', harness, 'All', 'Exit'];
+      const answers = ['Model customization', 'Customize models', harness, 'All', 'Exit'];
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
         isTTY: true,
@@ -1248,8 +1248,8 @@ test('save and load preset previews show context before difficulty on both harne
         const presetPath = path.join(root, 'context-test.json');
         if (action === 'Load preset') fs.writeFileSync(presetPath, presetText);
         const answers = action === 'Save preset'
-          ? [action, harness, 'No', 'Exit']
-          : [action, harness, 'context-test', 'No', 'Exit'];
+          ? ['Model customization', action, harness, 'No', 'Exit']
+          : ['Model customization', action, harness, 'context-test', 'No', 'Exit'];
         const result = await runPostSetupMenu({
           projectPath: root,
           isTTY: true,
@@ -1288,7 +1288,7 @@ test('loading reserved default and legacy unprefixed presets remains supported o
         const text = JSON.stringify({ 'worker:sai-2-design-worker': { model: 'test/model' } });
         const file = path.join(root, `${name}.json`);
         fs.writeFileSync(file, text);
-        const answers = ['Load preset', harness, name, 'No', 'Exit'];
+        const answers = ['Model customization', 'Load preset', harness, name, 'No', 'Exit'];
         await runPostSetupMenu({
           projectPath: root,
           isTTY: true,
@@ -1332,7 +1332,7 @@ test('reserved default preset names retry without leaving the selected harness',
         'nested/[sai-default]-nested',
         'personal',
       ];
-      const answers = ['Save preset', harness, 'Yes', 'Yes', 'Exit'];
+      const answers = ['Model customization', 'Save preset', harness, 'Yes', 'Yes', 'Exit'];
       // Personal presets retain the usual overwrite confirmation.
       fs.writeFileSync(path.join(root, 'personal.json'), 'old personal');
       const prompts = [];
@@ -1372,7 +1372,7 @@ test('an adapter without effectiveSetting renders unavailable as plain column te
   const restore = patchFactory('createOpencodeAdapter', () => adapter);
   try {
     const checklistCalls = [];
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1400,7 +1400,7 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
   console.log = (...args) => logged.push(args.map(String).join(' '));
   try {
     const checklistCalls = [];
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'All', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1504,7 +1504,7 @@ test('both harnesses exclude non-SAI wrappers in Orchestrators and All without h
       assert.deepEqual([...targets.agent, ...targets.worker].sort(), [...agents].sort());
       for (const scope of ['Orchestrators', 'All']) {
         const calls = [];
-        const answers = ['Customize models', label, scope];
+        const answers = ['Model customization', 'Customize models', label, scope];
         await runPostSetupMenu({
           projectPath: fixture.root,
           isTTY: true,
@@ -1553,7 +1553,7 @@ test('back at the scope screen re-opens the harness selector and persists no sel
   const prompts = [];
   const checklistCalls = [];
   try {
-    const answers = ['Customize models', 'OpenCode', BACK, 'Claude Code', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', BACK, 'Claude Code', 'Workers', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1603,7 +1603,7 @@ test('back at the target checklist re-opens the scope screen and persists no sel
   const questions = [];
   const checklistCalls = [];
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Orchestrators', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Orchestrators', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1624,10 +1624,11 @@ test('back at the target checklist re-opens the scope screen and persists no sel
       'the first checklist pass presents the Workers scope targets with stable worker identities');
     assert.deepEqual(checklistCalls[1][0], MODEL_COMMANDS.map(name => `command:${name}`),
       'after back the re-picked Orchestrators scope presents stable command identities');
-    assert.equal(questions.length, 5,
-      'menu, harness, scope, the re-presented scope, and the fresh menu are prompted');
-    assert.equal(questions[1], 'Choose a harness:', 'the harness selector precedes the first scope screen');
-    assert.equal(questions[2], questions[3],
+    assert.equal(questions.length, 6,
+      'menu, submenu, harness, scope, the re-presented scope, and the fresh menu are prompted');
+    assert.equal(questions[1], 'Model customization:', 'the Model customization submenu precedes the harness selector');
+    assert.equal(questions[2], 'Choose a harness:', 'the harness selector precedes the first scope screen');
+    assert.equal(questions[3], questions[4],
       'back at the checklist re-presents the same scope screen');
     assert.deepEqual(opencodeOps.select, [MODEL_COMMANDS.map(name => `command:${name}`).join(', ')],
       'only the confirmed Orchestrators pass reaches settings selection');
@@ -1648,7 +1649,7 @@ test('subset selection configures exactly the selected agents: one selectSetting
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1676,7 +1677,7 @@ test('empty checklist selection completes with zero per-agent configuration', as
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
     let checklistCalls = 0;
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
@@ -1716,7 +1717,7 @@ test('promptChoice null at the harness picker aborts before any checklist or per
     return makeFakeAdapter([], { select: [], create: [] });
   });
   try {
-    const answers = ['Customize models', 'OpenCode', null];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', null];
     let promptIndex = 0;
     const promptChoice = async () => {
       promptCalls += 1;
@@ -1731,7 +1732,7 @@ test('promptChoice null at the harness picker aborts before any checklist or per
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.equal(promptCalls, 3, 'the main menu, the harness picker, and the scope screen should be prompted');
+    assert.equal(promptCalls, 4, 'the main menu, the submenu, the harness picker, and the scope screen should be prompted');
     assert.equal(checklistCalls.length, 0,
       'the checklist must never be reached when the harness picker is cancelled');
     assert.equal(opencodeFactoryCalls, 0, 'no opencode adapter should be created');
@@ -1755,7 +1756,7 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
     const originalOpencode = modelCustomization.createOpencodeAdapter;
     const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => originalOpencode({ ...deps, runCommand: fakeRunner }));
     try {
-      const answers = ['Customize models', 'OpenCode', 'Workers', null];
+      const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', null];
       let promptIndex = 0;
       const promptChoice = async () => {
         const value = answers[promptIndex];
@@ -1772,8 +1773,8 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
       assert.equal(result.status, 'skipped');
       assert.equal(result.reason, 'cancelled');
       assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
-      assert.equal(promptCalls, 5,
-        'provider cancellation returns to the customization menu');
+      assert.equal(promptCalls, 6,
+        'provider cancellation closes the menu after the main menu, submenu, harness, scope, and provider prompts');
       assert.deepEqual(runnerCalls, [['models']],
         'the catalog runner is invoked exactly once before the provider screen, never with --refresh');
     } finally {
@@ -1790,7 +1791,7 @@ test('checklist cancelled aborts with zero agents configured and returns cancell
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1815,7 +1816,7 @@ test('checklist non-interactive aborts as non-tty: zero agents configured', asyn
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -2843,7 +2844,7 @@ test('a null selectSettings result reports failure without configuring agents', 
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => fakeAdapter);
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -3254,7 +3255,7 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
       globalAgentRoot: fixture.opencodeGlobalRoot,
     }));
     try {
-      const answers = ['Customize models', 'Claude Code', 'Workers'];
+      const answers = ['Model customization', 'Customize models', 'Claude Code', 'Workers'];
       const promptChoice = async (question, options) => {
         if (answers.length > 0) return answers.shift();
         if (question === 'Post-setup customization:') return 'Exit';
@@ -3281,7 +3282,7 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
       assert.notDeepEqual(snapshotTree(fixture.projectPath), selectedBefore);
 
       const emptyBefore = snapshotTree(fixture.projectPath);
-      const emptyAnswers = ['Customize models', 'Claude Code', 'Workers'];
+      const emptyAnswers = ['Model customization', 'Customize models', 'Claude Code', 'Workers'];
       let emptyChecklistCalls = 0;
       const empty = await runPostSetupMenu({
         projectPath: fixture.projectPath,
@@ -3300,7 +3301,7 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
       assert.deepEqual(snapshotTree(fixture.projectPath), emptyBefore);
 
       const cancelledBefore = snapshotTree(fixture.projectPath);
-      const cancelledAnswers = ['Customize models', 'Claude Code', 'Workers'];
+      const cancelledAnswers = ['Model customization', 'Customize models', 'Claude Code', 'Workers'];
       const cancelled = await runPostSetupMenu({
         projectPath: fixture.projectPath,
         isTTY: true,
@@ -3729,7 +3730,7 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
     makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const selected = [CLAUDE_AGENTS[0], CLAUDE_AGENTS[2]];
   try {
-    const answers = ['Customize models', 'Claude Code', 'Workers', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'Claude Code', 'Workers', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -4027,7 +4028,7 @@ test('loading a legacy model-only Haiku preset remains valid without adding effo
       [`worker:${PERSIST_CLAUDE_AGENT}`]: { model: 'haiku' },
     });
     fs.writeFileSync(path.join(presetDir, `${presetName}.json`), presetText);
-    const answers = ['Load preset', 'Claude Code', presetName, 'Yes', 'Exit'];
+    const answers = ['Model customization', 'Load preset', 'Claude Code', presetName, 'Yes', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: fixture.projectPath,
       packageRoot: fixture.packageRoot,
@@ -4158,7 +4159,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
     }
     writeGlobalCommand(fixture, 'claude', valid, claudeCommandSource(valid));
     writeGlobalCommand(fixture, 'claude', invalid, 'no frontmatter block here\njust a body\n');
-    const answers = ['Customize models', 'Claude Code', 'Orchestrators'];
+    const answers = ['Model customization', 'Customize models', 'Claude Code', 'Orchestrators'];
     const result = await runPostSetupMenu({
       projectPath: fixture.projectPath,
       isTTY: true,
@@ -4206,7 +4207,7 @@ test('the settings selector is invoked exactly once per run for the whole confir
   const restoreClaude = patchFactory('createClaudeAdapter', () =>
     makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const answers = ['Model customization', 'Customize models', 'OpenCode', 'All', 'Exit'];
     const both = ['command:sai-1-spec', 'worker:budget', 'worker:explore'];
     const bothBare = ['sai-1-spec', 'budget', 'explore'];
     const result = await runPostSetupMenu({
@@ -4233,7 +4234,7 @@ test('the settings selector is invoked exactly once per run for the whole confir
 
     opencodeOps.select.length = 0;
     opencodeOps.create.length = 0;
-    const emptyAnswers = ['Customize models', 'OpenCode', 'All'];
+    const emptyAnswers = ['Model customization', 'Customize models', 'OpenCode', 'All'];
     let emptyChecklistCalls = 0;
     const emptyResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -4335,8 +4336,8 @@ test('completed passes re-enter with fresh adapters and selections, render prior
   const checklistCalls = [];
   const eventsCapture = captureTerminalEvents();
   const answers = [
-    'Customize models', 'OpenCode', 'Workers',
-    'Customize models', 'OpenCode', 'Workers', 'Exit',
+    'Model customization', 'Customize models', 'OpenCode', 'Workers',
+    'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit',
   ];
   const promptCalls = [];
   try {
@@ -4416,7 +4417,7 @@ test('persistence failure attempts every selected target, returns failedAgents a
       ],
     ops,
   }));
-  const answers = ['Customize models', 'OpenCode', 'Workers'];
+  const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers'];
   let menuPrompts = 0;
   try {
     const result = await runPostSetupMenu({
@@ -4464,7 +4465,7 @@ test('empty target enumeration notices the user, returns to scope, and never ope
     outcomes: [],
     ops,
   }));
-  const answers = ['Customize models', 'OpenCode', 'Workers', BACK, BACK, 'Exit'];
+  const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', BACK, BACK, 'Exit'];
   const scopeQuestions = [];
   const terminal = captureTerminalEvents();
   let checklistCalls = 0;
@@ -4506,7 +4507,7 @@ test('post-setup selectors use the default single-select legend while the menu s
     ops,
   }));
   const calls = [];
-  const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+  const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
   try {
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -4521,11 +4522,13 @@ test('post-setup selectors use the default single-select legend while the menu s
     assert.equal(result.reason, 'cancelled');
     assert.equal(calls[0][0], 'Post-setup customization:');
     assert.equal(calls[0][3], null, 'the post-setup menu explicitly suppresses its footer');
-    assert.equal(calls[1][0], 'Choose a harness:');
-    assert.equal(calls[1].length, 2,
-      'the harness selector receives its default footer through promptSelect');
-    assert.equal(calls[2][0], 'Choose a customization scope:');
+    assert.equal(calls[1][0], 'Model customization:');
+    assert.equal(calls[1][3], undefined, 'the submenu receives its default footer through promptSelect');
+    assert.equal(calls[2][0], 'Choose a harness:');
     assert.equal(calls[2].length, 2,
+      'the harness selector receives its default footer through promptSelect');
+    assert.equal(calls[3][0], 'Choose a customization scope:');
+    assert.equal(calls[3].length, 2,
       'the scope selector receives its default footer through promptSelect');
   } finally {
     restore();
@@ -4588,7 +4591,7 @@ test('scope cancellation stops the cycle without reaching targets, settings, or 
       isTTY: true,
       promptChoice: async question => {
         questions.push(question);
-        return ['Customize models', 'OpenCode', null][questions.length - 1];
+        return ['Model customization', 'Customize models', 'OpenCode', null][questions.length - 1];
       },
       promptChecklist: async () => assert.fail('scope cancellation must not reach targets'),
     });
@@ -4600,6 +4603,7 @@ test('scope cancellation stops the cycle without reaching targets, settings, or 
     });
     assert.deepEqual(questions, [
       'Post-setup customization:',
+      'Model customization:',
       'Choose a harness:',
       'Choose a customization scope:',
     ]);
@@ -4624,7 +4628,8 @@ test('runPostSetupMenu renders target diagnostics, while setup keeps unexpected 
     const result = await runPostSetupMenu({
       isTTY: true,
       promptChoice: async question => ({
-        'Post-setup customization:': 'Customize models',
+        'Post-setup customization:': 'Model customization',
+        'Model customization:': 'Customize models',
         'Choose a harness:': 'OpenCode',
         'Choose a customization scope:': 'Workers',
       }[question]),
@@ -4674,7 +4679,7 @@ test('catalog failures are reported before returning to the post-setup menu', as
       const restore = patchFactory('createOpencodeAdapter', deps => original({ ...deps, runCommand: catalog }));
       const capture = captureConsole();
       try {
-        const choices = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+        const choices = ['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'];
         const outcome = await runPostSetupMenu({
           projectPath: scratch,
           isTTY: true,
@@ -4708,7 +4713,7 @@ test('closed menu input and a later customization error return a reported failur
       return adapter;
     });
     try {
-      const choices = ['Customize models', 'Claude Code', 'Workers'];
+      const choices = ['Model customization', 'Customize models', 'Claude Code', 'Workers'];
       const failed = await runPostSetupMenu({
         isTTY: true,
         promptChoice: async () => choices.shift() ?? assert.fail('unexpected prompt'),
@@ -4793,8 +4798,7 @@ test('guided warming pairs are grouped per harness and list each installed (prov
   }
 });
 
-test('the post-setup menu keeps its six actions and has no Cache warming entry', () => {
-  const options = modelCustomization.MENU_OPTIONS;
-  assert.deepEqual([...options], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
-  assert.equal(options.includes('Cache warming'), false);
+test('the main menu lists the topics in order and the Model customization submenu keeps its four actions', () => {
+  assert.deepEqual(modelCustomization.mainMenuOptions('Telemetry: off'), ['Model customization', 'Language settings', 'Backlog and PR settings', 'Telemetry: off', 'Cache warming', 'Exit']);
+  assert.deepEqual([...modelCustomization.MODEL_MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset']);
 });

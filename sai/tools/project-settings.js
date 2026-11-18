@@ -125,8 +125,8 @@ function resolveWarmingValue(value, { provider, model, role, harness }) {
 
 // The setting id catalogue: the single source of known ids, their validation, and
 // their presentation. An entry may add `normalize`, which maps a valid value to the one
-// the gates compare. `label` and `section` place a key on the settings screen; `absent` is
-// the text the screen shows for a key with no value, where `ask` does not fit.
+// the gates compare. `label` and `section` place a key in the post-setup menu; `absent` is
+// the text the menu shows for a key with no value, where `ask` does not fit.
 const CATALOGUE = {
   warming: { validate: validateWarming, label: 'Cache warming', section: 'Cache warming', absent: 'off' },
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
@@ -150,7 +150,7 @@ const CATALOGUE = {
   // An absent key reads as false.
   'experimental.changeTelemetry': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
-    label: 'Change telemetry',
+    label: 'Telemetry',
     section: 'Experimental',
     absent: 'off',
   },

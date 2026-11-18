@@ -1,31 +1,34 @@
 'use strict';
 
-// The `Project behavior settings` screen of the post-setup menu. It shows and edits the
-// settings that the menu manages, by label and under section headers from the catalogue,
-// and saves them through the writer when the user leaves the screen. A key that the
-// hand-created local settings file holds shows as an override and saves to that file.
-// Prompts are injected so tests drive it.
+// The project setting screens of the post-setup menu: the `Language settings` and `Backlog and PR settings`
+// submenus and the `Telemetry` row of the main menu. Every value choice is saved at once through the settings
+// writer, so no edit is pending and leaving a screen saves or discards nothing. A key that the hand-created
+// local settings file holds shows as an override and saves to that file. Both files are read again each time a
+// screen is drawn. Prompts are injected so tests drive it.
 const fs = require('fs');
 const path = require('path');
 const { CATALOGUE, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require('../sai/tools/project-settings.js');
 const { checkValue, readStored, storedValue, saveSettings } = require('./project-settings-writer.js');
 const { BACK } = require('./install-flow.js');
 
-const SETTING_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
-// Keys that the screen edits as a boolean: the choices are `On` and `Off`.
-const BOOLEAN_IDS = Object.freeze(['experimental.changeTelemetry']);
+const LANGUAGE_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage']);
+const BACKLOG_PR_IDS = Object.freeze(['backlog.provider', 'pr.provider']);
+const TELEMETRY_ID = 'experimental.changeTelemetry';
+const SETTING_IDS = Object.freeze([...LANGUAGE_IDS, ...BACKLOG_PR_IDS, TELEMETRY_ID]);
+// Keys that the menu edits as a boolean: the choices are `On` and `Off`.
+const BOOLEAN_IDS = Object.freeze([TELEMETRY_ID]);
+// The two provider settings share the catalogue label `Provider`; their submenu rows name the topic.
+const ROW_LABELS = Object.freeze({ 'backlog.provider': 'Backlog provider', 'pr.provider': 'Pull requests provider' });
 const REGISTRIES = Object.freeze([
   ['skills', 'universal', 'to-backlog', 'providers', 'registry.json'],
   ['skills', 'universal', 'from-backlog', 'providers', 'registry.json'],
 ]);
 const PR_REGISTRY = Object.freeze(['skills', 'universal', 'to-pr', 'providers', 'registry.json']);
 const OTHER_LANGUAGE = 'Other language...';
-const DONE = 'Done';
 const ON = 'On';
 const OFF = 'Off';
-// An action row under `Experimental`, after the setting rows: it opens the cache warming screen.
-const CACHE_WARMING = 'Cache warming';
 const ASK = 'ask';
+const INTERRUPTED = Object.freeze({ status: 'interrupted' });
 
 /** The union of the provider ids in the to-backlog and from-backlog registries. */
 function providerIdsFrom(packageRoot) {
@@ -46,18 +49,13 @@ function prProviderIdsFrom(packageRoot) {
 // What a key with no value reads as: `ask` unless the catalogue words it otherwise.
 const absentText = id => CATALOGUE[id].absent ?? ASK;
 const showValue = value => (typeof value === 'boolean' ? (value ? 'on' : 'off') : value);
+const labelOf = id => ROW_LABELS[id] ?? CATALOGUE[id].label;
 
 function valueChoices(id, providerIds, prProviderIds) {
   if (BOOLEAN_IDS.includes(id)) return [ON, OFF];
   if (id === 'backlog.provider') return [ASK, ...providerIds];
   if (id === 'pr.provider') return [ASK, ...prProviderIds];
   return [absentText(id), 'English', ...(id === 'explore.overviewLanguage' ? ['none'] : []), OTHER_LANGUAGE];
-}
-
-const sectionHeader = id => `-- ${CATALOGUE[id].section} --`;
-
-function rowLabel(id, shown) {
-  return `${CATALOGUE[id].label}: ${shown}`;
 }
 
 const colorEnabled = () => Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
@@ -69,134 +67,152 @@ function overrideText(base, local, color) {
 }
 
 /**
- * Run the screen. Resolves to { status: 'saved'|'unchanged'|'failed'|'discarded', ... } and always
- * returns to the menu. 'discarded' (null from a prompt, an interrupt) drops the edits and saves nothing.
+ * The editor of the project setting screens. `runSection({ title, ids })` shows one submenu and resolves to
+ * { status: 'back'|'interrupted'|'failed' }; `editSetting(id)` runs one value picker from outside a submenu (the
+ * Telemetry row) and resolves to { status: 'saved'|'unchanged'|'back'|'rejected'|'failed'|'interrupted' }.
+ * 'interrupted' (null from a prompt) means the user closed the menu; nothing is pending, so nothing is lost.
+ * `rowText(id)` is the `<label>: <current value>` text of a value row.
  */
-async function runProjectSettingsScreen({
+function createSettingsEditor({
   projectPath = process.cwd(),
   packageRoot = path.join(__dirname, '..'),
   promptChoice,
   promptInput,
-  openCacheWarming,
   log = console.log,
   color = colorEnabled(),
 } = {}) {
-  const providerIds = providerIdsFrom(packageRoot);
-  const prProviderIds = prProviderIdsFrom(packageRoot);
-  const roots = {};
-  for (const settingsFile of [SETTINGS_FILE, LOCAL_SETTINGS_FILE]) {
-    const stored = readStored(projectPath, settingsFile);
-    if (stored.status === 'unreadable') {
-      log(`Cannot edit ${settingsFile}: ${stored.error}. Fix or remove the file and try again.`);
-      return { status: 'failed', reason: 'unparseable', error: stored.error };
+  // The registries are read when a picker needs them. A package root without them only loses the provider
+  // validation of the rows it draws, so drawing never fails on them; opening a picker does.
+  let known;
+  function providers({ required = true } = {}) {
+    if (known === undefined) {
+      try {
+        known = { providerIds: providerIdsFrom(packageRoot), prProviderIds: prProviderIdsFrom(packageRoot) };
+      } catch (error) {
+        if (required) throw error;
+        return {};
+      }
     }
-    roots[settingsFile] = stored.status === 'ok' ? stored.root : {};
+    return known;
   }
-  const baseRoot = roots[SETTINGS_FILE];
-  const localRoot = roots[LOCAL_SETTINGS_FILE];
-  const { baseValues, localValues, warnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
-  for (const warning of warnings) log(warning);
 
-  // A key that the local file holds saves there; every other key saves to the base file.
-  const isLocal = id => storedValue(localRoot, id) !== undefined;
-  const targetRoot = id => (isLocal(id) ? localRoot : baseRoot);
-  const changes = {};
-  const pending = id => Object.hasOwn(changes, id);
-  const shownIn = (root, values, id) => {
+  // Both files are read afresh: every choice is saved at once, so each screen draws from what is on disk.
+  function load() {
+    const roots = {};
+    for (const settingsFile of [SETTINGS_FILE, LOCAL_SETTINGS_FILE]) {
+      const stored = readStored(projectPath, settingsFile);
+      if (stored.status === 'unreadable') return { unreadable: { file: settingsFile, error: stored.error } };
+      roots[settingsFile] = stored.status === 'ok' ? stored.root : {};
+    }
+    const baseRoot = roots[SETTINGS_FILE];
+    const localRoot = roots[LOCAL_SETTINGS_FILE];
+    const { providerIds, prProviderIds } = providers({ required: false });
+    const { baseValues, localValues, warnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
+    return { baseRoot, localRoot, baseValues, localValues, warnings, providerIds, prProviderIds };
+  }
+
+  function reportUnreadable({ file, error }) {
+    log(`Cannot edit ${file}: ${error}. Fix or remove the file and try again.`);
+    return { status: 'failed', reason: 'unparseable', error };
+  }
+
+  const shownIn = (state, root, values, id) => {
     const raw = storedValue(root, id);
     if (raw === undefined) return absentText(id);
     if (Object.hasOwn(values, id)) return showValue(values[id]);
-    return checkValue(id, raw, providerIds, prProviderIds).ok ? absentText(id) : `${JSON.stringify(raw)} (invalid)`;
-  };
-  const baseText = id => shownIn(baseRoot, baseValues, id);
-  const pendingText = id => (changes[id] === undefined ? absentText(id) : showValue(changes[id]));
-  const displayValue = id => {
-    if (!isLocal(id)) return pending(id) ? pendingText(id) : baseText(id);
-    // Removing a key from the local file lets the base value apply again.
-    if (pending(id) && changes[id] === undefined) return baseText(id);
-    return overrideText(baseText(id), pending(id) ? pendingText(id) : shownIn(localRoot, localValues, id), color);
+    return checkValue(id, raw, state.providerIds, state.prProviderIds).ok ? absentText(id) : `${JSON.stringify(raw)} (invalid)`;
   };
 
-  // A free-text language: ask again until the catalogue accepts it or the user backs out.
+  function rowText(id, state = load()) {
+    if (state.unreadable) return `${labelOf(id)}: ${absentText(id)}`;
+    const base = shownIn(state, state.baseRoot, state.baseValues, id);
+    const shown = storedValue(state.localRoot, id) === undefined
+      ? base
+      : overrideText(base, shownIn(state, state.localRoot, state.localValues, id), color);
+    return `${labelOf(id)}: ${shown}`;
+  }
+
+  // A free-text language: ask again until the catalogue accepts it. An empty answer, like Back, saves nothing.
   const askLanguage = async id => {
     for (;;) {
       const answer = await promptInput('Language name: ');
       if (answer === BACK) return BACK;
       if (answer === null || answer === undefined) return null;
-      const checked = checkValue(id, String(answer), providerIds, prProviderIds);
+      if (String(answer).trim() === '') return BACK;
+      const checked = checkValue(id, String(answer));
       if (checked.ok) return checked.value;
       log(`Rejected: ${checked.problem}.`);
     }
   };
 
-  const discard = () => {
-    log('Interrupted: the edits were discarded and nothing was saved.');
-    return { status: 'discarded' };
-  };
-
-  const record = (id, value) => {
-    if (value === storedValue(targetRoot(id), id)) delete changes[id];
-    else changes[id] = value;
-  };
-
-  for (;;) {
-    // Option values are the setting ids and section headers, which are unique; the visible text
-    // travels beside them, because two sections may show the same label and value.
-    const options = [];
-    const displayOptions = [];
-    const groupHeaders = [];
-    SETTING_IDS.forEach((id, index) => {
-      if (index === 0 || CATALOGUE[id].section !== CATALOGUE[SETTING_IDS[index - 1]].section) {
-        groupHeaders.push(sectionHeader(id));
-        options.push(sectionHeader(id));
-        displayOptions.push(sectionHeader(id));
-      }
-      options.push(id);
-      displayOptions.push(rowLabel(id, displayValue(id)));
-    });
-    options.push(CACHE_WARMING, DONE);
-    displayOptions.push(CACHE_WARMING, DONE);
-    const action = await promptChoice('Project behavior settings:', options, undefined, undefined, { groupHeaders, displayOptions });
-    if (action === null) return discard();
-    if (action === BACK || action === DONE) break;
-    // The warming screen saves its own key; the pending edits here stay pending and save when this screen is left.
-    if (action === CACHE_WARMING) {
-      await openCacheWarming();
-      continue;
-    }
-    const id = SETTING_IDS.find(candidate => candidate === action);
-    if (!id) return discard();
-    const choice = await promptChoice(`${CATALOGUE[id].label}:`, valueChoices(id, providerIds, prProviderIds));
-    if (choice === null) return discard();
-    if (choice === BACK) continue;
+  // One value picker and, for a chosen value, one write: the value is on disk before the picker closes.
+  async function edit(id, state) {
+    const isLocal = storedValue(state.localRoot, id) !== undefined;
+    const { providerIds, prProviderIds } = providers();
+    const choice = await promptChoice(`${labelOf(id)}:`, valueChoices(id, providerIds, prProviderIds));
+    if (choice === null) return INTERRUPTED;
+    if (choice === BACK) return { status: 'back' };
+    let value;
     if (choice === OTHER_LANGUAGE) {
-      const language = await askLanguage(id);
-      if (language === null) return discard();
-      if (language !== BACK) record(id, language);
-      continue;
+      value = await askLanguage(id);
+      if (value === null) return INTERRUPTED;
+      if (value === BACK) return { status: 'back' };
+    } else {
+      // `On` saves true; `Off` removes the key, except in the local file, where it saves false so a shared true cannot apply.
+      const chosen = BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal ? false : undefined) : choice;
+      if (chosen === undefined || (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent)) {
+        value = undefined;
+      } else {
+        const checked = checkValue(id, chosen, providerIds, prProviderIds);
+        if (!checked.ok) {
+          log(`Rejected: ${checked.problem}.`);
+          return { status: 'rejected' };
+        }
+        value = checked.value;
+      }
     }
-    // `On` saves true; `Off` removes the key, except in the local file, where it saves false so a shared true cannot apply.
-    const chosen = BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal(id) ? false : undefined) : choice;
-    if (chosen === undefined || (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent)) {
-      record(id, undefined);
-      continue;
+    if (value === storedValue(isLocal ? state.localRoot : state.baseRoot, id)) return { status: 'unchanged' };
+    const saved = saveSettings(projectPath, { [id]: value }, { providerIds, prProviderIds });
+    if (!saved.ok) {
+      log(`Project settings were not saved: ${saved.error}`);
+      return { status: 'failed', reason: 'save', error: saved.error };
     }
-    const checked = checkValue(id, chosen, providerIds, prProviderIds);
-    if (!checked.ok) {
-      log(`Rejected: ${checked.problem}.`);
-      continue;
-    }
-    record(id, checked.value);
+    return { status: 'saved' };
   }
 
-  if (Object.keys(changes).length === 0) return { status: 'unchanged' };
-  const saved = saveSettings(projectPath, changes, { providerIds, prProviderIds });
-  if (!saved.ok) {
-    log(`Project settings were not saved: ${saved.error}`);
-    return { status: 'failed', reason: 'save', error: saved.error };
+  const warn = (state, ids) => {
+    for (const warning of state.warnings) if (ids.some(id => warning.includes(id))) log(warning);
+  };
+
+  async function editSetting(id) {
+    const state = load();
+    if (state.unreadable) return reportUnreadable(state.unreadable);
+    warn(state, [id]);
+    return edit(id, state);
   }
-  log(`Saved ${Object.keys(changes).length} project setting(s) to ${saved.files.join(', ')}.`);
-  return { status: 'saved', changes: { ...changes } };
+
+  async function runSection({ title, ids }) {
+    let state = load();
+    if (state.unreadable) return reportUnreadable(state.unreadable);
+    warn(state, ids);
+    let last;
+    for (;;) {
+      // Option values are the setting ids, which are unique; the visible text travels beside them, because
+      // two rows may show the same value.
+      const action = await promptChoice(title, [...ids], undefined, undefined, { displayOptions: ids.map(id => rowText(id, state)), initial: last });
+      if (action === null) return INTERRUPTED;
+      if (action === BACK) return { status: 'back' };
+      const id = ids.find(candidate => candidate === action);
+      if (!id) return INTERRUPTED;
+      const outcome = await edit(id, state);
+      if (outcome.status === 'interrupted') return outcome;
+      last = id;
+      state = load();
+      if (state.unreadable) return reportUnreadable(state.unreadable);
+    }
+  }
+
+  return { rowText, editSetting, runSection };
 }
 
-module.exports = { SETTING_IDS, OTHER_LANGUAGE, DONE, providerIdsFrom, prProviderIdsFrom, runProjectSettingsScreen };
+module.exports = { SETTING_IDS, LANGUAGE_IDS, BACKLOG_PR_IDS, TELEMETRY_ID, OTHER_LANGUAGE, providerIdsFrom, prProviderIdsFrom, createSettingsEditor };

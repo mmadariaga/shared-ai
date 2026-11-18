@@ -1,11 +1,12 @@
 # Model defaults and customization
 
-Run project `setup` and choose **Customize models** to change individual models,
-or **Load preset** to start from a subscription-specific mix. Both Claude Code
+Run project `setup`, choose **Model customization**, and then **Customize models**
+to change individual models, or **Load preset** to start from a subscription-specific
+mix. Both Claude Code
 and opencode support project-local overrides. See
 [model selection and presets](../README.md#post-install) for the quick guide.
-Project behavior settings, which are not models, have their own menu entry; see
-[project settings](project-settings.md).
+Language, backlog, pull request, telemetry, and cache warming settings, which are not
+models, have their own entries in the same menu; see [project settings](project-settings.md).
 
 OpenCode model and variant discovery works without opening its interface first.
 Each query has a 30-second limit. While it runs, **Esc** goes back and **q** or
@@ -122,7 +123,7 @@ separate model selection in this menu.
 ## Run a Claude Code agent on an OpenCode model
 
 With Claude Code as your harness, you can run any agent on the model of its
-OpenCode agent. In `setup`, choose **Customize models**, then **Claude Code**,
+OpenCode agent. In `setup`, choose **Model customization** → **Customize models**, then **Claude Code**,
 select agent rows (AGENT and WORKER), and pick **OpenCode passthrough** as the
 first setting option. Setup then writes one line in the project's
 `.claude/agents/<name>.md`:

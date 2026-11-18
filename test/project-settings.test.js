@@ -606,7 +606,7 @@ test('I3: experimental.changeTelemetry is a boolean that reads as absent until s
   const invalid = settings.get('experimental.changeTelemetry', { cwd: project({ '.sai/settings.jsonc': '{ "experimental": { "changeTelemetry": "yes" } }' }) });
   assert.equal(invalid.value, null);
   assert.match(invalid.warnings.join('\n'), /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
-  assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Change telemetry', section: 'Experimental', absent: 'off' });
+  assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Telemetry', section: 'Experimental', absent: 'off' });
 });
 
 test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and an invalid value as the question, and is no destination field', () => {

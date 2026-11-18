@@ -1,0 +1,43 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+Every project setting of the post-setup menu was hidden behind one `Project behavior settings` entry that grouped unrelated topics, so users had to know where the language or provider settings lived, and reaching cache warming took several screens. Each topic is now visible on the first screen of the menu, and each setting is one step away.
+
+## What Changes
+
+- The `Post-setup customization:` main menu lists, in this order, `Model customization`, `Language settings`, `Backlog and PR settings`, `Telemetry: <value>`, `Cache warming`, and `Exit`. The `Project behavior settings` entry and its screen, with the `Done` row, the section header rows, and the pending-edit buffer, are retired (`bin/model-customization.js`, `bin/project-settings-screen.js`).
+- `Model customization` opens a submenu with `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`. Each action keeps its harness flow and returns to the main menu when it finishes or is cancelled.
+- `Language settings` opens a submenu with `Ready to Propose language`, `Change overview language`, and `Chat language`; `Backlog and PR settings` opens a submenu with `Backlog provider` and `Pull requests provider`. Each row shows `<label>: <current value>` and opens the existing value picker of that setting.
+- Every value choice is saved at once through the settings writer, with the existing base and local file rules. Esc in a picker, or an empty `Other language...` answer, saves nothing. A save error is reported and the user stays in the submenu. Ctrl+C closes the menu, and values already chosen stay saved.
+- The `Telemetry: <value>` row opens the `On`/`Off` picker and returns to the main menu. The catalogue label of `experimental.changeTelemetry` changes from `Change telemetry` to `Telemetry` (`sai/tools/project-settings.js`).
+- `Cache warming` calls `runWarmingSetup` directly from the main menu; Back or Esc at its harness choice returns to the main menu (`bin/model-customization.js`, `bin/warming-setup.js`).
+- Back or Esc in a submenu returns to the main menu with the cursor on the entry that opened it; the shared navigator gains an `initial` option that names the option the cursor starts on (`bin/install-flow.js`).
+- `README.md`, `AGENTS.md`, `docs/models.md`, and `docs/project-settings.md` describe the new menu and the path to each setting, and no longer cite `Project behavior settings` (archived ADRs keep their historical wording).
+- Tests that pin the menu, the settings screen, and the navigation are rewritten for the new entries and immediate saving.
+
+## Capabilities
+
+### New Capabilities
+
+None
+
+### Modified Capabilities
+
+- `model-customization-menu`: the post-setup main menu lists one entry per topic, `Model customization` opens a submenu of the four model actions, and the menu documentation describes the new paths.
+- `project-settings-screen`: the single settings screen becomes the `Language settings` and `Backlog and PR settings` submenus and the `Telemetry` row, and every value choice is saved at once.
+- `warming-setup`: Back or Esc at the harness choice returns to the post-setup main menu.
+- `cache-warming-settings`: the documentation names the `Cache warming` entry of the post-setup menu as the way to the cache warming screen.
+- `project-settings`: the catalogue label of `experimental.changeTelemetry` is `Telemetry`.
+- `change-telemetry`: the setting is shown and documented as the `Telemetry` row of the post-setup menu.
+- `preset-docs`: the README guidance loads a preset through `Model customization` and `Load preset`.
+- `shared-readline-navigator`: `promptSelect` and the navigator accept an `initial` option that names the option the cursor starts on.
+
+## Impact
+
+- Modified files: `bin/model-customization.js`, `bin/project-settings-screen.js`, `bin/install-flow.js`, `bin/warming-setup.js`, `sai/tools/project-settings.js`, `README.md`, `AGENTS.md`, `docs/models.md`, `docs/project-settings.md`, `test/model-customization-menu.test.js`, `test/model-customization-passthrough.test.js`, `test/navigator-back-navigation.test.js`, `test/opencode-model-discovery.test.js`, `test/project-settings-screen.test.js`, `test/project-settings.test.js`.
+- New files: none.
+- The setting keys, their values, and the file storage rules do not change; only the telemetry label changes. Settings that the old screen did not show (`pr.publishAfterRun` and the repository, organization, and project keys) still do not appear in the menu.
+- Trade-offs: the language and provider values are no longer visible on the first screen; Ctrl+C no longer discards setting changes, because each choice is already saved; the `Experimental` heading no longer appears in the menu.
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
