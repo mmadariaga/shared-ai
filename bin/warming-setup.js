@@ -1,6 +1,6 @@
 'use strict';
 
-// The `Cache warming` screen of the project behavior settings. It edits the nested `warming` value of
+// The `Cache warming` screen of the post-setup menu. It edits the nested `warming` value of
 // `.sai/settings.jsonc` one harness at a time: the screen asks for Claude Code or opencode first, then edits
 // that harness's block (`warming.claude` or `warming.opencode`) with one default per role and guided rules, one
 // per (provider, model) pair that the harness's installed SAI files declare. A harness without a block is

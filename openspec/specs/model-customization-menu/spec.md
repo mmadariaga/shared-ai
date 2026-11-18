@@ -3,60 +3,6 @@ TTY-only post-setup customization menu and isolated harness adapters that apply 
 
 ## Requirements
 
-### Requirement: Post-setup customization menu
-
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly six actions, in this order: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, and `Exit`, on Claude Code and opencode installs alike. The menu MUST NOT offer a `Cache warming` action, and `bin/model-customization.js` MUST NOT keep a constant, parameter, or other mechanism that shows one. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project behavior settings` MUST open the project behavior settings screen with no harness selection, passing an `openCacheWarming` callback that opens the cache warming section with the guided warming pairs built from the installed files of both harnesses, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again. An answer that names `Cache warming` MUST be treated like any other label outside the shown options: the menu run MUST end as `cancelled` and the cache warming section MUST NOT open.
-
-#### Scenario: User exits from the post-setup menu
-
-- **WHEN** setup completes its existing work and the user selects `Exit`
-- **THEN** the setup flow MUST finish without selecting a harness, scope, or any target
-
-#### Scenario: User enters model customization
-
-- **WHEN** setup completes its existing work and the user selects `Customize models`
-- **THEN** the flow MUST continue to exclusive harness selection
-
-#### Scenario: User navigates the post-setup menu with arrow keys
-
-- **WHEN** the user moves the `>` cursor with the arrow keys and confirms with Enter
-- **THEN** the flow MUST act on exactly the highlighted action
-
-#### Scenario: User enters save preset from the post-setup menu
-
-- **WHEN** the user selects `Save preset` at the post-setup menu and chooses a harness
-- **THEN** the flow MUST route to the save-preset screen without presenting scope or settings screens
-
-#### Scenario: User enters load preset from the post-setup menu
-
-- **WHEN** the user selects `Load preset` at the post-setup menu and chooses a harness
-- **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
-
-#### Scenario: User opens project settings from the post-setup menu
-
-- **WHEN** the user selects `Project behavior settings`, edits `backlog.provider`, and leaves the screen
-- **THEN** the flow MUST save the setting through the project behavior settings screen and present the post-setup menu again
-
-#### Scenario: Interrupted project settings return to the menu
-
-- **WHEN** the user interrupts a prompt inside the project behavior settings screen
-- **THEN** the flow MUST present the post-setup menu again and leave `.sai/settings.jsonc` unchanged
-
-#### Scenario: User opens cache warming from the post-setup menu
-
-- **WHEN** the user selects `Project behavior settings`, then the `Cache warming` row of its `Experimental` section, enables a guided pair, and leaves both screens with `Done`
-- **THEN** the flow MUST open the cache warming section with the guided pairs of the installed files, save the enabled rule, return to the project behavior settings screen, and then present the post-setup menu again
-
-#### Scenario: Menu hides cache warming while its visibility constant is disabled
-
-- **WHEN** setup completes its existing work
-- **THEN** the post-setup menu MUST list exactly `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project behavior settings`, and `Exit`, without `Cache warming`
-
-#### Scenario: Hidden cache warming answer is cancelled
-
-- **WHEN** the post-setup menu receives an answer that names `Cache warming`
-- **THEN** the menu run MUST end as `cancelled` without opening the cache warming section or creating `.sai/settings.jsonc`
-
 ### Requirement: TTY-only interaction
 
 The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the customization scope screen, the target-selection checklist, either Claude Code model or effort screen, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return 'skipped' so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
@@ -529,9 +475,9 @@ The operation SHALL still return skipped missing-source with its diagnostic and 
 - **THEN** the utility SHALL report skipped missing-source without breaking the loop and the other families SHALL persist from their existing source roots
 
 ### Requirement: Reset to default models menu option
-The post-setup flow SHALL present Reset to default models as a menu action in Post-setup customization alongside Customize models and Exit, setting mode reset and routing harness selection to the reset-targets screen with no scope screen and no settings selection.
+The post-setup flow SHALL present Reset to default models as an action of the `Model customization` submenu, alongside Customize models, Save preset, and Load preset, setting mode reset and routing harness selection to the reset-targets screen with no scope screen and no settings selection.
 #### Scenario: User enters reset from the post-setup menu
-- **WHEN** the user selects Reset to default models at the post-setup menu
+- **WHEN** the user selects `Model customization` at the post-setup main menu and then Reset to default models
 - **THEN** the flow SHALL route harness selection to the reset-targets screen without presenting scope or settings screens
 
 ### Requirement: Reset target checklist with factory settings
@@ -615,3 +561,70 @@ Both the Claude Code and opencode adapters SHALL expose `/sai-direct-build` as t
 
 - **WHEN** the user enters the All checklist for either harness
 - **THEN** `command:sai-direct-build` appears after `command:sai-build` and before `command:sai-3-implement`, showing `Large` and `↑↑↑`
+
+### Requirement: Post-setup main menu with topic entries
+
+The setup flow MUST present the `Post-setup customization:` main menu only after all existing setup operations have completed, on Claude Code and opencode installs alike. The main menu MUST list exactly these entries, in this order: `Model customization`, `Language settings`, `Backlog and PR settings`, `Telemetry: <value>`, `Cache warming`, and `Exit`. The `Telemetry: <value>` row MUST show the current value of `experimental.changeTelemetry` as stored on disk, so `bin/model-customization.js` MUST build the main menu options each time the menu is drawn. The menu MUST NOT offer a `Project behavior settings` entry. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted entry. Selecting `Language settings` or `Backlog and PR settings` MUST open that section submenu, and Back or Esc in the submenu MUST return to the main menu with the cursor on that section. Selecting the `Telemetry: <value>` row MUST open the `On`/`Off` value picker and then return to the main menu, which shows the new value. Selecting `Cache warming` MUST call `runWarmingSetup` of `bin/warming-setup.js` directly, with the guided warming pairs built from the installed files of both harnesses, and when that flow returns the flow MUST present the main menu again; a cache warming flow that ends as `discarded` MUST end the menu run as `cancelled`. An interrupt (a null prompt answer such as Ctrl+C) in any section submenu or value picker MUST end the menu run as `cancelled`, and values already chosen MUST stay saved. Selecting `Exit`, or an answer outside the shown options, MUST end the menu run as `cancelled`.
+
+#### Scenario: Main menu lists the topic entries in order
+
+- **WHEN** setup completes its existing work in an interactive terminal and `experimental.changeTelemetry` is absent
+- **THEN** the main menu MUST list exactly `Model customization`, `Language settings`, `Backlog and PR settings`, `Telemetry: off`, `Cache warming`, and `Exit`, without `Project behavior settings`
+
+#### Scenario: User exits from the main menu
+
+- **WHEN** setup completes its existing work and the user selects `Exit`
+- **THEN** the setup flow MUST finish as `cancelled` without selecting a harness, scope, or any target
+
+#### Scenario: Back from a section submenu keeps the cursor on the section
+
+- **WHEN** the user selects `Backlog and PR settings` and then presses Back or Esc in its submenu
+- **THEN** the flow MUST present the main menu again with the cursor on `Backlog and PR settings`
+
+#### Scenario: Telemetry row returns to the main menu with the new value
+
+- **WHEN** the user selects `Telemetry: off` and chooses `On`
+- **THEN** `.sai/settings.jsonc` MUST hold `experimental.changeTelemetry: true` and the main menu MUST be presented again with the row `Telemetry: on`
+
+#### Scenario: User opens cache warming from the main menu
+
+- **WHEN** the user selects `Cache warming`, enables a guided pair, and leaves the cache warming flow
+- **THEN** the flow MUST open the cache warming flow with the guided pairs of the installed files, save the enabled rule, and present the main menu again
+
+#### Scenario: Interrupt closes the menu and keeps saved values
+
+- **WHEN** the user chooses a value in the `Language settings` submenu and then interrupts a later prompt with Ctrl+C
+- **THEN** the menu run MUST end as `cancelled` and the value chosen before the interrupt MUST stay saved
+
+### Requirement: Model customization submenu
+
+Selecting `Model customization` in the main menu MUST open a submenu titled `Model customization:` that lists exactly `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`, in this order. Each action MUST keep its existing flow: `Customize models` continues to exclusive harness selection, `Reset to default models` routes harness selection to the reset-targets screen, and `Save preset` and `Load preset` route harness selection to the save-preset or load-preset screen with no scope screen. When an action finishes or is cancelled, the flow MUST return to the main menu, not to the submenu. Back or Esc in the submenu MUST return to the main menu with the cursor on `Model customization`. When the submenu opens again, its cursor MUST start on the action chosen last.
+
+#### Scenario: User enters model customization
+
+- **WHEN** the user selects `Model customization` and then `Customize models`
+- **THEN** the flow MUST continue to exclusive harness selection
+
+#### Scenario: User enters save preset from the submenu
+
+- **WHEN** the user selects `Model customization`, then `Save preset`, and chooses a harness
+- **THEN** the flow MUST route to the save-preset screen without presenting scope or settings screens
+
+#### Scenario: User enters load preset from the submenu
+
+- **WHEN** the user selects `Model customization`, then `Load preset`, and chooses a harness
+- **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
+
+#### Scenario: A finished model action returns to the main menu
+
+- **WHEN** a model action finishes or is cancelled
+- **THEN** the flow MUST present the main menu, not the `Model customization` submenu
+
+### Requirement: Post-setup menu documentation
+
+`README.md`, `docs/models.md`, and `docs/project-settings.md` MUST describe the post-setup main menu and the path to each setting: model actions through `Model customization`, language settings through `Language settings`, provider settings through `Backlog and PR settings`, change telemetry through the `Telemetry` row, and the cache warming screen through `Cache warming`. `docs/project-settings.md` MUST hold a `Post-setup menu` section that lists the main menu entries in order and states that each value choice is saved at once. None of these three documents MUST cite `Project behavior settings`.
+
+#### Scenario: Reader finds the path to a setting
+
+- **WHEN** a user reads `docs/project-settings.md` to change the backlog provider
+- **THEN** its `Post-setup menu` section names the `Backlog and PR settings` submenu and its `Backlog provider` row, and the page does not cite `Project behavior settings`

@@ -46,20 +46,19 @@ function script(answers, seen = []) {
   };
 }
 
-// Option values are setting ids and section headers; the visible rows travel as display options.
+// Option values are setting ids; the visible rows travel as display options.
 const rowFor = (options, id) => options.find(option => option === id);
 const texts = call => call.options.map((option, index) => call.navigator?.displayOptions?.[index] ?? option);
-const SCREEN_QUESTION = 'Project behavior settings:';
+
+// The project setting screens: scripted prompts drive the editor, which reads and writes the settings files.
+const LANGUAGE = { title: 'Language settings:', ids: screen.LANGUAGE_IDS };
+const BACKLOG_PR = { title: 'Backlog and PR settings:', ids: screen.BACKLOG_PR_IDS };
 const pick = id => (_question, options) => rowFor(options, id);
 
-function run(directory, choices, inputs = [], log = () => {}) {
-  return screen.runProjectSettingsScreen({
-    projectPath: directory,
-    promptChoice: script(choices),
-    promptInput: script(inputs),
-    log,
-  });
+function editor(directory, choices, inputs = [], { log = () => {}, color = false, seen = [] } = {}) {
+  return screen.createSettingsEditor({ projectPath: directory, promptChoice: script(choices, seen), promptInput: script(inputs), log, color });
 }
+
 
 test('writer: editing a value keeps comments, foreign keys and every other byte', () => {
   const directory = project(COMMENTED);
@@ -136,180 +135,148 @@ test('writer: CRLF files keep CRLF in inserted text', () => {
   assert.equal(read(directory).replace(/\r\n/g, '').includes('\n'), false);
 });
 
-test('E15 and E12: the screen lists labelled rows under section headers, only its own keys', async () => {
-  const directory = project(COMMENTED);
+test('E4: the Language settings submenu lists its three rows with today\'s value texts and no headers', async () => {
+  const directory = project('{"explore":{"overviewLanguage":"English"}}');
   const seen = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {},
-  });
-  assert.equal(result.status, 'unchanged');
-  assert.equal(seen[0].question, SCREEN_QUESTION);
-  assert.deepEqual(texts(seen[0]), [
-    '-- Explore --',
-    'Ready to Propose language: ask',
-    'Change overview language: ask',
-    'Chat language: follow my language',
-    '-- Backlog --',
-    'Provider: gitlab',
-    '-- Pull requests --',
-    'Provider: ask',
-    '-- Experimental --',
-    'Change telemetry: off',
-    'Cache warming',
-    'Done',
-  ]);
-  assert.deepEqual(seen[0].navigator.groupHeaders, ['-- Explore --', '-- Backlog --', '-- Pull requests --', '-- Experimental --']);
+  const result = await editor(directory, [BACK], [], { seen }).runSection(LANGUAGE);
+  assert.equal(result.status, 'back');
+  assert.equal(seen[0].question, 'Language settings:');
+  assert.deepEqual(seen[0].options, ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage']);
+  assert.deepEqual(texts(seen[0]), ['Ready to Propose language: ask', 'Change overview language: English', 'Chat language: follow my language']);
+  assert.equal(seen[0].navigator.groupHeaders, undefined);
+  assert.equal(fs.existsSync(path.join(directory, FILE)), true);
 });
 
-function DONE_ROW() { return 'Done'; }
+test('E4: the Backlog and PR settings submenu names its two provider rows', async () => {
+  const seen = [];
+  await editor(project(COMMENTED), [BACK], [], { seen }).runSection(BACKLOG_PR);
+  assert.equal(seen[0].question, 'Backlog and PR settings:');
+  assert.deepEqual(seen[0].options, ['backlog.provider', 'pr.provider']);
+  assert.deepEqual(texts(seen[0]), ['Backlog provider: gitlab', 'Pull requests provider: ask']);
+});
 
 test('E16: provider choices are ask plus the registry ids; language choices differ by id', async () => {
   const directory = project();
   const seen = [];
-  await screen.runProjectSettingsScreen({
-    projectPath: directory,
-    promptChoice: script([pick('backlog.provider'), BACK, pick('explore.overviewLanguage'), BACK, pick('explore.readyToProposeLanguage'), BACK, pick('explore.chatPublicLanguage'), BACK, DONE_ROW], seen),
-    promptInput: script([]), log: () => {},
-  });
-  const choices = seen.filter(call => call.question !== SCREEN_QUESTION).map(call => call.options);
-  assert.deepEqual(choices[0], ['ask', 'github', 'gitlab', 'azuredevops']);
-  assert.deepEqual(choices[1], ['ask', 'English', 'none', screen.OTHER_LANGUAGE]);
-  assert.deepEqual(choices[2], ['ask', 'English', screen.OTHER_LANGUAGE]);
-  assert.deepEqual(choices[3], ['follow my language', 'English', screen.OTHER_LANGUAGE]);
-  assert.deepEqual(seen.filter(call => call.question !== SCREEN_QUESTION).map(call => call.question), ['Provider:', 'Change overview language:', 'Ready to Propose language:', 'Chat language:']);
+  await editor(directory, [pick('backlog.provider'), BACK, pick('pr.provider'), BACK, BACK], [], { seen }).runSection(BACKLOG_PR);
+  const providerCalls = seen.filter(call => call.question.endsWith('provider:'));
+  assert.deepEqual(providerCalls.map(call => call.question), ['Backlog provider:', 'Pull requests provider:']);
+  assert.deepEqual(providerCalls[0].options, ['ask', 'github', 'gitlab', 'azuredevops']);
+  assert.deepEqual(providerCalls[1].options, ['ask', 'github', 'gitlab', 'azuredevops']);
+  const languages = [];
+  await editor(directory, [pick('explore.overviewLanguage'), BACK, pick('explore.readyToProposeLanguage'), BACK, pick('explore.chatPublicLanguage'), BACK, BACK], [], { seen: languages }).runSection(LANGUAGE);
+  const pickers = languages.filter(call => call.question !== LANGUAGE.title);
+  assert.deepEqual(pickers.map(call => call.question), ['Change overview language:', 'Ready to Propose language:', 'Chat language:']);
+  assert.deepEqual(pickers[0].options, ['ask', 'English', 'none', screen.OTHER_LANGUAGE]);
+  assert.deepEqual(pickers[1].options, ['ask', 'English', screen.OTHER_LANGUAGE]);
+  assert.deepEqual(pickers[2].options, ['follow my language', 'English', screen.OTHER_LANGUAGE]);
+  assert.equal(fs.existsSync(path.join(directory, '.sai')), false, 'backing out of every picker writes nothing');
 });
 
 test('E16: a rejected free-text language is asked again and an accepted one is saved in canonical form', async () => {
   const directory = project();
   const messages = [];
-  const result = await run(
-    directory,
-    [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, DONE_ROW],
-    ['   ', 'none', ' english '],
-    message => messages.push(message),
-  );
-  assert.equal(result.status, 'saved');
-  assert.equal(messages.filter(message => message.startsWith('Rejected')).length, 2);
+  await editor(directory, [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, BACK], ['none', ' english '], { log: message => messages.push(message) }).runSection(LANGUAGE);
+  assert.equal(messages.filter(message => message.startsWith('Rejected')).length, 1);
   assert.deepEqual(writer.parseText(read(directory)).root, { explore: { readyToProposeLanguage: 'English' } });
+});
+
+test('E6: an empty free-text answer saves nothing and returns to the submenu with the previous value', async () => {
+  const directory = project(COMMENTED);
+  const seen = [];
+  await editor(directory, [pick('explore.chatPublicLanguage'), screen.OTHER_LANGUAGE, BACK], ['   '], { seen }).runSection(LANGUAGE);
+  assert.equal(seen[2].question, LANGUAGE.title);
+  assert.ok(texts(seen[2]).includes('Chat language: follow my language'));
+  assert.equal(read(directory), COMMENTED);
 });
 
 test('E16: a free-text language keeps its own spelling and the overview accepts none', async () => {
   const directory = project();
-  const result = await run(
-    directory,
-    [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, pick('explore.overviewLanguage'), 'none', DONE_ROW],
-    [' Español '],
-  );
-  assert.equal(result.status, 'saved');
+  await editor(directory, [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, pick('explore.overviewLanguage'), 'none', BACK], [' Español ']).runSection(LANGUAGE);
   assert.deepEqual(writer.parseText(read(directory)).root, { explore: { readyToProposeLanguage: 'Español', overviewLanguage: 'None' } });
 });
 
 test('E17: choosing ask writes the string "ask" for an unset id and keeps the key comment for a set one', async () => {
   const directory = project(COMMENTED);
-  const result = await run(directory, [pick('backlog.provider'), 'ask', DONE_ROW]);
-  assert.equal(result.status, 'saved');
+  await editor(directory, [pick('backlog.provider'), 'ask', BACK]).runSection(BACKLOG_PR);
   assert.equal(read(directory), COMMENTED.replace('"gitlab"', '"ask"'));
   const fresh = project();
-  await run(fresh, [pick('explore.overviewLanguage'), 'ask', DONE_ROW]);
+  await editor(fresh, [pick('explore.overviewLanguage'), 'ask', BACK]).runSection(LANGUAGE);
   assert.deepEqual(writer.parseText(read(fresh)).root, { explore: { overviewLanguage: 'ask' } });
 });
 
-test('E18: leaving the screen saves; a session without a change leaves the filesystem untouched', async () => {
+test('E5: a chosen value is on disk before the next screen, which shows it, and the user stays in the submenu', async () => {
+  const directory = project(COMMENTED);
+  const onDisk = [];
+  const seen = [];
+  const result = await editor(directory, [pick('backlog.provider'), 'github', () => { onDisk.push(read(directory)); return BACK; }], [], { seen }).runSection(BACKLOG_PR);
+  assert.equal(result.status, 'back');
+  assert.deepEqual(seen.map(call => call.question), [BACKLOG_PR.title, 'Backlog provider:', BACKLOG_PR.title]);
+  assert.deepEqual(onDisk, [COMMENTED.replace('"gitlab"', '"github"')]);
+  assert.ok(texts(seen[2]).includes('Backlog provider: github'));
+  assert.equal(seen[2].navigator.initial, 'backlog.provider');
+});
+
+test('E6: leaving a picker with Back saves nothing, and choosing the stored value leaves the file untouched', async () => {
   const none = project();
-  const result = await run(none, [DONE_ROW]);
-  assert.equal(result.status, 'unchanged');
+  await editor(none, [pick('backlog.provider'), BACK, BACK]).runSection(BACKLOG_PR);
   assert.equal(fs.existsSync(path.join(none, '.sai')), false);
   const same = project(COMMENTED);
   const before = fs.statSync(path.join(same, FILE)).mtimeMs;
-  assert.equal((await run(same, [pick('backlog.provider'), 'gitlab', DONE_ROW])).status, 'unchanged');
+  await editor(same, [pick('backlog.provider'), 'gitlab', BACK]).runSection(BACKLOG_PR);
   assert.equal(read(same), COMMENTED);
   assert.equal(fs.statSync(path.join(same, FILE)).mtimeMs, before);
-  const viaBack = project();
-  assert.equal((await run(viaBack, [pick('backlog.provider'), 'github', BACK])).status, 'saved');
-  assert.deepEqual(writer.parseText(read(viaBack)).root, { backlog: { provider: 'github' } });
 });
 
 test('E19: an invalid stored value shows with the reader warning and can be replaced', async () => {
   const directory = project('{\n  "backlog": { "provider": "jira" }\n}\n');
   const seen = [];
   const messages = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory,
-    promptChoice: script([pick('backlog.provider'), 'github', DONE_ROW], seen),
-    promptInput: script([]),
-    log: message => messages.push(message),
-  });
+  await editor(directory, [pick('backlog.provider'), 'github', BACK], [], { seen, log: message => messages.push(message) }).runSection(BACKLOG_PR);
   assert.match(messages[0], /Setting backlog\.provider in \.sai\/settings\.jsonc must be one of/);
-  assert.ok(texts(seen[0]).includes('Provider: "jira" (invalid)'));
-  assert.equal(result.status, 'saved');
+  assert.ok(texts(seen[0]).includes('Backlog provider: "jira" (invalid)'));
   assert.equal(read(directory), '{\n  "backlog": { "provider": "github" }\n}\n');
 });
 
-test('E20: an unparseable file is reported when the screen opens, before any edit', async () => {
+test('E20: an unparseable file is reported when a submenu opens, before any edit', async () => {
   const directory = project('{ nope');
   const messages = [];
   const seen = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([], seen), promptInput: script([]), log: message => messages.push(message),
-  });
+  const result = await editor(directory, [], [], { seen, log: message => messages.push(message) }).runSection(LANGUAGE);
   assert.equal(result.status, 'failed');
   assert.match(messages[0], /Cannot edit \.sai\/settings\.jsonc/);
   assert.equal(seen.length, 0);
   assert.equal(read(directory), '{ nope');
 });
 
-test('E20: a write error is reported, leaves the file byte-identical and returns to the menu', async t => {
+test('E10: a write error is reported, leaves the file byte-identical and keeps the user in the submenu', async t => {
   const directory = project(COMMENTED);
-  t.mock.method(fs, 'renameSync', () => { throw new Error('read-only'); });
+  const seen = [];
   const messages = [];
-  const result = await run(directory, [pick('backlog.provider'), 'github', DONE_ROW], [], message => messages.push(message));
+  t.mock.method(fs, 'renameSync', () => { throw new Error('read-only'); });
+  const result = await editor(directory, [pick('backlog.provider'), 'github', BACK], [], { seen, log: message => messages.push(message) }).runSection(BACKLOG_PR);
   t.mock.restoreAll();
-  assert.equal(result.status, 'failed');
+  assert.equal(result.status, 'back');
   assert.match(messages.join('\n'), /not saved: .*read-only/);
   assert.equal(read(directory), COMMENTED);
+  assert.equal(seen[2].question, BACKLOG_PR.title);
+  assert.ok(texts(seen[2]).includes('Backlog provider: gitlab'));
 });
 
-test('E20: an interrupt discards the edits, reports it, and leaves the file byte-identical', async () => {
+test('E7: an interrupt in a submenu or a picker ends the screen as interrupted and keeps what was already saved', async () => {
   const directory = project(COMMENTED);
   const messages = [];
-  const result = await run(directory, [pick('backlog.provider'), 'github', pick('explore.overviewLanguage'), null], [], message => messages.push(message));
-  assert.equal(result.status, 'discarded');
-  assert.deepEqual(messages.filter(message => message.startsWith('Interrupted')), ['Interrupted: the edits were discarded and nothing was saved.']);
-  assert.equal(read(directory), COMMENTED);
-});
-
-test('E20: after an interrupt in the screen the post-setup menu loop continues', async () => {
-  const directory = project(COMMENTED);
-  const seen = [];
-  const answers = ['Project behavior settings', (_q, options) => rowFor(options, 'backlog.provider'), 'github', null, 'Exit'];
-  const outcome = await modelCustomization.runPostSetupMenu({
-    projectPath: directory, isTTY: true, promptChoice: script(answers, seen), promptInput: async () => { throw new Error('unexpected input'); },
-  });
-  assert.equal(outcome.reason, 'cancelled');
-  assert.equal(answers.length, 0, 'the Exit answer after the interrupt was consumed by the menu');
-  assert.equal(seen.filter(call => call.question === 'Post-setup customization:').length, 2);
-  assert.equal(read(directory), COMMENTED);
-});
-
-test('E21 and menu: the post-setup menu offers Project behavior settings, runs the screen, and skips without a TTY', async () => {
-  const directory = project();
-  const skipped = await modelCustomization.runPostSetupMenu({ projectPath: directory, isTTY: false, promptChoice: async () => { throw new Error('must not prompt'); } });
-  assert.equal(skipped.reason, 'non-tty');
-  assert.equal(fs.existsSync(path.join(directory, '.sai')), false);
-  const seen = [];
-  const answers = ['Project behavior settings', (_q, options) => rowFor(options, 'backlog.provider'), 'gitlab', 'Done', 'Exit'];
-  const outcome = await modelCustomization.runPostSetupMenu({
-    projectPath: directory, isTTY: true, promptChoice: script(answers, seen), promptInput: async () => { throw new Error('unexpected input'); },
-  });
-  assert.equal(outcome.reason, 'cancelled');
-  assert.ok(seen[0].options.includes('Project behavior settings'));
-  assert.equal(seen[0].options.includes('Project settings'), false);
-  assert.deepEqual(writer.parseText(read(directory)).root, { backlog: { provider: 'gitlab' } });
+  const interrupted = await editor(directory, [pick('backlog.provider'), 'github', pick('pr.provider'), null], [], { log: message => messages.push(message) }).runSection(BACKLOG_PR);
+  assert.equal(interrupted.status, 'interrupted');
+  assert.equal(read(directory), COMMENTED.replace('"gitlab"', '"github"'));
+  assert.equal((await editor(project(), [null]).runSection(LANGUAGE)).status, 'interrupted');
 });
 
 test('provider ids are the union of the to-backlog and from-backlog registries', () => {
   assert.deepEqual(screen.providerIdsFrom(path.join(__dirname, '..')).sort(), ['azuredevops', 'github', 'gitlab']);
 });
+
+
 
 const LOCAL_FILE = path.join('.sai', 'settings.local.jsonc');
 const LOCAL_TEXT = '// mine\n{\n  "backlog": {\n    // keep\n    "provider": "github", // mine\n  },\n}\n';
@@ -354,48 +321,41 @@ test('I4: an undefined value removes the key in place and an unparseable local f
   assert.equal(read(broken), COMMENTED);
 });
 
-test('I5 and E6: an override row shows the base value struck through, the local value and (local)', async () => {
+test('E5 and E6: an override row shows the base value struck through, the local value and (local)', () => {
   const directory = projectWithLocal('{"backlog":{"provider":"gitlab"}}', '{"backlog":{"provider":"github"},"explore":{"chatPublicLanguage":"Euskara"}}');
-  const seen = [];
-  await screen.runProjectSettingsScreen({ projectPath: directory, promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {}, color: true });
-  assert.ok(texts(seen[0]).includes('Provider: \x1b[9mgitlab\x1b[29m github (local)'));
-  assert.ok(texts(seen[0]).includes('Chat language: \x1b[9mfollow my language\x1b[29m Euskara (local)'));
-  assert.ok(texts(seen[0]).includes('Provider: ask'));
+  const shown = editor(directory, [], [], { color: true });
+  assert.equal(shown.rowText('backlog.provider'), 'Backlog provider: \x1b[9mgitlab\x1b[29m github (local)');
+  assert.equal(shown.rowText('explore.chatPublicLanguage'), 'Chat language: \x1b[9mfollow my language\x1b[29m Euskara (local)');
+  assert.equal(shown.rowText('pr.provider'), 'Pull requests provider: ask');
 });
 
-test('E9: without styling an override row keeps the base text, the local text and the (local) marker', async () => {
+test('E9: without styling an override row keeps the base text, the local text and the (local) marker', () => {
   const directory = projectWithLocal('{"backlog":{"provider":"gitlab"}}', '{"backlog":{"provider":"gitlab"}}');
-  const seen = [];
-  await screen.runProjectSettingsScreen({ projectPath: directory, promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {}, color: false });
-  assert.ok(texts(seen[0]).includes('Provider: gitlab -> gitlab (local)'));
-  assert.equal(texts(seen[0]).some(row => row.includes('\x1b')), false);
+  const row = editor(directory, [], [], { color: false }).rowText('backlog.provider');
+  assert.equal(row, 'Backlog provider: gitlab -> gitlab (local)');
+  assert.equal(row.includes('\x1b'), false);
 });
 
-test('E1: without a local file no row shows an override', async () => {
-  const directory = project(COMMENTED);
-  const seen = [];
-  await screen.runProjectSettingsScreen({ projectPath: directory, promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {}, color: true });
-  assert.equal(texts(seen[0]).some(row => row.includes('(local)') || row.includes('\x1b')), false);
+test('E1: without a local file no row shows an override', () => {
+  const shown = editor(project(COMMENTED), [], [], { color: true });
+  for (const id of screen.SETTING_IDS) assert.equal(/\(local\)|\x1b/.test(shown.rowText(id)), false, id);
 });
 
-test('E8: the screen saves an overridden key to the local file, other keys to the base file, and never creates the local file', async () => {
+test('E8: a submenu saves an overridden key to the local file, other keys to the base file, and never creates the local file', async () => {
   const directory = projectWithLocal(COMMENTED, LOCAL_TEXT);
-  const messages = [];
-  const result = await run(directory, [pick('backlog.provider'), 'gitlab', pick('explore.chatPublicLanguage'), screen.OTHER_LANGUAGE, DONE_ROW], [' Euskara '], message => messages.push(message));
-  assert.equal(result.status, 'saved');
+  await editor(directory, [pick('backlog.provider'), 'gitlab', BACK]).runSection(BACKLOG_PR);
+  await editor(directory, [pick('explore.chatPublicLanguage'), screen.OTHER_LANGUAGE, BACK], [' Euskara ']).runSection(LANGUAGE);
   assert.equal(readLocal(directory), LOCAL_TEXT.replace('"github"', '"gitlab"'));
   assert.deepEqual(writer.parseText(read(directory)).root.explore, { chatPublicLanguage: 'Euskara' });
   assert.equal(writer.parseText(read(directory)).root.backlog.provider, 'gitlab');
-  assert.match(messages.join('\n'), /Saved 2 project setting\(s\) to \.sai\/settings\.jsonc, \.sai\/settings\.local\.jsonc\./);
   const base = project(COMMENTED);
-  await run(base, [pick('explore.chatPublicLanguage'), 'English', DONE_ROW]);
+  await editor(base, [pick('explore.chatPublicLanguage'), 'English', BACK]).runSection(LANGUAGE);
   assert.equal(fs.existsSync(path.join(base, LOCAL_FILE)), false);
 });
 
 test('E8: an override that is chosen back to the stored local value changes nothing and the base file stays unchanged', async () => {
   const directory = projectWithLocal(COMMENTED, LOCAL_TEXT);
-  const result = await run(directory, [pick('backlog.provider'), 'github', DONE_ROW]);
-  assert.equal(result.status, 'unchanged');
+  await editor(directory, [pick('backlog.provider'), 'github', BACK]).runSection(BACKLOG_PR);
   assert.equal(read(directory), COMMENTED);
   assert.equal(readLocal(directory), LOCAL_TEXT);
 });
@@ -404,59 +364,43 @@ test('I6: follow my language removes the chat language key and leaves the file o
   const text = '{\n  "explore": {\n    "chatPublicLanguage": "Euskara", // pick\n    "overviewLanguage": "English"\n  }\n}\n';
   const directory = project(text);
   const seen = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([pick('explore.chatPublicLanguage'), 'follow my language', DONE_ROW], seen), promptInput: script([]), log: () => {},
-  });
-  assert.equal(result.status, 'saved');
+  await editor(directory, [pick('explore.chatPublicLanguage'), 'follow my language', BACK], [], { seen }).runSection(LANGUAGE);
   assert.ok(texts(seen[0]).includes('Chat language: Euskara'));
   assert.ok(texts(seen[2]).includes('Chat language: follow my language'));
   assert.equal(read(directory), '{\n  "explore": {\n    "overviewLanguage": "English"\n  }\n}\n');
-  const absent = project(text.replace('"chatPublicLanguage": "Euskara", // pick\n    ', ''));
-  assert.equal((await run(absent, [pick('explore.chatPublicLanguage'), 'follow my language', DONE_ROW])).status, 'unchanged');
+  const absentText = '{\n  "explore": {\n    "overviewLanguage": "English"\n  }\n}\n';
+  const absent = project(absentText);
+  await editor(absent, [pick('explore.chatPublicLanguage'), 'follow my language', BACK]).runSection(LANGUAGE);
+  assert.equal(read(absent), absentText);
 });
 
 test('I6: a rejected chat language none is asked again; removing a local override lets the base value show', async () => {
   const none = project();
   const messages = [];
-  await run(none, [pick('explore.chatPublicLanguage'), screen.OTHER_LANGUAGE, DONE_ROW], ['none', 'Deutsch'], message => messages.push(message));
+  await editor(none, [pick('explore.chatPublicLanguage'), screen.OTHER_LANGUAGE, BACK], ['none', 'Deutsch'], { log: message => messages.push(message) }).runSection(LANGUAGE);
   assert.equal(messages.filter(message => message.startsWith('Rejected')).length, 1);
   assert.deepEqual(writer.parseText(read(none)).root, { explore: { chatPublicLanguage: 'Deutsch' } });
   const directory = projectWithLocal('{"explore":{"chatPublicLanguage":"Euskara"}}', '{"explore":{"chatPublicLanguage":"Deutsch"}}');
   const seen = [];
-  await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([pick('explore.chatPublicLanguage'), 'follow my language', DONE_ROW], seen), promptInput: script([]), log: () => {}, color: false,
-  });
+  await editor(directory, [pick('explore.chatPublicLanguage'), 'follow my language', BACK], [], { seen }).runSection(LANGUAGE);
   assert.ok(texts(seen[0]).includes('Chat language: Euskara -> Deutsch (local)'));
   assert.ok(texts(seen[2]).includes('Chat language: Euskara'));
   assert.deepEqual(writer.parseText(readLocal(directory)).root, { explore: {} });
   assert.equal(writer.parseText(read(directory)).root.explore.chatPublicLanguage, 'Euskara');
 });
 
-test('I1: section headers are passed as non-selectable rows and an unparseable local file is reported before any edit', async () => {
-  const directory = project();
-  const seen = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {},
-  });
-  assert.equal(result.status, 'unchanged');
-  const { groupHeaders, displayOptions } = seen[0].navigator;
-  assert.deepEqual(groupHeaders.map(header => seen[0].options.indexOf(header)), [0, 4, 6, 8]);
-  assert.equal(displayOptions.length, seen[0].options.length);
-  assert.equal(groupHeaders.some(header => screen.SETTING_IDS.includes(header)), false);
+test('E20: an unparseable local file is reported when a submenu opens, before any edit', async () => {
   const broken = projectWithLocal(COMMENTED, '{ nope');
   const messages = [];
-  const failed = await screen.runProjectSettingsScreen({
-    projectPath: broken, promptChoice: script([]), promptInput: script([]), log: message => messages.push(message),
-  });
+  const seen = [];
+  const failed = await editor(broken, [], [], { seen, log: message => messages.push(message) }).runSection(BACKLOG_PR);
   assert.equal(failed.status, 'failed');
   assert.match(messages[0], /Cannot edit \.sai\/settings\.local\.jsonc/);
+  assert.equal(seen.length, 0);
   assert.equal(readLocal(broken), '{ nope');
 });
 
-test('E12: the screen lists exactly its six keys, none of the repository, project or organization keys', () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
-  assert.deepEqual([...modelCustomization.MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
-});
+
 
 // The `Cache warming` screen: one harness at a time, each with its own block of the nested `warming` value.
 const WARMING_QUESTION = 'Cache warming:';
@@ -661,130 +605,187 @@ test('the screen keeps the file byte-identical on an interrupt, backing out of a
   assert.equal(read(broken), '{ nope');
 });
 
-test('E7: the post-setup menu opens the warming screen from the Experimental section with the guided pairs of installed files', async () => {
-  const directory = project();
+// The post-setup menu: each topic is an entry of the main menu, and the warming flow opens from it.
+const MAIN_QUESTION = 'Post-setup customization:';
+const MAIN_ENTRIES = ['Model customization', 'Language settings', 'Backlog and PR settings', 'Telemetry: off', 'Cache warming', 'Exit'];
+const TELEMETRY_ROW = (_question, options) => options.find(option => option.startsWith('Telemetry'));
+
+function warmingRoots() {
   const roots = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, fs.mkdtempSync(path.join(os.tmpdir(), `warming-${name}-`))]));
   fs.writeFileSync(path.join(roots.claudeCommands, 'sai-explore.md'), '---\nname: sai-explore\nmodel: opus\neffort: high\n---\n\nbody\n');
-  const seen = [];
-  const answers = ['Project behavior settings', 'Cache warming', 'Claude Code', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Done', 'Exit'];
-  const outcome = await modelCustomization.runPostSetupMenu({
-    projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
+  return {
     claudeGlobalAgentRoot: roots.claudeAgents, claudeGlobalCommandRoot: roots.claudeCommands,
     opencodeGlobalAgentRoot: roots.opencodeAgents, opencodeGlobalCommandRoot: roots.opencodeCommands,
+  };
+}
+
+function runMenu(directory, answers, seen = []) {
+  return modelCustomization.runPostSetupMenu({
+    projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true, ...warmingRoots(),
     promptChoice: script(answers, seen), promptInput: async () => '',
   });
+}
+
+test('E1: the main menu lists the topics in order, shows the telemetry value, and has no Project behavior settings entry', async () => {
+  const seen = [];
+  const outcome = await runMenu(project(), ['Exit'], seen);
+  assert.equal(outcome.reason, 'cancelled');
+  assert.equal(seen[0].question, MAIN_QUESTION);
+  assert.deepEqual(seen[0].options, MAIN_ENTRIES);
+  assert.equal(seen[0].options.includes('Project behavior settings'), false);
+  const on = [];
+  await runMenu(project('{"experimental":{"changeTelemetry":true}}'), ['Exit'], on);
+  assert.equal(on[0].options[3], 'Telemetry: on');
+});
+
+test('E11: outside an interactive terminal the menu does not appear', async () => {
+  const directory = project();
+  const skipped = await modelCustomization.runPostSetupMenu({ projectPath: directory, isTTY: false, promptChoice: async () => { throw new Error('must not prompt'); } });
+  assert.equal(skipped.reason, 'non-tty');
+  assert.equal(fs.existsSync(path.join(directory, '.sai')), false);
+});
+
+test('E2: Back from a submenu returns to the main menu with the cursor on that section', async () => {
+  const seen = [];
+  const answers = ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Model customization', BACK, 'Exit'];
+  await runMenu(project(), answers, seen);
+  assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Language settings:', MAIN_QUESTION, 'Backlog and PR settings:', MAIN_QUESTION, 'Model customization:', MAIN_QUESTION]);
+  assert.equal(seen[0].navigator.initial, undefined);
+  assert.equal(seen[2].navigator.initial, 'Language settings');
+  assert.equal(seen[4].navigator.initial, 'Backlog and PR settings');
+  assert.equal(seen[6].navigator.initial, 'Model customization');
+});
+
+test('E3: the Model customization submenu shows its four actions', async () => {
+  const seen = [];
+  await runMenu(project(), ['Model customization', BACK, 'Exit'], seen);
+  assert.equal(seen[1].question, 'Model customization:');
+  assert.deepEqual(seen[1].options, ['Customize models', 'Reset to default models', 'Save preset', 'Load preset']);
+});
+
+test('E4 and E5: a value chosen in a submenu is saved at once and the user stays in that submenu', async () => {
+  const directory = project(COMMENTED);
+  const onDisk = [];
+  const seen = [];
+  const answers = ['Backlog and PR settings', pick('backlog.provider'), 'github', () => { onDisk.push(read(directory)); return BACK; }, 'Exit'];
+  await runMenu(directory, answers, seen);
+  assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Backlog and PR settings:', 'Backlog provider:', 'Backlog and PR settings:', MAIN_QUESTION]);
+  assert.deepEqual(texts(seen[1]), ['Backlog provider: gitlab', 'Pull requests provider: ask']);
+  assert.deepEqual(texts(seen[3]), ['Backlog provider: github', 'Pull requests provider: ask']);
+  assert.equal(onDisk[0], COMMENTED.replace('"gitlab"', '"github"'));
+  assert.equal(seen[3].navigator.initial, 'backlog.provider');
+});
+
+test('E7: Ctrl+C on a screen closes the menu and keeps the values already chosen', async () => {
+  const directory = project(COMMENTED);
+  const answers = ['Backlog and PR settings', pick('backlog.provider'), 'github', pick('pr.provider'), null, 'Exit'];
+  const outcome = await runMenu(directory, answers);
+  assert.equal(outcome.reason, 'cancelled');
+  assert.deepEqual(answers, ['Exit'], 'the interrupt closed the menu; the later answer was never asked');
+  assert.equal(read(directory), COMMENTED.replace('"gitlab"', '"github"'));
+  const atSubmenu = ['Language settings', null, 'Exit'];
+  await runMenu(project(), atSubmenu);
+  assert.deepEqual(atSubmenu, ['Exit']);
+  const atTelemetry = [TELEMETRY_ROW, null, 'Exit'];
+  await runMenu(project(), atTelemetry);
+  assert.deepEqual(atTelemetry, ['Exit']);
+});
+
+test('E8: the Telemetry row opens the On/Off picker, saves, and returns to the main menu with the new value', async () => {
+  const directory = project('// top\n{\n  "other": 1\n}\n');
+  const seen = [];
+  await runMenu(directory, [TELEMETRY_ROW, 'On', TELEMETRY_ROW, 'Off', 'Exit'], seen);
+  assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Telemetry:', MAIN_QUESTION, 'Telemetry:', MAIN_QUESTION]);
+  assert.deepEqual(seen[1].options, ['On', 'Off']);
+  assert.equal(seen[2].options[3], 'Telemetry: on');
+  assert.equal(seen[2].navigator.initial, 'Telemetry: on', 'the cursor returns to the Telemetry row, which shows the new value');
+  assert.equal(seen[4].options[3], 'Telemetry: off');
+  assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.experimental, 'changeTelemetry'), false);
+  assert.equal(writer.parseText(read(directory)).root.other, 1);
+});
+
+test('E9: Cache warming opens the warming flow from the main menu, and Back returns to the main menu', async () => {
+  const directory = project();
+  const seen = [];
+  const answers = ['Cache warming', 'Claude Code', 'pair:agent:anthropic/opus', 'Enable', 'Done', 'Cache warming', BACK, 'Exit'];
+  const outcome = await runMenu(directory, answers, seen);
   assert.equal(outcome.reason, 'cancelled');
   assert.equal(answers.length, 0);
-  assert.deepEqual(seen.map(call => call.question).filter(question => question === WARMING_QUESTION || question === HARNESS_QUESTION || question === SCREEN_QUESTION), [SCREEN_QUESTION, HARNESS_QUESTION, WARMING_QUESTION, WARMING_QUESTION, SCREEN_QUESTION]);
+  assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, HARNESS_QUESTION, WARMING_QUESTION, 'anthropic/opus:', WARMING_QUESTION, MAIN_QUESTION, HARNESS_QUESTION, MAIN_QUESTION]);
+  assert.equal(seen[5].navigator.initial, 'Cache warming');
   assert.deepEqual(warmingOf(directory), { claude: { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] } });
 });
 
-test('E9: a Cache warming answer in the post-setup menu is cancelled and opens no warming screen', async () => {
-  const directory = project();
+test('E12: the menus show only the six settings, none of the repository, project, organization, or publication keys', async () => {
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
   const seen = [];
-  const outcome = await modelCustomization.runPostSetupMenu({
-    projectPath: directory, packageRoot: path.join(__dirname, '..'), isTTY: true,
-    promptChoice: script(['Cache warming'], seen), promptInput: async () => '',
-  });
-  assert.equal(outcome.reason, 'cancelled');
-  assert.equal(seen.length, 1);
-  assert.equal(seen[0].options.includes('Cache warming'), false);
-  assert.equal(fs.existsSync(path.join(directory, FILE)), false);
+  await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Exit'], seen);
+  assert.deepEqual([...seen[1].options, ...seen[3].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));
 });
 
-// The `Experimental` section: the change telemetry boolean and the cache warming action row.
+// The telemetry boolean through its own picker.
 const TELEMETRY = 'experimental.changeTelemetry';
 const telemetryOf = directory => writer.parseText(read(directory)).root.experimental?.changeTelemetry;
 
-test('E2: change telemetry shows on for true, and off for false or an absent key', async () => {
+test('E8: the telemetry label is Telemetry, and the row reads on for true and off for false or an absent key', () => {
+  assert.equal(CATALOGUE[TELEMETRY].label, 'Telemetry');
   for (const [text, shown] of [['{"experimental":{"changeTelemetry":true}}', 'on'], ['{"experimental":{"changeTelemetry":false}}', 'off'], ['{}', 'off']]) {
-    const seen = [];
-    await screen.runProjectSettingsScreen({ projectPath: project(text), promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: () => {} });
-    assert.ok(texts(seen[0]).includes(`Change telemetry: ${shown}`), text);
+    assert.equal(editor(project(text), []).rowText(TELEMETRY), `Telemetry: ${shown}`, text);
   }
-});
-
-test('E3: change telemetry offers exactly On and Off, and the Cache warming row sits after it', async () => {
-  const seen = [];
-  await screen.runProjectSettingsScreen({
-    projectPath: project(), promptChoice: script([pick(TELEMETRY), BACK, DONE_ROW], seen), promptInput: script([]), log: () => {},
-  });
-  assert.equal(seen[1].question, 'Change telemetry:');
-  assert.deepEqual(seen[1].options, ['On', 'Off']);
-  assert.deepEqual(seen[0].options.slice(-4), ['-- Experimental --', TELEMETRY, 'Cache warming', 'Done']);
 });
 
 test('E4: On saves true and Off removes the key from the base file', async () => {
   const directory = project('// top\n{\n  "other": 1\n}\n');
-  const on = await run(directory, [pick(TELEMETRY), 'On', DONE_ROW]);
-  assert.equal(on.status, 'saved');
+  assert.equal((await editor(directory, ['On']).editSetting(TELEMETRY)).status, 'saved');
   assert.equal(telemetryOf(directory), true);
-  const seen = [];
-  const off = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([pick(TELEMETRY), 'Off', DONE_ROW], seen), promptInput: script([]), log: () => {},
-  });
-  assert.equal(off.status, 'saved');
-  assert.ok(texts(seen[2]).includes('Change telemetry: off'));
+  assert.equal((await editor(directory, ['Off']).editSetting(TELEMETRY)).status, 'saved');
   assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.experimental, 'changeTelemetry'), false);
   assert.equal(writer.parseText(read(directory)).root.other, 1);
-  assert.equal((await run(project('{}'), [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'unchanged');
+  assert.equal((await editor(project('{}'), ['Off']).editSetting(TELEMETRY)).status, 'unchanged');
 });
 
-test('E5: a key that the local file holds shows as an override and saves to the local file, with Off as an explicit false', async () => {
+test('E5: a telemetry key that the local file holds shows as an override and saves to the local file, with Off as an explicit false', async () => {
   const base = '{"experimental":{"changeTelemetry":true}}';
   const directory = projectWithLocal(base, '{"experimental":{"changeTelemetry":true}}');
-  const seen = [];
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: script([pick(TELEMETRY), 'Off', DONE_ROW], seen), promptInput: script([]), log: () => {}, color: false,
-  });
-  assert.equal(result.status, 'saved');
-  assert.ok(texts(seen[0]).includes('Change telemetry: on -> on (local)'));
-  assert.ok(texts(seen[2]).includes('Change telemetry: on -> off (local)'));
+  assert.equal(editor(directory, []).rowText(TELEMETRY), 'Telemetry: on -> on (local)');
+  assert.equal((await editor(directory, ['Off']).editSetting(TELEMETRY)).status, 'saved');
+  assert.equal(editor(directory, []).rowText(TELEMETRY), 'Telemetry: on -> off (local)');
   assert.equal(writer.parseText(readLocal(directory)).root.experimental.changeTelemetry, false);
   assert.equal(read(directory), base);
   const same = projectWithLocal(base, '{"experimental":{"changeTelemetry":false}}');
-  assert.equal((await run(same, [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'unchanged');
+  assert.equal((await editor(same, ['Off']).editSetting(TELEMETRY)).status, 'unchanged');
 });
 
-test('E6: a stored value that is not a boolean shows as invalid and any choice replaces it', async () => {
+test('E6: a stored telemetry value that is not a boolean shows as invalid with the reader warning and any choice replaces it', async () => {
   const text = '{ "experimental": { "changeTelemetry": "yes" } }';
-  const seen = [];
   const messages = [];
-  const on = await screen.runProjectSettingsScreen({
-    projectPath: project(text), promptChoice: script([DONE_ROW], seen), promptInput: script([]), log: message => messages.push(message),
-  });
-  assert.equal(on.status, 'unchanged');
-  assert.ok(texts(seen[0]).includes('Change telemetry: "yes" (invalid)'));
-  assert.match(messages[0], /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
+  assert.equal(editor(project(text), []).rowText(TELEMETRY), 'Telemetry: "yes" (invalid)');
   const turnedOn = project(text);
-  assert.equal((await run(turnedOn, [pick(TELEMETRY), 'On', DONE_ROW])).status, 'saved');
+  assert.equal((await editor(turnedOn, ['On'], [], { log: message => messages.push(message) }).editSetting(TELEMETRY)).status, 'saved');
+  assert.match(messages[0], /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
   assert.equal(telemetryOf(turnedOn), true);
   const turnedOff = project(text);
-  assert.equal((await run(turnedOff, [pick(TELEMETRY), 'Off', DONE_ROW])).status, 'saved');
+  assert.equal((await editor(turnedOff, ['Off']).editSetting(TELEMETRY)).status, 'saved');
   assert.equal(Object.hasOwn(writer.parseText(read(turnedOff)).root.experimental, 'changeTelemetry'), false);
 });
 
-test('E7: selecting Cache warming calls the injected callback once and returns to the settings screen', async () => {
-  const seen = [];
-  let calls = 0;
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: project(), promptChoice: script(['Cache warming', DONE_ROW], seen), promptInput: script([]), log: () => {},
-    openCacheWarming: async () => { calls += 1; },
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.status, 'unchanged');
-  assert.deepEqual(seen.map(call => call.question), [SCREEN_QUESTION, SCREEN_QUESTION]);
+test('E10: a telemetry save that fails shows the error and leaves the value as it was', async t => {
+  const directory = project('{"other":1}');
+  t.mock.method(fs, 'renameSync', () => { throw new Error('read-only'); });
+  const messages = [];
+  const result = await editor(directory, ['On'], [], { log: message => messages.push(message) }).editSetting(TELEMETRY);
+  t.mock.restoreAll();
+  assert.equal(result.status, 'failed');
+  assert.match(messages.join('\n'), /not saved: .*read-only/);
+  assert.equal(read(directory), '{"other":1}');
 });
 
 test('E8: a telemetry edit and a nested warming save both persist', async () => {
   const directory = project(COMMENTED);
-  const choices = script([pick(TELEMETRY), 'On', 'Cache warming', DONE_ROW]);
-  const nested = script(['Claude Code', 'default:agent', 'Enable', 'Done']);
-  const result = await screen.runProjectSettingsScreen({
-    projectPath: directory, promptChoice: choices, promptInput: script([]), log: () => {},
-    openCacheWarming: () => warmingSetup.runWarmingSetup({ projectPath: directory, pairs: PAIRS, promptChoice: nested, promptInput: async () => '', log: () => {} }),
-  });
-  assert.equal(result.status, 'saved');
+  const answers = [TELEMETRY_ROW, 'On', 'Cache warming', 'Claude Code', 'default:agent', 'Enable', 'Done', 'Exit'];
+  const outcome = await runMenu(directory, answers);
+  assert.equal(outcome.reason, 'cancelled');
+  assert.equal(answers.length, 0);
   const root = writer.parseText(read(directory)).root;
   assert.equal(root.experimental.changeTelemetry, true);
   assert.deepEqual(root.warming, { claude: { defaults: { agent: { interval: 4, max: 30 } } } });

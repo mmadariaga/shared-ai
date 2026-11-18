@@ -216,7 +216,19 @@ test('back is reported without terminating the process and after cursor restorat
   }
 });
 
-test('a non-TTY input still resolves non-interactive and never back', { timeout: INTERACTION_TIMEOUT }, async () => {
+test('promptSelect starts the cursor on the initial option, and ignores one that is not an option', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput();
+  const promise = promptSelect('Select a model:', ITEMS, input, undefined, false, { initial: 'Opencode' });
+  schedulePresses(input, [RETURN]);
+  assert.equal(await promise, 'Opencode', 'Enter confirms the option the cursor started on');
+
+  const fallbackInput = createFakeInput();
+  const fallback = promptSelect('Select a model:', ITEMS, fallbackInput, undefined, false, { initial: 'Unknown' });
+  schedulePresses(fallbackInput, [RETURN]);
+  assert.equal(await fallback, 'Claude Code', 'an initial option that is not listed leaves the cursor on the first row');
+});
+
+test('a non-TTY input still resolves non-interactive and never back',{ timeout: INTERACTION_TIMEOUT }, async () => {
   const input = createFakeInput(false);
   assert.deepEqual(await promptChecklist(ITEMS, ITEMS, input), { status: 'non-interactive' });
 });
@@ -267,16 +279,18 @@ test('back at the harness picker re-opens the main menu instead of cancelling', 
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      // menu -> harness (back) -> menu -> harness -> scope -> targets
-      promptChoice: scriptedChoice(['Customize models', BACK, 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
+      // menu -> model submenu -> harness (back) -> menu -> model submenu -> harness -> scope -> targets
+      promptChoice: scriptedChoice(['Model customization', 'Customize models', BACK, 'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(questions, [
       'Post-setup customization:',
+      'Model customization:',
       'Choose a harness:',
       'Post-setup customization:',
+      'Model customization:',
       'Choose a harness:',
       'Choose a customization scope:',
       'Post-setup customization:',
@@ -297,7 +311,7 @@ test('back at the target checklist re-opens the scope screen and then the harnes
     const result = await runPostSetupMenu({
       isTTY: true,
       // menu -> OpenCode -> Workers -> checklist (back) -> scope (back) -> harness -> Claude Code -> Workers -> checklist
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', BACK, 'Claude Code', 'Workers', 'Exit'], questions),
+      promptChoice: scriptedChoice(['Model customization', 'Customize models', 'OpenCode', 'Workers', BACK, 'Claude Code', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => {
         checklistCalls += 1;
         return checklistCalls === 1 ? { status: 'back' } : { status: 'confirmed', items };
@@ -308,6 +322,7 @@ test('back at the target checklist re-opens the scope screen and then the harnes
     assert.equal(checklistCalls, 2, 'the checklist should be reopened after the harness is re-picked');
     assert.deepEqual(questions, [
       'Post-setup customization:',
+      'Model customization:',
       'Choose a harness:',
       'Choose a customization scope:',
       'Choose a customization scope:',
@@ -336,7 +351,7 @@ test('back at the settings screen re-opens the target checklist without persisti
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', 'Exit'], []),
+      promptChoice: scriptedChoice(['Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'], []),
       promptChecklist: async (items) => {
         // First pass confirms both targets, second pass narrows to one.
         const picked = checklistSelections.length === 0 ? items : [items[1]];
@@ -364,7 +379,7 @@ test('back at the main menu redraws it rather than exiting the flow', { timeout:
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice([BACK, BACK, 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
+      promptChoice: scriptedChoice([BACK, BACK, 'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
     assert.equal(result.status, 'skipped',

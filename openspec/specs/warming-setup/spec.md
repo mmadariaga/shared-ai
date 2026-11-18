@@ -86,7 +86,7 @@ When the stored `warming` value is invalid, the section SHALL show the validatio
 
 ### Requirement: Harness choice in the Cache warming screen
 
-The `Cache warming` screen in `bin/warming-setup.js` SHALL ask which harness to configure before it shows any row, under the prompt title `Choose a harness:` with the options `OpenCode` and `Claude Code`, and it SHALL store the chosen harness under the ids `opencode` and `claude`. The choice SHALL precede the rows of that harness on every visit, and a row of the other harness SHALL NOT appear. `Done` SHALL save the chosen harness's block and leave the screen; `Back` SHALL save that block and return to the harness choice; `Back` or `Esc` at the harness choice SHALL return to the project behavior settings screen. Cancelling at any prompt SHALL discard the unsaved edits without saving.
+The `Cache warming` screen in `bin/warming-setup.js` SHALL ask which harness to configure before it shows any row, under the prompt title `Choose a harness:` with the options `OpenCode` and `Claude Code`, and it SHALL store the chosen harness under the ids `opencode` and `claude`. The choice SHALL precede the rows of that harness on every visit, and a row of the other harness SHALL NOT appear. `Done` SHALL save the chosen harness's block and leave the screen; `Back` SHALL save that block and return to the harness choice; `Back` or `Esc` at the harness choice SHALL return to the post-setup main menu. Cancelling at any prompt SHALL discard the unsaved edits without saving.
 
 #### Scenario: The screen asks for a harness first
 
@@ -106,7 +106,7 @@ The `Cache warming` screen in `bin/warming-setup.js` SHALL ask which harness to 
 #### Scenario: Back at the harness choice leaves the screen
 
 - **WHEN** the user presses `Back` or `Esc` at the harness choice without an edit
-- **THEN** the screen returns to the project behavior settings screen and `.sai/settings.jsonc` stays unchanged or absent
+- **THEN** the screen returns to the post-setup main menu and `.sai/settings.jsonc` stays unchanged or absent
 
 ### Requirement: Per-harness blocks and the legacy global fallback
 

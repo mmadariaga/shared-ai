@@ -7,7 +7,7 @@ Record the cost and review figures of each direct `/sai-plan` and `/sai-build` e
 
 ### Requirement: An experimental project setting gates change telemetry
 
-The settings catalogue in `sai/tools/project-settings.js` SHALL declare the boolean key `experimental.changeTelemetry` with the label `Change telemetry`, the section `Experimental`, and the absent text `off`, so the project behavior settings screen lists it in its `Experimental` section; the key MAY also be edited by hand. A non-boolean value SHALL be dropped with a warning that it must be true or false. A coordinator SHALL treat any value other than `true`, including an absent key or a failing settings read, as disabled.
+The settings catalogue in `sai/tools/project-settings.js` SHALL declare the boolean key `experimental.changeTelemetry` with the label `Telemetry`, the section `Experimental`, and the absent text `off`, so the post-setup menu shows it as its `Telemetry` row; the key MAY also be edited by hand. A non-boolean value SHALL be dropped with a warning that it must be true or false. A coordinator SHALL treat any value other than `true`, including an absent key or a failing settings read, as disabled.
 
 #### Scenario: an absent key leaves the close unchanged
 - **WHEN** `/sai-plan` or `/sai-build` closes in a project whose settings do not set `experimental.changeTelemetry` to `true`
@@ -23,7 +23,7 @@ The settings catalogue in `sai/tools/project-settings.js` SHALL declare the bool
 
 ### Requirement: The change telemetry setting is documented
 
-`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited in the `Experimental` section of the project behavior settings screen or by hand, absent reads as `false`, experimental, what `telemetry.md` records (including the cache hit share, the cache misses with their average overcost, and the `By command` table), the support on both Claude Code and opencode with the fields Claude Code does not record (`reasoning`, `variant`) and its cost estimated from the dated price table in `sai/tools/model-prices.js`, the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
+`docs/project-settings.md` SHALL list `experimental.changeTelemetry` in its settings table and SHALL describe it in a `Change telemetry` section: edited with the `Telemetry` row of the post-setup menu or by hand, absent reads as `false`, experimental, what `telemetry.md` records (including the cache hit share, the cache misses with their average overcost, and the `By command` table), the support on both Claude Code and opencode with the fields Claude Code does not record (`reasoning`, `variant`) and its cost estimated from the dated price table in `sai/tools/model-prices.js`, the direct commands and the in-session routes that record, that a completed Direct Build route writes the file into the archived change folder, that an in-session route's window starts at the slice's first route worker, and the ignore-aware commit.
 
 #### Scenario: the settings page documents the key
 - **WHEN** `docs/project-settings.md` is read

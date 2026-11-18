@@ -217,7 +217,7 @@ Small, well-scoped tasks can go to a lower-cost agent while the main agent handl
 
 ### Change telemetry (experimental)
 
-Measure what each change costs. With `experimental.changeTelemetry` on, `/sai-plan`, `/sai-build`, and the Plan - Unattended and Direct Build - Unattended routes of `/sai-explore` write `telemetry.md` in the change folder when they close: tokens, cache hits, cache misses and their overcost, and cost per agent, segment, and command, including the exploration that produced the change and the cache-warming wakes. Anything the harness did not record shows as `unavailable`, never zero. It is off by default; turn it on in `setup` → **Project behavior settings** → `Experimental`. See [change telemetry](docs/project-settings.md#change-telemetry).
+Measure what each change costs. With `experimental.changeTelemetry` on, `/sai-plan`, `/sai-build`, and the Plan - Unattended and Direct Build - Unattended routes of `/sai-explore` write `telemetry.md` in the change folder when they close: tokens, cache hits, cache misses and their overcost, and cost per agent, segment, and command, including the exploration that produced the change and the cache-warming wakes. Anything the harness did not record shows as `unavailable`, never zero. It is off by default; turn it on in `setup` → **Telemetry**. See [change telemetry](docs/project-settings.md#change-telemetry).
 
 ## Project highlights
 
@@ -283,7 +283,7 @@ See [doctor options](docs/doctor.md) for offline and machine-readable checks.
 
 ## Post Install
 
-To change models later, run `setup` again and choose **Customize models**.
+To change models later, run `setup` again and choose **Model customization** → **Customize models**.
 Select individual commands and agents, or load a preset. Opencode supports any
 available model; Claude Code supports Anthropic models.
 
@@ -345,11 +345,12 @@ regenerates the permission rules with its absolute path. The fetch tool follows
 symbolic links, so a linked install root is a supported layout; its scope check
 is lexical and does not compare real paths.
 
-To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
-**Project behavior settings**. Its `Experimental` section turns on
-[change telemetry](#change-telemetry-experimental) and opens the **Cache warming**
-screen, which sets the warming timings of each harness (Claude Code and opencode)
-separately. See [project settings](docs/project-settings.md).
+To pre-answer the language, backlog provider, and PR provider questions, run `setup` and use
+the entries of the post-setup menu: **Language settings** and **Backlog and PR settings**
+open their own submenus, the **Telemetry** row turns on
+[change telemetry](#change-telemetry-experimental), and **Cache warming** opens the screen
+that sets the warming timings of each harness (Claude Code and opencode)
+separately. Each value you choose is saved at once. See [project settings](docs/project-settings.md).
 
 ### Default opencode models
 
@@ -376,7 +377,7 @@ presets but keeps personal presets and does not change your project's selections
 | `[sai-default]-oAI-SOL.json` | OpenAI Sol for the more demanding planning/build work, Luna for lighter tasks. |
 | `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |
 
-Load a preset with `npx --allow-git=all github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
+Load a preset with `npx --allow-git=all github:mmadariaga/shared-ai setup` → **Model customization** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 
 ### Choosing your models
 

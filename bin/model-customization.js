@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
 const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
-const { runProjectSettingsScreen } = require('./project-settings-screen.js');
+const { createSettingsEditor, LANGUAGE_IDS, BACKLOG_PR_IDS, TELEMETRY_ID } = require('./project-settings-screen.js');
 const { runWarmingSetup, HARNESS_OPTIONS } = require('./warming-setup.js');
 const opencodeDispatch = require('../sai/tools/opencode-dispatch.js');
 const {
@@ -20,7 +20,26 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project behavior settings', 'Exit']);
+// The main menu lists one entry per topic; the `Telemetry` row shows its current value, so the list is
+// built each time the menu is drawn. Each entry has a key that survives a change of its text.
+const MAIN_MENU_TITLE = 'Post-setup customization:';
+const MODEL_CUSTOMIZATION_ENTRY = 'Model customization';
+const LANGUAGE_SETTINGS_ENTRY = 'Language settings';
+const BACKLOG_PR_SETTINGS_ENTRY = 'Backlog and PR settings';
+const CACHE_WARMING_ENTRY = 'Cache warming';
+const EXIT_ENTRY = 'Exit';
+// The submenu of `Model customization`; each action keeps its own harness flow.
+const MODEL_MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset']);
+const MODEL_ACTION_MODES = Object.freeze({
+  'Customize models': 'customize',
+  'Reset to default models': 'reset',
+  'Save preset': 'save-preset',
+  'Load preset': 'load-preset',
+});
+
+function mainMenuOptions(telemetryRow) {
+  return [MODEL_CUSTOMIZATION_ENTRY, LANGUAGE_SETTINGS_ENTRY, BACKLOG_PR_SETTINGS_ENTRY, telemetryRow, CACHE_WARMING_ENTRY, EXIT_ENTRY];
+}
 const CANCELLED = Symbol('CANCELLED');
 const OPENCODE_QUERY_TIMEOUT_MS = 30_000;
 const OPENCODE_CLEANUP_TIMEOUT_MS = 1_000;
@@ -1590,6 +1609,10 @@ async function runPostSetupMenuInternal({
     return outcome;
   };
 
+  const settingsEditor = createSettingsEditor({ projectPath, packageRoot, promptChoice, promptInput });
+  // The entry the cursor returns to when a topic hands control back to the menu that opened it.
+  let mainMenuCursor;
+  let modelMenuCursor;
   const retainedTargets = new Map();
   for (;;) {
     let screen = 'menu';
@@ -1602,36 +1625,41 @@ async function runPostSetupMenuInternal({
 
     for (;;) {
       if (screen === 'menu') {
+        // The options are computed on each draw: the `Telemetry` row shows the value on disk.
+        const options = mainMenuOptions(settingsEditor.rowText(TELEMETRY_ID));
         const action = await promptChoice(
-          'Post-setup customization:',
-          MENU_OPTIONS,
+          MAIN_MENU_TITLE,
+          options,
           undefined,
           null,
+          { initial: mainMenuCursor === undefined ? undefined : options[mainMenuCursor] },
         );
         if (action === BACK) continue;
-        if (action === null || action === 'Exit') return skippedOutcome('cancelled');
-        if (action === 'Customize models') {
-          mode = 'customize';
+        if (action === null || action === EXIT_ENTRY) return skippedOutcome('cancelled');
+        // Coming back from a topic, the cursor returns to its entry.
+        mainMenuCursor = options.indexOf(action);
+        if (action === MODEL_CUSTOMIZATION_ENTRY) {
+          const modelAction = await promptChoice('Model customization:', [...MODEL_MENU_OPTIONS], undefined, undefined, { initial: modelMenuCursor });
+          if (modelAction === BACK) continue;
+          if (modelAction === null || !Object.hasOwn(MODEL_ACTION_MODES, modelAction)) return skippedOutcome('cancelled');
+          modelMenuCursor = modelAction;
+          mode = MODEL_ACTION_MODES[modelAction];
           screen = 'harness';
           continue;
         }
-        if (action === 'Reset to default models') {
-          mode = 'reset';
-          screen = 'harness';
+        const section = { [LANGUAGE_SETTINGS_ENTRY]: LANGUAGE_IDS, [BACKLOG_PR_SETTINGS_ENTRY]: BACKLOG_PR_IDS }[action];
+        if (section) {
+          const outcome = await settingsEditor.runSection({ title: `${action}:`, ids: section });
+          if (outcome.status === 'interrupted') return skippedOutcome('cancelled');
           continue;
         }
-        if (action === 'Save preset') {
-          mode = 'save-preset';
-          screen = 'harness';
+        if (typeof action === 'string' && action.startsWith('Telemetry')) {
+          const outcome = await settingsEditor.editSetting(TELEMETRY_ID);
+          if (outcome.status === 'interrupted') return skippedOutcome('cancelled');
           continue;
         }
-        if (action === 'Load preset') {
-          mode = 'load-preset';
-          screen = 'harness';
-          continue;
-        }
-        if (action === 'Project behavior settings') {
-          const openCacheWarming = () => runWarmingSetup({
+        if (action === CACHE_WARMING_ENTRY) {
+          const outcome = await runWarmingSetup({
             projectPath,
             pairs: guidedWarmingPairs({
               projectPath,
@@ -1644,7 +1672,7 @@ async function runPostSetupMenuInternal({
             promptChoice,
             promptInput,
           });
-          await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput, openCacheWarming });
+          if (outcome.status === 'discarded') return skippedOutcome('cancelled');
           continue;
         }
         return skippedOutcome('cancelled');
@@ -2341,7 +2369,8 @@ module.exports = {
   MODEL_CHECKLIST_LEGEND,
   NO_VARIANT,
   BACK,
-  MENU_OPTIONS,
+  MODEL_MENU_OPTIONS,
+  mainMenuOptions,
   HARNESS_OPTIONS,
   createOpencodeAdapter,
   createClaudeAdapter,

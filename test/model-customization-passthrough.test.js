@@ -128,19 +128,19 @@ test('E1 the model screen offers OpenCode passthrough first only when an agent-f
   const dirs = fixture();
   try {
     const withAgent = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'All', null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'All', null],
       items: [`worker:${WORKER}`, `command:${COMMAND}`],
     });
     assert.equal(modelPrompt(withAgent.asked).options[0], OPENCODE_PASSTHROUGH_LABEL);
     assert.deepEqual(modelPrompt(withAgent.asked).options.slice(1), ['opus', 'sonnet', 'fable', 'haiku']);
 
     const commandsOnly = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Orchestrators', null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Orchestrators', null],
       items: [`command:${COMMAND}`],
     });
     assert.ok(!modelPrompt(commandsOnly.asked).options.includes(OPENCODE_PASSTHROUGH_LABEL));
     const utilitiesOnly = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Utilities', null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Utilities', null],
       items: [`utility:${UTILITY}`],
     });
     assert.ok(!utilitiesOnly.asked.some(entry => entry.options.includes(OPENCODE_PASSTHROUGH_LABEL)));
@@ -164,7 +164,7 @@ test('E2 choosing passthrough writes only the harness line and keeps model and e
   try {
     writeLocalAgent(dirs, WORKER, []);
     const outcome = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
       items: [`worker:${WORKER}`, `worker:${OTHER_WORKER}`],
     });
     assert.equal(outcome.result.reason, 'cancelled');
@@ -186,7 +186,7 @@ test('E3 choosing a Claude model on a passthrough row writes model and effort an
   try {
     writeLocalAgent(dirs, WORKER, ['harness: opencode']);
     await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Workers', 'sonnet', 'medium', null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Workers', 'sonnet', 'medium', null],
       items: [`worker:${WORKER}`],
     });
     const text = read(dirs.localAgent(WORKER));
@@ -204,7 +204,7 @@ test('E4 Reset to default models removes the harness line', async () => {
     writeLocalAgent(dirs, WORKER, ['harness: opencode']);
     fs.writeFileSync(dirs.localAgent(WORKER), read(dirs.localAgent(WORKER)).replace('model: haiku', 'model: opus'));
     await runMenu(dirs, {
-      answers: ['Reset to default models', 'Claude Code', null],
+      answers: ['Model customization', 'Reset to default models', 'Claude Code', null],
       items: [`worker:${WORKER}`],
     });
     const text = read(dirs.localAgent(WORKER));
@@ -220,7 +220,7 @@ test('E5 a missing opencode binary or agent still writes the line and warns once
   try {
     const probe = names => ({ [WORKER]: 'opencode-agent-missing', [OTHER_WORKER]: 'opencode-missing' });
     const outcome = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
       items: [`worker:${WORKER}`, `worker:${OTHER_WORKER}`],
       probe,
     });
@@ -232,7 +232,7 @@ test('E5 a missing opencode binary or agent still writes the line and warns once
     assert.match(outcome.warnings[1], new RegExp(`${OTHER_WORKER}.*${FALLBACK_CAUSES['opencode-missing']}`));
 
     const clean = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'Workers', OPENCODE_PASSTHROUGH_LABEL, null],
       items: [`worker:${WORKER}`],
     });
     assert.deepEqual(clean.warnings, [], 'no warning when opencode can run the agent');
@@ -273,7 +273,7 @@ test('E7 Save preset records the passthrough state of every Claude Code row, and
   const dirs = fixture();
   try {
     writeLocalAgent(dirs, WORKER, ['harness: opencode']);
-    await runMenu(dirs, { answers: ['Save preset', 'Claude Code', 'Yes', null] });
+    await runMenu(dirs, { answers: ['Model customization', 'Save preset', 'Claude Code', 'Yes', null] });
     const saved = JSON.parse(read(path.join(dirs.presets, 'mix.json')));
     assert.deepEqual(saved[`worker:${WORKER}`], { model: 'haiku', effort: 'low', harness: 'opencode' });
     assert.deepEqual(saved[`worker:${OTHER_WORKER}`], { model: 'haiku', effort: 'low', harness: null });
@@ -289,7 +289,7 @@ test('E7 Save preset records the passthrough state of every Claude Code row, and
       [`command:${COMMAND}`]: { model: 'sonnet', effort: 'low', harness: 'opencode' },
     }));
     writeLocalAgent(dirs, 'sai-4-review-worker', ['harness: opencode']);
-    const outcome = await runMenu(dirs, { answers: ['Load preset', 'Claude Code', 'load', 'Yes', null] });
+    const outcome = await runMenu(dirs, { answers: ['Model customization', 'Load preset', 'Claude Code', 'load', 'Yes', null] });
     assert.equal(outcome.result.reason, 'cancelled');
     const routed = name => lineOf(read(dirs.localAgent(name)), 'harness');
     assert.equal(routed(WORKER), null, 'harness null removes the line');
@@ -318,7 +318,7 @@ test('E8 in a mixed selection passthrough applies to the agent rows only and a w
   const dirs = fixture();
   try {
     const outcome = await runMenu(dirs, {
-      answers: ['Customize models', 'Claude Code', 'All', OPENCODE_PASSTHROUGH_LABEL, null],
+      answers: ['Model customization', 'Customize models', 'Claude Code', 'All', OPENCODE_PASSTHROUGH_LABEL, null],
       items: [`worker:${WORKER}`, `command:${COMMAND}`, `utility:${UTILITY}`],
     });
     assert.equal(lineOf(read(dirs.localAgent(WORKER)), 'harness'), 'harness: opencode');
@@ -364,7 +364,7 @@ test('E9 the OpenCode screen neither offers passthrough nor reads or writes the 
     assert.ok(text.includes('model: opencode-go/b') && text.includes('variant: high'));
     assert.ok(text.includes('harness: opencode'), 'the OpenCode patch leaves the line as it found it');
 
-    await runMenu(dirs, { answers: ['Save preset', 'OpenCode', 'Yes', null] });
+    await runMenu(dirs, { answers: ['Model customization', 'Save preset', 'OpenCode', 'Yes', null] });
     const saved = JSON.parse(read(path.join(dirs.presets, 'mix.json')));
     assert.deepEqual(saved[`worker:${WORKER}`], { model: 'opencode-go/b', variant: 'high' }, 'an OpenCode preset entry carries no harness');
   } finally {

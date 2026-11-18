@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project behavior settings** screen of `npx --allow-git=all github:mmadariaga/shared-ai setup`, or by hand. The `Experimental` section of that screen edits `experimental.changeTelemetry` and opens the cache warming screen. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it from the post-setup menu of `npx --allow-git=all github:mmadariaga/shared-ai setup` (see [Post-setup menu](#post-setup-menu)), or by hand. The menu edits the language and provider settings and `experimental.changeTelemetry`, and opens the cache warming screen. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -107,7 +107,7 @@ It prints `{warming, origin, warnings}`, where `warming` is `{interval, max}` or
 
 ### Cache warming screen
 
-Run `npx --allow-git=all github:mmadariaga/shared-ai setup`, choose **Project behavior settings**, and select **Cache warming** under `Experimental`. You can still edit the file by hand. The screen asks which harness to configure first (`Claude Code` or `OpenCode`), then shows that harness's role defaults and rules:
+Run `npx --allow-git=all github:mmadariaga/shared-ai setup`, and choose **Cache warming** in the post-setup menu. You can still edit the file by hand. The screen asks which harness to configure first (`Claude Code` or `OpenCode`), then shows that harness's role defaults and rules:
 
 - **Role defaults**: `Default for agent` and `Default for subagent`. Each is `off` or `every <interval> min, up to <max> min`. A new project shows both as `off`, so nothing warms until you enable one.
 - **Guided rules**: one row for each (provider, model) pair that an installed SAI file of the chosen harness declares in its `model` frontmatter, with any effort or variant suffix (`#xhigh`) removed. The `agent` role lists the pairs of that harness's installed commands and utilities. The `subagent` role lists the pairs of its installed workers and helpers. A file without a `model` key adds no row; provider rules and the defaults cover it. The screen reads the files of both harnesses and writes nothing to them.
@@ -116,11 +116,11 @@ Run `npx --allow-git=all github:mmadariaga/shared-ai setup`, choose **Project be
 
 Choose a row to **Enable** it, set it to **Off** (`false` for a default, `"enabled": false` for a rule), or, for a rule, **Remove rule**. **Enable** asks for the interval and the maximum in minutes. An empty answer keeps the pre-filled value, which is the current one or `4` and `30` when none exists. Values must be positive and `max` at least `interval`; the screen asks again otherwise, so it never writes an invalid value.
 
-**Done** saves the edits of the chosen harness and leaves the screen; **Back** saves them and returns to the harness choice; **Back** or **Esc** at the harness choice returns to the project behavior settings screen. The screen writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments, including the other harness's block and the legacy global keys. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the unsaved edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the screen prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the screen warns that the local value replaces the one it writes, and it still writes only the base file.
+**Done** saves the edits of the chosen harness and leaves the screen; **Back** saves them and returns to the harness choice; **Back** or **Esc** at the harness choice returns to the post-setup menu. The screen writes only the `warming` key of `.sai/settings.jsonc` and keeps the other keys and comments, including the other harness's block and the legacy global keys. A session without an edit leaves the file byte-identical, and so does Ctrl-C, which discards the unsaved edits. A reinstall keeps the stored values and shows them again. When the stored `warming` value is invalid, the screen prints the warning and starts from empty values; the first save replaces it. When `.sai/settings.local.jsonc` defines `warming`, the screen warns that the local value replaces the one it writes, and it still writes only the base file.
 
 ### Editing `warming` by hand
 
-Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one block per harness (`claude`, `opencode`), or the legacy top-level `defaults` and `rules` that both harnesses read until they have a block. The `Cache warming` row of the `Experimental` section in the [project behavior settings screen](#project-behavior-settings-screen) opens a screen that edits `warming`; see [Cache warming screen](#cache-warming-screen).
+Set `warming` by editing its key in `.sai/settings.jsonc`, or in `.sai/settings.local.jsonc` for a personal override. The value has the shape shown under [Cache warming](#cache-warming): one block per harness (`claude`, `opencode`), or the legacy top-level `defaults` and `rules` that both harnesses read until they have a block. The **Cache warming** entry of the [post-setup menu](#post-setup-menu) opens a screen that edits `warming`; see [Cache warming screen](#cache-warming-screen).
 
 - A new project has no `warming` key, so nothing warms until you add one.
 - Edit the `warming` key only; the other keys and comments of the file stay as they are, and a reinstall keeps the stored values.
@@ -132,7 +132,7 @@ The `/sai-context-cache-ttl-benchmark` command turns warming off in `.sai/settin
 
 ## Change telemetry
 
-`experimental.changeTelemetry` is a boolean, edited in the `Experimental` section of the [project behavior settings screen](#project-behavior-settings-screen) or by hand. An absent key reads as `false`. This setting is experimental and its shape may change.
+`experimental.changeTelemetry` is a boolean, edited with the **Telemetry** row of the [post-setup menu](#post-setup-menu) or by hand. An absent key reads as `false`. This setting is experimental and its shape may change.
 
 ```jsonc
 {
@@ -172,7 +172,7 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 
 ## Local overrides
 
-`.sai/settings.local.jsonc` holds your personal values. The installer and the screen never create it and never edit any `.gitignore`; create the file by hand, and add it to your own `.gitignore` so that it is not committed.
+`.sai/settings.local.jsonc` holds your personal values. The installer and the menu never create it and never edit any `.gitignore`; create the file by hand, and add it to your own `.gitignore` so that it is not committed.
 
 - The file has the same format and the same ids as `.sai/settings.jsonc`.
 - Readers merge the two files key by key: a key in the local file replaces the base value, even when its value equals the base value, and every other key keeps the base value. `"ask"` or an invalid value in the local file also replaces the base value and leaves the question normal.
@@ -187,25 +187,35 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 - A value outside its allowed set invalidates only that key, with a warning; the other keys still apply.
 - A gate that cannot read a setting (an unreadable file, an invalid value, or an unavailable tool) treats it as absent, prints the warnings or one line naming the failure, and continues at the next level.
 
-## Project behavior settings screen
+## Post-setup menu
 
-Run `npx --allow-git=all github:mmadariaga/shared-ai setup` and choose **Project behavior settings** in the post-setup menu. The screen lists six settings by label under the headers `Explore`, `Backlog`, `Pull requests`, and `Experimental`, with their current values, and one action row, `Cache warming`. A header is a text row that the cursor skips; it cannot be chosen.
+Run `npx --allow-git=all github:mmadariaga/shared-ai setup`. When `setup` finishes in an interactive terminal, the `Post-setup customization:` menu lists these entries, in this order:
+
+- **Model customization**: opens a submenu with `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`; see [Model customization](models.md). When an action finishes or is cancelled, the menu returns to the main menu.
+- **Language settings**: opens a submenu with `Ready to Propose language`, `Change overview language`, and `Chat language`.
+- **Backlog and PR settings**: opens a submenu with `Backlog provider` and `Pull requests provider`.
+- **Telemetry: on|off**: a value row that opens the `On`/`Off` picker and returns to the main menu with the new value.
+- **Cache warming**: opens the [cache warming screen](#cache-warming-screen); leaving it returns to the main menu.
+- **Exit**: closes the menu.
+
+Each submenu row shows `<label>: <current value>`, and choosing a row opens that setting's value picker:
 
 - **Ready to Propose language** (`explore.readyToProposeLanguage`): `ask`, `English`, or a language name you type.
 - **Change overview language** (`explore.overviewLanguage`): `ask`, `English`, `none`, or a language name you type.
 - **Chat language** (`explore.chatPublicLanguage`): `follow my language`, `English`, or a language name you type. `follow my language` removes the key from the file that holds it.
-- **Provider** under `Backlog` (`backlog.provider`): `ask` or a provider id from the provider registries.
-- **Provider** under `Pull requests` (`pr.provider`): `ask` or a provider id from the `/to-pr` registry.
-- **Change telemetry** under `Experimental` (`experimental.changeTelemetry`): `On` or `Off`; the screen shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.
-- **Cache warming** under `Experimental`: not a value row. It opens the cache warming screen; leaving that screen returns here. Edits made there and edits pending here both save: the warming screen saves its own `warming` key, and this screen saves its changed keys when you leave it.
+- **Backlog provider** (`backlog.provider`): `ask` or a provider id from the provider registries.
+- **Pull requests provider** (`pr.provider`): `ask` or a provider id from the `/to-pr` registry.
+- **Telemetry** (`experimental.changeTelemetry`): `On` or `Off`; the row shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.
 
-`backlog.repository`, `backlog.project`, `backlog.organization`, and the other `pr.*` keys (`pr.publishAfterRun` included) stay hand-edited. A typed language name is checked like the reader checks it, and an entry that is not accepted is asked again. The screen writes the canonical form (`English`, `None`).
+Every value you choose is saved at once, so nothing is pending: after a choice in a submenu you stay in that submenu and its row shows the new value, **Back** or **Esc** in a submenu returns to the main menu with the cursor on that section, and Ctrl-C closes the menu and keeps every value already chosen. Leaving a picker with **Back** or **Esc**, or leaving the `Other language...` text empty, saves nothing. A save that fails (for example when the file cannot be written) shows the error, leaves the value as it was, and keeps you in the submenu.
 
-Choosing `ask` writes the string `"ask"`, which keeps the normal question and keeps the key's comment in the file. A stored value outside its allowed set shows with the reader's warning, and you may replace it.
+`backlog.repository`, `backlog.project`, `backlog.organization`, and the other `pr.*` keys (`pr.publishAfterRun` included) stay hand-edited. A typed language name is checked like the reader checks it, and an entry that is not accepted is asked again. The menu writes the canonical form (`English`, `None`).
 
-A key that `.sai/settings.local.jsonc` holds shows as an override: the base value struck through, then the local value, then the marker `(local)`. Without a TTY, or with `NO_COLOR` set, the strikethrough is dropped and the row reads `base -> local (local)`. The screen saves a key that the local file holds to the local file and leaves the base file unchanged. It saves every other key to the base file. It never creates the local file. Choosing `follow my language` for a key in the local file removes it there, so the base value applies again.
+Choosing `ask` writes the string `"ask"`, which keeps the normal question and keeps the key's comment in the file. A stored value outside its allowed set shows with the reader's warning when its submenu or picker opens, and you may replace it.
 
-Leaving the screen saves when at least one value changed. The files are edited in place: comments, other keys, and every byte outside the edited values stay as they were. The first save creates `.sai/settings.jsonc`. A session without a change touches nothing. Cancelling the menu with Ctrl-C discards the edits. A file that cannot be parsed, the local file included, is reported when the screen opens and is never rewritten; the same holds for a write error, which is reported and leaves the file as it was. Without a TTY the screen is skipped with the rest of the post-setup menu.
+A key that `.sai/settings.local.jsonc` holds shows as an override: the base value struck through, then the local value, then the marker `(local)`. Without a TTY, or with `NO_COLOR` set, the strikethrough is dropped and the row reads `base -> local (local)`. The menu saves a key that the local file holds to the local file and leaves the base file unchanged. It saves every other key to the base file. It never creates the local file. Choosing `follow my language` for a key in the local file removes it there, so the base value applies again.
+
+The files are edited in place: comments, other keys, and every byte outside the edited value stay as they were. The first save creates `.sai/settings.jsonc`. Choosing the value a key already holds touches nothing. A file that cannot be parsed, the local file included, is reported when its submenu or picker opens and is never rewritten. Without a TTY the menu is skipped.
 
 ## Reader
 
