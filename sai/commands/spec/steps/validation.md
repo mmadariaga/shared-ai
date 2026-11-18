@@ -45,9 +45,17 @@ alone, never from conversation:
 - **Scope** — one line per capability under `## Capabilities`, New and
   Modified.
 - **Requirements** — one line per requirement, grouped by capability.
+- **Assumptions** — one line per unsourced value and one per difference between
+  the block's value and the current code's value, kept from the specs step
+  (`steps/specs.md` § Exact values in scenarios). Each line names the capability,
+  the scenario title, and the value or values, in one of these forms:
+  `Unsourced value: <capability> / <scenario title>: <value>` and
+  `Input differs from code: <capability> / <scenario title>: input <value>, code <value>`.
+  The coordinator appends each line to the run's assumptions, so none is
+  trimmed and none counts toward the 15-line cap below.
 - Omit an empty block or group entirely.
-- At most 15 non-blank lines, counting any `Reconciled proposal:` or
-  `Cited-path gate skipped:` line. When the items do not fit, trim the
-  Requirements block first and end with
+- At most 15 non-blank lines, not counting the Assumptions lines, but counting
+  any `Reconciled proposal:` or `Cited-path gate skipped:` line. When the items
+  do not fit, trim the Requirements block first and end with
   `+N more — see openspec/changes/{name}/specs/**`, where N is the number of
   omitted items.
