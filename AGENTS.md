@@ -275,7 +275,9 @@ load the selected registry reference, keep import read-only, and require exact
 publication approval; `to-pr` asks one combined approval when a push is needed,
 with independent push and publication tokens on both Claude Code and opencode.
 Branch creation preserves
-dirty work and never fetches, stashes, commits, or pushes. New branches are named
+dirty work, refreshes remote-tracking references only (`git fetch --prune` before the
+base question, never blocking creation when it fails), and never stashes, commits, or
+pushes. New branches are named
 `<type>/<id>_<name_with_underscores>`; `/sai-explore` asks a slice set one
 three-choice branch question (`shared`, `per-slice`, `none`) and chains per-slice
 branches through `new-change-branch` with `require_clean`, in conversation state

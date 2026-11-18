@@ -59,7 +59,7 @@ The helper SHALL normalize only the name to lowercase words separated by undersc
 
 ### Requirement: Bounded deterministic parent suggestion
 
-The helper SHALL inspect at most 20 commits using first-parent traversal from HEAD, including HEAD in the bound. It SHALL compare commits nearest HEAD first against local and available remote-tracking reference tips, exclude the current branch and symbolic references, and select the alphabetically first full reference name at the first matching commit. The skill MUST describe this reference as a convenient base suggestion rather than proof of historical origin and MUST NOT automatically fetch or update remotes.
+The helper SHALL inspect at most 20 commits using first-parent traversal from HEAD, including HEAD in the bound. It SHALL compare commits nearest HEAD first against local and available remote-tracking reference tips, exclude the current branch and symbolic references, and select the alphabetically first full reference name at the first matching commit. The skill MUST describe this reference as a convenient base suggestion rather than proof of historical origin. The remote-tracking tips it compares are the ones `inspect` left after its remote refresh; the suggestion itself MUST NOT update remotes beyond that refresh.
 
 #### Scenario: Several reference tips match the nearest commit
 
@@ -152,7 +152,7 @@ The skill MUST load safe-operations and locate its helper through the shared too
 
 ### Requirement: Preserve work and report actual execution state
 
-The workflow MUST preserve staged, unstaged, and untracked work and MUST NOT automatically stash, discard, commit, push, fetch, reset, delete, or clean up repository state. Cancellation before creation SHALL end without mutation. After an attempted creation fails, the skill MUST stop without automatic retry and report what executed, whether creation occurred, the active branch, and what remains incomplete. Read-only inspection, naming, and base failures SHALL NOT carry creation-specific incomplete reporting. Successful completion SHALL report the branch name and base used.
+The workflow MUST preserve staged, unstaged, and untracked work and MUST NOT automatically stash, discard, commit, push, reset, delete, or clean up repository state. Its only remote operation SHALL be the remote refresh of `inspect`, which updates remote-tracking references only; its prune removes remote-tracking references of branches deleted on the server, never local branches. Cancellation before creation SHALL end without creating a branch. After an attempted creation fails, the skill MUST stop without automatic retry and report what executed, whether creation occurred, the active branch, and what remains incomplete. Read-only inspection, naming, and base failures SHALL NOT carry creation-specific incomplete reporting. Successful completion SHALL report the branch name and base used.
 
 #### Scenario: Existing changes survive creation
 
@@ -167,7 +167,7 @@ The workflow MUST preserve staged, unstaged, and untracked work and MUST NOT aut
 #### Scenario: User cancels before creation
 
 - **WHEN** the user cancels at a question before creation
-- **THEN** the workflow ends without invoking creation or modifying repository state.
+- **THEN** the workflow ends without invoking creation or creating a branch.
 
 #### Scenario: Read-only operation fails
 
@@ -201,3 +201,42 @@ The helper's `create` operation SHALL accept an optional `require_clean` flag. W
 
 - **WHEN** `create` runs without `require_clean` or with `require_clean: false` while local changes exist
 - **THEN** creation completes and the local changes remain intact.
+
+### Requirement: Remote refresh before the base question
+
+The helper's `inspect` operation SHALL refresh every configured remote before it computes the suggested bases: after the HEAD and merge/rebase checks and before it lists references, it SHALL list the remotes with `git remote` and run `git fetch --prune` once per remote. Each fetch MUST run without interaction: with `GIT_TERMINAL_PROMPT=0`, ignored standard input, SSH BatchMode only when the user configured no SSH command of their own (`GIT_SSH_COMMAND` or `core.sshCommand`), and a 30-second time limit per remote, where reaching the limit counts as a failure with reason `timeout`. The `inspect` result SHALL carry `fetch: {status, failed}`, where `status` is `updated` when every remote was refreshed, `partial` when some failed, `failed` when all failed, and `none` when the repository has no remotes, and `failed` lists `{remote, reason}` with `reason` the first line of the Git error. A failed fetch MUST NOT block inspection or branch creation. `inspect` SHALL accept `{fetch: false}`, which runs no fetch, omits the `fetch` field, and keeps the HEAD and merge/rebase checks; the skill SHALL pass it when the invoking workflow supplies the base. The `base` and `create` operations SHALL never fetch. The skill SHALL run `inspect` once per base question and reuse its list when the question repeats or pages. In the base question, only the options whose reference lies under a remote listed in `fetch.failed` SHALL be marked as possibly outdated, with one warning that names that remote and its reason; options of refreshed remotes and local options SHALL carry no staleness note.
+
+#### Scenario: Successful refresh removes the staleness note
+
+- **WHEN** `inspect` runs in a repository whose remotes are all reachable
+- **THEN** every remote is fetched with prune, `fetch.status` is `updated` with no failed entry, the remote-tracking references point at the server tips, and no remote option carries a staleness note.
+
+#### Scenario: Unreachable remote never blocks creation
+
+- **WHEN** the only remote cannot be fetched because it is missing, down, unreachable, or exceeds the time limit
+- **THEN** `inspect` still returns the bases from the existing references with `fetch.status` `failed` and one entry naming the remote and a one-line reason, and branch creation can complete.
+
+#### Scenario: Partial failure names only the failed remotes
+
+- **WHEN** some remotes are fetched and others fail
+- **THEN** `fetch.status` is `partial`, `fetch.failed` lists only the failed remotes, and only options of those remotes carry the warning.
+
+#### Scenario: Repository without remotes
+
+- **WHEN** `inspect` runs in a repository that has no remote
+- **THEN** no fetch runs, `fetch.status` is `none` with no failed entry, no warning is shown, and only local bases are offered.
+
+#### Scenario: Prune removes a reference deleted on the server
+
+- **WHEN** a branch was deleted on the server after its remote-tracking reference was fetched
+- **THEN** the refresh removes that remote-tracking reference, the base list no longer offers it, and a free-text base naming it does not resolve.
+
+#### Scenario: Refresh leaves local state untouched
+
+- **WHEN** `inspect` refreshes the remotes while staged, unstaged, and untracked changes exist
+- **THEN** local branches, the working tree, the index, and the stash stay unchanged.
+
+#### Scenario: Supplied base skips the fetch
+
+- **WHEN** `inspect` runs with `{fetch: false}`, or the `base` or `create` operation runs
+- **THEN** no fetch runs, the remote-tracking references keep their prepared SHAs, the unchanged-base check still rejects a moved base, and a merge or rebase in progress still stops inspection.

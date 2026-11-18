@@ -7,12 +7,12 @@ TBD - created by archiving change group-post-crystallization-question-rounds. Up
 
 ### Requirement: Prepare suggested bases for a caller without creating
 
-On request from any workflow, `new-change-branch` SHALL run its inspection and return the suggested bases in their returned order, as the display options and exact references of the first page (up to four options in all: with more than four bases, three bases plus `More`; with four or fewer, every base without `More`; plus the free-text entry), without asking and without repository mutation. The caller SHALL present that question and hand the answer back as a supplied base. The skill SHALL NOT name or depend on its caller, and standalone use SHALL keep its existing sections unchanged.
+On request from any workflow, `new-change-branch` SHALL run its inspection and return the suggested bases in their returned order, as the display options and exact references of the first page (up to four options in all: with more than four bases, three bases plus `More`; with four or fewer, every base without `More`; plus the free-text entry), together with the warnings of `inspect.fetch`, without asking and without creating a branch or changing local branches, the working tree, or the index. The only repository change of this preparation SHALL be the remote refresh of the inspection, which updates remote-tracking references only. The caller SHALL present that question and hand the answer back as a supplied base. The skill SHALL NOT name or depend on its caller, and standalone use SHALL keep its existing sections unchanged.
 
 #### Scenario: Caller requests base preparation
 
 - **WHEN** a workflow asks `new-change-branch` to prepare bases
-- **THEN** the skill returns the first page of suggested bases with their exact references and creates nothing
+- **THEN** the skill returns the first page of suggested bases with their exact references and the `inspect.fetch` warnings, and creates nothing
 
 #### Scenario: More than four bases are prepared
 

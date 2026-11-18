@@ -19,8 +19,14 @@ Locate `sai/tools/new-change-branch.js` through `sai/policies/tool-resolution.md
 Run `node <tool-path> <operation> --input-file <path>` in the target repository, with one JSON object
 in the input file; it returns JSON. Quote the tool path separately and write the JSON with the
 native file-write tool, never executable interpolation of input. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc.
-Run `inspect` with `{}`. Stop on a missing Git repository, missing HEAD commit,
-merge or rebase in progress, or unavailable tool; report the concrete reason.
+Run `inspect` once with `{}`; it refreshes every remote (`git fetch --prune`,
+non-interactive, 30-second limit per remote) before it lists the bases, so a
+repeated base question or a later page reuses the list without another fetch.
+When the invoking workflow supplies `base` (section 2), run `inspect` with
+`{"fetch": false}` instead: it checks HEAD and merge/rebase state and fetches
+nothing. Stop on a missing Git repository, missing HEAD commit, merge or rebase
+in progress, or unavailable tool; report the concrete reason. A failed fetch is
+never one of those: it is reported in `inspect.fetch` and never blocks creation.
 
 Derive the change type, name, and optional actual work-item identifier from the
 current discussion and relevant imported work items, regardless of provider.
@@ -44,8 +50,13 @@ is a convenient starting point, not proof of historical origin: the helper
 matches up to 20 first-parent commits, nearest HEAD first, against local and
 available remote-tracking tips, excludes the current and symbolic references,
 and breaks ties alphabetically by full reference name. Omit a missing parent.
-Remote-tracking references may be stale; use them as available, without fetching
-or updating remotes. Detached HEAD has no current-branch option.
+Remote-tracking references were refreshed by `inspect`, so an option carries no
+staleness note when `inspect.fetch.status` is `updated` or `none`. For each entry
+of `inspect.fetch.failed`, put one warning in the question that names the
+failed remote and its `reason`, and mark only the options whose reference lies
+under `refs/remotes/<remote>/` of that remote as possibly outdated; options of
+the other remotes and local options carry no warning. Detached HEAD has no
+current-branch option.
 
 Use Claude Code's `AskUserQuestion` (at most four options per question, with its
 automatic free-text Other entry) or opencode's `question` (custom/free-text entry
@@ -77,8 +88,9 @@ Any workflow may ask this skill to prepare without creating: run section 1's
 `inspect` and return the suggested bases in their returned order, as the display
 options and exact references of the first page (up to four options in all: with
 more than four bases, three bases plus `More`; with four or fewer, every base
-without `More`; plus the free-text entry), without asking and without
-repository mutation. The caller presents that question and hands the answer back
+without `More`; plus the free-text entry) and the `inspect.fetch` warnings,
+without asking and without creating a branch or changing local branches, the
+working tree, or the index. The caller presents that question and hands the answer back
 as the supplied base of section 2. This skill never names or depends on its
 caller; standalone use keeps sections 1–3 exactly as written.
 
@@ -91,7 +103,7 @@ leaves ambiguous.
 Show the final branch and selected base with SHA before creation. The explicit
 workflow request and base selection authorize only this local creation and
 switch. Cancellation at any earlier question ends without calling `create` and
-without repository mutation; `create` with `{cancelled:true}` is also read-only.
+without creating a branch; `create` with `{cancelled:true}` is also read-only.
 Run `create` once with `{type,name,id?,base,sha}` from the completed steps.
 A caller that chains branches adds `require_clean: true`; creation then stops,
 without creating a branch, while the working tree has uncommitted changes. The
@@ -99,8 +111,11 @@ standalone flow omits it.
 It rechecks availability, base validity and unchanged SHA, and merge/rebase
 state, then creates and switches with separate Git arguments and no remote
 tracking. Preserve staged, unstaged and untracked work. If Git prevents switching,
-stop; never discard work or automatically stash it. No commit, push, fetch,
-reset, deletion or other Git mutation belongs to this workflow.
+stop; never discard work or automatically stash it. No commit, push, reset,
+deletion or other Git mutation belongs to this workflow; the only remote
+operation is the fetch of `inspect`, which updates remote-tracking references
+only (its prune removes such references, never branches), and `base` and
+`create` never fetch.
 
 For pre-creation name or base rejection return to the relevant question; a merge
 or rebase stops the run. After an attempted operation fails, stop and report
