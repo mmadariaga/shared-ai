@@ -814,3 +814,21 @@ test('origin transport replaces the adopted origin in slice blocks with the chil
   const other = named(block('blocker')).replace(origin.url, 'https://github.com/owner/repo/issues/77');
   assert.throws(() => detector.attachBacklogOrigins(block('dependent', 'blocker') + '\n' + other, result.correspondence), /conflicts with publication/);
 });
+test('E15: the GitHub set and set-update proposals report auto_approve and their tokens bind the key', async t => {
+  const f = fake({ native: true }), keyed = { ...f.io, autoApprove: true };
+  const off = await github['query-set'](f.request, f.io), on = await github['query-set'](f.request, keyed);
+  assert.equal(Object.hasOwn(off.proposal, 'auto_approve'), false);
+  assert.equal(on.proposal.auto_approve, true);
+  assert.notEqual(on.confirmation, off.confirmation);
+  const file = receipt(t);
+  assert.equal((await github['publish-set']({ ...f.request, confirmation: on.confirmation, receipt: file }, f.io)).status, 'failure_before_publication');
+  assert.equal(f.state.issues.length, 0);
+  const published = await github['publish-set']({ ...f.request, confirmation: on.confirmation, receipt: receipt(t) }, keyed);
+  assert.equal(published.status, 'complete', JSON.stringify(published));
+  const request = { origin: f.state.issues[0].url, title: 'Refined objective', description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  const updateOff = await github['query-set-update'](request, f.io), updateOn = await github['query-set-update'](request, keyed);
+  assert.equal(updateOff.status, 'ready', JSON.stringify(updateOff));
+  assert.equal(Object.hasOwn(updateOff.proposal, 'auto_approve'), false);
+  assert.equal(updateOn.proposal.auto_approve, true);
+  assert.notEqual(updateOn.confirmation, updateOff.confirmation);
+});

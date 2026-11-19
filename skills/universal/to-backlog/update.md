@@ -30,7 +30,10 @@ token, or `no_changes` ends without publication.
 
 ## Review — before common confirmation
 
-Present the provider's required update limitation note before asking for approval.
+Present the provider's required update limitation note before asking for approval,
+or before publishing a proposal that reports `auto_approve: true` without the question
+(`SKILL.md` section 3, "Auto-approved publication"). A proposal prepared again after a
+`stale-baseline` or `divergent` result is always asked.
 **Complete when:** that note is visible alongside the exact proposed update.
 
 ## Publication and recovery — after common confirmation

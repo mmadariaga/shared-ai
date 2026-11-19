@@ -172,7 +172,7 @@ async function query(request, io, markdown = true) {
   const type = await azure.api(target, 'wit', 'workitemtypes', { project: target.project, type: request.type }, io);
   if (type.name !== request.type) throw new Error('Invalid or incompatible work-item type');
   const plan = await planning(request, target, io);
-  const proposal = { provider: 'azuredevops', repository: target.url, ...target, type: type.name, format: markdown ? 'markdown' : 'html', ...content(request, undefined, false, markdown), ...(plan ? { planning: plan } : {}) };
+  const proposal = { provider: 'azuredevops', repository: target.url, ...target, type: type.name, format: markdown ? 'markdown' : 'html', ...content(request, undefined, false, markdown), ...(plan ? { planning: plan } : {}), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 async function readUpdate(request, io) {
@@ -187,7 +187,7 @@ async function queryUpdate(request, io, rendered = false) {
   const current = await readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Boards revision changed; prepare and explicitly approve again' };
   const plan = await planning(request, current, io, current.issue);
-  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered, current.format === 'markdown'), ...(plan ? { planning: plan } : {}) };
+  const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline, rendered, current.format === 'markdown'), ...(plan ? { planning: plan } : {}), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   delete proposal.status;
   if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description, current.format) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };

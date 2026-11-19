@@ -158,6 +158,16 @@ const CATALOGUE = {
     absent: 'English',
     fallback: 'the draft falls back to English',
   },
+  // A standing grant: with `true`, `/to-pr` and `/to-backlog` publish right after showing their complete proposal, with no
+  // approval question. Their tools read it themselves, bind it into the confirmation token, and keep every safety refusal.
+  // An absent key reads as false, and a non-boolean value is dropped with a warning that names the key.
+  'publication.autoApprove': {
+    validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
+    label: 'Auto-approve publication',
+    section: 'Backlog and PR',
+    absent: 'off',
+    fallback: 'it reads as false and every publication approval is asked',
+  },
   // An absent key reads as false.
   'experimental.changeTelemetry': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
@@ -325,6 +335,14 @@ function get(id, options) {
 }
 
 /**
+ * The standing publication grant of `/to-pr` and `/to-backlog`: true only for a stored boolean `true`.
+ * An absent, `ask`, or invalid value reads as false, and the invalid value's warning comes from `readSettings`.
+ */
+function autoApprove(options) {
+  return get('publication.autoApprove', options).value === true;
+}
+
+/**
  * The effective warming of one agent, resolved from the merged settings: { warming, origin, warnings, notices? }.
  * `warming` is `{ interval, max }` in minutes or `off`; `origin` is `model`, `family`, `provider`, `defaults`, or `none`.
  * `harness` is required: the resolver reads that harness's block, or the global value when it has none.
@@ -430,4 +448,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, autoApprove, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };

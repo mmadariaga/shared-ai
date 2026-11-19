@@ -106,6 +106,11 @@ async function resolve({ explicit = {}, config = {}, remotes = [] }, registry, i
   return { status: 'resolved', provider, repository, project: selected.project, instructions: entry.instructions, adapter: entry.adapter };
 }
 
+// `publication.autoApprove` is read once per invocation and travels in `io`: every adapter adds it to the proposal its token binds.
+function withAutoApprove(io, cwd) {
+  return { ...io, autoApprove: projectSettings.autoApprove({ cwd }) };
+}
+
 async function main(rawArgv) {
   // Settings warnings stay visible when resolution fails after the read.
   let warnings = [];
@@ -145,7 +150,7 @@ async function main(rawArgv) {
       const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
       result = projectSettings.report(result, { warnings, notices: [...(settings.notices || []), ...projectSettings.notices(config, request.explicit, result, addressProvider)] });
     } else {
-      result = await dispatch(operation, request, registry, io);
+      result = await dispatch(operation, request, registry, withAutoApprove(io, cwd));
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
@@ -156,4 +161,4 @@ async function main(rawArgv) {
 }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { run, address, detect, resolve, dispatch, main };
+module.exports = { run, address, detect, resolve, dispatch, withAutoApprove, main };

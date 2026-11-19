@@ -576,3 +576,41 @@ test('CLI uses simulated Git and gh, structured stdin and no shell interpretatio
   assert.equal(fs.readFileSync(statePath, 'utf8').includes('Unicode: ñ'), true);
   assert.equal(fs.existsSync(path.join(dir, 'nope')), false);
 });
+
+// `publication.autoApprove`: to-backlog.js reads the key once and hands it to the adapters in `io`; every proposal reports it
+// as `auto_approve: true` and the confirmation token binds it, so the question is skipped only for the proposal that was shown.
+test('E4 E14: the proposal reports auto_approve only when the key is on, and its token binds the key', async () => {
+  const off = await github.query(request, mock());
+  assert.equal(Object.hasOwn(off.proposal, 'auto_approve'), false);
+  for (const value of [false, undefined, 'yes', 1]) {
+    assert.equal((await github.query(request, { ...mock(), autoApprove: value })).confirmation, off.confirmation, String(value));
+  }
+  const on = await github.query(request, { ...mock(), autoApprove: true });
+  assert.equal(on.proposal.auto_approve, true);
+  assert.notEqual(on.confirmation, off.confirmation);
+
+  // The token of the shown proposal publishes under the same key and under no other.
+  const state = {};
+  const io = { ...mock(state), autoApprove: true };
+  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp();
+  const input = { ...request, confirmation: on.confirmation, receipt: path.join(directory, 'receipt.json') };
+  assert.equal((await github.publish(input, { ...mock(state), autoApprove: false })).status, 'failure_before_publication');
+  assert.equal(state.creations, undefined);
+  assert.equal((await github.publish(input, io)).status, 'complete');
+  assert.equal(state.creations, 1);
+});
+
+test('E11 E13: to-backlog.js reads publication.autoApprove from the project settings once per invocation', () => {
+  const { withAutoApprove } = require('../sai/tools/to-backlog');
+  const project = settings => {
+    const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'to-backlog-auto-'));
+    if (settings !== undefined) { fs.mkdirSync(path.join(directory, '.sai')); fs.writeFileSync(path.join(directory, '.sai', 'settings.jsonc'), settings); }
+    return directory;
+  };
+  const read = settings => withAutoApprove({ run: 'kept' }, project(settings));
+  assert.deepEqual(read(undefined), { run: 'kept', autoApprove: false });
+  assert.equal(read('{ "publication": { "autoApprove": true } }').autoApprove, true);
+  assert.equal(read('{ "publication": { "autoApprove": false } }').autoApprove, false);
+  assert.equal(read('{ "publication": { "autoApprove": "yes" } }').autoApprove, false);
+  assert.equal(read('{ "publication": { "autoApprove": true } }').run, 'kept');
+});

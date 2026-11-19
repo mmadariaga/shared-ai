@@ -218,3 +218,19 @@ test('update CLI dispatch handles structured Markdown data through registry and 
   assert.equal(invoke('recover-update', { provider: 'github', receipt }).status, 'complete');
   assert.equal(fs.existsSync(path.join(directory, 'nope')), false);
 });
+
+test('E4 E14: an update proposal reports auto_approve only when the key is on, and its token binds the key', async () => {
+  const io = { run: (...args) => fakeUpdate({}, ...args) };
+  const current = await github['read-update']({ reference }, io);
+  const request = { provider: 'github', reference: current.issue.url, baseline: current.baseline, ...final };
+  const off = await github['query-update'](request, io);
+  const on = await github['query-update'](request, { ...io, autoApprove: true });
+  assert.equal(Object.hasOwn(off.proposal, 'auto_approve'), false);
+  assert.equal(on.proposal.auto_approve, true);
+  assert.notEqual(on.confirmation, off.confirmation);
+  const state = {};
+  const { io: approvedIo, request: approvedRequest } = await approved(state);
+  const withKey = { ...approvedIo, autoApprove: true };
+  assert.equal((await github.update(approvedRequest, withKey)).status, 'failure_before_publication', 'a token of the shown proposal without the key does not publish under it');
+  assert.equal(state.mutations, undefined);
+});

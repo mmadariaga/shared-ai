@@ -609,6 +609,24 @@ test('I3: experimental.changeTelemetry is a boolean that reads as absent until s
   assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Telemetry', section: 'Experimental', absent: 'off' });
 });
 
+test('E11 E13: publication.autoApprove is a boolean that reads as false until set, and a non-boolean reads as false with a warning', () => {
+  const file = (text, local) => project({ '.sai/settings.jsonc': text, ...(local ? { '.sai/settings.local.jsonc': local } : {}) });
+  const flag = cwd => settings.autoApprove({ cwd });
+  assert.deepEqual(settings.get('publication.autoApprove', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
+  assert.equal(flag(project()), false);
+  assert.equal(flag(file('{ "publication": { "autoApprove": true } }')), true);
+  assert.equal(flag(file('{ "publication": { "autoApprove": false } }')), false);
+  assert.equal(flag(file('{ "publication": { "autoApprove": "ask" } }')), false);
+  assert.equal(flag(file('{ "publication": { "autoApprove": true } }', '{ "publication": { "autoApprove": false } }')), false);
+  for (const value of ['"yes"', '1', '"true"', 'null']) {
+    const invalid = settings.get('publication.autoApprove', { cwd: file(`{ "publication": { "autoApprove": ${value} } }`) });
+    assert.equal(invalid.value, null, value);
+    assert.match(invalid.warnings.join('\n'), /Setting publication\.autoApprove in \.sai\/settings\.jsonc must be true or false; it reads as false/, value);
+    assert.equal(flag(file(`{ "publication": { "autoApprove": ${value} } }`)), false, value);
+  }
+  assert.deepEqual({ ...settings.CATALOGUE['publication.autoApprove'], validate: undefined, fallback: undefined }, { validate: undefined, fallback: undefined, label: 'Auto-approve publication', section: 'Backlog and PR', absent: 'off' });
+});
+
 test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and an invalid value as the question, and is no destination field', () => {
   const file = value => project({ '.sai/settings.jsonc': `{ "pr": { "publishAfterRun": ${value}, "provider": "github" } }` });
   const get = value => settings.get('pr.publishAfterRun', { cwd: file(value) });

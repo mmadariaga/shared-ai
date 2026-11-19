@@ -69,6 +69,13 @@ first, then applies approved planning fields in a separate revision-tested
 request. Recovery verifies both steps and completes only pending authorized
 changes after explicit continuation approval; it does not recreate the item.
 
+With the project setting `publication.autoApprove` set to `true`
+([Publication auto-approval](../project-settings.md#publication-auto-approval)), the command
+shows the same complete proposal (a slice set included) and publishes it with the unchanged
+confirmation token, asking no approval question. The tool reads the setting and binds it into
+the token. The question is still asked when the update baseline is stale or recovery finds
+divergent remote content, and when you ask in the conversation to review before publishing.
+
 Publication runs once. Keep the reported receipt and existing item link after a
 partial or uncertain result: recovery verifies outcomes, never recreates an item
 automatically. See [publication and recovery](../backlog.md#capture-or-update-work).

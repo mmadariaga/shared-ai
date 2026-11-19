@@ -115,12 +115,12 @@ The `Telemetry` row of the post-setup main menu SHALL edit `experimental.changeT
 
 ### Requirement: Section submenu contents
 
-`bin/project-settings-screen.js` SHALL provide the `Language settings` and `Backlog and PR settings` section submenus of the post-setup menu, under the prompt titles `Language settings:` and `Backlog and PR settings:`. The `Language settings` submenu SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `explore.chatPublicLanguage`, and `pr.language`, in that order; the `Backlog and PR settings` submenu SHALL list exactly `backlog.provider` and `pr.provider`, in that order. Each row SHALL read `<label>: <current value>`, where the label is the catalogue label, except that `backlog.provider` reads `Backlog provider` and `pr.provider` reads `Pull requests provider`. A submenu SHALL show no section header row and no `Done` row. The current value SHALL be read from the settings files each time the submenu is drawn: the reader's normalized value, the key's absence text (`ask`, `follow my language` for `explore.chatPublicLanguage`, or `English` for `pr.language`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, `pr.project`, and `pr.publishAfterRun` SHALL NOT appear in any submenu. The value prompt title SHALL be `<row label>:`. The submenus SHALL read the settings files of the project path they were given, without the git top-level or main-worktree lookup.
+`bin/project-settings-screen.js` SHALL provide the `Language settings` and `Backlog and PR settings` section submenus of the post-setup menu, under the prompt titles `Language settings:` and `Backlog and PR settings:`. The `Language settings` submenu SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `explore.chatPublicLanguage`, and `pr.language`, in that order; the `Backlog and PR settings` submenu SHALL list exactly `backlog.provider`, `pr.provider`, and `publication.autoApprove`, in that order. Each row SHALL read `<label>: <current value>`, where the label is the catalogue label, except that `backlog.provider` reads `Backlog provider` and `pr.provider` reads `Pull requests provider`. A submenu SHALL show no section header row and no `Done` row. The current value SHALL be read from the settings files each time the submenu is drawn: the reader's normalized value, the key's absence text (`ask`, `follow my language` for `explore.chatPublicLanguage`, `English` for `pr.language`, or `off` for `publication.autoApprove`) when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, `pr.project`, and `pr.publishAfterRun` SHALL NOT appear in any submenu. The value prompt title SHALL be `<row label>:`. The submenus SHALL read the settings files of the project path they were given, without the git top-level or main-worktree lookup.
 
 #### Scenario: Submenu rows show current values
 
 - **WHEN** a settings file sets only `backlog.provider` to `gitlab` and the user opens `Backlog and PR settings`, then `Language settings`
-- **THEN** the first submenu rows are `Backlog provider: gitlab` and `Pull requests provider: ask`, and the second are `Ready to Propose language: ask`, `Change overview language: ask`, `Chat language: follow my language`, and `PR/MR language: English`, with no header row and no `Done` row
+- **THEN** the first submenu rows are `Backlog provider: gitlab`, `Pull requests provider: ask`, and `Auto-approve publication: off`, and the second are `Ready to Propose language: ask`, `Change overview language: ask`, `Chat language: follow my language`, and `PR/MR language: English`, with no header row and no `Done` row
 
 ### Requirement: Immediate saving of each value choice
 
@@ -164,3 +164,22 @@ An unparseable `.sai/settings.jsonc` or `.sai/settings.local.jsonc` SHALL be rep
 
 - **WHEN** saving a chosen value fails with a write error
 - **THEN** the submenu reports that the project settings were not saved, names the error, leaves the file unchanged, and presents the same submenu again with the previous value
+
+### Requirement: Auto-approve publication boolean editing
+
+The `Auto-approve publication` row of the `Backlog and PR settings` submenu SHALL edit `publication.autoApprove` as a boolean. Its row SHALL read `Auto-approve publication: on` when the effective value is `true`, and `Auto-approve publication: off` when the key is absent or `false`. Selecting the row SHALL open a picker titled `Auto-approve publication:` that offers exactly the choices `On` and `Off`. Choosing `On` SHALL save `true` at once and keep the user in the submenu. Choosing `Off` SHALL remove the key from `.sai/settings.jsonc` when the key is saved to the base file, keeping the file's other keys, and SHALL save an explicit `false` when the key is saved to `.sai/settings.local.jsonc`. The settings writer SHALL refuse to save a value that is not a boolean, with a problem that says `publication.autoApprove` must be true or false. A stored non-boolean value SHALL show its JSON form followed by ` (invalid)`, and opening the submenu SHALL print the reader's warning.
+
+#### Scenario: Auto-approve row shows on or off
+
+- **WHEN** the submenu is drawn on a settings file where `publication.autoApprove` is `true`, `false`, or absent
+- **THEN** the row reads `Auto-approve publication: on` for `true` and `Auto-approve publication: off` for `false` or an absent key
+
+#### Scenario: On saves true and Off removes the base key
+
+- **WHEN** the user chooses `On` for the row, and then chooses `Off`
+- **THEN** the first choice writes `true` to `.sai/settings.jsonc` and the row reads `Auto-approve publication: on`, and the second removes `autoApprove` from that file and keeps its other keys
+
+#### Scenario: Non-boolean value is refused and shown as invalid
+
+- **WHEN** the writer is asked to save `"yes"` for `publication.autoApprove`, and a settings file holds `"yes"` for it
+- **THEN** the save is refused with a problem matching `publication.autoApprove must be true or false`, the row reads `Auto-approve publication: "yes" (invalid)`, and opening the submenu prints a warning matching `Setting publication.autoApprove in .sai/settings.jsonc must be true or false; it reads as false`

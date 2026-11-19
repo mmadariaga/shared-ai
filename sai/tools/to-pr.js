@@ -89,6 +89,10 @@ function draftLanguage(cwd) {
   const { value, warnings } = projectSettings.get('pr.language', { cwd });
   return { language: value ?? 'English', ...(warnings.length ? { warnings } : {}) };
 }
+// `publication.autoApprove`: a standing project grant to publish right after the complete proposal is shown. The tool reads
+// it on every call and binds it into the proposals, so the confirmation tokens change when the key does; an unusable value reads as false.
+const autoApproved = io => projectSettings.autoApprove({ cwd: io.cwd || process.cwd() });
+const approvalField = flag => (flag ? { auto_approve: true } : {});
 async function collect(request, io) {
   const git = async args => (await io.run('git', args)).trim();
   const source = ref(await git(['symbolic-ref', '--quiet', '--short', 'HEAD']));
@@ -127,22 +131,24 @@ async function pushQuery(request, io) {
   const proposal = await destination(request, io);
   const rows = (await io.run('git', ['ls-remote', '--heads', proposal.remote, `refs/heads/${proposal.source}`])).trim();
   const remoteHead = rows ? rows.split(/\s+/)[0] : null;
-  return { status: remoteHead === proposal.head ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
+  const bound = { ...proposal, ...approvalField(autoApproved(io)) };
+  return { status: remoteHead === proposal.head ? 'no_changes' : 'ready', proposal: bound, confirmation: digest(bound) };
 }
 // Unattended mode (`--unattended` on plan-commit, push and publish) is for a SAI coordinator that holds a recorded
-// publication answer of `yes`: it replaces the approval and confirmation tokens and keeps every other check. A refusal
-// names its cause in `refusal`; the tool never retries one.
+// publication answer of `yes`: it replaces the approval and confirmation tokens and keeps every other check. An
+// auto-approved publication (`publication.autoApprove` true) keeps the tokens and adds these refusals, because it asks no
+// question. A refusal names its cause in `refusal`; the tool never retries one.
 const UNATTENDED_OPERATIONS = ['plan-commit', 'push', 'publish'];
 const refuse = (refusal, message, extra = {}) => Object.assign(new Error(message), { refusal, ...extra });
 async function unattendedGuard(request, io) {
-  if (request.force !== undefined && request.force !== false) throw refuse('force-push', 'Unattended publication never force pushes');
+  if (request.force !== undefined && request.force !== false) throw refuse('force-push', 'A publication without an approval question never force pushes');
   let source = '';
   try { source = (await io.run('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim(); } catch { /* A detached HEAD has no branch name. */ }
-  if (!source) throw refuse('detached-head', 'Unattended publication refuses a detached HEAD: only a branch is published');
+  if (!source) throw refuse('detached-head', 'A publication without an approval question refuses a detached HEAD: only a branch is published');
   const proposal = await destination(request, io);
-  if (proposal.source === proposal.target.defaultBranch) throw refuse('default-branch', `Unattended publication refuses the default branch ${proposal.source}`);
+  if (proposal.source === proposal.target.defaultBranch) throw refuse('default-branch', `A publication without an approval question refuses the default branch ${proposal.source}`);
   const provider = adapter(request.provider, io);
-  if (typeof provider.closedRequests !== 'function') throw refuse('provider-unsupported', 'The provider cannot report merged and closed requests, so it cannot publish unattended');
+  if (typeof provider.closedRequests !== 'function') throw refuse('provider-unsupported', 'The provider cannot report merged and closed requests, so it cannot publish without an approval question');
   // An open request is updated. Without one, a merged or closed request of this branch is never reopened or duplicated.
   if (!(await provider.list(proposal.target, proposal.source, proposal.base, io)).length) {
     const [closed] = await provider.closedRequests(proposal.target, proposal.source, proposal.base, io);
@@ -162,7 +168,7 @@ async function pushTimedOut(request, ready, io) {
 }
 async function push(request, io) {
   const unattended = request.unattended === true;
-  if (unattended) await unattendedGuard(request, io);
+  if (unattended || autoApproved(io)) await unattendedGuard(request, io);
   const ready = await pushQuery(request, io);
   if (!unattended && (request.approved !== true || ready.confirmation !== request.confirmation)) throw new Error('Independent exact remote and branch push approval required');
   if (ready.status === 'no_changes') return ready;
@@ -292,7 +298,7 @@ async function prepareQuery(request, io) {
   const applied = rows[0] ? { warnings: [] } : await labelling(request, selected, provider, io);
   const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
     ...(inherent_risk ? { inherent_risk } : {}), ...(request.draft === true ? { draft: true } : {}), ...(request.ready === true ? { ready: true } : {}),
-    ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}) });
+    ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}), ...approvalField(autoApproved(io)) });
   const proposal = build(applied.assignee, applied.labels);
   const prMatches = rows[0]?.title === request.title && rows[0]?.description === description && (request.draft !== true || rows[0]?.isDraft === true) && (request.ready !== true || rows[0]?.isDraft !== true);
   const matches = prMatches && (!inherent_risk?.required || inherent_risk.existing?.body === inherent_risk.body);
@@ -332,7 +338,7 @@ function labellingOutcome(outcome, proposal, result, notices = []) {
 async function publish(request, io) {
   const unattended = request.unattended === true;
   if (request.ready === true && !unattended) throw new Error('ready:true applies only to an unattended publication');
-  if (unattended) await unattendedGuard(request, io);
+  if (unattended || autoApproved(io)) await unattendedGuard(request, io);
   const prepared = await prepareQuery(request, io);
   const ready = unattended ? prepared.ready : approvedWithFailedReads(prepared, request);
   const rereadNotices = ready === prepared.ready ? [] : ready.warnings.slice(-1);

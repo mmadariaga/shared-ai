@@ -347,7 +347,7 @@ is lexical and does not compare real paths.
 
 To pre-answer the language, backlog provider, and PR provider questions, run `setup` and use
 the entries of the post-setup menu: **Language settings** and **Backlog and PR settings**
-open their own submenus, the **Telemetry** row turns on
+open their own submenus (the second one also holds the **Auto-approve publication** row), the **Telemetry** row turns on
 [change telemetry](#change-telemetry-experimental), and **Cache warming** opens the screen
 that sets the warming timings of each harness (Claude Code and opencode)
 separately. Each value you choose is saved at once. See [project settings](docs/project-settings.md).

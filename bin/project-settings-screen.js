@@ -12,11 +12,11 @@ const { checkValue, readStored, storedValue, saveSettings } = require('./project
 const { BACK } = require('./install-flow.js');
 
 const LANGUAGE_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language']);
-const BACKLOG_PR_IDS = Object.freeze(['backlog.provider', 'pr.provider']);
+const BACKLOG_PR_IDS = Object.freeze(['backlog.provider', 'pr.provider', 'publication.autoApprove']);
 const TELEMETRY_ID = 'experimental.changeTelemetry';
 const SETTING_IDS = Object.freeze([...LANGUAGE_IDS, ...BACKLOG_PR_IDS, TELEMETRY_ID]);
 // Keys that the menu edits as a boolean: the choices are `On` and `Off`.
-const BOOLEAN_IDS = Object.freeze([TELEMETRY_ID]);
+const BOOLEAN_IDS = Object.freeze([TELEMETRY_ID, 'publication.autoApprove']);
 // The two provider settings share the catalogue label `Provider`; their submenu rows name the topic.
 const ROW_LABELS = Object.freeze({ 'backlog.provider': 'Backlog provider', 'pr.provider': 'Pull requests provider' });
 const REGISTRIES = Object.freeze([

@@ -99,10 +99,28 @@ Wait for an explicit answer.
 
 Cancel ends without publication. Editing any content, planning input or destination returns to
 inspection and a new full confirmation. A prior general grant, unattended mode,
-or command invocation is not confirmation. Continue only with explicit approval
+or command invocation is not confirmation, with one exception: the auto-approved
+publication below. Continue only with explicit approval
 of the current full proposal, preserving its confirmation token unchanged.
+
+**Auto-approved publication.** The project setting `publication.autoApprove` is read by
+`to-backlog.js` itself, never by this skill, and is part of every proposal its token binds
+(create, update, and the slice-set proposals of `slice-set.md`). When the `ready` proposal
+reports `auto_approve: true`, show the complete proposal exactly as this section and the
+selected branch require (destination, visibility with the public warning, title,
+description, planning changes, and for an update the baseline, the changes, and the
+provider's non-atomic update note), then ask no approval question: continue at section 4
+with the unchanged token. Ask the question as usual when the proposal was prepared again
+after a `stale-baseline` or `divergent` result, because someone else changed the issue; when
+the user asked in this conversation to review before publishing (the setting stays
+unchanged); and when the proposal does not report `auto_approve: true`. A pending retry
+after a failed or uncertain publication is auto-approved again only when recovery reports
+that the remote content still matches the baseline; its token binds the setting like any
+other, so a setting that changed after the proposal was shown fails the token check and
+returns to preparation and a new proposal.
 **Complete when:** explicit approval binds the exact destination, final content,
-all proposed planning changes, and (for update) baseline version; cancellation ends the run.
+all proposed planning changes, and (for update) baseline version, or `auto_approve: true`
+lets the shown complete proposal and its unchanged token stand for it; cancellation ends the run.
 
 ## Prepare for a caller and act on a supplied answer
 
@@ -131,7 +149,9 @@ the same baseline version, and the same confirmation token. Then:
 On a mismatch or a missing answer, ask with section 3's standalone prompt,
 presented through the harness-native picker. A
 supplied answer from a prior general grant, unattended mode, or any answer to a
-different question is not confirmation.
+different question is not confirmation. The `publication.autoApprove` setting of
+section 3 is the one exception and needs no supplied answer: a proposal that reports
+`auto_approve: true` is published without one.
 
 ## 4. Publish and report
 

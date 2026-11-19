@@ -16,7 +16,7 @@ On request from any workflow, `to-backlog` SHALL run its inspection and review s
 
 ### Requirement: Act only on a supplied answer bound to the exact proposal
 
-`to-backlog` SHALL act on a supplied answer only when it binds the exact proposal the skill prepared: the same destination, the same final content, the same baseline version, and the same confirmation token. Confirm SHALL continue to publication with the unchanged token; cancel SHALL end without publication; edit SHALL return to inspection and ask a full confirmation of the edited proposal with the standalone prompt, never with a supplied answer. On a mismatch or a missing answer, the skill SHALL ask with its standalone prompt. A prior general grant, unattended mode, or an answer to a different question SHALL NOT count as confirmation. A slice-set publication SHALL accept either its existing explicit confirmation or a supplied answer that binds the entire set proposal.
+`to-backlog` SHALL act on a supplied answer only when it binds the exact proposal the skill prepared: the same destination, the same final content, the same baseline version, and the same confirmation token. Confirm SHALL continue to publication with the unchanged token; cancel SHALL end without publication; edit SHALL return to inspection and ask a full confirmation of the edited proposal with the standalone prompt, never with a supplied answer. On a mismatch or a missing answer, the skill SHALL ask with its standalone prompt. A prior general grant, unattended mode, or an answer to a different question SHALL NOT count as confirmation. The one exception SHALL be the `publication.autoApprove` project setting: a prepared proposal that reports `auto_approve: true` SHALL be published without a supplied answer. A slice-set publication SHALL accept either its existing explicit confirmation or a supplied answer that binds the entire set proposal.
 
 #### Scenario: Supplied answer no longer matches
 
@@ -27,6 +27,11 @@ On request from any workflow, `to-backlog` SHALL run its inspection and review s
 
 - **WHEN** a supplied confirm answer binds the prepared destination, content, baseline version, and confirmation token
 - **THEN** the skill publishes with the unchanged token
+
+#### Scenario: Auto-approved proposal needs no supplied answer
+
+- **WHEN** a prepared proposal reports `auto_approve: true` and no answer is supplied
+- **THEN** the skill publishes it with the unchanged token without asking
 
 ### Requirement: Backlog skill files stay caller-agnostic
 
@@ -136,3 +141,41 @@ The shared helper that runs every external process of the backlog tools, `to-pr`
 
 - **WHEN** a process started through the helper exits within its limit
 - **THEN** the helper resolves with the process's exit status, standard output, and standard error, and removes its interrupt handlers once no group is running.
+
+### Requirement: Auto-approval setting is bound into every backlog proposal
+
+`to-backlog.js` SHALL read `publication.autoApprove` itself, once per invocation, and SHALL pass its value to the selected provider adapter; the skill SHALL NOT read it. When the setting is `true`, the GitHub, GitLab, and Azure DevOps adapters SHALL add `auto_approve: true` to every proposal before its digest: create, update, slice-set, and slice-set update proposals, including each changed item of a slice-set update. When the setting is absent, `false`, or not a boolean, no proposal SHALL carry `auto_approve`, and its token SHALL equal the token computed without the setting. A token taken under one value of the setting SHALL NOT publish under the other, and the publication SHALL end as `failure_before_publication` with nothing created or updated.
+
+#### Scenario: Create proposal binds the key
+
+- **WHEN** `query` runs once with the setting absent and once with it `true`
+- **THEN** the first proposal carries no `auto_approve`, the second carries `auto_approve: true`, and the two confirmation tokens differ
+
+#### Scenario: Update proposal binds the key
+
+- **WHEN** `query-update` runs once with the setting absent and once with it `true`
+- **THEN** only the second proposal carries `auto_approve: true`, the tokens differ, and an update with the first token under the setting `true` returns `failure_before_publication` with no mutation
+
+#### Scenario: Slice-set proposals bind the key
+
+- **WHEN** the set and set-update queries run once with the setting absent and once with it `true`
+- **THEN** only the second proposals carry `auto_approve: true`, every changed item of the set-update proposal carries it, the tokens differ, and `publish-set` with a token of the other value returns `failure_before_publication` and creates nothing
+
+#### Scenario: Setting read once from the project settings
+
+- **WHEN** `to-backlog.js` runs in a project whose settings file sets `publication.autoApprove` to `true`, to `false`, to `"yes"`, or not at all
+- **THEN** the value passed to the adapter is `true` for the first and `false` for the other three
+
+### Requirement: Auto-approved backlog publication
+
+When the `ready` proposal reports `auto_approve: true`, the `to-backlog` skill SHALL show the complete proposal its section and branch require (destination, visibility with the public warning, title, description, planning changes, and for an update the baseline, the changes, and the provider's non-atomic update note), ask no approval question, and publish with the unchanged confirmation token. A slice-set proposal SHALL be shown completely with its concurrency note and published the same way. The skill SHALL ask its approval question as usual when the proposal was prepared again after a `stale-baseline` or `divergent` result, when the user asked in the conversation to review before publishing (the setting stays unchanged), and when the proposal does not report `auto_approve: true`. A pending retry after a failed or uncertain publication SHALL be auto-approved again only when recovery reports that the remote content still matches the baseline.
+
+#### Scenario: Auto-approved create publishes without the question
+
+- **WHEN** a create proposal reports `auto_approve: true` and the user has not asked to review
+- **THEN** the skill shows the complete proposal and publishes with the unchanged token without asking
+
+#### Scenario: Stale baseline renewal is asked
+
+- **WHEN** an update proposal reporting `auto_approve: true` is prepared again after a `stale-baseline` result
+- **THEN** the skill asks its approval question for the renewed proposal

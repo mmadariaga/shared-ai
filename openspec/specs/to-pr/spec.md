@@ -53,7 +53,7 @@ When `push-query` returns `ready`, the skill SHALL also show the exact remote, p
 
 When `push-query` returns `no_changes`, the skill SHALL use the exact base question "Publish this exact title and description to this destination?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
-The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation and general prior grants SHALL NOT authorize these operations, and neither SHALL the unattended mode outside the SAI coordinator that holds a recorded publication answer. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
+The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation and general prior grants SHALL NOT authorize these operations, and neither SHALL the unattended mode outside the SAI coordinator that holds a recorded publication answer. The one standing grant SHALL be the `publication.autoApprove` project setting: when the `query` or `push-query` proposal reports `auto_approve: true`, the skill SHALL show the complete proposal as above, ask no approval question, and run the push and publication at once with `approved:true` and the unchanged tokens, reporting a tool refusal as the blocker without asking. The skill SHALL ask the approval question as usual when the user asked in the conversation to review before publishing, and when a result does not report `auto_approve: true`. A pending comment continuation SHALL stay an explicit approval. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
 
 Changed content, destination, baseline, or HEAD SHALL invalidate stale approval and require full presentation and renewed approval for still-pending operations only. A completed push SHALL NOT be repeated.
 
@@ -88,6 +88,14 @@ Changed content, destination, baseline, or HEAD SHALL invalidate stale approval 
 #### Scenario: Query warnings are shown before approval
 - **WHEN** the `query` result carries warnings
 - **THEN** the skill shows every entry verbatim before asking for approval.
+
+#### Scenario: Auto-approved proposal publishes without the question
+- **WHEN** the `query` and `push-query` proposals report `auto_approve: true` and the user has not asked to review before publishing
+- **THEN** the skill shows the complete proposal, asks no approval question, and runs `push` and `publish` with `approved:true` and the unchanged tokens
+
+#### Scenario: Review request keeps the question
+- **WHEN** the proposals report `auto_approve: true` and the user asked in the conversation to review before publishing
+- **THEN** the skill asks its approval question for that publication and the setting stays unchanged
 
 ### Requirement: Independent non-force push authorization
 
@@ -789,3 +797,51 @@ The unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore`
 #### Scenario: Invalid setting reaches the publication outcome
 - **WHEN** a `/sai-plan` run with a `yes` publication answer publishes in a project whose `pr.language` is `""`
 - **THEN** the request is drafted in English and the run's publication report lists the `collect` warning for `pr.language`
+
+### Requirement: Auto-approval setting is bound into both tokens
+
+`to-pr.js` SHALL read `publication.autoApprove` itself on every `query` (through its proposal preparation) and `push-query` call, and the skill SHALL NOT read it. When the setting is `true`, both proposals SHALL carry `auto_approve: true` before their digest, so the publish token and the push token bind the setting's value; when it is absent, `false`, or invalid, neither proposal SHALL carry `auto_approve`, and the tokens SHALL equal those computed without the setting. A setting that changes between the shown proposal and `push` or `publish` SHALL make the token check fail, and nothing SHALL be pushed or published.
+
+#### Scenario: Proposals report auto_approve only when the key is true
+
+- **WHEN** `query` and `push-query` run once with `publication.autoApprove` absent and once with it `true`
+- **THEN** the first proposals carry no `auto_approve` field, the second carry `auto_approve: true`, and both confirmation tokens differ between the two runs
+
+#### Scenario: Invalid value keeps the tokens of an absent key
+
+- **WHEN** `publication.autoApprove` holds a non-boolean value
+- **THEN** `query` and `push-query` return the same confirmation tokens as with the key absent
+
+#### Scenario: Key turned on after the proposal was shown
+
+- **WHEN** the tokens were taken with the key absent and `push` and `publish` run after the key was set to `true`
+- **THEN** both operations are rejected by the approval check and no mutation runs
+
+### Requirement: Auto-approved publication applies the unattended refusals
+
+When `publication.autoApprove` is `true`, `to-pr.js` `push` and `publish` SHALL run the same guard as the unattended mode in addition to their unchanged `approved` and `confirmation` checks, and SHALL perform no mutation and write no receipt when the guard refuses: a force push (`force-push`), a detached HEAD (`detached-head`), the provider's default branch (`default-branch`), a provider adapter that cannot report merged and closed requests (`provider-unsupported`), and a branch with no open request whose request was merged or closed (`request-merged`, `request-closed`). A `publish` of a branch that is not at the commit to publish SHALL be rejected by the existing interactive check. With the key absent or `false`, the interactive `push` and `publish` SHALL NOT run the guard and SHALL NOT query closed requests.
+
+#### Scenario: Shown proposal publishes with its tokens
+
+- **WHEN** the key is `true` and `push` and `publish` run with `approved: true` and the tokens of the shown `push-query` and `query` proposals
+- **THEN** the branch is pushed without force with `git push origin <head>:refs/heads/<branch>`, and the request is published with status `complete`
+
+#### Scenario: Unsafe auto-approved publications are refused
+
+- **WHEN** the key is `true` and `push` or `publish` runs with `force: true`, on a detached HEAD, or on the provider's default branch
+- **THEN** each call is refused with `refusal` `force-push`, `detached-head`, or `default-branch` respectively, and no mutation runs and no receipt is written
+
+#### Scenario: Merged or closed request stops the publication
+
+- **WHEN** the key is `true` and the branch has no open request and a merged or closed request
+- **THEN** `push` and `publish` are refused with `refusal: request-merged` or `refusal: request-closed` naming that request, and no mutation runs
+
+#### Scenario: Provider without a closed-request query
+
+- **WHEN** the key is `true` and the provider adapter has no closed-request query
+- **THEN** `push` is refused with `refusal: provider-unsupported` and no mutation runs
+
+#### Scenario: Interactive flow is unchanged with the key absent
+
+- **WHEN** the key is absent and `push` runs with `approved: true` and the shown push token
+- **THEN** the push completes and no closed-request query runs

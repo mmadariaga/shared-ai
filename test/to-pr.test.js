@@ -1303,3 +1303,99 @@ test('I3: the three provider adapters report merged and closed requests of a bra
   assert.deepEqual(found.map(({ number, state }) => [number, state]), [[1, 'merged'], [2, 'closed']]);
   assert.equal(queries[0]['searchCriteria.status'], 'all');
 });
+
+// `publication.autoApprove`: with the key true, the tool reads it, binds it into both tokens, skips nothing of the token
+// check, and applies the refusals of the unattended mode to the interactive push and publish.
+function autoApproving(t, { io, ...rest }, setting = '{ "publication": { "autoApprove": true } }') {
+  const cwd = temporaryDirectory(t, 'to-pr-auto-');
+  fs.mkdirSync(path.join(cwd, '.sai'));
+  if (setting) fs.writeFileSync(path.join(cwd, '.sai', 'settings.jsonc'), setting);
+  io.cwd = cwd;
+  return { io, ...rest };
+}
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} E1 E14: the proposals report auto_approve only when the key is true, and the key is part of both tokens`, async t => {
+    const off = autoApproving(t, fixture(provider), '');
+    const offQuery = await tool.query(off.request, off.io), offPush = await tool.pushQuery(off.request, off.io);
+    assert.equal(Object.hasOwn(offQuery.proposal, 'auto_approve'), false);
+    assert.equal(Object.hasOwn(offPush.proposal, 'auto_approve'), false);
+    for (const invalid of ['{ "publication": { "autoApprove": false } }', '{ "publication": { "autoApprove": "yes" } }']) {
+      const same = autoApproving(t, fixture(provider), invalid);
+      assert.equal((await tool.query(same.request, same.io)).confirmation, offQuery.confirmation, invalid);
+      assert.equal((await tool.pushQuery(same.request, same.io)).confirmation, offPush.confirmation, invalid);
+    }
+    const on = autoApproving(t, fixture(provider));
+    const onQuery = await tool.query(on.request, on.io), onPush = await tool.pushQuery(on.request, on.io);
+    assert.equal(onQuery.proposal.auto_approve, true);
+    assert.equal(onPush.proposal.auto_approve, true);
+    assert.notEqual(onQuery.confirmation, offQuery.confirmation);
+    assert.notEqual(onPush.confirmation, offPush.confirmation);
+  });
+  test(`${provider} E2: with the key true the shown proposal's tokens push without force and publish`, async t => {
+    const { io, request, state } = autoApproving(t, fixture(provider));
+    state.remoteHead = null;
+    const pushQuery = await tool.pushQuery(request, io), query = await tool.query(request, io);
+    const pushed = await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io);
+    assert.equal(pushed.status, 'complete');
+    assert.deepEqual(state.mutations[0].args, ['push', 'origin', `${state.head}:refs/heads/feature`]);
+    const published = await tool.publish({ ...request, approved: true, confirmation: query.confirmation, receipt: receipt(t) }, io);
+    assert.equal(published.status, 'complete');
+    assert.equal(state.rows.length, 1);
+  });
+  test(`${provider} E14: a key turned on after the proposal was shown fails the token check and publishes nothing`, async t => {
+    const { io, request, state } = autoApproving(t, fixture(provider), '');
+    state.remoteHead = null;
+    const pushQuery = await tool.pushQuery(request, io), query = await tool.query(request, io);
+    fs.writeFileSync(path.join(io.cwd, '.sai', 'settings.jsonc'), '{ "publication": { "autoApprove": true } }');
+    await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io), /push approval/);
+    await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: query.confirmation, receipt: receipt(t) }, io), /approval|published at the approved commit/);
+    assert.equal(state.mutations.length, 0);
+  });
+  test(`${provider} E3: with the key true push and publish keep their tokens and add the unattended refusals`, async t => {
+    const { io, request, state } = autoApproving(t, fixture(provider));
+    state.remoteHead = null;
+    const pushQuery = await tool.pushQuery(request, io), query = await tool.query(request, io);
+    const input = { ...request, approved: true, confirmation: pushQuery.confirmation, receipt: receipt(t) };
+    const publishInput = { ...input, confirmation: query.confirmation };
+    await assert.rejects(async () => await tool.push({ ...input, force: true }, io), refusal('force-push'));
+    await assert.rejects(async () => await tool.publish({ ...publishInput, force: true }, io), refusal('force-push'));
+    const run = io.run;
+    io.run = (command, args, body) => command === 'git' && args[0] === 'symbolic-ref' ? (() => { throw new Error('fatal: ref HEAD is not a symbolic ref'); })() : run(command, args, body);
+    await assert.rejects(async () => await tool.push(input, io), refusal('detached-head'));
+    await assert.rejects(async () => await tool.publish(publishInput, io), refusal('detached-head'));
+    io.run = (command, args, body) => command === 'git' && args[0] === 'symbolic-ref' ? 'main\n' : run(command, args, body);
+    await assert.rejects(async () => await tool.push({ ...input, base: 'develop' }, io), refusal('default-branch'));
+    await assert.rejects(async () => await tool.publish({ ...publishInput, base: 'develop' }, io), refusal('default-branch'));
+    io.run = run;
+    assert.equal(state.mutations.length, 0);
+    assert.equal(fs.existsSync(input.receipt), false);
+  });
+  test(`${provider} E3: with the key true a merged or closed request stops the publication`, async t => {
+    for (const closedState of ['merged', 'closed']) {
+      const { io, request, state } = autoApproving(t, closedFixture(provider, false, [{ number: 3, state: closedState }]));
+      state.remoteHead = null;
+      const pushQuery = await tool.pushQuery(request, io), query = await tool.query(request, io);
+      await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io), error => error.refusal === `request-${closedState}` && error.request.number === 3);
+      await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: query.confirmation, receipt: receipt(t) }, io), error => error.refusal === `request-${closedState}`);
+      assert.equal(state.mutations.length, 0);
+    }
+  });
+  test(`${provider} E1: with the key absent the interactive push and publish never apply the unattended refusals`, async t => {
+    const { io, request, state } = autoApproving(t, closedFixture(provider, false, [{ number: 3, state: 'merged' }]), '');
+    state.remoteHead = null;
+    const pushQuery = await tool.pushQuery(request, io);
+    assert.equal((await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io)).status, 'complete');
+    assert.equal(state.closedQueries.length, 0);
+  });
+}
+test('E3: a provider that cannot report closed requests refuses an auto-approved publication', async t => {
+  const { io, request, state } = autoApproving(t, fixture('github'));
+  state.remoteHead = null;
+  const adapter = require('../sai/tools/to-pr-github');
+  const original = adapter.closedRequests;
+  t.after(() => { adapter.closedRequests = original; });
+  adapter.closedRequests = undefined;
+  const pushQuery = await tool.pushQuery(request, io);
+  await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io), refusal('provider-unsupported'));
+  assert.equal(state.mutations.length, 0);
+});

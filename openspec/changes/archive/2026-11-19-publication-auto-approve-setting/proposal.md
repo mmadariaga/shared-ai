@@ -1,0 +1,66 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+Every interactive `/to-pr` and `/to-backlog` publication asked for approval of the exact proposal, so a team that always publishes what SAI drafts answered the same approval on every publication; only the unattended runs of `/sai-plan`, `/sai-build`, and Direct Build published without asking. The new project setting `publication.autoApprove` lets a project grant that approval once, while the tools keep binding the shown proposal through its confirmation token and refuse every unsafe publication.
+
+## What Changes
+
+- `sai/tools/project-settings.js` adds `publication.autoApprove` to its catalogue as a boolean (label `Auto-approve publication`, section `Backlog and PR`, absent text `off`): an absent key reads as `false`, and a non-boolean value is dropped with a warning that it must be true or false and that it reads as false. A new exported `autoApprove(options)` returns `true` only for a stored boolean `true`.
+- `sai/tools/to-pr.js` reads the setting on every call and adds `auto_approve: true` to the `query` and `push-query` proposals before their digest, so both confirmation tokens bind the key's value. When the key is `true`, `push` and `publish` run the unattended guard (force push, detached HEAD, default branch, a provider without a closed-request query, and a merged or closed request of the branch) in addition to their unchanged token checks; the guard's refusal messages are reworded so they also fit an auto-approved publication.
+- `sai/tools/to-backlog.js` reads the setting once per invocation and passes it to the provider adapters; the GitHub, GitLab, and Azure DevOps adapters and the slice-set helpers (`backlog-provider-set.js`, `backlog-set-github.js`, `backlog-set-update.js`) add `auto_approve: true` to every create, update, set, and set-update proposal before its digest.
+- `skills/universal/to-pr/SKILL.md` and `skills/universal/to-backlog/SKILL.md` (with `slice-set.md` and `update.md`) show the complete proposal and publish with the unchanged tokens and no approval question when the proposal reports `auto_approve: true`; they still ask after a stale-baseline or divergent renewal, when the user asks in the conversation to review, and when the proposal does not report the field.
+- `sai/commands/explore/steps/route-selector.md` round 2 omits the publication approval question when the prepared `to-backlog` proposal reports `auto_approve: true` and keeps the branch base question.
+- `bin/project-settings-screen.js` lists `publication.autoApprove` in the `Backlog and PR settings` submenu as an On/Off row.
+- `docs/project-settings.md` documents the key and names it as the second exception to "Settings answer preferences only"; `README.md`, `docs/commands/to-pr.md`, and `docs/commands/to-backlog.md` describe the auto-approved publication.
+
+## Capabilities
+
+### New Capabilities
+
+None
+
+### Modified Capabilities
+
+- `project-settings`: the `publication.autoApprove` boolean key, its validation, its presentation fields, and its reader.
+- `project-settings-screen`: the `Auto-approve publication` On/Off row of the `Backlog and PR settings` submenu.
+- `to-pr`: auto-approved push and publication bound to the shown proposal's tokens, with the unattended-mode refusals.
+- `backlog-publication`: auto-approved creation, update, and slice-set publication with the unchanged confirmation token.
+- `explore-route-close`: round 2 drops the publication approval question for an auto-approved proposal.
+
+## Impact
+
+Modified files:
+
+- `sai/tools/project-settings.js`
+- `sai/tools/to-pr.js`
+- `sai/tools/to-backlog.js`
+- `sai/tools/to-backlog-github.js`
+- `sai/tools/to-backlog-gitlab.js`
+- `sai/tools/to-backlog-azuredevops.js`
+- `sai/tools/backlog-provider-set.js`
+- `sai/tools/backlog-set-github.js`
+- `sai/tools/backlog-set-update.js`
+- `bin/project-settings-screen.js`
+- `skills/universal/to-pr/SKILL.md`
+- `skills/universal/to-backlog/SKILL.md`
+- `skills/universal/to-backlog/slice-set.md`
+- `skills/universal/to-backlog/update.md`
+- `sai/commands/explore/steps/route-selector.md`
+- `docs/project-settings.md`
+- `docs/commands/to-pr.md`
+- `docs/commands/to-backlog.md`
+- `README.md`
+- `test/project-settings.test.js`
+- `test/project-settings-screen.test.js`
+- `test/to-pr.test.js`
+- `test/to-backlog.test.js`
+- `test/to-backlog-update.test.js`
+- `test/backlog-slice-provider-parity.test.js`
+- `test/github-backlog-slice-lifecycle.test.js`
+
+New files: none.
+
+The unattended publications of `/sai-plan`, `/sai-build`, and Direct Build, and `pr.publishAfterRun`, keep their behavior. Confirmations outside publication approval (issue assignment at implementation start and every `safe-operations` confirmation) stay asked. Claude Code and opencode share the same tools and skill text.
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

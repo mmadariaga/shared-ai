@@ -35,7 +35,9 @@ approval: GitHub and GitLab cannot make the final content check and write
 atomic; Azure guards the write with the confirmed revision.
 The caller prepare/supplied-answer protocol applies unchanged. Wait for that
 exact proposal's explicit approval; cancellation writes nothing. Any edit
-returns to preparation and a new confirmation.
+returns to preparation and a new confirmation. A proposal that reports
+`auto_approve: true` is shown completely, with the concurrency note, and needs no
+answer (`SKILL.md` section 3, "Auto-approved publication").
 
 After approval, follow `prepare-temp.md`, then call `update-set` with the same
 request, unchanged `confirmation`, and a fresh private `receipt` path. This
@@ -104,7 +106,9 @@ to agreed source content after creation; assignees, labels and state stay intact
 Obtain the existing explicit publication confirmation for this entire proposal,
 or act on a supplied answer that binds it (`SKILL.md`, "Prepare for a caller and
 act on a supplied answer"). The optional backlog Yes, fast-track, and unattended
-consent do not replace it.
+consent do not replace it. A set proposal that reports `auto_approve: true` is the one
+exception: show it completely and publish without the question (`SKILL.md` section 3,
+"Auto-approved publication").
 
 Call `publish-set` with the same request, unchanged `confirmation` and a new
 private receipt path under the existing temporary-directory protocol. Each

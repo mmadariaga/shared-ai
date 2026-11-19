@@ -147,12 +147,12 @@ test('E4: the Language settings submenu lists its four rows with today\'s value 
   assert.equal(fs.existsSync(path.join(directory, FILE)), true);
 });
 
-test('E4: the Backlog and PR settings submenu names its two provider rows', async () => {
+test('E4: the Backlog and PR settings submenu names its two provider rows and the auto-approve row', async () => {
   const seen = [];
   await editor(project(COMMENTED), [BACK], [], { seen }).runSection(BACKLOG_PR);
   assert.equal(seen[0].question, 'Backlog and PR settings:');
-  assert.deepEqual(seen[0].options, ['backlog.provider', 'pr.provider']);
-  assert.deepEqual(texts(seen[0]), ['Backlog provider: gitlab', 'Pull requests provider: ask']);
+  assert.deepEqual(seen[0].options, ['backlog.provider', 'pr.provider', 'publication.autoApprove']);
+  assert.deepEqual(texts(seen[0]), ['Backlog provider: gitlab', 'Pull requests provider: ask', 'Auto-approve publication: off']);
 });
 
 test('E16: provider choices are ask plus the registry ids; language choices differ by id', async () => {
@@ -686,8 +686,8 @@ test('E4 and E5: a value chosen in a submenu is saved at once and the user stays
   const answers = ['Backlog and PR settings', pick('backlog.provider'), 'github', () => { onDisk.push(read(directory)); return BACK; }, 'Exit'];
   await runMenu(directory, answers, seen);
   assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Backlog and PR settings:', 'Backlog provider:', 'Backlog and PR settings:', MAIN_QUESTION]);
-  assert.deepEqual(texts(seen[1]), ['Backlog provider: gitlab', 'Pull requests provider: ask']);
-  assert.deepEqual(texts(seen[3]), ['Backlog provider: github', 'Pull requests provider: ask']);
+  assert.deepEqual(texts(seen[1]), ['Backlog provider: gitlab', 'Pull requests provider: ask', 'Auto-approve publication: off']);
+  assert.deepEqual(texts(seen[3]), ['Backlog provider: github', 'Pull requests provider: ask', 'Auto-approve publication: off']);
   assert.equal(onDisk[0], COMMENTED.replace('"gitlab"', '"github"'));
   assert.equal(seen[3].navigator.initial, 'backlog.provider');
 });
@@ -732,8 +732,8 @@ test('E9: Cache warming opens the warming flow from the main menu, and Back retu
   assert.deepEqual(warmingOf(directory), { claude: { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] } });
 });
 
-test('E12: the menus show only the seven settings, none of the repository, project, organization, or publication keys', async () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'experimental.changeTelemetry']);
+test('E12: the menus show only the eight settings, none of the repository, project, organization, or publish-after-run keys', async () => {
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'publication.autoApprove', 'experimental.changeTelemetry']);
   const seen = [];
   await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Exit'], seen);
   assert.deepEqual([...seen[1].options, ...seen[3].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));
@@ -794,6 +794,44 @@ test('E10: a telemetry save that fails shows the error and leaves the value as i
   assert.equal(result.status, 'failed');
   assert.match(messages.join('\n'), /not saved: .*read-only/);
   assert.equal(read(directory), '{"other":1}');
+});
+
+// The publication auto-approve boolean in the Backlog and PR settings submenu: the same On/Off picker as telemetry.
+const AUTO_APPROVE = 'publication.autoApprove';
+const autoApproveOf = directory => writer.parseText(read(directory)).root.publication?.autoApprove;
+
+test('E12: the auto-approve row reads on for true and off for false or an absent key, and offers On and Off', async () => {
+  assert.equal(CATALOGUE[AUTO_APPROVE].label, 'Auto-approve publication');
+  for (const [text, shown] of [['{"publication":{"autoApprove":true}}', 'on'], ['{"publication":{"autoApprove":false}}', 'off'], ['{}', 'off']]) {
+    assert.equal(editor(project(text), []).rowText(AUTO_APPROVE), `Auto-approve publication: ${shown}`, text);
+  }
+  const seen = [];
+  await editor(project('{}'), [pick(AUTO_APPROVE), BACK, BACK], [], { seen }).runSection(BACKLOG_PR);
+  assert.equal(seen[1].question, 'Auto-approve publication:');
+  assert.deepEqual(seen[1].options, ['On', 'Off']);
+});
+
+test('E12: On saves true at once, the user stays in the submenu, and Off removes the key from the base file', async () => {
+  const directory = project('// top\n{\n  "other": 1\n}\n');
+  const seen = [];
+  const onDisk = [];
+  await editor(directory, [pick(AUTO_APPROVE), 'On', (question, options) => { onDisk.push(autoApproveOf(directory)); return BACK; }], [], { seen }).runSection(BACKLOG_PR);
+  assert.deepEqual(onDisk, [true]);
+  assert.equal(texts(seen[2]).at(-1), 'Auto-approve publication: on');
+  assert.equal((await editor(directory, ['Off']).editSetting(AUTO_APPROVE)).status, 'saved');
+  assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.publication, 'autoApprove'), false);
+  assert.equal(writer.parseText(read(directory)).root.other, 1);
+});
+
+test('E11: the screen refuses a non-boolean auto-approve value, and a hand-written one reads as false with the reader warning', async () => {
+  assert.equal(writer.checkValue(AUTO_APPROVE, 'yes').ok, false);
+  assert.match(writer.checkValue(AUTO_APPROVE, 'yes').problem, /publication\.autoApprove must be true or false/);
+  assert.equal(writer.saveSettings(project('{}'), { [AUTO_APPROVE]: 'yes' }, { providerIds }).ok, false);
+  const text = '{ "publication": { "autoApprove": "yes" } }';
+  const messages = [];
+  assert.equal(editor(project(text), []).rowText(AUTO_APPROVE), 'Auto-approve publication: "yes" (invalid)');
+  await editor(project(text), [BACK], [], { log: message => messages.push(message) }).runSection(BACKLOG_PR);
+  assert.match(messages[0], /Setting publication\.autoApprove in \.sai\/settings\.jsonc must be true or false; it reads as false/);
 });
 
 test('E8: a telemetry edit and a nested warming save both persist', async () => {
