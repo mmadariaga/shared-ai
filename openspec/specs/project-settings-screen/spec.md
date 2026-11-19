@@ -59,7 +59,7 @@ The settings editor (`createSettingsEditor`) SHALL take its single-select and fr
 
 ### Requirement: Local override rows and save target
 
-A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row, even when its local value equals the base value: the base value struck through with ANSI SGR 9, then the local value, then the marker `(local)`. When styling is off, meaning standard output is not a TTY or `NO_COLOR` is set, the row SHALL read `<base> -> <local> (local)`. A base value that is absent SHALL show as the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`). Choosing a value SHALL save a key that the local file holds to the local file and leave the base file unchanged, and SHALL save every other key to the base file, which is created when missing. The editor SHALL NOT create the local file. Removing a key from the local file SHALL show the base value again. Without a local file, no row SHALL show an override.
+A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row, even when its local value equals the base value: the base value struck through with ANSI SGR 9, then the local value, then the marker `(local)`. When styling is off, meaning standard output is not a TTY or `NO_COLOR` is set, the row SHALL read `<base> -> <local> (local)`. A base value that is absent SHALL show as the key's absence text (`ask`, or `follow my language` for `explore.chatPublicLanguage`). Choosing a value SHALL save a key that the local file holds to the local file and leave the base file unchanged, and SHALL save every other key to the base file, which is created when missing, except `publication.autoApprove`, which SHALL always be saved to the local file. The editor SHALL NOT create the local file for any key other than `publication.autoApprove`. Removing a key from the local file SHALL show the base value again. Without a local file, no row SHALL show an override.
 
 #### Scenario: Override row with styling
 - **WHEN** the base file sets `backlog.provider` to `github`, the local file sets it to `gitlab`, and styling is on
@@ -78,7 +78,7 @@ A setting that `.sai/settings.local.jsonc` holds SHALL render as an override row
 - **THEN** the first key is saved to `.sai/settings.local.jsonc`, the second to `.sai/settings.jsonc`, and the local file keeps its comments
 
 #### Scenario: Local file is never created
-- **WHEN** no local file exists and the user chooses a value
+- **WHEN** no local file exists and the user chooses a value for a setting other than `Auto-approve publication`
 - **THEN** only `.sai/settings.jsonc` is written and `.sai/settings.local.jsonc` does not exist afterwards
 
 #### Scenario: No local file means no override rows
@@ -167,19 +167,27 @@ An unparseable `.sai/settings.jsonc` or `.sai/settings.local.jsonc` SHALL be rep
 
 ### Requirement: Auto-approve publication boolean editing
 
-The `Auto-approve publication` row of the `Backlog and PR settings` submenu SHALL edit `publication.autoApprove` as a boolean. Its row SHALL read `Auto-approve publication: on` when the effective value is `true`, and `Auto-approve publication: off` when the key is absent or `false`. Selecting the row SHALL open a picker titled `Auto-approve publication:` that offers exactly the choices `On` and `Off`. Choosing `On` SHALL save `true` at once and keep the user in the submenu. Choosing `Off` SHALL remove the key from `.sai/settings.jsonc` when the key is saved to the base file, keeping the file's other keys, and SHALL save an explicit `false` when the key is saved to `.sai/settings.local.jsonc`. The settings writer SHALL refuse to save a value that is not a boolean, with a problem that says `publication.autoApprove` must be true or false. A stored non-boolean value SHALL show its JSON form followed by ` (invalid)`, and opening the submenu SHALL print the reader's warning.
+The `Auto-approve publication` row of the `Backlog and PR settings` submenu SHALL edit `publication.autoApprove` as a boolean. Its row SHALL show the value that takes effect under the publication consent rule: `on` when the effective value is `true`, and `off` when the key is absent, `false`, or a `true` that only `.sai/settings.jsonc` holds; a key that `.sai/settings.local.jsonc` holds SHALL render as an override row. Selecting the row SHALL open a picker titled `Auto-approve publication:` that offers exactly the choices `On` and `Off`. Choosing `On` SHALL save `true` and choosing `Off` SHALL save `false`, both at once to `.sai/settings.local.jsonc`, which SHALL be created when absent, and the user SHALL stay in the submenu. The editor SHALL leave `.sai/settings.jsonc` unchanged for this key and SHALL NOT edit any `.gitignore`. After a save, the editor SHALL print every warning the settings writer returns, including the warning that `.sai/settings.local.jsonc` is not ignored by git. Opening a screen SHALL print the consent warning of each consent key whose granting value `.sai/settings.jsonc` holds. The settings writer SHALL refuse to save a value that is not a boolean, with a problem that says `publication.autoApprove` must be true or false. A stored non-boolean value SHALL show its JSON form followed by ` (invalid)`, and opening the submenu SHALL print the reader's warning. The submenu SHALL have no row for `pr.publishAfterRun`.
 
 #### Scenario: Auto-approve row shows on or off
 
-- **WHEN** the submenu is drawn on a settings file where `publication.autoApprove` is `true`, `false`, or absent
-- **THEN** the row reads `Auto-approve publication: on` for `true` and `Auto-approve publication: off` for `false` or an absent key
+- **WHEN** the submenu is drawn with `.sai/settings.jsonc` setting `publication.autoApprove` to `true`, `false`, or not at all and no local file, and then with an empty base file and a local file that sets it to `true`
+- **THEN** the first three rows read `Auto-approve publication: off`, and the last reads `Auto-approve publication: off -> on (local)` without styling
 
 #### Scenario: On saves true and Off removes the base key
 
-- **WHEN** the user chooses `On` for the row, and then chooses `Off`
-- **THEN** the first choice writes `true` to `.sai/settings.jsonc` and the row reads `Auto-approve publication: on`, and the second removes `autoApprove` from that file and keeps its other keys
+- **WHEN** the user chooses `On` for the row in a project whose `.sai/settings.jsonc` holds other keys and no local file exists, and then chooses `Off`
+- **THEN** the first choice creates `.sai/settings.local.jsonc` with `publication.autoApprove: true` and the row reads `Auto-approve publication: off -> on (local)`, the second writes `false` to that file and the row reads `Auto-approve publication: off -> off (local)`, and `.sai/settings.jsonc` keeps its exact content throughout
 
 #### Scenario: Non-boolean value is refused and shown as invalid
 
 - **WHEN** the writer is asked to save `"yes"` for `publication.autoApprove`, and a settings file holds `"yes"` for it
 - **THEN** the save is refused with a problem matching `publication.autoApprove must be true or false`, the row reads `Auto-approve publication: "yes" (invalid)`, and opening the submenu prints a warning matching `Setting publication.autoApprove in .sai/settings.jsonc must be true or false; it reads as false`
+
+#### Scenario: Base-file grant shows off and is reported
+- **WHEN** only `.sai/settings.jsonc` sets `publication.autoApprove` to `true` and the `Backlog and PR settings` submenu opens
+- **THEN** the row reads `Auto-approve publication: off`, the editor prints a warning matching `publication.autoApprove in .sai/settings.jsonc grants consent only from .sai/settings.local.jsonc`, and choosing `On` or `Off` writes only `.sai/settings.local.jsonc`
+
+#### Scenario: Unignored local file is reported after a granting save
+- **WHEN** the user chooses `On` in a git repository that does not ignore `.sai/settings.local.jsonc`
+- **THEN** the editor prints a warning matching `.sai/settings.local.jsonc is not ignored by git: committing it shares the publication grant with every clone`, and no `.gitignore` exists afterwards

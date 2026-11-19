@@ -69,8 +69,9 @@ first, then applies approved planning fields in a separate revision-tested
 request. Recovery verifies both steps and completes only pending authorized
 changes after explicit continuation approval; it does not recreate the item.
 
-With the project setting `publication.autoApprove` set to `true`
-([Publication auto-approval](../project-settings.md#publication-auto-approval)), the command
+With the project setting `publication.autoApprove` set to `true` in your personal
+`.sai/settings.local.jsonc` ([Publication auto-approval](../project-settings.md#publication-auto-approval);
+a `true` in the shared `.sai/settings.jsonc` grants nothing and the tool reports a warning), the command
 shows the same complete proposal (a slice set included) and publishes it with the unchanged
 confirmation token, asking no approval question. The tool reads the setting and binds it into
 the token. The question is still asked when the update baseline is stale or recovery finds

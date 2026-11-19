@@ -207,11 +207,11 @@ Every catalogue key that the post-setup menu shows as a value row SHALL declare 
 
 ### Requirement: Plan publication answer setting
 
-The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan` and `/sai-build` and to the round-3 publication question that `/sai-explore` asks once per crystallized set. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
+The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan` and `/sai-build` and to the round-3 publication question that `/sai-explore` asks once per crystallized set. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. A `yes` SHALL count only from `.sai/settings.local.jsonc`, under the publication consent rule; a `no` SHALL count from either file. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
 
 #### Scenario: Yes is normalized
 
-- **WHEN** `get pr.publishAfterRun --json --cwd <root>` runs in a project whose settings file sets `pr.publishAfterRun` to `" YES "`
+- **WHEN** `get pr.publishAfterRun --json --cwd <root>` runs in a project whose `.sai/settings.local.jsonc` sets `pr.publishAfterRun` to `" YES "`
 - **THEN** the CLI prints `value: yes` with `source: setting` and no warnings
 
 #### Scenario: Invalid value warns
@@ -246,7 +246,7 @@ The catalogue SHALL hold `pr.language`, the language of the PR/MR title subject 
 
 ### Requirement: Publication auto-approval setting
 
-The catalogue SHALL hold `publication.autoApprove`, a boolean shared by `/to-pr` and `/to-backlog`. An absent key SHALL read as `false`. A value that is not a boolean, `ask` included, SHALL give no value, and a non-boolean value other than `ask` SHALL be dropped with a warning naming `publication.autoApprove` that says it must be true or false and that it reads as false and every publication approval is asked. `sai/tools/project-settings.js` SHALL export `autoApprove(options)`, which SHALL return `true` only when the effective value, after the local override file is applied, is the boolean `true`, and `false` otherwise.
+The catalogue SHALL hold `publication.autoApprove`, a boolean shared by `/to-pr` and `/to-backlog`. An absent key SHALL read as `false`. A value that is not a boolean, `ask` included, SHALL give no value, and a non-boolean value other than `ask` SHALL be dropped with a warning naming `publication.autoApprove` that says it must be true or false and that it reads as false and every publication approval is asked. A `true` SHALL count only from `.sai/settings.local.jsonc`, under the publication consent rule. `sai/tools/project-settings.js` SHALL export `readAutoApprove(options)`, which SHALL return `{ value, warnings }`, where `value` is `true` only when the merged value, after the consent rule and the local override file are applied, is the boolean `true`, and `warnings` holds the consent warning of `publication.autoApprove` when the base file holds `true`, and is empty otherwise. It SHALL export `autoApprove(options)`, which SHALL return the `value` of `readAutoApprove`.
 
 #### Scenario: Absent key reads as false
 
@@ -255,10 +255,30 @@ The catalogue SHALL hold `publication.autoApprove`, a boolean shared by `/to-pr`
 
 #### Scenario: True grants and a local false overrides it
 
-- **WHEN** `.sai/settings.jsonc` sets `publication.autoApprove` to `true`, and then `.sai/settings.local.jsonc` also sets it to `false`
-- **THEN** `autoApprove` returns `true` for the first state and `false` for the second
+- **WHEN** `.sai/settings.local.jsonc` sets `publication.autoApprove` to `true`, then sets it to `false` while `.sai/settings.jsonc` sets it to `true`, and then only `.sai/settings.jsonc` sets it to `true`
+- **THEN** `autoApprove` returns `true` for the first state and `false` for the second and the third, and `readAutoApprove` returns one consent warning for the second and the third
 
 #### Scenario: Non-boolean value reads as false with a warning
 
 - **WHEN** the settings file sets `publication.autoApprove` to `"yes"`, `1`, `"true"`, or `null`
 - **THEN** the reader returns no value, its warnings match `Setting publication.autoApprove in .sai/settings.jsonc must be true or false; it reads as false`, and `autoApprove` returns `false`
+
+### Requirement: Publication consent comes only from the local settings file
+
+`sai/tools/project-settings.js` SHALL export `CONSENT_IDS`, the ids `publication.autoApprove` and `pr.publishAfterRun`. A granting value is `publication.autoApprove: true` or `pr.publishAfterRun: yes`; a restricting value is `publication.autoApprove: false`, `pr.publishAfterRun: no`, or `pr.publishAfterRun: ask`. `readSettings` SHALL keep a granting value that `.sai/settings.jsonc` holds out of the merged `values` and out of `baseValues`, so that every reader of the merged values (`get`, `autoApprove`, `readAutoApprove`, the `get` CLI, and the setup menu) receives no value from it. A granting value that `.sai/settings.local.jsonc` holds SHALL merge as any local key does. A restricting value SHALL keep its effect from either file, and a key that the local file holds SHALL win over the same key in the base file. For each consent key whose base value grants, `readSettings` SHALL return in a `consentWarnings` map, keyed by id and never in `warnings`, the warning `Setting <id> in .sai/settings.jsonc grants consent only from .sai/settings.local.jsonc, so that value is ignored; move it to .sai/settings.local.jsonc to grant consent.`, whether or not the local file also holds the key. `get` SHALL add that warning to its `warnings` only for a read of that key. Every other setting SHALL keep reading the merged base and local files.
+
+#### Scenario: Base-file grant gives no value and warns on its own read
+- **WHEN** `.sai/settings.jsonc` sets `pr.publishAfterRun` to `yes` and no local file exists
+- **THEN** `get('pr.publishAfterRun')` returns value `null` with one warning `Setting pr.publishAfterRun in .sai/settings.jsonc grants consent only from .sai/settings.local.jsonc, so that value is ignored; move it to .sai/settings.local.jsonc to grant consent.`, and `get('pr.language')` on the same files returns no consent warning
+
+#### Scenario: Local grant counts and the base grant still warns
+- **WHEN** `.sai/settings.jsonc` and `.sai/settings.local.jsonc` both set `publication.autoApprove` to `true`
+- **THEN** the merged value of `publication.autoApprove` is `true` with origin `local`, and `consentWarnings` holds one warning for `publication.autoApprove`
+
+#### Scenario: Base-file restricting value keeps its effect
+- **WHEN** `.sai/settings.jsonc` sets `pr.publishAfterRun` to `no` and no local file holds the key
+- **THEN** `get('pr.publishAfterRun')` returns `no` with no consent warning
+
+#### Scenario: Local value wins over a base restricting value
+- **WHEN** `.sai/settings.jsonc` sets `pr.publishAfterRun` to `no` and `.sai/settings.local.jsonc` sets it to `yes`
+- **THEN** `get('pr.publishAfterRun')` returns `yes`

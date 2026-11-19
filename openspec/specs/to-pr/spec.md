@@ -800,11 +800,11 @@ The unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore`
 
 ### Requirement: Auto-approval setting is bound into both tokens
 
-`to-pr.js` SHALL read `publication.autoApprove` itself on every `query` (through its proposal preparation) and `push-query` call, and the skill SHALL NOT read it. When the setting is `true`, both proposals SHALL carry `auto_approve: true` before their digest, so the publish token and the push token bind the setting's value; when it is absent, `false`, or invalid, neither proposal SHALL carry `auto_approve`, and the tokens SHALL equal those computed without the setting. A setting that changes between the shown proposal and `push` or `publish` SHALL make the token check fail, and nothing SHALL be pushed or published.
+`to-pr.js` SHALL read `publication.autoApprove` itself on every `query` (through its proposal preparation) and `push-query` call, and the skill SHALL NOT read it. Only a `true` that `.sai/settings.local.jsonc` holds SHALL count as the setting being `true`; a `true` that only `.sai/settings.jsonc` holds SHALL read as `false`. When the setting is `true`, both proposals SHALL carry `auto_approve: true` before their digest, so the publish token and the push token bind the setting's value; when it is absent, `false`, invalid, or a `true` held only by the base file, neither proposal SHALL carry `auto_approve`, and the tokens SHALL equal those computed without the setting. A setting that changes between the shown proposal and `push` or `publish` SHALL make the token check fail, and nothing SHALL be pushed or published. When `.sai/settings.jsonc` holds `publication.autoApprove: true`, the JSON output of `query`, `push-query`, `push`, and `publish` SHALL carry in `warnings` the consent warning that names `publication.autoApprove` and says the value grants consent only from `.sai/settings.local.jsonc`, once, without repeating a warning the result already carries, and the skill SHALL show it like any other warning.
 
 #### Scenario: Proposals report auto_approve only when the key is true
 
-- **WHEN** `query` and `push-query` run once with `publication.autoApprove` absent and once with it `true`
+- **WHEN** `query` and `push-query` run once with `publication.autoApprove` absent and once with `.sai/settings.local.jsonc` setting it to `true`
 - **THEN** the first proposals carry no `auto_approve` field, the second carry `auto_approve: true`, and both confirmation tokens differ between the two runs
 
 #### Scenario: Invalid value keeps the tokens of an absent key
@@ -814,8 +814,12 @@ The unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore`
 
 #### Scenario: Key turned on after the proposal was shown
 
-- **WHEN** the tokens were taken with the key absent and `push` and `publish` run after the key was set to `true`
+- **WHEN** the tokens were taken with the key absent and `push` and `publish` run after `.sai/settings.local.jsonc` set the key to `true`
 - **THEN** both operations are rejected by the approval check and no mutation runs
+
+#### Scenario: Base-file true grants nothing
+- **WHEN** `query` and `push-query` run once with the key absent and once with only `.sai/settings.jsonc` setting `publication.autoApprove` to `true`
+- **THEN** the second proposals carry no `auto_approve` field, their confirmation tokens equal those of the first run, and the output of the second run carries the consent warning for `publication.autoApprove` in `warnings`
 
 ### Requirement: Auto-approved publication applies the unattended refusals
 

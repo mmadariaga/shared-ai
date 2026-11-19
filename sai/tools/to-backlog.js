@@ -107,8 +107,10 @@ async function resolve({ explicit = {}, config = {}, remotes = [] }, registry, i
 }
 
 // `publication.autoApprove` is read once per invocation and travels in `io`: every adapter adds it to the proposal its token binds.
+// Only the personal local settings file grants it; `autoApproveWarnings` carries the warning for a `true` the shared base file holds.
 function withAutoApprove(io, cwd) {
-  return { ...io, autoApprove: projectSettings.autoApprove({ cwd }) };
+  const { value, warnings } = projectSettings.readAutoApprove({ cwd });
+  return { ...io, autoApprove: value, autoApproveWarnings: warnings };
 }
 
 async function main(rawArgv) {
@@ -150,7 +152,9 @@ async function main(rawArgv) {
       const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
       result = projectSettings.report(result, { warnings, notices: [...(settings.notices || []), ...projectSettings.notices(config, request.explicit, result, addressProvider)] });
     } else {
-      result = await dispatch(operation, request, registry, withAutoApprove(io, cwd));
+      const approving = withAutoApprove(io, cwd);
+      warnings = approving.autoApproveWarnings;
+      result = projectSettings.addWarnings(await dispatch(operation, request, registry, approving), warnings);
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;

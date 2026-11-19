@@ -271,6 +271,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0209b — Publish complete plans on the change branch](./0209b-publish-complete-plans-on-the-change-branch.md) — Refs 0199, Refs 0040, Refs 0044, Refs 0045, Refs 0146b
 - [0222 — `/sai-plan` asks its publication answer at the start of the run](./0222-sai-plan-asks-the-publication-answer-at-run-start.md) — Supersedes 0209b (decision 4)
 - [0223 — Publication auto-approve is a standing publication grant](./0223-publication-auto-approve-is-a-standing-publication-grant.md) — **Amends** 0209b (decision 4), **Amends** 0222
+- [0224 — Publication consent comes only from the local settings file](./0224-publication-consent-comes-only-from-the-local-settings-file.md) — **Amends** 0222, **Amends** 0223
 
 ### `/sai-deep-review`, `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`
 
