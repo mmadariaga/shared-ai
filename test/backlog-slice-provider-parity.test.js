@@ -778,3 +778,28 @@ test('azuredevops E2 E8: an existing Markdown origin receives Markdown without t
   assert.equal(row.multilineFieldsFormat['System.Description'], 'Markdown');
   assert.equal((await f.adapter['recover-set']({ receipt: file }, f.io)).status, 'complete');
 });
+
+// `publication.autoApprove` (E15): set and set-update proposals report the key and their tokens bind it.
+for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: E15 set and set-update proposals report auto_approve and their tokens bind the key`, async t => {
+    const f = fixture(platform), keyed = { ...f.io, autoApprove: true };
+    const off = await f.adapter['query-set'](f.request, f.io), on = await f.adapter['query-set'](f.request, keyed);
+    assert.equal(Object.hasOwn(off.proposal, 'auto_approve'), false);
+    assert.equal(on.proposal.auto_approve, true);
+    assert.notEqual(on.confirmation, off.confirmation);
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-auto-')); fs.chmodSync(directory, 0o700);
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const refused = await f.adapter['publish-set']({ ...f.request, receipt: path.join(directory, 'refused.json'), confirmation: on.confirmation }, f.io);
+    assert.equal(refused.status, 'failure_before_publication');
+    assert.equal(f.state.rows.length, 0);
+    const published = await f.adapter['publish-set']({ ...f.request, receipt: path.join(directory, 'receipt.json'), confirmation: on.confirmation }, keyed);
+    assert.equal(published.status, 'complete', JSON.stringify(published));
+    const request = { origin: await f.url(1), title: 'Refined objective', description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+    const updateOff = await f.adapter['query-set-update'](request, f.io), updateOn = await f.adapter['query-set-update'](request, keyed);
+    assert.equal(updateOff.status, 'ready', JSON.stringify(updateOff));
+    assert.equal(Object.hasOwn(updateOff.proposal, 'auto_approve'), false);
+    assert.equal(updateOn.proposal.auto_approve, true);
+    assert.ok(updateOn.proposal.items.filter(item => item.changed).every(item => item.proposal.auto_approve === true));
+    assert.notEqual(updateOn.confirmation, updateOff.confirmation);
+  });
+}

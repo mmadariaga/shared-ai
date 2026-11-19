@@ -26,7 +26,7 @@ async function query(request, io) {
     return { change_name: name, title: name, description: texts[index], depends_on: validation.blocks[index].dependencies };
   });
   const dependencies = fields.some(field => field.name === 'blockedBy') ? 'native' : 'written';
-  const proposal = { ...ready.proposal, operation: 'set', ...(existing ? { origin: existing } : {}), slices, hierarchy, dependencies, relations: existing ? origin.RELATIONS : 'Append verified issue links and sai-backlog-slices@1 correspondence without altering agreed source content; create separately verified native relations when supported' };
+  const proposal = { ...ready.proposal, ...(io.autoApprove === true ? { auto_approve: true } : {}), operation: 'set', ...(existing ? { origin: existing } : {}), slices, hierarchy, dependencies, relations: existing ? origin.RELATIONS : 'Append verified issue links and sai-backlog-slices@1 correspondence without altering agreed source content; create separately verified native relations when supported' };
   return { status: 'ready', proposal, confirmation: adapter().digest(proposal) };
 }
 

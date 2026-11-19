@@ -125,6 +125,15 @@ push or automatic commit runs, and a failed or unverified push skips publication
 that reaches the 120 s process limit is read back from the remote and reported as uncertain,
 never as blocked and never repeated on its own; the process group of the push ends with it.
 
+**Auto-approved publication.** With the project setting `publication.autoApprove` set to
+`true` ([Publication auto-approval](../project-settings.md#publication-auto-approval)), the command
+shows the complete proposal and then pushes without force and publishes with the unchanged
+push and publish tokens, asking no question. The tools read the setting themselves, bind it
+into both tokens, and apply the refusals of the unattended mode described below (a force push,
+the default branch, a detached HEAD, a branch that is not at the shown commit, and a merged or
+closed request), so a refusal publishes nothing. The question is asked as usual when you ask
+in the conversation to review before publishing.
+
 **Unattended mode.** A SAI coordinator that holds a recorded `yes` answer to its own
 publication question ([`/sai-plan`](sai-plan.md) and [`/sai-build`](sai-build.md) today)
 runs `plan-commit` (`/sai-plan` only), `push` and `publish` with the `--unattended` flag,

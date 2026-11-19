@@ -56,7 +56,7 @@ function bind(provider, adapter, same = (a, b) => a === b) {
       if (!['ready', 'no_changes'].includes(ready.status)) return ready;
       items.push({ issue: input.current.issue, current: input.current, request: content, changed: ready.status === 'ready', state: ready.status === 'ready' ? 'pending' : 'complete', ...(ready.status === 'ready' ? { proposal: ready.proposal, confirmation: ready.confirmation } : {}) });
     }
-    const proposal = { provider, operation: 'set-update', correspondence: marker, items };
+    const proposal = { provider, operation: 'set-update', correspondence: marker, items, ...(io?.autoApprove === true ? { auto_approve: true } : {}) };
     return { status: items.some(item => item.changed) ? 'ready' : 'no_changes', proposal, confirmation: digest(proposal) };
   }
   function load(request) {

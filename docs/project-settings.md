@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it from the post-setup menu of `npx --allow-git=all github:mmadariaga/shared-ai setup` (see [Post-setup menu](#post-setup-menu)), or by hand. The menu edits the language and provider settings and `experimental.changeTelemetry`, and opens the cache warming screen. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it from the post-setup menu of `npx --allow-git=all github:mmadariaga/shared-ai setup` (see [Post-setup menu](#post-setup-menu)), or by hand. The menu edits the language and provider settings, `publication.autoApprove`, and `experimental.changeTelemetry`, and opens the cache warming screen. A personal `.sai/settings.local.jsonc`, which you create by hand, overrides it key by key; see [Local overrides](#local-overrides).
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -27,6 +27,7 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `pr.project` | Project name or address | `/to-pr` |
 | `pr.language` | A language name, preferably its endonym (`Español`), or `English`; an absent key means `English` | `/to-pr` and the unattended publications of `/sai-plan`, `/sai-build`, and the `/sai-explore` Plan and Direct Build routes (see [PR/MR language](#prmr-language)) |
 | `pr.publishAfterRun` | `ask`, `yes`, or `no`; an absent key means `ask` | `/sai-plan` and `/sai-build` publication question, and the `/sai-explore` round-3 publication question (see [Plan publication answer](#plan-publication-answer)) |
+| `publication.autoApprove` | `true` or `false`; an absent key means `false`; see [Publication auto-approval](#publication-auto-approval) | `/to-pr`, `/to-backlog`, and the round-2 publication approval of `/sai-explore`, on Claude Code and opencode |
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
 | `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
@@ -159,7 +160,7 @@ With `true`, a direct `/sai-plan` or `/sai-build` run on Claude Code or opencode
 - Precedence: an explicit override (an invocation flag, a direct statement in the conversation, or for `/from-backlog` the issue URL itself) beats a project setting, which beats a fast-track fixed value, which beats the normal question.
 - When a setting answers a question, the command prints one line naming the setting id and its value.
 - The explore language questions follow the same order. The crystallization language question takes the user's explicit statement, then `explore.readyToProposeLanguage`, then the normal question. The overview-language question takes `--overview-lang` or the user's explicit statement, then a value already resolved for the same crystallized set, then `explore.overviewLanguage`, then the normal question. Both read the setting only; an answer to the normal question stays in the conversation.
-- Settings answer preferences only. Authorization gates (commit authorization, publication confirmation, safe-operations confirmations, route selection) always ask. The one exception is `pr.publishAfterRun`: its `yes` or `no` is the answer of the publication question of `/sai-plan`, `/sai-build`, and `/sai-explore`, which is the authorization the run holds.
+- Settings answer preferences only. Authorization gates (commit authorization, publication confirmation, safe-operations confirmations, route selection) always ask. The exceptions are `pr.publishAfterRun`, whose `yes` or `no` is the answer of the publication question of `/sai-plan`, `/sai-build`, and `/sai-explore` (the authorization the run holds), and `publication.autoApprove`, a standing project grant that removes the approval question of `/to-pr` and `/to-backlog` (see [Publication auto-approval](#publication-auto-approval)).
 
 `/from-backlog` resolves a bare `N` or `#N` in `backlog.provider`: GitLab and GitHub against the repository of the Git remotes, Azure DevOps against `backlog.organization` and `backlog.project` when both are set, otherwise against its existing context. Without the setting a bare reference keeps its current resolution. A full URL that matches a provider positively keeps that provider, and the command prints a line saying that the setting was overridden. Among providers that accept a URL only as a fallback, the setting breaks the tie. When the setting names a provider that does not accept the reference, the command stops with `provider-destination-conflict`.
 
@@ -168,6 +169,18 @@ With `true`, a direct `/sai-plan` or `/sai-build` run on Claude Code or opencode
 ### Plan publication answer
 
 `pr.publishAfterRun` answers the question `/sai-plan` and `/sai-build` ask at the start of a run, and `/sai-explore` asks once per crystallized set in round 3 of its route question: whether to publish a PR/MR when the run ends (a draft of the plan for `/sai-plan` and an Explore Plan slice, a request ready for review for `/sai-build` and an Explore Direct Build slice). `yes` and `no` remove the question; `ask`, an absent key, and an invalid value (which also prints the warning) leave it normal. It is not a destination field of `/to-pr`, so it never changes how the destination is resolved, and the screen does not list it: it stays hand-edited. An explicit `--publish yes|no` argument of `/sai-plan` or `/sai-build` wins over it, and so does the answer a resumed run already recorded. Command invocation, a stale conversation, or a general grant never stand in for the answer: only the argument, the recorded answer, this setting, or the question itself do.
+
+### Publication auto-approval
+
+`publication.autoApprove` is a boolean in the `publication.*` group, shared by `/to-pr` and `/to-backlog`. An absent key reads as `false`, and a value that is not a boolean is dropped with a warning that the key must be true or false, so the approval questions stay. Edit it with the **Auto-approve publication** row of the **Backlog and PR settings** submenu or by hand.
+
+With the key `true`, each publication shows its complete proposal and then publishes with no approval question:
+
+- `/to-pr` shows the title, description, destination, and the push target when a push is needed, then pushes without force and publishes with the unchanged push and publish tokens. The tool also refuses what unattended publication refuses (a force push, the default branch, a detached HEAD, a branch that is not at the shown commit, and a merged or closed request), and a refusal publishes nothing.
+- `/to-backlog` shows the destination, visibility with the public warning, title, description, and planning changes (and for an update the baseline and the provider's non-atomic update note), then creates or updates with the unchanged confirmation token. A slice-set publication works the same way as a single item.
+- `/sai-explore` round 2 drops the publication approval question and still asks the branch base when a branch will be created. Round 1 still asks whether to create or update the backlog.
+
+The key's value is part of the proposal that each confirmation token binds, so a key that changes after a proposal was shown invalidates the token and nothing is published: the skill shows a new proposal. The question is asked anyway when someone else changed the issue (a stale baseline or divergent remote content renews the proposal), when you ask in the conversation to review before publishing (the setting stays unchanged), and for a pending retry whose remote content no longer matches the baseline. Confirmations outside publication approval, such as issue assignment at implementation start and every `safe-operations` confirmation, stay asked. The unattended publications of `/sai-plan`, `/sai-build`, and Direct Build, and `pr.publishAfterRun`, keep their behavior.
 
 ### PR/MR language
 
@@ -207,7 +220,7 @@ Run `npx --allow-git=all github:mmadariaga/shared-ai setup`. When `setup` finish
 
 - **Model customization**: opens a submenu with `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`; see [Model customization](models.md). When an action finishes or is cancelled, the menu returns to the main menu.
 - **Language settings**: opens a submenu with `Ready to Propose language`, `Change overview language`, `Chat language`, and `PR/MR language`.
-- **Backlog and PR settings**: opens a submenu with `Backlog provider` and `Pull requests provider`.
+- **Backlog and PR settings**: opens a submenu with `Backlog provider`, `Pull requests provider`, and `Auto-approve publication`.
 - **Telemetry: on|off**: a value row that opens the `On`/`Off` picker and returns to the main menu with the new value.
 - **Cache warming**: opens the [cache warming screen](#cache-warming-screen); leaving it returns to the main menu.
 - **Exit**: closes the menu.
@@ -220,6 +233,7 @@ Each submenu row shows `<label>: <current value>`, and choosing a row opens that
 - **PR/MR language** (`pr.language`): `English` or a language name you type. `English` removes the key from the file that holds it, because an absent key reads as `English`.
 - **Backlog provider** (`backlog.provider`): `ask` or a provider id from the provider registries.
 - **Pull requests provider** (`pr.provider`): `ask` or a provider id from the `/to-pr` registry.
+- **Auto-approve publication** (`publication.autoApprove`): `On` or `Off`; the row shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.
 - **Telemetry** (`experimental.changeTelemetry`): `On` or `Off`; the row shows `on` or `off`, and an absent key shows `off`. `On` writes `true`. `Off` removes the key from `.sai/settings.jsonc`, because an absent key reads as `false`. When `.sai/settings.local.jsonc` holds the key, `Off` writes `false` there, so a `true` in the base file cannot apply.
 
 Every value you choose is saved at once, so nothing is pending: after a choice in a submenu you stay in that submenu and its row shows the new value, **Back** or **Esc** in a submenu returns to the main menu with the cursor on that section, and Ctrl-C closes the menu and keeps every value already chosen. Leaving a picker with **Back** or **Esc**, or leaving the `Other language...` text empty, saves nothing. A save that fails (for example when the file cannot be written) shows the error, leaves the value as it was, and keeps you in the submenu.

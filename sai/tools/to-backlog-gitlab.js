@@ -33,7 +33,7 @@ async function query(request, io) {
   if (typeof request.repository !== 'string' || !request.repository.trim()) throw new Error('A resolved GitLab project destination is required');
   if (request.project) throw new Error('GitLab boards and metadata are outside scope');
   const state = await inspect(request.repository, io);
-  const proposal = { provider: 'gitlab', repository: state.target.url, repositoryId: state.target.id, visibility: state.target.visibility, host: state.target.host, actor: state.actor, ...content(request) };
+  const proposal = { provider: 'gitlab', repository: state.target.url, repositoryId: state.target.id, visibility: state.target.visibility, host: state.target.host, actor: state.actor, ...content(request), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 
@@ -134,7 +134,7 @@ async function readOrigin(request, io) {
 async function queryUpdate(request, io) {
   const current = await readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Origin issue changed; prepare and approve a new proposal' };
-  const proposal = { ...current, provider: 'gitlab', operation: 'update', ...content(request) };
+  const proposal = { ...current, provider: 'gitlab', operation: 'update', ...content(request), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   delete proposal.status;
   if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue, message: 'No update is necessary' };
   return { status: 'ready', proposal, confirmation: digest(proposal) };

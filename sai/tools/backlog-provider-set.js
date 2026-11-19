@@ -30,7 +30,7 @@ function bind(provider, mechanics) {
       return { change_name: name, title: name, description: mechanics.renderBlock(texts[index]), depends_on: validation.blocks[index].dependencies };
     });
     const representation = mechanics.representation;
-    const proposal = { ...ready.proposal, operation: 'set', ...(existing ? { origin: existing } : {}), slices, ...representation,
+    const proposal = { ...ready.proposal, ...(io.autoApprove === true ? { auto_approve: true } : {}), operation: 'set', ...(existing ? { origin: existing } : {}), slices, ...representation,
       relations: existing ? origin.RELATIONS : 'Separate verified creations, written correspondence and supported native relations; assignment is unchanged' };
     return { status: 'ready', proposal, confirmation: digest(proposal) };
   }

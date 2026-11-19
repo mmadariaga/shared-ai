@@ -7,8 +7,9 @@ description: Use when the user requests PR/MR publication, or when a SAI coordin
 
 A PR/MR is a request to incorporate committed branch changes: a pull request on
 GitHub or Azure Repos, or a merge request on GitLab. Invocation permits preparation only;
-the one exception is § 5, the unattended mode of a SAI coordinator that holds a recorded
-publication answer.
+the exceptions are § 5, the unattended mode of a SAI coordinator that holds a recorded
+publication answer, and the auto-approved publication of § 3, which the project setting
+`publication.autoApprove` grants.
 Load `safe-operations`. Use Claude Code's `AskUserQuestion` or OpenCode's
 `question` for closed choices; use conversation text for open clarification.
 Stop with the draft and concrete blocker if required access, CLI or authentication
@@ -143,9 +144,25 @@ fresh approval. Any content, destination, baseline or HEAD change after approval
 returns to complete presentation and fresh approval of the operations still pending
 only; a completed push is never repeated. Invocation and prior general grants never
 authorize these operations, and neither does the unattended mode of § 5 outside the
-coordinator it names.
+coordinator it names. The one standing grant is the auto-approved publication below.
+
+**Auto-approved publication.** The project setting `publication.autoApprove` is read by
+the tool itself, never by this skill, and is part of the proposal that both tokens bind.
+When the `query` proposal or the `push-query` proposal reports `auto_approve: true`, show the
+complete proposal exactly as above (title, description, destination, the push target when a
+push is needed, and every warning), then ask no approval question: run section 4 at once, with
+`approved:true` and the unchanged tokens. The tool then also applies the refusals of § 5 (a
+force push, the default branch, a detached HEAD, a branch that is not at the shown commit,
+and a merged or closed request each stop the publication with `status: blocked` and a
+`refusal`, and nothing is published): report the refusal as the blocker and ask nothing. Ask the
+question as usual when the user asked in this conversation to review before publishing (the
+setting stays unchanged) and when a result does not report `auto_approve: true`. A setting
+that changed after the proposal was shown makes the token check fail: run `query` and
+`push-query` again and show the new proposal. A pending comment continuation (§ 4) stays an
+explicit approval.
 **Complete when:** explicit approval binds the full proposal, the `publish token` and,
-when a push is needed, the exact push and its `push token`, or cancel ends.
+when a push is needed, the exact push and its `push token`, or cancel ends; with
+`auto_approve: true` the shown complete proposal and its unchanged tokens stand for it.
 
 ## 4. Push, publish once and verify
 

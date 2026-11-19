@@ -157,7 +157,7 @@ function digest(proposal) {
 async function query(request, io) {
   const { repo, projects } = await inspect(request, io);
   if (projects.length !== 1) return { status: 'needs_input', reason: projects.length ? 'project-ambiguous' : 'project-required', repository: repo.nameWithOwner, projects };
-  const proposal = { provider: 'github', repository: repo.nameWithOwner, repositoryId: repo.id, visibility: repo.visibility, project: projects[0], ...content(request) };
+  const proposal = { provider: 'github', repository: repo.nameWithOwner, repositoryId: repo.id, visibility: repo.visibility, project: projects[0], ...content(request), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 
@@ -304,7 +304,7 @@ async function readOrigin(request, io) {
 async function queryUpdate(request, io) {
   const current = await readUpdate(request, io);
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
-  const proposal = { provider: 'github', operation: 'update', issue: current.issue, repository: current.repository, visibility: current.visibility, actor: current.actor, baseline: current.baseline, ...content(request) };
+  const proposal = { provider: 'github', operation: 'update', issue: current.issue, repository: current.repository, visibility: current.visibility, actor: current.actor, baseline: current.baseline, ...content(request), ...(io.autoApprove === true ? { auto_approve: true } : {}) };
   if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue, message: 'No update is necessary' };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }

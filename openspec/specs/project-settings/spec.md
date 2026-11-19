@@ -51,7 +51,7 @@ The reader SHALL parse the settings file as JSON after removing line comments, b
 
 ### Requirement: Per-key validation
 
-The reader SHALL skip a key whose value is a string that equals `ask` case-insensitively after trimming. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, except `warming`, whose value SHALL be an object validated by its own rules and dropped with a warning when invalid, and `experimental.changeTelemetry`, whose value SHALL be a boolean and dropped with a warning that it must be true or false otherwise. It SHALL drop a `backlog.provider` value that is not among the backlog provider ids supplied by the caller with a warning listing the allowed ids, and SHALL drop a `pr.provider` value that is not among the to-pr provider ids supplied by the caller with a warning listing the allowed ids. It SHALL apply each id's own value rules, and SHALL return a valid value through the id's normalization when the catalogue declares one. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of either provider list.
+The reader SHALL skip a key whose value is a string that equals `ask` case-insensitively after trimming. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, except `warming`, whose value SHALL be an object validated by its own rules and dropped with a warning when invalid, and `experimental.changeTelemetry` and `publication.autoApprove`, whose values SHALL be booleans and dropped with a warning that they must be true or false otherwise. It SHALL drop a `backlog.provider` value that is not among the backlog provider ids supplied by the caller with a warning listing the allowed ids, and SHALL drop a `pr.provider` value that is not among the to-pr provider ids supplied by the caller with a warning listing the allowed ids. It SHALL apply each id's own value rules, and SHALL return a valid value through the id's normalization when the catalogue declares one. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of either provider list.
 
 #### Scenario: Unknown id and invalid value
 - **WHEN** the file contains a valid `backlog.repository`, an unknown `backlog.type`, and a `backlog.provider` that is not a supplied provider id
@@ -195,11 +195,11 @@ The reader SHALL read an optional `.sai/settings.local.jsonc` from the same `.sa
 
 ### Requirement: Catalogue presentation fields
 
-Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; `pr.provider` as `Provider` and `pr.language` as `PR/MR language`, both in section `Pull requests`; and `experimental.changeTelemetry` as `Telemetry` in section `Experimental`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, `pr.language` SHALL declare `English`, and `experimental.changeTelemetry` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label or section.
+Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; `pr.provider` as `Provider` and `pr.language` as `PR/MR language`, both in section `Pull requests`; `publication.autoApprove` as `Auto-approve publication` in section `Backlog and PR`; and `experimental.changeTelemetry` as `Telemetry` in section `Experimental`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, `pr.language` SHALL declare `English`, and `experimental.changeTelemetry` and `publication.autoApprove` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label or section.
 
 #### Scenario: Screen keys carry labels and sections
 - **WHEN** the catalogue is read
-- **THEN** each of the seven menu keys has the label and section above, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, `pr.language` has the label `PR/MR language`, the section `Pull requests`, and the absent text `English`, and `experimental.changeTelemetry` has the absent text `off`
+- **THEN** each of the eight menu keys has the label and section above, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, `pr.language` has the label `PR/MR language`, the section `Pull requests`, and the absent text `English`, `publication.autoApprove` has the label `Auto-approve publication`, the section `Backlog and PR`, and the absent text `off`, and `experimental.changeTelemetry` has the absent text `off`
 
 #### Scenario: Warming carries presentation fields for its section
 - **WHEN** the catalogue is read
@@ -243,3 +243,22 @@ The catalogue SHALL hold `pr.language`, the language of the PR/MR title subject 
 #### Scenario: Not a destination field of readPr
 - **WHEN** the settings file sets `pr.language` and `pr.provider`
 - **THEN** `readPr` returns `pr.provider` and does not return `pr.language`
+
+### Requirement: Publication auto-approval setting
+
+The catalogue SHALL hold `publication.autoApprove`, a boolean shared by `/to-pr` and `/to-backlog`. An absent key SHALL read as `false`. A value that is not a boolean, `ask` included, SHALL give no value, and a non-boolean value other than `ask` SHALL be dropped with a warning naming `publication.autoApprove` that says it must be true or false and that it reads as false and every publication approval is asked. `sai/tools/project-settings.js` SHALL export `autoApprove(options)`, which SHALL return `true` only when the effective value, after the local override file is applied, is the boolean `true`, and `false` otherwise.
+
+#### Scenario: Absent key reads as false
+
+- **WHEN** no settings file sets `publication.autoApprove`
+- **THEN** `get('publication.autoApprove')` returns `{ value: null, source: 'absent', warnings: [] }` and `autoApprove` returns `false`
+
+#### Scenario: True grants and a local false overrides it
+
+- **WHEN** `.sai/settings.jsonc` sets `publication.autoApprove` to `true`, and then `.sai/settings.local.jsonc` also sets it to `false`
+- **THEN** `autoApprove` returns `true` for the first state and `false` for the second
+
+#### Scenario: Non-boolean value reads as false with a warning
+
+- **WHEN** the settings file sets `publication.autoApprove` to `"yes"`, `1`, `"true"`, or `null`
+- **THEN** the reader returns no value, its warnings match `Setting publication.autoApprove in .sai/settings.jsonc must be true or false; it reads as false`, and `autoApprove` returns `false`
