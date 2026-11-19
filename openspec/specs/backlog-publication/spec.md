@@ -144,7 +144,7 @@ The shared helper that runs every external process of the backlog tools, `to-pr`
 
 ### Requirement: Auto-approval setting is bound into every backlog proposal
 
-`to-backlog.js` SHALL read `publication.autoApprove` itself, once per invocation, and SHALL pass its value to the selected provider adapter; the skill SHALL NOT read it. When the setting is `true`, the GitHub, GitLab, and Azure DevOps adapters SHALL add `auto_approve: true` to every proposal before its digest: create, update, slice-set, and slice-set update proposals, including each changed item of a slice-set update. When the setting is absent, `false`, or not a boolean, no proposal SHALL carry `auto_approve`, and its token SHALL equal the token computed without the setting. A token taken under one value of the setting SHALL NOT publish under the other, and the publication SHALL end as `failure_before_publication` with nothing created or updated.
+`to-backlog.js` SHALL read `publication.autoApprove` itself, once per invocation, and SHALL pass its value to the selected provider adapter; the skill SHALL NOT read it. Only a `true` that `.sai/settings.local.jsonc` holds SHALL count as the setting being `true`; a `true` that only `.sai/settings.jsonc` holds SHALL read as `false`. When the setting is `true`, the GitHub, GitLab, and Azure DevOps adapters SHALL add `auto_approve: true` to every proposal before its digest: create, update, slice-set, and slice-set update proposals, including each changed item of a slice-set update. When the setting is absent, `false`, not a boolean, or a `true` held only by the base file, no proposal SHALL carry `auto_approve`, and its token SHALL equal the token computed without the setting. A token taken under one value of the setting SHALL NOT publish under the other, and the publication SHALL end as `failure_before_publication` with nothing created or updated. When `.sai/settings.jsonc` holds `publication.autoApprove: true`, the JSON output of every adapter dispatch SHALL carry in `warnings` the consent warning that names `publication.autoApprove` and says the value grants consent only from `.sai/settings.local.jsonc`, once, and the skill SHALL show it like any other warning.
 
 #### Scenario: Create proposal binds the key
 
@@ -163,8 +163,12 @@ The shared helper that runs every external process of the backlog tools, `to-pr`
 
 #### Scenario: Setting read once from the project settings
 
-- **WHEN** `to-backlog.js` runs in a project whose settings file sets `publication.autoApprove` to `true`, to `false`, to `"yes"`, or not at all
+- **WHEN** `to-backlog.js` runs in a project whose `.sai/settings.local.jsonc` sets `publication.autoApprove` to `true`, to `false`, to `"yes"`, or not at all
 - **THEN** the value passed to the adapter is `true` for the first and `false` for the other three
+
+#### Scenario: Base-file true grants nothing and warns
+- **WHEN** only `.sai/settings.jsonc` sets `publication.autoApprove` to `true`, then `.sai/settings.local.jsonc` also sets it to `false`, and then the local file sets it to `true`
+- **THEN** the value passed to the adapter is `false`, `false`, and `true`, and each of the three invocations carries one consent warning naming `publication.autoApprove` and `.sai/settings.local.jsonc`
 
 ### Requirement: Auto-approved backlog publication
 

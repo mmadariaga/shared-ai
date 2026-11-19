@@ -105,7 +105,9 @@ of the current full proposal, preserving its confirmation token unchanged.
 
 **Auto-approved publication.** The project setting `publication.autoApprove` is read by
 `to-backlog.js` itself, never by this skill, and is part of every proposal its token binds
-(create, update, and the slice-set proposals of `slice-set.md`). When the `ready` proposal
+(create, update, and the slice-set proposals of `slice-set.md`). Only the personal local
+settings file grants it: a `true` held by the shared base file reads as false, and the tool
+reports it in `warnings`, which you show like any other warning. When the `ready` proposal
 reports `auto_approve: true`, show the complete proposal exactly as this section and the
 selected branch require (destination, visibility with the public warning, title,
 description, planning changes, and for an update the baseline, the changes, and the

@@ -179,7 +179,7 @@ Two additional step libraries are not worker-instruction delivery: `/sai-explore
 `/sai-plan` resolves its publication answer at its start, after its input checks pass
 and before the first worker is created: the `--publish yes|no` argument, then the answer
 recorded in `plan-run@1` (the `publication` field of the run view; an explicit `--publish` replaces it), then
-the `pr.publishAfterRun` project setting (`ask`, `yes`, `no`), then one question that names
+the `pr.publishAfterRun` project setting (`ask`, `yes`, `no`; a `yes` counts only from the personal `.sai/settings.local.jsonc`, ADR 0224), then one question that names
 the branch, its remote, and the draft state. The first value found wins. The answer is the
 held confirmation for the plan-document commit, the non-force push, and the creation or
 update of the request, in the same way the Direct Build route selection pre-authorizes its

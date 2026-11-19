@@ -3,11 +3,12 @@
 // The project setting screens of the post-setup menu: the `Language settings` and `Backlog and PR settings`
 // submenus and the `Telemetry` row of the main menu. Every value choice is saved at once through the settings
 // writer, so no edit is pending and leaving a screen saves or discards nothing. A key that the hand-created
-// local settings file holds shows as an override and saves to that file. Both files are read again each time a
-// screen is drawn. Prompts are injected so tests drive it.
+// local settings file holds shows as an override and saves to that file; the publication consent key shows the value
+// that takes effect (a grant held only by the base file reads as off) and always saves to that file. Both files are read
+// again each time a screen is drawn. Prompts are injected so tests drive it.
 const fs = require('fs');
 const path = require('path');
-const { CATALOGUE, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require('../sai/tools/project-settings.js');
+const { CATALOGUE, CONSENT_IDS, readSettings, SETTINGS_FILE, LOCAL_SETTINGS_FILE } = require('../sai/tools/project-settings.js');
 const { checkValue, readStored, storedValue, saveSettings } = require('./project-settings-writer.js');
 const { BACK } = require('./install-flow.js');
 
@@ -108,8 +109,8 @@ function createSettingsEditor({
     const baseRoot = roots[SETTINGS_FILE];
     const localRoot = roots[LOCAL_SETTINGS_FILE];
     const { providerIds, prProviderIds } = providers({ required: false });
-    const { baseValues, localValues, warnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
-    return { baseRoot, localRoot, baseValues, localValues, warnings, providerIds, prProviderIds };
+    const { baseValues, localValues, warnings, consentWarnings } = readSettings({ cwd: projectPath, providerIds, prProviderIds, locate: false });
+    return { baseRoot, localRoot, baseValues, localValues, warnings: [...warnings, ...Object.values(consentWarnings)], providerIds, prProviderIds };
   }
 
   function reportUnreadable({ file, error }) {
@@ -148,7 +149,8 @@ function createSettingsEditor({
 
   // One value picker and, for a chosen value, one write: the value is on disk before the picker closes.
   async function edit(id, state) {
-    const isLocal = storedValue(state.localRoot, id) !== undefined;
+    // A consent key is always saved to the local file; any other key saves there only when that file already holds it.
+    const isLocal = CONSENT_IDS.includes(id) || storedValue(state.localRoot, id) !== undefined;
     const { providerIds, prProviderIds } = providers();
     const choice = await promptChoice(`${labelOf(id)}:`, valueChoices(id, providerIds, prProviderIds));
     if (choice === null) return INTERRUPTED;
@@ -160,6 +162,7 @@ function createSettingsEditor({
       if (value === BACK) return { status: 'back' };
     } else {
       // `On` saves true; `Off` removes the key, except in the local file, where it saves false so a shared true cannot apply.
+      // The consent key always goes to the local file, so `Off` saves false there as well.
       const chosen = BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal ? false : undefined) : choice;
       if (chosen === undefined || (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent)) {
         value = undefined;
@@ -178,6 +181,7 @@ function createSettingsEditor({
       log(`Project settings were not saved: ${saved.error}`);
       return { status: 'failed', reason: 'save', error: saved.error };
     }
+    for (const warning of saved.warnings ?? []) log(warning);
     return { status: 'saved' };
   }
 

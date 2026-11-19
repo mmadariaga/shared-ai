@@ -147,7 +147,9 @@ authorize these operations, and neither does the unattended mode of § 5 outside
 coordinator it names. The one standing grant is the auto-approved publication below.
 
 **Auto-approved publication.** The project setting `publication.autoApprove` is read by
-the tool itself, never by this skill, and is part of the proposal that both tokens bind.
+the tool itself, never by this skill, and is part of the proposal that both tokens bind. Only
+the personal local settings file grants it: a `true` held by the shared base file reads as
+false, and the tool reports it in `warnings`, which you show like any other warning.
 When the `query` proposal or the `push-query` proposal reports `auto_approve: true`, show the
 complete proposal exactly as above (title, description, destination, the push target when a
 push is needed, and every warning), then ask no approval question: run section 4 at once, with
