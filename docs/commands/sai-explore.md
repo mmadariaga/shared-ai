@@ -64,12 +64,15 @@ For the technical storage and verification rules, see
 After displaying the complete Ready to Propose block set, Explore normally asks
 in three conditional rounds, each one native interaction (on opencode, one call
 per question when its picker takes a single question). Round 1: whether to
-create or update a backlog item through `to-backlog`, whether to create and
+create or update a backlog item through `to-backlog` and whether to continue to
+implementation (three options, below), whether to create and
 switch to a local branch through `new-change-branch`, and whether to assign the
 linked issue when implementation starts. An existing issue's question names the
 concrete user; when no issue exists yet but backlog creation is selected, it asks
 the intent to assign the authenticated user once the issue exists. Without a
-linked issue or planned creation, the assignment question is left out.
+linked issue or planned creation, the assignment question is left out. The branch
+and assignment questions are conditional: they take effect only when the backlog
+answer continues to implementation.
 Round 2: the exact publication approval and the branch base. Round 3: the route;
 for several pending slices, whether later Direct Build slices start automatically
 (ignored unless you choose Direct Build); and, when unresolved, whether to create
@@ -90,13 +93,38 @@ created; assignment runs only when implementation starts, which re-verifies it.
 A publication `edit`, `More` for bases, an ambiguous branch name, or an
 assignee conflict adds an interaction outside the rounds. Answer Yes, No, or
 free text with instructions or a clarification request. No skips only that
-action; ambiguous intent is clarified before anything runs. Each accepted skill
+action; ambiguous intent is clarified before anything runs. A free-text answer to
+the backlog question maps by intent: a bare "yes" means `publish-continue`, a
+request to only report or only publish means `publish-stop`, and a plain
+decline means `skip-continue`. Each accepted skill
 runs in the current conversation and keeps its details, validation, errors, and
-cancellation handling. These questions are always asked on
-Claude Code and opencode, and branch preparation permits no code edits. The backlog
+cancellation handling. These questions are asked on Claude Code and opencode whenever they apply, and
+branch preparation permits no code edits. The backlog
 question and option descriptions retain the word `backlog` in every language
 (for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
 Publication approval remains a separate answer bound to the exact proposal `to-backlog` prepared.
+
+The backlog question offers three options, in this order, with the same labels and
+stable values on both harnesses:
+
+- `Publish and continue with implementation` (`publish-continue`): publishes as the
+  former Yes did, then the flow continues unchanged with the branch, assignment,
+  and route questions.
+- `Publish and stop` (`publish-stop`): publishes and ends the invocation, with no
+  route question. Its branch and assignment answers are not applicable: no branch
+  is created, nothing is assigned, and round 2 asks only the publication approval.
+  When `to-backlog` finishes, Explore prints the published issue link (the issue
+  for a single change, or the parent and every child for a sliced set). If you cancel
+  the approval, it says that nothing was published. If publication fails, it follows
+  the `to-backlog` recovery and reports what that skill reported, which for a sliced
+  set may be a partial publication. A later message in the same chat does not
+  present the route picker; implementing the change needs a new `/sai-explore`
+  invocation, for example one that imports the published issue.
+- `Do not publish and continue with implementation` (`skip-continue`): skips the
+  backlog action and continues as the former No did.
+
+In Spanish the labels read `Publicar y continuar con la implementación`,
+`Publicar y parar`, and `No publicar y continuar con la implementación`.
 New branches are named `<type>/<id>_<name_with_underscores>` (or
 `<type>/<name_with_underscores>` without an identifier); existing branches are
 never renamed.
@@ -128,7 +156,7 @@ Branch-base suggestions use the same short names and local/remote qualifiers as
 standalone [`new-change-branch`](new-change-branch.md), while preserving exact
 Git references internally.
 
-After rounds 1 and 2 finish or are skipped, choose how to continue. `Manual` hands you the
+After rounds 1 and 2 finish or are skipped (and unless you chose `Publish and stop`), choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` follows [`/sai-plan`](sai-plan.md)
 for the first pending slice: spec and design run with up to three review rounds per
 segment, one local commit per segment (plus one for `telemetry.md` when

@@ -32,18 +32,69 @@ test('the normal flow is three conditional rounds in a fixed question order', ()
 
 test('answer combinations: each question keeps its own scope and condition', () => {
   assert.match(actions, /each answer authorizes only its own action; only an explicit answer authorizes/);
-  assert.match(round1, /On No, skip only this action and leave out the publication question/);
+  assert.match(round1, /On `skip-continue`, skip only this action and leave out the publication question/);
   assert.match(round1, /On No, skip only this action and leave out the base question/);
   assert.match(round1, /On `none`, skip only this action[\s\S]*leave out the base question/);
-  assert.match(round1, /Ask it when a linked issue exists\. With no linked issue, ask it in its intent form only when the backlog answer is Yes[\s\S]*when the backlog answer is No it is left out/);
+  assert.match(round1, /Ask it when a linked issue exists\. With no linked issue, ask it in its intent form only when the backlog answer can be `publish-continue`[\s\S]*when the backlog answer is `skip-continue` it is left out/);
   assert.match(round1, /set-level assignment answer[\s\S]*applies to the issue of every slice in the set/);
-  assert.match(actions, /No registry capability returns the authenticated user without an existing issue, so when no issue exists yet the concrete assignee cannot be named: the assignment question is then asked in its intent form when the backlog answer can be Yes/);
+  assert.match(actions, /No registry capability returns the authenticated user without an existing issue, so when no issue exists yet the concrete assignee cannot be named: the assignment question is then asked in its intent form when the backlog answer can be `publish-continue`/);
   assert.doesNotMatch(actions, /read-only lookup resolves it without an issue/);
   assert.match(round1, /record the answer as not applicable: it authorizes nothing/);
   assert.match(round1, /`assign`[\s\S]*`keep`[\s\S]*`replace`[\s\S]*`skip`/);
   assert.match(round1, /assignment executes only when implementation starts/);
-  assert.match(round2, /A prior general grant, unattended mode, or any round 1 Yes is not publication approval/);
+  assert.match(round2, /A prior general grant, unattended mode, or any round 1 publish answer is not publication approval/);
   assert.match(round2, /Never choose a base automatically/);
+});
+
+test('the backlog question offers three options with stable values and the continue answers keep the former flow', () => {
+  const backlog = round1.slice(round1.indexOf('1. **Backlog question:**'), round1.indexOf('2. **Branch question:**'));
+  const order = [
+    '**Publish and continue with implementation** (`publish-continue`',
+    '**Publish and stop** (`publish-stop`',
+    '**Do not publish and continue with implementation** (`skip-continue`',
+  ].map(label => backlog.indexOf(label));
+  assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1]);
+  for (const label of ['Publicar y continuar con la implementación', 'Publicar y parar', 'No publicar y continuar con la implementación']) {
+    assert.ok(backlog.includes(label), label);
+  }
+  assert.match(backlog, /Retain the word `backlog` in the question and option descriptions in every language/);
+  assert.match(backlog, /¿Quieres crear o actualizar el backlog con esta propuesta\?/);
+  assert.match(backlog, /`publish-continue` behaves as the former Yes and `skip-continue` as the former No/);
+  assert.doesNotMatch(backlog, /Do not publish and stop/);
+  assert.match(actions, /except for the backlog question, the slice-set branch question, the assignment question/);
+});
+
+test('branch and assignment questions are conditional on a continue answer', () => {
+  const branch = round1.slice(round1.indexOf('2. **Branch question:**'), round1.indexOf('3. **Assignment question:**'));
+  const assignment = round1.slice(round1.indexOf('3. **Assignment question:**'));
+  assert.match(branch, /conditional question under `@sai\/policies\/question-rounds\.md`[\s\S]*`publish-continue` or `skip-continue`[\s\S]*under `publish-stop`[\s\S]*no branch is created and the base question is not asked/);
+  assert.match(assignment, /condition is that the backlog answer is `publish-continue` or `skip-continue`; under `publish-stop`[\s\S]*not applicable[\s\S]*nothing is assigned/);
+  assert.match(assignment, /intent form applies only when the backlog answer is `publish-continue`/);
+  assert.match(round2, /under `publish-stop` no branch is prepared, so it asks only the publication approval, never the branch base/);
+});
+
+test('the publish-stop close owns the end of the invocation without round 3', () => {
+  const close = selector.slice(selector.indexOf('\n## Publish and stop close'), selector.indexOf('\n## Slice branch chain'));
+  assert.ok(close.length > 0);
+  assert.match(close, /never stored in `explore-slice@1`/);
+  assert.match(close, /`edit` answer to the approval keeps this decision/);
+  assert.match(close, /publication-recovery\.md[\s\S]*unchanged/);
+  assert.match(close, /`@sai\/policies\/worker-lifecycle\.md`[\s\S]*`@sai\/policies\/cache-warming\.md` § Retire at terminal output/);
+  assert.match(close, /the parent and every child for a sliced set/);
+  assert.match(close, /that no backlog item was published/);
+  assert.match(close, /nothing published, or the published part with its links/);
+  assert.match(close, /emits no `explore-slice@1` intent, runs no `sai-state close`, never presents round 3, and emits no route intent/);
+  assert.match(close, /A later message in the same chat presents no route picker[\s\S]*new `\/sai-explore` invocation/);
+  assert.match(actions, /The one path that ends without presenting the route picker is the `publish-stop` close/);
+  assert.match(afterRound2, /Under `publish-stop`, the outcome of this step closes the invocation/);
+});
+
+test('a free-text backlog answer maps to one stable value by intent', () => {
+  const free = actions.slice(actions.indexOf('**Free-text answers.**'), actions.indexOf('**Skill ownership and completion.**'));
+  assert.match(free, /bare affirmative[^.]*maps to `publish-continue`/);
+  assert.match(free, /only report or only publish maps to `publish-stop`/);
+  assert.match(free, /plain decline maps to `skip-continue`/);
+  assert.match(free, /ambiguous backlog answer is clarified and the question stays pending/);
 });
 
 test('conditional questions share a round with the answer they depend on', () => {

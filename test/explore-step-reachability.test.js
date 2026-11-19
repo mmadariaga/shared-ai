@@ -163,8 +163,8 @@ test('optional backlog wording retains backlog across languages without changing
   const backlog = selector.slice(selector.indexOf('1. **Backlog question:**'), selector.indexOf('2. **Branch question:**'));
   assert.match(backlog, /Retain the word `backlog` in the question and option descriptions in every language/);
   assert.match(backlog, /¿Quieres crear o actualizar el backlog con esta propuesta\?/);
-  assert.match(backlog, /Yes as creating or updating the backlog and No as skipping the backlog action/);
-  assert.match(selector, /Offer \*\*Yes\*\* and \*\*No\*\* in that order, with stable values `yes` and `no`/);
+  assert.match(backlog, /Describe the two publish options as creating or updating the backlog and `skip-continue` as skipping the backlog action/);
+  assert.match(selector, /Offer \*\*Yes\*\* and \*\*No\*\* in that order, with stable values `yes` and `no`, except for the backlog question/);
   assert.match(selector, /Claude Code's `AskUserQuestion`[\s\S]*opencode's `question`/);
   assert.match(selector, /Do not duplicate its rules or treat the optional Yes as a publication confirmation or base selection/);
 });
