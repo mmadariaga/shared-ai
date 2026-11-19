@@ -7,31 +7,31 @@ Define the optional backlog and local branch preparation workflows offered after
 
 ### Requirement: Offer backlog then branch preparation before route selection
 
-After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask the backlog question, the branch question, and the conditional assignment question together in round 1, then the applicable publication approval and branch base in round 2, and only then present the implementation route picker as round 3, each round presented under `sai/policies/question-rounds.md`. It SHALL ask in the user's language with concise context naming the crystallized work and each question's action. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. The backlog question SHALL offer Yes then No, with stable values `yes` and `no`. All questions SHALL remain explicit under `--fast-track`.
+After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask the backlog question, the branch question, and the conditional assignment question together in round 1, then the applicable publication approval and branch base in round 2, and only then present the implementation route picker as round 3, each round presented under `sai/policies/question-rounds.md`. The one exception SHALL be a `publish-stop` backlog answer, which ends the invocation after its publication without round 3. It SHALL ask in the user's language with concise context naming the crystallized work and each question's action. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. The backlog question SHALL offer three options in this order, with these stable values: `Publish and continue with implementation` (`publish-continue`), `Publish and stop` (`publish-stop`), and `Do not publish and continue with implementation` (`skip-continue`), with the same labels, order, and stable values on Claude Code and opencode. It SHALL offer no `Do not publish and stop` option. `publish-continue` SHALL behave as the former Yes and `skip-continue` as the former No. The remaining round 1 and round 2 questions that have no options of their own SHALL keep Yes then No with stable values `yes` and `no`. All questions SHALL remain explicit under `--fast-track`.
 
 The branch question SHALL be chosen by the size of the recorded `explore-slice@1` inventory, not the pending remainder. When the inventory has one change, Explore SHALL ask whether to create and switch to a local change branch, offering Yes then No with stable values `yes` and `no`. When the inventory has more than one change (a slice set), Explore SHALL instead ask one three-choice question for the whole set, localized from “Would you like to create a new branch?” (Spanish example: “¿Quieres crear una nueva rama?”), offering in this order: one branch for the main issue (`shared`; Spanish “Sí, crea una única para la issue principal”), one branch per slice (`per-slice`; Spanish “Crear una rama por slice”), and no branch (`none`; Spanish “No crear nada”). Labels and descriptions SHALL be localized and the stable values SHALL NOT be. The question SHALL say that no branch is published.
 
-The backlog question and its option descriptions SHALL retain the word `backlog` in every language. The Yes description SHALL identify creating or updating the backlog, and the No description SHALL identify skipping the backlog action. Yes and No labels SHALL remain localized with their existing stable values. The Spanish example SHALL be “¿Quieres crear o actualizar el backlog con esta propuesta?”
+The backlog question and its option descriptions SHALL retain the word `backlog` in every language. The descriptions of the two publish options SHALL identify creating or updating the backlog, and the `skip-continue` description SHALL identify skipping the backlog action. One `Publish` meaning SHALL cover creation and update, because `to-backlog` resolves creation versus update. The labels SHALL be localized and the stable values SHALL NOT be. The Spanish example SHALL be “¿Quieres crear o actualizar el backlog con esta propuesta?”, with the Spanish labels `Publicar y continuar con la implementación`, `Publicar y parar`, and `No publicar y continuar con la implementación`.
 
 #### Scenario: Complete proposal precedes optional actions
 
-- **WHEN** a successful crystallization close displays the complete recorded block set with a pending slice and no active route
+- **WHEN** a successful crystallization close displays the complete recorded block set with a pending slice and no active route, and the backlog answer is `publish-continue` or `skip-continue`
 - **THEN** Explore asks the backlog, branch, and applicable assignment questions in round 1, the applicable publication and base questions in round 2, and presents the route picker only after rounds 1 and 2 finish or are skipped
 
 #### Scenario: Fast-track preserves both questions on both harnesses
 
 - **WHEN** Claude Code or opencode runs Explore with `--fast-track` and reaches the optional actions
-- **THEN** every round question, including the slice-set three-choice branch question, remains explicit with free-text support rather than receiving automatic answers
+- **THEN** every round question, including the three-option backlog question and the slice-set three-choice branch question, remains explicit with free-text support rather than receiving automatic answers
 
 #### Scenario: Localized backlog question retains recognizable terminology
 
 - **WHEN** Explore presents the optional backlog question in any user language on Claude Code or opencode
-- **THEN** the question and option descriptions retain `backlog`, with localized Yes and No labels describing creating or updating and skipping the backlog action respectively, and stable values `yes` and `no`
+- **THEN** the question and option descriptions retain `backlog`, and the three options appear in the order `publish-continue`, `publish-stop`, `skip-continue` with those stable values
 
 #### Scenario: Spanish backlog wording
 
 - **WHEN** Explore uses the documented Spanish example for the optional backlog question
-- **THEN** it asks “¿Quieres crear o actualizar el backlog con esta propuesta?”
+- **THEN** it asks “¿Quieres crear o actualizar el backlog con esta propuesta?” with the options `Publicar y continuar con la implementación`, `Publicar y parar`, and `No publicar y continuar con la implementación`
 
 #### Scenario: Single change keeps the yes/no branch question
 
@@ -43,13 +43,18 @@ The backlog question and its option descriptions SHALL retain the word `backlog`
 - **WHEN** the recorded inventory holds more than one change
 - **THEN** Explore asks one localized branch question for the whole set with options in the order `shared`, `per-slice`, `none`
 
+#### Scenario: No option publishes and stops without publishing
+
+- **WHEN** Explore presents the backlog question
+- **THEN** it offers exactly the three options `publish-continue`, `publish-stop`, and `skip-continue`, and no `Do not publish and stop` option
+
 ### Requirement: Resolve optional action replies without selecting an implementation route
 
-A Yes or clear free-text request to perform the current action SHALL record that action's Yes with the user's instructions. A No or clear free-text decline SHALL skip only the current action and leave out the round 2 question that depends on it (the publication question for the backlog, the base question for the branch). A clarification request or ambiguous intent SHALL leave the current action pending until intent is resolved, without executing it. Empty, absent, or cancelled question responses SHALL remain unresolved. Free text at an optional action SHALL NOT select an implementation route. A reply that materially revises the idea SHALL follow the existing material-change rule before action classification.
+A Yes or clear free-text request to perform the current action SHALL record that action's Yes with the user's instructions. A No or clear free-text decline SHALL skip only the current action and leave out the round 2 question that depends on it (the publication question for the backlog, the base question for the branch). For the backlog question, `skip-continue` SHALL be the decline, and a free-text answer SHALL map by intent to exactly one of its three stable values: a bare affirmative such as “yes” SHALL map to `publish-continue`, a request to only report or only publish SHALL map to `publish-stop`, and a plain decline SHALL map to `skip-continue`. A clarification request or ambiguous intent SHALL leave the current action pending until intent is resolved, without executing it; an ambiguous backlog answer SHALL be clarified while the backlog question stays pending. Empty, absent, or cancelled question responses SHALL remain unresolved. Free text at an optional action SHALL NOT select an implementation route. A reply that materially revises the idea SHALL follow the existing material-change rule before action classification.
 
 #### Scenario: Backlog action is declined
 
-- **WHEN** the user answers No to the backlog question
+- **WHEN** the user answers `skip-continue` to the backlog question
 - **THEN** Explore skips backlog capture only, leaves out the publication question, and selects no implementation route
 
 #### Scenario: Branch action is declined
@@ -59,7 +64,7 @@ A Yes or clear free-text request to perform the current action SHALL record that
 
 #### Scenario: Free text clearly requests the action
 
-- **WHEN** free text clearly requests the currently offered backlog or branch action and supplies instructions
+- **WHEN** free text clearly requests the currently offered branch action and supplies instructions
 - **THEN** Explore records that action's Yes with those instructions and does not interpret that reply as an implementation route selection
 
 #### Scenario: Free text needs clarification
@@ -71,6 +76,26 @@ A Yes or clear free-text request to perform the current action SHALL record that
 
 - **WHEN** the optional question response is empty, absent, or cancelled
 - **THEN** Explore keeps the question pending without treating it as Yes, No, or a route choice
+
+#### Scenario: Bare affirmative to the backlog question
+
+- **WHEN** the user answers the backlog question with the free text “yes”
+- **THEN** Explore records the backlog answer `publish-continue`
+
+#### Scenario: Free text asks only to report the issue
+
+- **WHEN** the user answers the backlog question with free text that asks only to report or only to publish the proposal
+- **THEN** Explore records the backlog answer `publish-stop`
+
+#### Scenario: Free text plainly declines the backlog action
+
+- **WHEN** the user answers the backlog question with a plain decline in free text
+- **THEN** Explore records the backlog answer `skip-continue`
+
+#### Scenario: Ambiguous free-text backlog answer
+
+- **WHEN** the user answers the backlog question with free text whose intent maps to none or to more than one of `publish-continue`, `publish-stop`, and `skip-continue`
+- **THEN** Explore clarifies the intent, records no backlog answer, and keeps the backlog question pending
 
 ### Requirement: Existing skills own accepted optional workflows
 

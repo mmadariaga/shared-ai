@@ -153,7 +153,7 @@ test('optional actions preserve skill ownership, negative answers, and free text
     selector.indexOf('\n## Native route picker'));
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry/);
   assert.match(actions, /opencode's `question` tool with custom\/free-text input enabled/);
-  assert.match(actions, /On No, skip only this action and leave out the publication question/);
+  assert.match(actions, /On `skip-continue`, skip only this action and leave out the publication question/);
   assert.match(actions, /On No, skip only this action and leave out the base question/);
   assert.match(actions, /invoke the installed `to-backlog` skill in the current conversation[\s\S]*prepare the full publication proposal without publishing/);
   assert.match(actions, /invoke the installed `new-change-branch` skill and ask it to prepare the suggested bases/);
