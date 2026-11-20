@@ -1,6 +1,6 @@
 ---
-description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step.
-argument-hint: "[change-name]"
+description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step. Accepts --parent-branch <branch>.
+argument-hint: "[change-name] [--parent-branch <branch>]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}

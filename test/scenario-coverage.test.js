@@ -77,11 +77,90 @@ test('E1: a title with no match is missing and exits 1', (t) => {
   assert.deepEqual(result.report.missing, [{ title: 'User can log in' }]);
 });
 
-test('normalized match ignores case, punctuation, and whitespace runs', (t) => {
+test('normalized match ignores case and whitespace runs and treats punctuation as a word separator', (t) => {
   const f = repo(t);
   f.write('test/a.test.js', "it('USER   can log-in, safely!', () => {});\n");
-  assert.equal(f.step(['User can login safely']).report.verdict, 'clean');
+  assert.equal(f.step(['User can log in safely']).report.verdict, 'clean');
+  assert.equal(f.step(['User can login safely']).report.verdict, 'missing');
   assert.equal(f.step(['User cannot log in']).report.verdict, 'missing');
+});
+
+test('E2: a title matches on word boundaries, never inside another word', (t) => {
+  const f = repo(t);
+  f.write('test/a.test.js', "it('invalid input is rejected', () => {});\n");
+  const result = f.step(['valid input']);
+  assert.equal(result.status, 1);
+  assert.deepEqual(result.report.missing, [{ title: 'valid input' }]);
+  assert.equal(f.step(['invalid input']).report.verdict, 'clean');
+  assert.equal(f.step(['input is rejected']).report.verdict, 'clean');
+  assert.equal(f.step(['valid input is rejected']).report.verdict, 'missing');
+});
+
+test('E2: a hyphenated or punctuated form in a file still matches the title', (t) => {
+  const f = repo(t);
+  f.write('test/a.test.js', "it('valid-input passes', () => {});\n");
+  assert.equal(f.step(['valid input']).report.verdict, 'clean');
+});
+
+test('E5: titles that differ only in punctuation share one normalized title and are ambiguous', (t) => {
+  const f = repo(t);
+  f.write('a.test.js', 'valid input\n');
+  const result = f.step(['valid-input', 'valid input']);
+  assert.equal(result.status, 1);
+  assert.equal(result.report.ambiguous.length, 1);
+  assert.equal(result.report.ambiguous[0].title, 'valid input');
+  assert.deepEqual(result.report.missing, []);
+});
+
+function releaseRepo(t) {
+  const f = repo(t);
+  f.git('checkout', '-q', '-b', 'release');
+  f.write('release-only.test.js', 'Release only title\n');
+  f.git('add', '-A');
+  f.git('commit', '-q', '-m', 'release work');
+  f.git('checkout', '-q', '-b', 'change');
+  f.write('change.test.js', 'Change title\n');
+  f.git('add', '-A');
+  f.git('commit', '-q', '-m', 'change work');
+  return f;
+}
+
+test('E1: --parent-branch takes the change base from that branch, so a release file is not a change file', (t) => {
+  const f = releaseRepo(t);
+  const titles = ['Release only title', 'Change title'];
+  const byDefault = f.step(titles);
+  assert.equal(byDefault.report.parent_branch, 'main');
+  assert.equal(byDefault.report.verdict, 'clean');
+  const result = f.run('step', '--input-file', f.input('release-titles.json', JSON.stringify(titles)), '--parent-branch', 'release');
+  assert.equal(result.status, 1);
+  assert.equal(result.report.parent_branch, 'release');
+  assert.equal(result.report.change_base, f.git('rev-parse', 'release').trim());
+  assert.deepEqual(result.report.missing, [{ title: 'Release only title' }]);
+});
+
+test('E1: --parent-branch applies to change mode too', (t) => {
+  const f = releaseRepo(t);
+  f.write('openspec/changes/c/specs/cap/spec.md', delta('ADDED', 'Fresh', [['Release only title'], ['Change title']]));
+  assert.equal(f.run('change', 'c').report.verdict, 'clean');
+  const result = f.run('change', 'c', '--parent-branch', 'release');
+  assert.equal(result.status, 1);
+  assert.equal(result.report.parent_branch, 'release');
+  assert.deepEqual(result.report.missing.map((entry) => entry.title), ['Release only title']);
+});
+
+test('E1: a --parent-branch that does not resolve exits 2 and names it', (t) => {
+  const f = repo(t);
+  f.write('openspec/changes/c/specs/cap/spec.md', delta('ADDED', 'Fresh', [['A title']]));
+  const input = f.input('titles.json', JSON.stringify(['A title']));
+  for (const args of [['step', '--input-file', input, '--parent-branch', 'no-such-branch'], ['change', 'c', '--parent-branch', 'no-such-branch']]) {
+    const result = f.run(...args);
+    assert.equal(result.status, 2, args.join(' '));
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /no-such-branch/);
+  }
+  const missingValue = f.run('step', '--input-file', input, '--parent-branch');
+  assert.equal(missingValue.status, 2);
+  assert.match(missingValue.stderr, /--parent-branch/);
 });
 
 test('E5: staged and untracked files count, while base commit, ignored, openspec, deleted, and binary files do not', (t) => {

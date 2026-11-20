@@ -90,3 +90,27 @@ After every task is checked and before the audit reports are applied, the `/sai-
 #### Scenario: A resumed run sees earlier tests
 - **WHEN** a second `/sai-3-implement` run of the same change runs change mode
 - **THEN** the tests committed by the first run since the change base count as coverage
+
+### Requirement: Scenario coverage checks take the run's parent branch
+
+`/sai-3-implement` SHALL accept an optional `--parent-branch <branch>` and SHALL take it out of `arguments_value` before resolving the change name. The option without a branch, or given twice, SHALL end the run before anything is written with `Cannot start /sai-3-implement: --parent-branch takes one branch name.` The coordinator SHALL resolve the parent branch of the scenario coverage check once, when the run starts, and SHALL pass the same value as `--parent-branch` to every step mode and change mode call: the option's branch when given; otherwise, when `openspec/changes/{name}/review.md` exists, the branch its `**Reviewed:**` line names, only when `git rev-parse --verify --quiet <branch>^{commit}` accepts it; otherwise no option, so the tool's default parent applies. The option SHALL change only the scenario coverage check: the inherent-risk ratings at close SHALL keep the parent branch that the `**Reviewed:**` line names. The Claude Code and opencode wrappers of `/sai-3-implement` SHALL declare the option.
+
+#### Scenario: The option sets the coverage parent
+- **WHEN** `/sai-3-implement my-change --parent-branch release` runs
+- **THEN** every `scenario-coverage.js` call of the run carries `--parent-branch release`
+
+#### Scenario: The review parent is the fallback
+- **WHEN** `/sai-3-implement` runs without the option, `review.md` exists, and its `**Reviewed:**` line names `release`, which resolves
+- **THEN** every `scenario-coverage.js` call of the run carries `--parent-branch release`
+
+#### Scenario: An unresolved review parent is not passed
+- **WHEN** `/sai-3-implement` runs without the option and the `**Reviewed:**` line of `review.md` names a branch that `git rev-parse --verify --quiet <branch>^{commit}` rejects
+- **THEN** the `scenario-coverage.js` calls carry no `--parent-branch`, and the tool's default parent applies
+
+#### Scenario: The ratings keep the review parent
+- **WHEN** a run with `--parent-branch release` closes with fixed findings and the `**Reviewed:**` line of `review.md` names `main`
+- **THEN** the inherent-risk ratings are computed and validated against `main`
+
+#### Scenario: A parent branch option without a branch
+- **WHEN** `/sai-3-implement my-change --parent-branch` runs
+- **THEN** the run prints `Cannot start /sai-3-implement: --parent-branch takes one branch name.` and ends before anything is written

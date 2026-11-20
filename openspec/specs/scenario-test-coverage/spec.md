@@ -7,7 +7,7 @@ TBD - created by archiving change scenario-test-coverage-check. Update Purpose a
 
 ### Requirement: Scenario coverage tool modes and output
 
-`sai/tools/scenario-coverage.js` SHALL offer two sub-commands, both accepting `--cwd <project-root>`: `step --input-file <path>`, whose input file holds a JSON list of non-empty scenario titles, and `change <change-name>`. Each SHALL print one JSON object with `verdict` (`clean`, `missing`, or `n/a`), `missing`, `ambiguous`, `parent_branch`, and `change_base`, and SHALL exit 0 for `clean` or `n/a`, 1 for `missing`, and 2 for a usage or I/O error. The verdict SHALL be `missing` whenever `missing` or `ambiguous` holds an entry. A step input with no titles SHALL give `n/a`.
+`sai/tools/scenario-coverage.js` SHALL offer two sub-commands, both accepting `--cwd <project-root>` and an optional `--parent-branch <branch>`: `step --input-file <path>`, whose input file holds a JSON list of non-empty scenario titles, and `change <change-name>`. Each SHALL print one JSON object with `verdict` (`clean`, `missing`, or `n/a`), `missing`, `ambiguous`, `parent_branch`, and `change_base`, and SHALL exit 0 for `clean` or `n/a`, 1 for `missing`, and 2 for a usage or I/O error. The verdict SHALL be `missing` whenever `missing` or `ambiguous` holds an entry. A step input with no titles SHALL give `n/a`. A `--parent-branch` without a value SHALL be a usage error.
 
 #### Scenario: A title with no match is missing
 - **WHEN** step mode receives a scenario title that appears in no file changed by the change
@@ -17,9 +17,13 @@ TBD - created by archiving change scenario-test-coverage-check. Update Purpose a
 - **WHEN** step mode receives an empty JSON list
 - **THEN** the tool prints the verdict `n/a` and exits 0
 
+#### Scenario: Change mode takes the parent branch option
+- **WHEN** change mode runs with `--parent-branch release` on a branch cut from `release`
+- **THEN** the tool prints `release` as `parent_branch` and the commit of `git merge-base HEAD release` as `change_base`
+
 ### Requirement: Scenarios match by normalized title in the files changed by the change
 
-The tool SHALL count a scenario as covered when its normalized title (lowercased, punctuation removed, whitespace runs collapsed to one space) appears contiguously in the normalized content of a file changed by the change. The files changed by the change SHALL be the paths of `git diff --name-only <change base>`, plus staged changes and untracked files that are not ignored, where the change base is the merge-base of `HEAD` with the parent branch: the first of the default branch of `origin/HEAD` (without its `origin/` prefix), `master`, and `main` that `git rev-parse --verify` accepts. Files under `openspec/`, deleted files, and non-text files SHALL be excluded. A title found only in a comment or a non-test file SHALL count as covered.
+The tool SHALL normalize a title and a file's content by lowercasing them, turning every run of punctuation into one space, and collapsing whitespace runs to one space. It SHALL count a scenario as covered when its normalized title, padded with one space on each side, appears in the normalized content of a file changed by the change, padded the same way, so that a title matches only on word boundaries. The files changed by the change SHALL be the paths of `git diff --name-only <change base>`, plus staged changes and untracked files that are not ignored, where the change base is the merge-base of `HEAD` with the parent branch: the `--parent-branch` value when given, otherwise the first of the default branch of `origin/HEAD` (without its `origin/` prefix), `master`, and `main` that `git rev-parse --verify` accepts. A `--parent-branch` value that does not resolve to a commit SHALL exit 2 with a message that names it. Every changed text file SHALL count, test or not. Files under `openspec/`, deleted files, and non-text files SHALL be excluded. A title found only in a comment or a non-test file SHALL count as covered.
 
 #### Scenario: A title committed after the change base is covered
 - **WHEN** a test file committed on the branch after the change base contains a scenario title with different case, punctuation, and spacing
@@ -32,6 +36,22 @@ The tool SHALL count a scenario as covered when its normalized title (lowercased
 #### Scenario: The parent branch comes from origin HEAD
 - **WHEN** `origin/HEAD` points to a remote branch whose local name verifies
 - **THEN** the tool uses that branch name, without its `origin/` prefix, as `parent_branch`
+
+#### Scenario: A title inside another word does not match
+- **WHEN** the scenario title is `valid input` and the only changed file contains `invalid input is rejected`
+- **THEN** the tool lists `valid input` under `missing` and prints the verdict `missing`
+
+#### Scenario: A hyphenated form matches the title
+- **WHEN** the scenario title is `valid input` and a changed file contains `valid-input passes`
+- **THEN** the tool counts the scenario as covered and prints the verdict `clean`
+
+#### Scenario: A release branch file is not a change file
+- **WHEN** the branch was cut from `release`, a scenario title appears only in a file committed on `release`, and step mode runs with `--parent-branch release`
+- **THEN** the tool reports the scenario as missing and prints the merge-base with `release` as `change_base`
+
+#### Scenario: An unresolved parent branch is an error
+- **WHEN** step mode runs with `--parent-branch no-such-branch`
+- **THEN** the tool exits 2, prints no verdict, and its message names `no-such-branch`
 
 ### Requirement: Change mode checks only new or changed scenarios
 
@@ -47,11 +67,15 @@ Change mode SHALL check ADDED scenarios and MODIFIED or RENAMED scenarios whose 
 
 ### Requirement: Scenarios that share a normalized title are ambiguous
 
-Scenarios that share one normalized title SHALL be reported together as one `ambiguous` group and SHALL NOT be matched by any single test, in step mode and in change mode, including scenarios of different requirements.
+Scenarios that share one normalized title SHALL be reported together as one `ambiguous` group and SHALL NOT be matched by any single test, in step mode and in change mode, including scenarios of different requirements. Titles that differ only in punctuation SHALL share one normalized title.
 
 #### Scenario: Two scenarios share a title
 - **WHEN** two scenarios have titles that normalize to the same text
 - **THEN** the tool reports them as one `ambiguous` group and prints the verdict `missing`
+
+#### Scenario: Titles that differ only in punctuation are ambiguous
+- **WHEN** step mode receives the titles `valid-input` and `valid input`
+- **THEN** the tool reports them as one `ambiguous` group with the title `valid input` and prints the verdict `missing`
 
 ### Requirement: A change without specs gets an explicit n/a
 

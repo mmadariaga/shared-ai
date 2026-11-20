@@ -6,11 +6,11 @@ Fetch `@sai/policies/finding-state.md`
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/change-telemetry.md`
 
-You chain the segments of one build run in a single session. The invocation carries one string, `arguments_value`: the change name, with the optional `--publish yes|no`.
+You chain the segments of one build run in a single session. The invocation carries one string, `arguments_value`: the change name, with the optional `--publish yes|no` and `--parent-branch <branch>`.
 
 ## Start
 
-Drop every `--fast-track` token from `arguments_value`, and take `--publish <answer>` out of it and keep it for the publication answer below. An answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-build: --publish takes yes or no.` The remainder is the change name, or empty, and goes to segment 1 as its `arguments_value`. The publication answer is resolved inside segment 1, as § Publication answer says.
+Drop every `--fast-track` token from `arguments_value`, and take `--publish <answer>` out of it and keep it for the publication answer below. An answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-build: --publish takes yes or no.` Take `--parent-branch <branch>` out of it too and keep the branch for the segments; a missing branch, or a second option, ends the run before anything is written with: `Cannot start /sai-build: --parent-branch takes one branch name.` The remainder is the change name, or empty, and goes to segment 1 as its `arguments_value`, followed by `--parent-branch <branch>` when one was given. The publication answer is resolved inside segment 1, as § Publication answer says.
 
 ## Publication answer
 
@@ -32,8 +32,8 @@ Keep the answer in the conversation, and keep the id of that `sai-state` session
 ## Segments
 
 1. `/sai-3-implement`: Fetch `@sai/commands/implement/coordinator.md` and follow it exactly as the first segment, with the change name of Start as `arguments_value`. It resolves the change and runs the whole implementation; keep the name it resolves (`{name}`) for the rest of the run. Resolve the publication answer between its Start step 4 and step 5, and record it right after step 5 (§ Publication answer). Like any `/sai-3-implement` run, it also applies the open fixable findings of the audit reports already in the change directory. No wrapper is entered again and no approval is asked between segments.
-2. `/sai-4-review`: Fetch `@sai/commands/review/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`, so it reviews the change segment 1 resolved instead of resolving one again. It reviews the diff in a fresh worker and writes `review.md`. It fixes nothing.
-3. `/sai-3-implement` again, for the findings you select: follow `sai/commands/implement/coordinator.md` exactly as the third segment, with `{name}` as `arguments_value`, and hand it `review.md` as its only Composition report. Right after its Start step 5 has opened its new run, record the publication answer again (§ Publication answer). It applies every open fixable finding of `review.md` that carries no ` (EXCLUDED: …)` mark and marks each one it fixes. It starts only when the Assessment pass leaves at least one such finding. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says.
+2. `/sai-4-review`: Fetch `@sai/commands/review/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`, followed by `--parent-branch <branch>` when one was given, so it reviews the change segment 1 resolved instead of resolving one again. It reviews the diff in a fresh worker and writes `review.md`. It fixes nothing.
+3. `/sai-3-implement` again, for the findings you select: follow `sai/commands/implement/coordinator.md` exactly as the third segment, with `{name}` as `arguments_value`, followed by `--parent-branch <branch>` when one was given, and hand it `review.md` as its only Composition report. Right after its Start step 5 has opened its new run, record the publication answer again (§ Publication answer). It applies every open fixable finding of `review.md` that carries no ` (EXCLUDED: …)` mark and marks each one it fixes. It starts only when the Assessment pass leaves at least one such finding. When it fixes a finding, it closes by storing the inherent-risk ratings block in `review.md` and committing it, as its own Close says.
 
 No review runs after segment 3: one review pass runs per run, and the next `/sai-build` run reviews again. Segments 1 and 3 create no decision records; this command creates them at its Close.
 

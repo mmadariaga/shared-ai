@@ -8,6 +8,7 @@ Runs a change's build in one invocation. It chains [`/sai-3-implement`](sai-3-im
 
 - The change name, or nothing when the project has one active change with a `tasks.md`.
 - `--publish yes|no`: answers the publication question below in advance. Any other value ends the run before anything is written.
+- `--parent-branch <branch>`: the branch the review diffs against and the scenario coverage check takes its change base against. The command forwards it to both implementation segments and to the review segment.
 
 ## In detail
 
