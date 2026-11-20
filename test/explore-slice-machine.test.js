@@ -518,21 +518,21 @@ test('auto-continue on an exhausted set rejects with NO_PENDING_SLICE', () => {
 
 test('the set-wide publication answer is recorded once, read back, and cleared with the inventory', () => {
   assert.equal(slice.initialState.publication, '');
-  assert.deepEqual(slice.project(slice.initialState).run, { publication: '' });
+  assert.deepEqual(slice.project(slice.initialState).run, { publication: '', moves: [] });
 
   const premature = slice.transition(slice.initialState, { intent: 'publication', value: 'yes' });
   assert.equal(premature.rejected, 'INVENTORY_NOT_READY');
   assert.equal(premature.state.publication, '');
 
   const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
-  assert.deepEqual(recorded.run, { publication: '' });
+  assert.deepEqual(recorded.run, { publication: '', moves: [] });
   assert.equal(slice.transition(recorded.state, { intent: 'publication', value: 'maybe' }).rejected, 'INVALID_PUBLICATION');
   assert.equal(slice.transition(recorded.state, { intent: 'publication', value: '' }).rejected, 'INVALID_PUBLICATION');
 
   const answered = slice.transition(recorded.state, { intent: 'publication', value: 'yes' });
   assert.equal(answered.rejected, undefined);
   assert.equal(answered.state.publication, 'yes');
-  assert.deepEqual(answered.run, { publication: 'yes' });
+  assert.deepEqual(answered.run, { publication: 'yes', moves: [] });
   assert.equal(answered.state.blockEmissionTurnClosed, true, 'the answer opens no route gate');
   assert.equal(answered.state.stage, 'waiting');
 
@@ -542,7 +542,7 @@ test('the set-wide publication answer is recorded once, read back, and cleared w
 
   const read = slice.transition(answered.state, { intent: 'publication' });
   assert.equal(read.rejected, undefined);
-  assert.deepEqual(read.run, { publication: 'yes' });
+  assert.deepEqual(read.run, { publication: 'yes', moves: [] });
   assert.deepEqual(read.state, answered.state);
 
   // The answer outlives route choices, a running slice, and a finished slice.
@@ -556,12 +556,207 @@ test('the set-wide publication answer is recorded once, read back, and cleared w
   // A new inventory replaces the set, and its answer with it.
   const replaced = slice.transition(state, { recordedList: ['c'] });
   assert.equal(replaced.state.publication, '');
-  assert.deepEqual(replaced.run, { publication: '' });
+  assert.deepEqual(replaced.run, { publication: '', moves: [] });
 });
 
 test('a stored state that predates the publication field reads as unanswered', () => {
   const legacy = { stage: 'waiting', set: ['a'], inventoryReady: true, active: null, done: [], mode: null, parked: {} };
-  assert.deepEqual(slice.project(legacy).run, { publication: '' });
+  assert.deepEqual(slice.project(legacy).run, { publication: '', moves: [] });
   assert.equal(slice.transition(legacy, { intent: 'publication', value: 'no' }).state.publication, 'no');
   assert.equal(slice.project({ stage: 'waiting', set: ['a'], publication: 'bogus' }).run.publication, '');
+});
+
+// ---------------------------------------------------------------------------
+// goto, amendment kinds, and re-registration
+// ---------------------------------------------------------------------------
+
+function parkedDirectBuild(names = ['a', 'b'], step = 0) {
+  const inventory = slice.transition(slice.initialState, { recordedList: names }).state;
+  let state = selectRoute(inventory, 'direct-build').state;
+  for (let i = 0; i < step; i++) state = slice.transition(state, { intent: 'complete' }).state;
+  return slice.transition(state, { intent: 'fail' }).state;
+}
+
+test('E13: a parked Direct Build cursor moves to pending and the inventory, completed slices, and publication stay', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const answered = slice.transition(inventory, { intent: 'publication', value: 'yes' }).state;
+  const done = finishDirectBuild(selectRoute(answered, 'direct-build').state);
+  const parked = slice.transition(selectRoute(done, 'direct-build').state, { intent: 'fail' }).state;
+  assert.equal(parked.parked.b.stage, 'build-implement');
+
+  const stuck = slice.transition(parked, { intent: 'route-choice' });
+  assert.equal(stuck.rejected, 'RESUMPTION_REQUIRED', 'the dead end this change removes');
+
+  const moved = slice.transition(parked, { intent: 'goto', target: 'pending', reason: 'correction', received_at: '2026-11-20T10:00:00+01:00' });
+  assert.ok(!('rejected' in moved));
+  assert.deepEqual(moved.state.parked, {});
+  assert.deepEqual(moved.state.done, ['a']);
+  assert.equal(moved.state.publication, 'yes');
+  assert.deepEqual(moved.state.set, ['a', 'b']);
+  assert.equal(moved.state.blockEmissionTurnClosed, true, 'the route selector is presented again');
+  assert.deepEqual(moved.run.moves, [{ target: 'pending', reason: 'correction', received_at: '2026-11-20T10:00:00+01:00' }]);
+
+  const reselected = selectRoute(moved.state, 'direct-build');
+  assert.equal(reselected.state.active, 'b');
+  assert.equal(reselected.state.stage, 'build-implement');
+});
+
+test('a parked Direct Build cursor moves to the first step and resumes there', () => {
+  const parked = parkedDirectBuild(['a'], 1);
+  assert.equal(parked.parked.a.stage, 'backfill');
+
+  const moved = slice.transition(parked, { intent: 'goto', target: 'build-implement', reason: 'user-request' });
+  assert.ok(!('rejected' in moved));
+  assert.deepEqual(moved.state.parked.a, { mode: 'direct-build', stage: 'build-implement' });
+  assert.equal(slice.transition(moved.state, { intent: 'resume-direct-build' }).state.stage, 'build-implement');
+});
+
+test('a running Direct Build slice rewinds to its first step, and a later step is not reachable yet', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
+  const atArchive = slice.transition(slice.transition(selectRoute(inventory, 'direct-build').state, { intent: 'complete' }).state, { intent: 'complete' }).state;
+  assert.equal(atArchive.stage, 'archive');
+
+  const later = slice.transition(atArchive, { intent: 'goto', target: 'backfill', reason: 'correction' });
+  assert.equal(later.rejected, 'GOTO_REWIND_UNSUPPORTED');
+  assert.equal(later.state.stage, 'archive');
+  assert.deepEqual(later.run.moves, []);
+
+  const first = slice.transition(atArchive, { intent: 'goto', target: 'build-implement', reason: 'correction' });
+  assert.ok(!('rejected' in first));
+  assert.equal(first.state.stage, 'build-implement');
+  assert.equal(first.state.active, 'a');
+  assert.equal(first.run.moves.length, 1);
+});
+
+test('E1: a goto toward a route start or a later step is past the ceiling and changes nothing', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
+  for (const target of ['direct-build', 'plan']) {
+    assert.equal(slice.transition(inventory, { intent: 'goto', target, reason: 'user-request' }).rejected, 'GOTO_PAST_CEILING', target);
+  }
+  // A pending slice has no route position: any step lies past the selector.
+  assert.equal(slice.transition(inventory, { intent: 'goto', target: 'build-implement', reason: 'user-request' }).rejected, 'GOTO_PAST_CEILING');
+  const running = selectRoute(inventory, 'direct-build').state;
+  assert.equal(slice.transition(running, { intent: 'goto', target: 'archive', reason: 'user-request' }).rejected, 'GOTO_PAST_CEILING');
+  assert.equal(slice.transition(running, { intent: 'goto', target: 'build-implement', reason: 'user-request' }).rejected, 'GOTO_ALREADY_AT_TARGET');
+  assert.equal(slice.transition(running, { intent: 'goto', target: 'sai-1', reason: 'user-request' }).rejected, 'GOTO_UNKNOWN_TARGET');
+  assert.equal(slice.transition(running, { intent: 'goto', target: 'crystallize', reason: 'user-request' }).rejected, 'GOTO_UNKNOWN_TARGET');
+  assert.equal(slice.transition(running, { intent: 'goto', target: 'pending', reason: 'because' }).rejected, 'GOTO_REASON_INVALID');
+  assert.equal(slice.transition(slice.initialState, { intent: 'goto', target: 'pending', reason: 'correction' }).rejected, 'INVENTORY_NOT_READY');
+});
+
+test('a running slice goes back to pending with the route gate closed', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const running = selectRoute(inventory, 'plan').state;
+  const moved = slice.transition(running, { intent: 'goto', target: 'pending', reason: 'user-request' });
+
+  assert.ok(!('rejected' in moved));
+  assert.equal(moved.state.active, null);
+  assert.equal(moved.state.mode, null);
+  assert.equal(moved.state.stage, 'waiting');
+  assert.equal(moved.state.blockEmissionTurnClosed, true);
+  assert.equal(slice.transition(moved.state, { intent: 'plan' }).rejected, 'ROUTE_CHOICE_REQUIRED');
+});
+
+test('a Plan slice rewinds to an earlier step of its own route', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
+  let state = selectRoute(inventory, 'plan').state;
+  state = slice.transition(slice.transition(state, { intent: 'complete' }).state, { intent: 'complete' }).state;
+  assert.equal(state.stage, 'implement');
+
+  const moved = slice.transition(state, { intent: 'goto', target: 'sai-2', reason: 'correction' });
+  assert.equal(moved.state.stage, 'sai-2');
+  assert.equal(moved.state.active, 'a');
+});
+
+test('E16: a goto into a completed slice is rejected unless the user explicitly asks to reopen it', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const done = finishDirectBuild(selectRoute(inventory, 'direct-build').state);
+  assert.deepEqual(done.done, ['a']);
+
+  assert.equal(slice.transition(done, { intent: 'goto', target: 'pending', reason: 'user-request', slice: 'a' }).rejected, 'SLICE_COMPLETED');
+  assert.equal(slice.transition(done, { intent: 'goto', target: 'pending', reason: 'correction', slice: 'a', reopen: true }).rejected, 'SLICE_COMPLETED');
+
+  const reopened = slice.transition(done, { intent: 'goto', target: 'pending', reason: 'user-request', slice: 'a', reopen: true });
+  assert.ok(!('rejected' in reopened));
+  assert.deepEqual(reopened.state.done, []);
+  assert.equal(reopened.state.blockEmissionTurnClosed, true);
+  assert.equal(reopened.run.moves[0].target, 'pending');
+  // The store keeps the reopened slice out of done when the stored list is merged in.
+  assert.equal(slice.shouldResetDone(reopened.state, [done]), true);
+  assert.equal(slice.shouldResetDone(done, [done]), false);
+});
+
+test('E11: a content amendment returns a running slice to pending and closes the route gate; E12: metadata keeps it', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const running = selectRoute(inventory, 'direct-build').state;
+
+  const metadata = slice.transition(running, { amend: 'a', amend_kind: 'metadata' });
+  assert.ok(!('rejected' in metadata));
+  assert.equal(metadata.state.active, 'a');
+  assert.equal(metadata.state.stage, 'build-implement');
+  assert.equal(metadata.state.blockEmissionTurnClosed, false);
+
+  const content = slice.transition(running, { amend: 'a', amend_kind: 'content' });
+  assert.ok(!('rejected' in content));
+  assert.equal(content.state.active, null);
+  assert.equal(content.state.stage, 'waiting');
+  assert.equal(content.state.blockEmissionTurnClosed, true);
+  assert.deepEqual(content.state.set, ['a', 'b']);
+
+  // Another slice amended while a slice runs leaves the running slice alone.
+  const other = slice.transition(running, { amend: 'b', amend_kind: 'content' });
+  assert.equal(other.state.active, 'a');
+  assert.equal(other.state.blockEmissionTurnClosed, false);
+});
+
+test('a parked cursor survives a metadata amendment and is dropped by a content amendment', () => {
+  const parked = parkedDirectBuild(['a'], 1);
+  const kept = slice.transition(parked, { amend: 'a', amend_kind: 'metadata' });
+  assert.deepEqual(kept.state.parked, parked.parked);
+
+  const dropped = slice.transition(parked, { amend: 'a', amend_kind: 'content' });
+  assert.deepEqual(dropped.state.parked, {});
+  assert.equal(dropped.state.blockEmissionTurnClosed, true);
+  assert.equal(slice.transition(dropped.state, { intent: 'route-choice' }).rejected, undefined);
+});
+
+test('a completed slice is never amendable', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
+  const done = finishDirectBuild(selectRoute(inventory, 'direct-build').state);
+  for (const amend_kind of ['metadata', 'content']) {
+    assert.equal(slice.transition(done, { amend: 'a', amend_kind }).rejected, 'SLICE_COMPLETED');
+  }
+});
+
+test('I6: a re-registration keeps done and parked cursors of unchanged slices and the publication of an unchanged set', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b', 'c'] }).state;
+  const answered = slice.transition(inventory, { intent: 'publication', value: 'yes' }).state;
+  const afterA = finishDirectBuild(selectRoute(answered, 'direct-build').state);
+  const parked = slice.transition(selectRoute(afterA, 'direct-build').state, { intent: 'fail' }).state;
+  assert.deepEqual(parked.done, ['a']);
+  assert.ok(parked.parked.b);
+
+  const same = slice.transition(parked, { recordedList: ['a', 'b', 'c'], unchanged: ['a', 'b', 'c'] });
+  assert.deepEqual(same.state.done, ['a']);
+  assert.deepEqual(same.state.parked, parked.parked);
+  assert.equal(same.state.publication, 'yes');
+  assert.equal(same.state.blockEmissionTurnClosed, true);
+  assert.equal(same.state.inventoryVersion, parked.inventoryVersion + 1);
+
+  const changedB = slice.transition(parked, { recordedList: ['a', 'b', 'c'], unchanged: ['a', 'c'] });
+  assert.deepEqual(changedB.state.done, ['a']);
+  assert.deepEqual(changedB.state.parked, {});
+  assert.equal(changedB.state.publication, 'yes');
+
+  const changedA = slice.transition(parked, { recordedList: ['a', 'b', 'c'], unchanged: ['b', 'c'] });
+  assert.deepEqual(changedA.state.done, []);
+  assert.deepEqual(changedA.state.parked, parked.parked);
+
+  const otherSet = slice.transition(parked, { recordedList: ['a', 'd'], unchanged: ['a'] });
+  assert.deepEqual(otherSet.state.done, ['a']);
+  assert.equal(otherSet.state.publication, '', 'the answer belongs to the set it was asked for');
+
+  const noList = slice.transition(parked, { recordedList: ['a', 'b', 'c'] });
+  assert.deepEqual(noList.state.done, []);
+  assert.deepEqual(noList.state.parked, {});
 });

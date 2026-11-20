@@ -173,6 +173,13 @@ const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 const BLOCK_STAGE_MACHINE = 'explore-idea@1';
 const BLOCK_STAGE = 'crystallize';
 
+// The route intents of `explore-slice@1`: they stay locked while any stored
+// block may be stale. `staleBlocks` is the list of stale change names in the
+// session file: an accepted backward `goto` from `crystallize` after the blocks
+// were registered lists every stored name; an accepted amendment removes its own
+// name; a block emit (re-registration) empties the list.
+const ROUTE_INTENTS = new Set(['route-choice', 'direct-build', 'plan', 'auto-continue', 'resume-direct-build']);
+
 // Reads the structured input: the input file when given, otherwise stdin. A
 // stdin failure yields ''; an input file failure is reported and changes no state.
 function readEmitInput(inputFile) {
@@ -325,9 +332,10 @@ function withWarnings(payload, warnings) {
 // entry outcomes, the apply-only authorized retry grant/history, and the
 // apply-only worker veto record/override outcomes, the `/sai-3-implement`
 // run view (identifiers and paths only), the unknown step ids of a rejected
-// step report, and the machine warnings (`warnings`, a list of identifiers such
+// step report, the absent sections and the stage to resume at of a rejected
+// `goto` (`missing`, `resume_at`), and the machine warnings (`warnings`, a list of identifiers such
 // as WORKER_HANDLE_CHANGED, which the response merges with the store warnings).
-const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run', 'unknown_ids', 'warnings'];
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run', 'unknown_ids', 'warnings', 'missing', 'resume_at'];
 
 function attachObservabilityFields(target, source) {
   if (!target || !source) return target;
@@ -607,9 +615,16 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
   }
 
   const cur = session.stateByMachine.has(targetId) ? session.stateByMachine.get(targetId) : mod.initialState;
+  const staleBlocks = targetId === READY_TO_PROPOSE_MACHINE && record && Array.isArray(record.staleBlocks) && record.staleBlocks.length > 0
+    && event && typeof event === 'object' && ROUTE_INTENTS.has(event.intent);
+  // The reception time of an accepted `goto` is the response's `received_at`.
+  const machineEvent = event && typeof event === 'object' && !Array.isArray(event) && event.intent === 'goto'
+    ? Object.assign({}, event, { received_at: receivedAt })
+    : event;
   let result = null;
   try {
-    result = mod.transition(cur, event);
+    result = mod.transition(cur, machineEvent);
+    if (staleBlocks && result && result.state) result = Object.assign({}, mod.transition(cur, {}), { rejected: 'BLOCKS_STALE' });
   } catch (err) {
     result = null;
   }
@@ -642,7 +657,14 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
   let emitWire = wire;
   let persistedState = nextState;
   try {
-    const recordExtras = typeof extras === 'function' ? extras(wire, record) : extras;
+    let recordExtras = typeof extras === 'function' ? extras(wire, record) : extras;
+    // Moving back from `crystallize` after the blocks were registered leaves
+    // every stored block stale until it is registered again or amended.
+    if (targetId === BLOCK_STAGE_MACHINE && machineEvent && machineEvent.intent === 'goto' && !wire.rejected
+      && cur && cur.stage === BLOCK_STAGE && nextState.stage !== BLOCK_STAGE
+      && record && record.blocks && typeof record.blocks === 'object' && Object.keys(record.blocks).length > 0) {
+      recordExtras = Object.assign({}, recordExtras || {}, { staleBlocks: Object.keys(record.blocks) });
+    }
     const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire, recordExtras || null);
     if (merged && merged.mergedWire) emitWire = merged.mergedWire;
     if (merged && merged.mergedState) persistedState = merged.mergedState;
@@ -981,10 +1003,16 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
     process.exitCode = 1;
     return;
   }
-  const event = { recordedList: dependencies.order };
+  const recordedBlocks = buildRecordedBlocks(detector, verdict, text);
+  // A slice whose block hash equals the stored one keeps its completion and its
+  // parked cursor through the re-registration.
+  const previousBlocks = (readSessionRecord(id).record || {}).blocks || {};
+  const unchanged = dependencies.order.filter((name) => Object.prototype.hasOwnProperty.call(previousBlocks, name)
+    && previousBlocks[name] && previousBlocks[name].hash === recordedBlocks[name].hash);
+  const event = { recordedList: dependencies.order, unchanged };
   // The inventory and the blocks land in one session-file write; when it fails
   // the response is the store failure and the earlier inventory and blocks stay.
-  const outcome = runEmit(id, machineIdArg, () => ({ event }), { blocks: buildRecordedBlocks(detector, verdict, text) });
+  const outcome = runEmit(id, machineIdArg, () => ({ event }), { blocks: recordedBlocks, staleBlocks: [] });
   writeResponse(Object.assign({ validation }, outcome.payload));
   process.exitCode = outcome.code;
 }
@@ -1014,7 +1042,7 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
 
   const recorded = (readSessionRecord(id).record || {}).blocks || {};
   if (!Object.prototype.hasOwnProperty.call(recorded, amendName)) {
-    const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
+    const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName, amend_kind: 'content' } }));
     writeResponse(Object.assign({ validation }, outcome.payload));
     process.exitCode = outcome.code;
     return;
@@ -1048,8 +1076,10 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
   // An accepted amendment replaces only that slice's entry, in the same
   // session-file write as the machine outcome; a rejected one stores nothing.
   const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
-  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }), (wire, current) => (wire.rejected ? null : { blocks: Object.assign({}, (current && current.blocks) || {}, { [amendName]: entry }) }));
-  writeResponse(Object.assign({ validation }, outcome.payload));
+  // The field-by-field comparison decides whether the route authorization stays.
+  const amendKind = detector.compareBlocks(recorded[amendName].text, detector.extractBlockTexts(text)[0]).amend_kind;
+  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName, amend_kind: amendKind } }), (wire, current) => (wire.rejected ? null : { blocks: Object.assign({}, (current && current.blocks) || {}, { [amendName]: entry }), staleBlocks: ((current && Array.isArray(current.staleBlocks)) ? current.staleBlocks : []).filter((name) => name !== amendName) }));
+  writeResponse(Object.assign({ validation, amend_kind: amendKind }, outcome.payload));
   process.exitCode = outcome.code;
 }
 

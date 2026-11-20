@@ -218,24 +218,148 @@ test('caller-side next-step recognition lives in common.md and slice.md points a
   assert.match(slice, /stage-progression rule in `common\.md`/);
 });
 
-test('issue-shortcut records the issue lists and moves explore-change straight to crystallize', () => {
-  const event = { intent: 'issue-shortcut', edgeCaseList: ['E1 a', 'E4 b'], implementationDetailsList: ['I1 x', 'I3 y'] };
-  const shortcut = idea.transition(idea.initialState, event);
+const SEED = {
+  sections: {
+    'explore-change': { state: 'agreed', source: 'issue' },
+    'review-edge-cases': { state: 'agreed', source: 'issue', list: ['E1', 'E4'] },
+    'implementation-details': { state: 'agreed', source: 'issue', list: [] },
+  },
+};
 
-  assert.equal(shortcut.state.stage, 'crystallize');
-  assert.deepEqual(shortcut.state.edgeCaseList, ['E1 a', 'E4 b']);
-  assert.deepEqual(shortcut.state.implementationDetailsList, ['I1 x', 'I3 y']);
-  assert.equal(shortcut.state.pocLane, false);
-  assert.equal(shortcut.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
-  assert.ok(!('rejected' in shortcut));
+test('section seeding records state, source, and the issue lists without moving the stage', () => {
+  const seeded = idea.transition(idea.initialState, SEED);
+
+  assert.ok(!('rejected' in seeded));
+  assert.equal(seeded.state.stage, 'explore-change');
+  assert.deepEqual(seeded.state.edgeCaseList, ['E1', 'E4']);
+  assert.deepEqual(seeded.state.implementationDetailsList, []);
+  assert.deepEqual(seeded.state.sections['explore-change'], { state: 'agreed', source: 'issue' });
+  assert.deepEqual(seeded.state.sections['implementation-details'], { state: 'agreed', source: 'issue' });
 });
 
-test('issue-shortcut accepts an empty implementation list as a confirmed - None (E8)', () => {
-  const shortcut = idea.transition(idea.initialState, { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [] });
+test('an open seeded section keeps its list as the starting proposal', () => {
+  const seeded = idea.transition(idea.initialState, { sections: { 'review-edge-cases': { state: 'open', source: 'issue', list: ['E1'] } } });
 
-  assert.ok(!('rejected' in shortcut));
-  assert.equal(shortcut.state.stage, 'crystallize');
-  assert.deepEqual(shortcut.state.implementationDetailsList, []);
+  assert.equal(seeded.state.sections['review-edge-cases'].state, 'open');
+  assert.deepEqual(seeded.state.edgeCaseList, ['E1']);
+});
+
+test('malformed section events are rejected and change nothing', () => {
+  for (const bad of [
+    { sections: { crystallize: { state: 'agreed', source: 'issue' } } },
+    { sections: { 'review-edge-cases': { state: 'done', source: 'issue' } } },
+    { sections: { 'review-edge-cases': { state: 'agreed', source: 'chat' } } },
+    { sections: { 'review-edge-cases': { state: 'agreed' } } },
+    { sections: { 'review-edge-cases': { state: 'open', list: 'E1' } } },
+    { sections: { 'explore-change': { state: 'open', list: ['x'] } } },
+    { sections: { 'review-edge-cases': { state: 'open', list: ['E1 free text is not an identifier'] } } },
+    { sections: [] },
+  ]) {
+    const rejected = idea.transition(idea.initialState, bad);
+    assert.equal(rejected.rejected, 'SECTIONS_INVALID', JSON.stringify(bad));
+    assert.deepEqual(rejected.state, idea.project(idea.initialState).snapshot.state);
+  }
+});
+
+test('goto moves forward to crystallize once every section is agreed, and records the move', () => {
+  const seeded = idea.transition(idea.initialState, SEED).state;
+  const moved = idea.transition(seeded, { intent: 'goto', target: 'crystallize', reason: 'user-request', received_at: '2026-11-20T10:00:00+01:00' });
+
+  assert.ok(!('rejected' in moved));
+  assert.equal(moved.state.stage, 'crystallize');
+  assert.equal(moved.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+  assert.deepEqual(moved.run.moves, [{ target: 'crystallize', reason: 'user-request', received_at: '2026-11-20T10:00:00+01:00' }]);
+  assert.deepEqual(idea.project(moved.state).run, moved.run);
+});
+
+test('E2: a forward goto whose preconditions fail names every absent section and changes nothing', () => {
+  const seeded = idea.transition(idea.initialState, { sections: { 'explore-change': { state: 'agreed', source: 'issue' } } }).state;
+  const rejected = idea.transition(seeded, { intent: 'goto', target: 'crystallize', reason: 'user-request' });
+
+  assert.equal(rejected.rejected, 'MISSING_PRECONDITIONS');
+  assert.deepEqual(rejected.missing, ['review-edge-cases', 'implementation-details']);
+  assert.equal(rejected.resume_at, 'review-edge-cases');
+  assert.equal(rejected.state.stage, 'explore-change');
+  assert.deepEqual(rejected.run.moves, [], 'a rejected goto records nothing');
+  assert.deepEqual(rejected.state.sections, seeded.sections);
+
+  const fresh = idea.transition(idea.initialState, { intent: 'goto', target: 'implementation-details', reason: 'correction' });
+  assert.deepEqual(fresh.missing, ['explore-change', 'review-edge-cases']);
+});
+
+test('E1: a goto toward a route start or route step is past the ceiling; unknown targets and reasons are rejected', () => {
+  for (const target of ['direct-build', 'plan', 'build-implement', 'archive', 'sai-1', 'pending']) {
+    const past = idea.transition(idea.initialState, { intent: 'goto', target, reason: 'user-request' });
+    assert.equal(past.rejected, 'GOTO_PAST_CEILING', target);
+  }
+  assert.equal(idea.transition(idea.initialState, { intent: 'goto', target: 'nowhere', reason: 'user-request' }).rejected, 'GOTO_UNKNOWN_TARGET');
+  assert.equal(idea.transition(idea.initialState, { intent: 'goto', target: 'poc-lane', reason: 'user-request' }).rejected, 'GOTO_UNKNOWN_TARGET');
+  for (const reason of [undefined, 'because', '']) {
+    assert.equal(idea.transition(idea.initialState, { intent: 'goto', target: 'crystallize', reason }).rejected, 'GOTO_REASON_INVALID');
+  }
+  const here = idea.transition(idea.initialState, { intent: 'goto', target: 'explore-change', reason: 'correction' });
+  assert.equal(here.rejected, 'GOTO_ALREADY_AT_TARGET');
+});
+
+test('E3: a backward goto is always accepted and later sections keep their agreed state', () => {
+  const seeded = idea.transition(idea.initialState, SEED).state;
+  const atCrystallize = idea.transition(seeded, { intent: 'goto', target: 'crystallize', reason: 'user-request' }).state;
+  const back = idea.transition(atCrystallize, { intent: 'goto', target: 'explore-change', reason: 'correction' });
+
+  assert.ok(!('rejected' in back));
+  assert.equal(back.state.stage, 'explore-change');
+  assert.deepEqual(back.state.sections, seeded.sections);
+  assert.deepEqual(back.state.edgeCaseList, ['E1', 'E4']);
+  assert.equal(back.run.moves.length, 2);
+
+  // The next forward move skips every stage whose section is still agreed.
+  const forward = idea.transition(back.state, { intent: 'next-step' });
+  assert.equal(forward.state.stage, 'crystallize');
+});
+
+test('E4: a rewound What/Why change reopens every later section and keeps its content', () => {
+  const seeded = idea.transition(idea.initialState, SEED).state;
+  const atCrystallize = idea.transition(seeded, { intent: 'goto', target: 'crystallize', reason: 'user-request' }).state;
+  const back = idea.transition(atCrystallize, { intent: 'goto', target: 'explore-change', reason: 'correction' }).state;
+
+  const same = idea.transition(back, { recordedList: [] });
+  assert.equal(same.state.sections['review-edge-cases'].state, 'agreed', 'an unchanged list reopens nothing');
+
+  const changed = idea.transition(back, { recordedList: ['a new idea'] });
+  assert.equal(changed.state.sections['explore-change'].state, 'open');
+  assert.equal(changed.state.sections['review-edge-cases'].state, 'open');
+  assert.equal(changed.state.sections['implementation-details'].state, 'open');
+  assert.deepEqual(changed.state.edgeCaseList, ['E1', 'E4'], 'content stays as the starting proposal');
+
+  const next = idea.transition(changed.state, { intent: 'next-step' });
+  assert.equal(next.state.stage, 'review-edge-cases', 'the reopened stage is discussed again');
+  assert.equal(next.state.sections['explore-change'].state, 'agreed');
+  assert.equal(next.state.sections['explore-change'].source, 'conversation');
+});
+
+test('E8: marking one section open reopens only that stage on the next forward move', () => {
+  const seeded = idea.transition(idea.initialState, SEED).state;
+  const marked = idea.transition(seeded, { sections: { 'implementation-details': { state: 'open' } } }).state;
+  const forward = idea.transition(marked, { intent: 'next-step' });
+
+  assert.equal(forward.state.stage, 'implementation-details');
+  assert.equal(marked.sections['review-edge-cases'].state, 'agreed');
+});
+
+test('E5: a section agrees only through the user confirmation of next-step, so a proposed list stays open', () => {
+  const recorded = idea.transition(idea.initialState, { recordedList: ['a'] }).state;
+  assert.equal(recorded.sections['explore-change'].state, 'open');
+  assert.equal(idea.transition(recorded, { intent: 'goto', target: 'review-edge-cases', reason: 'user-request' }).rejected, 'MISSING_PRECONDITIONS');
+
+  const confirmed = idea.transition(recorded, { intent: 'next-step' }).state;
+  assert.deepEqual(confirmed.sections['explore-change'], { state: 'agreed', source: 'conversation' });
+});
+
+test('the retired issue-shortcut intent is an unknown intent', () => {
+  const retired = idea.transition(idea.initialState, { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [] });
+
+  assert.equal(retired.rejected, 'READINESS_IS_NOT_INTENT');
+  assert.equal(retired.state.stage, 'explore-change');
 });
 
 test('an empty implementation-details list advances only on next-step (E3)', () => {
@@ -254,21 +378,3 @@ test('an empty implementation-details list advances only on next-step (E3)', () 
   assert.deepEqual(confirmed.state.implementationDetailsList, []);
 });
 
-test('issue-shortcut is rejected outside explore-change and with malformed lists', () => {
-  const event = { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1 x'] };
-  for (const stage of ['review-edge-cases', 'implementation-details', 'crystallize', 'poc-lane']) {
-    const rejected = idea.transition({ stage, ideaList: [], edgeCaseList: null, implementationDetailsList: null }, event);
-    assert.equal(rejected.rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE', stage);
-    assert.equal(rejected.state.stage, stage);
-  }
-  for (const bad of [
-    { intent: 'issue-shortcut' },
-    { intent: 'issue-shortcut', edgeCaseList: 'E1', implementationDetailsList: ['I1 x'] },
-    { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [1] },
-  ]) {
-    const rejected = idea.transition(idea.initialState, bad);
-    assert.equal(rejected.rejected, 'SHORTCUT_LISTS_INVALID');
-    assert.equal(rejected.state.stage, 'explore-change');
-    assert.equal(rejected.state.implementationDetailsList, null);
-  }
-});

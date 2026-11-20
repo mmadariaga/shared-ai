@@ -180,16 +180,16 @@ Under the crystallization language gate, the `**Out of scope Implementation Deta
 
 ### Requirement: A block derived from an external source keeps the source's language
 
-The first level of the crystallization language gate SHALL be the source language: a block derived from an external source, such as an issue taken through the issue shortcut, SHALL keep the source's language, SHALL ask no language question, and SHALL translate nothing, so the issue's `E`/`I` statements and prose reach the block as written. `explore.readyToProposeLanguage` SHALL NOT apply to such a block: when it returns a `value`, the agent SHALL print exactly one line stating that the setting does not apply and the block keeps the issue's language, instead of the `Project setting` line. The project-setting and English levels and the gate's question SHALL NOT run for such a block.
+The first level of the crystallization language gate SHALL be the source language: a block derived from an external source, such as an issue seeded by the issue intake whose sections all stayed agreed with the source `issue`, SHALL keep the source's language, SHALL ask no language question, and SHALL translate nothing, so the issue's `E`/`I` statements and prose reach the block as written. `explore.readyToProposeLanguage` SHALL NOT apply to such a block: when it returns a `value`, the agent SHALL print exactly one line stating that the setting does not apply and the block keeps the issue's language, instead of the `Project setting` line. The project-setting and English levels and the gate's question SHALL NOT run for such a block.
 
 #### Scenario: Shortcut block keeps the issue language
 
-- **WHEN** an issue written in Spanish reaches `Crystallize` through the shortcut in an English conversation
+- **WHEN** an issue written in Spanish, with every section seeded agreed from the issue, reaches `Crystallize` in an English conversation
 - **THEN** the block is emitted in Spanish with no language question and no translation
 
 #### Scenario: Project setting does not apply on the shortcut
 
-- **WHEN** `explore.readyToProposeLanguage` is set and the block derives from an issue through the shortcut
+- **WHEN** `explore.readyToProposeLanguage` is set and the block derives from an issue whose sections all stayed agreed with the source `issue`
 - **THEN** the agent prints one line stating that the setting does not apply and the block keeps the issue's language
 
 ### Requirement: Project setting answers the crystallization language gate before the English skip

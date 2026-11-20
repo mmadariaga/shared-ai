@@ -44,19 +44,19 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 
 ### Requirement: Stages advance only on explicit user intent
 
-The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token) or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `next-step` SHALL be the only token with a defined stage-advancement action: the `crystallize` token and natural-language requests to crystallize, to print the paste-ready block, to create a proposal, or to move to a named stage SHALL carry no prescribed advancement response, and the agent interprets them in context. The `shortcut` answer to the issue intake's shortcut question SHALL be the one other explicit advancement: it moves the progression from `Explore change` directly to `Crystallize` with the issue's agreed lists. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
+The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token) or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `next-step` SHALL be the only token with a defined stage-advancement action: the `crystallize` token and natural-language requests to crystallize, to print the paste-ready block, to create a proposal, or to move to a named stage SHALL carry no prescribed advancement response, and the agent interprets them in context. The stage order SHALL be a default path, not a gate: a `goto` on `explore-idea@1` SHALL be the one other explicit movement, moving backward at any time and forward only to a stage whose earlier sections are all `agreed` in an explicit source (a work issue, or a list the user wrote or confirmed in the conversation), never past `Crystallize`; a `goto` emitted after the user answers `work` on an issue whose sections are all agreed moves the progression from `Explore change` directly to `Crystallize`. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
 
 At Review edge cases and Implementation details, agreement to a user-confirmed E/I list SHALL be accepted only when the latest complete displayed list, with current identifiers, incorporates every semantic change agreed since its presentation and includes the complete confirmation notice from **Display and question** in `sai/commands/explore/list-writing.md`. Otherwise the shared review, display, and question sequence SHALL run and wait for another confirmation; the earlier answer SHALL neither record agreement nor advance. The automatic empty-E recording remains exempt, while an I list containing `- None` remains subject to this check.
 
 #### Scenario: The next token advances the progression
 
 - **WHEN** the user sends the bare token `next-step` or expresses advancement as the turn's dominant intent, with a current complete display and confirmation notice required only when this turn confirms a user-confirmed E/I list at Review edge cases or Implementation details
-- **THEN** the progression advances to the following stage and the TODO re-renders with it `in_progress`
+- **THEN** the progression advances to the following stage whose section is not already agreed and the TODO re-renders with it `in_progress`
 
 #### Scenario: Natural language names a stage
 
 - **WHEN** the user requests a stage or crystallization in natural language, such as asking to move on to implementation details or to crystallize the idea, without the `next-step` token or a list confirmation
-- **THEN** no fixed advancement response is prescribed and the agent interprets the request in context
+- **THEN** no fixed advancement response is prescribed and the agent interprets the request in context, moving only through a `goto` whose preconditions hold
 
 #### Scenario: Semantic confirmation advances the stage in the same turn
 
@@ -80,8 +80,13 @@ At Review edge cases and Implementation details, agreement to a user-confirmed E
 
 #### Scenario: The shortcut answer enters Crystallize directly
 
-- **WHEN** the user answers the issue intake's shortcut question with `shortcut` at `Explore change`
-- **THEN** the progression moves directly to `Crystallize` with the issue's lists recorded as agreed
+- **WHEN** the user answers `work` on an issue whose sections were all seeded agreed and Explore emits `goto` to `crystallize` at `Explore change`
+- **THEN** the progression moves directly to `Crystallize` with the issue's lists kept as agreed
+
+#### Scenario: Going back keeps agreed sections
+
+- **WHEN** the user asks to return to `Review edge cases` from `Crystallize`
+- **THEN** a backward `goto` is accepted, every section keeps its state, and the next forward move skips the stages whose sections are still agreed
 
 ### Requirement: The edge-case review is the second stage and keeps its mandatory gate
 

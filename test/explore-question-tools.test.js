@@ -25,8 +25,7 @@ function assertPicker(text) {
 
 const definitions = [
   ['issue-intake.md', '**Work question.**'],
-  ['issue-intake.md', 'Ask it only for an issue with the Ready to Propose form'],
-  ['issue-intake.md', 'Ask it after `clean` or `declared-clean`'],
+  ['issue-intake.md', 'Ask it once `work` is answered and at least one section was seeded `agreed`'],
   ['open-decisions.md', '**Questions.**'],
   ['artifact-review-language-gate.md', '**Non-English gate**:'],
   ['crystallization-language-gates.md', "The gate's machinery"],
@@ -66,7 +65,7 @@ test('pending Direct Build intervention names both tools and the shared rule in 
 
 test('a neighboring question cannot satisfy a missing local requirement', () => {
   const text = read('issue-intake.md');
-  const marker = 'Ask it only for an issue with the Ready to Propose form';
+  const marker = 'Ask it once `work` is answered and at least one section was seeded `agreed`';
   const local = definition(text, marker);
   for (const required of ['`AskUserQuestion`', '`question`', '`sai/policies/remember.md`']) {
     const mutated = text.replace(local, local.replace(required, 'removed'));

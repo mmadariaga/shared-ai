@@ -8,7 +8,7 @@ TBD
 
 ### Requirement: Crystallization waits for edge-case agreement
 
-`sai-explore` SHALL NOT emit a `Ready to Propose` block until the current stable idea's edge-case review has reached agreement. A non-empty proposed list reaches agreement only through the user's semantic agreement. An empty in-scope list reaches agreement through the deterministic empty-set rule of `explore-edge-case-review`: emitting exactly `- None` and recording the empty list is an explicit content-based agreement form that requires no confirmation response. On the issue shortcut, the issue's literal `E` and `I` lists, recorded through the `issue-shortcut` intent after the user chose the shortcut, SHALL count as the agreed edge-case and implementation-details lists. A request to crystallize made before the review has completed SHALL NOT be retained as a pending request and SHALL NOT emit a block; crystallization starts only when the progression enters the `Crystallize` stage after the agreed edge-case and implementation-details lists. The mandatory edge-case gate SHALL remain in force when `--fast-track` is passed: `/sai-explore` strips the token silently, so it SHALL NOT auto-approve, skip, or weaken this gate or any language gate.
+`sai-explore` SHALL NOT emit a `Ready to Propose` block until the current stable idea's edge-case review has reached agreement. A non-empty proposed list reaches agreement only through the user's semantic agreement. An empty in-scope list reaches agreement through the deterministic empty-set rule of `explore-edge-case-review`: emitting exactly `- None` and recording the empty list is an explicit content-based agreement form that requires no confirmation response. For a worked issue, an edge-case or implementation-details section the issue holds explicitly, seeded `agreed` with the source `issue` after the user answered `work` and kept agreed by the drift check, SHALL count as the agreed list. A request to crystallize made before the review has completed SHALL NOT be retained as a pending request and SHALL NOT emit a block; crystallization starts only when the progression enters the `Crystallize` stage after the agreed edge-case and implementation-details lists. The mandatory edge-case gate SHALL remain in force when `--fast-track` is passed: `/sai-explore` strips the token silently, so it SHALL NOT auto-approve, skip, or weaken this gate or any language gate.
 
 #### Scenario: Semantic agreement completes a non-empty edge-case stage
 
@@ -36,7 +36,7 @@ TBD
 
 #### Scenario: The issue's lists satisfy the gate on the shortcut
 
-- **WHEN** the user chooses the issue shortcut and the `issue-shortcut` intent records the issue's `E` and `I` lists
+- **WHEN** a worked issue's `E` and `I` sections were seeded `agreed` with the source `issue` and stayed agreed through the drift check
 - **THEN** those lists count as agreed and crystallization may start in `Crystallize`
 
 ### Requirement: Agreement is recognized by semantic intent or the deterministic empty-set rule

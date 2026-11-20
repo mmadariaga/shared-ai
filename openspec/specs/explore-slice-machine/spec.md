@@ -7,7 +7,7 @@ TBD - created by archiving change explore-slice-machine. Update Purpose after ar
 
 ### Requirement: Combined slice inventory and Direct Build TODO
 
-The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory readiness (`inventoryReady`, `set`, `active`, `done`), inventory version, block-emission closure, parked steps, and Plan / Direct Build TODO in CLI-owned state. A successful `recordedList` event SHALL replace `set`, mark the new inventory ready, increment its version, clear `done`, discard every parked step, and preserve a running route cursor. When no slice is active, it SHALL return `next.follow: sai/commands/explore/steps/route-selector.md` so the selector can deliver its optional backlog and branch actions together with the native picker. The selector SHALL follow its optional-action completion gate before presenting that picker; action completion SHALL remain conversation state rather than a new machine field or pointer gate. `blockEmissionTurnClosed` SHALL remain true until the coordinator receives one valid picker answer and emits `route-choice`; Plan and Direct Build intents SHALL reject while that gate is true. Inventory, active, done, parked steps, mode, and the existing control fields SHALL not appear on the wire.
+The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory readiness (`inventoryReady`, `set`, `active`, `done`), inventory version, block-emission closure, parked steps, and Plan / Direct Build TODO in CLI-owned state. A successful `recordedList` event SHALL replace `set`, mark the new inventory ready, increment its version, and preserve a running route cursor. It SHALL keep in `done`, and keep the parked step of, only the slices the event names in `unchanged` (the names whose stored block hash equals the new one, computed by the CLI), clearing every other completion and discarding every other parked step; an event without `unchanged` keeps none. It SHALL keep the publication answer when the set of change names is unchanged and clear it otherwise. When no slice is active, it SHALL return `next.follow: sai/commands/explore/steps/route-selector.md` so the selector can deliver its optional backlog and branch actions together with the native picker. The selector SHALL follow its optional-action completion gate before presenting that picker; action completion SHALL remain conversation state rather than a new machine field or pointer gate. `blockEmissionTurnClosed` SHALL remain true until the coordinator receives one valid picker answer and emits `route-choice`; Plan and Direct Build intents SHALL reject while that gate is true. Inventory, active, done, parked steps, mode, and the existing control fields SHALL not appear on the wire.
 
 #### Scenario: Recording inventory does not move the cursor
 
@@ -16,17 +16,22 @@ The store CLI tool SHALL host `explore-slice@1` as the post-crystallization mach
 
 #### Scenario: Re-crystallization discards parked steps
 
-- **WHEN** the caller emits `recordedList` while a slice is parked on `sai-2`
-- **THEN** no parked step remains, the new inventory starts in waiting with the selector pointer available when no route is active, optional actions follow the new set's completion gate, and a later valid picker answer applies only to the first pending slice
+- **WHEN** the caller emits `recordedList` while a slice whose block changed is parked on `sai-2`
+- **THEN** that parked step no longer remains, the new inventory starts in waiting with the selector pointer available when no route is active, optional actions follow the new set's completion gate, and a later valid picker answer applies only to the first pending slice
+
+#### Scenario: Unchanged slices keep completion and parked cursor
+
+- **WHEN** the caller re-registers the same change names and one completed slice and one parked slice have unchanged block hashes
+- **THEN** the completed slice stays done, the parked slice keeps its cursor, and the publication answer is kept
 
 ### Requirement: Direct Build cursor travels in stage
 
-Selecting Direct Build SHALL require a complete inventory and a later `route-choice` activation. The machine SHALL set active to the first pending inventory name, set mode to direct-build, and set stage to build-implement. Completing each route item SHALL emit intent complete and advance stage build-implement to backfill to archive. The wire SHALL keep stage as the cursor and SHALL not add response fields beyond stage, next, rejected, and warnings.
+Selecting Direct Build SHALL require a complete inventory and a later `route-choice` activation. The machine SHALL set active to the first pending inventory name, set mode to direct-build, and set stage to build-implement. Completing each route item SHALL emit intent complete and advance stage build-implement to backfill to archive. The wire SHALL keep stage as the cursor and SHALL not add response fields beyond stage, next, rejected, warnings, the identifier-only `run` view (`publication` and the accepted `goto` `moves`), and, on an amendment response, `amend_kind`.
 
 #### Scenario: Direct Build walks build-implement then backfill then archive
 
 - **WHEN** the caller emits `direct-build` after route-choice activation and then two complete intents against explore-slice
-- **THEN** stage is build-implement, then backfill, then archive, and each response stays pointer-only plus optional rejected and warnings
+- **THEN** stage is build-implement, then backfill, then archive, and each response stays pointer-only plus the identifier-only `run` view and optional rejected and warnings
 
 #### Scenario: Direct Build starts first pending without pick
 
@@ -167,7 +172,7 @@ A `complete` intent while Plan is at `implement` SHALL reject with `READINESS_IS
 
 ### Requirement: Slice inventory is derived from validated Ready to Propose blocks
 
-The explore crystallization close SHALL record the `explore-slice@1` inventory only through the block emit, which derives the `recordedList` from the `**Change name**` values extracted from the validated block set, in display order. The close SHALL never compose a `recordedList` by hand. The derived event SHALL keep the existing `recordedList` semantics: it replaces `set` atomically, preserves a running cursor, and discards parked steps, and a later block emit replaces the inventory and the pending route choice. When a slice is active, the block emit SHALL return that slice's pointer rather than the route-selector pointer.
+The explore crystallization close SHALL record the `explore-slice@1` inventory only through the block emit, which derives the `recordedList` from the `**Change name**` values extracted from the validated block set, in display order. The close SHALL never compose a `recordedList` by hand. The derived event SHALL keep the existing `recordedList` semantics: it replaces `set` atomically, preserves a running cursor, keeps the completion and parked cursor of every slice whose block hash is unchanged and discards the other parked steps, and a later block emit replaces the inventory and the pending route choice. The block emit SHALL hand the machine the names whose stored hash equals the new one as `unchanged`. When a slice is active, the block emit SHALL return that slice's pointer rather than the route-selector pointer.
 
 #### Scenario: Multi-slice set records names in display order
 
@@ -177,7 +182,7 @@ The explore crystallization close SHALL record the `explore-slice@1` inventory o
 #### Scenario: Later block emit replaces the inventory
 
 - **WHEN** a second valid block emit arrives in the same session
-- **THEN** its names replace the earlier inventory and the pending route choice
+- **THEN** its names replace the earlier inventory and the pending route choice, and only slices whose block hash is unchanged keep their completion and parked cursor
 
 #### Scenario: Active slice keeps its pointer
 
@@ -212,3 +217,41 @@ With no active slice, `resume-direct-build` SHALL resume only when the first pen
 
 - **WHEN** a Direct Build slice was parked in an earlier `/sai-explore` invocation and the user runs `/sai-explore` again in the same chat
 - **THEN** the invocation reset of `explore-slice@1` discards the parked cursor, and `resume-direct-build` in the new invocation rejects `NO_PENDING_DIRECT_BUILD` without resuming that slice
+
+### Requirement: Slice goto moves a slice back without passing the route selector
+
+`explore-slice@1` SHALL accept `goto` with a `target`, a required `reason` of `user-request` or `correction`, an optional `slice` (default: the active slice, else the first pending slice), and an optional `reopen`. The target `pending` SHALL discard the slice's parked cursor, release it when it is running, and close the route gate so the route selector is presented again, keeping the inventory, the other slices' state, the completed slices, and the publication answer. A step target SHALL rewind a running or parked slice to an earlier step of its own route; a Direct Build slice SHALL reach only its first step (`GOTO_REWIND_UNSUPPORTED` otherwise), and a Plan slice any earlier step. A route start, a later step, or a step target for a pending slice with no cursor SHALL answer `GOTO_PAST_CEILING`. A completed slice SHALL answer `SLICE_COMPLETED` unless `reopen` is true with reason `user-request` and target `pending`, in which case it SHALL leave `done` and return to pending. A missing or other reason SHALL answer `GOTO_REASON_INVALID`, and a goto before inventory `INVENTORY_NOT_READY`. A rejection SHALL change nothing and record nothing.
+
+#### Scenario: Parked Direct Build cursor moves to pending
+
+- **WHEN** a Direct Build slice parked at `backfill` receives `goto` with target `pending`
+- **THEN** its parked cursor is discarded, the route gate closes, and the inventory, completed slices, and publication answer stay
+
+#### Scenario: Parked Direct Build cursor moves to the first step
+
+- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `build-implement`
+- **THEN** its parked cursor becomes `build-implement`
+
+#### Scenario: Direct Build rewind to a later step is unsupported
+
+- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `backfill`
+- **THEN** the machine answers `GOTO_REWIND_UNSUPPORTED` and nothing changes
+
+#### Scenario: Completed slice needs an explicit reopen
+
+- **WHEN** a completed slice receives `goto` without `reopen`
+- **THEN** the machine answers `SLICE_COMPLETED`, and with `reopen=true`, reason `user-request`, and target `pending` the slice leaves `done` and is pending again
+
+### Requirement: Stale blocks lock the route intents
+
+When an accepted backward `goto` of `explore-idea@1` leaves `crystallize` after blocks were registered, the CLI SHALL list every stored change name in a `staleBlocks` list of the session file. While any name is listed, the route intents of `explore-slice@1` (`route-choice`, `direct-build`, `plan`, `auto-continue`, `resume-direct-build`) SHALL answer `rejected: "BLOCKS_STALE"` and change nothing. An accepted amendment SHALL remove only its own name, and a block emit (re-registration) SHALL empty the list.
+
+#### Scenario: Backward move after crystallization locks routes
+
+- **WHEN** blocks were registered and `explore-idea@1` accepts a `goto` from `crystallize` to `review-edge-cases`
+- **THEN** a later `route-choice` answers `BLOCKS_STALE` and the slice machine is unchanged
+
+#### Scenario: Amending every stale block unlocks routes
+
+- **WHEN** every stored block of the stale list has been amended, or the set has been registered again
+- **THEN** route intents are evaluated as usual

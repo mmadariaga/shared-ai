@@ -40,12 +40,34 @@ const CONDITIONAL_ENTRIES = Object.freeze({
   },
 });
 
-// `issue-shortcut` is the one intent that reaches `crystallize` without the
-// intermediate stages. It is valid only at `explore-change` and carries the
-// issue's already agreed `E`/`I` lists, which it records as the two agreed
-// lists. An empty implementation list is a valid agreed `- None`: the shortcut
-// question shows it and accepting the shortcut is the user's confirmation.
-const SHORTCUT_INTENT = 'issue-shortcut';
+// The stage order is a default path, not a gate: the machine guards what each
+// stage requires. A section is the data a stage produces, with a state
+// (`agreed` or `open`) and the source that holds it (`issue` or
+// `conversation`). Free text never enters the store: a section records its
+// state and source next to the identifier lists.
+const SECTION_STAGES = Object.freeze(['explore-change', 'review-edge-cases', 'implementation-details']);
+const SECTION_STATES = Object.freeze(['agreed', 'open']);
+const SECTION_SOURCES = Object.freeze(['issue', 'conversation']);
+
+// The per-stage preconditions, as data: the sections that must be `agreed` to
+// be at a stage. `goto` checks them on a forward move; a backward move needs
+// none.
+const PRECONDITIONS = Object.freeze({
+  'explore-change': Object.freeze([]),
+  'review-edge-cases': Object.freeze(['explore-change']),
+  'implementation-details': Object.freeze(['explore-change', 'review-edge-cases']),
+  crystallize: Object.freeze(['explore-change', 'review-edge-cases', 'implementation-details']),
+});
+
+// The store keeps identifiers only: a recorded list holds list ids such as `E1`, never item text.
+const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+
+const GOTO_INTENT = 'goto';
+const GOTO_REASONS = Object.freeze(['user-request', 'correction']);
+
+// Targets that belong to `explore-slice@1`: a route start or a route step lies
+// past the route selector, which no forward move crosses.
+const PAST_CEILING_TARGETS = Object.freeze(['direct-build', 'plan', 'build-implement', 'backfill', 'archive', 'sai-1', 'sai-2', 'implement', 'pending', 'waiting']);
 
 const initialState = Object.freeze({
   stage: 'explore-change',
@@ -54,6 +76,12 @@ const initialState = Object.freeze({
   edgeCaseList: null,
   implementationDetailsList: null,
   pocLane: false,
+  sections: Object.freeze({
+    'explore-change': Object.freeze({ state: 'open', source: null }),
+    'review-edge-cases': Object.freeze({ state: 'open', source: null }),
+    'implementation-details': Object.freeze({ state: 'open', source: null }),
+  }),
+  moves: Object.freeze([]),
 });
 
 // Each stage's own recorded list. A recordedList event records into the list
@@ -64,6 +92,28 @@ const STAGE_LISTS = Object.freeze({
   'review-edge-cases': 'edgeCaseList',
   'implementation-details': 'implementationDetailsList',
 });
+
+function cloneSections(src) {
+  const sections = {};
+  const raw = src && typeof src === 'object' && !Array.isArray(src) ? src : {};
+  for (const stage of SECTION_STAGES) {
+    const entry = raw[stage] && typeof raw[stage] === 'object' ? raw[stage] : {};
+    sections[stage] = {
+      state: SECTION_STATES.includes(entry.state) ? entry.state : 'open',
+      source: SECTION_SOURCES.includes(entry.source) ? entry.source : null,
+    };
+  }
+  return sections;
+}
+
+// Accepted moves, oldest first. Identifiers only: the target, its reason, and
+// the time the CLI received the event.
+function cloneMoves(src) {
+  if (!Array.isArray(src)) return [];
+  return src
+    .filter((move) => move && typeof move === 'object' && typeof move.target === 'string' && GOTO_REASONS.includes(move.reason))
+    .map((move) => ({ target: move.target, reason: move.reason, received_at: typeof move.received_at === 'string' ? move.received_at : null }));
+}
 
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
@@ -76,7 +126,22 @@ function cloneState(state) {
   // True once the conditional POC stage has been entered for this idea, so the
   // painted stage TODO keeps its fifth entry after the lane closes.
   const pocLane = src.pocLane === true;
-  return { stage, ideaList, candidateList, edgeCaseList, implementationDetailsList, pocLane };
+  const sections = cloneSections(src.sections);
+  const moves = cloneMoves(src.moves);
+  return { stage, ideaList, candidateList, edgeCaseList, implementationDetailsList, pocLane, sections, moves };
+}
+
+// Identifiers only: the accepted moves travel to the closing report as this view.
+function viewOf(current) {
+  return { moves: current.moves.map((move) => Object.assign({}, move)) };
+}
+
+function sameList(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function setSection(state, stage, patch) {
+  state.sections[stage] = Object.assign({}, state.sections[stage], patch);
 }
 
 // Stage-static first vs repeat. Skip-fetch is the chat loaded-set, not this table.
@@ -104,15 +169,28 @@ function nextFor(stage) {
 
 function advanceState(current) {
   const idx = STAGES.indexOf(current.stage);
+  const next = cloneState(current);
   let stage = current.stage;
   if (idx !== -1) {
     // Ordinary advancement steps over every conditional stage; a conditional
     // stage is reached only through its own entry intent.
     let i = idx + 1;
     while (i < STAGES.length && CONDITIONAL_STAGES.includes(STAGES[i])) i += 1;
+    // The user's confirmation that closes a stage agrees its section.
+    if (next.sections[current.stage] && next.sections[current.stage].state !== 'agreed') {
+      setSection(next, current.stage, { state: 'agreed', source: 'conversation' });
+    }
+    // A stage whose section is still agreed is skipped (E3), except when the
+    // progression leaves the POC lane: that always returns to the edge cases.
+    if (current.stage !== 'poc-lane') {
+      while (i < STAGES.length - 1 && next.sections[STAGES[i]] && next.sections[STAGES[i]].state === 'agreed') {
+        i += 1;
+        while (i < STAGES.length && CONDITIONAL_STAGES.includes(STAGES[i])) i += 1;
+      }
+    }
     stage = i >= STAGES.length ? STAGES[STAGES.length - 1] : STAGES[i];
   }
-  return Object.assign(cloneState(current), { stage });
+  return Object.assign(next, { stage });
 }
 
 const ADVANCE_INTENT = 'next-step';
@@ -135,6 +213,7 @@ function project(state) {
   return {
     snapshot: { state: cloneState(current), machineId },
     next: nextFor(current.stage),
+    run: viewOf(current),
   };
 }
 
@@ -143,42 +222,95 @@ function result(state, extra) {
     state,
     snapshot: { state: cloneState(state), machineId },
     next: nextFor(state.stage),
+    run: viewOf(state),
   };
   return extra ? Object.assign(next, extra) : next;
+}
+
+// Section recording: `{ sections: { <stage>: { state, source?, list? } } }`.
+// It records the state and source of each named section and, when a `list` is
+// given, the stage's own list as the starting proposal, without moving the
+// stage. An agreed section needs a source; an open one keeps the one it has.
+// An invalid event changes nothing.
+function recordSections(current, recorded) {
+  if (!recorded || typeof recorded !== 'object' || Array.isArray(recorded)) return null;
+  const next = cloneState(current);
+  for (const stage of Object.keys(recorded)) {
+    const entry = recorded[stage];
+    if (!SECTION_STAGES.includes(stage) || !entry || typeof entry !== 'object') return null;
+    if (!SECTION_STATES.includes(entry.state)) return null;
+    if (entry.source !== undefined && !SECTION_SOURCES.includes(entry.source)) return null;
+    if (entry.state === 'agreed' && entry.source === undefined && next.sections[stage].source === null) return null;
+    if (entry.list !== undefined) {
+      if (!Array.isArray(entry.list) || !entry.list.every((item) => typeof item === 'string' && IDENTIFIER.test(item))) return null;
+      if (stage === 'explore-change') return null;
+      next[STAGE_LISTS[stage]] = entry.list.slice();
+    }
+    setSection(next, stage, { state: entry.state, source: entry.source === undefined ? next.sections[stage].source : entry.source });
+  }
+  return next;
+}
+
+// `goto`: moves to any stage whose preconditions hold. A backward move is
+// always accepted and keeps every section as it is (E3); a forward move needs
+// the target's preconditions and stops at `crystallize`, the ceiling of this
+// machine (E1); a failed check names each absent section and the earliest
+// stage that owns one (E2) and leaves the state unchanged.
+function goto(current, sig) {
+  const unchanged = (rejected, extra) => result(cloneState(current), Object.assign({ rejected }, extra));
+  if (!GOTO_REASONS.includes(sig.reason)) return unchanged('GOTO_REASON_INVALID');
+  const target = sig.target;
+  if (typeof target !== 'string' || !Object.prototype.hasOwnProperty.call(PRECONDITIONS, target)) {
+    return unchanged(PAST_CEILING_TARGETS.includes(target) ? 'GOTO_PAST_CEILING' : 'GOTO_UNKNOWN_TARGET');
+  }
+  const from = STAGES.indexOf(current.stage);
+  const to = STAGES.indexOf(target);
+  if (from === to) return unchanged('GOTO_ALREADY_AT_TARGET');
+  if (to > from) {
+    const missing = PRECONDITIONS[target].filter((stage) => current.sections[stage].state !== 'agreed');
+    if (missing.length > 0) return unchanged('MISSING_PRECONDITIONS', { missing, resume_at: missing[0] });
+  }
+  const moved = cloneState(current);
+  moved.stage = target;
+  moved.moves = moved.moves.concat([{ target, reason: sig.reason, received_at: typeof sig.received_at === 'string' ? sig.received_at : null }]);
+  return result(moved);
 }
 
 function transition(state, signal) {
   const current = cloneState(state);
   const sig = signal && typeof signal === 'object' ? signal : {};
 
+  // Section recording (issue seeding and deviation marking): records state,
+  // source, and an optional starting list per section without moving the stage.
+  if (sig.sections !== undefined) {
+    const recorded = recordSections(current, sig.sections);
+    if (recorded === null) return result(cloneState(current), { rejected: 'SECTIONS_INVALID' });
+    return result(recorded);
+  }
+
   // Content-based recording: a non-null recordedList records into the current
   // stage's own list without advancing. Recording and advancing stay separate
   // emits; the content-based empty-set rule advances on a later no-intent emit.
+  // A list that differs from the recorded one reopens its own section; a changed
+  // `What`/`Why` list reopens every later section too, keeping its content as
+  // the starting proposal (E4).
   if (Array.isArray(sig.recordedList)) {
     const listKey = STAGE_LISTS[current.stage];
     if (listKey) {
       const recordedState = cloneState(current);
+      const changed = !sameList(current[listKey], sig.recordedList);
       recordedState[listKey] = sig.recordedList.slice();
+      if (changed && recordedState.sections[current.stage]) {
+        setSection(recordedState, current.stage, { state: 'open' });
+        if (current.stage === 'explore-change') {
+          for (const later of SECTION_STAGES.slice(1)) setSection(recordedState, later, { state: 'open' });
+        }
+      }
       return result(recordedState);
     }
   }
 
-  // Issue shortcut: records the issue's agreed lists and jumps to `crystallize`.
-  if (sig.intent === SHORTCUT_INTENT) {
-    if (current.stage !== 'explore-change') {
-      return result(cloneState(current), { rejected: 'SHORTCUT_NOT_AT_EXPLORE_CHANGE' });
-    }
-    const isList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
-    if (!isList(sig.edgeCaseList) || !isList(sig.implementationDetailsList)) {
-      return result(cloneState(current), { rejected: 'SHORTCUT_LISTS_INVALID' });
-    }
-    const shortcut = Object.assign(cloneState(current), {
-      stage: 'crystallize',
-      edgeCaseList: sig.edgeCaseList.slice(),
-      implementationDetailsList: sig.implementationDetailsList.slice(),
-    });
-    return result(shortcut);
-  }
+  if (sig.intent === GOTO_INTENT) return goto(current, sig);
 
   // Conditional-stage entry: a declared entry intent emitted at one of its own
   // originating stages moves the progression into the conditional stage without
@@ -189,6 +321,10 @@ function transition(state, signal) {
   const entry = typeof sig.intent === 'string' ? CONDITIONAL_ENTRIES[sig.intent] : undefined;
   if (entry && entry.from.includes(current.stage)) {
     const entered = Object.assign(cloneState(current), { stage: entry.stage, pocLane: true });
+    // Taking the lane at the close of stage 1 confirms the stage-1 section.
+    if (current.stage === 'explore-change' && entered.sections['explore-change'].state !== 'agreed') {
+      setSection(entered, 'explore-change', { state: 'agreed', source: 'conversation' });
+    }
     return result(entered);
   }
 
@@ -220,4 +356,4 @@ function transition(state, signal) {
   return result(advanceState(current));
 }
 
-module.exports = { machineId, initialState, transition, project, STAGES };
+module.exports = { machineId, initialState, transition, project, STAGES, PRECONDITIONS, SECTION_STAGES };

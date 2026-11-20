@@ -55,95 +55,86 @@ Once the issue's complete content is in the conversation, Explore SHALL ask the 
 
 ### Requirement: A worked issue becomes the candidate idea with carried starting lists
 
-On `work`, in the same turn and with no separate activation turn, the issue SHALL become the candidate idea with its stated content as starting content, and `Explore change` SHALL begin as for any candidate idea; the issue SHALL NOT be treated as an order to implement. The issue's `E#` and `I#` lists SHALL be the starting lists of `Review edge cases` and `Implementation details`, numbered `E1..En` and `I1..In`, and at each stage Explore MAY add only items that come from that stage's checks, with agreement and advancement unchanged. When the issue has related issues, Explore MAY explore them for context while the work stays limited to the issue mentioned first. When the issue has the Ready to Propose form, the drift check SHALL follow. On `context`, no candidate idea SHALL exist and the issue SHALL only inform the conversation; when the user later chooses that issue for work, Explore SHALL resume at the drift check if the issue has the Ready to Propose form, or at `Explore change` otherwise, and SHALL NOT ask the work question again.
+On `work`, in the same turn and with no separate activation turn, the issue SHALL become the candidate idea with its stated content as starting content, and `Explore change` SHALL begin as for any candidate idea; the issue SHALL NOT be treated as an order to implement. Explore SHALL seed the issue's sections into `explore-idea@1` whatever its `Maturity`: a section the issue holds explicitly (present, or explicitly stated as none) and that no `Open questions` entry affects SHALL be recorded `agreed` with the source `issue`, an explicitly empty list SHALL be seeded as the agreed `- None`, and an absent or empty section, or one an open question affects, SHALL be recorded `open` with the issue's items as its starting proposal. The issue's `E#` and `I#` lists SHALL keep their identifiers `E1..En` and `I1..In`, and for an open list stage Explore MAY add only items that come from that stage's checks, with agreement and advancement unchanged. A section SHALL be skipped only because its data already exists in an agreed source; the data itself SHALL never be omitted. When the issue has related issues, Explore MAY explore them for context while the work stays limited to the issue mentioned first. When at least one section was seeded `agreed`, the drift check SHALL follow. On `context`, no candidate idea SHALL exist, nothing SHALL be seeded, and the issue SHALL only inform the conversation; when the user later chooses that issue for work, at any `Maturity`, Explore SHALL run the `work` path from its start and SHALL NOT ask the work question again.
 
 #### Scenario: Carried edge cases start the edge-case stage
 
-- **WHEN** an issue with an `E#` list was answered `work` and the user advances into `Review edge cases`
+- **WHEN** an issue whose `E#` list is open (absent or affected by an open question) was answered `work` and the exploration reaches `Review edge cases`
 - **THEN** Explore presents the carried list as the starting list and adds only items from the stage's own checks
 
 #### Scenario: Carried implementation details start their stage
 
-- **WHEN** an issue with an `I#` list was answered `work` and the user advances into `Implementation details`
+- **WHEN** an issue whose `I#` list is open was answered `work` and the exploration reaches `Implementation details`
 - **THEN** Explore presents the carried list as the starting list and adds only items from the stage's own checks
 
 #### Scenario: Context creates no candidate idea
 
 - **WHEN** the user answers the work question with `context`
-- **THEN** no candidate idea is created and the next input is classified as usual
+- **THEN** no candidate idea is created, nothing is seeded, and the next input is classified as usual
 
 #### Scenario: A context issue later chosen for work resumes the intake
 
 - **WHEN** an issue kept as `context` is later chosen for work
-- **THEN** Explore resumes at the drift check when the issue has the Ready to Propose form, or at `Explore change` otherwise, without asking the work question again
+- **THEN** Explore seeds its sections at any `Maturity` and continues the `work` path without asking the work question again
 
-### Requirement: The drift check gates the shortcut for a Ready to Propose issue
+#### Scenario: An explicit none is an agreed empty list
 
-Explore SHALL ask the drift check only for an issue with the Ready to Propose form, once `work` is answered, through the harness-native picker with the options `validate` and `declared-clean` in that order. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare the issue's agreed behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path. The outcome SHALL be exactly one of `clean` (validation found no mismatch), `drift` (validation found a mismatch, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation). On `drift`, no shortcut SHALL be offered and the mismatches SHALL become starting content for `Explore change`. `declared-clean` SHALL keep the shortcut available. `--fast-track` SHALL NOT skip the drift check.
+- **WHEN** a worked issue's `Implementation notes` section says `None`
+- **THEN** the implementation-details section is seeded `agreed` as `- None`
 
-#### Scenario: Drift removes the shortcut
+#### Scenario: An open question reopens the section it affects
 
-- **WHEN** `validate` reports a mismatch between the issue and the current code
-- **THEN** no shortcut question is asked and the mismatches become starting content for `Explore change`
-
-#### Scenario: Declared-clean keeps the shortcut
-
-- **WHEN** the user answers the drift check with `declared-clean`
-- **THEN** the shortcut question remains available when the conversion succeeds
-
-#### Scenario: Issue without the form gets no drift check
-
-- **WHEN** an issue whose `Maturity` does not read `Ready to propose` is answered `work`
-- **THEN** no drift check is asked and the issue continues in `Explore change`
+- **WHEN** a worked issue has an `Open questions` entry about an edge case
+- **THEN** the edge-case section is seeded `open` with the issue's items as the starting proposal, and an entry that maps to no single section opens `Explore change`
 
 ### Requirement: The conversion tool owns the issue-to-block mapping in the intake
 
-Explore SHALL NOT write the block from the issue itself. It SHALL run `ready-to-propose.js convert` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation, written with the harness-native file-write tool in a directory from `transfer.js open`, without options when the issue arrives and again after the drift check with the confirmed `--change-name`, adding `--declared-clean` for the `declared-clean` outcome. A `converted: false` result with `rejections` SHALL be a conversion rejection: Explore SHALL show each reason in one line in the ambient conversation language, SHALL NOT ask the shortcut question, and SHALL continue with the planned Explore steps.
+Explore SHALL NOT judge which sections an issue agrees and SHALL NOT write the block from the issue itself. It SHALL run `ready-to-propose.js convert` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation, written with the harness-native file-write tool in a directory from `transfer.js open`, once the issue's complete content is in the conversation, and again with the confirmed `--change-name` only when a later step needs a block draft. Explore SHALL read the tool's `sections`, `open_questions`, `seed`, `ready_to_propose_form`, `proposed_change_name`, and `declared_clean_note` whatever `converted` or the exit code say, and SHALL send `seed` verbatim to `explore-idea@1` as an input-file event. A `converted: false` result with `rejections` SHALL be a conversion rejection of the block draft only: Explore SHALL show each reason in one line in the ambient conversation language and SHALL continue with the seeded sections. On `SECTIONS_INVALID`, Explore SHALL report it in one line and continue from `Explore change` with every section `open`.
 
 #### Scenario: Conversion rejection continues with the planned steps
 
-- **WHEN** the conversion tool rejects the block derived from a Ready to Propose issue
-- **THEN** Explore shows each rejection reason in one line and continues with the planned Explore steps without asking the shortcut question
+- **WHEN** the conversion tool rejects the block derived from an issue
+- **THEN** Explore shows each rejection reason in one line and continues with the seeded sections through the planned Explore steps
 
 #### Scenario: Open questions reject the conversion
 
 - **WHEN** an issue with the Ready to Propose form still has entries in `Open questions`
-- **THEN** the conversion is rejected
+- **THEN** the block conversion is rejected and the sections those entries affect are seeded `open`
 
-### Requirement: The shortcut question offers the shortcut or the planned steps
+### Requirement: The drift check validates every section an issue seeded agreed
 
-After a `clean` or `declared-clean` outcome with a successful conversion, Explore SHALL ask the shortcut question through the harness-native picker with the options `shortcut` and `planned-steps` in that order. When the issue carries no implementation notes (the conversion's `implementation_details` is empty), the question's context SHALL show `- None` as the implementation-details list; accepting `shortcut` SHALL count as the user's confirmation of that `- None` and SHALL send the empty list as `[]` with the `issue-shortcut` intent, and declining it SHALL take the normal path through `Implementation details`. `planned-steps` SHALL continue as on `work`, with the issue's lists preloaded; after `declared-clean`, the block composed at `Crystallize` SHALL carry the same `Request Additional Notes` line produced by a `convert --declared-clean` run. `--fast-track` SHALL NOT skip the shortcut question.
+Explore SHALL ask the drift check once `work` is answered and at least one section was seeded `agreed`, through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `validate` and `declared-clean` in that order. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare each `agreed` section's behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path. The outcome SHALL be exactly one of `clean` (every agreed section stays agreed), `drift` (a mismatch was found, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation; every seeded section stays agreed and the block composed at `Crystallize` carries the tool's `declared_clean_note` as a `Request Additional Notes` line). On `drift`, each mismatch, doubt, or improvement SHALL be shown with its evidence and SHALL mark only the section it touches `open`, keeping that section's list as the starting proposal; every other section SHALL stay `agreed`. The same rule SHALL hold for a deviation found in an `agreed` section at any later point of the conversation. `--fast-track` SHALL NOT skip the drift check.
 
-#### Scenario: Planned steps keep the preloaded lists
+#### Scenario: Drift opens only the touched section
 
-- **WHEN** the user answers the shortcut question with `planned-steps`
-- **THEN** Explore follows the planned Explore steps with the issue's `E` and `I` lists as starting lists
+- **WHEN** `validate` reports a mismatch in the issue's implementation notes
+- **THEN** only the implementation-details section becomes `open` and the other agreed sections stay agreed
 
-#### Scenario: Declared-clean is recorded on the block
+#### Scenario: Declared-clean keeps the seeded sections
 
-- **WHEN** the drift check outcome was `declared-clean`
-- **THEN** the block carries a `Request Additional Notes` line stating that the user declared no drift without validating it
+- **WHEN** the user answers the drift check with `declared-clean`
+- **THEN** every seeded section stays agreed and the block carries the declared-clean `Request Additional Notes` line
 
-#### Scenario: An issue without implementation notes shows None
+#### Scenario: No agreed section means no drift check
 
-- **WHEN** the converted issue carries no implementation notes and the shortcut question is asked
-- **THEN** the question shows `- None` as the implementation-details list, and answering `shortcut` records the empty list as confirmed and enters `Crystallize`
+- **WHEN** a worked issue seeds no section `agreed`
+- **THEN** no drift check is asked and the issue continues in `Explore change`
 
-### Requirement: The shortcut reviews the draft under fixed invariants and enters Crystallize
+### Requirement: A seeded issue resumes at its first open section through goto
 
-On `shortcut`, Explore SHALL review the tool's draft and correct it only under four invariants: every field comes from the issue text and a field without a source reads `- None`; the `E` and `I` lists stay literal in identifiers, wording, and order; the block keeps the issue's language; and every correction is shown with its reason before the route choice. Explore SHALL then send the `issue-shortcut` intent with the tool's `edge_cases` and `implementation_details` verbatim to `explore-idea@1` and follow the returned `next.follow` into `Crystallize`; on a rejection it SHALL report it in one line and continue with the planned Explore steps. The slicing assessment SHALL still run, and a sliced set SHALL distribute the `I` items across slices with their literal text. Immediately before the block set prints, Explore SHALL print the corrections it made, or one line saying the draft needed none. Claude Code and opencode SHALL follow the same shortcut.
+Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to `crystallize` with reason `user-request`. When every section is agreed the move SHALL be accepted, the slicing assessment SHALL run as always, a single change SHALL take its block from the agreed sections, and a sliced set SHALL distribute the `I` items across slices with their literal text. When a section is open the move SHALL answer `MISSING_PRECONDITIONS`; Explore SHALL then `goto` `resume_at` and present that stage with the issue's starting content, and the next forward move SHALL skip every stage whose section is still `agreed`. When `resume_at` is the current stage, Explore SHALL stay and present it. No route SHALL start without the explicit route-selector answer. Claude Code and opencode SHALL follow the same path.
 
-#### Scenario: Shortcut enters Crystallize with the issue's lists
+#### Scenario: Fully agreed issue enters Crystallize
 
-- **WHEN** the user answers the shortcut question with `shortcut`
-- **THEN** Explore records the issue's literal `E` and `I` lists through the `issue-shortcut` intent and enters `Crystallize`
+- **WHEN** every section of a worked issue is agreed after the drift check
+- **THEN** the `goto` to `crystallize` is accepted and the block set is followed by the route selector
+
+#### Scenario: An open section is presented first
+
+- **WHEN** the edge-case section of a worked issue is open
+- **THEN** the `goto` to `crystallize` is rejected with `resume_at` `review-edge-cases`, Explore moves there, and presents the issue's edge cases as the starting list
 
 #### Scenario: Slicing distributes literal implementation items
 
-- **WHEN** the slicing assessment splits a shortcut issue into several slices
+- **WHEN** the slicing assessment splits a fully agreed issue into several slices
 - **THEN** each `I` item reaches its slice with its literal text
-
-#### Scenario: Corrections are shown before the route choice
-
-- **WHEN** Explore corrected a field of the draft
-- **THEN** the field, the change, and its reason print immediately before the block set and before the route choice

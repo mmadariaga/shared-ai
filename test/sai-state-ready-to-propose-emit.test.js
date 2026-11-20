@@ -338,32 +338,196 @@ test('block guard: the block is accepted once the exploration reaches crystalliz
   }
 });
 
-test('block guard: the issue shortcut reaches crystallize in one emit and the block is then accepted', () => {
-  const id = spawnSession('rtp-shortcut', false);
+function seedEvent(listEdge, listImpl) {
+  return JSON.stringify({
+    sections: {
+      'explore-change': { state: 'agreed', source: 'issue' },
+      'review-edge-cases': { state: 'agreed', source: 'issue', list: listEdge },
+      'implementation-details': { state: 'agreed', source: 'issue', list: listImpl },
+    },
+  });
+}
+
+function gotoFlags(id, target, reason) {
+  return runCli(['emit', id, IDEA_MACHINE, '--set', 'intent=goto', '--set', `target=${target}`, '--set', `reason=${reason}`]);
+}
+
+test('block guard: a seeded issue reaches crystallize by goto and the block is then accepted', () => {
+  const id = spawnSession('rtp-seed-goto', false);
   try {
-    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: ['E1: empty input fails.'], implementationDetailsList: ['I1: add the module.'] });
-    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
-    assert.equal(shortcut.exitCode, 0, shortcut.stderr);
-    const json = JSON.parse(shortcut.stdout);
+    const seeded = runCli(['emit', id, IDEA_MACHINE, '-'], seedEvent(['E1'], ['I1']));
+    assert.equal(seeded.exitCode, 0, seeded.stderr);
+    assert.equal(JSON.parse(seeded.stdout).stage, 'explore-change');
+    const moved = gotoFlags(id, 'crystallize', 'user-request');
+    assert.equal(moved.exitCode, 0, moved.stderr);
+    const json = JSON.parse(moved.stdout);
     assert.equal(json.stage, 'crystallize');
     assert.equal(json.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
-    assert.equal(blockEmit(id, block('shortcut-change')).exitCode, 0);
-    assert.deepEqual(readSet(id), ['shortcut-change']);
+    assert.deepEqual(json.run.moves, [{ target: 'crystallize', reason: 'user-request', received_at: json.received_at }]);
+    assert.match(json.run.moves[0].received_at, RECEIVED_AT_PATTERN);
+    assert.equal(blockEmit(id, block('seeded-change')).exitCode, 0);
+    assert.deepEqual(readSet(id), ['seeded-change']);
   } finally {
     cleanup(id);
   }
 });
 
-test('block guard: the issue shortcut is rejected after the exploration left explore-change, so the guard still holds', () => {
-  const id = spawnSession('rtp-shortcut-late', false);
+test('block guard: a goto whose sections are not agreed is rejected with the missing sections, and the guard still holds', () => {
+  const id = spawnSession('rtp-goto-missing', false);
   try {
     advanceIdea(id, 1);
-    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1: add the module.'] });
-    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
-    assert.equal(JSON.parse(shortcut.stdout).rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE');
+    const moved = gotoFlags(id, 'crystallize', 'user-request');
+    assert.equal(moved.exitCode, 0, moved.stderr);
+    const json = JSON.parse(moved.stdout);
+    assert.equal(json.rejected, 'MISSING_PRECONDITIONS');
+    assert.deepEqual(json.missing, ['review-edge-cases', 'implementation-details']);
+    assert.equal(json.resume_at, 'review-edge-cases');
+    assert.equal(json.stage, 'review-edge-cases');
+    assert.deepEqual(json.run.moves, []);
     const result = blockEmit(id, block('early-change'));
     assert.equal(result.exitCode, 1);
     assert.equal(JSON.parse(result.stdout).reason, 'STAGE_NOT_CRYSTALLIZE');
+  } finally {
+    cleanup(id);
+  }
+});
+
+function staleNames(id) {
+  return JSON.parse(fs.readFileSync(sessionFile(id), 'utf8')).staleBlocks || [];
+}
+
+test('E10: staleness is tracked per slice: amending one of two stale slices keeps the lock, amending the second releases it', () => {
+  const id = spawnSession('rtp-stale-two');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    assert.equal(gotoFlags(id, 'implementation-details', 'correction').exitCode, 0);
+    assert.deepEqual(staleNames(id), ['slice-a', 'slice-b']);
+    advanceIdea(id, 1);
+
+    const first = blockEmit(id, block('slice-a', { What: ' Adds the corrected thing.' }), MACHINE, ['--amend', 'slice-a']);
+    assert.equal(first.exitCode, 0, first.stderr);
+    assert.deepEqual(staleNames(id), ['slice-b']);
+    const locked = runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent: 'route-choice' }));
+    assert.equal(JSON.parse(locked.stdout).rejected, 'BLOCKS_STALE', 'one stale slice still locks the route intents');
+
+    const second = blockEmit(id, block('slice-b'), MACHINE, ['--amend', 'slice-b']);
+    assert.equal(second.exitCode, 0, second.stderr);
+    assert.deepEqual(staleNames(id), []);
+    const open = runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent: 'route-choice' }));
+    assert.equal(JSON.parse(open.stdout).rejected, undefined);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('E10: a rejected amendment of a stale slice clears nothing, and a re-registration clears every name', () => {
+  const id = spawnSession('rtp-stale-reject');
+  try {
+    const set = `${block('slice-a')}\n${block('slice-b')}`;
+    assert.equal(blockEmit(id, set).exitCode, 0);
+    assert.equal(gotoFlags(id, 'implementation-details', 'correction').exitCode, 0);
+    advanceIdea(id, 1);
+    const unknown = amendEmit(id, 'slice-z', block('slice-z'));
+    assert.equal(JSON.parse(unknown.stdout).rejected, 'UNKNOWN_SLICE');
+    assert.deepEqual(staleNames(id), ['slice-a', 'slice-b']);
+    assert.equal(blockEmit(id, set).exitCode, 0);
+    assert.deepEqual(staleNames(id), []);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('E10: a goto back from crystallize locks the route intents until the blocks are re-registered or amended', () => {
+  for (const unlock of ['reregister', 'amend']) {
+    const id = spawnSession(`rtp-stale-${unlock}`);
+    try {
+      assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+      const back = gotoFlags(id, 'implementation-details', 'correction');
+      assert.equal(back.exitCode, 0, back.stderr);
+      assert.equal(JSON.parse(back.stdout).stage, 'implementation-details');
+      assert.deepEqual(staleNames(id), ['slice-a']);
+
+      for (const intent of ['route-choice', 'direct-build', 'plan', 'resume-direct-build', 'auto-continue']) {
+        const locked = runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent }));
+        assert.equal(locked.exitCode, 0, locked.stderr);
+        assert.equal(JSON.parse(locked.stdout).rejected, 'BLOCKS_STALE', intent);
+      }
+      assert.equal(readState(id).blockEmissionTurnClosed, true);
+
+      const readOnly = runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent: 'publication' }));
+      assert.equal(JSON.parse(readOnly.stdout).rejected, undefined, 'the publication read is not a route intent');
+
+      advanceIdea(id, 1);
+      if (unlock === 'reregister') assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+      else assert.equal(blockEmit(id, block('slice-a'), MACHINE, ['--amend', 'slice-a']).exitCode, 0);
+      assert.deepEqual(staleNames(id), []);
+      const open = runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent: 'route-choice' }));
+      assert.equal(JSON.parse(open.stdout).rejected, undefined, 'the route selector works again');
+    } finally {
+      cleanup(id);
+    }
+  }
+});
+
+test('E10: a goto back before any block was registered locks nothing', () => {
+  const id = spawnSession('rtp-stale-none');
+  try {
+    assert.equal(gotoFlags(id, 'explore-change', 'correction').exitCode, 0);
+    assert.deepEqual(staleNames(id), []);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('I6: re-registering the same blocks keeps completed slices, parked cursors, and the publication answer', () => {
+  const id = spawnSession('rtp-reregister-keeps');
+  try {
+    const set = `${block('slice-a')}\n${block('slice-b')}`;
+    assert.equal(blockEmit(id, set).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], JSON.stringify({ intent: 'publication', value: 'yes' })).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    for (let i = 0; i < 3; i++) assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"complete"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"fail"}').exitCode, 0);
+    const before = readState(id);
+    assert.deepEqual(before.done, ['slice-a']);
+    assert.ok(before.parked['slice-b']);
+
+    const same = blockEmit(id, set);
+    assert.equal(same.exitCode, 0, same.stderr);
+    const kept = readState(id);
+    assert.deepEqual(kept.done, ['slice-a']);
+    assert.deepEqual(kept.parked, before.parked);
+    assert.equal(kept.publication, 'yes');
+
+    // A changed block loses its own cursor and keeps the others.
+    const changed = blockEmit(id, `${block('slice-a')}\n${block('slice-b', { What: ' Adds the corrected thing.' })}`);
+    assert.equal(changed.exitCode, 0, changed.stderr);
+    const after = readState(id);
+    assert.deepEqual(after.done, ['slice-a']);
+    assert.deepEqual(after.parked, {});
+    assert.equal(after.publication, 'yes');
+
+    const changedDone = blockEmit(id, `${block('slice-a', { What: ' Adds another thing.' })}\n${block('slice-b', { What: ' Adds the corrected thing.' })}`);
+    assert.equal(changedDone.exitCode, 0, changedDone.stderr);
+    assert.deepEqual(readState(id).done, []);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('the amend response reports the amend kind: metadata for origin lines only, content otherwise', () => {
+  const id = spawnSession('rtp-amend-kind');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    const withOrigin = block('slice-a').replace('**What**:', '**Backlog origin**: https://github.com/team/repo/issues/11\n**What**:');
+    const metadata = amendEmit(id, 'slice-a', withOrigin);
+    assert.equal(metadata.exitCode, 0, metadata.stderr);
+    assert.equal(JSON.parse(metadata.stdout).amend_kind, 'metadata');
+    const content = amendEmit(id, 'slice-a', withOrigin.replace('Adds a thing.', 'Adds another thing.'));
+    assert.equal(JSON.parse(content.stdout).amend_kind, 'content');
   } finally {
     cleanup(id);
   }
@@ -794,7 +958,7 @@ test('amend: the amended block carries its own verdicts', () => {
   }
 });
 
-test('amend: a stopped (parked) slice is accepted and keeps its saved cursor', () => {
+test('amend: a stopped (parked) slice keeps its saved cursor on a metadata amendment (E12, E13)', () => {
   const id = spawnSession('rtp-amend-stopped');
   try {
     assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
@@ -804,31 +968,69 @@ test('amend: a stopped (parked) slice is accepted and keeps its saved cursor', (
     assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"fail"}').exitCode, 0);
     const parkedBefore = readState(id).parked;
     assert.deepEqual(Object.keys(parkedBefore), ['slice-a']);
-    const amended = block('slice-a', { What: ' Adds the corrected thing.' });
+    const amended = block('slice-a').replace('**What**:', '**Backlog origin**: https://github.com/team/repo/issues/11\n**What**:');
     const result = amendEmit(id, 'slice-a', amended);
     assert.equal(result.exitCode, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).rejected, undefined);
+    assert.equal(JSON.parse(result.stdout).amend_kind, 'metadata');
     assert.deepEqual(readState(id).parked, parkedBefore);
     assert.equal(readStoredBlocks(id)['slice-a'].text, blockTextOf(amended));
+    const resumed = runCli(['emit', id, MACHINE, '-'], '{"intent":"resume-direct-build"}');
+    assert.equal(JSON.parse(resumed.stdout).stage, 'backfill', 'the corrected slice resumes at its saved step');
   } finally {
     cleanup(id);
   }
 });
 
-test('amend: a running slice is rejected and its stored block stays unchanged (E5)', () => {
+test('amend: a content amendment of a stopped slice drops its cursor and presents the route selector again (E11)', () => {
+  const id = spawnSession('rtp-amend-stopped-content');
+  try {
+    assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"complete"}').exitCode, 0);
+    assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"fail"}').exitCode, 0);
+    const amended = block('slice-a', { What: ' Adds the corrected thing.' });
+    const result = amendEmit(id, 'slice-a', amended);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).amend_kind, 'content');
+    assert.deepEqual(readState(id).parked, {});
+    assert.equal(readState(id).blockEmissionTurnClosed, true);
+    assert.equal(readStoredBlocks(id)['slice-a'].text, blockTextOf(amended));
+    const reselected = runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}');
+    assert.equal(JSON.parse(reselected.stdout).rejected, undefined);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('amend: a running slice is amended in place by a metadata amendment and returns to pending by a content one (E11, E12)', () => {
   const id = spawnSession('rtp-amend-running');
   try {
     assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
     assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"route-choice"}').exitCode, 0);
     assert.equal(runCli(['emit', id, MACHINE, '-'], '{"intent":"direct-build"}').exitCode, 0);
-    const before = readStoredBlocks(id);
-    const result = amendEmit(id, 'slice-a', block('slice-a', { What: ' Changed mid-run.' }));
-    assert.equal(JSON.parse(result.stdout).rejected, 'SLICE_RUNNING');
-    assert.deepEqual(readStoredBlocks(id), before);
-    // A different, pending slice is still amendable while one runs.
+
+    const origin = block('slice-a').replace('**What**:', '**Backlog origin**: https://github.com/team/repo/issues/11\n**What**:');
+    const metadata = amendEmit(id, 'slice-a', origin);
+    assert.equal(metadata.exitCode, 0, metadata.stderr);
+    assert.equal(JSON.parse(metadata.stdout).rejected, undefined);
+    assert.equal(readState(id).active, 'slice-a');
+    assert.match(readStoredBlocks(id)['slice-a'].text, /Backlog origin/);
+
+    // A different, pending slice is amendable while one runs and leaves the running one alone.
     const other = amendEmit(id, 'slice-b', block('slice-b', { What: ' Changed while another runs.' }));
     assert.equal(JSON.parse(other.stdout).rejected, undefined);
     assert.match(readStoredBlocks(id)['slice-b'].text, /Changed while another runs\./);
+    assert.equal(readState(id).active, 'slice-a');
+
+    const content = amendEmit(id, 'slice-a', block('slice-a', { What: ' Changed mid-run.' }));
+    assert.equal(content.exitCode, 0, content.stderr);
+    assert.equal(JSON.parse(content.stdout).rejected, undefined);
+    assert.equal(readState(id).active, null);
+    assert.equal(readState(id).stage, 'waiting');
+    assert.equal(readState(id).blockEmissionTurnClosed, true);
+    assert.match(readStoredBlocks(id)['slice-a'].text, /Changed mid-run\./);
   } finally {
     cleanup(id);
   }

@@ -65,7 +65,7 @@ Panel ownership, marking hooks, the `Result Loop`, chat `Closure State` ownershi
 #### Scenario: Machine never renders or reviews
 
 - **WHEN** a transition succeeds for a session with panel and review surfaces active
-- **THEN** the response carries only the minimal wire outcome (`stage`, `next`, and the optional `rejected` and `warnings` attributes) while the caller alone updates the idea list, owns closure, and runs any review loop
+- **THEN** the response carries only the minimal wire outcome (`stage`, `next`, the identifier-only `run` view with its `moves`, and the optional `rejected`, `missing`, `resume_at`, and `warnings` attributes) while the caller alone updates the idea list, owns closure, and runs any review loop
 
 ### Requirement: Stage-machine PoC scope
 
@@ -77,11 +77,11 @@ The machine SHALL absorb the explore stage-progression rules into its transition
 - **THEN** the machine deterministically decides the former and rejects or ignores the latter as out of scope with the current state's pointer
 
 ### Requirement: Single-level emit outcome
-The `/emit` route of the `explore-idea` sidecar SHALL return exactly one level of minimal wire outcome, `{stage, next, rejected?, warnings?}`. `stage` is the current stage string, `next` is the current pointer, `rejected` is the optional in-band rejection marker, and `warnings` is the optional degradation-warning channel. The route SHALL store the plain machine state as session state and SHALL NOT re-wrap `transition()`'s return into a nested envelope or serialize any state object into the response. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current stage in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing. The implementation SHALL NOT claim eventId replay: `bin/sai-state.js` persists with a fixed empty eventId and never compares `lastEventId`, so a replayed `eventId` MUST NOT be described as returning the stored outcome without re-applying.
+The `/emit` route of the `explore-idea` sidecar SHALL return exactly one level of minimal wire outcome, `{stage, next, run, rejected?, missing?, resume_at?, warnings?}`. `stage` is the current stage string, `next` is the current pointer, `run` is the identifier-only view `{moves}` of the accepted `goto` moves, `rejected` is the optional in-band rejection marker, `missing` and `resume_at` are present only on a `goto` rejected with `MISSING_PRECONDITIONS`, and `warnings` is the optional degradation-warning channel. The route SHALL store the plain machine state as session state and SHALL NOT re-wrap `transition()`'s return into a nested envelope or serialize any other state object into the response. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current stage in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing. The implementation SHALL NOT claim eventId replay: `bin/sai-state.js` persists with a fixed empty eventId and never compares `lastEventId`, so a replayed `eventId` MUST NOT be described as returning the stored outcome without re-applying.
 
 #### Scenario: Single-level envelope and monotonic stage walk
-- **WHEN** the caller emits a stage event by piping the event JSON to `emit <id> explore-idea@1 -` across consecutive turns
-- **THEN** every response carries exactly the minimal `stage` and `next` keys, plus the optional `rejected` and `warnings` attributes, with `stage` a plain string. Consecutive emits walk `explore-change` to `review-edge-cases` to `implementation-details` to `crystallize` without resetting, and the specification makes no idempotent-replay guarantee.
+- **WHEN** the caller emits a stage event by piping the event JSON to `emit <id> explore-idea@1 -` across consecutive turns with no `goto`
+- **THEN** every response carries exactly the minimal `stage`, `next`, and `run` keys, plus the optional `rejected` and `warnings` attributes, with `stage` a plain string. Consecutive emits walk `explore-change` to `review-edge-cases` to `implementation-details` to `crystallize` without resetting, and the specification makes no idempotent-replay guarantee.
 
 #### Scenario: No-intent emit rejects in-band
 - **WHEN** the caller emits a stage event with no explicit intent where neither recording nor an empty-set rule applies
@@ -129,11 +129,11 @@ The sidecar SHALL own the `explore-idea` machine state as a durable store: it SH
 - **THEN** the persisted state has been purged and the tombstone recorded, and the reopened session starts from the initial state
 
 ### Requirement: Minimal wire outcomes
-The `/emit` route SHALL return minimal wire outcomes — `{stage, next, rejected?, warnings?}` on `/emit` — and SHALL NOT serialize the full state object or any snapshot onto the wire; the machine's internal snapshot remains available to projection but never travels in a response. The agent side carries no state JSON and never sends state in a request. There SHALL be no `/restore` route: `bin/sai-state.js` implements only `spawn`, `emit`, `reset`, and `close`, and a restore probe MUST NOT be documented as available. An omitted `machineId` SHALL return `INVALID_EVENT`. A mistyped unknown id SHALL return `UNKNOWN_MACHINE`.
+The `/emit` route SHALL return minimal wire outcomes — `{stage, next, run, rejected?, missing?, resume_at?, warnings?}` on `/emit`, where `run` is the identifier-only view `{moves}` and `missing` and `resume_at` appear only on a `goto` rejected with `MISSING_PRECONDITIONS` — and SHALL NOT serialize the full state object or any snapshot onto the wire; the machine's internal snapshot remains available to projection but never travels in a response. The agent side carries no state JSON and never sends state in a request. There SHALL be no `/restore` route: `bin/sai-state.js` implements only `spawn`, `emit`, `reset`, and `close`, and a restore probe MUST NOT be documented as available. An omitted `machineId` SHALL return `INVALID_EVENT`. A mistyped unknown id SHALL return `UNKNOWN_MACHINE`.
 
 #### Scenario: Emit response carries no state and no snapshot
 - **WHEN** the caller emits a stage event that advances, records, or rejects
-- **THEN** the response carries only `stage`, `next`, and the optional `rejected` and `warnings` attributes, and no state object and no snapshot appear in the response
+- **THEN** the response carries only `stage`, `next`, `run`, and the optional `rejected`, `missing`, `resume_at`, and `warnings` attributes, and no state object and no snapshot appear in the response
 
 #### Scenario: Restore is a body-less read-only probe
 - **WHEN** the caller looks for a `/restore` probe with machineId `explore-idea@1` on a chat with a persisted machine
@@ -176,7 +176,7 @@ The recorded empty edge-case list auto-advance SHALL be advancement by content, 
 
 In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
-The machine SHALL also accept the `issue-shortcut` intent, the one intent that reaches `crystallize` without the intermediate stages. It SHALL be valid only at `explore-change`, SHALL carry an `edgeCaseList` and an `implementationDetailsList` of strings, either of which MAY be empty (an empty implementation list is the agreed `- None` the user confirmed by accepting the shortcut), SHALL record both lists as the agreed lists, and SHALL move the stage to `crystallize` with `next.follow` naming the crystallization step file. Emitted at any other stage it SHALL be rejected with SHORTCUT_NOT_AT_EXPLORE_CHANGE, and with missing or non-string lists it SHALL be rejected with SHORTCUT_LISTS_INVALID, both with an unchanged state.
+The machine SHALL also accept the `goto` intent (see the goto requirement) and the section-recording event. The retired `issue-shortcut` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage. An issue reaches `crystallize` directly from `explore-change` only when its sections were recorded `agreed` with the source `issue` and a `goto` to `crystallize` passes the preconditions; an implementation-details section the issue states as none SHALL be recorded as an agreed empty list.
 
 #### Scenario: Stray intent does not advance
 
@@ -190,7 +190,7 @@ The machine SHALL also accept the `issue-shortcut` intent, the one intent that r
 
 #### Scenario: Exact next-step advances one stage
 
-- **WHEN** the caller emits the exact next-step intent
+- **WHEN** the caller emits the exact next-step intent with no later section recorded `agreed`
 - **THEN** the machine advances exactly one stage per emit, skipping every conditional stage, through review-edge-cases and implementation-details to crystallize
 
 #### Scenario: Recorded lists preserve existing semantics
@@ -220,18 +220,18 @@ The machine SHALL also accept the `issue-shortcut` intent, the one intent that r
 
 #### Scenario: The issue shortcut moves explore-change to crystallize
 
-- **WHEN** the caller emits `issue-shortcut` at explore-change with a string edge-case list and a string implementation-details list
-- **THEN** the machine records both lists, moves to crystallize, and returns `sai/commands/explore/steps/crystallization-protocol.md` as `next.follow`
+- **WHEN** every section was recorded `agreed` with the source `issue` and the caller emits `goto` with target `crystallize` at explore-change
+- **THEN** the machine moves to crystallize and returns `sai/commands/explore/steps/crystallization-protocol.md` as `next.follow`
 
 #### Scenario: The issue shortcut accepts an empty implementation list
 
-- **WHEN** the caller emits `issue-shortcut` at explore-change with an empty edge-case list and an empty implementation-details list
-- **THEN** the machine records the empty implementation list as agreed and moves to crystallize with no rejection
+- **WHEN** the issue's implementation-details section was recorded `agreed` with an empty list and every other section is `agreed`, and the caller emits `goto` with target `crystallize`
+- **THEN** the machine keeps the empty implementation list as agreed and moves to crystallize with no rejection
 
 #### Scenario: The issue shortcut is rejected outside explore-change or with malformed lists
 
-- **WHEN** the caller emits `issue-shortcut` at any other stage, or at explore-change with missing or non-string lists
-- **THEN** the machine returns SHORTCUT_NOT_AT_EXPLORE_CHANGE or SHORTCUT_LISTS_INVALID respectively, with an unchanged state
+- **WHEN** the caller emits the retired `issue-shortcut` intent at any stage, or a section-recording event whose list holds a non-identifier entry
+- **THEN** the machine returns READINESS_IS_NOT_INTENT or SECTIONS_INVALID respectively, with an unchanged state
 
 ### Requirement: The POC lane is a conditional stage of explore-idea
 
@@ -289,3 +289,65 @@ Every explore stage-event turn (a user intent that advances the progression, or 
 
 - **WHEN** a stage-event turn emits to `explore-idea@1` or `explore-slice@1` after the load
 - **THEN** the emit targets the session id retained from the load's `sai-state spawn` and no new spawn runs for that turn
+
+### Requirement: Explore-idea records each section's state and source
+
+`explore-idea@1` SHALL store, for each of the sections `explore-change`, `review-edge-cases`, and `implementation-details`, a state `agreed` or `open` and a source `issue` or `conversation`, next to the identifier lists; free text SHALL NOT enter the store. Every section SHALL start `open` with no source. The event `{"sections": {"<stage>": {"state", "source"?, "list"?}}}` SHALL record each named section without moving the stage; `list` SHALL hold identifiers only and SHALL become that stage's starting list, and an `agreed` section SHALL need a source. An invalid event SHALL answer `rejected: "SECTIONS_INVALID"` and change nothing. `next-step` SHALL record the section of the stage it closes as `agreed` with the source `conversation` when it is not already agreed, and SHALL skip every later stage whose section is still `agreed`, except when the progression leaves the POC lane. Recording a list that differs from the stored one SHALL reopen its own section, and a changed `explore-change` list SHALL reopen every later section while keeping its list as the starting proposal.
+
+#### Scenario: Seeding records sections without moving the stage
+
+- **WHEN** the caller emits a sections event marking `review-edge-cases` `agreed` with the source `issue` and the list `E1`, `E2`
+- **THEN** the section and its list are recorded and the stage stays where it was
+
+#### Scenario: Malformed sections event changes nothing
+
+- **WHEN** the sections event names an unknown stage, an unknown state, an agreed section without any source, or a list entry that is not an identifier
+- **THEN** the machine answers `SECTIONS_INVALID` and the state is unchanged
+
+#### Scenario: next-step skips agreed sections
+
+- **WHEN** the caller emits `next-step` at `explore-change` while the `review-edge-cases` section is `agreed`
+- **THEN** the `explore-change` section becomes `agreed` with the source `conversation` and the stage moves to `implementation-details`
+
+#### Scenario: A changed What/Why reopens later sections
+
+- **WHEN** a recorded `explore-change` list differs from the stored one
+- **THEN** the `explore-change`, `review-edge-cases`, and `implementation-details` sections become `open` and their lists are kept
+
+### Requirement: Explore-idea goto moves to any stage whose preconditions hold
+
+`explore-idea@1` SHALL accept `goto` with a `target` stage and a required `reason` of `user-request` or `correction`. The machine SHALL declare its per-stage preconditions as data: `review-edge-cases` needs `explore-change` agreed, `implementation-details` needs `explore-change` and `review-edge-cases` agreed, and `crystallize` needs all three sections agreed. A backward move SHALL always be accepted and SHALL keep every section's state. A forward move SHALL stop at `crystallize`, the ceiling; when a precondition does not hold it SHALL answer `rejected: "MISSING_PRECONDITIONS"` with `missing` (each absent section) and `resume_at` (the earliest stage that owns one) and leave the state unchanged. A route start or route step target SHALL answer `GOTO_PAST_CEILING`; an unknown target `GOTO_UNKNOWN_TARGET`; the current stage `GOTO_ALREADY_AT_TARGET`; and a missing or other reason `GOTO_REASON_INVALID`, each with the state unchanged. The CLI SHALL expose `missing` and `resume_at` on the emit response.
+
+#### Scenario: Forward move with every precondition reaches crystallize
+
+- **WHEN** all three sections are `agreed` and the caller emits `goto` to `crystallize` from `explore-change`
+- **THEN** the machine moves to `crystallize`
+
+#### Scenario: Forward move with an open section is rejected
+
+- **WHEN** the `review-edge-cases` section is `open` and the caller emits `goto` to `crystallize`
+- **THEN** the machine answers `MISSING_PRECONDITIONS` with `missing` naming `review-edge-cases` and `resume_at` `review-edge-cases`, and the stage is unchanged
+
+#### Scenario: Backward move keeps sections
+
+- **WHEN** the caller emits `goto` to `review-edge-cases` from `crystallize`
+- **THEN** the move is accepted and every section keeps its state
+
+#### Scenario: Targets past the route selector are rejected
+
+- **WHEN** the caller emits `goto` with a target such as `direct-build`, `plan`, or `build-implement`
+- **THEN** the machine answers `GOTO_PAST_CEILING` and the state is unchanged
+
+### Requirement: Accepted explore moves are recorded
+
+`explore-idea@1` and `explore-slice@1` SHALL append every accepted `goto` to a `moves` list in their state as `{target, reason, received_at}`, where `received_at` is the CLI's reception time of the response, and SHALL expose the list as `run.moves` on every response so the closing report can list it. A rejected `goto` SHALL record nothing.
+
+#### Scenario: Accepted move is listed
+
+- **WHEN** a `goto` with reason `correction` is accepted
+- **THEN** `run.moves` ends with that target, the reason `correction`, and the response's `received_at`
+
+#### Scenario: Rejected move records nothing
+
+- **WHEN** a `goto` is rejected
+- **THEN** `run.moves` is unchanged
