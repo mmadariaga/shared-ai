@@ -162,3 +162,119 @@ test('E10 I7: HTML detection ignores tags inside code spans and fenced code bloc
   assert.equal(detector.isHtmlDescription('# Heading\n<p>x</p>'), false);
   assert.equal(detector.isHtmlDescription(''), false);
 });
+
+test('I4: an issue of any Maturity returns its per-section reading and the seed event (E5, E6)', () => {
+  const { status, payload } = run([], issue({ maturity: 'Edge cases agreed', notes: null }));
+  assert.equal(status, 0);
+  assert.equal(payload.converted, false);
+  assert.equal(payload.sections['explore-change'].status, 'present');
+  assert.equal(payload.sections['review-edge-cases'].status, 'present');
+  assert.deepEqual(payload.sections['review-edge-cases'].items, ['E1 A rejected issue follows the planned steps.', 'E4 Slices keep the literal text.']);
+  assert.equal(payload.sections['implementation-details'].status, 'absent');
+  assert.deepEqual(payload.open_questions, []);
+  assert.deepEqual(payload.seed, {
+    sections: {
+      'explore-change': { state: 'agreed', source: 'issue' },
+      'review-edge-cases': { state: 'agreed', source: 'issue', list: ['E1', 'E4'] },
+      'implementation-details': { state: 'open', source: 'issue' },
+    },
+  });
+});
+
+test('E6: a section that says none explicitly is seeded agreed and empty; a blank or not-agreed one is open', () => {
+  const none = run([], issue({ edge: '- None.', notes: 'Not agreed yet.' })).payload;
+  assert.equal(none.sections['review-edge-cases'].status, 'explicitly-empty');
+  assert.deepEqual(none.seed.sections['review-edge-cases'], { state: 'agreed', source: 'issue', list: [] });
+  assert.equal(none.sections['implementation-details'].status, 'absent');
+  assert.deepEqual(none.seed.sections['implementation-details'], { state: 'open', source: 'issue' });
+
+  const unagreed = run([], issue({ scope: 'Not agreed yet.' })).payload;
+  assert.equal(unagreed.sections['explore-change'].status, 'absent');
+  assert.equal(unagreed.seed.sections['explore-change'].state, 'open');
+});
+
+test('E7: each open question marks the section it affects open, and one that maps to no single section marks explore-change', () => {
+  const text = issue({ openQuestions: '- Q1 Should E1 reject empty input?\n- Q2 Does I3 need a flag?\n- Q3 Which provider is used?\n- Q4 Does E4 change I1?' });
+  const { status, payload } = run([], text);
+  assert.equal(status, 1, 'the block conversion still rejects the open questions');
+  assert.deepEqual(payload.open_questions.map((q) => [q.affects, q.single]), [
+    ['review-edge-cases', true],
+    ['implementation-details', true],
+    ['explore-change', false],
+    ['explore-change', false],
+  ]);
+  for (const stage of ['explore-change', 'review-edge-cases', 'implementation-details']) {
+    assert.equal(payload.seed.sections[stage].state, 'open', stage);
+  }
+  // The content stays as the starting proposal.
+  assert.deepEqual(payload.seed.sections['review-edge-cases'].list, ['E1', 'E4']);
+
+  const one = run([], issue({ openQuestions: '- Q1 Should E1 reject empty input?' })).payload;
+  assert.equal(one.seed.sections['review-edge-cases'].state, 'open');
+  assert.equal(one.seed.sections['implementation-details'].state, 'agreed');
+  assert.equal(one.seed.sections['explore-change'].state, 'agreed');
+});
+
+test('text that is not an issue seeds every section open', () => {
+  const { status, payload } = run([], 'Just a paragraph about a bug.');
+  assert.equal(status, 0);
+  for (const stage of ['explore-change', 'review-edge-cases', 'implementation-details']) {
+    assert.deepEqual(payload.seed.sections[stage], { state: 'open', source: 'issue' });
+  }
+});
+
+test('I5: compare reports metadata when only the origin lines differ and content otherwise', () => {
+  const detector = require('../sai/tools/ready-to-propose');
+  const base = [
+    '## Ready to Propose', '', '**Change name**: x', '**What**: Adds a thing.', '**Why**: Needed.', '**Capabilities in scope**:', '- thing',
+    '**Research Leads**:', '- None', '**Decisions & Rationale**:', '- None', '**Alternatives Considered**:', '- None', '**Trade-offs Accepted**:', '- None',
+    '**Model / Re-framings**:', '- None', '**Key constraints**:', '- None', '**Terms**:', '- None', '**Edge Cases**:', '- E1: a', '**Implementation Details**:', '- I1: b',
+    '**Out of scope Implementation Details**:', '- None', '**Overview language**: None', '', '---', '',
+  ].join('\n');
+  const originLine = '**Backlog origin**: https://github.com/team/repo/issues/11\n**What**:';
+  const origin = base.replace('**What**:', originLine);
+  const explore = origin.replace('**What**:', '**Explore origin**: claude 6b1f93a0-44bb-4449-a7c3-39b3ece9abea\n**What**:');
+
+  assert.deepEqual(detector.compareBlocks(base, base), { amend_kind: 'metadata', changed_fields: [] });
+  assert.deepEqual(detector.compareBlocks(base, origin), { amend_kind: 'metadata', changed_fields: ['Backlog origin'] });
+  assert.deepEqual(detector.compareBlocks(origin, explore), { amend_kind: 'metadata', changed_fields: ['Explore origin'] });
+  assert.deepEqual(detector.compareBlocks(explore, base), { amend_kind: 'metadata', changed_fields: ['Backlog origin', 'Explore origin'] });
+  for (const [label, changed] of [
+    ['What', base.replace('Adds a thing.', 'Adds another thing.')],
+    ['Why', base.replace('Needed.', 'Wanted.')],
+    ['Capabilities in scope', base.replace('- thing', '- thing\n- more')],
+    ['Key constraints', base.replace('**Key constraints**:\n- None', '**Key constraints**:\n- Keep it small.')],
+    ['Edge Cases', base.replace('- E1: a', '- E1: c')],
+    ['Implementation Details', base.replace('- I1: b', '- I1: d')],
+    ['Overview language', base.replace('**Overview language**: None', '**Overview language**: es')],
+  ]) {
+    assert.deepEqual(detector.compareBlocks(base, changed), { amend_kind: 'content', changed_fields: [label] }, label);
+    assert.equal(detector.compareBlocks(origin, changed.replace('**What**:', originLine)).amend_kind, 'content', label);
+  }
+});
+
+test('I5: the compare sub-command reads one stored and one amended block file', () => {
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'rtp-compare-'));
+  try {
+    const stored = path.join(dir, 'stored.md');
+    const amended = path.join(dir, 'amended.md');
+    const block = '## Ready to Propose\n\n**Change name**: x\n**What**: A.\n**Why**: B.\n\n---\n';
+    fs.writeFileSync(stored, block);
+    fs.writeFileSync(amended, block.replace('A.', 'C.'));
+    const result = spawnSync(process.execPath, [TOOL, 'compare', '--stored-file', stored, '--block-file', amended], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), { ok: true, amend_kind: 'content', changed_fields: ['What'] });
+    const missing = spawnSync(process.execPath, [TOOL, 'compare', '--block-file', amended], { encoding: 'utf8' });
+    assert.equal(missing.status, 1);
+    assert.equal(JSON.parse(missing.stdout).ok, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('I3: the seed carries identifiers only; an item without its own identifier takes the next unused number', () => {
+  const { payload } = run([], issue({ maturity: 'Edge cases agreed', edge: '- E2 Kept as written.\n- An item with no identifier\n- E1 Another kept.', notes: null }));
+  assert.deepEqual(payload.seed.sections['review-edge-cases'].list, ['E2', 'E3', 'E1']);
+  assert.deepEqual(payload.sections['review-edge-cases'].items.length, 3);
+  assert.ok(!JSON.stringify(payload.seed).includes('Kept as written'));
+});

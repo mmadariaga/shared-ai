@@ -104,7 +104,12 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   the session file, per change name, each block's text, its sha256 hash, and
   the verdicts of its flagged lines, in the same session-file write as the
   inventory; a later successful block emit replaces the stored blocks together
-  with the inventory. The inventory, the block texts, their hashes, and their
+  with the inventory, except that a slice whose block hash equals the stored
+  one keeps its completion and its parked cursor, and the publication answer
+  stays when the set of change names is unchanged (the CLI hands the machine
+  the names whose hash is unchanged as `unchanged`). A successful block emit
+  also empties the `staleBlocks` list of § Explore movement. The inventory,
+  the block texts, their hashes, and their
   verdicts are one session-file write: when it fails the response is the
   `STORE_WRITE_FAILED` (or `STORE_CONFLICT`) error of § Responses, and the
   earlier inventory and blocks stay intact. The set is validated as a whole: a
@@ -135,14 +140,21 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   does, then requires the block's `**Change name**` to equal `<change-name>`
   (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the block
   file to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
-  then accepts the amendment for a pending or stopped slice only: a slice that
-  is completed (`rejected: "SLICE_COMPLETED"`), running
-  (`rejected: "SLICE_RUNNING"`), or not in the recorded inventory
-  (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0 and nothing stored. An
-  accepted amendment replaces only that slice's stored text, hash, and verdicts
-  in the session file; the inventory order, the other slices' stored entries,
-  the completed slices, and every parked cursor stay unchanged. It returns the
-  block emit's `validation` block plus the ordinary emit fields. The
+  then accepts the amendment for a pending, stopped, or running slice: a slice
+  that is completed (`rejected: "SLICE_COMPLETED"`) or not in the recorded
+  inventory (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0 and nothing
+  stored. An accepted amendment replaces only that slice's stored text, hash,
+  and verdicts in the session file; the inventory order, the other slices'
+  stored entries, and the completed slices stay unchanged. The CLI compares the
+  stored and the new block field by field (`ready-to-propose.js compare`) and
+  answers `amend_kind`: `metadata` when only block metadata (`Backlog origin`,
+  `Explore origin`) changed, `content` otherwise. A `metadata` amendment keeps
+  the route authorization: a running slice is amended in place and a parked
+  cursor stays. A `content` amendment voids it: the slice returns to pending
+  without a cursor (a running slice is released) and the route gate closes, so
+  the route selector is presented again. An accepted amendment removes its
+  slice from the `staleBlocks` list of § Explore movement. It returns the block emit's
+  `validation` block, the `amend_kind`, plus the ordinary emit fields. The
   replacement is written together with the machine outcome in one session-file
   write, so a store failure (§ Responses) leaves the previous entry stored. A
   non-dispatchable block returns
@@ -180,6 +192,55 @@ sai-state reset <id> security-steps@1
 node <tool-path> emit <id> explore-idea@1 --set intent=next-step
 sai-state close <id>
 ```
+
+## Explore movement
+
+The explore machines guard invariants, not paths: the stage order is a default
+path, and one `goto` intent moves a machine to any stage or step whose
+preconditions hold. Both machines record every accepted move as
+`{target, reason, received_at}` in a `moves` list of their state, exposed as
+`run.moves` on every response, which the closing report lists; a rejected `goto`
+changes nothing and records nothing. `received_at` is the CLI's reception time of
+the response.
+
+- **`explore-idea@1` `goto`**: `--set intent=goto --set target=<stage> --set reason=<user-request|correction>`
+  with the target `explore-change`, `review-edge-cases`, `implementation-details`, or
+  `crystallize`. Each machine declares its per-stage preconditions as data (the
+  sections that must be `agreed`). A backward move is always accepted and keeps
+  every section's state; a forward move stops at `crystallize`, the ceiling, and
+  fails with `rejected: "MISSING_PRECONDITIONS"`, `missing` (each absent section)
+  and `resume_at` (the earliest stage that owns one), the state unchanged. Other
+  rejections: `GOTO_PAST_CEILING` (a route start or route step), `GOTO_UNKNOWN_TARGET`,
+  `GOTO_ALREADY_AT_TARGET`, `GOTO_REASON_INVALID`.
+- **Sections**: the machine stores, per stage section (`explore-change`,
+  `review-edge-cases`, `implementation-details`), its state `agreed` or `open` and its
+  source `issue` or `conversation`, next to the identifier lists; free text never
+  enters the store. The section event `{"sections": {"<stage>": {"state", "source"?, "list"?}}}`
+  records them without moving the stage (an input file, § Event delivery): `list`
+  holds identifiers only and becomes the stage's starting list. An invalid event
+  answers `rejected: "SECTIONS_INVALID"` and changes nothing. `next-step` and an
+  accepted `recordedList` confirmation agree the section of the stage they close;
+  recording a list that differs from the stored one reopens its section, and a
+  changed `explore-change` list reopens every later section keeping its content;
+  `next-step` skips every stage whose section is still `agreed`, except when it
+  leaves the POC lane. The retired `issue-shortcut` intent is an unknown intent.
+- **`explore-slice@1` `goto`**: `--set intent=goto --set target=<pending|step> --set reason=<user-request|correction>`
+  with an optional `--set slice=<name>` (default: the active, else the first
+  pending slice) and `--set reopen=true`. The target `pending` discards the slice's
+  cursor (releasing it when running) and closes the route gate; a step target
+  rewinds a running or parked slice to an earlier step of its own route: a Direct
+  Build slice reaches only its first step (`GOTO_REWIND_UNSUPPORTED` otherwise), a
+  Plan slice any earlier step. A route start or a later step is
+  `GOTO_PAST_CEILING`. A completed slice is `SLICE_COMPLETED` unless the user asked
+  to reopen it (`reopen=true`, reason `user-request`, target `pending`).
+- **Stale blocks**: an accepted backward `goto` of `explore-idea@1` from
+  `crystallize` after blocks were registered lists every stored change name in
+  `staleBlocks` in the session file. While any name is listed the route intents of
+  `explore-slice@1` (`route-choice`, `direct-build`, `plan`, `auto-continue`,
+  `resume-direct-build`) answer `rejected: "BLOCKS_STALE"` and change nothing. An
+  accepted amendment removes only its own name; a block emit (re-registration)
+  empties the list. The lock opens only when every stored block was amended or
+  the set was registered again.
 
 ## Responses
 

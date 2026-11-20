@@ -88,6 +88,17 @@
  * (`validation.flagged` lists the lines awaiting the bounded judgment).
  * Exit codes: 0 = converted, or the issue lacks the form; 1 = conversion
  * rejected (`rejections`); 2 = usage or I/O error.
+ *
+ * `convert` accepts an issue of any `Maturity`: whatever the outcome of the
+ * block conversion, the output also carries `sections` (per `/sai-explore`
+ * stage section: `present`, `explicitly-empty`, or `absent`), `open_questions`
+ * (each entry with the stage section it `affects`), and `seed`, the event that
+ * records those sections in `explore-idea@1`.
+ *
+ * A fourth sub-command reports what an amendment changes:
+ *   node sai/tools/ready-to-propose.js compare --stored-file <path> --block-file <path>
+ * It prints `{ ok, amend_kind, changed_fields }` with `amend_kind` `metadata`
+ * when only block metadata fields changed and `content` otherwise.
  */
 
 const crypto = require('crypto');
@@ -432,6 +443,45 @@ function checkStrict(text) {
 /** sha256 hex of a block's text (newlines normalized to LF). */
 function hashBlock(blockText) {
   return crypto.createHash('sha256').update(normalize(blockText), 'utf8').digest('hex');
+}
+
+/** The block fields that are metadata, not agreed content: an amendment that changes only these keeps the route authorization. */
+const AMEND_METADATA_FIELDS = ['Backlog origin', 'Explore origin'];
+
+/** The text of each known field of one block, by label; continuation lines belong to the field above them. */
+function blockFields(blockText) {
+  const known = new Set(STRICT_FIELDS.map((field) => field.label));
+  const fields = new Map();
+  let label = null;
+  for (const line of normalize(blockText).split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === HEADING) continue;
+    if (trimmed === SEPARATOR) break;
+    const match = LABEL_LINE.exec(line);
+    if (match && known.has(match[1])) {
+      label = match[1];
+      fields.set(label, [match[2].trim()]);
+    } else if (label !== null) {
+      fields.get(label).push(line.replace(/\s+$/, ''));
+    }
+  }
+  const out = new Map();
+  for (const [name, lines] of fields) out.set(name, lines.join('\n').trim());
+  return out;
+}
+
+/**
+ * Field-by-field comparison of a stored block and its amended text: `content`
+ * when any field other than the metadata fields was added, removed, or changed;
+ * `metadata` otherwise (an identical block included).
+ */
+function compareBlocks(storedText, amendedText) {
+  const stored = blockFields(storedText);
+  const amended = blockFields(amendedText);
+  const changed = STRICT_FIELDS.map((field) => field.label)
+    .filter((label) => stored.get(label) !== amended.get(label));
+  const content = changed.some((label) => !AMEND_METADATA_FIELDS.includes(label));
+  return { amend_kind: content ? 'content' : 'metadata', changed_fields: changed };
 }
 
 /** Individual blocks may refer to slices that were not delivered with them. */
@@ -892,6 +942,82 @@ function rejection(code, detail) {
   return { code, detail };
 }
 
+/** The `/sai-explore` stage that owns each issue-derived section, in stage order. */
+const SEED_STAGES = ['explore-change', 'review-edge-cases', 'implementation-details'];
+
+const EXPLICIT_NONE = /^(?:none|n\/a)\.?$/i;
+
+/**
+ * The identifiers of a list's items, in order: the item's own `E#`/`I#` when it
+ * carries one, otherwise the next unused number. The store keeps identifiers
+ * only, so the seed carries these and never the item text.
+ */
+function itemIdentifiers(items, letter) {
+  const own = new RegExp('^(?:\\*\\*)?(' + letter + '\\d+)(?:\\*\\*)?(?=[\\s:.)\\-\\u2013]|$)');
+  const taken = new Set(items.map((item) => (own.exec(item) || [])[1]).filter(Boolean));
+  let counter = 0;
+  return items.map((item) => {
+    const match = own.exec(item);
+    if (match) return match[1];
+    do { counter += 1; } while (taken.has(`${letter}${counter}`));
+    taken.add(`${letter}${counter}`);
+    return `${letter}${counter}`;
+  });
+}
+
+/** Which stage section an `Open questions` entry affects; an entry that maps to no single section affects `explore-change`. */
+function questionAffects(text) {
+  const hits = new Set();
+  if (/\bE\d+\b/.test(text) || /\bedge[- ]cases?\b/i.test(text)) hits.add('review-edge-cases');
+  if (/\bI\d+\b/.test(text) || /\bimplementation\b/i.test(text)) hits.add('implementation-details');
+  if (hits.size === 1) return { affects: [...hits][0], single: true };
+  return { affects: 'explore-change', single: false };
+}
+
+/**
+ * Per-section reading of an issue of any Maturity: `present` (agreed content),
+ * `explicitly-empty` (the section says none), or `absent` (missing, blank, or
+ * not agreed yet), plus the section each open question affects and the
+ * `explore-idea@1` seed event built from them: a section is seeded `agreed`
+ * only when the issue holds it explicitly and no open question affects it.
+ */
+function analyzeIssueSections(sections) {
+  const agreedText = (name) => {
+    const text = sectionText(sections.get(name) || []);
+    return isEmptySource(text) ? '' : text;
+  };
+  const changePresent = ['problem', 'goal'].every((name) => agreedText(name) !== '')
+    && sectionItems(sections.get('scope') || []).some((item) => !NOT_AGREED_OR_NONE.test(item));
+  const listStatus = (name) => {
+    const raw = sectionItems(sections.get(name) || []);
+    const items = raw.filter((item) => !NOT_AGREED_OR_NONE.test(item));
+    if (items.length > 0) return { status: 'present', items };
+    if (raw.some((item) => EXPLICIT_NONE.test(item))) return { status: 'explicitly-empty', items: [] };
+    return { status: 'absent', items: [] };
+  };
+  const edge = listStatus('edge cases');
+  const implementation = listStatus('implementation notes');
+  const openQuestions = sectionItems(sections.get('open questions') || [])
+    .filter((item) => !NOT_AGREED_OR_NONE.test(item))
+    .map((text) => Object.assign({ text }, questionAffects(text)));
+  const affected = new Set(openQuestions.map((entry) => entry.affects));
+
+  const reading = {
+    'explore-change': { status: changePresent ? 'present' : 'absent' },
+    'review-edge-cases': { status: edge.status, items: edge.items },
+    'implementation-details': { status: implementation.status, items: implementation.items },
+  };
+  const seedSections = {};
+  for (const stage of SEED_STAGES) {
+    const read = reading[stage];
+    const agreed = read.status !== 'absent' && !affected.has(stage);
+    const entry = { state: agreed ? 'agreed' : 'open', source: 'issue' };
+    if (read.status !== 'absent' && stage !== 'explore-change') entry.list = itemIdentifiers(read.items, stage === 'review-edge-cases' ? 'E' : 'I');
+    seedSections[stage] = entry;
+  }
+  return { sections: reading, open_questions: openQuestions, seed: { sections: seedSections } };
+}
+
 /**
  * Deterministic issue-to-block conversion. Every field is the issue's own text
  * or `- None`; the model reviews the draft, it does not author it.
@@ -908,7 +1034,7 @@ function convertIssue(text, options = {}) {
   const form = maturity !== null && maturity.toLowerCase() === READY_MATURITY.toLowerCase();
   const goalText = sectionText(sections.get('goal') || []);
   const proposedName = isEmptySource(goalText) ? null : proposeChangeName(goalText);
-  const base = { ready_to_propose_form: form, maturity, proposed_change_name: proposedName };
+  const base = Object.assign({ ready_to_propose_form: form, maturity, proposed_change_name: proposedName, declared_clean_note: DECLARED_CLEAN_NOTE }, analyzeIssueSections(sections));
   if (!form) {
     return Object.assign(base, { ok: true, converted: false, rejections: [], block: null });
   }
@@ -1008,10 +1134,12 @@ function usage() {
     '       node sai/tools/ready-to-propose.js attach-origin --input-file <path>  (JSON {text, correspondence}; stdin also accepted)',
     '       node sai/tools/ready-to-propose.js attach-origin --harness <claude|opencode> --input-file <path>  (JSON {block_files: [{block_file, hash}], correspondence}; stdin also accepted)',
     '       node sai/tools/ready-to-propose.js convert [--change-name <name>] [--declared-clean] --input-file <path>  (issue description; stdin also accepted)',
+    '       node sai/tools/ready-to-propose.js compare --stored-file <path> --block-file <path>',
     '',
     '  check               Validate the Ready to Propose text read from the input file or stdin',
     '  hash                Print the sha256 of the single block read from the input file or stdin',
-    '  convert             Convert the issue description (Markdown or HTML) read from the input file or stdin into a draft block',
+    '  convert             Convert the issue description (Markdown or HTML) read from the input file or stdin into a draft block and read its sections',
+    '  compare             Report whether the amended block differs from the stored one in content or in metadata only',
     '  --input-file <path> File holding the structured input; wins over stdin',
     '  --profile <name>    loose (backfill quorum), strict (full block format), or',
     `                      dispatchable (strict + implementation item rules + hygiene pre-filter;`,
@@ -1038,7 +1166,7 @@ function parseArgs(argv) {
         return { error: `${arg} requires a value` };
       }
       opts.changeName = argv[++i];
-    } else if (['--block-file', '--block-hash', '--verdicts-file', '--harness', '--input-file'].includes(arg)) {
+    } else if (['--block-file', '--block-hash', '--verdicts-file', '--harness', '--input-file', '--stored-file'].includes(arg)) {
       if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) return { error: `${arg} requires a value` };
       opts[arg.slice(2)] = argv[++i];
     } else if (arg === '--declared-clean') {
@@ -1107,6 +1235,19 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
     process.stdout.write(`${JSON.stringify(outcome, null, 2)}\n`);
     return outcome.ok ? 0 : 1;
   }
+  if (opts.command === 'compare') {
+    try {
+      if (!opts['stored-file'] || !opts['block-file']) throw new Error('compare requires --stored-file and --block-file');
+      const stored = extractBlockTexts(fs.readFileSync(opts['stored-file'], 'utf8'));
+      const amended = extractBlockTexts(fs.readFileSync(opts['block-file'], 'utf8'));
+      if (stored.length !== 1 || amended.length !== 1) throw new Error('compare reads exactly one block from each file');
+      process.stdout.write(`${JSON.stringify(Object.assign({ ok: true }, compareBlocks(stored[0], amended[0])), null, 2)}\n`);
+      return 0;
+    } catch (error) {
+      process.stdout.write(`${JSON.stringify({ ok: false, error: error.message })}\n`);
+      return 1;
+    }
+  }
   if (opts.command === 'dependencies') {
     let input;
     try { input = readInput(); }
@@ -1136,7 +1277,7 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
     }
   }
   if (opts.command !== 'check') {
-    process.stderr.write(`sub-command "check", "hash", "verify-file", "compose", "dependencies", "attach-origin" or "convert" required.\n${usage()}\n`);
+    process.stderr.write(`sub-command "check", "hash", "verify-file", "compose", "compare", "dependencies", "attach-origin" or "convert" required.\n${usage()}\n`);
     return 2;
   }
   if (!PROFILES.includes(opts.profile)) {
@@ -1174,6 +1315,9 @@ module.exports = {
   composeVerdicts,
   verifyBlockFile,
   extractBlockTexts,
+  AMEND_METADATA_FIELDS,
+  compareBlocks,
+  analyzeIssueSections,
   validateDependencies,
   validateDependencySet,
   attachBacklogOrigins,

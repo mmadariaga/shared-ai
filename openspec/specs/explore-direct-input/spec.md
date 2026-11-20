@@ -16,7 +16,7 @@ The `sai-explore` instruction SHALL treat an input phrased as a direct implement
 
 ### Requirement: Maturation gate preservation
 
-The `sai-explore` flow SHALL require `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize` including final route selection for direct-looking requests, and SHALL NOT provide a skip path based on imperative wording. The issue shortcut of the issue intake SHALL be the one path that enters `Crystallize` directly from `Explore change`, carrying the issue's agreed lists; it requires the user's explicit shortcut answer and still ends with final route selection.
+The `sai-explore` flow SHALL require `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize` including final route selection for direct-looking requests, and SHALL NOT provide a skip path based on imperative wording. A stage MAY be skipped only through a `goto` whose preconditions hold because every earlier section is already agreed in an explicit source, such as an issue seeded by the issue intake after the user answered `work`, or a list the user confirmed earlier in the conversation; such a path still ends with final route selection.
 
 #### Scenario: Mandatory gates for direct requests
 
@@ -25,8 +25,8 @@ The `sai-explore` flow SHALL require `Explore change`, `Review edge cases`, `Imp
 
 #### Scenario: Imperative wording never takes the shortcut
 
-- **WHEN** a direct-looking request that is not an issue taken through the shortcut question asks to implement at once
-- **THEN** no stage is skipped and the issue shortcut is not entered
+- **WHEN** a direct-looking request whose sections are not agreed in an explicit source asks to implement at once
+- **THEN** no stage is skipped and no forward `goto` past an open section is accepted
 
 ### Requirement: Context preservation without redundant discovery
 

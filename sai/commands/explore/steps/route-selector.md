@@ -21,7 +21,7 @@ Fetch `@sai/policies/question-rounds.md` and follow it for every round below.
 - **Waiting with no pending slices** — `stage` is `waiting` with no pending slice and `active` cleared. The set is exhausted: acknowledge that no route can start and dispatch nothing.
 - A route that fails or is cancelled parks its active slice back in `waiting`. On its returned selector pointer, distinguish pending Direct Build execution from initial selection before presenting any options. Plan keeps its existing fresh native picker. After a completed slice, offer the picker for the next slice unless Direct Build continuation resolves to `auto_continue`.
 
-**Inventory.** Slice names come from `Ready to Propose` blocks in chat, not the wire. A `recordedList` replaces `set` without moving a running cursor, discards parked cursors, and makes the newest complete block set authoritative. A name in the new set is pending even if that same name completed under an older set. Do not run `openspec list --json`, enumerate changes on disk, or re-sort emitted names.
+**Inventory.** Slice names come from `Ready to Propose` blocks in chat, not the wire. A `recordedList` replaces `set` without moving a running cursor and makes the newest complete block set authoritative. A slice whose stored block hash is unchanged keeps its completion and its parked cursor, and the publication answer stays when the set of change names is unchanged; every other name in the new set is pending, with no parked cursor, even if that same name completed under an older set. Do not run `openspec list --json`, enumerate changes on disk, or re-sort emitted names.
 
 **Reply-pending state.** Keep `route_choice_reply_pending` in conversation state for the current `last_crystallization_set`. It starts `false`; the shared close sets it to `true` only after its block emit has recorded the inventory and every block has been displayed. Reset it to `false` when a new crystallization replaces the set, then set it to `true` as that new close ends. After an accepted Plan, Direct Build, or Manual picker answer, set it to `false`. If this selector is reached after a route result requiring a fresh route selection, set it to `true` before presenting a fresh native picker. A pending Direct Build execution keeps it `false` and uses the decision below. A cancelled, absent, invalid, or ambiguous route-choice response keeps it `true` and emits no route intent. It is not persisted or sent to a worker.
 
@@ -44,7 +44,8 @@ pending execution.
    accepted work, pending operation, blocking cause, and remaining budget.
    Offer `Resume Direct Build` only when retained state and existing recovery
    rules permit the pending operation; offer a concrete action to resolve the
-   blocker when available, and `Remain stopped`. Plan and Manual do not replace
+   blocker when available, `Back to pending` and `Restart from the first step`
+   (the moves of step 4), and `Remain stopped`. Plan and Manual do not replace
    this pending execution. Budget exhaustion offers no automatic retry; an
    uncertain mutation offers verification, not replay. Invalid or cancelled
    answers preserve the stop and dispatch nothing.
@@ -56,6 +57,18 @@ pending execution.
    `RESUMPTION_REQUIRED` redirects here without dispatch;
    `NO_PENDING_DIRECT_BUILD` requires checking state before any work, never an
    implicit new execution.
+4. A pending execution that cannot or should not resume has an exit that
+   keeps the set. `Back to pending` emits `--set intent=goto --set target=pending
+   --set reason=<user-request|correction>`: the parked cursor is discarded, the
+   completed slices, the inventory, and the publication answer stay, and the
+   route picker below is presented again. `Restart from the first step` emits
+   `--set intent=goto --set target=build-implement --set reason=<user-request|correction>`
+   and then `{intent: resume-direct-build}`: the saved cursor becomes the first
+   step and the card initializes fresh run state for it (Resume of
+   `direct-build-coordinator.md`). A later step is not a target yet. Both moves
+   authorize nothing the first selection did not, and `Back to pending` asks for
+   a new selector answer. Never reset `explore-slice@1` for this: that clears
+   completed slices and the publication answer.
 
 ## Optional pre-route actions
 
@@ -223,9 +236,11 @@ When the setting resolved the value, print `Project setting pr.publishAfterRun: 
 - If no slice has been crystallized in this chat, acknowledge that no change has been crystallized and dispatch nothing.
 - If no uncompleted entry remains, acknowledge that every change of the last crystallization turn is already completed and dispatch nothing.
 - If one or more uncompleted entries remain, route only the first pending slice in crystallization order. Do not present a slice-name picker, even when multiple entries remain. The same first-pending rule applies to Manual handoff, Plan, and Direct Build.
-- Never re-run a completed slice. A later crystallization turn replaces the pending set with that turn's emitted names; every name in the new set leaves `completed_changes` so a re-crystallized change re-enters at the first route step over its new block. Blocks from earlier turns are assumed applied or discarded and are no longer arbitrated here. A material idea change before choice invalidates the crystallized set and restarts at `Explore change` (E6).
+- Never re-run a completed slice. A later crystallization turn replaces the pending set with that turn's emitted names; a name whose block hash is unchanged stays in `completed_changes` and keeps its parked cursor, while every other name in the new set leaves `completed_changes` so a re-crystallized change with a changed block re-enters at the first route step over its new block. Blocks from earlier turns are assumed applied or discarded and are no longer arbitrated here. A material idea change before choice invalidates the crystallized set and restarts at `Explore change` (E6).
 
-**Single-slice amendment.** To correct one slice of the recorded set without re-crystallizing the whole set, display the corrected block, validate it with the same bounded judgment as the block emit, and emit it with `--amend <change-name>` (`@sai/policies/stage-machine.md` § Block amend) instead of a new block emit. The machine accepts it for a pending or stopped slice only: a `SLICE_COMPLETED` or `SLICE_RUNNING` rejection changes nothing and the correction waits for the slice to stop or be re-crystallized, and `UNKNOWN_SLICE` means the name is not in the recorded set. An accepted amendment replaces only that slice's stored block (the inventory, completed slices, and parked cursors stay), emits no route intent, and re-opens no picker; a stopped slice resumes at its saved cursor over the amended block.
+**Single-slice amendment.** To correct one slice of the recorded set without re-crystallizing the whole set, display the corrected block, validate it with the same bounded judgment as the block emit, and emit it with `--amend <change-name>` (`@sai/policies/stage-machine.md` § Block amend) instead of a new block emit. A pending, stopped, or running slice is amendable; a `SLICE_COMPLETED` rejection changes nothing, and `UNKNOWN_SLICE` means the name is not in the recorded set. The response carries `amend_kind`, the tool's field-by-field comparison of the stored and the new block. **`metadata`** (only block metadata such as `Backlog origin` or `Explore origin` changed) keeps the route authorization: the stored block is replaced, the inventory, completed slices, and parked cursors stay, a running slice is amended in place, a stopped slice resumes at its saved cursor over the amended block, and no picker re-opens. A running Direct Build slice then re-exports its block for the card's next request. **`content`** (`What`, `Why`, scope, the `E` or `I` items, `Key constraints`, or any other agreed field changed) voids that slice's authorization: the slice returns to pending without a cursor, a running slice is released, and the route selector is presented again in this conversation with the corrected block visible; the other slices keep their state. Dispose the slice's workers first when it was running, per `@sai/policies/worker-lifecycle.md`.
+
+**Correcting a slice.** Every correction or shortcut is one general movement, not a special intent: `goto` on `explore-slice@1` (`--set intent=goto --set target=<pending|build-implement|…> --set reason=<user-request|correction>`, `--set slice=<name>` for a slice other than the active or first pending one) moves a slice backward and never past this selector. A rewind inside a Direct Build route reaches only pending or the first step; a Plan route rewinds to any earlier step of its own route. A completed slice is rejected (`SLICE_COMPLETED`) unless the user explicitly asks to reopen it (`--set target=pending --set reason=user-request --set slice=<name> --set reopen=true`). A rewind to the first step of a slice that already wrote files keeps those files: the new run starts from the current working tree as its base and reverts nothing. `GOTO_PAST_CEILING`, `GOTO_REWIND_UNSUPPORTED`, and the other rejections change nothing and record nothing; tell the user in one line which move is available instead. A re-registration of the set keeps the completion and parked cursor of every slice whose block is unchanged, and the publication answer when the change names are unchanged.
 
 **Route-owned panel entries (authoritative).** The choice creates the route entries; no baseline evidence entries exist. Clear the stage TODO at block emission and first render only at choice resolution (E5). The selected path creates its own entries with no baseline items:
 - **Plan** (`route_mode = plan-unattended`): exactly `sai-1`, `sai-2`, `Implement`, with `sai-1` `in_progress` and the rest `pending`, then follow the `/sai-plan` coordinator (`pipeline-plan-unattended.md`). A completed spec segment completes `sai-1` and starts `sai-2` as `in_progress`. A completed design segment completes `sai-2` and starts `Implement` as `in_progress`; it does not claim implementation ran.

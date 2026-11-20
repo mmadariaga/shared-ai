@@ -290,12 +290,12 @@ Initial Direct Build selection SHALL enter only after a later valid `Direct Buil
 
 ### Requirement: Pending Direct Build decisions precede initial route selection
 
-Before presenting the initial native route picker, Explore SHALL distinguish a pending Direct Build execution using retained conversation state and the first pending slice's parked mode. For that execution, Explore SHALL apply existing unattended recovery before requesting a decision. When intervention is required, the native picker SHALL present only executable actions to resolve the actual blocker or remain stopped. `Resume Direct Build` SHALL be offered only when retained state and existing recovery rules permit the pending operation. Plan and Manual SHALL not replace the pending execution. Initial selection, Plan retries, and selection for later slices SHALL retain their existing behavior on Claude Code and opencode.
+Before presenting the initial native route picker, Explore SHALL distinguish a pending Direct Build execution using retained conversation state and the first pending slice's parked mode. For that execution, Explore SHALL apply existing unattended recovery before requesting a decision. When intervention is required, the native picker SHALL present only executable actions to resolve the actual blocker, `Back to pending`, `Restart from the first step`, or remain stopped. `Resume Direct Build` SHALL be offered only when retained state and existing recovery rules permit the pending operation. `Back to pending` SHALL emit `goto` with target `pending` on `explore-slice@1`, discarding the parked cursor while the completed slices, the inventory, and the publication answer stay, and SHALL present the route picker again. `Restart from the first step` SHALL emit `goto` with target `build-implement` and then `resume-direct-build`, and the Direct Build card SHALL initialize fresh run state for that step, with every counter at zero and `base_sha` taken from the current working tree, keeping files an earlier run wrote and reverting nothing. Neither move SHALL authorize anything the first selection did not, and Explore SHALL NOT reset `explore-slice@1` for this. Plan and Manual SHALL not replace the pending execution. Initial selection, Plan retries, and selection for later slices SHALL retain their existing behavior on Claude Code and opencode.
 
 #### Scenario: Pending work needs intervention
 
 - **WHEN** a parked Direct Build execution requires user intervention
-- **THEN** Explore names the change, accepted work, pending operation, blocking cause, and remaining budget and offers only applicable actions, including remaining stopped, instead of the initial three-route selector
+- **THEN** Explore names the change, accepted work, pending operation, blocking cause, and remaining budget and offers only applicable actions, including `Back to pending`, `Restart from the first step`, and remaining stopped, instead of the initial three-route selector
 
 #### Scenario: Recovery can continue without a new decision
 
@@ -316,6 +316,11 @@ Before presenting the initial native route picker, Explore SHALL distinguish a p
 
 - **WHEN** recovery attempts are exhausted or an execute operation has uncertain effects
 - **THEN** Explore offers no automatic retry for exhaustion and offers verification rather than replay for uncertainty
+
+#### Scenario: A parked slice with no run state has an exit
+
+- **WHEN** a Direct Build slice parked before any dispatch has no run state to resume
+- **THEN** Explore offers `Back to pending` and `Restart from the first step`, and choosing `Back to pending` presents the route picker again with the completed slices and publication answer kept
 
 ### Requirement: Direct Build automatic chain stays open across an assignment question
 

@@ -139,3 +139,36 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 #### Scenario: an id that does not match its harness fails
 - **WHEN** a block carries `**Explore origin**: claude ses_a`
 - **THEN** the verdict carries an `INVALID_EXPLORE_ORIGIN` violation and the block is not dispatchable
+
+### Requirement: Convert reads the sections of an issue of any maturity
+
+`ready-to-propose.js convert` SHALL accept an issue of any `Maturity` and, whatever the block conversion outcome, SHALL also return `sections`, `open_questions`, `seed`, and `declared_clean_note`. `sections` SHALL report, for `explore-change` (from `Problem`, `Goal`, and `Scope`), `review-edge-cases` (the `Edge cases` list), and `implementation-details` (the `Implementation notes` list), a `status` of `present`, `explicitly-empty` (the section says none), or `absent` (missing, blank, or not agreed), and for a list its literal `items`. `open_questions` SHALL list each `Open questions` entry with the section it `affects`, where an entry that maps to no single section affects `explore-change`. `seed` SHALL be the `explore-idea@1` sections event: a section SHALL be `agreed` with the source `issue` only when its status is not `absent` and no open question affects it, otherwise `open`, and each list section that is not absent SHALL carry its item identifiers (the item's own `E#`/`I#`, else the next unused number), never item text.
+
+#### Scenario: Partial issue returns its sections
+
+- **WHEN** an issue whose `Maturity` is not `Ready to propose` with a complete `Edge cases` list and no `Implementation notes` is converted
+- **THEN** the output reports `review-edge-cases` `present`, `implementation-details` `absent`, and a seed with the edge-case section `agreed` and the implementation-details section `open`
+
+#### Scenario: Explicit none seeds an agreed empty list
+
+- **WHEN** the issue's `Implementation notes` section reads `None`
+- **THEN** `implementation-details` is `explicitly-empty` and the seed records it `agreed` with an empty list
+
+#### Scenario: Open question opens the affected section
+
+- **WHEN** an `Open questions` entry names an `I` item
+- **THEN** the entry `affects` `implementation-details` and the seed records that section `open`
+
+### Requirement: Compare sub-command classifies an amendment
+
+`ready-to-propose.js compare --stored-file <path> --block-file <path>` SHALL read exactly one block from each file, compare them field by field, and print `{ok, amend_kind, changed_fields}`. `amend_kind` SHALL be `metadata` when only `Backlog origin` or `Explore origin` changed (an identical block included) and `content` when any other field was added, removed, or changed. A missing option, an unreadable file, or a file with other than one block SHALL print `{ok: false, error}` and exit 1.
+
+#### Scenario: Origin-only change is metadata
+
+- **WHEN** the amended block differs from the stored one only in `Backlog origin`
+- **THEN** `compare` prints `amend_kind: metadata` with `changed_fields` naming `Backlog origin`
+
+#### Scenario: Scope change is content
+
+- **WHEN** the amended block changes an `Implementation Details` item
+- **THEN** `compare` prints `amend_kind: content`

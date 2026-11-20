@@ -43,11 +43,19 @@ const MODE_STEPS = Object.freeze({
   [PLAN_MODE]: PLAN_STEPS,
 });
 
+const GOTO_REASONS = Object.freeze(['user-request', 'correction']);
+// The target that returns a slice to pending: no cursor, the route selector
+// presented again. Every other target is a route step.
+const PENDING_TARGET = 'pending';
+// A route start lies past the route selector, which no forward move crosses.
+const ROUTE_START_TARGETS = Object.freeze([DIRECT_BUILD_MODE, PLAN_MODE]);
+
 const initialState = Object.freeze({
   stage: IDLE_STAGE,
   set: [],
   inventoryReady: false,
   inventoryVersion: 0,
+  doneEpoch: 0,
   blockEmissionTurnClosed: false,
   autoContinueReady: false,
   active: null,
@@ -55,7 +63,21 @@ const initialState = Object.freeze({
   mode: null,
   parked: {},
   publication: '',
+  moves: [],
 });
+
+// Accepted moves, oldest first. Identifiers only: the target, its reason, and
+// the time the CLI received the event.
+function cloneMoves(src) {
+  if (!Array.isArray(src)) return [];
+  return src
+    .filter((move) => move && typeof move === 'object' && typeof move.target === 'string' && GOTO_REASONS.includes(move.reason))
+    .map((move) => ({ target: move.target, reason: move.reason, received_at: typeof move.received_at === 'string' ? move.received_at : null }));
+}
+
+function safeCount(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
 
 // A parked slice is pending with a saved cursor: `fail` or `cancel` parked it,
 // Plan selection or Direct Build resumption consumes its saved stage.
@@ -101,7 +123,9 @@ function cloneState(state) {
   const mode = typeof src.mode === 'string' ? src.mode : null;
   const parked = cloneParked(src.parked);
   const publication = clonePublication(src.publication);
-  return { stage, set, inventoryReady, inventoryVersion, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked, publication };
+  const doneEpoch = safeCount(src.doneEpoch);
+  const moves = cloneMoves(src.moves);
+  return { stage, set, inventoryReady, inventoryVersion, doneEpoch, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked, publication, moves };
 }
 
 function snapshotOf(current) {
@@ -110,6 +134,7 @@ function snapshotOf(current) {
     set: current.set.slice(),
     inventoryReady: current.inventoryReady,
     inventoryVersion: current.inventoryVersion,
+    doneEpoch: current.doneEpoch,
     blockEmissionTurnClosed: current.blockEmissionTurnClosed,
     autoContinueReady: current.autoContinueReady,
     active: current.active,
@@ -117,12 +142,14 @@ function snapshotOf(current) {
     mode: current.mode,
     parked: cloneParked(current.parked),
     publication: current.publication,
+    moves: cloneMoves(current.moves),
   };
 }
 
-// Identifiers only: the set-wide answer travels to the coordinators as this view.
+// Identifiers only: the set-wide answer and the accepted moves travel to the
+// coordinators as this view.
 function viewOf(current) {
-  return { publication: current.publication };
+  return { publication: current.publication, moves: cloneMoves(current.moves) };
 }
 
 function hintFor(stage, follow) {
@@ -217,6 +244,77 @@ function beginSlice(current, mode, steps) {
   return outcome(current);
 }
 
+// The active slice leaves its route without a cursor: pending again, with the
+// route gate closed so the selector is presented again.
+function releaseActive(current) {
+  current.active = null;
+  current.mode = null;
+  current.stage = WAITING_STAGE;
+  current.blockEmissionTurnClosed = true;
+  current.autoContinueReady = false;
+}
+
+function recordMove(current, target, reason, receivedAt) {
+  current.moves = cloneMoves(current.moves).concat([{ target, reason, received_at: typeof receivedAt === 'string' ? receivedAt : null }]);
+}
+
+// `goto`: moves a slice backward, never past the route selector. The target is
+// `pending` (no cursor, selector presented again) or a route step of the slice's
+// own route that lies before its current step. A Direct Build rewind reaches
+// only pending or the first step, because the run state it would need for a
+// later step is not stored. A completed slice is rejected unless the user
+// explicitly asks to reopen it (`reopen: true`, reason `user-request`, target
+// `pending`). A rejection changes nothing and records nothing.
+function gotoSlice(current, sig) {
+  if (GOTO_REASONS.indexOf(sig.reason) === -1) return outcome(current, 'GOTO_REASON_INVALID');
+  if (!current.inventoryReady) return outcome(current, 'INVENTORY_NOT_READY');
+  const target = sig.target;
+  if (typeof target !== 'string') return outcome(current, 'GOTO_UNKNOWN_TARGET');
+  if (ROUTE_START_TARGETS.indexOf(target) !== -1) return outcome(current, 'GOTO_PAST_CEILING');
+  const name = typeof sig.slice === 'string' ? sig.slice : (current.active != null ? current.active : pendingOf(current)[0]);
+  if (name === undefined || current.set.indexOf(name) === -1) return outcome(current, name === undefined ? 'NO_PENDING_SLICE' : 'UNKNOWN_SLICE');
+
+  if (current.done.indexOf(name) !== -1) {
+    if ((sig.reopen !== true && sig.reopen !== 'true') || sig.reason !== 'user-request' || target !== PENDING_TARGET) return outcome(current, 'SLICE_COMPLETED');
+    if (current.active != null) return outcome(current, 'ALREADY_RUNNING');
+    current.done = current.done.filter((entry) => entry !== name);
+    current.doneEpoch += 1;
+    delete current.parked[name];
+    current.blockEmissionTurnClosed = true;
+    current.autoContinueReady = false;
+    recordMove(current, target, sig.reason, sig.received_at);
+    return outcome(current);
+  }
+
+  if (target === PENDING_TARGET) {
+    delete current.parked[name];
+    if (current.active === name) releaseActive(current);
+    else if (pendingOf(current)[0] === name) {
+      current.blockEmissionTurnClosed = true;
+      current.autoContinueReady = false;
+    }
+    recordMove(current, target, sig.reason, sig.received_at);
+    return outcome(current);
+  }
+
+  const cursor = current.active === name ? { mode: current.mode, stage: current.stage } : current.parked[name];
+  const known = Object.keys(MODE_STEPS).some((mode) => MODE_STEPS[mode].indexOf(target) !== -1);
+  if (!known) return outcome(current, 'GOTO_UNKNOWN_TARGET');
+  // A pending slice with no cursor has no route position: any route step lies past the selector.
+  if (!cursor) return outcome(current, 'GOTO_PAST_CEILING');
+  const steps = MODE_STEPS[cursor.mode];
+  if (steps.indexOf(target) === -1) return outcome(current, 'GOTO_UNKNOWN_TARGET');
+  const from = steps.indexOf(cursor.stage);
+  const to = steps.indexOf(target);
+  if (to === from) return outcome(current, 'GOTO_ALREADY_AT_TARGET');
+  if (to > from) return outcome(current, 'GOTO_PAST_CEILING');
+  if (cursor.mode === DIRECT_BUILD_MODE && to !== 0) return outcome(current, 'GOTO_REWIND_UNSUPPORTED');
+  if (current.active === name) current.stage = target;
+  else current.parked[name] = { mode: cursor.mode, stage: target };
+  recordMove(current, target, sig.reason, sig.received_at);
+  return outcome(current);
+}
+
 function parkSlice(current) {
   if (current.active == null) {
     return outcome(current);
@@ -248,17 +346,33 @@ function transition(state, signal) {
   // cursor, so a re-crystallized slice re-enters at its route's first step.
   // Slice names persist in stage machine state and never appear on the wire.
   if (Array.isArray(sig.recordedList)) {
+    const previousSet = current.set;
+    const previousDone = current.done;
+    const previousParked = current.parked;
+    const previousPublication = current.publication;
+    // A slice whose stored block hash is unchanged (`unchanged`, computed by the
+    // CLI from the stored and the new block hashes) keeps its completion and its
+    // parked cursor; an event without the list keeps none.
+    const keep = Array.isArray(sig.unchanged)
+      ? sig.recordedList.filter((name) => sig.unchanged.indexOf(name) !== -1)
+      : [];
     current.set = sig.recordedList.slice();
     current.inventoryReady = true;
     current.inventoryVersion += 1;
     current.blockEmissionTurnClosed = true;
     current.autoContinueReady = false;
-    // Every name belongs to this newly emitted inventory, even when the same
-    // name appeared in an earlier crystallization.
-    current.done = [];
+    // Every other name belongs to this newly emitted inventory, even when the
+    // same name appeared in an earlier crystallization.
+    current.done = current.set.filter((name) => keep.indexOf(name) !== -1 && previousDone.indexOf(name) !== -1);
     current.parked = {};
-    // The publication answer belongs to the set it was asked for.
-    current.publication = '';
+    for (const name of keep) {
+      if (previousParked[name]) current.parked[name] = previousParked[name];
+    }
+    // The publication answer belongs to the set it was asked for: it survives a
+    // re-registration of the same change names.
+    const sameNames = previousSet.length === current.set.length
+      && previousSet.every((name) => current.set.indexOf(name) !== -1);
+    current.publication = sameNames ? previousPublication : '';
     if (current.active == null) {
       current.stage = WAITING_STAGE;
       current.mode = null;
@@ -271,10 +385,13 @@ function transition(state, signal) {
   }
 
   // Single-slice amendment: the block emit's `--amend` validates one block and
-  // asks the machine whether that slice may be replaced. Only a pending or
-  // stopped (parked) slice is amendable; the machine state never changes, so
-  // order, completed slices, the running slice, and parked cursors stay as they
-  // were.
+  // asks the machine whether that slice may be replaced; `amend_kind` is the
+  // CLI's field-by-field comparison of the stored and the new block. A
+  // completed slice is never amendable. A `metadata` amendment keeps the route
+  // authorization: a running slice is amended in place and a parked cursor is
+  // kept. A `content` amendment (also any unknown kind) voids it: the slice
+  // returns to pending without a cursor and the route gate closes, so the route
+  // selector is presented again. Order and the other slices stay as they were.
   if (typeof sig.amend === 'string') {
     if (!current.inventoryReady || current.set.indexOf(sig.amend) === -1) {
       return outcome(current, 'UNKNOWN_SLICE');
@@ -282,8 +399,15 @@ function transition(state, signal) {
     if (current.done.indexOf(sig.amend) !== -1) {
       return outcome(current, 'SLICE_COMPLETED');
     }
-    if (current.active === sig.amend) {
-      return outcome(current, 'SLICE_RUNNING');
+    if (sig.amend_kind === 'metadata') {
+      return outcome(current);
+    }
+    const first = pendingOf(current)[0];
+    delete current.parked[sig.amend];
+    if (current.active === sig.amend) releaseActive(current);
+    if (first === sig.amend) {
+      current.blockEmissionTurnClosed = true;
+      current.autoContinueReady = false;
     }
     return outcome(current);
   }
@@ -293,6 +417,10 @@ function transition(state, signal) {
   }
 
   const intent = sig.intent;
+
+  if (intent === 'goto') {
+    return gotoSlice(current, sig);
+  }
 
   if (intent === 'resume-direct-build') {
     if (current.active != null) return outcome(current, 'ALREADY_RUNNING');
@@ -417,7 +545,10 @@ function shouldResetDone(nextState, previousStates) {
     const version = Number.isSafeInteger(state && state.inventoryVersion) ? state.inventoryVersion : 0;
     return Math.max(highest, version);
   }, 0);
-  return nextVersion > previousVersion;
+  // A reopened slice leaves `done`; the union with the stored list must not bring it back.
+  const nextEpoch = safeCount(nextState && nextState.doneEpoch);
+  const previousEpoch = (Array.isArray(previousStates) ? previousStates : []).reduce((highest, state) => Math.max(highest, safeCount(state && state.doneEpoch)), 0);
+  return nextVersion > previousVersion || nextEpoch > previousEpoch;
 }
 
 module.exports = {

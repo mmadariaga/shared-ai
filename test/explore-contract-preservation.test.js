@@ -93,7 +93,8 @@ test('approach comparison: ordinary advancement adds no comparison state or acce
   const advanced = ideaMachine.transition(initial, { intent: 'next-step' });
   assert.equal(advanced.state.stage, 'review-edge-cases');
   assert.equal(advanced.next.follow, 'sai/commands/explore/steps/review-edge-cases.md');
-  assert.deepEqual(advanced.state, { ...initial, stage: 'review-edge-cases' });
+  // The only addition is the closed section record: advancing confirms the stage-1 section.
+  assert.deepEqual(advanced.state, { ...initial, stage: 'review-edge-cases', sections: { ...initial.sections, 'explore-change': { state: 'agreed', source: 'conversation' } } });
   assert.deepEqual(ideaMachine.STAGES, ['explore-change', 'poc-lane', 'review-edge-cases', 'implementation-details', 'crystallize']);
   // Choice is conversation-only: the coordinator emits no selection event.
   assert.match(comparison(), /Choosing resolves comparison only, not stage advancement/);
