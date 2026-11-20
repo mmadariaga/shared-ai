@@ -63,7 +63,7 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 
 ### Requirement: Create and continue an opencode-routed agent
 
-Before creating any agent, including a replacement, the dispatcher SHALL run the route query. When it answers `opencode`, the dispatcher SHALL write the same ready prompt the `Agent` call would send to a file in a per-run message directory opened with `transfer.js open --harness claude`, run `start` in the background through `Bash` with `run_in_background: true`, and keep the `Bash` task id; the `sessionID` of a successful ready turn SHALL be the worker's handle. Each later message SHALL be a new background `continue` turn on that `sessionID` instead of `SendMessage`, started only after the earlier turn of the same worker has completed, and its `text` SHALL be read exactly like an `Agent` reply. Parallel workers SHALL each run their own process and be matched to their results by `sessionID`.
+Before creating any agent, including a replacement, the dispatcher SHALL run the route query. When it answers `opencode`, the dispatcher SHALL write the same ready prompt the `Agent` call would send to a file in a per-run message directory opened with `transfer.js open --harness claude`, run `start` in the background through `Bash` with `run_in_background: true`, and keep the `Bash` task id; the `sessionID` of a successful ready turn SHALL be the worker's handle. Each later message SHALL be a new background `continue` turn on that `sessionID` instead of `SendMessage`, started only after the earlier turn of the same worker has completed, and its `text` SHALL be read exactly like an `Agent` reply. Parallel workers SHALL each run their own process and be matched to their results by the kept `Bash` task id, because the `sessionID` is what the result supplies.
 
 #### Scenario: Worker continued through a new turn
 - **WHEN** a coordinator sends a later message to an opencode-routed worker
@@ -71,7 +71,7 @@ Before creating any agent, including a replacement, the dispatcher SHALL run the
 
 #### Scenario: Parallel workers
 - **WHEN** several opencode-routed workers are created in one batch
-- **THEN** each runs its own `opencode run` process and each result carries its own `sessionID`
+- **THEN** each runs its own `opencode run` process, each result carries its own `sessionID`, and the dispatcher matches each result to its worker by the kept `Bash` task id
 
 ### Requirement: Fallback to Agent dispatch with a notice
 

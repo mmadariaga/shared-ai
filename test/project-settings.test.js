@@ -427,16 +427,16 @@ test('E5: a linked worktree reads the local file beside the base file it uses', 
   assert.equal(settings.get('backlog.provider', { cwd: linked }).value, 'azuredevops');
 });
 
-test('I1: the catalogue labels and sections the screen keys and the chat language key accepts any language but none', () => {
+test('I1: the catalogue labels the screen keys, carries no unread section metadata, and the chat language key accepts any language but none', () => {
   for (const id of ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider']) {
     assert.equal(typeof settings.CATALOGUE[id].label, 'string', id);
-    assert.equal(typeof settings.CATALOGUE[id].section, 'string', id);
+    assert.equal(settings.CATALOGUE[id].section, undefined, id);
   }
   for (const id of ['backlog.repository', 'pr.project', 'backlog.organization']) assert.equal(settings.CATALOGUE[id].label, undefined, id);
   assert.equal(settings.CATALOGUE['explore.chatPublicLanguage'].label, 'Chat language');
   assert.deepEqual(
-    ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider'].map(id => [settings.CATALOGUE[id].section, settings.CATALOGUE[id].label]),
-    [['Explore', 'Ready to Propose language'], ['Explore', 'Change overview language'], ['Explore', 'Chat language'], ['Backlog', 'Provider'], ['Pull requests', 'Provider']],
+    ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'backlog.provider', 'pr.provider'].map(id => settings.CATALOGUE[id].label),
+    ['Ready to Propose language', 'Change overview language', 'Chat language', 'Provider', 'Provider'],
   );
   const cwd = project({ '.sai/settings.jsonc': '{"explore":{"chatPublicLanguage":"english"}}' });
   assert.equal(settings.get('explore.chatPublicLanguage', { cwd }).value, 'English');
@@ -606,7 +606,7 @@ test('I3: experimental.changeTelemetry is a boolean that reads as absent until s
   const invalid = settings.get('experimental.changeTelemetry', { cwd: project({ '.sai/settings.jsonc': '{ "experimental": { "changeTelemetry": "yes" } }' }) });
   assert.equal(invalid.value, null);
   assert.match(invalid.warnings.join('\n'), /Setting experimental\.changeTelemetry in \.sai\/settings\.jsonc must be true or false/);
-  assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Telemetry', section: 'Experimental', absent: 'off' });
+  assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Telemetry', absent: 'off' });
 });
 
 test('E11 E13: publication.autoApprove is a boolean that reads as false until set, and a non-boolean reads as false with a warning', () => {
@@ -624,7 +624,7 @@ test('E11 E13: publication.autoApprove is a boolean that reads as false until se
     assert.match(invalid.warnings.join('\n'), /Setting publication\.autoApprove in \.sai\/settings\.jsonc must be true or false; it reads as false/, value);
     assert.equal(flag(file(`{ "publication": { "autoApprove": ${value} } }`)), false, value);
   }
-  assert.deepEqual({ ...settings.CATALOGUE['publication.autoApprove'], validate: undefined, fallback: undefined }, { validate: undefined, fallback: undefined, label: 'Auto-approve publication', section: 'Backlog and PR', absent: 'off' });
+  assert.deepEqual({ ...settings.CATALOGUE['publication.autoApprove'], validate: undefined, fallback: undefined }, { validate: undefined, fallback: undefined, label: 'Auto-approve publication', absent: 'off' });
 });
 
 test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and an invalid value as the question, and is no destination field', () => {
@@ -727,5 +727,5 @@ test('pr.language: a language name, normalized like the explore languages, none 
   assert.deepEqual(settings.get('explore.chatPublicLanguage', { cwd: project({ '.sai/settings.jsonc': '{"explore":{"chatPublicLanguage":"none"}}' }) }).warnings,
     ['Setting explore.chatPublicLanguage in .sai/settings.jsonc must name a language, not none; its question stays normal.']);
   assert.deepEqual(settings.readPr({ cwd, providerIds }).config, { provider: 'github' });
-  assert.deepEqual([settings.CATALOGUE['pr.language'].label, settings.CATALOGUE['pr.language'].section], ['PR/MR language', 'Pull requests']);
+  assert.equal(settings.CATALOGUE['pr.language'].label, 'PR/MR language');
 });

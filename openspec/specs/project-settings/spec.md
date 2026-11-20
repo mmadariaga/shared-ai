@@ -195,15 +195,15 @@ The reader SHALL read an optional `.sai/settings.local.jsonc` from the same `.sa
 
 ### Requirement: Catalogue presentation fields
 
-Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label` and a `section`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, and `explore.chatPublicLanguage` as `Chat language`, all in section `Explore`; `backlog.provider` as `Provider` in section `Backlog`; `pr.provider` as `Provider` and `pr.language` as `PR/MR language`, both in section `Pull requests`; `publication.autoApprove` as `Auto-approve publication` in section `Backlog and PR`; and `experimental.changeTelemetry` as `Telemetry` in section `Experimental`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, `pr.language` SHALL declare `English`, and `experimental.changeTelemetry` and `publication.autoApprove` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming`, the section `Cache warming`, and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label or section.
+Every catalogue key that the post-setup menu shows as a value row SHALL declare a `label`: `explore.readyToProposeLanguage` as `Ready to Propose language`, `explore.overviewLanguage` as `Change overview language`, `explore.chatPublicLanguage` as `Chat language`, `backlog.provider` and `pr.provider` as `Provider`, `pr.language` as `PR/MR language`, `publication.autoApprove` as `Auto-approve publication`, and `experimental.changeTelemetry` as `Telemetry`. The grouping of these rows into submenus is fixed by `bin/project-settings-screen.js`, so no catalogue entry SHALL declare a `section`. A catalogue entry MAY declare an `absent` text that is shown for the key when it has no value; `explore.chatPublicLanguage` SHALL declare `follow my language`, `pr.language` SHALL declare `English`, and `experimental.changeTelemetry` and `publication.autoApprove` SHALL declare `off`. The `warming` entry, which the menu does not show as a value row, SHALL declare the label `Cache warming` and the absent text `off` for the cache warming section of the setup flow. Every other key the menu does not show SHALL declare no label.
 
-#### Scenario: Screen keys carry labels and sections
+#### Scenario: Screen keys carry labels and no sections
 - **WHEN** the catalogue is read
-- **THEN** each of the eight menu keys has the label and section above, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, `pr.language` has the label `PR/MR language`, the section `Pull requests`, and the absent text `English`, `publication.autoApprove` has the label `Auto-approve publication`, the section `Backlog and PR`, and the absent text `off`, and `experimental.changeTelemetry` has the absent text `off`
+- **THEN** each of the eight menu keys has the label above and no `section`, `experimental.changeTelemetry` has the label `Telemetry`, `explore.chatPublicLanguage` has the absent text `follow my language`, `pr.language` has the label `PR/MR language` and the absent text `English`, `publication.autoApprove` has the label `Auto-approve publication` and the absent text `off`, and `experimental.changeTelemetry` has the absent text `off`
 
 #### Scenario: Warming carries presentation fields for its section
 - **WHEN** the catalogue is read
-- **THEN** `warming` has the label `Cache warming`, the section `Cache warming`, and the absent text `off`
+- **THEN** `warming` has the label `Cache warming`, the absent text `off`, and no `section`
 
 ### Requirement: Plan publication answer setting
 

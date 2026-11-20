@@ -870,12 +870,16 @@ When the arguments carry neither `--rebase` nor `--squash`, the coordinator SHAL
 
 ### Requirement: Simulation file in the merge run state
 
-When Start produced a simulation file, the coordinator SHALL emit `record` (`simulation`) to `merge-run@1` with its path once the run state opens. A completed run SHALL remove the simulation directory with `temp-root.js remove` in the same close batch as the run directory; a stopped, escalated, or unanswered run SHALL keep it. A run that ends before the run state opens SHALL remove the simulation directory.
+When Start produced a simulation file, the coordinator SHALL emit `record` (`simulation`) to `merge-run@1` with its path once the run state opens. A completed run SHALL remove the simulation directory with `temp-root.js remove` in the same close batch as the run directory; a stopped, escalated, or unanswered run SHALL keep it. A run that ends before the simulation is recorded, including one that ends while the run state opens (a tool error, or a stored run that ended outside this command), SHALL remove the simulation directory.
 
 #### Scenario: Simulation file is recorded when the run state opens
 
 - **WHEN** a fresh run opens its run state after a simulation wrote its file
 - **THEN** the coordinator emits `record` with ref `simulation` and that file's path
+
+#### Scenario: Run that ends while the run state opens removes the simulation directory
+- **WHEN** Start produced a simulation file and the run ends in the step that opens the run state, before `record` (`simulation`) is emitted
+- **THEN** the simulation directory is removed
 
 #### Scenario: Cancelled method question removes the simulation directory
 

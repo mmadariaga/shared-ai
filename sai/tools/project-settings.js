@@ -125,22 +125,22 @@ function resolveWarmingValue(value, { provider, model, role, harness }) {
 
 // The setting id catalogue: the single source of known ids, their validation, and
 // their presentation. An entry may add `normalize`, which maps a valid value to the one
-// the gates compare. `label` and `section` place a key in the post-setup menu; `absent` is
+// the gates compare. `label` names a key in the post-setup menu, whose grouping is fixed in `bin/project-settings-screen.js`; `absent` is
 // the text the menu shows for a key with no value, where `ask` does not fit. `fallback` words what an invalid value
 // leads to in its warning, for a key with no question.
 const CATALOGUE = {
-  warming: { validate: validateWarming, label: 'Cache warming', section: 'Cache warming', absent: 'off' },
+  warming: { validate: validateWarming, label: 'Cache warming', absent: 'off' },
   ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
     validate: field === 'provider'
       ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
       : nonEmptyString,
-    ...(field === 'provider' ? { label: 'Provider', section: 'Backlog' } : {}),
+    ...(field === 'provider' ? { label: 'Provider' } : {}),
   }])),
   ...Object.fromEntries(PR_FIELDS.map(field => [`pr.${field}`, {
     validate: field === 'provider'
       ? (value, { prProviderIds }) => nonEmptyString(value) || (prProviderIds && !prProviderIds.includes(value) ? `must be one of ${prProviderIds.join(', ')}` : null)
       : nonEmptyString,
-    ...(field === 'provider' ? { label: 'Provider', section: 'Pull requests' } : {}),
+    ...(field === 'provider' ? { label: 'Provider' } : {}),
   }])),
   // The answer to the publication question of `/sai-plan` and `/sai-build`; `ask` and an absent key leave the question normal. It is
   // not a destination field of `/to-pr`, so `readPr` never returns it. The screen does not list it: it stays hand-edited.
@@ -155,7 +155,6 @@ const CATALOGUE = {
     validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
     normalize: languageName,
     label: 'PR/MR language',
-    section: 'Pull requests',
     absent: 'English',
     fallback: 'the draft falls back to English',
   },
@@ -166,7 +165,6 @@ const CATALOGUE = {
   'publication.autoApprove': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
     label: 'Auto-approve publication',
-    section: 'Backlog and PR',
     absent: 'off',
     fallback: 'it reads as false and every publication approval is asked',
   },
@@ -174,21 +172,18 @@ const CATALOGUE = {
   'experimental.changeTelemetry': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
     label: 'Telemetry',
-    section: 'Experimental',
     absent: 'off',
   },
   'explore.readyToProposeLanguage': {
     validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
     normalize: languageName,
     label: 'Ready to Propose language',
-    section: 'Explore',
   },
-  'explore.overviewLanguage': { validate: nonEmptyString, normalize: languageName, label: 'Change overview language', section: 'Explore' },
+  'explore.overviewLanguage': { validate: nonEmptyString, normalize: languageName, label: 'Change overview language' },
   'explore.chatPublicLanguage': {
     validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
     normalize: languageName,
     label: 'Chat language',
-    section: 'Explore',
     absent: 'follow my language',
   },
 };
