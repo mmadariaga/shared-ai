@@ -73,7 +73,7 @@ test('open reports a concrete blocker when the temp base is missing and creates 
 });
 
 test('open on opencode/Linux uses the injected filesystem and reports the /tmp/opencode blocker', { skip: !POSIX }, () => {
-  const io = { lstatSync() { const error = new Error('x'); error.code = 'ENOENT'; throw error; } };
+  const io = { realpathSync: target => target, lstatSync() { const error = new Error('x'); error.code = 'ENOENT'; throw error; } };
   assert.throws(() => transfer.open('opencode', { io, platform: 'linux' }), /\/tmp\/opencode is missing/);
 });
 

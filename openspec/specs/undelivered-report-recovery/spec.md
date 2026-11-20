@@ -35,7 +35,7 @@ After a coordinator has processed a report reference, it SHALL record it with `t
 
 ### Requirement: Background watch while waiting for a worker
 
-Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project root>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting, with the input file holding the paths the worker's brief lets it write, or `[]` when the report directory is the only place the worker writes. Every relaunch of a watch for the same worker task (after an empty end, after a first `silent`, and for a replacement worker) SHALL pass the same input file. When the watch exits 2 because `--input-file` is missing, the coordinator SHALL relaunch it with the file and SHALL spend no obstacle attempt. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
+Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project root>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting, with the input file holding the paths the worker's brief lets it write, or `[]` when the report directory is the only place the worker writes. Every relaunch of a watch for the same worker task (after an empty end, after a first `silent`, and for a replacement worker) SHALL pass the same input file. When the watch exits 2 because `--input-file` is missing, the coordinator SHALL relaunch it with the file and SHALL spend no obstacle attempt. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch, and the immediate one-shot scan of a worker reply without a reference, SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
 
 #### Scenario: The watch runs with warming off
 - **WHEN** a coordinator with cache warming off waits for a worker's result
@@ -67,7 +67,7 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 
 ### Requirement: Found reports follow the delivered-report path
 
-When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the step machine's progress emit), the same invalid-report recovery that counts as an obstacle attempt, and then the record. A worker message that is not a reference, such as a wake acknowledgement, a translated or reworded literal, or "Ending this turn", SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed. A worker turn that ends with the wake literal, the stop literal, or `ok` instead of its report reference SHALL trigger the same recovery. `sai/policies/worker-report-transport.md` SHALL name the wake and stop literals by their term with a pointer to `sai/policies/cache-warming.md`, and SHALL spell neither literal nor a bare `ok`.
+When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the step machine's progress emit), the same invalid-report recovery that counts as an obstacle attempt, and then the record. A worker message that is a protocol literal SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed. A worker message that carries no reference and is not a protocol literal SHALL follow the immediate scan of the reply-without-reference rule instead of a passive wait. A worker turn that ends with the wake literal, the stop literal, or `ok` instead of its report reference SHALL trigger the same recovery through the watch. `sai/policies/worker-report-transport.md` SHALL name the wake and stop literals by their term with a pointer to `sai/policies/cache-warming.md`, and SHALL spell neither literal nor a bare `ok`.
 
 #### Scenario: A found report is processed as delivered
 
@@ -81,7 +81,7 @@ When the watch ends with reports, the coordinator SHALL process each in creation
 
 #### Scenario: A non-result message keeps the wait
 
-- **WHEN** a worker sends a message that carries no reference, such as a wake acknowledgement, a translated literal, or "Ending this turn"
+- **WHEN** a worker sends a protocol literal, such as a wake acknowledgement, instead of a reference
 - **THEN** the coordinator records no result and keeps waiting with the watch armed
 
 #### Scenario: A literal in place of the reference
@@ -181,3 +181,22 @@ A worker that can run a long command SHALL receive a scratch folder: a private f
 #### Scenario: Review closes its scratch folder with the report directory
 - **WHEN** a `/sai-4-review` run ends with `Review done.`
 - **THEN** the coordinator closes the report directory and the scratch folder in one same-turn batch
+
+### Requirement: A reply without a reference is scanned at once
+
+A worker message that carries no report reference and is not a protocol literal (`event: ready`, or the wake literal, the stop literal, or the legacy alias of `sai/policies/cache-warming.md` § Wake acknowledgement), such as a translated or reworded literal, "Ending this turn", or text that carries its result inline, SHALL make the coordinator act at once: waiting for a `silent` end of the watch SHALL NOT be the recovery. The coordinator SHALL run one scan of that worker's own report directory, a foreground `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project-root> --settle 0s --max 1s` with the same writable-paths file as the watch of the worker task, so no new tool flag is added. A report the scan finds SHALL be processed exactly as a delivered report. When the scan finds none, the message SHALL be an invalid report: the first SHALL go back to the same worker asking for the report of the work already done, with the note that no reference arrived, a second consecutive one SHALL replace the worker, each SHALL spend one attempt of the step's obstacle, and the exhausted budget SHALL escalate with options. The watch of the step SHALL stay armed meanwhile, and a report that arrives by any path SHALL end the run of consecutive invalid replies. This rule SHALL live in `sai/policies/worker-report-transport.md` and SHALL apply to every coordinator on Claude Code and opencode.
+
+#### Scenario: A reply without a reference finds the saved report
+
+- **WHEN** a worker replies "Ending this turn" and its report directory holds an unledgered report
+- **THEN** the coordinator's immediate scan finds it and the coordinator processes it as a delivered report
+
+#### Scenario: A reply without a reference and no saved report
+
+- **WHEN** a worker replies with text that carries no reference and the scan finds no unledgered report
+- **THEN** the coordinator returns the message to the same worker as an invalid report, asking for the report of the work already done, and counts one obstacle attempt
+
+#### Scenario: A second consecutive reply without a reference replaces the worker
+
+- **WHEN** the same worker again replies without a reference and the scan again finds no report
+- **THEN** the coordinator replaces the worker with a hand-over it writes and counts a second obstacle attempt, without waiting for a `silent` watch end

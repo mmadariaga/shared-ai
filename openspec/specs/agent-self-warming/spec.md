@@ -201,7 +201,7 @@ On every wake, `wait.js` SHALL read the cutoff mark `warming-cutoff.json` under 
 
 ### Requirement: Wake acknowledgement is not a result
 
-A dispatcher SHALL treat a subagent message that is the wake literal `warming context cache up`, the stop literal `cache warming stopped`, or the legacy alias `ok`, compared by normalized recognition (ignoring letter case, surrounding whitespace, and one trailing period), as the reply of a wake or of a `dispose`: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. The acknowledgement SHALL NOT be a real message and SHALL carry no warming field. The stop literal SHALL NOT decide whether an agent has ended; only the stop call of `sai/policies/worker-lifecycle.md` SHALL. Any other text, such as a translation, a paraphrase, or a literal with words added, SHALL NOT be an acknowledgement and SHALL NOT be a result either. Recognition SHALL be an instruction rule for the dispatcher, and no tool SHALL parse the literals. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
+A dispatcher SHALL treat a subagent message that is the wake literal `warming context cache up`, the stop literal `cache warming stopped`, or the legacy alias `ok`, compared by normalized recognition (ignoring letter case, surrounding whitespace, and one trailing period), as the reply of a wake or of a `dispose`: it SHALL NOT process it as a report, a ready, or a step result, SHALL spend no attempt on it, SHALL send no continuation, and SHALL keep waiting for the real result of the task. The acknowledgement SHALL NOT be a real message and SHALL carry no warming field. The stop literal SHALL NOT decide whether an agent has ended; only the stop call of `sai/policies/worker-lifecycle.md` SHALL. Any other text, such as a translation, a paraphrase, or a literal with words added, SHALL NOT be an acknowledgement and SHALL NOT be a result either: the dispatcher SHALL handle it as a reply without a reference under `sai/policies/worker-report-transport.md` § Undelivered reports. Recognition SHALL be an instruction rule for the dispatcher, and no tool SHALL parse the literals. `sai/policies/cache-warming.md` SHALL define this rule for Claude Code and opencode alike.
 
 #### Scenario: Worker replies ok on a wake
 - **WHEN** a coordinator waiting for a worker's result receives the message `ok` from a worker of an earlier install
@@ -221,7 +221,7 @@ A dispatcher SHALL treat a subagent message that is the wake literal `warming co
 
 #### Scenario: Translated literal is not an acknowledgement
 - **WHEN** a worker replies with a translation or a paraphrase of a literal, or a literal with words added
-- **THEN** the coordinator treats it neither as an acknowledgement nor as a result and keeps waiting with the watch armed
+- **THEN** the coordinator treats it neither as an acknowledgement nor as a result, and runs the immediate scan of the worker's report directory for a reply without a reference
 
 ### Requirement: Hand-off wait with a fixed deadline
 

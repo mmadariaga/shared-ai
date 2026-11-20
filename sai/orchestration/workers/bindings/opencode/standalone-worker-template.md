@@ -15,19 +15,34 @@ subagent(agent: "{{workerName}}", description: "{{phase}} worker", prompt: "Work
 ```
 
 The worker's completion notification reaches the coordinator's conversation
-when it finishes; the coordinator matches it to the worker by `sessionID` and
-sends no message to a worker whose last status is `running`.
+when it finishes; the coordinator matches it to the worker by `sessionID`. A
+worker whose last status is `running` is mid-turn, and the coordinator sends it
+no message, with one exception: a `running` notification whose background-work
+list holds only `wait.js warm` commands (every entry is the worker's own
+cache-warm wait) marks an idle worker. The coordinator processes that worker's
+message (a report reference, or a reply without one under
+`@sai/policies/worker-report-transport.md` § Undelivered reports) and may
+continue it. A `running` worker with any other background work keeps the rule:
+wait for its completion.
 
 ## Continue
 
 Send every later message (each step's brief, a fix round, or a corrected
 instruction) to the captured handle, with the same `agent` the worker was
 created with (a continuation without `agent` is invalid), only after the
-worker's completion notification has arrived:
+worker's completion notification has arrived, or its `running` notification
+shows only its own `wait.js warm`:
 
 ```
 subagent(agent: "{{workerName}}", description: "{{phase}} worker", sessionID: "<captured sessionID>", prompt: "<message>", background: true)
 ```
+
+When the harness refuses a continuation of a worker that still reports
+`running`, the refusal is one attempt of the step's obstacle under
+`@sai/policies/obstacle-escalation.md`: stop the worker's shells with
+`dispose-shells.js`, per `@sai/policies/worker-lifecycle.md` § Stop call (which
+also ends its cache warming), and send the continuation again. A further
+failure follows that policy's replacement and escalation.
 
 ## Warm and dispose
 

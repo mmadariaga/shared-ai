@@ -279,7 +279,7 @@ test('E2 a missing Linux harness root fails begin in the foreground, naming the 
   const tempRoot = require('../sai/tools/temp-root');
   const missing = '/tmp/sai-warm-test-missing-root';
   assert.equal(fs.existsSync(missing), false);
-  const resolveRoot = () => tempRoot.resolveTempRoot('claude', { platform: 'linux', uid: 424242, io: { ...fs, lstatSync: target => (target === '/tmp/claude-424242' ? (() => { const error = new Error('missing'); error.code = 'ENOENT'; throw error; })() : fs.lstatSync(target)) } });
+  const resolveRoot = () => tempRoot.resolveTempRoot('claude', { platform: 'linux', uid: 424242, io: { ...fs, realpathSync: target => target, lstatSync: target => (target === '/tmp/claude-424242' ? (() => { const error = new Error('missing'); error.code = 'ENOENT'; throw error; })() : fs.lstatSync(target)) } });
   assert.throws(resolveRoot, /\/tmp\/claude-424242 is missing/);
   const rest = { ...io };
   delete rest.saiRoot;

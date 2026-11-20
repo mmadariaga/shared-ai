@@ -33,7 +33,11 @@ function asLinux(action) {
   const uid = Object.getOwnPropertyDescriptor(process, 'getuid');
   Object.defineProperty(process, 'platform', { value: 'linux' });
   process.getuid = () => 1000;
+  // The Linux temp base is the real form of /tmp; the pinned form is /tmp itself, whatever the host links it to.
+  const realpath = fs.realpathSync;
+  fs.realpathSync = Object.assign(target => (target === '/tmp' ? target : realpath(target)), { native: realpath.native });
   try { return action(); } finally {
+    fs.realpathSync = realpath;
     Object.defineProperty(process, 'platform', original);
     if (uid) Object.defineProperty(process, 'getuid', uid); else delete process.getuid;
   }
