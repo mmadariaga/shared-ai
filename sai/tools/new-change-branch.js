@@ -51,7 +51,8 @@ function name(cwd, input) {
 const FETCH_TIMEOUT_MS = 30000;
 
 function fetchEnvironment(cwd) {
-  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  // GCM_INTERACTIVE=never keeps the Git Credential Manager from opening a window on Windows during the fetch.
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
   if (!env.GIT_SSH_COMMAND && !git(cwd, ['config', '--get', 'core.sshCommand']).out) env.GIT_SSH_COMMAND = 'ssh -o BatchMode=yes';
   return env;
 }
@@ -136,4 +137,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { execute };
+module.exports = { execute, fetchEnvironment };

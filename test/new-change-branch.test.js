@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
-const { execute } = require('../sai/tools/new-change-branch');
+const { execute, fetchEnvironment } = require('../sai/tools/new-change-branch');
 const { expandInstallManifest } = require('../bin/install-manifest');
 const manifest = require('../sai/install-manifest.json');
 
@@ -371,6 +371,12 @@ test('fetch: {fetch:false} still stops on a merge or rebase in progress', (t) =>
   const cwd = fixture(t);
   fs.mkdirSync(path.join(cwd, '.git', 'rebase-merge'));
   assert.equal(execute('inspect', { fetch: false }, cwd).status, 'failed');
+});
+
+test('fetch: runs with no terminal prompt and no credential manager window (E10)', (t) => {
+  const env = fetchEnvironment(fixture(t));
+  assert.equal(env.GIT_TERMINAL_PROMPT, '0');
+  assert.equal(env.GCM_INTERACTIVE, 'never');
 });
 
 test('suggested base labels are short, collision-safe and mapped to exact references', () => {

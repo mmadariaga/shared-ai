@@ -20,7 +20,7 @@ information is missing or ambiguous.
   A detected parent is the nearest tip among the 20 most recent first-parent
   commits, a convenience and not proof of historical origin. Just before the
   question, the tool refreshes every remote with `git fetch --prune`, without
-  interaction and with a 30-second limit per remote, so remote options carry no
+  interaction (no terminal prompt and no Git Credential Manager window) and with a 30-second limit per remote, so remote options carry no
   staleness note. When a remote cannot be refreshed, the question still appears
   with the existing references and one warning naming that remote and the
   reason; only that remote's options are marked. A workflow that supplies the

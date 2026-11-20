@@ -58,6 +58,12 @@ test('the build publication card is unattended, skips the plan-commit step, and 
   assert.match(publication, /no force push, no automatic retry/i);
   assert.match(publication, /the request stays a draft: the push and the content update stand/);
   assert.match(publication, /The build still counts as completed/);
+  // E13: a ready request tells its reviewer which findings the run left pending or excluded.
+  assert.match(publication, /gains a `## Pending findings` section/);
+  assert.match(publication, /under \*\*Pending\*\*/);
+  assert.match(publication, /under \*\*Excluded\*\* for those whose heading in `review\.md` carries ` \(EXCLUDED: …\)`/);
+  assert.match(publication, /With neither, the description has no such section/);
+  assert.match(build, /follow it with the change name and the findings that stay unresolved/);
   assert.equal(fs.existsSync(path.join(root, 'sai/commands/plan/publication.md')), true);
   const plan = read('sai/commands/plan/publication.md');
   assert.match(plan, /never marks a request ready/);

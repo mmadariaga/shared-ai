@@ -68,12 +68,22 @@ The `implement-run@1` machine SHALL carry the `publication` field and event of t
 
 ### Requirement: Build publishes a ready request once after its telemetry commit
 
-After the telemetry commit and before the report, a `/sai-build` run that holds the answer `yes` and whose every segment that ran completed SHALL follow `sai/commands/build/publication.md` once, never between segments. That publication SHALL run unattended and ask nothing, SHALL run the `to-pr` destination, content, non-force `push --unattended`, and `publish --unattended` with `ready:true`, and SHALL run no plan-commit step. A skipped or failed publication SHALL be reported with its reason and SHALL NOT change the build's completed outcome; a confirmed push SHALL stand and nothing SHALL be retried with force. When marking a draft request ready fails or its readback does not show it ready, the report SHALL say that the request stays a draft and why. A run with the answer `no`, without an answer, or that fails, stops, or ends blocked SHALL publish nothing.
+After the telemetry commit and before the report, a `/sai-build` run that holds the answer `yes` and whose every segment that ran completed SHALL follow `sai/commands/build/publication.md` once, never between segments. That publication SHALL run unattended and ask nothing, SHALL run the `to-pr` destination, content, non-force `push --unattended`, and `publish --unattended` with `ready:true`, and SHALL run no plan-commit step. A skipped or failed publication SHALL be reported with its reason and SHALL NOT change the build's completed outcome; a confirmed push SHALL stand and nothing SHALL be retried with force. When marking a draft request ready fails or its readback does not show it ready, the report SHALL say that the request stays a draft and why. When the build writes the request description (a new ready request, or an open request it updates or marks ready), the description SHALL carry a `## Pending findings` section, headed in the resolved request language and placed right before `## Out of Scope / Follow-ups`, that lists with identifier, title, and reason the findings still pending (the `review.md` findings the fix segment left open and the step-review findings the implement segments left pending after the third fix round) and the findings whose `review.md` heading carries ` (EXCLUDED: …)`; with neither, the description SHALL have no such section, and the request SHALL stay ready for review either way. A run with the answer `no`, without an answer, or that fails, stops, or ends blocked SHALL publish nothing.
 
 #### Scenario: Yes answer publishes a ready request
 
 - **WHEN** a completed build holds the answer `yes` and the branch has an open draft request
 - **THEN** after the telemetry commit the branch is pushed without force, the request is updated and marked ready for review, and the report names its URL and ready state
+
+#### Scenario: Ready request lists pending and excluded findings
+
+- **WHEN** a completed build holds the answer `yes`, the fix segment left one `review.md` finding open, and the Assessment pass excluded another
+- **THEN** the published request is ready for review and its description has a `## Pending findings` section that lists the open finding as pending and the other as excluded, each with identifier, title, and reason
+
+#### Scenario: Build with no unresolved finding adds no section
+
+- **WHEN** a completed build holds the answer `yes` and no finding stays pending or excluded
+- **THEN** the published request description has no `## Pending findings` section
 
 #### Scenario: Failed mark-ready keeps the build completed
 

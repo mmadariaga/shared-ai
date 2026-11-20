@@ -140,7 +140,7 @@ For each terminal report reference after ready, the coordinator SHALL run the pa
 Every report-receiving coordinator card SHALL name the writable paths of its worker as a fact of that card, while the watch mechanics SHALL stay single-sourced in `sai/policies/worker-report-transport.md` § Undelivered reports. The paths SHALL reach the watch as the required input file, written once per worker task in a directory outside the report directory. The facts SHALL be:
 
 - `/sai-3-implement`: the paths the step's brief lets the worker write, plus the worker's scratch folder in the run directory, written once per step, because the RED and GREEN workers live for the whole run and each step names other paths.
-- Direct Build: for the implementer, the repository paths the verified block cites, written without their `:line` ranges, plus its scratch folder `scratch-implementer` in the slice run directory; for the backfill worker, its transfer directory; for the archive worker, `[]`.
+- Direct Build: for the implementer, the directory of each repository path the verified block cites, taken without its `:line` range (a cited path at the repository root is listed as that file alone, never the root directory, and a cited path whose directory does not exist yet is listed through its nearest existing parent directory below the root, or as the path itself when that parent would be the root), plus its scratch folder `scratch-implementer` in the slice run directory; for the backfill worker, its transfer directory; for the archive worker, `[]`.
 - `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`: `openspec/changes/{name}/`, `GLOSSARY.md` in the spec segment, plus the scratch folder `scratch-{segment}` in the run directory.
 - `/sai-merge`: the files the worker's brief names, plus the scratch folder `scratch` in the run directory.
 - `/sai-4-review`: `openspec/changes/{name}/review.md` plus a scratch folder opened with `transfer.js open`.
@@ -150,9 +150,17 @@ Every report-receiving coordinator card SHALL name the writable paths of its wor
 
 The rule SHALL be the same on Claude Code and opencode.
 
-#### Scenario: Direct Build implementer paths drop line ranges
+#### Scenario: Direct Build implementer watches the directory of a cited path
 - **WHEN** the verified block cites `sai/tools/transfer.js:41-57`
-- **THEN** the implementer's writable paths list `sai/tools/transfer.js`, without the line range, beside its scratch folder
+- **THEN** the implementer's writable paths list the directory `sai/tools`, beside its scratch folder
+
+#### Scenario: Direct Build root-level cited path stays a file
+- **WHEN** the verified block cites `AGENTS.md` at the repository root
+- **THEN** the implementer's writable paths list `AGENTS.md` alone, never the repository root directory
+
+#### Scenario: Direct Build cited path in a directory that does not exist yet
+- **WHEN** the verified block cites `sai/tools/new/feature.js` and `sai/tools/new/` does not exist
+- **THEN** the implementer's writable paths list `sai/tools`, its nearest existing parent directory below the root
 
 #### Scenario: A short-lived worker passes an empty list
 - **WHEN** `/sai-commit` waits for its worker's result
