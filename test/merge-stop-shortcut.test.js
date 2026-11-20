@@ -238,3 +238,63 @@ test('I10: mechanics documents the indicators, the shortcut record formats, and 
   }
   assert.match(mechanics, /output is large writes it to a record file[\s\S]*JSON summary/);
 });
+
+// A rebase of two `feature` commits with the same subject onto `main`: the first replays cleanly, the second stops on
+// f.txt against a `main` commit with another subject.
+function repeatedSubjectRebase(t) {
+  const { parent, cwd } = repository(t);
+  commit(cwd, 'base', { 'f.txt': lines('a', 'b'), 'g.txt': lines('c') });
+  git(cwd, ['checkout', '-b', 'feature']);
+  commit(cwd, 'fix tests', { 'g.txt': lines('c', 'G') });
+  commit(cwd, 'fix tests', { 'f.txt': lines('a', 'F', 'b') });
+  git(cwd, ['checkout', 'main']);
+  commit(cwd, 'chore: other', { 'f.txt': lines('a', 'M', 'b') });
+  git(cwd, ['checkout', 'feature']);
+  assert.equal(git(cwd, ['rebase', 'main'], true).status, 1);
+  return { parent, cwd, onto: git(cwd, ['rev-parse', 'main']).stdout.trim() };
+}
+
+test('E7: during a rebase the containment facts use base..onto and never the branch\'s own replayed commits', t => {
+  const { cwd, onto } = repeatedSubjectRebase(t);
+  const snapshot = merge.conflicts(cwd);
+  assert.equal(snapshot.data.containment.operation, 'rebase');
+  assert.equal(snapshot.data.containment.upstream_tip, onto.slice(0, 12));
+  assert.equal(snapshot.data.containment.upstream_scanned, 1, 'only the main commit is upstream');
+  const file = snapshot.data.files.find(item => item.path === 'f.txt');
+  assert.deepEqual(file.containment.incoming.map(item => [item.subject, item.same_subject]), [['fix tests', []]],
+    'the replayed copy of the first "fix tests" commit is no evidence of containment');
+  assert.equal(file.containment.upstream_touching.length, 1);
+});
+
+test('E7: during a merge the upstream range stays base..HEAD', t => {
+  const { cwd } = repository(t);
+  commit(cwd, 'base', { 'f.txt': lines('a', 'b') });
+  git(cwd, ['checkout', '-b', 'feature']);
+  commit(cwd, 'feat: x', { 'f.txt': lines('a', 'X', 'b') });
+  git(cwd, ['checkout', 'main']);
+  commit(cwd, 'feat: y', { 'f.txt': lines('a', 'Y', 'b') });
+  assert.equal(git(cwd, ['merge', '--no-ff', '--no-commit', 'feature'], true).status, 1);
+  const containment = merge.conflicts(cwd).data.containment;
+  assert.equal(containment.operation, 'merge');
+  assert.equal(containment.upstream_tip, 'HEAD');
+});
+
+test('E8: the history facts are computed once per rebase and a bad or foreign cache recomputes without failing', t => {
+  const { parent, cwd } = repeatedSubjectRebase(t);
+  const first = cli(cwd, ['conflicts', '--record', path.join(parent, 'stop-1.json')]);
+  assert.equal(first.status, 0);
+  assert.equal(first.payload.data.containment.history_reused, false);
+  const cache = path.join(parent, 'history-facts.json');
+  assert.ok(fs.existsSync(cache), 'the cache lives in the run directory');
+  const second = cli(cwd, ['conflicts', '--record', path.join(parent, 'stop-1-rest.json')]);
+  assert.equal(second.payload.data.containment.history_reused, true);
+  assert.deepEqual(second.payload.data.files, first.payload.data.files, 'the reused facts give the same indicators');
+  fs.writeFileSync(cache, '{not json');
+  const unreadable = cli(cwd, ['conflicts', '--record', path.join(parent, 'stop-1-again.json')]);
+  assert.equal(unreadable.status, 0);
+  assert.equal(unreadable.payload.data.containment.history_reused, false);
+  const stored = JSON.parse(fs.readFileSync(cache, 'utf8'));
+  fs.writeFileSync(cache, JSON.stringify({ ...stored, key: { ...stored.key, onto: '0'.repeat(40) } }));
+  const foreign = cli(cwd, ['conflicts', '--record', path.join(parent, 'stop-1-other.json')]);
+  assert.equal(foreign.payload.data.containment.history_reused, false, 'another rebase key recomputes');
+});

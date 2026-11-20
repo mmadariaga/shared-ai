@@ -418,20 +418,74 @@ function patchIds(cwd, range) {
   return result;
 }
 
-// The commit-level facts of one stop, or null when no other side can be named.
-function incomingFacts(cwd) {
+// The `onto` and original head of the rebase in progress, read from the state git keeps (`rebase-merge/`, or
+// `rebase-apply/`), or null when neither names both.
+function rebaseState(cwd) {
+  for (const dir of ['rebase-merge', 'rebase-apply']) {
+    const read = name => {
+      const where = git(cwd, ['rev-parse', '--git-path', `${dir}/${name}`], true)?.trim();
+      try { return where ? fs.readFileSync(path.resolve(cwd, where), 'utf8').trim() || null : null; } catch { return null; }
+    };
+    const onto = read('onto');
+    const origHead = read('orig-head');
+    if (onto && origHead) return { onto, orig_head: origHead };
+  }
+  return null;
+}
+
+const HISTORY_CACHE = 'history-facts.json';
+
+// The history facts of the upstream range, computed once per rebase: one cache file in the run directory (the
+// directory of the `--record` file), keyed by the rebase's `onto` and original head and the range itself. A missing,
+// unreadable, or differently keyed cache recomputes the facts; a cache that cannot be written is skipped. Neither ever
+// fails the capture.
+function historyFacts(cwd, upstreamRange, key, cacheDir) {
+  const file = key && cacheDir ? path.join(cacheDir, HISTORY_CACHE) : null;
+  const wanted = key && { ...key, upstream_range: upstreamRange[0] };
+  let cached = null;
+  if (file) {
+    try {
+      const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (stored?.version === 1 && JSON.stringify(stored.key) === JSON.stringify(wanted) && Array.isArray(stored.upstream)) cached = stored;
+    } catch { cached = null; }
+  }
+  const history = cached
+    ? { upstream: cached.upstream, upstreamIds: cached.upstream_ids === null ? null : new Map(Object.entries(cached.upstream_ids)), touching: new Map(Object.entries(cached.touching ?? {})), reused: true }
+    : { upstream: commitList(cwd, upstreamRange), upstreamIds: patchIds(cwd, upstreamRange), touching: new Map(), reused: false };
+  history.touchingOf = name => {
+    if (!history.touching.has(name)) {
+      history.touching.set(name, commitList(cwd, upstreamRange, name).map(item => item.sha));
+      history.save();
+    }
+    return history.touching.get(name);
+  };
+  history.save = () => {
+    if (!file) return;
+    const stored = { version: 1, key: wanted, upstream: history.upstream, upstream_ids: history.upstreamIds && Object.fromEntries(history.upstreamIds), touching: Object.fromEntries(history.touching) };
+    try { fs.writeFileSync(file, JSON.stringify(stored)); } catch { /* an unwritable cache only costs a recomputation */ }
+  };
+  if (!history.reused) history.save();
+  return history;
+}
+
+// The commit-level facts of one stop, or null when no other side can be named. During a rebase the other side is the
+// upstream range `base..onto`: `HEAD` would add the copies of the branch's own commits that the rebase already replayed.
+function incomingFacts(cwd, cacheDir = null) {
   const rev = name => git(cwd, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`], true)?.trim() || null;
   const merging = rev('MERGE_HEAD');
   const replayed = merging ? null : rev('REBASE_HEAD');
   const tip = merging || replayed || rev('CHERRY_PICK_HEAD');
-  const base = tip && (git(cwd, ['merge-base', 'HEAD', tip], true)?.trim() || null);
+  const rebase = replayed ? rebaseState(cwd) : null;
+  const upstreamTip = rebase?.onto ?? 'HEAD';
+  const base = tip && (git(cwd, ['merge-base', upstreamTip, tip], true)?.trim() || null);
   if (!base) return null;
   const incomingRange = merging ? [`${base}..${tip}`] : [`${tip}^!`];
-  const upstreamRange = [`${base}..HEAD`];
+  const upstreamRange = [`${base}..${upstreamTip}`];
+  const history = historyFacts(cwd, upstreamRange, rebase, cacheDir);
   const incoming = commitList(cwd, incomingRange);
-  const upstream = commitList(cwd, upstreamRange);
+  const upstream = history.upstream;
   const incomingIds = patchIds(cwd, incomingRange);
-  const upstreamIds = patchIds(cwd, upstreamRange);
+  const upstreamIds = history.upstreamIds;
   const pairs = new Map();
   if (incoming.length && upstream.length && incoming.length * upstream.length <= RANGE_DIFF_PAIRS) {
     const out = git(cwd, ['range-diff', '--no-color', ...incomingRange, ...upstreamRange], true) ?? '';
@@ -451,8 +505,9 @@ function incomingFacts(cwd) {
       range_diff: pairs.get(item.sha) ?? null }];
   }));
   return { operation: merging ? 'merge' : replayed ? 'rebase' : 'cherry-pick', incoming_tip: tip.slice(0, 12), merge_base: base.slice(0, 12),
+    upstream_tip: upstreamTip === 'HEAD' ? 'HEAD' : upstreamTip.slice(0, 12), history_reused: history.reused,
     incoming_scanned: incoming.length, upstream_scanned: upstream.length,
-    truncated: incoming.length >= SCAN_LIMIT || upstream.length >= SCAN_LIMIT, incomingRange, upstreamRange, matches };
+    truncated: incoming.length >= SCAN_LIMIT || upstream.length >= SCAN_LIMIT, incomingRange, upstreamRange, matches, history };
 }
 
 // What the replayed change does to one file against the other side's version: how many of the
@@ -483,7 +538,7 @@ function lineIndicators(cwd, file) {
 function fileContainment(cwd, facts, file) {
   const touching = new Set(commitList(cwd, facts.incomingRange, file.path).map(item => item.sha));
   return { incoming: [...facts.matches].filter(([sha]) => touching.has(sha)).map(([, entry]) => entry),
-    upstream_touching: commitList(cwd, facts.upstreamRange, file.path).map(item => item.sha.slice(0, 12)),
+    upstream_touching: facts.history.touchingOf(file.path).map(sha => sha.slice(0, 12)),
     lines: lineIndicators(cwd, file) };
 }
 
@@ -497,7 +552,7 @@ function containmentSummary(entry) {
     upstream_touching: entry.upstream_touching.length, lines };
 }
 
-function conflicts(cwd) {
+function conflicts(cwd, cacheDir = null) {
   const names = split0(git(cwd, ['diff', '--name-only', '--diff-filter=U', '-z'])).sort(compare);
   return fact(cwd, 'conflicts', ['head', 'index', 'operations', 'tree', 'path:openspec', ...names.map(name => `path:${name}`)], () => {
     const hasSpecs = fs.existsSync(path.join(cwd, 'openspec'));
@@ -510,8 +565,8 @@ function conflicts(cwd) {
     const categoryOf = name => /^(docs\/adr|docs\/ddr)\//.test(name) ? 'adr-ddr' : hasSpecs && name.startsWith('openspec/') ? 'specs' : 'code';
     const categories = { specs: 0, 'adr-ddr': 0, code: 0 };
     for (const name of names) categories[categoryOf(name)]++;
-    const facts = names.length ? incomingFacts(cwd) : null;
-    const stopContainment = facts && (({ incomingRange, upstreamRange, matches, ...rest }) => rest)(facts);
+    const facts = names.length ? incomingFacts(cwd, cacheDir) : null;
+    const stopContainment = facts && (({ incomingRange, upstreamRange, matches, history, ...rest }) => rest)(facts);
     return { categories, operation: inProgress(cwd), containment: stopContainment, unrelated: Object.fromEntries(inventory.filter(name => !names.includes(name)).map(name => [name, fileState(cwd, name)])), files: names.map(name => {
       const type = fileState(cwd, name).type;
       const bytes = type === 'file' ? fs.readFileSync(localPath(cwd, name)) : null;
@@ -1244,7 +1299,7 @@ function collect(action, cwd, opts, stdin) {
   else if (action === 'simulate') {
     if (opts.record) throw new Error('simulate writes its own file: --record does not apply');
     result = simulate(cwd, opts['source-ref'], opts.method, opts.harness);
-  } else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd), opts.record);
+  } else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd, opts.record ? path.dirname(path.resolve(opts.record)) : null), opts.record);
   else if (action === 'correction') result = saveSnapshot(cwd, correction(cwd, stdin()), opts.record);
   else if (action === 'valid') result = valid(cwd, stdin());
   else if (action === 'suite') result = suite(cwd);
