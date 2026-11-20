@@ -545,6 +545,7 @@ test('missing required OpenCode temporary root gives a concrete blocker without 
     platform: 'linux',
     uid: 1000,
     io: {
+      realpathSync: file => file,
       lstatSync(file) { reads.push(file); throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); },
       mkdirSync() { assert.fail('Must not create the shared root'); },
       mkdtempSync() { assert.fail('Must not create a replacement temporary directory'); },

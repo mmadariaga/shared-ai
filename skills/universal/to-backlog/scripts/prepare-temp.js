@@ -10,7 +10,7 @@ const RESOLVER = ['../../../sai/tools/temp-root.js', '../../../../sai/tools/temp
   .map(relative => path.join(__dirname, relative))
   .find(candidate => fs.existsSync(candidate));
 if (!RESOLVER) throw new Error('SAI temp root resolver sai/tools/temp-root.js not found beside this skill');
-const { makeTempDir, resolveTempRoot, harnessFromInstalledPath } = require(RESOLVER);
+const { makeTempDir, resolveTempRoot, harnessFromInstalledPath, realpathFor } = require(RESOLVER);
 
 function within(directory, parent) {
   const relative = path.relative(parent, directory);
@@ -20,7 +20,8 @@ function within(directory, parent) {
 // Dependencies are injectable for failure tests; the CLI accepts no root override.
 // Without a harness, the installed root this script runs from decides it.
 function prepareTemp(harness = harnessFromInstalledPath(__filename), { cwd = process.cwd(), io = fs, ...options } = {}) {
-  const workingDirectory = io.realpathSync(cwd);
+  // The same real form the temp root is built from, so the two compare equal (a Windows 8.3 short name, a macOS /var link).
+  const workingDirectory = realpathFor(io, options.platform ?? process.platform)(cwd);
   let repository = workingDirectory;
   for (let directory = workingDirectory; ; directory = path.dirname(directory)) {
     if (io.existsSync(path.join(directory, '.git'))) { repository = directory; break; }

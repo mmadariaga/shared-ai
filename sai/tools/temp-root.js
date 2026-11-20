@@ -6,17 +6,24 @@
  * temp-root — the one resolver of SAI temporary paths.
  *
  * Terms:
- *   harness root  the private folder of a harness. Linux: `/tmp/claude-{uid}`
- *                 (Claude Code) or `/tmp/opencode` (opencode). Windows and
- *                 macOS: `<os.tmpdir()>/<harness>`.
+ *   temp base     the system folder that holds the harness root: `/tmp` on Linux,
+ *                 `os.tmpdir()` elsewhere. It is always used in its real form
+ *                 (8.3 short names expanded, links such as macOS `/var` to
+ *                 `/private/var` followed), so permission rules, state stores,
+ *                 wait files, and created folders share one spelling.
+ *   harness root  the private folder of a harness inside the real temp base.
+ *                 Linux: `<base>/claude-{uid}` (Claude Code) or
+ *                 `<base>/opencode` (opencode). Windows and macOS:
+ *                 `<base>/<harness>`.
  *   SAI temp root the `sai/` folder inside the harness root; every SAI temp
  *                 write lives under it.
  *
  * On Linux the harness root belongs to the harness: SAI never creates it, and a
  * missing one is a blocker naming the path. On Windows and macOS the per-user
  * `os.tmpdir()` is the private base, so SAI creates `<harness>/sai/` when
- * missing. `sai/` is created with mode 0700 (no chmod on Windows). On POSIX,
- * the harness root and `sai/` must be real directories (no symbolic links),
+ * missing. `sai/` is created with mode 0700 (no chmod on Windows). Only the
+ * temp base is resolved through links (a linked `/tmp` is system configuration);
+ * on POSIX, the harness root and `sai/` must be real directories (no symbolic links),
  * owned by the current user (the harness root may also be owned by root), and
  * not writable by group or others unless the sticky bit is set.
  *
@@ -58,15 +65,27 @@ function defaultUid() {
   return typeof process.getuid === 'function' ? process.getuid() : undefined;
 }
 
-/** The harness root path, before any filesystem check. */
-function harnessRoot(harness, { platform = process.platform, tmpdir = os.tmpdir, uid = defaultUid() } = {}) {
+/** The real path of the temp base; an unresolvable base is a blocker naming it, never a fallback to the raw form. */
+function realTempBase(base, io, platform) {
+  try {
+    return realpathFor(io, platform)(base);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new TempRootError(`Required temporary base ${base} is missing; restore it before retrying. SAI does not create it`, 'TEMP_ROOT_MISSING');
+    }
+    throw new TempRootError(`Temporary base ${base} cannot be resolved (${error.code ?? error.message}); SAI does not fall back to its unresolved form`);
+  }
+}
+
+/** The harness root path (inside the real temp base), before any check of the harness folder. */
+function harnessRoot(harness, { platform = process.platform, tmpdir = os.tmpdir, uid = defaultUid(), io = fs } = {}) {
   assertHarness(harness);
   if (platform === 'linux') {
-    if (harness === 'opencode') return '/tmp/opencode';
+    if (harness === 'opencode') return path.posix.join(realTempBase('/tmp', io, platform), 'opencode');
     if (!Number.isInteger(uid)) throw new TempRootError('Cannot establish the current user id for the Claude Code temporary root');
-    return `/tmp/claude-${uid}`;
+    return path.posix.join(realTempBase('/tmp', io, platform), `claude-${uid}`);
   }
-  return path.join(tmpdir(), harness);
+  return path.join(realTempBase(tmpdir(), io, platform), harness);
 }
 
 /**
@@ -116,7 +135,7 @@ function checkDirectory(label, target, stat, { platform, uid, owners }) {
  */
 function resolveTempRoot(harness, options = {}) {
   const { platform = process.platform, tmpdir = os.tmpdir, io = fs, uid = defaultUid(), create = true } = options;
-  const harnessPath = harnessRoot(harness, { platform, tmpdir, uid });
+  const harnessPath = harnessRoot(harness, { platform, tmpdir, uid, io });
   let harnessStat = lstatOrNull(harnessPath, io);
   if (!harnessStat) {
     if (platform === 'linux') {
@@ -147,7 +166,10 @@ function resolveTempRoot(harness, options = {}) {
   return saiPath;
 }
 
-/** The directory the SAI temp root must really be: a symbolic link anywhere on its path is a blocker. */
+/**
+ * The SAI temp root is built from the real temp base, so a symbolic link in its path can only sit at the harness
+ * folder or below (where another user could plant one in a shared `/tmp`): that is a blocker, a linked temp base is not.
+ */
 function checkRootPath(root, io) {
   if (io.realpathSync(root) !== root) {
     throw new TempRootError(`SAI temporary root ${root} must be reachable through no symbolic link`);
@@ -306,4 +328,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { HARNESSES, SAI_DIR, TempRootError, harnessRoot, harnessFromInstalledPath, resolveTempRoot, makeTempDir, removeInside };
+module.exports = { HARNESSES, SAI_DIR, TempRootError, harnessRoot, harnessFromInstalledPath, resolveTempRoot, makeTempDir, removeInside, realpathFor };

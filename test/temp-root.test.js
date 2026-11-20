@@ -13,18 +13,49 @@ const { harnessRoot, resolveTempRoot, makeTempDir, removeInside, TempRootError }
 const POSIX = process.platform !== 'win32';
 const OPENCODE_SAI = path.join('/tmp/opencode', 'sai');
 const UID = typeof process.getuid === 'function' ? process.getuid() : undefined;
+// A file system whose paths are already in their real form.
+const REAL = { realpathSync: target => target };
 
 function sandbox() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-temp-root-test-'));
   return { base, cleanup: () => fs.rmSync(base, { recursive: true, force: true }) };
 }
 
-test('Linux roots do not depend on the temp environment; other platforms use tmpdir plus the harness', () => {
+test('Linux roots do not depend on the temp environment; other platforms use the real tmpdir plus the harness', () => {
   const tmpdir = () => path.join('somewhere', 'tmp');
-  assert.equal(harnessRoot('opencode', { platform: 'linux', tmpdir, uid: 1000 }), '/tmp/opencode');
-  assert.equal(harnessRoot('claude', { platform: 'linux', tmpdir, uid: 1000 }), '/tmp/claude-1000');
-  assert.equal(harnessRoot('claude', { platform: 'darwin', tmpdir }), path.join('somewhere', 'tmp', 'claude'));
-  assert.equal(harnessRoot('opencode', { platform: 'win32', tmpdir }), path.join('somewhere', 'tmp', 'opencode'));
+  assert.equal(harnessRoot('opencode', { platform: 'linux', tmpdir, uid: 1000, io: REAL }), '/tmp/opencode');
+  assert.equal(harnessRoot('claude', { platform: 'linux', tmpdir, uid: 1000, io: REAL }), '/tmp/claude-1000');
+  assert.equal(harnessRoot('claude', { platform: 'darwin', tmpdir, io: REAL }), path.join('somewhere', 'tmp', 'claude'));
+  assert.equal(harnessRoot('opencode', { platform: 'win32', tmpdir, io: REAL }), path.join('somewhere', 'tmp', 'opencode'));
+});
+
+test('E2 the root names the real form of a temp base that has a second spelling', () => {
+  const short = path.join(path.sep, 'tmp-fake', 'MIKEL~1.MAD');
+  const long = path.join(path.sep, 'tmp-fake', 'mikel.madariaga');
+  const realpathSync = target => target;
+  realpathSync.native = target => target.replace('MIKEL~1.MAD', 'mikel.madariaga');
+  assert.equal(harnessRoot('claude', { platform: 'win32', tmpdir: () => short, io: { realpathSync } }), path.join(long, 'claude'));
+
+  // macOS keeps /var as a link to /private/var, and the JS resolver follows it.
+  const linked = target => (target === '/var/folders/x/T' ? '/private/var/folders/x/T' : target);
+  assert.equal(harnessRoot('opencode', { platform: 'darwin', tmpdir: () => '/var/folders/x/T', io: { realpathSync: linked } }), path.join('/private/var/folders/x/T', 'opencode'));
+
+  // A linked /tmp on Linux resolves to its real folder, which holds the harness folder.
+  const linkedTmp = target => (target === '/tmp' ? '/private/tmp' : target);
+  assert.equal(harnessRoot('opencode', { platform: 'linux', uid: 1000, io: { realpathSync: linkedTmp } }), '/private/tmp/opencode');
+  assert.equal(harnessRoot('claude', { platform: 'linux', uid: 1000, io: { realpathSync: linkedTmp } }), '/private/tmp/claude-1000');
+});
+
+test('E3 a temp base that cannot be resolved fails naming it, with no fallback to the raw form', () => {
+  const io = { realpathSync: target => { throw Object.assign(new Error('missing'), { code: 'ENOENT' }); } };
+  for (const options of [{ platform: 'win32', tmpdir: () => 'C:/gone' }, { platform: 'darwin', tmpdir: () => '/gone' }, { platform: 'linux', uid: 1000 }]) {
+    assert.throws(
+      () => harnessRoot('claude', { ...options, io }),
+      error => error instanceof TempRootError && error.code === 'TEMP_ROOT_MISSING' && error.message.includes(options.platform === 'linux' ? '/tmp' : options.tmpdir()),
+      options.platform,
+    );
+    assert.throws(() => resolveTempRoot('claude', { ...options, io }), error => error.code === 'TEMP_ROOT_MISSING');
+  }
 });
 
 test('an unknown harness is rejected', () => {
@@ -34,6 +65,7 @@ test('an unknown harness is rejected', () => {
 test('on Linux a missing harness root is a blocker naming the path and nothing is created', () => {
   const calls = [];
   const io = {
+    ...REAL,
     lstatSync(target) { calls.push(target); const error = new Error('missing'); error.code = 'ENOENT'; throw error; },
     mkdirSync() { throw new Error('must not create'); },
   };
@@ -98,6 +130,7 @@ test('a symbolic-link harness root or sai/ and a file in their place are blocker
 test('ownership and shared-write checks block without repairing', () => {
   const stat = (overrides) => ({ isDirectory: () => true, isSymbolicLink: () => false, uid: 1000, mode: 0o40700, ...overrides });
   const make = (harnessStat, saiStat) => ({
+    ...REAL,
     lstatSync(target) { return target.endsWith('sai') ? saiStat : harnessStat; },
     mkdirSync() { throw new Error('must not create'); },
     chmodSync() { throw new Error('must not repair'); },
@@ -274,7 +307,7 @@ test('no tool keeps its own temp-root computation', () => {
 // POSIX verification of the created child, exercised with an injected file system
 // so it runs on every host: the checks moved here from the to-backlog helper.
 function posixFake(overrides = {}) {
-  const harness = '/tmp/opencode';
+  const harness = `${overrides.base || '/tmp'}/opencode`;
   const sai = path.join(harness, 'sai');
   const child = path.join(sai, 'run-ABCDEF');
   const dir = (ino, extra = {}) => ({ isDirectory: () => true, isSymbolicLink: () => false, uid: 1000, mode: 0o40700, dev: 1, ino, ...extra });
@@ -282,7 +315,7 @@ function posixFake(overrides = {}) {
   const reads = { sai: 0, child: 0 };
   const io = {
     lstatSync(target) {
-      if (target === harness) return dir(1);
+      if (target === harness) return (overrides.harness || (() => dir(1)))();
       if (target === sai) return (overrides.sai || (() => dir(2)))(++reads.sai);
       if (target === child) return (overrides.child || (() => dir(3)))(++reads.child);
       throw Object.assign(new Error('missing'), { code: 'ENOENT' });
@@ -320,9 +353,19 @@ test('makeTempDir rejects a changed root and leaves nothing repaired', () => {
 });
 
 test('makeTempDir rejects a root reached through a symbolic link before creating anything', () => {
-  const fake = posixFake({ realpath: () => path.join('/elsewhere', 'sai') });
+  const fake = posixFake({ realpath: value => (value.endsWith('sai') ? path.join('/elsewhere', 'sai') : value) });
   assert.throws(() => makeTempDir('opencode', 'run-', fake.options), /no symbolic link/);
   assert.equal(fake.calls.mkdtemp, 0);
+});
+
+test('E4 on Linux a linked temp base passes and a linked harness folder blocks', () => {
+  const linked = posixFake({ base: '/private/tmp', realpath: value => (value === '/tmp' ? '/private/tmp' : value) });
+  assert.equal(makeTempDir('opencode', 'run-', linked.options), linked.child);
+  assert.ok(linked.child.split(path.sep).join('/').startsWith('/private/tmp/opencode/sai/'));
+
+  const harnessLink = posixFake({ harness: () => posixFake().dir(1, { isSymbolicLink: () => true }) });
+  assert.throws(() => makeTempDir('opencode', 'run-', harnessLink.options), /not a symbolic link/);
+  assert.equal(harnessLink.calls.mkdtemp, 0);
 });
 
 test('makeTempDir rejects a child that fails verification or changes underneath it', () => {

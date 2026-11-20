@@ -50,7 +50,10 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /same invalid-report recovery with its obstacle attempt/);
   assert.match(text, /When the watch ends with an empty list, launch it again\. Send nothing to the worker and write nothing to the user/);
   assert.match(text, /stop the watch \(Claude Code `TaskStop`, opencode removal of its shell\)/);
-  assert.match(text, /not a reference[\s\S]{0,120}is not a result: keep waiting with the watch armed/);
+  assert.match(text, /A worker message that is a protocol literal is not a result: keep waiting with the watch armed/);
+  assert.match(text, /\*\*Reply without a reference\.\*\* A worker message that carries no report reference and is not a protocol literal[\s\S]{0,200}"Ending this turn"[\s\S]{0,200}waiting for a `silent` end of the watch is not the recovery/);
+  assert.match(text, /--settle 0s --max 1s/, 'the immediate scan reuses `watch` as a one-shot, with no new flag');
+  assert.match(text, /When it finds none, the message is an invalid report[\s\S]{0,260}a second consecutive one replaces the worker, each spends one attempt, and the exhausted budget escalates with options/);
   assert.match(text, /Watch each report directory separately and attribute a report to the worker of its directory/);
   assert.match(text, /print one notice and go on without it: the run does not stop/);
   assert.match(text, /Only the watch looks for undelivered reports; a warming notification does not trigger report polling/);

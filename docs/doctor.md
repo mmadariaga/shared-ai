@@ -49,6 +49,11 @@ unanswered runs retain them. Keep that evidence while recovery is pending.
 | Linux | `/tmp/claude-{uid}/sai/` | `/tmp/opencode/sai/` |
 | Windows/macOS | `<os.tmpdir()>/claude/sai/` | `<os.tmpdir()>/opencode/sai/` |
 
+The temp base (`/tmp` or `os.tmpdir()`) always appears in its real form, with a
+Windows 8.3 short name expanded and a link such as macOS `/var` followed, so
+permission rules and created folders share one spelling. Permission rules
+installed before that change keep the earlier spelling until the next install.
+
 On Linux, the harness folder must already exist. A missing or unsafe root stops
 the command and names the path. Check the active harness's temporary-directory
 setup and permissions before retrying. An access prompt for writes outside the

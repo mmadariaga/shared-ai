@@ -16,9 +16,13 @@ const { recognizedRetirement } = require('../bin/retirement-identity');
 function asLinux(action) {
   const original = Object.getOwnPropertyDescriptor(process, 'platform');
   const stubUid = typeof process.getuid !== 'function';
+  const realpath = fs.realpathSync;
   Object.defineProperty(process, 'platform', { value: 'linux' });
   if (stubUid) process.getuid = () => 1000;
+  // The Linux temp base is the real form of /tmp; the pinned form is /tmp itself, whatever the host has.
+  fs.realpathSync = Object.assign(target => (target === '/tmp' ? target : realpath(target)), { native: realpath.native });
   try { return action(); } finally {
+    fs.realpathSync = realpath;
     Object.defineProperty(process, 'platform', original);
     if (stubUid) delete process.getuid;
   }

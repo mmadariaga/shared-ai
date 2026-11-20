@@ -7,11 +7,11 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: Harness temp root resolution
 
-`sai/tools/transfer.js` SHALL place every transfer directory under the SAI temp root that the shared module `sai/tools/temp-root.js` resolves: `/tmp/opencode/sai` for opencode and `/tmp/claude-{uid}/sai` for Claude Code on Linux, and `<os.tmpdir()>/<harness>/sai` on Windows and macOS. It SHALL reject any harness other than `claude` or `opencode` and SHALL keep no root logic of its own. On Linux a missing harness root SHALL NOT be created and SHALL be reported as a concrete blocker; the harness root and `sai/` MUST be existing directories that are not symbolic links.
+`sai/tools/transfer.js` SHALL place every transfer directory under the SAI temp root that the shared module `sai/tools/temp-root.js` resolves: the real form of the temp base followed by the harness folder and `sai`, which is `/tmp/opencode/sai` for opencode and `/tmp/claude-{uid}/sai` for Claude Code on Linux when `/tmp` is a real directory, and `<real os.tmpdir()>/<harness>/sai` on Windows and macOS (an 8.3 short name expanded, a link such as macOS `/var` followed). It SHALL reject any harness other than `claude` or `opencode` and SHALL keep no root logic of its own. On Linux a missing harness root SHALL NOT be created and SHALL be reported as a concrete blocker; the harness root and `sai/` MUST be existing directories that are not symbolic links.
 
 #### Scenario: opencode on Linux uses its fixed root
 
-- **WHEN** the root is resolved for opencode on Linux
+- **WHEN** the root is resolved for opencode on Linux and `/tmp` is a real directory
 - **THEN** transfer directories live under `/tmp/opencode/sai`, and Claude Code on Linux uses `/tmp/claude-{uid}/sai`
 
 #### Scenario: A missing root is never created
@@ -23,6 +23,11 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 - **WHEN** the harness root or its `sai/` folder is a symbolic link or a regular file
 - **THEN** the module rejects it as not an existing non-link directory
+
+#### Scenario: Transfer directories use the real temp base
+
+- **WHEN** the temp base is reached through a link or an 8.3 short name
+- **THEN** transfer directories live under the real form of the temp base
 
 ### Requirement: Open creates one private per-invocation transfer directory
 

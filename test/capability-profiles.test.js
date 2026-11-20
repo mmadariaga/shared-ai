@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const manifest = require('../sai/install-manifest.json');
-const { harnessRoot } = require('../sai/tools/temp-root');
+const { harnessRoot, makeTempDir } = require('../sai/tools/temp-root');
 const { resolveProfile, translate, validateRegistry, projectSource } = require('../bin/capabilities');
 const { expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest');
 const { verifyAccess, missingNotices } = require('../sai/tools/tool-access');
@@ -96,6 +96,32 @@ test('E6 opencode agents may write the Claude Code SAI temp root, and Claude Cod
   }
   const claude = translate(registry, 'research', 'claude');
   assert.ok(!claude.allowedTools.includes(claudeTempRoot), 'Claude Code carries no external_directory rule');
+});
+
+test('E2 the temp-root rules cover the folders makeTempDir creates when the temp base is a link', { skip: process.platform === 'linux' }, () => {
+  // The temp base is reached through a link (a macOS /var, a Windows 8.3 name): the rules name the real form.
+  const box = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-rules-real-'));
+  const real = path.join(box, 'real-base');
+  const link = path.join(box, 'link-base');
+  const original = os.tmpdir;
+  try {
+    fs.mkdirSync(real);
+    fs.symlinkSync(real, link, 'junction');
+    os.tmpdir = () => link;
+    const created = makeTempDir('claude', 'rules-');
+    const forward = target => target.split(path.sep).join('/');
+    const realRoot = forward(path.join(fs.realpathSync.native(real), 'claude', 'sai'));
+    assert.equal(forward(fs.realpathSync.native(created)).startsWith(`${realRoot}/`), true, 'the folder lies under the real root');
+
+    const opencode = translate(registry, 'worker-read', 'opencode').permissions.find(rule => rule.action === 'edit' && rule.resource !== '*');
+    assert.equal(opencode.resource, `${forward(path.join(fs.realpathSync.native(real), 'opencode', 'sai'))}/*`);
+    const claudeRule = translate(registry, 'worker-read', 'claude').allowedTools.split(', ').find(rule => rule.startsWith('Edit('));
+    assert.ok(claudeRule.toLowerCase().includes('real-base/claude/sai'), claudeRule);
+    assert.ok(!claudeRule.includes('link-base') && !opencode.resource.includes('link-base'));
+  } finally {
+    os.tmpdir = original;
+    fs.rmSync(box, { recursive: true, force: true });
+  }
 });
 
 test('commands have independent requirements without inventing opencode command permissions', () => {

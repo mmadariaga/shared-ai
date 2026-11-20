@@ -7,22 +7,42 @@ TBD - created by archiving change unify-sai-temp-root. Update Purpose after arch
 
 ### Requirement: Per-harness, per-platform SAI temp root
 
-`sai/tools/temp-root.js` SHALL be the resolver of the SAI temp root, the `sai/` folder inside the harness root. On Linux the harness root SHALL be `/tmp/claude-{uid}` for Claude Code and `/tmp/opencode` for opencode, independent of `TMPDIR`, `TEMP`, and `TMP`; on Windows and macOS it SHALL be `<os.tmpdir()>/<harness>`. The resolver SHALL reject any harness other than `claude` or `opencode`.
+`sai/tools/temp-root.js` SHALL be the resolver of the SAI temp root, the `sai/` folder inside the harness root. The harness root SHALL sit inside the temp base, which is `/tmp` on Linux and `os.tmpdir()` on Windows and macOS, and the resolver SHALL use the temp base in its real form only: the native real-path resolution on Windows, so that 8.3 short names are expanded, and the ordinary real-path resolution elsewhere, so that a link such as macOS `/var` to `/private/var` or a linked `/tmp` is followed. Every consumer of the resolver (permission rules, state stores, cache-warm waits, and created folders) SHALL therefore share one spelling of the root. On Linux the harness root SHALL be `<real /tmp>/claude-{uid}` for Claude Code and `<real /tmp>/opencode` for opencode, independent of `TMPDIR`, `TEMP`, and `TMP`; on Windows and macOS it SHALL be `<real os.tmpdir()>/<harness>`. Only the temp base SHALL be resolved: the harness folder may not exist yet. A temp base that does not exist SHALL raise the `TEMP_ROOT_MISSING` blocker naming it, and a temp base that cannot be resolved for another reason SHALL raise a blocker naming it; the resolver SHALL NOT fall back to the unresolved form. The resolver SHALL reject any harness other than `claude` or `opencode`.
 
 #### Scenario: Linux roots per harness
 
-- **WHEN** the SAI temp root is resolved on Linux
+- **WHEN** the SAI temp root is resolved on Linux and `/tmp` is a real directory
 - **THEN** it is `/tmp/claude-{uid}/sai` for Claude Code and `/tmp/opencode/sai` for opencode
 
 #### Scenario: Windows and macOS use the user temp folder
 
 - **WHEN** the SAI temp root is resolved on Windows or macOS
-- **THEN** it is `<os.tmpdir()>/<harness>/sai`
+- **THEN** it is the real form of `os.tmpdir()` followed by `<harness>/sai`
 
 #### Scenario: Unknown harness is rejected
 
 - **WHEN** the resolver receives a harness other than `claude` or `opencode`
 - **THEN** it raises a usage error and resolves nothing
+
+#### Scenario: Windows short temp base is expanded
+
+- **WHEN** `os.tmpdir()` on Windows is spelled with an 8.3 short name
+- **THEN** the harness root is the native long form of that folder followed by the harness name
+
+#### Scenario: macOS linked temp base is followed
+
+- **WHEN** `os.tmpdir()` on macOS is under `/var`, which links to `/private/var`
+- **THEN** the harness root lies under `/private/var`
+
+#### Scenario: Linked Linux temp base is followed
+
+- **WHEN** `/tmp` on Linux is a link to another folder
+- **THEN** the harness root is that real folder followed by `claude-{uid}` or `opencode`
+
+#### Scenario: Unresolvable temp base is a blocker
+
+- **WHEN** the temp base does not exist or its real path cannot be resolved
+- **THEN** the resolver raises a blocker that names the temp base, with code `TEMP_ROOT_MISSING` when it is missing, and returns no root in the unresolved form
 
 ### Requirement: Root creation boundaries
 
@@ -45,7 +65,7 @@ On Linux the resolver SHALL NOT create the harness root, and a missing harness r
 
 ### Requirement: Root safety checks
 
-The harness root and `sai/` SHALL each be a directory that is not a symbolic link. On POSIX the harness root SHALL be owned by the current user or by root, `sai/` SHALL be owned by the current user, and neither SHALL be writable by group or others unless the sticky bit is set. A root that fails a check SHALL be a blocker, and the resolver SHALL write or repair nothing.
+The harness root and `sai/` SHALL each be a directory that is not a symbolic link. On POSIX the harness root SHALL be owned by the current user or by root, `sai/` SHALL be owned by the current user, and neither SHALL be writable by group or others unless the sticky bit is set. On Linux the symbolic-link guard SHALL cover the harness folder and everything below it, compared against the already-real temp base, so a linked `/tmp` SHALL pass while a symbolic link at the harness folder or below SHALL block. A root that fails a check SHALL be a blocker, and the resolver SHALL write or repair nothing.
 
 #### Scenario: Symbolic-link root is rejected
 
@@ -61,6 +81,11 @@ The harness root and `sai/` SHALL each be a directory that is not a symbolic lin
 
 - **WHEN** on POSIX the harness root is writable by group or others and has no sticky bit
 - **THEN** the resolver raises a blocker and writes nothing
+
+#### Scenario: Linked Linux temp base passes the guard
+
+- **WHEN** on Linux `/tmp` is a link and the harness folder under its real form is a real directory
+- **THEN** `makeTempDir` creates and returns a child under the real temp base
 
 ### Requirement: Temp root CLI
 
@@ -114,7 +139,7 @@ When `--help` appears anywhere in the arguments, with or without a sub-command, 
 
 ### Requirement: Verified private child creation
 
-On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. On Linux the SAI temp root's real path SHALL equal its resolved path. The new child SHALL be a direct child of the SAI temp root, and SHALL be a directory, not a symbolic link, owned by the current user with no group or other permission bits. Its mode SHALL be set to 0700 through a no-follow directory descriptor whose identity matches the created child, and it SHALL be verified again through that descriptor and by path. When verification ends, the SAI temp root SHALL still pass its safety checks with an unchanged device and inode, the child SHALL keep its device and inode, and the child's real path SHALL lie directly inside the root's real path. A failed check SHALL raise a blocker, and the child SHALL NOT be returned as usable. On Windows the resolver SHALL create the child and return its real path without these POSIX checks, resolved with the native real-path resolution so that 8.3 short names are expanded and the returned path is the native long form; when the provided file-system interface has no native resolver, it SHALL fall back to the ordinary real-path resolution. On Windows `resolveTempRoot` SHALL keep returning the SAI temp root in the spelling of `TEMP`, so the root and a created child MAY differ in spelling. Every caller of `makeTempDir` SHALL receive this verification.
+On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. On Linux the SAI temp root's real path SHALL equal its resolved path. The new child SHALL be a direct child of the SAI temp root, and SHALL be a directory, not a symbolic link, owned by the current user with no group or other permission bits. Its mode SHALL be set to 0700 through a no-follow directory descriptor whose identity matches the created child, and it SHALL be verified again through that descriptor and by path. When verification ends, the SAI temp root SHALL still pass its safety checks with an unchanged device and inode, the child SHALL keep its device and inode, and the child's real path SHALL lie directly inside the root's real path. A failed check SHALL raise a blocker, and the child SHALL NOT be returned as usable. On Windows the resolver SHALL create the child and return its real path without these POSIX checks, resolved with the native real-path resolution so that 8.3 short names are expanded and the returned path is the native long form; when the provided file-system interface has no native resolver, it SHALL fall back to the ordinary real-path resolution. Because the SAI temp root is built from the real temp base, `resolveTempRoot` SHALL return the root in the same real spelling as the children `makeTempDir` creates, and the permission rules derived from the root SHALL cover every created child. Every caller of `makeTempDir` SHALL receive this verification.
 
 #### Scenario: Verified child is returned
 
@@ -133,7 +158,7 @@ On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. O
 
 #### Scenario: Windows child is returned in native long form
 
-- **WHEN** `makeTempDir` runs on Windows and the SAI temp root is spelled with 8.3 short names
+- **WHEN** `makeTempDir` runs on Windows and the temp base is spelled with 8.3 short names
 - **THEN** it returns the native long form of the created child
 
 #### Scenario: Long-form root keeps its spelling on Windows
@@ -145,6 +170,11 @@ On POSIX, `makeTempDir` SHALL verify the child it creates before returning it. O
 
 - **WHEN** `makeTempDir` runs on Windows with a file-system interface whose real-path resolver has no native variant
 - **THEN** it resolves the created child with the ordinary real-path resolver
+
+#### Scenario: Permission rules cover the created child
+
+- **WHEN** the temp base is reached through a link or a short name and `bin/capabilities.js` builds the temp-root rules
+- **THEN** the opencode `edit` grant and the Claude Code `Edit` rule name the real form, and the folder `makeTempDir` returns lies under them
 
 ### Requirement: Every SAI temp writer uses the shared resolver
 
