@@ -26,7 +26,7 @@
 //                                        explicit later value replaces it; no other command emits it
 //   status     {}                        changes nothing; returns the run state
 
-const { createRunMachine } = require('./run-core.js');
+const { createRunMachine, workerHandleRecord } = require('./run-core.js');
 
 const machineId = 'implement-run@1';
 
@@ -38,31 +38,6 @@ const REFS = Object.freeze({
   finding: 'findings',
   baseline: 'baselines',
 });
-
-const WORKER_REASONS = Object.freeze(['create', 'replace', 'resume']);
-const WORKER_HANDLE_CHANGED = 'WORKER_HANDLE_CHANGED';
-
-// `workers` lists `role:handle` entries in registration order; the last entry of a role is its current handle.
-function handlesOf(current, role) {
-  const prefix = role + ':';
-  return current.workers.filter((entry) => entry.indexOf(prefix) === 0).map((entry) => entry.slice(prefix.length));
-}
-
-function handleRecord(ctx, current, sig) {
-  if (sig.ref !== 'worker') return null;
-  if (current.stage === 'idle') return ctx.reject('run is not started');
-  const role = ctx.usableId(sig.role);
-  if (!role || role.indexOf(':') !== -1) return ctx.reject('role required');
-  const handle = ctx.usableId(sig.handle);
-  if (!handle) return ctx.reject('handle required');
-  if (WORKER_REASONS.indexOf(sig.reason) === -1) return ctx.reject('reason must be create, replace, or resume');
-  const handles = handlesOf(current, role);
-  const previous = handles.length > 0 ? handles[handles.length - 1] : '';
-  if (previous === handle) return ctx.outcome(current);
-  current.workers.push(role + ':' + handle);
-  if (previous !== '' && sig.reason === 'create') return ctx.outcome(current, { warnings: [WORKER_HANDLE_CHANGED] });
-  return ctx.outcome(current);
-}
 
 function handleEvent(ctx, current, sig) {
   switch (sig.kind) {
@@ -95,7 +70,7 @@ module.exports = createRunMachine({
   extraState: { step: '', committed: [], workers: [] },
   publication: true,
   handleEvent,
-  handleRecord,
+  handleRecord: workerHandleRecord,
   onClose(current) {
     current.step = '';
   },

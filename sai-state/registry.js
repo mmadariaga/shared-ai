@@ -58,5 +58,6 @@ try { register('accessibility-steps@1', require('./machines/accessibility-steps.
 try { register('implement-run@1', require('./machines/implement-run.js')); } catch (err) {}
 try { register('plan-run@1', require('./machines/plan-run.js')); } catch (err) {}
 try { register('merge-run@1', require('./machines/merge-run.js')); } catch (err) {}
+try { register('direct-build-run@1', require('./machines/direct-build-run.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };

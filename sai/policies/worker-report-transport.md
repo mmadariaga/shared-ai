@@ -89,7 +89,7 @@ unrecoverable: boolean
 
 ## Receiver boundary
 
-Before the first task disclosure of the run, create one private report directory with `transfer.js open --harness <claude|opencode>`. Supply its returned `dir` as the first task-disclosure line `--report-dir <path>` to every worker of the run, and keep it as a path in the run state (`implement-run@1` for `/sai-3-implement`, `plan-run@1` for the plan commands, the conversation for `/sai-4-review`, the audit cycles, `/sai-commit`, `/sai-archive`, `/sai-backfill`, and Direct Build, and `merge-run@1` for `/sai-merge`), so a replacement worker and a resumed run reuse it. Retain this authorized directory separately from draft storage, with all returned references and validation evidence. When the directory cannot be opened, stop before any dispatch with the verbatim error.
+Before the first task disclosure of the run, create one private report directory with `transfer.js open --harness <claude|opencode>`. Supply its returned `dir` as the first task-disclosure line `--report-dir <path>` to every worker of the run, and keep it as a path in the run state (`implement-run@1` for `/sai-3-implement`, `plan-run@1` for the plan commands, the conversation for `/sai-4-review`, the audit cycles, `/sai-commit`, `/sai-archive`, `/sai-backfill`, and `/sai-direct-build`, `direct-build-run@1` for Direct Build on the `/sai-explore` route, and `merge-run@1` for `/sai-merge`), so a replacement worker and a resumed run reuse it. Retain this authorized directory separately from draft storage, with all returned references and validation evidence. When the directory cannot be opened, stop before any dispatch with the verbatim error.
 
 Task messages and step pointers from the coordinator to the worker stay inline.
 

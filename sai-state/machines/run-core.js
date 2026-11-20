@@ -25,6 +25,8 @@
 //   handleRecord (ctx, current, sig) for a `record` whose ref is not in `refs`; returns an
 //                outcome, or null to leave the ref unknown
 //   onClose      (current) called when the run closes
+//   onStart      (fresh, sig, ctx) called when a run starts, with the fresh state it opens; returns
+//                a rejection reason to refuse the start, or nothing to accept it
 //   publication  true when the run carries a publication answer: the `publication` state field
 //                ('' until answered, then `yes` or `no`), the `publication` event, and the field in the
 //                `run` view. The answer survives a resumption; a fresh run starts with none.
@@ -46,7 +48,31 @@ function usablePath(value) {
   return typeof value === 'string' && value.trim() !== '' && !/[\r\n]/.test(value) ? value.trim() : null;
 }
 
-function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, publication }) {
+const WORKER_REASONS = Object.freeze(['create', 'replace', 'resume']);
+const WORKER_HANDLE_CHANGED = 'WORKER_HANDLE_CHANGED';
+
+// `record {ref: worker, role, handle, reason}` for a machine whose state holds a
+// `workers` list of `role:handle` entries in registration order; the last entry
+// of a role is its current handle. A second distinct handle for a role under
+// reason `create` is recorded and answered with the warning WORKER_HANDLE_CHANGED.
+function workerHandleRecord(ctx, current, sig) {
+  if (sig.ref !== 'worker') return null;
+  if (current.stage === 'idle') return ctx.reject('run is not started');
+  const role = ctx.usableId(sig.role);
+  if (!role || role.indexOf(':') !== -1) return ctx.reject('role required');
+  const handle = ctx.usableId(sig.handle);
+  if (!handle) return ctx.reject('handle required');
+  if (WORKER_REASONS.indexOf(sig.reason) === -1) return ctx.reject('reason must be create, replace, or resume');
+  const prefix = role + ':';
+  const handles = current.workers.filter((entry) => entry.indexOf(prefix) === 0).map((entry) => entry.slice(prefix.length));
+  const previous = handles.length > 0 ? handles[handles.length - 1] : '';
+  if (previous === handle) return ctx.outcome(current);
+  current.workers.push(role + ':' + handle);
+  if (previous !== '' && sig.reason === 'create') return ctx.outcome(current, { warnings: [WORKER_HANDLE_CHANGED] });
+  return ctx.outcome(current);
+}
+
+function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, onStart, publication }) {
   const withPublication = publication === true;
   const extra = Object.freeze(Object.assign({}, extraState, withPublication ? { publication: '' } : {}));
   const refFields = Object.freeze(Object.assign({}, refs));
@@ -147,6 +173,8 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
         const fresh = cloneState(initialState);
         fresh.stage = 'running';
         fresh.dir = dir;
+        const refusal = onStart ? onStart(fresh, sig, { usableId, usablePath }) : null;
+        if (refusal) return reject(refusal);
         return outcome(fresh);
       }
 
@@ -239,4 +267,4 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
   return { machineId, ATTEMPT_BUDGET, initialState, transition, project };
 }
 
-module.exports = { createRunMachine, ID_PATTERN };
+module.exports = { createRunMachine, workerHandleRecord, ID_PATTERN };

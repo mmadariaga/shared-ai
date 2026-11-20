@@ -228,11 +228,28 @@ the response.
   with an optional `--set slice=<name>` (default: the active, else the first
   pending slice) and `--set reopen=true`. The target `pending` discards the slice's
   cursor (releasing it when running) and closes the route gate; a step target
-  rewinds a running or parked slice to an earlier step of its own route: a Direct
-  Build slice reaches only its first step (`GOTO_REWIND_UNSUPPORTED` otherwise), a
-  Plan slice any earlier step. A route start or a later step is
+  rewinds a running or parked slice to an earlier step of its own route. A Direct
+  Build slice reaches its first step, and a later step only when the store holds its
+  run state (§ Direct Build run state): otherwise `rejected: "MISSING_PRECONDITIONS"`
+  with `missing: ["run-state"]` and `resume_at: "build-implement"`, and
+  `GOTO_ORDER_UNCERTAIN` or `GOTO_ORDER_CONSUMED` while the rewind would replay an
+  execute order whose effect is uncertain or renew a consumed archive order or
+  commit grant. A Plan slice reaches any earlier step. A route start or a later step is
   `GOTO_PAST_CEILING`. A completed slice is `SLICE_COMPLETED` unless the user asked
   to reopen it (`reopen=true`, reason `user-request`, target `pending`).
+- **Direct Build run state**: `direct-build-run@1`, on the shared run core, lives in the
+  explore session beside `explore-slice@1` and holds the identifiers and paths of one
+  slice's Direct Build run (`sai/commands/explore/direct-build-coordinator.md` § Run
+  state names its events). Its `checkpoint` of a route item (`build-implement`,
+  `backfill`, `archive`) is accepted only when the state that item needs is stored, and
+  a `goto` to a later item is accepted only for a checkpointed one; an accepted rewind
+  cuts the later checkpoints in the same session-file write. The run state follows the
+  slice cursor: `goto` to `pending`, a `content` amendment, a reopened slice, and a
+  re-registration that drops the slice's cursor discard it, a metadata amendment, `fail`,
+  `cancel`, and `resume-direct-build` keep it, a Direct Build slice that starts fresh
+  clears every earlier one, and `sai-state reset <id> direct-build-run@1` (run beside
+  the explore resets at each `/sai-explore` invocation) clears it all. `/sai-direct-build`
+  writes none of it, and a failed store write leaves the run state in the conversation.
 - **Stale blocks**: an accepted backward `goto` of `explore-idea@1` from
   `crystallize` after blocks were registered lists every stored change name in
   `staleBlocks` in the session file. While any name is listed the route intents of

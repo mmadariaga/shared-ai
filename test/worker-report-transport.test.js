@@ -261,7 +261,7 @@ test('the policy covers the plan and review workers, the progress kind, and the 
   assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
   assert.match(policy, /\| `spec` \| spec \| `step_ids`, `warnings`, `notes` \|/);
   assert.match(policy, /\| `review` \| review \| `review_path`, `counts`, `recommended_audits` \|/);
-  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and Direct Build, and `merge-run@1` for `\/sai-merge`/);
+  assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and `\/sai-direct-build`, `direct-build-run@1` for Direct Build on the `\/sai-explore` route, and `merge-run@1` for `\/sai-merge`/);
   assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
   const progress = policy.slice(policy.indexOf('### Progress reports'), policy.indexOf('## Author boundary'));
   assert.match(progress, /event: progress\nstep_ids: string\[\]\nchanged_files: string\[\]/);
