@@ -1526,13 +1526,17 @@ const dispatchNotice = (taskId, toolUseId, file) => `<task-notification>\n<task-
 // A /sai-plan run on Claude Code whose spec worker ran through `opencode-dispatch.js` (one `start`, one `continue`).
 // `where` is how the result of the start reaches the transcript: its output file on disk, a Read of that file, or nowhere.
 // `session` puts the worker's session in a scratch opencode.db, and `costs` are the cost of its two requests.
-function routedFixture({ where = 'disk', session = true, costs = [0, 0] } = {}) {
+function routedFixture({ where = 'disk', session = true, costs = [0, 0], helper = false } = {}) {
   const f = claudeScratch();
   const oc = scratch();
   if (session) {
     oc.session('ses_spec', null, ROUTED_AGENT, 5);
     oc.request('ses_spec', 6, { tokens: { input: 30, output: 3, reasoning: 1, cache: { read: 300, write: 10 } }, cost: costs[0], content: [tool('write')] });
     oc.request('ses_spec', 8, { tokens: { input: 31, output: 4, reasoning: 0, cache: { read: 0, write: 0 } }, cost: costs[1] });
+    if (helper) {
+      oc.session('ses_routed_helper', 'ses_spec', 'budget-explorer', 7);
+      oc.request('ses_routed_helper', 7, { tokens: { input: 5, output: 1, reasoning: 0, cache: { read: 50, write: 0 } }, cost: 0 });
+    }
   }
   const root = f.root('cs-root');
   const out = path.join(f.base, 'start.output');
@@ -1565,6 +1569,41 @@ sqliteTest('claude collect: an opencode-routed worker is a row of its own with t
     // The provider recorded no price (cost 0): the cost is unavailable, never $0, and never estimated from the Claude table.
     assert.equal(row.cost, 'unavailable');
     assert.ok(!/\$0\.0000/.test(text));
+  } finally { r.close(); }
+});
+
+sqliteTest('claude collect: a helper that an opencode-routed worker starts is counted under that worker (E11)', () => {
+  const r = routedFixture({ helper: true });
+  try {
+    collect(claudeOptions(r.f), { env: r.env });
+    const text = telemetryOf(r.f);
+    const helperRow = metricCells(text, 'Spec', '↳ budget-explorer');
+    assert.deepEqual([helperRow.requests, helperRow.input, helperRow.output, helperRow.cacheRead], ['1', '5', '1', '50']);
+    assert.ok(section(text, 'Spec').indexOf(ROUTED_AGENT) < section(text, 'Spec').indexOf('↳ budget-explorer'), 'the helper follows its worker');
+  } finally { r.close(); }
+});
+
+sqliteTest('claude source: a routed worker whose child sessions cannot be read has an unavailable helper node, never zero (E11)', () => {
+  const r = routedFixture({ helper: true });
+  try {
+    // A fresh copy of the reader whose opencodeChildren fails, as an unreadable child set would.
+    const db = require('../sai/tools/opencode-db');
+    const transcripts = require.resolve('../sai/tools/claude-transcripts');
+    const original = db.opencodeChildren;
+    const cached = require.cache[transcripts];
+    delete require.cache[transcripts];
+    db.opencodeChildren = () => { throw new Error('disk I/O error'); };
+    let openClaudeSource;
+    try { ({ openClaudeSource } = require(transcripts)); } finally { db.opencodeChildren = original; require.cache[transcripts] = cached; }
+    const source = openClaudeSource({ cwd: r.f.project, env: r.env, opencodeRequest: record => record });
+    try {
+      const [root] = source.roots();
+      const children = source.children(root.id);
+      const helperNode = children.find(child => child.id === 'ses_spec:helpers');
+      assert.ok(helperNode, JSON.stringify(children));
+      assert.equal(helperNode.parent_id, 'ses_spec');
+      assert.match(helperNode.unavailable, /the helpers of session ses_spec could not be read from opencode.db/);
+    } finally { source.close(); }
   } finally { r.close(); }
 });
 

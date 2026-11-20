@@ -1285,7 +1285,7 @@ const dispatchResult = (sessionID) => JSON.stringify({ status: 'ok', sessionID, 
 
 // A /sai-3-implement run on Claude Code that started a RED worker through opencode-dispatch.js (the result is in the
 // result of its call), continued it, and started a GREEN worker whose result never reaches the transcript.
-function makeRoutedClaude(config, { withSession = true } = {}) {
+function makeRoutedClaude(config, { withSession = true, helper = false } = {}) {
   const S = ROUTED_SESSION;
   const folder = projectFolder(path.join(config, 'projects'), PROJECT);
   writeSession(folder, S, [
@@ -1304,8 +1304,9 @@ function makeRoutedClaude(config, { withSession = true } = {}) {
   const row = (id, session, seq, clock, data) => ({ id, session, seq, type: 'assistant', time: at(clock), data: JSON.stringify(data) });
   const message = (clock, tokens, cost, content = []) => ({ time: { created: at(clock), completed: at(clock) + 1 }, agent: 'sai-3-red-worker', model: { id: 'model-a' }, tokens, cost, content });
   return makeOpencodeDb(config, {
-    sessions: [[RT.red, null, 'sai-3-red-worker', PROJECT, '10:00:05.000']],
+    sessions: [[RT.red, null, 'sai-3-red-worker', PROJECT, '10:00:05.000'], ...(helper ? [['ses_routedhelp1', RT.red, 'budget-explorer', PROJECT, '10:00:07.000']] : [])],
     rows: [
+      ...(helper ? [row('msg_help_1', 'ses_routedhelp1', 3, '10:00:08.000', message('10:00:08.000', { input: 5, output: 1, reasoning: 0, cache: { read: 50, write: 0 } }, 0))] : []),
       row('msg_red_1', RT.red, 1, '10:00:06.000', message('10:00:06.000', { input: 30, output: 3, reasoning: 1, cache: { read: 300, write: 10 } }, 0, [tool('t1', 'bash', { status: 'completed', input: {}, content: [] })])),
       row('msg_red_2', RT.red, 2, '10:00:30.000', message('10:00:30.000', { input: 31, output: 4, reasoning: 0, cache: { read: 0, write: 0 } }, 0)),
     ],
@@ -1334,6 +1335,21 @@ opencodeTest('cost: an opencode-routed worker of a Claude Code run carries the u
     assert.equal(green.usage, 'unavailable');
     assert.equal(green.tool_calls, null);
     assert.deepEqual(unread.filter(entry => entry.kind === 'opencode-routed-worker').map(entry => [entry.agent, entry.opencode_session, entry.reason]), [['sai-3-green-worker', null, 'its sessionID is not in the transcript']]);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('cost: a helper that an opencode-routed worker starts is an agent under that worker, in its segment (E11)', () => {
+  const config = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'sai-routed-'));
+  try {
+    makeRoutedClaude(config, { helper: true });
+    const { executions } = index(['sai-3-implement', '--paths', PROJECT], envFor(config), realSqlite);
+    const run = executions.find(execution => execution.harness === 'claude');
+    const helper = agentOf(run, 'ses_routedhelp1');
+    assert.ok(helper, 'the helper of the routed worker is counted');
+    assert.equal(helper.agent_type, 'budget-explorer');
+    assert.equal(helper.parent_agent_id, RT.red);
+    assert.deepEqual(helper.usage, { requests: 1, input: 5, output: 1, reasoning: 0, cache_read: 50, cache_write: 0 });
+    assert.ok(run.auxiliary_agents.includes(helper));
   } finally { fs.rmSync(config, { recursive: true, force: true }); }
 });
 

@@ -28,7 +28,11 @@
  * event, or (for `start`) no `sessionID`. Exit 0 for `ok`, 1 for `failed`, 2 for a usage error.
  * The message reaches opencode exactly as the file holds it: the tool adds nothing to it.
  *
- * Stopping the tool (SIGTERM, SIGINT, SIGHUP) stops its `opencode run` process too.
+ * Stopping the tool (SIGTERM, SIGINT, SIGHUP) stops its `opencode run` process too. On Windows those handlers never
+ * run, because Windows ends a process without delivering a signal; there the dispose relies on Claude Code's
+ * `TaskStop` of the `Bash` task, which was verified on Windows to end the whole process tree: a background `Bash` task
+ * running a Node parent that spawned a child with the options below ended both when stopped. The handlers stay for
+ * Linux and macOS.
  */
 
 const { spawn, spawnSync } = require('node:child_process');

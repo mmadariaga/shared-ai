@@ -29,7 +29,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, opencodeSessionMessages } = require('./opencode-db');
+const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, opencodeSessionMessages, opencodeChildren } = require('./opencode-db');
 
 const UNAVAILABLE = 'unavailable';
 const OPEN_END = Number.MAX_SAFE_INTEGER;
@@ -494,6 +494,21 @@ function openClaudeSource({ cwd, env = process.env, loadSqlite = defaultLoadSqli
     return { id: worker.session ?? `unresolved-${worker.tool_use_id}`, parent_id: owner.id, agent: worker.agent, time_created: worker.time, depth: owner.depth + 1, store: 'opencode.db', ...(unavailable ? { unavailable } : {}) };
   }
 
+  // The child sessions an opencode-routed worker started itself (its helpers), read from opencode.db below the worker's
+  // session and placed under it. A child set that cannot be read is one unavailable node under the worker, never zero.
+  function routedHelpers(node) {
+    if (node.unavailable) return [];
+    const { db } = opencodeDatabase();
+    let found;
+    try { found = opencodeChildren(db, node.id); } catch (error) {
+      return [{ id: `${node.id}:helpers`, parent_id: node.id, agent: null, time_created: node.time_created, depth: node.depth + 1, store: 'opencode.db', unavailable: `the helpers of session ${node.id} could not be read from opencode.db (${error.message})` }];
+    }
+    return found.map(child => {
+      routedSessions.add(child.id);
+      return { id: child.id, parent_id: child.parent_id, agent: child.agent, time_created: child.time_created, depth: node.depth + child.depth, store: 'opencode.db' };
+    });
+  }
+
   function routedRequests(sessionId) {
     if (!requestCache.has(sessionId)) requestCache.set(sessionId, opencodeRequest ? (routedMessages(sessionId) ?? []).map(opencodeRequest) : []);
     return requestCache.get(sessionId);
@@ -523,7 +538,8 @@ function openClaudeSource({ cwd, env = process.env, loadSqlite = defaultLoadSqli
       const { rows } = sessionRecords(sessionId);
       return (rows ?? []).filter(row => row.type === 'user' && !blocks(row).some(block => block?.type === 'tool_result')).map(textOf);
     },
-    // Every subagent below a root, parents before their children, and the opencode-routed workers each of them dispatched.
+    // Every subagent below a root, parents before their children, the opencode-routed workers each of them dispatched,
+    // and the child sessions (helpers) of each routed worker.
     children(rootId) {
       if (childCache.has(rootId)) return childCache.get(rootId);
       const agents = agentsOfRoot(rootId);
@@ -543,7 +559,7 @@ function openClaudeSource({ cwd, env = process.env, loadSqlite = defaultLoadSqli
         depth: depthOf(agent),
       }));
       const owners = [{ id: rootId, depth: 0 }, ...agents.map(agent => ({ id: agent.agent_id, depth: depthOf(agent) }))];
-      const routed = owners.flatMap(owner => dispatchesOf(owner.id).map(worker => routedChild(worker, owner)));
+      const routed = owners.flatMap(owner => dispatchesOf(owner.id).map(worker => routedChild(worker, owner))).flatMap(node => [node, ...routedHelpers(node)]);
       const children = [...subagents, ...routed].sort((a, b) => a.depth - b.depth || a.time_created - b.time_created || (a.id < b.id ? -1 : 1));
       childCache.set(rootId, children);
       return children;

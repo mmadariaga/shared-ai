@@ -373,6 +373,14 @@ For a Claude Code execution, the collector SHALL add each worker that the root s
 - **WHEN** a Claude Code `/sai-3-implement` run started `sai-3-red-worker` through `opencode-dispatch.js`, continued it once, and `opencode.db` holds its session
 - **THEN** the execution lists one `sai-3-red-worker` principal worker whose `usage` and `tool_calls` come from that opencode session, and the coordinator's own usage is unchanged
 
+### Requirement: Helpers of opencode-routed workers in the Claude Code execution index
+
+For a Claude Code execution, the collector SHALL add each child session that an opencode-routed worker started itself, found below the worker's session through `session_v2.parent_id` in `opencode.db`, to the execution's agents in the worker's segment, with its session ID as its agent ID, its `parent_agent_id` set to the session that started it, and the usage of its own session. When the worker's child sessions cannot be read, the collector SHALL add one agent with `usage: unavailable` under the worker and an `unread` entry of kind `opencode-routed-helpers` that names the cause, never zero helpers.
+
+#### Scenario: a routed worker's helper is an agent of the execution
+- **WHEN** a Claude Code `/sai-3-implement` run started `sai-3-red-worker` through `opencode-dispatch.js` and its opencode session started a `budget-explorer` child session
+- **THEN** the execution lists that helper as an auxiliary agent whose `parent_agent_id` is the RED worker's session and whose usage is its own session's
+
 ### Requirement: An unreadable opencode-routed worker is unavailable and unread
 
 When an opencode-routed worker's `sessionID` is not in the transcript, its session is not in `opencode.db`, or `opencode.db` cannot be read, the collector SHALL report its `usage` as `unavailable` and its `tool_calls` as null, never as zero, and SHALL add an `unread` entry of kind `opencode-routed-worker` that names the agent, the opencode session, and the reason.

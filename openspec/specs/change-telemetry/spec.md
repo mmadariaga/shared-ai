@@ -545,6 +545,18 @@ When the collector reads a Claude Code run, it SHALL report each worker that the
 - **WHEN** a Claude Code run started a worker with `opencode-dispatch.js start`, its result names a `sessionID`, and `opencode.db` holds that session
 - **THEN** the telemetry section lists that worker with the tokens of its opencode session's assistant messages, and a `continue` of the same session adds no second row
 
+### Requirement: Claude Code telemetry counts the helpers of opencode-routed workers
+
+When the collector reads a Claude Code run, it SHALL also report each child session that an opencode-routed worker started itself, found below the worker's session through `session_v2.parent_id` in `opencode.db`, as an agent row under that worker, with the tokens of its own assistant messages. When the worker's child sessions cannot be read, it SHALL report one `unavailable` row under the worker that names the cause, never zero helpers.
+
+#### Scenario: a routed worker's helper has its own row
+- **WHEN** a Claude Code run dispatched an opencode-routed worker whose opencode session started a `budget-explorer` child session
+- **THEN** the telemetry section lists that helper as a row below the worker with the tokens of its own session
+
+#### Scenario: an unreadable child set is unavailable
+- **WHEN** the routed worker's session is readable but its child sessions cannot be read from `opencode.db`
+- **THEN** a row under the worker reads `unavailable` with the cause, and no helper counts as zero
+
 ### Requirement: An opencode-routed worker whose session cannot be read is unavailable
 
 The collector SHALL report an opencode-routed worker as an `unavailable (<agent>: <reason>)` row with unknown figures, never as a row of zero tokens, when its `sessionID` is not in the transcript, when `opencode.db` does not hold its session, or when `opencode.db` cannot be opened; the reason SHALL name the cause, including the reader's message when the database cannot be opened.

@@ -401,6 +401,24 @@ function measureRouted(opencode, reader, worker, principal) {
   }
 }
 
+// The child sessions (helpers) an opencode-routed worker started itself, read from opencode.db below its session and
+// placed under it in the same segment. A child set that cannot be read is one unavailable agent and an unread entry,
+// never zero.
+function routedHelpers(opencode, reader, routed, workers, unread, where) {
+  const base = { tool_use_id: null, finished: null, file: null, segment: routed.segment, rows: null, routed: true };
+  let found;
+  try { found = opencodeChildren(opencode.database(), routed.agent_id); } catch (error) {
+    const reason = `the helpers of session ${routed.agent_id} could not be read from opencode.db (${error.message})`;
+    unread.push({ kind: 'opencode-routed-helpers', ...where, agent: routed.agent_type, opencode_session: routed.agent_id, reason });
+    return [{ ...base, agent_id: `${routed.agent_id}:helpers`, agent_type: null, description: 'helpers of an opencode-routed worker', parent_agent_id: routed.agent_id, spawn_depth: routed.spawn_depth + 1, metrics: opencodeMetrics(null, reader) }];
+  }
+  return found.map(child => {
+    const measured = measureRouted(opencode, reader, { session: child.id, agent: child.agent }, workers.has(child.agent));
+    if (measured.reason) unread.push({ kind: 'opencode-routed-helper', ...where, agent: child.agent, opencode_session: child.id, reason: measured.reason });
+    return { ...base, agent_id: child.id, agent_type: child.agent, description: 'helper of an opencode-routed worker', parent_agent_id: child.parent_id, spawn_depth: routed.spawn_depth + child.depth, rows: measured.rows, metrics: measured.metrics };
+  });
+}
+
 function buildSession({ reader, workers, project, group, sessionDir, text, session, opencode }) {
   const rows = readRecords(text);
   // Only a SAI command invocation starts an execution; any other slash command
@@ -450,6 +468,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
     routed.metrics = measured.metrics;
     if (measured.reason) routedUnread.push({ kind: 'opencode-routed-worker', project, session, agent: worker.agent, opencode_session: worker.session, reason: measured.reason });
     agents.push(routed);
+    if (!measured.reason) agents.push(...routedHelpers(opencode, reader, routed, workers, routedUnread, { project, session }));
   }
 
   const executions = [];

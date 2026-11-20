@@ -7,7 +7,7 @@ const os = require('os');
 const fs = require('fs');
 const { PassThrough } = require('stream');
 
-const { main, opencodeVersionRecords, opencodeConfigDepthRecords } = require('../bin/doctor.js');
+const { main, opencodeVersionRecords, opencodeConfigDepthRecords, defaultExecOpencode } = require('../bin/doctor.js');
 const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 function exec(stdout, extra = {}) {
@@ -47,6 +47,28 @@ test('an absent opencode binary is a warning that the version is unverified', ()
     assert.equal(record.severity, 'warn');
     assert.match(record.message, /unverified/);
   }
+});
+
+test('E12: doctor spawns the command the launcher resolves, without a shell', () => {
+  const calls = [];
+  const result = defaultExecOpencode(['--version'], {
+    resolve: () => ({ command: 'C:\\npm\\node_modules\\opencode-ai\\bin\\opencode.exe', shim: 'C:\\npm\\opencode.cmd', cause: null }),
+    spawn: (command, args, options) => { calls.push({ command, args, options }); return { status: 0, stdout: '2.2.5\n', stderr: '', error: null }; },
+  });
+  assert.equal(result.stdout, '2.2.5\n');
+  assert.deepEqual(calls, [{ command: 'C:\\npm\\node_modules\\opencode-ai\\bin\\opencode.exe', args: ['--version'], options: { encoding: 'utf8' } }]);
+});
+
+test('E12: a shim the launcher cannot resolve is reported as opencode-shim-unresolved and spawns nothing', () => {
+  let spawned = false;
+  const run = args => defaultExecOpencode(args, {
+    resolve: () => ({ command: null, shim: 'C:\\pnpm\\opencode.cmd', cause: 'opencode-shim-unresolved' }),
+    spawn: () => { spawned = true; return { status: 0, stdout: '2.2.5\n', stderr: '', error: null }; },
+  });
+  const [record] = opencodeVersionRecords(run);
+  assert.equal(spawned, false);
+  assert.equal(record.severity, 'warn');
+  assert.match(record.message, /unverified: opencode-shim-unresolved: the shim C:\\pnpm\\opencode\.cmd/);
 });
 
 test('unparseable version output is a warning, not an error', () => {

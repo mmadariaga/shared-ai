@@ -111,7 +111,7 @@ A task message to an opencode-routed worker that carries `--report-dir` SHALL ca
 
 ### Requirement: Dispose an opencode-routed agent
 
-On Claude Code, an opencode-routed agent SHALL be disposed at the points of `sai/policies/worker-lifecycle.md` with `TaskStop` on the `Bash` task of its running turn, in the same same-turn batch as the other stops of the point. With no turn running there SHALL be nothing to stop, and the worker SHALL count as disposed. No `dispose` message and no `dispose-shells.js` call SHALL apply.
+On Claude Code, an opencode-routed agent SHALL be disposed at the points of `sai/policies/worker-lifecycle.md` with `TaskStop` on the `Bash` task of its running turn, in the same same-turn batch as the other stops of the point. With no turn running there SHALL be nothing to stop, and the worker SHALL count as disposed. No `dispose` message and no `dispose-shells.js` call SHALL apply. `opencode-dispatch.js` SHALL keep its `SIGTERM`, `SIGINT`, and `SIGHUP` handlers, which stop its `opencode run` child on Linux and macOS, and its header comment SHALL record that on Windows those handlers do not run and that `TaskStop` on the `Bash` task ends the whole process tree there, as verified on Windows.
 
 #### Scenario: Dispose with no turn running
 - **WHEN** a coordinator disposes an opencode-routed worker whose last turn has completed
@@ -120,6 +120,10 @@ On Claude Code, an opencode-routed agent SHALL be disposed at the points of `sai
 #### Scenario: Dispose with a running turn
 - **WHEN** a coordinator disposes an opencode-routed worker whose turn still runs
 - **THEN** it issues `TaskStop` on that turn's `Bash` task in the batch of the dispose point
+
+#### Scenario: Dispose on Windows ends the opencode child
+- **WHEN** on Windows a coordinator issues `TaskStop` on the `Bash` task of a running turn
+- **THEN** the whole process tree ends, the `opencode run` child included, although the signal handlers of `opencode-dispatch.js` do not run
 
 ### Requirement: Coordinator profile allows the dispatch tool
 
@@ -131,7 +135,7 @@ The `coordinator` capability profile of `sai/install-manifest.json` SHALL allow 
 
 ### Requirement: One opencode launcher for every opencode spawn
 
-`sai/tools/opencode-launcher.js` SHALL decide which opencode executable runs, and every SAI tool under `sai/tools/` and `bin/` that starts opencode SHALL spawn the command it returns, without a shell: the route probe and the `start` and `continue` turns of `sai/tools/opencode-dispatch.js`, the setup passthrough warning that shares that probe, and the `opencode api` calls of `sai/tools/dispose-shells.js`. Its resolution SHALL take the platform, the environment, and the file-system reads as injectable inputs. On Linux and macOS the command SHALL be `opencode`, found on `PATH` by the spawn itself. On Windows the launcher SHALL walk the `PATH` directories in order without spawning a process, and in the first directory that holds an `opencode` entry SHALL take `opencode.exe` when present, otherwise the first quoted `.exe` path that `opencode.cmd` names, with a leading `%dp0%` or `%~dp0` replaced by the shim's directory and `node.exe` skipped, accepted only when that `.exe` exists. It SHALL skip an extensionless entry. A `.cmd` shim whose `.exe` cannot be read or does not exist, and an `opencode.ps1` entry without a `.exe` or `.cmd`, SHALL resolve to no command with the cause `opencode-shim-unresolved` and the shim path; no entry on `PATH` SHALL resolve to no command with the cause `opencode-missing`. A tool that receives no command SHALL start no process: `dispose-shells.js` SHALL treat the call as unanswered, and a `start` or `continue` turn SHALL fail with the cause and the shim path.
+`sai/tools/opencode-launcher.js` SHALL decide which opencode executable runs, and every SAI tool under `sai/tools/` and `bin/` that starts opencode SHALL spawn the command it returns, without a shell: the route probe and the `start` and `continue` turns of `sai/tools/opencode-dispatch.js`, the setup passthrough warning that shares that probe, the `opencode api` calls of `sai/tools/dispose-shells.js`, and the `opencode --version` check of `bin/doctor.js`, which on Windows SHALL report a shim it cannot resolve as `opencode-shim-unresolved`, naming the shim path, and spawn nothing. Its resolution SHALL take the platform, the environment, and the file-system reads as injectable inputs. On Linux and macOS the command SHALL be `opencode`, found on `PATH` by the spawn itself. On Windows the launcher SHALL walk the `PATH` directories in order without spawning a process, and in the first directory that holds an `opencode` entry SHALL take `opencode.exe` when present, otherwise the first quoted `.exe` path that `opencode.cmd` names, with a leading `%dp0%` or `%~dp0` replaced by the shim's directory and `node.exe` skipped, accepted only when that `.exe` exists. It SHALL skip an extensionless entry. A `.cmd` shim whose `.exe` cannot be read or does not exist, and an `opencode.ps1` entry without a `.exe` or `.cmd`, SHALL resolve to no command with the cause `opencode-shim-unresolved` and the shim path; no entry on `PATH` SHALL resolve to no command with the cause `opencode-missing`. A tool that receives no command SHALL start no process: `dispose-shells.js` SHALL treat the call as unanswered, and a `start` or `continue` turn SHALL fail with the cause and the shim path.
 
 #### Scenario: Linux and macOS keep the PATH command
 - **WHEN** the launcher resolves opencode on a platform other than `win32`
@@ -148,6 +152,10 @@ The `coordinator` capability profile of `sai/install-manifest.json` SHALL allow 
 #### Scenario: No opencode entry on PATH
 - **WHEN** on Windows no `PATH` directory holds an `opencode` entry, whatever the case of the `PATH` key
 - **THEN** the launcher returns no command with the cause `opencode-missing`
+
+#### Scenario: Doctor uses the launcher on Windows
+- **WHEN** `bin/doctor.js` checks the opencode version on Windows
+- **THEN** it spawns the `.exe` the launcher resolves without a shell, and a shim the launcher cannot resolve is reported as `opencode-shim-unresolved` with the shim path and nothing is spawned
 
 #### Scenario: Turns and stops use the same launcher
 - **WHEN** the route query answers `opencode`

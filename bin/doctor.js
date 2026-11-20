@@ -12,7 +12,7 @@ const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
 const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
-const { resolveOpencode } = require('../sai/tools/opencode-launcher');
+const { resolveOpencode, SHIM_UNRESOLVED } = require('../sai/tools/opencode-launcher');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
@@ -518,11 +518,13 @@ function opencodeConfigDepthRecords(opencodeBase) {
 
 const OPENCODE_MIN_VERSION = '2.2.0';
 
-function defaultExecOpencode(args) {
-  if (process.platform === 'win32') {
-    return childProcess.spawnSync(['opencode', ...args].join(' '), { encoding: 'utf8', shell: true });
-  }
-  return childProcess.spawnSync(resolveOpencode().command, args, { encoding: 'utf8' });
+// Spawns the command that opencode-launcher.js resolves, without a shell, as opencode-dispatch.js and dispose-shells.js
+// do: on Windows that is the .exe behind npm's .cmd shim. A command the launcher cannot resolve is not spawned; the
+// result carries the launcher's cause (and the shim path) so the version record can name it.
+function defaultExecOpencode(args, { resolve = resolveOpencode, spawn = childProcess.spawnSync } = {}) {
+  const { command, shim, cause } = resolve();
+  if (command === null) return { status: null, stdout: '', stderr: '', error: Object.assign(new Error(cause), { code: cause }), cause, shim };
+  return spawn(command, args, { encoding: 'utf8' });
 }
 
 function compareVersions(a, b) {
@@ -550,6 +552,9 @@ function opencodeVersionRecords(execOpencode = defaultExecOpencode) {
     ? `${result.stdout || ''}\n${result.stderr || ''}`
     : '';
   const match = /(?<!\d)(\d+\.\d+\.\d+)/.exec(output);
+  if (!match && result && result.cause === SHIM_UNRESOLVED) {
+    return [{ section, name, severity: 'warn', message: `opencode version unverified: ${SHIM_UNRESOLVED}: the shim ${result.shim} names no opencode executable that exists (minimum ${OPENCODE_MIN_VERSION})`, recommendation: 'Reinstall opencode with npm, or put the directory of opencode.exe on PATH' }];
+  }
   if (!match) {
     return [{ section, name, severity: 'warn', message: `opencode version unverified: the opencode binary was not found or its version output could not be parsed (minimum ${OPENCODE_MIN_VERSION})`, recommendation: `Install opencode ${OPENCODE_MIN_VERSION} or later and make sure \`opencode --version\` runs` }];
   }
@@ -633,4 +638,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords, opencodeVersionRecords };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords, opencodeVersionRecords, defaultExecOpencode };
