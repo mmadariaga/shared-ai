@@ -1,5 +1,5 @@
 ---
-description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step.
+description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step. Accepts --parent-branch <branch>.
 model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---

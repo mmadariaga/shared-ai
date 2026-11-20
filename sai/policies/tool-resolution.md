@@ -91,9 +91,11 @@ takes one — never substitute one for the other.
   --cwd <project-root>`.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no `--cwd`.
-- `scenario-coverage.js`: `node <tool-path> step --input-file <path> --cwd
-  <project-root>` (the input file holds a JSON list of scenario titles) or `node
-  <tool-path> change <change-name> --cwd <project-root>`. It prints one JSON
+- `scenario-coverage.js`: `node <tool-path> step --input-file <path> [--parent-branch
+  <branch>] --cwd <project-root>` (the input file holds a JSON list of scenario
+  titles) or `node <tool-path> change <change-name> [--parent-branch <branch>]
+  --cwd <project-root>`; `--parent-branch` names the branch the change base is
+  taken against, and a branch that does not resolve is an error. It prints one JSON
   object (`verdict` `clean`, `missing`, or `n/a`, plus `missing`, `ambiguous`,
   `parent_branch`, and `change_base`) and exits 0 for `clean` or `n/a`, 1 for
   `missing`, and 2 for a usage or I/O error.

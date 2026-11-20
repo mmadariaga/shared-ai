@@ -94,3 +94,19 @@ When segment 2 completes, `/sai-build` SHALL read `openspec/changes/{name}/revie
 
 - **WHEN** segment 2's accepted review report is `completed` with `outcome: no-changes`
 - **THEN** `/sai-build` says that no review ran because there was nothing to review and ends with exactly `Build done.`
+
+### Requirement: Build forwards the parent branch to its segments
+
+`/sai-build` SHALL accept an optional `--parent-branch <branch>` and SHALL take it out of `arguments_value` before the change name goes to segment 1. The option without a branch, or given twice, SHALL end the run before anything is written with `Cannot start /sai-build: --parent-branch takes one branch name.` When the option is given, `/sai-build` SHALL append `--parent-branch <branch>` to the `arguments_value` of segment 1, segment 2 (`/sai-4-review`), and segment 3. The Claude Code and opencode wrappers of `/sai-build` SHALL declare the option.
+
+#### Scenario: Every segment receives the parent branch
+- **WHEN** `/sai-build my-change --parent-branch release` runs all three segments
+- **THEN** segment 1 receives `my-change --parent-branch release`, and segments 2 and 3 receive `{name} --parent-branch release`
+
+#### Scenario: A build without the option forwards none
+- **WHEN** `/sai-build my-change` runs
+- **THEN** no segment receives a `--parent-branch` option
+
+#### Scenario: A parent branch option without a branch
+- **WHEN** `/sai-build my-change --parent-branch` runs
+- **THEN** the run prints `Cannot start /sai-build: --parent-branch takes one branch name.` and ends before anything is written

@@ -12,19 +12,23 @@
  *
  * Terms.
  * - scenario title: the text after `#### Scenario:` in a spec.
- * - normalized match: the title, lowercased, with punctuation removed and
- *   whitespace runs collapsed to one space, appears contiguously in the
- *   normalized content of a file.
- * - change base: the merge-base of HEAD with the parent branch, the first of
- *   the default branch of origin/HEAD (without its `origin/` prefix),
- *   `master`, and `main` that `git rev-parse --verify` accepts.
+ * - normalized match: the title, lowercased, with every punctuation run turned
+ *   into one space and whitespace runs collapsed to one space, appears on word
+ *   boundaries in the normalized content of a file: `valid input` matches
+ *   `valid-input` and never `invalid input`.
+ * - change base: the merge-base of HEAD with the parent branch, the
+ *   `--parent-branch` value when given, else the first of the default branch
+ *   of origin/HEAD (without its `origin/` prefix), `master`, and `main` that
+ *   `git rev-parse --verify` accepts, the order `/sai-4-review` follows.
  * - files changed by the change: `git diff --name-only <change base>`, plus
- *   staged changes and untracked files that are not ignored. Files under
- *   `openspec/`, deleted files, and non-text files are left out.
+ *   staged changes and untracked files that are not ignored. Every changed
+ *   text file counts, test or not, because which files are tests differs per
+ *   project. Files under `openspec/`, deleted files, and non-text files are
+ *   left out.
  *
  * Usage:
- *   node sai/tools/scenario-coverage.js step --input-file <path> [--cwd <project-root>]
- *   node sai/tools/scenario-coverage.js change <change-name> [--cwd <project-root>]
+ *   node sai/tools/scenario-coverage.js step --input-file <path> [--parent-branch <branch>] [--cwd <project-root>]
+ *   node sai/tools/scenario-coverage.js change <change-name> [--parent-branch <branch>] [--cwd <project-root>]
  *
  * `step` takes a JSON list of the scenario titles of one step brief. `change`
  * checks every scenario the change adds or modifies: ADDED scenarios, and
@@ -56,17 +60,18 @@ const DELTA_SECTIONS = new Set(['ADDED', 'MODIFIED', 'RENAMED']);
 
 function usage() {
   return [
-    'Usage: node sai/tools/scenario-coverage.js step --input-file <path> [--cwd <project-root>]',
-    '       node sai/tools/scenario-coverage.js change <change-name> [--cwd <project-root>]',
+    'Usage: node sai/tools/scenario-coverage.js step --input-file <path> [--parent-branch <branch>] [--cwd <project-root>]',
+    '       node sai/tools/scenario-coverage.js change <change-name> [--parent-branch <branch>] [--cwd <project-root>]',
     '',
-    '  step    <path> holds a JSON list of scenario titles (the step brief).',
-    '  change  checks every scenario the change adds or modifies.',
-    '  --cwd   Project root (default: the working directory).',
+    '  step             <path> holds a JSON list of scenario titles (the step brief).',
+    '  change           checks every scenario the change adds or modifies.',
+    '  --parent-branch  Branch the change base is taken against (default: origin/HEAD, master, main).',
+    '  --cwd            Project root (default: the working directory).',
   ].join('\n');
 }
 
 function normalizeTitle(text) {
-  return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function git(args, cwd) {
@@ -75,12 +80,22 @@ function git(args, cwd) {
   return result;
 }
 
-function resolveChangeBase(cwd) {
-  const origin = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], cwd);
-  const defaultBranch = origin.status === 0 ? origin.stdout.trim().replace(/^origin\//, '') : '';
-  const candidates = [defaultBranch, 'master', 'main'].filter(Boolean);
-  const parent = candidates.find((candidate) => git(['rev-parse', '--verify', '--quiet', `${candidate}^{commit}`], cwd).status === 0);
-  if (!parent) throw new UsageError(`no parent branch verifies; tried ${candidates.join(', ')}`);
+function verifies(branch, cwd) {
+  return git(['rev-parse', '--verify', '--quiet', `${branch}^{commit}`], cwd).status === 0;
+}
+
+function resolveChangeBase(cwd, parentBranch) {
+  let parent;
+  if (parentBranch) {
+    if (!verifies(parentBranch, cwd)) throw new UsageError(`--parent-branch ${parentBranch} does not resolve to a commit`);
+    parent = parentBranch;
+  } else {
+    const origin = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], cwd);
+    const defaultBranch = origin.status === 0 ? origin.stdout.trim().replace(/^origin\//, '') : '';
+    const candidates = [defaultBranch, 'master', 'main'].filter(Boolean);
+    parent = candidates.find((candidate) => verifies(candidate, cwd));
+    if (!parent) throw new UsageError(`no parent branch verifies; tried ${candidates.join(', ')}`);
+  }
   const base = git(['merge-base', 'HEAD', parent], cwd);
   if (base.status !== 0) throw new UsageError(`git merge-base HEAD ${parent} failed: ${base.stderr.trim()}`);
   return { parent_branch: parent, change_base: base.stdout.trim() };
@@ -109,7 +124,7 @@ function changedFileContents(cwd, changeBase) {
       continue; // deleted, or a directory such as a submodule
     }
     if (bytes.includes(0)) continue; // not text
-    contents.push(normalizeTitle(bytes.toString('utf8')));
+    contents.push(` ${normalizeTitle(bytes.toString('utf8'))} `);
   }
   return contents;
 }
@@ -126,7 +141,7 @@ function classify(scenarios, contents) {
   const ambiguous = [];
   for (const [key, group] of groups) {
     if (group.length > 1) ambiguous.push({ title: key, scenarios: group });
-    else if (key === '' || !contents.some((content) => content.includes(key))) missing.push(group[0]);
+    else if (key === '' || !contents.some((content) => content.includes(` ${key} `))) missing.push(group[0]);
   }
   return { missing, ambiguous };
 }
@@ -135,13 +150,13 @@ function report(verdict, extra) {
   return { verdict, missing: [], ambiguous: [], parent_branch: null, change_base: null, ...extra };
 }
 
-function finish(scenarios, cwd) {
-  const base = resolveChangeBase(cwd);
+function finish(scenarios, cwd, parentBranch) {
+  const base = resolveChangeBase(cwd, parentBranch);
   const { missing, ambiguous } = classify(scenarios, changedFileContents(cwd, base.change_base));
   return { ...base, missing, ambiguous, verdict: missing.length || ambiguous.length ? 'missing' : 'clean' };
 }
 
-function runStep(inputFile, cwd) {
+function runStep(inputFile, cwd, parentBranch) {
   if (!inputFile) throw new UsageError('step requires --input-file <path>');
   let titles;
   try {
@@ -154,7 +169,7 @@ function runStep(inputFile, cwd) {
     throw new UsageError(`${inputFile}: expected a JSON list of non-empty scenario titles`);
   }
   if (titles.length === 0) return report('n/a');
-  return finish(titles.map((title) => ({ title })), cwd);
+  return finish(titles.map((title) => ({ title })), cwd, parentBranch);
 }
 
 function readIfPresent(file) {
@@ -202,29 +217,33 @@ function changedScenarios(root, name) {
   return scenarios;
 }
 
-function runChange(name, cwd) {
+function runChange(name, cwd, parentBranch) {
   if (!name) throw new UsageError('change requires a change name');
   const scenarios = changedScenarios(cwd, name);
   if (scenarios === null) return report('n/a', { reason: 'skip_specs' });
   if (scenarios.length === 0) return report('n/a', { reason: 'no new or changed scenarios' });
-  return finish(scenarios, cwd);
+  return finish(scenarios, cwd, parentBranch);
 }
 
 function parse(argv) {
   const { argv: rest, inputFile } = extractInputFile(argv);
   const positional = [];
   let cwd = process.cwd();
+  let parentBranch = null;
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--cwd') {
       if (!rest[i + 1] || rest[i + 1].startsWith('--')) throw new UsageError('value required for --cwd');
       cwd = path.resolve(rest[++i]);
+    } else if (rest[i] === '--parent-branch') {
+      if (!rest[i + 1] || rest[i + 1].startsWith('--')) throw new UsageError('value required for --parent-branch');
+      parentBranch = rest[++i];
     } else if (rest[i].startsWith('--')) {
       throw new UsageError(`unknown flag: ${rest[i]}`);
     } else {
       positional.push(rest[i]);
     }
   }
-  return { command: positional[0], args: positional.slice(1), inputFile, cwd };
+  return { command: positional[0], args: positional.slice(1), inputFile, cwd, parentBranch };
 }
 
 function main(argv) {
@@ -233,15 +252,15 @@ function main(argv) {
     return 0;
   }
   try {
-    const { command, args, inputFile, cwd } = parse(argv);
+    const { command, args, inputFile, cwd, parentBranch } = parse(argv);
     let result;
     if (command === 'step') {
       if (args.length) throw new UsageError(`unexpected positional argument: ${args[0]}`);
-      result = runStep(inputFile, cwd);
+      result = runStep(inputFile, cwd, parentBranch);
     } else if (command === 'change') {
       if (inputFile) throw new UsageError('change takes no --input-file');
       if (args.length > 1) throw new UsageError(`unexpected positional argument: ${args[1]}`);
-      result = runChange(args[0], cwd);
+      result = runChange(args[0], cwd, parentBranch);
     } else {
       throw new UsageError(command ? `unknown sub-command: ${command}` : 'sub-command required');
     }

@@ -73,7 +73,7 @@ test('a direct /sai-3-implement run and /sai-deep-review ask, record, and publis
 });
 
 test('the Claude Code wrapper names --publish and the opencode wrapper keeps its form, with the same card on both', () => {
-  assert.match(read('commands/claude/sai-build.md'), /^argument-hint: "\[change-name\] \[--publish yes\|no\]"$/m);
+  assert.match(read('commands/claude/sai-build.md'), /^argument-hint: "\[change-name\] \[--publish yes\|no\] \[--parent-branch <branch>\]"$/m);
   assert.doesNotMatch(read('commands/opencode/sai-build.md'), /^argument-hint:/m);
   for (const wrapper of ['commands/claude/sai-build.md', 'commands/opencode/sai-build.md']) {
     assert.match(read(wrapper), /Fetch `@sai\/commands\/build\/coordinator\.md` and follow it exactly/);

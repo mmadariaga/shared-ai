@@ -4,6 +4,11 @@
 
 Implements a change's planning artifacts (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`) from start to finish with no human in the loop. It writes the tests, writes the code, runs the checks, and makes one local commit per step. It works on Claude Code and opencode.
 
+## Flags and behavior modifiers
+
+- The change name, or nothing when the project has one active change with a `tasks.md`.
+- `--parent-branch <branch>`: the branch the scenario coverage check takes its change base against, so a change cut from a release branch is not credited with every file of that branch. Without it, the command uses the parent that the `**Reviewed:**` line of `review.md` names when that file exists and the branch resolves, and otherwise the tool's default (the repository default branch, else `master`, else `main`). The option changes only that check: the inherent-risk ratings keep the `**Reviewed:**` parent.
+
 ## In detail
 
 Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and either at least one file under `specs/` or `.openspec.yaml` with `skip_specs: true`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it does no new work, runs the suites, and closes.
