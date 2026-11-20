@@ -107,7 +107,7 @@ When a run closes `completed`, the coordinator SHALL remove its run directory wi
 
 ### Requirement: Shared run core
 
-The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`, which SHALL export `createRunMachine`. The core SHALL own the attempt budget of 3 per obstacle, the stages `idle`, `running`, `escalated`, `completed`, and `stopped`, the identifiers-only state (the run directory, the open escalation, the attempts per obstacle, and the path lists named by the machine's reference kinds), and the events `start`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. A machine built on the core SHALL supply only its machine id, its next-step hint, its reference kinds, its extra state fields, a handler for the events the core does not own, an optional handler for a `record` whose reference kind is not one of its path kinds, and an optional close hook. `implement-run@1` SHALL be built on the core, adding the `step`, `committed`, and `workers` state fields, the `step-start` and `step-done` events, the `worker` record kind, and clearing the current step at close, and SHALL keep its id, events, rejections, and emit responses otherwise unchanged.
+The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`, which SHALL export `createRunMachine` and the shared `workerHandleRecord` handler. The core SHALL own the attempt budget of 3 per obstacle, the stages `idle`, `running`, `escalated`, `completed`, and `stopped`, the identifiers-only state (the run directory, the open escalation, the attempts per obstacle, and the path lists named by the machine's reference kinds), and the events `start`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`. A machine built on the core SHALL supply only its machine id, its next-step hint, its reference kinds, its extra state fields, a handler for the events the core does not own, an optional handler for a `record` whose reference kind is not one of its path kinds, an optional close hook, and an optional start hook that receives the fresh state of a starting run and can refuse the start with a rejection reason. `workerHandleRecord` SHALL handle the `worker` record kind for a machine whose state holds a `workers` list of `role:handle` entries: the last entry of a role is its current handle, and a second distinct handle of a role under reason `create` SHALL be recorded and answered with the warning `WORKER_HANDLE_CHANGED`. `implement-run@1` SHALL be built on the core, adding the `step`, `committed`, and `workers` state fields, the `step-start` and `step-done` events, the `worker` record kind through `workerHandleRecord`, and clearing the current step at close, and SHALL keep its id, events, rejections, and emit responses otherwise unchanged.
 
 #### Scenario: Implement events outside the core reach the implement machine
 
@@ -118,6 +118,11 @@ The generic part of a run machine SHALL live in `sai-state/machines/run-core.js`
 
 - **WHEN** the coordinator emits `close` with outcome `completed` while a step is current
 - **THEN** the core sets the stage to `completed` and the implement close hook clears the current step.
+
+#### Scenario: A start hook refuses a start
+
+- **WHEN** a machine whose start hook returns a rejection reason receives `start`
+- **THEN** the core rejects the event with that reason and the run stays as it was.
 
 ### Requirement: The implement run SHALL record each worker handle by role
 

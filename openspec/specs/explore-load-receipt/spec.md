@@ -82,9 +82,9 @@ The canonical wrapper sources `commands/claude/sai-explore.md` and `commands/ope
 
 ### Requirement: An invocation resets both explore machines
 
-On an invocation turn, meaning a user message that runs `/sai-explore`, the load in `sai/commands/explore/body.md` SHALL run `sai-state reset <id> explore-idea@1` and `sai-state reset <id> explore-slice@1` right after `sai-state spawn`, on the id that spawn returned. The invocation SHALL start from the initial stage, empty agreed lists, and no slice inventory, even when the chat holds the load receipt of an earlier invocation.
+On an invocation turn, meaning a user message that runs `/sai-explore`, the load in `sai/commands/explore/body.md` SHALL run `sai-state reset <id> explore-idea@1`, `sai-state reset <id> explore-slice@1`, and `sai-state reset <id> direct-build-run@1` right after `sai-state spawn`, on the id that spawn returned. The invocation SHALL start from the initial stage, empty agreed lists, no slice inventory, and no stored Direct Build run state, even when the chat holds the load receipt of an earlier invocation.
 
 #### Scenario: Second invocation starts fresh
 
-- **WHEN** the user runs `/sai-explore` again in a chat whose earlier invocation recorded stage progress, agreed lists, or a slice inventory
-- **THEN** the load runs `sai-state spawn`, then resets `explore-idea@1` and `explore-slice@1` on the returned id, and the new invocation starts at the initial stage with empty lists and no slice inventory
+- **WHEN** the user runs `/sai-explore` again in a chat whose earlier invocation recorded stage progress, agreed lists, a slice inventory, or a Direct Build run state
+- **THEN** the load runs `sai-state spawn`, then resets `explore-idea@1`, `explore-slice@1`, and `direct-build-run@1` on the returned id, and the new invocation starts at the initial stage with empty lists, no slice inventory, and no Direct Build run state

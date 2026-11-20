@@ -220,7 +220,7 @@ With no active slice, `resume-direct-build` SHALL resume only when the first pen
 
 ### Requirement: Slice goto moves a slice back without passing the route selector
 
-`explore-slice@1` SHALL accept `goto` with a `target`, a required `reason` of `user-request` or `correction`, an optional `slice` (default: the active slice, else the first pending slice), and an optional `reopen`. The target `pending` SHALL discard the slice's parked cursor, release it when it is running, and close the route gate so the route selector is presented again, keeping the inventory, the other slices' state, the completed slices, and the publication answer. A step target SHALL rewind a running or parked slice to an earlier step of its own route; a Direct Build slice SHALL reach only its first step (`GOTO_REWIND_UNSUPPORTED` otherwise), and a Plan slice any earlier step. A route start, a later step, or a step target for a pending slice with no cursor SHALL answer `GOTO_PAST_CEILING`. A completed slice SHALL answer `SLICE_COMPLETED` unless `reopen` is true with reason `user-request` and target `pending`, in which case it SHALL leave `done` and return to pending. A missing or other reason SHALL answer `GOTO_REASON_INVALID`, and a goto before inventory `INVENTORY_NOT_READY`. A rejection SHALL change nothing and record nothing.
+`explore-slice@1` SHALL accept `goto` with a `target`, a required `reason` of `user-request` or `correction`, an optional `slice` (default: the active slice, else the first pending slice), and an optional `reopen`. The target `pending` SHALL discard the slice's parked cursor, release it when it is running, and close the route gate so the route selector is presented again, keeping the inventory, the other slices' state, the completed slices, and the publication answer. A step target SHALL rewind a running or parked slice to an earlier step of its own route. A Direct Build slice SHALL reach its first step, and a later step only when the Direct Build run state that `bin/sai-state.js` reads from `direct-build-run@1` and passes in the `goto` event holds that step's checkpoint for that slice; otherwise the machine SHALL answer `MISSING_PRECONDITIONS` with `missing: ["run-state"]` and `resume_at: "build-implement"`. A Direct Build step rewind SHALL answer `GOTO_ORDER_CONSUMED` when the stored run state of the slice records a consumed archive order or commit grant, and `GOTO_ORDER_UNCERTAIN` while it records an execute order in flight or with an uncertain effect. A Plan slice SHALL reach any earlier step. A route start, a later step, or a step target for a pending slice with no cursor SHALL answer `GOTO_PAST_CEILING`. A completed slice SHALL answer `SLICE_COMPLETED` unless `reopen` is true with reason `user-request` and target `pending`, in which case it SHALL leave `done` and return to pending. A missing or other reason SHALL answer `GOTO_REASON_INVALID`, and a goto before inventory `INVENTORY_NOT_READY`. A rejection SHALL change nothing and record nothing.
 
 #### Scenario: Parked Direct Build cursor moves to pending
 
@@ -229,13 +229,28 @@ With no active slice, `resume-direct-build` SHALL resume only when the first pen
 
 #### Scenario: Parked Direct Build cursor moves to the first step
 
-- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `build-implement`
+- **WHEN** a Direct Build slice parked at `archive`, whose stored run state records no consumed order or grant and no order in flight, receives `goto` with target `build-implement`
 - **THEN** its parked cursor becomes `build-implement`
 
 #### Scenario: Direct Build rewind to a later step is unsupported
 
-- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `backfill`
-- **THEN** the machine answers `GOTO_REWIND_UNSUPPORTED` and nothing changes
+- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `backfill` and the store holds no `backfill` checkpoint for that slice
+- **THEN** the machine answers `MISSING_PRECONDITIONS` with `missing: ["run-state"]` and `resume_at: "build-implement"`, and nothing changes
+
+#### Scenario: Direct Build rewind to a checkpointed later step
+
+- **WHEN** a Direct Build slice parked at `archive` receives `goto` with target `backfill` and the stored run state of that slice holds the `backfill` checkpoint with no hold
+- **THEN** its parked cursor becomes `backfill`
+
+#### Scenario: A consumed grant holds a Direct Build rewind
+
+- **WHEN** a Direct Build slice whose stored run state records a consumed archive order or commit grant receives `goto` with a step target
+- **THEN** the machine answers `GOTO_ORDER_CONSUMED` and nothing changes, while `goto` with target `pending` stays available
+
+#### Scenario: An uncertain order holds a Direct Build rewind
+
+- **WHEN** a Direct Build slice whose stored run state records an execute order in flight or with an uncertain effect receives `goto` with a step target
+- **THEN** the machine answers `GOTO_ORDER_UNCERTAIN` and nothing changes
 
 #### Scenario: Completed slice needs an explicit reopen
 

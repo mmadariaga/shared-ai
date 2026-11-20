@@ -164,7 +164,10 @@ function nextFor(stage) {
   return { follow, hint: hintFor(stage, follow) };
 }
 
-function outcome(current, rejected) {
+// `more` adds the fields of a rejection that names what is missing (`missing`,
+// `resume_at`) or the effect an accepted outcome has on the Direct Build run
+// state of `direct-build-run@1` (`run_effect`, see `runEffect`).
+function outcome(current, rejected, more) {
   const state = snapshotOf(current);
   const result = {
     state,
@@ -173,7 +176,18 @@ function outcome(current, rejected) {
     run: viewOf(state),
   };
   if (rejected) result.rejected = rejected;
-  return result;
+  return Object.assign(result, more || {});
+}
+
+// The run state of `direct-build-run@1` follows the slice cursor, and the CLI
+// applies the effect in the same store write as the outcome: `drop` lists the
+// slices whose run state is discarded, `rewind` cuts one slice's run state back
+// to a route item (the first item discards it).
+function runEffect(drop, rewind) {
+  const effect = {};
+  if (drop && drop.length > 0) effect.drop = drop;
+  if (rewind) effect.rewind = rewind;
+  return Object.keys(effect).length > 0 ? { run_effect: effect } : {};
 }
 
 function nextForState(state) {
@@ -241,7 +255,9 @@ function beginSlice(current, mode, steps) {
   current.mode = mode;
   current.stage = parked ? parked.stage : steps[0];
   delete current.parked[target];
-  return outcome(current);
+  // A resumed slice keeps its run state. A Direct Build slice that starts fresh starts with
+  // none, and the run state holds one slice, so no earlier slice's state survives it.
+  return outcome(current, null, parked || mode !== DIRECT_BUILD_MODE ? null : runEffect(current.set.slice()));
 }
 
 // The active slice leaves its route without a cursor: pending again, with the
@@ -260,11 +276,14 @@ function recordMove(current, target, reason, receivedAt) {
 
 // `goto`: moves a slice backward, never past the route selector. The target is
 // `pending` (no cursor, selector presented again) or a route step of the slice's
-// own route that lies before its current step. A Direct Build rewind reaches
-// only pending or the first step, because the run state it would need for a
-// later step is not stored. A completed slice is rejected unless the user
-// explicitly asks to reopen it (`reopen: true`, reason `user-request`, target
-// `pending`). A rejection changes nothing and records nothing.
+// own route that lies before its current step. A Direct Build rewind to a step
+// after the first needs the run state of that step in the store (`run_state`,
+// which the CLI reads from `direct-build-run@1`; none when the store holds
+// nothing), and is held while an execute order's effect is uncertain or an
+// archive order or commit grant was consumed. A completed slice is rejected
+// unless the user explicitly asks to reopen it (`reopen: true`, reason
+// `user-request`, target `pending`). A rejection changes nothing and records
+// nothing.
 function gotoSlice(current, sig) {
   if (GOTO_REASONS.indexOf(sig.reason) === -1) return outcome(current, 'GOTO_REASON_INVALID');
   if (!current.inventoryReady) return outcome(current, 'INVENTORY_NOT_READY');
@@ -283,7 +302,7 @@ function gotoSlice(current, sig) {
     current.blockEmissionTurnClosed = true;
     current.autoContinueReady = false;
     recordMove(current, target, sig.reason, sig.received_at);
-    return outcome(current);
+    return outcome(current, null, runEffect([name]));
   }
 
   if (target === PENDING_TARGET) {
@@ -294,7 +313,7 @@ function gotoSlice(current, sig) {
       current.autoContinueReady = false;
     }
     recordMove(current, target, sig.reason, sig.received_at);
-    return outcome(current);
+    return outcome(current, null, runEffect([name]));
   }
 
   const cursor = current.active === name ? { mode: current.mode, stage: current.stage } : current.parked[name];
@@ -308,11 +327,29 @@ function gotoSlice(current, sig) {
   const to = steps.indexOf(target);
   if (to === from) return outcome(current, 'GOTO_ALREADY_AT_TARGET');
   if (to > from) return outcome(current, 'GOTO_PAST_CEILING');
-  if (cursor.mode === DIRECT_BUILD_MODE && to !== 0) return outcome(current, 'GOTO_REWIND_UNSUPPORTED');
+  if (cursor.mode === DIRECT_BUILD_MODE) {
+    const stored = storedRunState(sig, name);
+    if (stored.hold === 'consumed') return outcome(current, 'GOTO_ORDER_CONSUMED');
+    if (stored.hold !== '') return outcome(current, 'GOTO_ORDER_UNCERTAIN');
+    if (to !== 0 && stored.items.indexOf(target) === -1) {
+      return outcome(current, 'MISSING_PRECONDITIONS', { missing: ['run-state'], resume_at: DIRECT_BUILD_STEPS[0] });
+    }
+  }
   if (current.active === name) current.stage = target;
   else current.parked[name] = { mode: cursor.mode, stage: target };
   recordMove(current, target, sig.reason, sig.received_at);
-  return outcome(current);
+  return outcome(current, null, cursor.mode === DIRECT_BUILD_MODE ? runEffect(null, { slice: name, item: target }) : null);
+}
+
+// The Direct Build run state the store holds for a slice, as the CLI passes it
+// in the `goto` event: the route items whose state is stored and the hold on a
+// rewind (`consumed`, `uncertain`, or none). No view means the store holds none.
+function storedRunState(sig, name) {
+  const view = sig.run_state && typeof sig.run_state === 'object' && sig.run_state.change === name ? sig.run_state : {};
+  return {
+    items: Array.isArray(view.items) ? view.items.filter((item) => typeof item === 'string') : [],
+    hold: typeof view.hold === 'string' ? view.hold : '',
+  };
 }
 
 function parkSlice(current) {
@@ -373,15 +410,19 @@ function transition(state, signal) {
     const sameNames = previousSet.length === current.set.length
       && previousSet.every((name) => current.set.indexOf(name) !== -1);
     current.publication = sameNames ? previousPublication : '';
+    // A slice keeps its run state only while it keeps a cursor.
+    const dropped = previousSet.concat(current.set)
+      .filter((name, i, all) => all.indexOf(name) === i && name !== current.active && !current.parked[name]);
+    const effect = runEffect(dropped);
     if (current.active == null) {
       current.stage = WAITING_STAGE;
       current.mode = null;
       // The block-emission turn closes here. The route selector may now
       // present its native picker, but blockEmissionTurnClosed keeps route
       // intents locked until the user answers and route-choice is emitted.
-      return outcome(current);
+      return outcome(current, null, effect);
     }
-    return outcome(current);
+    return outcome(current, null, effect);
   }
 
   // Single-slice amendment: the block emit's `--amend` validates one block and
@@ -409,7 +450,7 @@ function transition(state, signal) {
       current.blockEmissionTurnClosed = true;
       current.autoContinueReady = false;
     }
-    return outcome(current);
+    return outcome(current, null, runEffect([sig.amend]));
   }
 
   if (!hasIntent(signal)) {

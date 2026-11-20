@@ -611,15 +611,30 @@ test('a parked Direct Build cursor moves to the first step and resumes there', (
   assert.equal(slice.transition(moved.state, { intent: 'resume-direct-build' }).state.stage, 'build-implement');
 });
 
-test('a running Direct Build slice rewinds to its first step, and a later step is not reachable yet', () => {
+test('E1: a running Direct Build slice rewinds to its first step, and to a later step only when its run state is stored', () => {
   const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
   const atArchive = slice.transition(slice.transition(selectRoute(inventory, 'direct-build').state, { intent: 'complete' }).state, { intent: 'complete' }).state;
   assert.equal(atArchive.stage, 'archive');
 
   const later = slice.transition(atArchive, { intent: 'goto', target: 'backfill', reason: 'correction' });
-  assert.equal(later.rejected, 'GOTO_REWIND_UNSUPPORTED');
+  assert.equal(later.rejected, 'MISSING_PRECONDITIONS');
+  assert.deepEqual(later.missing, ['run-state']);
+  assert.equal(later.resume_at, 'build-implement', 'the first step stays available');
   assert.equal(later.state.stage, 'archive');
   assert.deepEqual(later.run.moves, []);
+  assert.equal(later.run_effect, undefined);
+
+  const otherSlice = { change: 'b', items: ['build-implement', 'backfill'], hold: '' };
+  assert.equal(slice.transition(atArchive, { intent: 'goto', target: 'backfill', reason: 'correction', run_state: otherSlice }).rejected, 'MISSING_PRECONDITIONS', 'another slice state offers nothing');
+  const unsaved = { change: 'a', items: ['build-implement'], hold: '' };
+  assert.equal(slice.transition(atArchive, { intent: 'goto', target: 'backfill', reason: 'correction', run_state: unsaved }).rejected, 'MISSING_PRECONDITIONS');
+
+  const stored = { change: 'a', items: ['build-implement', 'backfill'], hold: '' };
+  const rewound = slice.transition(atArchive, { intent: 'goto', target: 'backfill', reason: 'correction', run_state: stored });
+  assert.ok(!('rejected' in rewound));
+  assert.equal(rewound.state.stage, 'backfill');
+  assert.deepEqual(rewound.run_effect, { rewind: { slice: 'a', item: 'backfill' } });
+  assert.equal(rewound.run.moves.length, 1);
 
   const first = slice.transition(atArchive, { intent: 'goto', target: 'build-implement', reason: 'correction' });
   assert.ok(!('rejected' in first));
@@ -684,6 +699,62 @@ test('E16: a goto into a completed slice is rejected unless the user explicitly 
   // The store keeps the reopened slice out of done when the stored list is merged in.
   assert.equal(slice.shouldResetDone(reopened.state, [done]), true);
   assert.equal(slice.shouldResetDone(done, [done]), false);
+});
+
+test('E3: a rewind is held while an execute order is uncertain or an archive order or commit grant was consumed', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a'] }).state;
+  const atArchive = slice.transition(slice.transition(selectRoute(inventory, 'direct-build').state, { intent: 'complete' }).state, { intent: 'complete' }).state;
+  const view = (hold) => ({ change: 'a', items: ['build-implement', 'backfill'], hold });
+
+  for (const target of ['backfill', 'build-implement']) {
+    const uncertain = slice.transition(atArchive, { intent: 'goto', target, reason: 'correction', run_state: view('uncertain') });
+    assert.equal(uncertain.rejected, 'GOTO_ORDER_UNCERTAIN', target);
+    assert.equal(uncertain.state.stage, 'archive');
+    assert.deepEqual(uncertain.run.moves, []);
+    assert.equal(slice.transition(atArchive, { intent: 'goto', target, reason: 'correction', run_state: view('consumed') }).rejected, 'GOTO_ORDER_CONSUMED', target);
+  }
+  // Going back to pending is an exit, not a rewind: it discards the run state instead of replaying it.
+  const exit = slice.transition(atArchive, { intent: 'goto', target: 'pending', reason: 'user-request', run_state: view('uncertain') });
+  assert.ok(!('rejected' in exit));
+  assert.deepEqual(exit.run_effect, { drop: ['a'] });
+});
+
+test('E1: a rewind to the first step needs no stored run state and discards it', () => {
+  const parked = parkedDirectBuild(['a'], 1);
+  const moved = slice.transition(parked, { intent: 'goto', target: 'build-implement', reason: 'user-request' });
+  assert.ok(!('rejected' in moved));
+  assert.deepEqual(moved.run_effect, { rewind: { slice: 'a', item: 'build-implement' } });
+});
+
+test('E6: pending, a content amendment, and a reopened slice discard the run state; a metadata amendment keeps it', () => {
+  const parked = parkedDirectBuild(['a', 'b'], 1);
+  assert.deepEqual(slice.transition(parked, { intent: 'goto', target: 'pending', reason: 'correction' }).run_effect, { drop: ['a'] });
+  assert.deepEqual(slice.transition(parked, { amend: 'a', amend_kind: 'content' }).run_effect, { drop: ['a'] });
+  assert.equal(slice.transition(parked, { amend: 'a', amend_kind: 'metadata' }).run_effect, undefined);
+  assert.equal(slice.transition(parked, { intent: 'fail' }).run_effect, undefined);
+
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const done = finishDirectBuild(selectRoute(inventory, 'direct-build').state);
+  assert.deepEqual(slice.transition(done, { intent: 'goto', target: 'pending', reason: 'user-request', slice: 'a', reopen: true }).run_effect, { drop: ['a'] });
+});
+
+test('E2/E8: a resumed slice keeps its run state, and a slice that starts fresh starts with none', () => {
+  const parked = parkedDirectBuild(['a', 'b'], 1);
+  assert.equal(slice.transition(parked, { intent: 'resume-direct-build' }).run_effect, undefined, 'resumption reads the stored state');
+
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  assert.deepEqual(selectRoute(inventory, 'direct-build').run_effect, { drop: ['a', 'b'] });
+  const next = slice.transition(finishDirectBuild(selectRoute(inventory, 'direct-build').state), { intent: 'auto-continue' });
+  assert.deepEqual(next.run_effect, { drop: ['a', 'b'] }, 'a later slice never reads an earlier slice state');
+  assert.equal(selectRoute(inventory, 'plan').run_effect, undefined, 'a Plan slice has no Direct Build run state');
+});
+
+test('a re-registration keeps the run state of a slice that keeps a cursor and drops the others', () => {
+  const parked = parkedDirectBuild(['a', 'b'], 1);
+  const keep = slice.transition(parked, { recordedList: ['a', 'b'], unchanged: ['a'] });
+  assert.deepEqual(keep.run_effect, { drop: ['b'] });
+  const dropAll = slice.transition(parked, { recordedList: ['a', 'b'] });
+  assert.deepEqual(dropAll.run_effect, { drop: ['a', 'b'] });
 });
 
 test('E11: a content amendment returns a running slice to pending and closes the route gate; E12: metadata keeps it', () => {

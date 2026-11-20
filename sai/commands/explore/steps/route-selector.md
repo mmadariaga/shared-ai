@@ -44,8 +44,9 @@ pending execution.
    accepted work, pending operation, blocking cause, and remaining budget.
    Offer `Resume Direct Build` only when retained state and existing recovery
    rules permit the pending operation; offer a concrete action to resolve the
-   blocker when available, `Back to pending` and `Restart from the first step`
-   (the moves of step 4), and `Remain stopped`. Plan and Manual do not replace
+   blocker when available, `Back to pending`, `Restart from the first step`,
+   and a rewind to a later item the stored run state offers (the moves of
+   step 4), and `Remain stopped`. Plan and Manual do not replace
    this pending execution. Budget exhaustion offers no automatic retry; an
    uncertain mutation offers verification, not replay. Invalid or cancelled
    answers preserve the stop and dispatch nothing.
@@ -65,8 +66,12 @@ pending execution.
    `--set intent=goto --set target=build-implement --set reason=<user-request|correction>`
    and then `{intent: resume-direct-build}`: the saved cursor becomes the first
    step and the card initializes fresh run state for it (Resume of
-   `direct-build-coordinator.md`). A later step is not a target yet. Both moves
-   authorize nothing the first selection did not, and `Back to pending` asks for
+   `direct-build-coordinator.md`). A later item is a target only when the
+   stored run state of the slice holds its checkpoint: `status` of
+   `direct-build-run@1` lists the re-enterable items in `items`, and `goto`
+   with `--set target=backfill` or `--set target=archive` followed by
+   `{intent: resume-direct-build}` re-enters it with that state. Every move
+   authorizes nothing the first selection did not, and `Back to pending` asks for
    a new selector answer. Never reset `explore-slice@1` for this: that clears
    completed slices and the publication answer.
 
@@ -240,7 +245,7 @@ When the setting resolved the value, print `Project setting pr.publishAfterRun: 
 
 **Single-slice amendment.** To correct one slice of the recorded set without re-crystallizing the whole set, display the corrected block, validate it with the same bounded judgment as the block emit, and emit it with `--amend <change-name>` (`@sai/policies/stage-machine.md` § Block amend) instead of a new block emit. A pending, stopped, or running slice is amendable; a `SLICE_COMPLETED` rejection changes nothing, and `UNKNOWN_SLICE` means the name is not in the recorded set. The response carries `amend_kind`, the tool's field-by-field comparison of the stored and the new block. **`metadata`** (only block metadata such as `Backlog origin` or `Explore origin` changed) keeps the route authorization: the stored block is replaced, the inventory, completed slices, and parked cursors stay, a running slice is amended in place, a stopped slice resumes at its saved cursor over the amended block, and no picker re-opens. A running Direct Build slice then re-exports its block for the card's next request. **`content`** (`What`, `Why`, scope, the `E` or `I` items, `Key constraints`, or any other agreed field changed) voids that slice's authorization: the slice returns to pending without a cursor, a running slice is released, and the route selector is presented again in this conversation with the corrected block visible; the other slices keep their state. Dispose the slice's workers first when it was running, per `@sai/policies/worker-lifecycle.md`.
 
-**Correcting a slice.** Every correction or shortcut is one general movement, not a special intent: `goto` on `explore-slice@1` (`--set intent=goto --set target=<pending|build-implement|…> --set reason=<user-request|correction>`, `--set slice=<name>` for a slice other than the active or first pending one) moves a slice backward and never past this selector. A rewind inside a Direct Build route reaches only pending or the first step; a Plan route rewinds to any earlier step of its own route. A completed slice is rejected (`SLICE_COMPLETED`) unless the user explicitly asks to reopen it (`--set target=pending --set reason=user-request --set slice=<name> --set reopen=true`). A rewind to the first step of a slice that already wrote files keeps those files: the new run starts from the current working tree as its base and reverts nothing. `GOTO_PAST_CEILING`, `GOTO_REWIND_UNSUPPORTED`, and the other rejections change nothing and record nothing; tell the user in one line which move is available instead. A re-registration of the set keeps the completion and parked cursor of every slice whose block is unchanged, and the publication answer when the change names are unchanged.
+**Correcting a slice.** Every correction or shortcut is one general movement, not a special intent: `goto` on `explore-slice@1` (`--set intent=goto --set target=<pending|build-implement|…> --set reason=<user-request|correction>`, `--set slice=<name>` for a slice other than the active or first pending one) moves a slice backward and never past this selector. A rewind inside a Direct Build route reaches pending, the first step, or a later step whose run state the store holds (`direct-build-run@1`: otherwise `MISSING_PRECONDITIONS` with `missing: [run-state]` and `resume_at: build-implement`, and `GOTO_ORDER_UNCERTAIN` or `GOTO_ORDER_CONSUMED` while the rewind would replay an uncertain execute order or renew a consumed archive order or commit grant); a Plan route rewinds to any earlier step of its own route. A completed slice is rejected (`SLICE_COMPLETED`) unless the user explicitly asks to reopen it (`--set target=pending --set reason=user-request --set slice=<name> --set reopen=true`). A rewind to the first step of a slice that already wrote files keeps those files: the new run starts from the current working tree as its base and reverts nothing. `GOTO_PAST_CEILING` and the other rejections change nothing and record nothing; tell the user in one line which move is available instead. A re-registration of the set keeps the completion and parked cursor of every slice whose block is unchanged, and the publication answer when the change names are unchanged.
 
 **Route-owned panel entries (authoritative).** The choice creates the route entries; no baseline evidence entries exist. Clear the stage TODO at block emission and first render only at choice resolution (E5). The selected path creates its own entries with no baseline items:
 - **Plan** (`route_mode = plan-unattended`): exactly `sai-1`, `sai-2`, `Implement`, with `sai-1` `in_progress` and the rest `pending`, then follow the `/sai-plan` coordinator (`pipeline-plan-unattended.md`). A completed spec segment completes `sai-1` and starts `sai-2` as `in_progress`. A completed design segment completes `sai-2` and starts `Implement` as `in_progress`; it does not claim implementation ran.

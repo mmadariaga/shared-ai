@@ -229,6 +229,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0217 — External processes of the backlog and publication tools run as bounded process groups](./0217-external-processes-run-as-bounded-process-groups.md)
 - [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
 - [0225 — Explore machines guard preconditions, not paths](./0225-explore-machines-guard-preconditions-not-paths.md)
+- [0226 — Direct Build run state lives in the store on the explore route only](./0226-direct-build-run-state-in-store-on-explore-route.md) — Refs 0225
 
 ### `/sai-backfill`
 

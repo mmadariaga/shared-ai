@@ -169,6 +169,12 @@ const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-p
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 
+// The Direct Build run state of the explore route follows the slice cursor of
+// `explore-slice@1`: its `goto` is judged against the run state the store holds
+// (the event carries the view), and the effect an accepted outcome has on that
+// state lands in the same session-file write as the slice outcome.
+const RUN_STATE_MACHINE = 'direct-build-run@1';
+
 // The block emit is accepted only while this machine sits at its final stage.
 const BLOCK_STAGE_MACHINE = 'explore-idea@1';
 const BLOCK_STAGE = 'crystallize';
@@ -404,7 +410,9 @@ function canonicalizeMergedState(mod, mergedState) {
 // then. The target `done[]` is unioned with the stored one in canonical order
 // unless the machine declares that this transition replaces a versioned inventory.
 // One file per session, never one per machine.
-function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, extras) {
+// `siblings` is an optional object of other machines' next states, written in the
+// same session-file write as the target machine's state.
+function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, extras, siblings) {
   const staleMap = stateByMachineMap(record);
   const baseForMeta = (record && typeof record === 'object' && !Array.isArray(record)) ? record : {};
   const createdAt = (typeof baseForMeta.createdAt === 'number') ? baseForMeta.createdAt : Date.now();
@@ -472,6 +480,15 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, 
     lastEventId: eventId,
     lastOutcome,
   };
+  for (const siblingId of Object.keys(siblings || {})) {
+    const previous = (staleMap[siblingId] && typeof staleMap[siblingId] === 'object' && !Array.isArray(staleMap[siblingId])) ? staleMap[siblingId] : {};
+    merged.stateByMachine[siblingId] = {
+      state: siblings[siblingId],
+      rev: entryRev(previous) + 1,
+      lastEventId: '',
+      lastOutcome: previous.lastOutcome === undefined ? null : previous.lastOutcome,
+    };
+  }
   writeSessionFile(id, merged, revisionOf(record));
   return { mergedState, mergedWire, newRev };
 }
@@ -574,6 +591,31 @@ function commandSpawn(key) {
   process.exitCode = 0;
 }
 
+// The view of the Direct Build run state the store holds, for `explore-slice@1`
+// to judge a rewind against: the slice it belongs to, the route items it holds,
+// and any hold on a rewind. A session that never wrote one has none.
+function runStateView(session) {
+  const stored = session.stateByMachine.get(RUN_STATE_MACHINE);
+  return registry.get(RUN_STATE_MACHINE).rewindView(stored === undefined ? registry.get(RUN_STATE_MACHINE).initialState : stored);
+}
+
+// The run state after the effect of an accepted slice outcome, keyed for the
+// session-file write; null when the session holds no run state or the effect
+// leaves it as it is.
+function runStateAfter(session, effect) {
+  const stored = session.stateByMachine.get(RUN_STATE_MACHINE);
+  if (!stored || !effect) return null;
+  const mod = registry.get(RUN_STATE_MACHINE);
+  const events = (effect.drop || []).map((change) => ({ kind: 'discard', change }));
+  if (effect.rewind) events.push({ kind: 'rewind', change: effect.rewind.slice, item: effect.rewind.item });
+  let state = stored;
+  for (const event of events) {
+    const result = mod.transition(state, event);
+    if (result && result.state && !result.rejected) state = result.state;
+  }
+  return JSON.stringify(state) === JSON.stringify(mod.project(stored).snapshot.state) ? null : { [RUN_STATE_MACHINE]: state };
+}
+
 // Shared emit core. `obtainEvent(session, loadWarnings)` returns either
 // `{ event }` or `{ payload }` (an INVALID_EVENT outcome whose stderr notice, if
 // any, it already wrote). `extras` is an object of top-level session-record fields
@@ -617,9 +659,11 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
   const cur = session.stateByMachine.has(targetId) ? session.stateByMachine.get(targetId) : mod.initialState;
   const staleBlocks = targetId === READY_TO_PROPOSE_MACHINE && record && Array.isArray(record.staleBlocks) && record.staleBlocks.length > 0
     && event && typeof event === 'object' && ROUTE_INTENTS.has(event.intent);
-  // The reception time of an accepted `goto` is the response's `received_at`.
-  const machineEvent = event && typeof event === 'object' && !Array.isArray(event) && event.intent === 'goto'
-    ? Object.assign({}, event, { received_at: receivedAt })
+  // The reception time of an accepted `goto` is the response's `received_at`; a
+  // slice `goto` also carries the view of the Direct Build run state in the store.
+  const isGoto = event && typeof event === 'object' && !Array.isArray(event) && event.intent === 'goto';
+  const machineEvent = isGoto
+    ? Object.assign({}, event, { received_at: receivedAt }, targetId === READY_TO_PROPOSE_MACHINE ? { run_state: runStateView(session) } : {})
     : event;
   let result = null;
   try {
@@ -656,6 +700,7 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
 
   let emitWire = wire;
   let persistedState = nextState;
+  let siblings = null;
   try {
     let recordExtras = typeof extras === 'function' ? extras(wire, record) : extras;
     // Moving back from `crystallize` after the blocks were registered leaves
@@ -665,7 +710,8 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
       && record && record.blocks && typeof record.blocks === 'object' && Object.keys(record.blocks).length > 0) {
       recordExtras = Object.assign({}, recordExtras || {}, { staleBlocks: Object.keys(record.blocks) });
     }
-    const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire, recordExtras || null);
+    siblings = targetId === READY_TO_PROPOSE_MACHINE && !wire.rejected ? runStateAfter(session, result.run_effect) : null;
+    const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire, recordExtras || null, siblings);
     if (merged && merged.mergedWire) emitWire = merged.mergedWire;
     if (merged && merged.mergedState) persistedState = merged.mergedState;
   } catch (err) {
@@ -673,6 +719,7 @@ function runEmit(id, machineIdArg, obtainEvent, extras) {
   }
 
   session.stateByMachine.set(targetId, persistedState);
+  if (siblings) for (const siblingId of Object.keys(siblings)) session.stateByMachine.set(siblingId, siblings[siblingId]);
   session.lastPointer = emitWire.next;
 
   const payload = withWarnings(emitWire, loadWarnings);
