@@ -82,7 +82,12 @@ test('I8: the direct-build, backfill, and archive workers no longer load worker-
     const source = read(file);
     assert.doesNotMatch(source, /worker-core/, `${file} does not load worker-core`);
     assert.ok(source.includes('Fetch `@sai/policies/public-chat.md` and follow it exactly.'));
-    assert.match(source, /event: ready\nchanged_files: \[\]/, `${file} carries its own ready handshake`);
+    if (file === 'sai/commands/explore/direct-build-worker.md') {
+      assert.ok(source.includes('Fetch `@sai/commands/implement/worker-common.md`'), `${file} loads the shared ready handshake`);
+      assert.match(read('sai/commands/implement/worker-common.md'), /event: ready\nchanged_files: \[\]/);
+    } else {
+      assert.match(source, /event: ready\nchanged_files: \[\]/, `${file} carries its own ready handshake`);
+    }
   }
   const transport = read('sai/policies/worker-report-transport.md');
   assert.match(transport, /## Direct Build role fields/);
