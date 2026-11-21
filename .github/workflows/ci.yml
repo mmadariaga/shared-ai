@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, v0.11.0-beta, v0.12.0-beta]
+    branches: [main, v0.12.0-beta, v0.13.0-beta]
   push:
     branches: [main]
 

@@ -1,6 +1,6 @@
 # Implement worker common
 
-Rules shared by the plan RED worker of `/sai-2-design` and by the fix RED and GREEN workers of `/sai-3-implement`. The coordinator that dispatches you owns the plan, the tests' verdict, and git.
+Rules shared by the plan RED worker of `/sai-2-design`, by the fix RED and GREEN workers of `/sai-3-implement`, and by the Direct Build implementer (`sai/commands/explore/direct-build-worker.md`, which replaces the step message and report fields below with its own). The coordinator that dispatches you owns the plan, the tests' verdict, and git.
 
 Fetch `@sai/policies/remember.md`
 Fetch `@sai/policies/repository-artifact-scope.md` and use it as the shared protected-surface rule. Your role's allowed files below are narrower and prevail.

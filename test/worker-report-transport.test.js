@@ -151,7 +151,8 @@ const POLICY = 'sai/policies/worker-report-transport.md';
 test('Direct Build contracts bind all three workers while preserving other routes and consumed effects', () => {
   const policy = read(POLICY);
   for (const worker of ['explore/direct-build-worker', 'backfill/worker', 'archive/worker']) {
-    assert.match(read(`sai/commands/${worker}.md`), /Fetch `@sai\/policies\/worker-report-transport.md`/);
+    const loaded = worker === 'explore/direct-build-worker' ? 'implement/worker-common' : worker;
+    assert.match(read(`sai/commands/${loaded}.md`), /Fetch `@sai\/policies\/worker-report-transport.md`/);
   }
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch `@sai\/policies\/worker-report-transport.md`/);
   for (const evidence of [/Claude Code and opencode/, /initial `event: ready` return is unchanged/,

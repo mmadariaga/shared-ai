@@ -13,7 +13,6 @@ const FETCH_LINE = 'Fetch `@sai/policies/code-quality-priority-stack.md`';
 const REVIEW_PASS_6 = 'sai/commands/review/steps/resolve-review-analysis.md';
 const STACK_HEADING = '## Code Quality Priority Stack';
 const CODE_WRITERS = [
-  'sai/commands/explore/direct-build-worker.md',
   'sai/commands/implement/worker-common.md',
 ];
 const MERGE_RESOLVE = 'sai/commands/merge/steps/resolve.md';
@@ -50,9 +49,9 @@ test('code-writing workers explicitly load the single-source policy within their
   for (const file of CODE_WRITERS) {
     assert.equal(read(file).split('\n').filter(line => line === FETCH_LINE).length, 1, file);
   }
-  assert.match(read(CODE_WRITERS[0]), /within the crystallized block's scope/);
-  assert.match(read(CODE_WRITERS[1]), /within your role and the brief/);
-  for (const file of ['sai/commands/implement/red-worker.md', 'sai/commands/implement/green-worker.md']) {
+  assert.match(read(CODE_WRITERS[0]), /within your role and the brief/);
+  assert.match(read('sai/commands/explore/direct-build-worker.md'), /code-quality stack applies within the block's scope/);
+  for (const file of ['sai/commands/implement/red-worker.md', 'sai/commands/implement/green-worker.md', 'sai/commands/explore/direct-build-worker.md']) {
     assert.ok(read(file).includes('Fetch `@sai/commands/implement/worker-common.md`'), file);
   }
 });
