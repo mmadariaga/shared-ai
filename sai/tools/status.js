@@ -28,8 +28,8 @@ const path = require('path');
 const { spawnSync, execFile } = require('child_process');
 const { readOpenspecYaml } = require('./openspec-yaml');
 
-// The ten sai-workflow artifacts in canonical order
-const ARTIFACTS = ['proposal', 'specs', 'design', 'tasks', 'interfaces', 'change-overview', 'review', 'security', 'performance', 'accessibility'];
+// The eight sai-workflow artifacts in canonical order
+const ARTIFACTS = ['proposal', 'specs', 'design', 'tasks', 'review', 'security', 'performance', 'accessibility'];
 const AUDITS = ['review', 'security', 'performance', 'accessibility'];
 const NOT_APPLICABLE_HEADING = '## Not Applicable';
 
@@ -208,16 +208,13 @@ function specsCellFor(statuses, specsApproved) {
  * This function is independent of CLI calls and file I/O - it's purely
  * a decision table. Extracted for testability.
  *
- * The overview cell derives from overview.state in the parsed YAML, combined
- * with the change-overview.md artifact presence from the CLI, per Step E3.
- *
  * Input parameters:
  *   statuses: artifact status map from CLI (artifact.name -> {present, status})
  *   openspecYaml: parsed .openspec.yaml result (null if absent)
  *   auditNotApplicableFlags: map of audit name -> boolean (true if has "## Not Applicable")
  *   taskProgress: tasks.md progress "X/Y" or empty string
  *
- * Returns: {cells, specsCell, overviewCell, implProgress, next}
+ * Returns: {cells, specsCell, implProgress, next}
  */
 function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskProgress) {
   const specsApproved = openspecYaml && openspecYaml.approval_specs_approved_at ? true : false;
@@ -226,9 +223,7 @@ function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskP
   const cells = {};
   const auditStatus = {}; // Track which audits are satisfied
   for (const artifact of ARTIFACTS) {
-    if (artifact === 'interfaces') {
-      cells[artifact] = statuses[artifact].present ? '●' : '·';
-    } else if (AUDITS.includes(artifact)) {
+    if (AUDITS.includes(artifact)) {
       if (!statuses[artifact].present) {
         cells[artifact] = '·';
         auditStatus[artifact] = false;
@@ -246,28 +241,10 @@ function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskP
 
   const specsCell = specsCellFor(statuses, specsApproved);
 
-  // Overview state handling (E3)
-  let overviewCell = '·';
-  if (openspecYaml && openspecYaml.backfilled) {
-    overviewCell = 'N/A'; // E4
-  } else if (openspecYaml && openspecYaml.overview_state) {
-    const overviewState = openspecYaml.overview_state;
-    if (overviewState === 'current' && statuses['change-overview'].present) {
-      overviewCell = '●';
-    } else if (['stale', 'failed', 'materializing'].includes(overviewState)) {
-      overviewCell = '!';
-    } else if (overviewState === 'current' && !statuses['change-overview'].present) {
-      // current metadata but file absent = problem state
-      overviewCell = '!';
-    } else if (overviewState === 'unmaterialized') {
-      overviewCell = '·';
-    }
-  }
-
   // Resolve Next
   const next = resolveNext(statuses, specsApproved, taskProgress, auditStatus);
 
-  return { cells, specsCell, overviewCell, implProgress: taskProgress, next };
+  return { cells, specsCell, implProgress: taskProgress, next };
 }
 
 /**
@@ -364,7 +341,6 @@ function renderPanel(cwd, changeName) {
   const derived = derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, implProgress);
   const cells = derived.cells;
   const specsCell = derived.specsCell;
-  const overviewCell = derived.overviewCell;
   const next = derived.next;
 
   // Build panel text
@@ -374,8 +350,6 @@ function renderPanel(cwd, changeName) {
     `  specs: ${specsCell}`,
     `  design: ${cells.design}`,
     `  tasks: ${cells.tasks}`,
-    `  interfaces: ${cells.interfaces}`,
-    `  overview: ${overviewCell}`,
     `  review: ${cells.review}`,
     `  security: ${cells.security}`,
     `  performance: ${cells.performance}`,
@@ -392,7 +366,6 @@ function renderPanel(cwd, changeName) {
     panel: lines.join('\n'),
     cells,
     specsCell,
-    overviewCell,
     implProgress,
     next,
   };
@@ -545,9 +518,7 @@ async function renderBulk(cwd, gatherFn, listFn) {
       const cells = {};
       const auditStatus = {};
       for (const artifact of ARTIFACTS) {
-        if (artifact === 'interfaces') {
-          cells[artifact] = statuses[artifact].present ? '●' : '·';
-        } else if (AUDITS.includes(artifact)) {
+        if (AUDITS.includes(artifact)) {
           if (!statuses[artifact].present) {
             cells[artifact] = '·';
             auditStatus[artifact] = false;
@@ -565,21 +536,6 @@ async function renderBulk(cwd, gatherFn, listFn) {
 
       const specsCell = specsCellFor(statuses, specsApproved);
 
-      // Overview state handling
-      let overviewCell = '·';
-      if (openspecYaml && openspecYaml.backfilled) {
-        overviewCell = 'N/A';
-      } else if (openspecYaml && openspecYaml.overview_state) {
-        const overviewState = openspecYaml.overview_state;
-        if (overviewState === 'current' && statuses['change-overview'].present) {
-          overviewCell = '●';
-        } else if (['stale', 'failed', 'materializing'].includes(overviewState)) {
-          overviewCell = '!';
-        } else if (overviewState === 'unmaterialized') {
-          overviewCell = '·';
-        }
-      }
-
       // Resolve Next
       const next = resolveNext(statuses, specsApproved, implProgress, auditStatus);
 
@@ -587,7 +543,6 @@ async function renderBulk(cwd, gatherFn, listFn) {
         change: changeName,
         cells,
         specsCell,
-        overviewCell,
         implProgress,
         next,
       });
@@ -601,20 +556,20 @@ async function renderBulk(cwd, gatherFn, listFn) {
   }
 
   // Build table header
-  const header = '| Change | prop | spec | dsgn | task | intf | cov | rev | sec | perf | a11y | Impl | Next |';
-  const separator = '|--------|------|------|------|------|------|------|------|------|------|------|------|------|';
+  const header = '| Change | prop | spec | dsgn | task | rev | sec | perf | a11y | Impl | Next |';
+  const separator = '|--------|------|------|------|------|------|------|------|------|------|------|';
 
   const tableLines = [header, separator];
   for (const row of rows) {
     if (row.error) {
-      tableLines.push(`| ${row.change} | ERROR | | | | | | | | | | | |`);
+      tableLines.push(`| ${row.change} | ERROR | | | | | | | | | |`);
     } else {
-      const line = `| ${row.change} | ${row.cells.proposal} | ${row.specsCell} | ${row.cells.design} | ${row.cells.tasks} | ${row.cells.interfaces} | ${row.cells['change-overview']} | ${row.cells.review} | ${row.cells.security} | ${row.cells.performance} | ${row.cells.accessibility} | ${row.implProgress} | ${row.next} |`;
+      const line = `| ${row.change} | ${row.cells.proposal} | ${row.specsCell} | ${row.cells.design} | ${row.cells.tasks} | ${row.cells.review} | ${row.cells.security} | ${row.cells.performance} | ${row.cells.accessibility} | ${row.implProgress} | ${row.next} |`;
       tableLines.push(line);
     }
   }
 
-  const legend = 'Legend: ● present · ○ specs present-unapproved · skipped specs declared absent (skip_specs) · · absent · ! problem-state overview · N/A not-applicable audit';
+  const legend = 'Legend: ● present · ○ specs present-unapproved · skipped specs declared absent (skip_specs) · · absent · N/A not-applicable audit';
   tableLines.push('');
   tableLines.push(legend);
 

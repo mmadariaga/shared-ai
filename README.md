@@ -63,7 +63,7 @@ In the configured project, start with `/sai-explore`:
 
 **Planned builds verify behavior, not just code.**
 
-- Planned builds write tests before implementation: RED → GREEN.
+- `/sai-2-design` writes the tests first, in code: a plan RED worker leaves the interface stubs and the failing tests of the whole change, committed failing, and the build then runs GREEN only, step by step, with a RED worker used only for the findings of a review or audit that need a new test.
 - Separate agents own tests and production code, so the implementer cannot weaken a failing test just to pass.
 - Checks that need human judgment remain visible rather than being silently marked complete.
 
@@ -99,7 +99,7 @@ authorization; add `--url <url>` for the accessibility dev server), or `--parent
 See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
 Deep review selects and applies fixes automatically. The fixes run through
-RED → GREEN with one local commit per fix step, and the suites run against the
+the fix RED (only when a finding needs a new test) and GREEN with one local commit per fix step, and the suites run against the
 baseline recorded before the first fix. To apply open findings from a standalone
 review later, run `/sai-3-implement`, then review again. See
 [findings and exclusions](docs/review-triage.md#findings-the-run-fixes).
@@ -114,7 +114,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks in three conditional rounds (backlog, branch and assignment; publication approval; route, Direct Build continuation, change overview, branch base and publication) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The continuation answer applies only to Direct Build; the overview answer applies only to Plan and is asked only when its creation/language choice is unresolved. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route; the branch is created right after that choice. See the [Explore usage page](docs/commands/sai-explore.md).
+Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks in three conditional rounds (backlog, branch and assignment; publication approval; route, Direct Build continuation, branch base and publication) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The continuation answer applies only to Direct Build. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route; the branch is created right after that choice. See the [Explore usage page](docs/commands/sai-explore.md).
 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
@@ -134,7 +134,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
-| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`, and one local commit per segment; a `yes` answer to the start question is the only approval publication needs |
+| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, the interface stubs and failing plan tests, and local commits per segment; a `yes` answer to the start question is the only approval publication needs |
 | [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings it judges justified, with no human in the loop | Reports, a commit per audit report, and one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
@@ -231,7 +231,7 @@ SAI follows existing project conventions and favors focused changes over specula
 Review looks for bugs, weak tests, maintainability issues, and missed requirements. Standalone review reports findings without fixing them; `/sai-build` and `/sai-deep-review` select and apply the fixes they judge justified. Resolved findings stay visible with a ` (FIXED)` mark so you can distinguish them from open work. See [findings and exclusions](docs/review-triage.md#findings-the-run-fixes) to control what a later implement run applies.
 
 ### RED → GREEN
-Tests first demonstrate the missing behavior (RED), then a separate agent implements it (GREEN) without changing the tests. If the tests already pass, the coordinator checks whether the behavior already exists: when it does, it commits the tests, skips GREEN, and records a deviation; otherwise it sends the tests back to RED for correction.
+The plan RED worker of `/sai-2-design` writes the failing tests and the stubs once for the whole change (RED), and `/sai-3-implement` and `/sai-build` then have a separate agent turn them green step by step (GREEN) without changing the tests; a step with no meaningful test carries a closure criterion that the review checks. If a step's tests already pass, the coordinator checks whether the behavior already exists: when it does, it skips GREEN and records a deviation; otherwise it has the fix RED realign the tests. A review or audit finding that needs a new test goes through the fix RED first.
 
 ### Record important decisions
 Architecture and domain decision records (ADRs/DDRs) explain choices that future

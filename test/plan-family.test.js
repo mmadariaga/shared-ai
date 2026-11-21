@@ -36,8 +36,6 @@ const STEPS = [
   'sai/commands/design/steps/research.md',
   'sai/commands/design/steps/design.md',
   'sai/commands/design/steps/tasks.md',
-  'sai/commands/design/steps/interfaces.md',
-  'sai/commands/design/steps/overview.md',
 ];
 const FAMILY_FILES = [...COORDINATORS, ...SHARED, ...WORKERS, ...STEPS];
 
@@ -115,6 +113,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     'sai/commands/design/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/remember.md', '@skills/safe-operations/SKILL.md', '@skills/budget/SKILL.md',
       '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/orchestration/workers/bindings/design-worker.md', '@sai/policies/cache-warming.md',
+      '@sai/orchestration/workers/bindings/design-red-worker.md',
     ],
     'sai/commands/plan/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md',
@@ -174,15 +173,19 @@ test('the spec coordinator carries its startup literals, block intake, and closi
   assert.match(spec, /plan-run@1|Opening the run/);
 });
 
-test('the design coordinator carries its startup literals, flags, overview continuation, and closing line', () => {
+test('the design coordinator carries its startup literals, flags, plan RED phase, and closing line', () => {
   const design = read('sai/commands/design/coordinator.md');
   assert.match(design, /Cannot start \/sai-2-design for \{name\}: missing/);
   assert.match(design, /Cannot start \/sai-2-design: name the change/);
-  assert.match(design, /--overview-lang takes exactly one language/);
+  assert.match(design, /Cannot start \/sai-2-design: unknown option \{token\}\./);
+  assert.match(design, /`--overview-lang` included, which no longer exists/);
   assert.match(design, /`--fast-track` and `--supervised`[\s\S]{0,80}accepted and ignored, and no banner is printed/);
   assert.match(design, /Running this command approves the specs/);
-  assert.match(design, /Follow @sai\/commands\/design\/steps\/overview\.md/);
-  assert.match(design, /Without the option, send no continuation and generate no overview/);
+  assert.doesNotMatch(design, /overview\.md|change-overview\.md/);
+  assert.match(design, /`sai-2-red-worker`/);
+  assert.match(design, /red by assertion/);
+  assert.match(design, /\[regression guard\]/);
+  assert.match(design, /create no plan RED worker/);
   assert.match(design, /file-manifest\.js/);
   assert.match(design, /sai-2 \{name\} --cwd <project-root>/);
   assert.match(design, /`design-steps@1`/);
@@ -236,9 +239,8 @@ test('the worker cards own their write surfaces and never ask the user or run gi
   assert.match(design, /## Write surface/);
   assert.match(design, /\*\*Approve the specs\.\*\*/);
   assert.match(design, /`approval\.specs\.approved_at`[\s\S]{0,200}only when it is absent or empty/);
-  assert.match(design, /\*\*Stale-before-first-write\*\*/);
-  assert.match(design, /\*\*No-effective-change capture\*\*/);
-  assert.match(design, /change-overview\.md`, through the generator the overview continuation names/);
+  assert.doesNotMatch(design, /Stale-before-first-write|No-effective-change capture|Overview lifecycle/);
+  assert.match(design, /## Closure criteria on request/);
 
   for (const file of [...WORKERS, SHARED[1]]) {
     const violations = checkWorkerEmissionOwnership(read(file));
@@ -246,9 +248,9 @@ test('the worker cards own their write surfaces and never ask the user or run gi
   }
 });
 
-test('the step libraries are delivered by pointer and the overview is a continuation, not a step', () => {
+test('the step libraries are delivered by pointer and the overview and interfaces steps retired', () => {
   assert.deepEqual(Array.from(specSteps.STEPS), ['spec-intake', 'research', 'proposal', 'specs', 'validation']);
-  assert.deepEqual(Array.from(designSteps.STEPS), ['design-intake', 'research', 'design', 'tasks', 'interfaces']);
+  assert.deepEqual(Array.from(designSteps.STEPS), ['design-intake', 'research', 'design', 'tasks']);
   for (const machine of [specSteps, designSteps]) {
     assert.equal(machine.STAGE_FILES[machine.STEPS[0]], 'none');
     assert.equal(machine.firstFiled().stage, 'research');
@@ -256,9 +258,9 @@ test('the step libraries are delivered by pointer and the overview is a continua
     assert.ok(registry.has(machine.machineId));
   }
   assert.equal(designSteps.STAGE_FILES.overview, undefined);
-  assert.match(read('sai/commands/design/steps/overview.md'), /It is not a step of the `design-steps@1` machine/);
-  assert.doesNotMatch(read('sai/commands/design/steps/overview.md'), /continue_after_recovery|failure_class|progress event/);
-  for (const file of STEPS.filter(file => /\/steps\/(?:research|proposal|specs|validation|design|tasks|interfaces)\.md$/.test(file))) {
+  assert.equal(exists('sai/commands/design/steps/overview.md'), false);
+  assert.equal(exists('sai/commands/design/steps/interfaces.md'), false);
+  for (const file of STEPS.filter(file => /\/steps\/(?:research|proposal|specs|validation|design|tasks)\.md$/.test(file))) {
     assert.doesNotMatch(read(file), /progress event/i, `${file} reports steps, not progress events`);
   }
 });
@@ -359,8 +361,8 @@ test('the implement-run machine keeps its behavior over the same core', () => {
 test('the spec, design, and plan commands hold a coordinator profile that can edit, commit, and delegate to their workers only', () => {
   const delegates = {
     'sai-1-spec': ['executor', 'explorer', 'sai-1-spec-proposal-worker'],
-    'sai-2-design': ['executor', 'explorer', 'sai-2-design-worker'],
-    'sai-plan': ['executor', 'explorer', 'sai-1-spec-proposal-worker', 'sai-2-design-worker'],
+    'sai-2-design': ['executor', 'explorer', 'sai-2-design-worker', 'sai-2-red-worker'],
+    'sai-plan': ['executor', 'explorer', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-2-red-worker'],
   };
   const profiles = { 'sai-1-spec': 'spec-command', 'sai-2-design': 'design-command', 'sai-plan': 'plan-command' };
   for (const [command, profile] of Object.entries(profiles)) {
@@ -437,7 +439,7 @@ test('the shared policies lose only their Plan branches', () => {
   }
   assert.doesNotMatch(selector, /diagnosis_rounds = \{ spec/);
   assert.doesNotMatch(selector, /Plan Diagnosis Round|Diagnosis Round/);
-  for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change', 'overview_language']) {
+  for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change']) {
     assert.ok(selector.includes(kept), `pipeline-selector.md keeps ${kept}`);
   }
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`attempts`, one budget of 3 per step/);

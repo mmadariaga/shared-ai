@@ -56,4 +56,4 @@ The full SAI workflow can be overkill for small changes.
   # derivable artifacts (proposal.md, specs/**, and .openspec.yaml).
   ```
 
-  Backfill does **not** generate `design.md`, `tasks.md`, or `interfaces.md` — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.
+  Backfill does **not** generate `design.md`, `tasks.md`, or the plan tests — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.

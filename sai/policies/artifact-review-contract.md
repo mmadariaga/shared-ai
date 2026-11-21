@@ -4,7 +4,7 @@ The single source of the artifact review finding format: severity, finding shape
 
 ## Scope
 
-**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and `interfaces.md` for sai-2. Two surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine and the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, and `/sai-plan`).
+**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and the plan tests and stubs the plan RED writes for sai-2. Two surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine and the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, and `/sai-plan`).
 
 The audit commands `sai-4-review`, `sai-5-security`, `sai-6-performance`, and `sai-7-accessibility` keep their own severity vocabularies and identifier schemes and never emit this contract's `Summary:` tally.
 
@@ -18,7 +18,7 @@ Every finding carries exactly one severity from the closed set `High`, `Medium`,
 
 ## Scope observations
 
-The **approved scope** is what the reviewed artifacts were asked to deliver: for `proposal.md` and `specs/**`, what the `Ready to Propose` block asks for; for `design.md`, `tasks.md`, and `interfaces.md`, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its `Ready to Propose` block asks for.
+The **approved scope** is what the reviewed artifacts were asked to deliver: for `proposal.md` and `specs/**`, what the `Ready to Propose` block asks for; for `design.md`, `tasks.md`, and the plan tests and stubs, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its `Ready to Propose` block asks for.
 
 A **scope observation** is a true observation whose fix requires behavior the approved scope does not ask for. Classify every observation against the approved scope before assigning a severity:
 

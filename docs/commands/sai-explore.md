@@ -6,7 +6,7 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
+- `--overview-lang` no longer exists: passing it ends the run with an unknown-option error.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 
 ## In detail
@@ -98,11 +98,8 @@ answer continues to implementation.
 Round 2: the exact publication approval (it is not presented when the
 backlog answer skips publication or the publication needs no approval). Round 3: the
 route; for several pending slices, whether later Direct Build slices start
-automatically (ignored unless you choose Direct Build); when unresolved, whether to
-create `change-overview.md` and in which language (applies only to Plan); and,
-when you chose to create a branch, its base. An explicit overview language, a
-previously resolved answer, or a project setting answers the overview question in
-advance. The base question is asked once per crystallized set, in the first
+automatically (ignored unless you choose Direct Build); and, when you chose to create a
+branch, its base. The base question is asked once per crystallized set, in the first
 round 3, immediately before the publication question; it shows the first page of
 the suggested bases (three bases plus `More` when there are more than four), and
 `More` shows the next page inside the same round. Round 3 also asks once per

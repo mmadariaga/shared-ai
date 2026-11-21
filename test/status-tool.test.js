@@ -173,109 +173,16 @@ test('E2b: unreadable .openspec.yaml throws ToolError with exit code 2', () => {
   }
 });
 
-test('E3a: overview conjunction - present when state current AND file done', () => {
+test('E3: the retired overview cell is gone from the derivation, whatever the YAML holds', () => {
   const statuses = {
-    'change-overview': { present: true, status: 'done' },
-    specs: { present: true },
-    design: { present: true },
-    tasks: { present: true },
-    proposal: { present: true },
-    interfaces: { present: true },
-    review: { present: true },
-    security: { present: true },
-    performance: { present: true },
-    accessibility: { present: true },
+    specs: { present: true }, design: { present: true }, tasks: { present: true }, proposal: { present: true },
+    review: { present: true }, security: { present: true }, performance: { present: true }, accessibility: { present: true },
   };
-  const yaml = { overview_state: 'current', backfilled: false, approval_specs_approved_at: '2024-01-01' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yaml, auditFlags, '');
-  assert.equal(result.overviewCell, '●');
-});
-
-test('E3b: overview conjunction - problem state stale', () => {
-  const statuses = {
-    'change-overview': { present: true, status: 'done' },
-    specs: { present: true },
-    design: { present: true },
-    tasks: { present: true },
-    proposal: { present: true },
-    interfaces: { present: true },
-    review: { present: true },
-    security: { present: true },
-    performance: { present: true },
-    accessibility: { present: true },
-  };
-  const yaml = { overview_state: 'stale', backfilled: false };
-  const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yaml, auditFlags, '');
-  assert.equal(result.overviewCell, '!');
-});
-
-test('E3c: overview conjunction - problem state current but file absent', () => {
-  const statuses = {
-    'change-overview': { present: false, status: 'blocked' },
-    specs: { present: true },
-    design: { present: true },
-    tasks: { present: true },
-    proposal: { present: true },
-    interfaces: { present: true },
-    review: { present: true },
-    security: { present: true },
-    performance: { present: true },
-    accessibility: { present: true },
-  };
-  const yaml = { overview_state: 'current', backfilled: false };
-  const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yaml, auditFlags, '');
-  assert.equal(result.overviewCell, '!');
-});
-
-test('E3d: overview conjunction - expected unmaterialized state', () => {
-  const statuses = {
-    'change-overview': { present: false, status: 'blocked' },
-    specs: { present: true },
-    design: { present: false },
-    tasks: { present: false },
-    proposal: { present: true },
-    interfaces: { present: false },
-    review: { present: false },
-    security: { present: false },
-    performance: { present: false },
-    accessibility: { present: false },
-  };
-  const yaml = { overview_state: 'unmaterialized', backfilled: false };
-  const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yaml, auditFlags, '');
-  assert.equal(result.overviewCell, '·');
-});
-
-test('E4: backfilled:true renders overview cell as N/A', () => {
-  const statuses = {
-    'change-overview': { present: false },
-    specs: { present: true },
-    design: { present: true },
-    tasks: { present: true },
-    proposal: { present: true },
-    interfaces: { present: true },
-    review: { present: true },
-    security: { present: true },
-    performance: { present: true },
-    accessibility: { present: true },
-  };
-  const yamlBackfilled = { backfilled: true };
-  const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yamlBackfilled, auditFlags, '');
-  assert.equal(result.overviewCell, 'N/A');
-
-  // Also test backfilled false doesn't force N/A
-  const yamlNotBackfilled = { backfilled: false, overview_state: 'unmaterialized' };
-  const result2 = derivePanelCells(statuses, yamlNotBackfilled, auditFlags, '');
-  assert.equal(result2.overviewCell, '·');
+  const result = derivePanelCells(statuses, { overview_state: 'stale', backfilled: false }, auditFlags, '');
+  assert.equal('overviewCell' in result, false);
+  assert.equal('interfaces' in result.cells, false);
+  assert.equal('change-overview' in result.cells, false);
 });
 
 test('E5: exact "## Not Applicable" heading match is case-sensitive', () => {
@@ -300,25 +207,13 @@ test('E5: exact "## Not Applicable" heading match is case-sensitive', () => {
   }
 });
 
-test('E6: absent interfaces renders as absent with no warning', () => {
+test('E6: the panel lists the eight artifact ids in order', () => {
   const statuses = {
-    interfaces: { present: false },
-    'change-overview': { present: false },
-    specs: { present: true },
-    design: { present: true },
-    tasks: { present: true },
-    proposal: { present: true },
-    review: { present: true },
-    security: { present: true },
-    performance: { present: true },
-    accessibility: { present: true },
+    specs: { present: true }, design: { present: true }, tasks: { present: true }, proposal: { present: true },
+    review: { present: true }, security: { present: true }, performance: { present: true }, accessibility: { present: true },
   };
-  const yaml = { backfilled: false };
-  const auditFlags = { review: false, security: false, performance: false, accessibility: false };
-
-  const result = derivePanelCells(statuses, yaml, auditFlags, '');
-  assert.equal(result.cells.interfaces, '·');
-  assert.ok(!result.cells.interfaces.includes('!'), 'absent interfaces should not have warning marker');
+  const result = derivePanelCells(statuses, { backfilled: false }, { review: false, security: false, performance: false, accessibility: false }, '');
+  assert.deepEqual(Object.keys(result.cells), ['proposal', 'specs', 'design', 'tasks', 'review', 'security', 'performance', 'accessibility']);
 });
 
 test('E7: tasks.md absent leaves progress empty, present counts checkboxes', () => {

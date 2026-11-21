@@ -307,8 +307,8 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
   const applyNames = ['sai-3-red-worker', 'sai-3-green-worker',
     'sai-direct-build-worker', 'sai-4-review-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 16],
-    ['opencode', flow.installOpencode, enumerateOpencode, 16],
+    ['claude', flow.installClaude, enumerateClaude, 17],
+    ['opencode', flow.installOpencode, enumerateOpencode, 17],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {

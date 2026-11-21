@@ -29,14 +29,14 @@ The file is JSON with comments and trailing commas allowed. Setting ids are dott
 | `pr.publishAfterRun` | `ask`, `yes`, or `no`; an absent key means `ask` | `/sai-plan` and `/sai-build` publication question, and the `/sai-explore` round-3 publication question (see [Plan publication answer](#plan-publication-answer)) |
 | `publication.autoApprove` | `true` or `false`; an absent key means `false`; see [Publication auto-approval](#publication-auto-approval) | `/to-pr`, `/to-backlog`, and the round-2 publication approval of `/sai-explore`, on Claude Code and opencode |
 | `explore.readyToProposeLanguage` | A language name, preferably its endonym (`Español`), or `English` | `/sai-explore` crystallization language gate |
-| `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` for no overview | `/sai-explore` overview-language question in round 3 of the route round (applied only for Plan - Unattended) |
+| `explore.overviewLanguage` | A language name, preferably its endonym, `English`, or `none` | Nothing: the change overview retired, so no command reads it. It stays valid so that an existing settings file keeps loading. |
 | `explore.chatPublicLanguage` | A language name, preferably its endonym, or `English` | `/sai-explore` chat language, from the first message after the load |
 | `warming` | An object with `defaults` and `rules`, or one block per harness (`claude`, `opencode`) with that shape and a global fallback; see [Cache warming](#cache-warming) | Every SAI agent that keeps its prompt cache warm (`sai/policies/cache-warming.md`) |
 | `experimental.changeTelemetry` | `true` or `false`; see [Change telemetry](#change-telemetry) | `/sai-plan`, `/sai-build`, and the `/sai-explore` in-session routes, on Claude Code and opencode |
 
-All three `explore.*` ids and `pr.language` accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.overviewLanguage`, `none` selects no overview. In `explore.readyToProposeLanguage`, `explore.chatPublicLanguage`, and `pr.language`, `none` is invalid.
+All three `explore.*` ids and `pr.language` accept any non-empty string as the language name; the endonym is recommended and never checked. `English`, `none`, and `ask` match case-insensitively, and the tool returns `English` and `None` in canonical form. In `explore.readyToProposeLanguage`, `explore.chatPublicLanguage`, and `pr.language`, `none` is invalid.
 
-`explore.overviewLanguage` answers only the overview question that the route round asks beside the route choice, and it takes effect only when the route is Plan - Unattended. Direct Build, Manual, and standalone `/sai-2-design` ignore it. The artifact-review language question has no setting. The `**Overview language**` field of a `Ready to Propose` block shows only the `--overview-lang` value or `None`, whatever the settings hold.
+`explore.overviewLanguage` has no effect: the change overview and its language question retired, and no command reads the setting.
 
 `explore.chatPublicLanguage` is the language that `/sai-explore` uses with you. It is the same as writing "let's talk in <language>" right after the command loads, before any idea or change is discussed. It always wins over the language you write in, so the chat stays in that language until you ask for another one; without the setting, `/sai-explore` follows the language you write in. Only explanatory chat text changes: reasoning stays English, fixed literals such as STOP notices, halt messages, and picker labels stay as written, and the `Ready to Propose` block, the change overview, and every artifact keep the languages that their own settings and gates choose.
 
@@ -159,7 +159,7 @@ With `true`, a direct `/sai-plan` or `/sai-build` run on Claude Code or opencode
 - A missing key, a missing file, or `"ask"` keeps the normal question.
 - Precedence: an explicit override (an invocation flag, a direct statement in the conversation, or for `/from-backlog` the issue URL itself) beats a project setting, which beats a fast-track fixed value, which beats the normal question.
 - When a setting answers a question, the command prints one line naming the setting id and its value.
-- The explore language questions follow the same order. The crystallization language question takes the user's explicit statement, then `explore.readyToProposeLanguage`, then the normal question. The overview-language question takes `--overview-lang` or the user's explicit statement, then a value already resolved for the same crystallized set, then `explore.overviewLanguage`, then the normal question. Both read the setting only; an answer to the normal question stays in the conversation.
+- The explore language questions follow the same order. The crystallization language question takes the user's explicit statement, then `explore.readyToProposeLanguage`, then the normal question. It reads the setting only; an answer to the normal question stays in the conversation.
 - Settings answer preferences only. Authorization gates (commit authorization, publication confirmation, safe-operations confirmations, route selection) always ask. The exceptions are `pr.publishAfterRun`, whose `yes` or `no` is the answer of the publication question of `/sai-plan`, `/sai-build`, and `/sai-explore` (the authorization the run holds), and `publication.autoApprove`, a standing project grant that removes the approval question of `/to-pr` and `/to-backlog` (see [Publication auto-approval](#publication-auto-approval)).
 
 `/from-backlog` resolves a bare `N` or `#N` in `backlog.provider`: GitLab and GitHub against the repository of the Git remotes, Azure DevOps against `backlog.organization` and `backlog.project` when both are set, otherwise against its existing context. Without the setting a bare reference keeps its current resolution. A full URL that matches a provider positively keeps that provider, and the command prints a line saying that the setting was overridden. Among providers that accept a URL only as a fallback, the setting breaks the tie. When the setting names a provider that does not accept the reference, the command stops with `provider-destination-conflict`.
@@ -219,7 +219,7 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 Run `npx --allow-git=all github:mmadariaga/shared-ai setup`. When `setup` finishes in an interactive terminal, the `Post-setup customization:` menu lists these entries, in this order:
 
 - **Model customization**: opens a submenu with `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`; see [Model customization](models.md). When an action finishes or is cancelled, the menu returns to the main menu.
-- **Language settings**: opens a submenu with `Ready to Propose language`, `Change overview language`, `Chat language`, and `PR/MR language`.
+- **Language settings**: opens a submenu with `Ready to Propose language`, `Chat language`, and `PR/MR language`.
 - **Backlog and PR settings**: opens a submenu with `Backlog provider`, `Pull requests provider`, and `Auto-approve publication`.
 - **Telemetry: on|off**: a value row that opens the `On`/`Off` picker and returns to the main menu with the new value.
 - **Cache warming**: opens the [cache warming screen](#cache-warming-screen); leaving it returns to the main menu.
@@ -228,7 +228,6 @@ Run `npx --allow-git=all github:mmadariaga/shared-ai setup`. When `setup` finish
 Each submenu row shows `<label>: <current value>`, and choosing a row opens that setting's value picker:
 
 - **Ready to Propose language** (`explore.readyToProposeLanguage`): `ask`, `English`, or a language name you type.
-- **Change overview language** (`explore.overviewLanguage`): `ask`, `English`, `none`, or a language name you type.
 - **Chat language** (`explore.chatPublicLanguage`): `follow my language`, `English`, or a language name you type. `follow my language` removes the key from the file that holds it.
 - **PR/MR language** (`pr.language`): `English` or a language name you type. `English` removes the key from the file that holds it, because an absent key reads as `English`.
 - **Backlog provider** (`backlog.provider`): `ask` or a provider id from the provider registries.

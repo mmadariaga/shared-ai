@@ -49,6 +49,7 @@ rather than treating model families and effort levels as one ordered scale.
       WORKER        sai-1-spec-proposal-worker   Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
       ORCHESTRATOR  sai-2-design                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-2-design-worker          Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
+      WORKER        sai-2-red-worker             Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
       ORCHESTRATOR  sai-plan                     Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
 
       ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)

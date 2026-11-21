@@ -32,7 +32,7 @@ function pathExists(target) {
 
 /**
  * Read .openspec.yaml and extract key values by regex.
- * Returns object with: approval_specs_approved_at, overview_state, backfilled,
+ * Returns object with: approval_specs_approved_at, backfilled,
  * backlog_origin, explore_origin (the origin session ids of either harness, bare, a flat flow list)
  * Returns null if file doesn't exist.
  * Throws ToolError if file is unreadable.
@@ -51,7 +51,6 @@ function readOpenspecYaml(yamlPath) {
 
   const result = {
     approval_specs_approved_at: null,
-    overview_state: null,
     backfilled: false,
     backlog_origin: null,
     explore_origin: [],
@@ -66,15 +65,6 @@ function readOpenspecYaml(yamlPath) {
   }
   if (approvalMatch && approvalMatch[1].trim()) {
     result.approval_specs_approved_at = approvalMatch[1].trim();
-  }
-
-  // Extract overview.state - look for nested or dotted form
-  let overviewMatch = content.match(/^\s*overview:\s*\n\s*state:\s*(\S+)/m);
-  if (!overviewMatch) {
-    overviewMatch = content.match(/overview\.state:\s*(\S+)/m);
-  }
-  if (overviewMatch) {
-    result.overview_state = overviewMatch[1];
   }
 
   // Extract backfilled flag

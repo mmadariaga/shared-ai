@@ -1,6 +1,6 @@
 # Implement worker common
 
-Rules shared by the RED and GREEN workers of `/sai-3-implement`. The coordinator that dispatches you owns the plan, the tests' verdict, and git.
+Rules shared by the plan RED worker of `/sai-2-design` and by the fix RED and GREEN workers of `/sai-3-implement`. The coordinator that dispatches you owns the plan, the tests' verdict, and git.
 
 Fetch `@sai/policies/remember.md`
 Fetch `@sai/policies/repository-artifact-scope.md` and use it as the shared protected-surface rule. Your role's allowed files below are narrower and prevail.
@@ -45,7 +45,7 @@ notes: string
 
 A `needs_input` report adds `question` and `options` (`{label, value}` items) after `notes`, shaped per `@sai/policies/question-context.md`.
 
-- `status`: `completed` when the step's work is done. `needs_input` when only the coordinator can settle a decision the step depends on (the brief and the interfaces contradict each other, a behavior cannot be tested or implemented without a change outside your allowed files): the coordinator answers from the change's artifacts or the repository and continues you with the answer. `failed` when you cannot finish the step for another reason. `cancelled` only when the coordinator's message tells you to abandon the step. No other value is valid, and `done` and `blocked` are retired.
+- `status`: `completed` when the step's work is done. `needs_input` when only the coordinator can settle a decision the step depends on (the brief and the plan contradict each other, a behavior cannot be tested or implemented without a change outside your allowed files): the coordinator answers from the change's artifacts or the repository and continues you with the answer. `failed` when you cannot finish the step for another reason. `cancelled` only when the coordinator's message tells you to abandon the step. No other value is valid, and `done` and `blocked` are retired.
 - `summary`: at most three plain sentences. For `needs_input` and `failed`, name the obstacle, the affected path, and why your allowed files cannot absorb the fix.
 - `changed_files`: every repo-relative path you created, modified, or removed in this step, scratch and the report file excluded. An empty list is valid.
 - `test_command`: RED gives the exact command that runs only this step's tests. GREEN repeats the command from the brief.
@@ -54,6 +54,6 @@ A `needs_input` report adds `question` and `options` (`{label, value}` items) af
 ## Boundaries
 
 - Run no git command that changes the repository, and create no commit.
-- Leave `tasks.md`, `interfaces.md`, `proposal.md`, `design.md`, `specs/`, the audit reports (`review.md`, `security.md`, `performance.md`, `accessibility.md`), every checkbox, and every fixed mark to the coordinator.
+- Leave `tasks.md`, `proposal.md`, `design.md`, `specs/`, the audit reports (`review.md`, `security.md`, `performance.md`, `accessibility.md`), every checkbox, and every fixed mark to the coordinator.
 - Run no `openspec` command and dispatch no subagent.
 - Scratch, the report draft included, lives in the run directory the brief names, outside the repository; list no scratch path in `changed_files`. The saved report in the report directory is your only other write outside the repository.

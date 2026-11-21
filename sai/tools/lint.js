@@ -21,7 +21,6 @@
  *                                        report keeps its template structure, its audit's severity
  *                                        subset and Summary form, and a tally matching its findings.
  *   sai-learnings-format <file>          Check that SAI_LEARNINGS.md follows learnings format.
- *   step-contract <file>                 Check that interfaces.md follows step contract format.
  *   worker-emission-ownership <file>     Check that a worker card does not reference emit or sai-state.
  *
  * Usage:
@@ -32,7 +31,6 @@
  *   node sai/tools/lint.js artifact-review <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js audit-report <file> --audit <security|performance|accessibility> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js sai-learnings-format <file> [--json] [--cwd <dir>]
- *   node sai/tools/lint.js step-contract <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js worker-emission-ownership <file> [--json] [--cwd <dir>]
  *
  * Exit codes: 0 = all checks pass; 1 = findings found (report on stdout);
@@ -697,86 +695,6 @@ function checkPrTitleRules(title) {
 }
 
 /**
- * Check step contract format (interfaces.md).
- * Validates per sai/policies/step-contract-format.md:
- *   - Section heading format: ## Step N: <title>
- *   - Must have exactly two fields: **Interfaces**: and **Test assertions**:
- *   - Omission rule and sentinel format
- */
-function checkStepContract(content) {
-  const lines = content.split('\n');
-  const violations = [];
-
-  // Check for sentinel: "None — no step contracts"
-  const hasSentinel = content.includes('None — no step contracts');
-  if (hasSentinel) {
-    // If sentinel is present, file should only contain that
-    const trimmed = content.trim();
-    if (!trimmed.startsWith('None — no step contracts')) {
-      violations.push({
-        file: 'interfaces.md',
-        line: 1,
-        problem: 'INVALID_SENTINEL_POSITION',
-        detail: 'sentinel "None — no step contracts" must be the sole content when used',
-      });
-    }
-    return violations;
-  }
-
-  // Check for Step N sections
-  let foundSteps = false;
-  const stepPattern = /^## Step (\d+):/;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const match = line.match(stepPattern);
-
-    if (match) {
-      foundSteps = true;
-      // Check for required fields: **Interfaces**: and **Test assertions**:
-      let hasInterfaces = false;
-      let hasTestAssertions = false;
-
-      for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].startsWith('## Step ')) break; // Next step
-        if (lines[j].startsWith('**Interfaces**:')) hasInterfaces = true;
-        if (lines[j].startsWith('**Test assertions**:')) hasTestAssertions = true;
-      }
-
-      if (!hasInterfaces) {
-        violations.push({
-          file: 'interfaces.md',
-          line: i + 1,
-          problem: 'MISSING_INTERFACES_FIELD',
-          detail: 'Step section must have **Interfaces**: field',
-        });
-      }
-
-      if (!hasTestAssertions) {
-        violations.push({
-          file: 'interfaces.md',
-          line: i + 1,
-          problem: 'MISSING_TEST_ASSERTIONS_FIELD',
-          detail: 'Step section must have **Test assertions**: field',
-        });
-      }
-    }
-  }
-
-  // If file has content but no steps and no sentinel, it's invalid
-  if (!foundSteps && content.trim() !== '') {
-    violations.push({
-      file: 'interfaces.md',
-      line: 1,
-      problem: 'NO_STEP_SECTIONS',
-      detail: 'file must contain Step N sections or the sentinel "None — no step contracts"',
-    });
-  }
-
-  return violations;
-}
-
-/**
  * Check worker emission ownership.
  * Validates the emission-ownership rule (only coordinator cards emit to a stage machine):
  *   - Worker cards must not reference the stage machine emission surface
@@ -877,7 +795,6 @@ function usage() {
     '                      - artifact-review: Validate artifact review finding format',
     '                      - audit-report: Validate a security, performance, or accessibility report (needs --audit)',
     '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
-    '                      - step-contract: Validate interfaces.md step contract format',
     '                      - worker-emission-ownership: Validate worker card emission ownership',
     '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
     '  --json              Emit the report as JSON on stdout',
@@ -991,9 +908,6 @@ function main(argv) {
       case 'sai-learnings-format':
         violations = checkSaiLearningsFormat(content);
         break;
-      case 'step-contract':
-        violations = checkStepContract(content);
-        break;
       case 'worker-emission-ownership':
         violations = checkWorkerEmissionOwnership(content, opts.file);
         break;
@@ -1037,7 +951,6 @@ module.exports = {
   checkArtifactReview,
   checkAuditReport,
   checkSaiLearningsFormat,
-  checkStepContract,
   checkWorkerEmissionOwnership,
   ToolError,
 };

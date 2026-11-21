@@ -130,7 +130,7 @@ test('the worker matrix has no routed binding template: every binding renders fr
   assert.doesNotMatch(read('bin/worker-matrix.js'), /STANDALONE_PHASES|claudeBinding|opencodeBinding|panelRenderBinding/);
   for (const harness of ['claude', 'opencode']) {
     const bindings = matrixRenderFor(manifest, harness, repoRoot).filter(item => item.kind === 'binding');
-    assert.equal(bindings.length, 13, `${harness} renders thirteen bindings`);
+    assert.equal(bindings.length, 14, `${harness} renders fourteen bindings`);
     for (const binding of bindings) {
       assert.match(binding.text, /Create the worker with the ready prompt alone/, `${harness} ${binding.phase} renders from the standalone template`);
       assert.doesNotMatch(binding.text, /replacement_reconstruction_fields|continue_after_|panel-render/, `${harness} ${binding.phase} carries no routed binding text`);

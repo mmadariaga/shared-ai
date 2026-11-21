@@ -157,35 +157,6 @@ test('Step 2 both harness design bindings fetch the identical neutral design wor
   }
 });
 
-test('Step 2 the shared contract and template preserve the same five-field contract; the schema instruction does not restate it', () => {
-  const fiveFields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
-
-  // The shared generation contract carries the closed five-field envelope.
-  const instruction = artifact('sai/commands/design/change-overview.md');
-  for (const field of fiveFields) {
-    assert.match(instruction, new RegExp('`' + field + '`'),
-      `sai/commands/design/change-overview.md should preserve the ${field} field`);
-  }
-
-  // The schema change-overview instruction is an informative reference only and
-  // MUST NOT restate the five-field envelope.
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
-  assert.match(schema, /sai\/commands\/design\/change-overview\.md/);
-  const overviewInstruction = schema.slice(
-    schema.indexOf('id: change-overview'),
-    schema.indexOf('id: review'),
-  );
-  for (const field of fiveFields) {
-    assert.doesNotMatch(overviewInstruction, new RegExp('`' + field + '`'),
-      `schema change-overview instruction must not restate the ${field} field`);
-  }
-
-  // The change-overview template continues to reference the five-field contract.
-  const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
-  assert.match(template, /five generator fields|five[\s\S]{0,20}fields?/,
-    'the change-overview template should preserve the same five-field contract reference');
-});
-
 // ─── specs/design-planning-worker/spec.md ──────────────────────────────────
 
 test('design planning worker spec covers fast-track, prerequisites, and change resolution', () => {
@@ -535,7 +506,6 @@ test('design install overwrites divergent numbered destination content with noti
 test('Target State contract lives in the design instruction and design template', () => {
   const instruction = artifact('sai/commands/design/steps/design.md');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
-  const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
   for (const heading of ['### File Manifest']) {
     assert.match(instruction, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
@@ -551,18 +521,17 @@ test('Target State contract lives in the design instruction and design template'
 
   for (const text of [designTemplate]) {
     const targetStateIndex = text.indexOf('## Target State');
-    const contextIndex = text.indexOf('## Context');
+    const contextIndex = text.indexOf('## Decisions');
     assert.ok(targetStateIndex !== -1, 'design surface should contain ## Target State');
-    assert.ok(contextIndex !== -1, 'design surface should contain ## Context');
+    assert.ok(contextIndex !== -1, 'design surface should contain ## Decisions');
     assert.ok(targetStateIndex < contextIndex,
       '## Target State should be placed before other top-level design sections');
   }
   assert.ok(instruction.indexOf('## Target State') < instruction.indexOf('### File Manifest'),
     'the design step should deliver Target State before its nested sections');
 
-  assert.doesNotMatch(interfacesTemplate, /## Target State/);
-  assert.doesNotMatch(interfacesTemplate, /### Architecture Snapshot/);
-  assert.doesNotMatch(interfacesTemplate, /### File Manifest/);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'openspec/schemas/sai-workflow/templates/interfaces.md')), false, 'the interfaces template retired');
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'openspec/schemas/sai-workflow/templates/change-overview.md')), false, 'the change-overview template retired');
 });
 
 test('Claude implement declares its execution capabilities and panel tools explicitly', () => {
@@ -732,7 +701,6 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
 const DESIGN_ARTIFACT_POINTERS = [
   { id: 'design', anchor: '## Generate design.md' },
   { id: 'tasks', anchor: '## Generate tasks.md' },
-  { id: 'interfaces', anchor: '## Generate interfaces.md' },
 ];
 
 const DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS = [
@@ -752,7 +720,6 @@ const DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS = [
 const PRE_CHANGE_DESIGN_GRAPH = Object.freeze({
   design: { generates: 'design.md', requires: ['proposal', 'specs'] },
   tasks: { generates: 'tasks.md', requires: ['specs', 'design'] },
-  interfaces: { generates: 'interfaces.md', requires: ['tasks'] },
   apply: { requires: ['tasks'], tracks: ['tasks.md'] },
 });
 
@@ -885,7 +852,7 @@ test('design artifact schema preserves the fixed pre-change graph baseline and d
   assert.doesNotMatch(description, /Endpoint Map/,
     'the design description should not advertise Endpoint Map');
 
-  for (const id of ['design', 'tasks', 'interfaces']) {
+  for (const id of ['design', 'tasks']) {
     const entry = schemaEntryForContract(schema, id);
     const expected = PRE_CHANGE_DESIGN_GRAPH[id];
     assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,
@@ -916,11 +883,6 @@ const DESIGN_SKELETON_TEMPLATES = [
     path: 'openspec/schemas/sai-workflow/templates/tasks.md',
     anchor: '## Generate tasks.md',
   },
-  {
-    id: 'interfaces',
-    path: 'openspec/schemas/sai-workflow/templates/interfaces.md',
-    anchor: '## Generate interfaces.md',
-  },
 ];
 
 const designStepAuthority = id => `sai/commands/design/steps/${id}.md`;
@@ -936,21 +898,18 @@ const DESIGN_SKELETON_FORBIDDEN = [
 
 const DESIGN_TOP_LEVEL_SKELETON = [
   '## Target State',
-  '## Context',
-  '## Goals / Non-Goals',
   '## Decisions',
   '## Risks / Trade-offs',
-  '## Migration Plan',
   '## Open Questions',
-  '## Manual Verification',
 ];
 
 const TASKS_SKELETON_MARKERS = [
   '**Routing**',
   '**Files Affected**',
   '**What Will Be Done**',
-  '**Testing Strategy**',
+  '**Tests**',
   '**Existing Tests Broken**',
+  '**Test Command**',
   '## Required Documentation',
   '### Spec files',
   '### Local files',
@@ -978,7 +937,6 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   );
   const design = templates.design;
   const tasks = templates.tasks;
-  const interfaces = templates.interfaces;
 
   assertSkeletonOrder(design, DESIGN_TOP_LEVEL_SKELETON, 'design.md');
 
@@ -1013,13 +971,6 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
     'tasks.md instruction Local files section must not contain "use line ranges" instruction');
 
-  assert.match(interfaces, /^\*\*Interfaces\*\*/m,
-    'interfaces.md must contain the **Interfaces** marker');
-  assert.match(interfaces, /^\*\*Test assertions\*\*/m,
-    'interfaces.md must contain the **Test assertions** marker');
-  assert.match(interfaces, /^## Step (?:N|\d+)(?:\b|\s|:|—|-)/m,
-    'interfaces.md must contain a ## Step N heading');
-
   for (const { id, anchor } of DESIGN_SKELETON_TEMPLATES) {
     const template = templates[id];
     assert.equal(countSkeletonLiteral(template, designStepAuthority(id)), 1,
@@ -1051,21 +1002,6 @@ test('the live design step carries no Architecture Snapshot and keeps the File M
   assert.match(instructions, /None — no files affected/);
 });
 
-test('overview excludes Architecture Snapshot and its complete subtree', () => {
-  const overview = artifact('sai/commands/design/change-overview.md');
-
-  assert.match(overview, /Exclude sections named `Architecture Snapshot`[\s\S]*with their complete subtrees/);
-  assert.doesNotMatch(overview, /#### External Surfaces|#### Internal Public Surfaces/);
-});
-
-test('overview wrappers and source headings stay English while explanatory prose translates', () => {
-  const overview = artifact('sai/commands/design/change-overview.md');
-
-  assert.match(overview, /overview_language/);
-  assert.match(overview, /Keep source headings and labels verbatim in English; use English structural wrappers/);
-  assert.match(overview, /translate only natural-language explanatory prose/);
-});
-
 test('design templates keep exactly the File Manifest sibling under Target State and no nested boundary headings', () => {
   const design = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const targetStateStart = design.indexOf('## Target State');
@@ -1087,7 +1023,7 @@ test('Step 5: schema keeps the pre-change design graph and does not advertise En
   assert.doesNotMatch(schema, /Endpoint Map/,
     'schema.yaml must not advertise Endpoint Map');
 
-  for (const id of ['design', 'tasks', 'interfaces']) {
+  for (const id of ['design', 'tasks']) {
     const entry = schemaEntryForContract(schema, id);
     const expected = PRE_CHANGE_DESIGN_GRAPH[id];
     assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,

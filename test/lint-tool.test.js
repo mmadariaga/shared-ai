@@ -788,73 +788,12 @@ Description.
 // step-contract checks
 // ============================================================================
 
-test('lint.js step-contract: valid step contract passes', () => {
+test('lint.js step-contract retired: the check is an unknown selection', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
-    const testFile = path.join(tmpdir, 'interfaces.md');
-    const contract = `## Step 1: Setup environment
-
-**Interfaces**: function setupEnv(): void
-
-**Test assertions**: setupEnv() sets NODE_ENV=test
-
-## Step 2: Initialize database
-
-**Interfaces**: class Database { constructor(config); connect(): Promise }
-
-**Test assertions**: Database(config).connect() resolves when connection succeeds
-`;
-    fs.writeFileSync(testFile, contract);
+    fs.writeFileSync(path.join(tmpdir, 'interfaces.md'), '## Step 1: Setup\n');
     const result = tool(['step-contract', 'interfaces.md'], tmpdir);
-    assert.equal(result.status, 0);
-    assert.match(result.stdout, /check passed/);
-  } finally {
-    fs.rmSync(tmpdir, { recursive: true });
-  }
-});
-
-test('lint.js step-contract: sentinel format passes', () => {
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
-  try {
-    const testFile = path.join(tmpdir, 'interfaces.md');
-    fs.writeFileSync(testFile, 'None — no step contracts');
-    const result = tool(['step-contract', 'interfaces.md'], tmpdir);
-    assert.equal(result.status, 0);
-    assert.match(result.stdout, /check passed/);
-  } finally {
-    fs.rmSync(tmpdir, { recursive: true });
-  }
-});
-
-test('lint.js step-contract: missing Interfaces field fails', () => {
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
-  try {
-    const testFile = path.join(tmpdir, 'interfaces.md');
-    const contract = `## Step 1: Setup
-
-**Test assertions**: test passes
-`;
-    fs.writeFileSync(testFile, contract);
-    const result = tool(['step-contract', 'interfaces.md'], tmpdir);
-    assert.equal(result.status, 1);
-    assert.match(result.stdout, /MISSING_INTERFACES_FIELD/);
-  } finally {
-    fs.rmSync(tmpdir, { recursive: true });
-  }
-});
-
-test('lint.js step-contract: missing Test assertions field fails', () => {
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
-  try {
-    const testFile = path.join(tmpdir, 'interfaces.md');
-    const contract = `## Step 1: Setup
-
-**Interfaces**: function setup(): void
-`;
-    fs.writeFileSync(testFile, contract);
-    const result = tool(['step-contract', 'interfaces.md'], tmpdir);
-    assert.equal(result.status, 1);
-    assert.match(result.stdout, /MISSING_TEST_ASSERTIONS_FIELD/);
+    assert.notEqual(result.status, 0);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }

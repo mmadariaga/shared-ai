@@ -103,8 +103,8 @@ test('the manifest retires every removed or renamed wrapper and agent for both h
   }
   const active = new Set(manifest.projections.map(projection => `${projection.destination.class}/${projection.destination.path}`));
   assert.equal(active.has('commands/sai-build.md') || manifest['worker-matrix'].entries.length > 0, true);
-  assert.deepEqual(manifest['worker-matrix'].entries.map(entry => entry.workerName).slice(-4),
-    ['sai-direct-build-worker', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker']);
+  assert.deepEqual(manifest['worker-matrix'].entries.map(entry => entry.workerName).slice(-5),
+    ['sai-direct-build-worker', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker', 'sai-2-red-worker']);
 });
 
 test('the sai-workflow schema no longer carries implementation.md', () => {
@@ -116,11 +116,11 @@ test('the sai-workflow schema no longer carries implementation.md', () => {
     const entry = schema.slice(schema.indexOf(`  - id: ${audit}\n`)).split(/\n  - id: |\napply:/)[0];
     assert.match(entry, /requires: \[\]/, `${audit} no longer requires implementation`);
   }
-  assert.match(schema, /^description: .*interfaces → review → audits$/m);
+  assert.match(schema, /^description: .*tasks → review → audits$/m);
 });
 
 test('sai-status routes by the checked tasks of tasks.md and never reads implementation.md', () => {
-  const statuses = Object.fromEntries(['proposal', 'specs', 'design', 'tasks', 'interfaces', 'change-overview']
+  const statuses = Object.fromEntries(['proposal', 'specs', 'design', 'tasks']
     .map(name => [name, { present: true }]));
   Object.assign(statuses, Object.fromEntries(['review', 'security', 'performance', 'accessibility']
     .map(name => [name, { present: false }])));
@@ -211,7 +211,7 @@ test('tasks.md is the progress tracker: design writes a checkbox per step and st
     assert.equal(countTaskProgress(file), '0/2');
     fs.writeFileSync(file, body('x'));
     assert.equal(countTaskProgress(file), '2/2');
-    const statuses = Object.fromEntries(['proposal', 'specs', 'design', 'tasks', 'interfaces', 'change-overview']
+    const statuses = Object.fromEntries(['proposal', 'specs', 'design', 'tasks']
       .map(name => [name, { present: true }]));
     Object.assign(statuses, Object.fromEntries(['review', 'security', 'performance', 'accessibility']
       .map(name => [name, { present: false }])));

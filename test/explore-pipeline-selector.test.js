@@ -320,7 +320,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   assert.match(stageMachine, /The literal `none` is a no-file sentinel, not a path/i);
 });
 
-test('overview-language gate is deferred from crystallization until round 3 of the route round', () => {
+test('the overview-language gate retired from crystallization, the route round, and the Plan activation', () => {
   const crystallization = [
     spec('sai/commands/explore/steps/common.md'),
     spec('sai/commands/explore/steps/slicing-assessment.md'),
@@ -330,14 +330,9 @@ test('overview-language gate is deferred from crystallization until round 3 of t
   const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
   const selector = spec('sai/commands/explore/steps/route-selector.md');
 
-  assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
-  assert.match(plan, /Gate 9 at Plan \(unattended\) activation/);
-  assert.match(plan, /owned by `route-selector\.md` § Change overview question/);
-  assert.doesNotMatch(plan, /ask gate 9 on its own exactly once/, 'the Plan step points to the selector instead of restating the gate');
-  assert.match(selector, /Only when round 3 left it unresolved[\s\S]*?ask gate 9 on its own exactly once here/i);
-  assert.match(selector, /dispatch nothing until it is answered or resolves to `None` under the decline rule/i);
-  assert.match(selector, /Empty or completed crystallization sets, an ambiguous or invalid reply, and an already-active run end before this gate/i);
-  assert.match(selector, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
+  assert.doesNotMatch(crystallization, /gate 9|overview-language/i);
+  assert.doesNotMatch(plan, /Gate 9|overview/i);
+  assert.doesNotMatch(selector, /gate 9|Change overview question|overview_language|--overview-lang/i);
 });
 
 test('the spec closing line hands off to /sai-2-design and the design closing line to /sai-3-implement', () => {
@@ -512,77 +507,19 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   }
 });
 
-test('Step 1 parses an optional overview language after the silent fast-track strip and leaves absent language unresolved', () => {
+test('Step 1 rejects the retired --overview-lang option after the silent fast-track strip', () => {
   const source = spec('sai/commands/explore/body.md');
 
-  assert.match(source, /## Overview-language validation/);
-  assert.match(source, /--overview-lang <language>/);
-  assert.match(
-    source,
-    /(?:extract(?:s|ed|ing)?|consume|set)[\s\S]{0,320}(?:language value|overview[_ -]?language)|(?:language value|overview[_ -]?language)[\s\S]{0,320}(?:extract|consume|set)/i
-  );
-  assert.match(source, /non-empty/);
-  assert.match(source, /duplicate/i);
-  assert.match(source, /missing.*value|value.*missing/i);
-  assert.match(source, /(?:validation error|invalid|reject(?:s|ed|ion)?)[\s\S]{0,240}(?:duplicate|missing)|(?:duplicate|missing)[\s\S]{0,240}(?:validation error|invalid|reject)/i);
-  assert.match(source, /before.*resolution|resolution.*before/i);
+  assert.match(source, /## Retired overview option/);
+  assert.match(source, /Unknown option --overview-lang; the change overview no longer exists\./);
+  assert.match(source, /Do not resolve a change or perform any dispatch/);
   assert.match(source, /Remove the `--fast-track` token from `arguments_value`[^\n]*silently: no banner, no signal, and no behavioral effect/);
-  assert.match(
-    source,
-    /(?:absent|omitted|not provided)[\s\S]{0,220}(?:unresolved|no effective (?:overview )?language)|(?:unresolved|no effective (?:overview )?language)[\s\S]{0,220}(?:absent|omitted|not provided)/i
-  );
+  assert.doesNotMatch(source, /overview_language/);
 });
 
-test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic option sets', () => {
-  const contract = [
-    exploreContract(),
-    spec('sai/commands/explore/body.md'),
-  ].join('\n');
-  const selectorStart = contract.search(/## Change overview question/i);
-
-  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
-  const selector = contract.slice(selectorStart);
-
-  assert.match(selector, /(?:None\s*(?:â€”|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
-  assert.doesNotMatch(contract, /emitted first and carrying the `Recommended` marker/);
-  assert.doesNotMatch(contract, /emitted second, carrying no marker/);
-  assert.match(
-    selector,
-    /(?:English[\s\S]{0,120}undetermined|undetermined[\s\S]{0,120}English)[\s\S]{0,700}(?:two|2) options[\s\S]{0,700}None[\s\S]{0,400}English/i
-  );
-  assert.match(
-    selector,
-    /(?:non[- ]English|not English)[\s\S]{0,700}(?:three|3) options[\s\S]{0,700}None[\s\S]{0,400}English[\s\S]{0,500}endonym/i
-  );
-});
-
-test('Step 1 gate 9 defaults to None for noncommittal input and honors an explicit flag', () => {
-  const contract = [
-    exploreContract(),
-    spec('sai/commands/explore/body.md'),
-  ].join('\n');
-  const selectorStart = contract.search(/## Change overview question/i);
-
-  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
-  const selector = contract.slice(selectorStart);
-
-  assert.doesNotMatch(spec('sai/commands/explore/steps/route-selector.md'), /fast-track/i, 'the route selector resolves nothing from a fast-track flag');
-  assert.match(selector, /(?:declin\w*|non[- ]committal|noncommittal)[\s\S]{0,500}(?:None|do[- ]not[- ]create)/i);
-  assert.match(
-    selector,
-    /(?:explicit(?:ly)?[\s\S]{0,220}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,220}explicit)[\s\S]{0,700}(?:suppress|skip|bypass|omit|not present|does not present|without)[\s\S]{0,180}(?:gate|selector)/i
-  );
-});
-
-test('Step 1 forwards selected overview language only for Plan (unattended) and keeps None and Manual free of overview dispatch', () => {
-  const source = exploreContract();
-
-  assert.match(source, /overview_language/);
-  assert.match(source, /--overview-lang/);
-  assert.match(source, /selected.*language|language.*selected/i);
+test('Step 1 forwards no overview language to the Plan route and keeps Manual free of dispatch', () => {
   const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(plan, /--overview-lang <overview_language>/);
-  assert.match(plan, /The last line is present only when \`overview_language\` is not the literal \`None\`/);
+  assert.doesNotMatch(plan, /--overview-lang|overview_language/);
   assert.doesNotMatch(plan, /--fast-track|--supervised/, 'the plan arguments carry no fast-track or supervised marker');
 
   const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
@@ -592,32 +529,23 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
   assert.match(manual, /dispatches no worker/i);
   assert.doesNotMatch(manual, /(?:command_name|arguments_value)\s*:/i,
     'Manual must forward no dispatch envelope');
-
-  assert.match(source, /not.*persist|never.*persist/i);
-  assert.match(source, /failed\/cancelled retry|failed or cancelled retry|failed or stopped run|retry/i);
 });
 
-test('Step 1 Claude explore wrapper documents the overview-language flag and no fast-track flag (opencode commands carry no argument-hint)', () => {
+test('Step 1 Claude explore wrapper advertises neither the overview flag nor the fast-track flag (opencode commands carry no argument-hint)', () => {
   for (const relativePath of [
     'commands/claude/sai-explore.md',
   ]) {
     const source = spec(relativePath);
-    assert.match(
-      source,
-      /argument-hint:.*--overview-lang <language>/,
-      `${relativePath} should document the overview-language flag`
-    );
+    assert.doesNotMatch(source, /argument-hint:.*--overview-lang/, `${relativePath} should not advertise the retired overview flag`);
     assert.doesNotMatch(source, /argument-hint:.*--fast-track/, `${relativePath} should not advertise the ignored fast-track token`);
   }
 });
 
-test('Step 1 rejects malformed language input before dispatch', () => {
+test('Step 1 rejects --overview-lang before dispatch', () => {
   const source = exploreContract();
 
-  assert.match(source, /Missing value for --overview-lang|missing.*value.*--overview-lang/i);
-  assert.match(source, /duplicate.*--overview-lang|--overview-lang.*duplicate/i);
-  assert.match(source, /no.*resolution|before.*change.*resolution/i);
-  assert.match(source, /no.*dispatch|without.*dispatch/i);
+  assert.match(source, /Unknown option --overview-lang/);
+  assert.match(source, /Do not resolve a change or perform any dispatch/);
 });
 
 // â”€â”€â”€ Step 2: spec-design-review-progress-step (external findings and worker correction) â”€
@@ -879,7 +807,7 @@ test('the Plan route follows /sai-plan and keeps the plan family out of explore'
     assert.ok(!plan.includes(retired), `the Plan step must not mention ${retired}`);
     assert.ok(!selector.includes(retired), `the selector state must not mention ${retired}`);
   }
-  for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change', 'overview_language']) {
+  for (const kept of ['tracked_changes', 'last_crystallization_set', 'completed_changes', 'active_change']) {
     assert.ok(selector.includes(kept), `the selector state keeps ${kept}`);
   }
   assert.doesNotMatch(selector, /diagnosis_rounds = \{ spec/, 'the spec and design diagnosis counters are retired');

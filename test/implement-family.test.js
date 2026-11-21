@@ -233,7 +233,7 @@ test('RED owns tests and stubs while GREEN owns production code and never writes
   assert.match(red, /never write production logic/);
   assert.match(red, /stubs/);
   assert.match(green, /never write tests/);
-  assert.match(green, /Test files, fixtures, and `interfaces\.md` are outside your write surface/);
+  assert.match(green, /Test files, fixtures, and the stub signatures that the tests depend on are outside your write surface/);
   const common = read('sai/commands/implement/worker-common.md');
   assert.match(common, /event: ready/);
   assert.match(common, /Active step: <id> — follow <path>/);
@@ -371,7 +371,7 @@ test('the coordinator reviews each step adversarially with bounded fix rounds an
   assert.match(review, /Empirical/);
   assert.match(review, /Fetch `@sai\/policies\/artifact-review-contract\.md`/);
   assert.match(review, /scope observation/);
-  assert.match(review, /no test goes through RED first/);
+  assert.match(review, /no test, so it goes through the fix RED first/);
   assert.match(review, /Fix rounds are not attempts/);
   assert.match(review, /at most 3 fix rounds/);
   assert.match(review, /not a failure and not an obstacle, and nothing escalates/);
@@ -450,13 +450,13 @@ test('audit reports are applied after the tasks through the step cycle, marked f
     assert.ok(audit.includes(report), `the audit section must name ${report}`);
   }
   assert.match(audit, /after every task is checked/);
-  assert.match(audit, /Decide per finding whether it needs RED/);
+  assert.match(audit, /Decide per finding whether it needs the fix RED/);
   assert.match(audit, /fixed mark/);
   assert.match(audit, /neither is done again/);
   assert.match(audit, /A Question stays open/);
   assert.match(source, /no audit report holds an open fixable finding/);
   assert.match(read('sai/commands/implement/worker-common.md'), /every fixed mark to the coordinator/);
-  assert.match(read('sai/commands/implement/steps/red-step.md'), /audit findings instead of tasks/);
+  assert.match(read('sai/commands/implement/steps/red-step.md'), /## Finding brief/);
 });
 
 test('the implement close stores the inherent-risk ratings in review.md before the learnings step', () => {

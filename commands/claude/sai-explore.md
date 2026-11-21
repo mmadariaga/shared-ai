@@ -1,6 +1,6 @@
 ---
 description: Think through an idea, problem, or requirement with a read-only partner until it settles into a Ready to Propose block, then plan it, build it unattended, or hand it off manually. Pass a change name to explore an existing change.
-argument-hint: "[optional: change-name or topic] [--overview-lang <language>]"
+argument-hint: "[optional: change-name or topic]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}

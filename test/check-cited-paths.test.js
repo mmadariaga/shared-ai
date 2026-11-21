@@ -26,35 +26,9 @@ test('headings and Precise file locations still accepted', () => {
   assert.deepStrictEqual(cited('## Precise file locations\n- sai/b.md\n'), ['sai/b.md']);
 });
 
-const citedInterfaces = (md) => collectFromContent(md, 'interfaces.md').map((c) => c.cited);
-
-test('Test assertions field: list items, marked and unmarked, are checked', () => {
-  const md = [
-    '## Step 1: Title',
-    '',
-    '**Interfaces**: sai/not-checked.md',
-    '',
-    '**Test assertions**:',
-    '- [smoke-test] input → output (`openspec/changes/x/specs/a/spec.md`)',
-    '- other input → other output (`openspec/changes/x/specs/b/spec.md`)',
-    '',
-    '## Step 2: Next',
-    '',
-    '**Interfaces**: sai/not-checked-either.md',
-    '',
-  ].join('\n');
-  assert.deepStrictEqual(citedInterfaces(md), [
-    'openspec/changes/x/specs/a/spec.md',
-    'openspec/changes/x/specs/b/spec.md',
-  ]);
-});
-
-test('Test assertions field: earlier prose form on the label line still works', () => {
-  const md = '## Step 1: T\n\n**Test assertions**: a → b (`openspec/changes/x/specs/a/spec.md`)\n\n**Interfaces**: sai/not-checked.md\n';
-  assert.deepStrictEqual(citedInterfaces(md), ['openspec/changes/x/specs/a/spec.md']);
-});
-
-test('Test assertions field: list ends at the next field line', () => {
-  const md = '**Test assertions**:\n- a (`sai/in.md`)\n**Interfaces**: sai/out.md\n- b (`sai/out2.md`)\n';
-  assert.deepStrictEqual(citedInterfaces(md), ['sai/in.md']);
+test('a retired interfaces.md reads no test-assertion paths, and tasks Tests entries are not cited paths', () => {
+  const md = '## Step 1: Title\n\n**Test assertions**:\n- input → output (`openspec/changes/x/specs/a/spec.md`)\n';
+  assert.deepStrictEqual(collectFromContent(md, 'interfaces.md').map((c) => c.cited), []);
+  const tasks = '## Step 1: Title\n\n**Tests**:\n- test/a.test.js :: a scenario title\n';
+  assert.deepStrictEqual(collectFromContent(tasks, 'tasks.md').map((c) => c.cited), []);
 });

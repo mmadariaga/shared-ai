@@ -13,4 +13,4 @@
 
      Agreed `E1`…`En` and `I1`…`In` render in the chosen language at emission, preserving identifiers and order. The chosen language applies to the `E`/`I` statements of the single block and of every sliced block; `- None` and the English scaffolding above stay intact with no translation.
 
-     Continuation after the gate answer always resumes at `Ready to Propose` block emission and never jumps directly to the selector, with no overview-language question at emission — the overview-language decision is asked only in round 3 of the route round and applies only on a **Plan - Unattended** route answer.
+     Continuation after the gate answer always resumes at `Ready to Propose` block emission and never jumps directly to the selector,

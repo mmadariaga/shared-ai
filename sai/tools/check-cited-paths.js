@@ -16,7 +16,6 @@
  *     inline paths or bullets below; `None` or empty is not a path
  *   - `**Files Affected**` entries (tasks.md steps, with A/M/D/R prefix)
  *   - `### Precise file locations` sections (where present)
- *   - `interfaces.md` spec-anchor paths (`**Test assertions**` backticked paths)
  *   - audit-report mode: the backticked `path/with/slash.ext[:line]` spans of the
  *     `**File:**` and `**Location:**` fields of a security, performance, or
  *     accessibility report's findings; endpoints, selectors, components, URLs, and
@@ -177,12 +176,10 @@ function isHeading(line, level) {
 function collectFromContent(content, fileLabel) {
   const out = [];
   const lines = content.split('\n');
-  const isInterfaces = fileLabel.endsWith('interfaces.md');
   let inLocalFiles = false;
   let inPreciseLocations = false;
   let inFilesAffected = false;
   let inLocalField = false;
-  let inTestAssertions = false;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i].replace(/\r$/, '');
@@ -247,18 +244,6 @@ function collectFromContent(content, fileLabel) {
         out.push({ cited: cleaned, kind: 'EVIDENCE', line: i + 1 });
       }
       continue;
-    }
-
-    if (isInterfaces) {
-      // The field spans its label line and the list items below it, up to the
-      // next heading or `**Label**` field line.
-      if (/\*\*Test assertions\*\*/.test(raw)) inTestAssertions = true;
-      else if (/^#{1,6}\s+/.test(trimmed) || /^\*\*\S/.test(trimmed)) inTestAssertions = false;
-      if (inTestAssertions) {
-        for (const p of extractPathsFromText(raw)) {
-          out.push({ cited: p, kind: 'EVIDENCE', line: i + 1 });
-        }
-      }
     }
   }
   return out;
@@ -420,7 +405,7 @@ function collectArtifactFiles(mode, changeDir, audit) {
       }
     }
   } else {
-    for (const name of ['design.md', 'tasks.md', 'interfaces.md']) {
+    for (const name of ['design.md', 'tasks.md']) {
       const full = path.join(changeDir, name);
       if (fs.existsSync(full)) files.push(full);
     }

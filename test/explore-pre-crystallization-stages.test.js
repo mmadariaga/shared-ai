@@ -71,34 +71,25 @@ test('the Ready to Propose block template orders Edge Cases, Implementation Deta
   assert.ok(overviewLanguage > implementationDetails, '**Overview language** should follow **Implementation Details**');
 });
 
-test('gate 9 is opt-in at supervised Plan activation, puts do-not-create first, and has no Recommended marker', () => {
+test('the overview question and gate 9 retired from the route round and the Plan activation', () => {
   const source = explore();
   const supervised = readArtifact('sai/commands/explore/steps/pipeline-plan-unattended.md');
   const routeSelector = readArtifact('sai/commands/explore/steps/route-selector.md');
-  const questionStart = routeSelector.search(/## Change overview question/i);
-  assert.ok(questionStart >= 0, 'the opt-in overview-language question should be specified in round 3');
-
-  const question = routeSelector.slice(questionStart);
-  assert.match(question, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
-  assert.match(question, /Round 3 carries it as a conditional question beside the route question/i);
-  assert.match(question, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/i);
-  assert.match(question, /When the route answer is Direct Build, Manual, or no valid route, ignore the overview answer/i);
-  assert.match(supervised, /after the native route picker returns a clear \*\*Plan \(unattended\)\*\* selection for a dispatchable change/i);
-  assert.match(supervised, /before setting `active_change` or following the plan coordinator/i);
-  assert.match(routeSelector, /Fallback ask and activation/);
+  assert.doesNotMatch(routeSelector, /Change overview question|gate 9|overview_language|--overview-lang/i);
+  assert.doesNotMatch(supervised, /overview|gate 9/i);
+  assert.match(supervised, /after the native route picker returns|--publish <yes\|no>/);
   assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(source, /emitted second, carrying no marker/);
   assert.doesNotMatch(readArtifact('sai/commands/explore/steps/crystallization-language-gates.md'), /gate 9/i);
 });
 
-test('Ready to Propose records the selected overview language or literal None', () => {
-  const source = explore();
-  const fields = source.match(/\*\*Overview language\*\*:\s*[^\n]*/g) || [];
+test('Ready to Propose keeps the Overview language line as the literal None', () => {
+  const policy = readArtifact('sai/policies/ready-to-propose-format.md');
+  const fields = policy.match(/\*\*Overview language\*\*:\s*[^\n]*/g) || [];
 
   assert.ok(fields.length > 0, 'Ready to Propose should include an Overview language field');
-  for (const field of fields) {
-    assert.match(field, /(?:None|<[^>\n]*(?:selected|overview language|language)[^>\n]*>)/i);
-  }
+  assert.match(policy, /\*\*Overview language\*\*: None\n/);
+  assert.match(policy, /Overview language\*\*: the literal `None`\. The change overview and its `--overview-lang` option retired/);
 });
 
 test('both bindings carry the idea-list marker in their pinned machine-readable field', () => {
@@ -184,17 +175,12 @@ test('material changes reset every pending selector and staged state before clas
   assert.match(source, /The new idea waits for explicit intent under the existing staged-progression rules/);
 });
 
-test('selector flows keep overview opt-out and renderer ownership unchanged', () => {
+test('selector flows keep renderer ownership unchanged and carry no overview selection', () => {
   const source = explore();
 
-  assert.match(source, /The route choice itself never selects or infers an `Overview language`/);
-  assert.match(source, /only the overview answer of round 3 or this fallback resolves it, and only when the route answer is \*\*Plan \(unattended\)\*\*/);
-  assert.match(source, /ignore the round-3 overview answer/);
-  assert.match(source, /\*\*Manual\*\* and \*\*Direct Build \(unattended\)\*\* MUST NOT resolve or dispatch/);
-  assert.match(source, /separately supported explicit `--overview-lang <language>` remains a distinct opt-in and suppresses gate 9/);
-  assert.match(source, /literal `\*\*Overview language\*\*: None`/);
-  assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /panel ownership, and stage-machine-owned state rules remain authoritative/);
+  assert.doesNotMatch(source, /never selects or infers an `Overview language`/);
+  assert.doesNotMatch(source, /remains a distinct opt-in and suppresses gate 9/);
+  assert.match(readArtifact('sai/commands/explore/body.md'), /Unknown option --overview-lang; the change overview no longer exists\./);
   for (const renderer of [opencodeBinding(), claudeBinding(), opencodePanel(), claudePanel()]) {
     assert.doesNotMatch(renderer, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
   }

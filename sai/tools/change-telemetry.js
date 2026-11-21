@@ -64,7 +64,7 @@ const HARNESSES = ['claude', 'opencode'];
 // A direct command is discovered through its invocation envelope; an in-session
 // route has no such envelope and is discovered through the workers it creates.
 const COMMANDS = {
-  'sai-plan': { envelope: 'plan', order: ['spec', 'design'], workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design' } },
+  'sai-plan': { envelope: 'plan', order: ['spec', 'design'], workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design', 'sai-2-red-worker': 'design' } },
   'sai-build': {
     envelope: 'build',
     order: ['implement', 'review', 'fix-implement'],
@@ -75,7 +75,7 @@ const COMMANDS = {
     label: 'sai-explore (Plan - Unattended)',
     coordinator: 'sai-explore',
     order: ['spec', 'design'],
-    workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design' },
+    workers: { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design', 'sai-2-red-worker': 'design' },
   },
   'sai-explore-direct-build': {
     inSession: true,

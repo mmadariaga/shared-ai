@@ -488,7 +488,7 @@ test('Claude budget skills route dispatch through their agent basenames with no 
   }
 });
 
-test('worker-count parity: every harness projects exactly thirteen matrix bindings and thirteen managed agents', () => {
+test('worker-count parity: every harness projects exactly fourteen matrix bindings and fourteen managed agents', () => {
   const os = require('node:os');
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
@@ -507,6 +507,7 @@ test('worker-count parity: every harness projects exactly thirteen matrix bindin
     'sai-merge-worker',
     'sai-3-red-worker',
     'sai-3-green-worker',
+    'sai-2-red-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -522,7 +523,7 @@ test('worker-count parity: every harness projects exactly thirteen matrix bindin
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 13, `${harness} should project exactly thirteen worker bindings`);
+    assert.equal(bindingNames.length, 14, `${harness} should project exactly fourteen worker bindings`);
     const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
     assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -530,7 +531,7 @@ test('worker-count parity: every harness projects exactly thirteen matrix bindin
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 13, `${harness} should project exactly thirteen managed agents`);
+    assert.equal(agentNames.length, 14, `${harness} should project exactly fourteen managed agents`);
     assert.deepEqual(agentNames.sort(), [...workers].sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
   }

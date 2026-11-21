@@ -23,7 +23,7 @@ test('the normal flow is three conditional rounds in a fixed question order', ()
   assert.match(actions, /three conditional question rounds/);
   assert.match(actions, /\*\*round 1\*\* asks the backlog, branch and assignment questions/);
   assert.match(actions, /\*\*round 2\*\* asks the publication approval;/);
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, the branch base question, and the publication question/);
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the branch base question, and the publication question/);
   assert.match(actions, /not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures add interactions/);
   const order = ['1. **Backlog question:**', '2. **Branch question:**', '3. **Assignment question:**'].map(label => round1.indexOf(label));
   assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1]);
@@ -141,7 +141,7 @@ test('recovery never repeats completed actions and execution follows dependency 
 });
 
 test('round 3 carries the continuation question only for a multi-slice Direct Build', () => {
-  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question, the change overview question, the base question, and the publication question below join the same round only when their conditions are met, in this order: route, Direct Build continuation, change overview, base, publication/);
+  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question, the base question, and the publication question below join the same round only when their conditions are met, in this order: route, Direct Build continuation, base, publication/);
   assert.match(continuation, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/);
   assert.match(continuation, /takes effect only when the same round's route answer is Direct Build/);
   assert.match(continuation, /When the route answer is Plan or Manual, or no valid route was answered, ignore the continuation answer: it authorizes nothing/);
@@ -149,17 +149,9 @@ test('round 3 carries the continuation question only for a multi-slice Direct Bu
   assert.match(continuation, /authorizes up to two local commits per automatically started slice[\s\S]{0,200}nothing is pushed/);
 });
 
-test('round 3 carries the overview question as a conditional question resolved once per set', () => {
-  const overview = selector.slice(selector.indexOf('\n## Change overview question'), selector.indexOf('\n## Publication question'));
-
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, the branch base question, and the publication question/);
-  assert.match(overview, /Round 3 carries it as a conditional question beside the route question/);
-  assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?round 3 carries the overview question/);
-  assert.match(overview, /first match wins and no overview question joins the round/);
-  assert.match(overview, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/);
-  assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and the fallback ask below asks gate 9 on its own before the plan coordinator is followed/);
-  assert.match(overview, /resolved once per set/);
-  assert.match(overview, /Direct Build and Manual never generate a change overview, and no overview question runs at block emission/);
+test('the overview question retired from round 3', () => {
+  assert.doesNotMatch(selector, /Change overview question|overview_language|--overview-lang|explore\.overviewLanguage|gate 9/i);
+  assert.doesNotMatch(actions, /overview/i);
 });
 
 test('round 3 carries the publication question once per set and records it in explore-slice@1', () => {

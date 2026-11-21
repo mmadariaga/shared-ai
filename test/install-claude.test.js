@@ -116,8 +116,6 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /Material-change detection runs before selector-response classification/);
   assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
-  assert.match(source, /literal `\*\*Overview language\*\*: None`/);
-  assert.match(source, /dispatches no overview generation/);
 }
 
 function captureNotices(fn) {
@@ -149,6 +147,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-3-red-worker',
     'sai-3-green-worker',
     'sai-direct-build-worker',
+    'sai-2-red-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
     'registry keys should contain each managed worker exactly once');
@@ -192,6 +191,9 @@ test('managed worker registry defines every Claude compatibility export', () => 
     },
     'sai-direct-build-worker': {
       agent: 'sai-direct-build-worker.md',
+    },
+    'sai-2-red-worker': {
+      agent: 'sai-2-red-worker.md',
     },
   };
 
@@ -715,7 +717,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the thirteen matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the fourteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -742,8 +744,8 @@ test('Claude installer consumes exactly the thirteen matrix worker bindings and 
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 13,
-      'Claude should keep only the thirteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 14,
+      'Claude should keep only the fourteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -755,7 +757,7 @@ test('Claude installer consumes exactly the thirteen matrix worker bindings and 
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 16, 'Claude should project exactly sixteen managed agents');
+    assert.equal(agentNames.length, 17, 'Claude should project exactly seventeen managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }

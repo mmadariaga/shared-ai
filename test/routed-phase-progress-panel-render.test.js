@@ -54,9 +54,9 @@ test('every matrix binding is standalone and binds no panel mechanics', () => {
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
       .filter(item => item.kind === 'binding');
 
-    const standaloneBindings = bindings.filter(item => ['direct-build', 'spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'red', 'green', 'review'].includes(item.phase));
-    assert.equal(standaloneBindings.length, 12, `${harness} should retain direct-build, spec, design, the three audits, commit, archive, backfill, RED, GREEN, and review bindings`);
-    assert.equal(bindings.length, 13, `${harness} binds the 12 listed workers and the merge worker, all standalone`);
+    const standaloneBindings = bindings.filter(item => ['direct-build', 'spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'red', 'green', 'review', 'design-red'].includes(item.phase));
+    assert.equal(standaloneBindings.length, 13, `${harness} should retain direct-build, spec, design, the plan RED, the three audits, commit, archive, backfill, RED, GREEN, and review bindings`);
+    assert.equal(bindings.length, 14, `${harness} binds the 13 listed workers and the merge worker, all standalone`);
     for (const binding of standaloneBindings) {
       assert.doesNotMatch(binding.text, /panel-render\.md/,
         `${harness}/${binding.destinationName} must not bind the progress panel for a standalone coordinator`);

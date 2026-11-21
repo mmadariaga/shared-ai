@@ -36,6 +36,7 @@ const OPENCODE_AGENTS = [
   'budget-subagent',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
+  'sai-2-red-worker',
   'sai-3-green-worker',
   'sai-3-red-worker',
   'sai-4-review-worker',
@@ -55,6 +56,7 @@ const CLAUDE_AGENTS = [
   'budget-subagent',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
+  'sai-2-red-worker',
   'sai-3-green-worker',
   'sai-3-red-worker',
   'sai-4-review-worker',
@@ -168,6 +170,7 @@ const COMBINED_BOTH_FULL = [
   'worker:sai-1-spec-proposal-worker',
   'command:sai-2-design',
   'worker:sai-2-design-worker',
+  'worker:sai-2-red-worker',
   'command:sai-build',
   'command:sai-3-implement',
   'worker:sai-3-red-worker',
@@ -527,18 +530,18 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns only the thirteen routed workers', () => {
+test('opencode enumerateWorkers returns only the fourteen routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 13, 'exactly thirteen routed workers should enumerate for opencode');
+  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
     'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns only the thirteen routed workers', () => {
+test('claude enumerateWorkers returns only the fourteen routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 13, 'exactly thirteen routed workers should enumerate for claude');
+  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
     'claude workers should exclude generic delegation agents');
 });
@@ -548,8 +551,8 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
   assert.deepEqual(opencode.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
-  assert.equal(claude.worker.length, 13);
-  assert.equal(opencode.worker.length, 13);
+  assert.equal(claude.worker.length, 14);
+  assert.equal(opencode.worker.length, 14);
 });
 
 test('Claude settings selection asks separate model and effort screens from the real catalog', async () => {
@@ -876,7 +879,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     {
       scope: 'All',
-      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 19), '', ...COMBINED_BOTH_FULL.slice(19, 29), '', ...COMBINED_BOTH_FULL.slice(29)],
+      items: [...COMBINED_BOTH_FULL.slice(0, 7), '', ...COMBINED_BOTH_FULL.slice(7, 13), '', ...COMBINED_BOTH_FULL.slice(13, 20), '', ...COMBINED_BOTH_FULL.slice(20, 30), '', ...COMBINED_BOTH_FULL.slice(30)],
       defaults: COMBINED_BOTH_FULL,
     },
   ];
@@ -3754,12 +3757,13 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   }
 });
 
-test('customization inventory is matrix-derived: exactly thirteen worker agents per harness in the manifest', () => {
+test('customization inventory is matrix-derived: exactly fourteen worker agents per harness in the manifest', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
+    'sai-2-red-worker',
     'sai-3-red-worker',
     'sai-3-green-worker',
     'sai-4-review-worker',
@@ -3787,10 +3791,10 @@ test('customization inventory is matrix-derived: exactly thirteen worker agents 
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 13,
-        `${harness} customization inventory should contain exactly thirteen matrix managed agents`);
+      assert.equal(agentNames.length, 14,
+        `${harness} customization inventory should contain exactly fourteen matrix managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
-        `${harness} customization inventory should be exactly the thirteen worker identities`);
+        `${harness} customization inventory should be exactly the fourteen worker identities`);
       assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
         `${harness} customization inventory must not include support agents as matrix worker inventory`);
       const allAgentNames = active
@@ -3799,8 +3803,8 @@ test('customization inventory is matrix-derived: exactly thirteen worker agents 
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
           'claude customization inventory should not include the opencode-only generic basenames');
-        assert.equal(allAgentNames.length, 16,
-          'claude customization inventory should contain exactly sixteen managed agents: thirteen workers plus the three budget agents');
+        assert.equal(allAgentNames.length, 17,
+          'claude customization inventory should contain exactly seventeen managed agents: fourteen workers plus the three budget agents');
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {

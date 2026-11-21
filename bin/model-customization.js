@@ -64,6 +64,7 @@ const SKILL_LAUNCHER_NAMES = Object.freeze(['sai-cache-warmer', 'sai-context-cac
 const TARGET_PROFILE = Object.freeze({
   'worker:sai-1-spec-proposal-worker':   { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-2-design-worker':          { context: 'Large',   difficulty: '↑↑↑' },
+  'worker:sai-2-red-worker':             { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-5-security-worker':        { context: 'Large',   difficulty: '↑↑↑' },
   'worker:sai-6-performance-worker':     { context: 'Large',   difficulty: '↑↑' },
   'worker:sai-7-accessibility-worker':   { context: 'Large',   difficulty: '↑↑' },
@@ -166,7 +167,7 @@ function displayFamily(family) {
 const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-explore': Object.freeze(['sai-direct-build-worker']),
   'sai-1-spec': Object.freeze(['sai-1-spec-proposal-worker']),
-  'sai-2-design': Object.freeze(['sai-2-design-worker']),
+  'sai-2-design': Object.freeze(['sai-2-design-worker', 'sai-2-red-worker']),
   'sai-3-implement': Object.freeze(['sai-3-red-worker', 'sai-3-green-worker']),
   'sai-4-review': Object.freeze(['sai-4-review-worker']),
   'sai-5-security': Object.freeze(['sai-5-security-worker']),

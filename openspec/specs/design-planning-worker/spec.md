@@ -93,27 +93,6 @@ Every payload after change resolution SHALL carry `resolved_change_name`. Pre-re
 - **WHEN** no change has been resolved yet
 - **THEN** the worker payload does NOT contain the `resolved_change_name` field
 
-### Requirement: completion-requires-three-artifacts
-
-Completion SHALL follow disk verification of `design.md`, `tasks.md`, and `interfaces.md`.
-
-#### Scenario: all three artifacts verified
-- **WHEN** the worker completes planning
-- **THEN** it verifies `design.md`, `tasks.md`, and `interfaces.md` exist and are non-empty before returning `completed`
-
-#### Scenario: missing artifact returns failure
-- **WHEN** any of the three artifacts is missing or empty after planning
-- **THEN** the worker returns `failed` with a blocking summary
-
-### Requirement: three-artifact-completion
-
-Completion SHALL verify `design.md`, `tasks.md`, AND `interfaces.md` before claiming completion.
-
-#### Scenario: Completion is claimed only after all three verify
-- **WHEN** the design worker prepares to return `completed`
-- **THEN** it has verified all three artifacts on disk
-- **AND** it does not claim completion when any of them is missing or empty
-
 ### Requirement: Design lifecycle payloads carry no time field
 
 The design worker SHALL return notices, progress events, and terminal payloads with no time field while preserving worker-owned design workflow and continuation; the CLI response's `received_at` is the only observed time.
@@ -362,24 +341,6 @@ Fast-track ownership is route-dependent, because the design worker is reached by
 - **WHEN** an envelope carries `--fast-track` in either flag order after the change name
 - **THEN** the worker strips the token before finalizing the resolved change name on every route
 
-### Requirement: Overview-language form validation is coordinator-owned fail-fast
-Validation of `--overview-lang` form is worker-owned and unconditional, because the supervised route dispatches the worker with no coordinator to fail fast ahead of it. The design worker SHALL validate missing-value, option-in-value-position, malformed, and duplicate occurrences and SHALL return a clear pre-resolution `failed` validation result without selecting a plan or resolving a change. The coordinator SHALL select the static progress plan from raw token presence only, and SHALL NOT parse, validate, or interpret the language value; malformed occurrences remain present for that presence-only selection.
-
-#### Scenario: The worker rejects a missing value on any route
-- **WHEN** the worker receives `{name} --overview-lang` with no following language token
-- **THEN** it returns a pre-resolution `failed` validation result naming the missing value
-- **AND** it selects no plan and resolves no change
-
-#### Scenario: The worker rejects a duplicate occurrence
-- **WHEN** the worker receives an envelope carrying `--overview-lang` more than once
-- **THEN** it returns a pre-resolution `failed` validation result naming the duplicate
-- **AND** it selects no plan and resolves no change
-
-#### Scenario: Coordinator plan selection stays presence-only
-- **WHEN** the coordinator receives an envelope whose `--overview-lang` occurrence is malformed
-- **THEN** it selects the opted-in plan from raw token presence without inspecting the value
-- **AND** it forwards the envelope unchanged for the worker to validate
-
 ### Requirement: The design worker classifies spec problems against the approved scope
 
 When the design worker discovers a problem in `proposal.md` or any `specs/**/*.md` while generating design artifacts, it SHALL classify the problem first, by the `Scope observations` section of `sai/policies/artifact-review-contract.md`, with the approved `proposal.md` and `specs/**` as the approved scope. It SHALL record a scope observation in `design.md` under `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y", name it in its terminal `summary` in the contract's report line form, and continue design from the specs as approved with no question. This SHALL hold in every run, supervised or not. Every other problem SHALL be treated as a spec defect and take the existing clarity path. The design worker's result union SHALL gain no scope observation field.
@@ -395,3 +356,17 @@ When the design worker discovers a problem in `proposal.md` or any `specs/**/*.m
 #### Scenario: an unsupervised run meets a scope observation
 - **WHEN** the design worker classifies a discovered problem as a scope observation in a run that is not supervised
 - **THEN** it applies the same non-goal record and asks no question
+
+### Requirement: The design worker completes on design.md and tasks.md
+
+The design worker SHALL claim completion only after it verified on disk that `design.md` and `tasks.md` exist and are non-empty, and SHALL return `failed` with a blocking summary when either is missing or empty. It SHALL NOT write `interfaces.md` or `change-overview.md`; the interface stubs and the plan tests are written in code by the plan RED worker after it.
+
+#### Scenario: Both documents verified
+
+- **WHEN** the design worker prepares to return `completed`
+- **THEN** it has verified `design.md` and `tasks.md` on disk and has written no `interfaces.md`
+
+#### Scenario: A document is missing
+
+- **WHEN** `tasks.md` is missing or empty after planning
+- **THEN** the worker returns `failed` with a blocking summary

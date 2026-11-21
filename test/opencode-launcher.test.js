@@ -145,6 +145,5 @@ test('E10 every Claude Code dispatch site states the route query as an unconditi
     assert.doesNotMatch(text, /When the agent file carries `harness: opencode`/, file);
   }
   assert.match(read('sai/orchestration/workers/bindings/claude/standalone-worker-template.md'), /Before every creation of the worker, a replacement included, run the route query/);
-  assert.match(read('sai/commands/design/steps/overview.md'), /runs the route query of `@sai\/policies\/opencode-dispatch\.md` first, every time/);
   assert.match(read('sai/commands/explore/body.md'), /On Claude Code, before each creation of an explorer, run the route query of `@sai\/policies\/opencode-dispatch\.md`/);
 });

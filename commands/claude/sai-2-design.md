@@ -1,6 +1,6 @@
 ---
-description: Design a change into design.md, tasks.md, and interfaces.md with no human in the loop — running it approves the specs; --overview-lang also writes change-overview.md. Reviewed, checked, and committed locally; stops before /sai-3-implement.
-argument-hint: "[change-name] [feedback] [--overview-lang <language>]"
+description: Design a change into design.md, tasks.md, and the failing tests and interface stubs the build turns green, with no human in the loop — running it approves the specs. Reviewed, checked, and committed locally; stops before /sai-3-implement.
+argument-hint: "[change-name] [feedback]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}

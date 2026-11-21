@@ -25,7 +25,7 @@ test('the review contract defines the scope observation and the approved scope o
 
   assert.match(scope, /\*\*approved scope\*\*/);
   assert.match(scope, /`proposal\.md` and `specs\/\*\*`, what the `Ready to Propose` block asks for/);
-  assert.match(scope, /`design\.md`, `tasks\.md`, and `interfaces\.md`, what the approved `proposal\.md` and `specs\/\*\*` ask for/);
+  assert.match(scope, /`design\.md`, `tasks\.md`, and the plan tests and stubs, what the approved `proposal\.md` and `specs\/\*\*` ask for/);
   assert.match(scope, /\*\*scope observation\*\* is a true observation whose fix requires behavior the approved scope does not ask for/);
 });
 
@@ -97,7 +97,7 @@ test('the design step classifies a spec gap before asking and records a scope ob
   const handling = section(read('sai/commands/design/steps/design.md'), 'Spec-problem handling during design');
 
   assert.match(handling, /Fetch `@sai\/policies\/artifact-review-contract\.md` and apply its § Scope observations/);
-  assert.match(handling, /non-goal of the form "out of scope: X — revisit when Y"/);
+  assert.match(handling, /bullet of the form "out of scope: X — revisit when Y"/);
   assert.match(handling, /with no question/);
   assert.ok(handling.indexOf('§ Scope observations') < handling.indexOf('**Clarity present**'),
     'classification should precede the clarity path');

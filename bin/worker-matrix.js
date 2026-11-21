@@ -55,9 +55,23 @@ const IMPLEMENT_ROLES = Object.freeze([
   }),
 ]);
 
+// Closed plan RED role identity of `/sai-2-design`, appended after the review
+// role. The plan RED writes the stubs and the failing tests of the whole change
+// inside the design command; it keeps its own contract, model, and binding stem
+// apart from the fix RED of the implement command.
+const PLAN_ROLES = Object.freeze([
+  Object.freeze({
+    phase: 'design-red',
+    workerName: 'sai-2-red-worker',
+    workerContract: 'sai/commands/design/red-worker.md',
+    bindingStem: 'design-red',
+    tier: 'budget',
+  }),
+]);
+
 // Every role that pins its own contract and is validated by position after the
 // canonical phases.
-const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES]);
+const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES, ...PLAN_ROLES]);
 const PINNED_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
   PINNED_ROLES.map(role => [role.workerName, role]),
 ));
