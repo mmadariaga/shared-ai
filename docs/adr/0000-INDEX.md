@@ -573,6 +573,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
 - [0149b — Structural tests co-land with the instruction sources they pin](./0149b-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
+- [0227 — Design leaves the test oracle in code](./0227-design-leaves-the-test-oracle-in-code.md)
 
 ### The `interfaces.md` contract
 

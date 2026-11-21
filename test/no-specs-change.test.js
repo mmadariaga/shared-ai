@@ -157,21 +157,15 @@ test('E8: no spec worker sets skip_specs on its own judgment', () => {
   assert.match(schema, /only when the Ready to Propose block declares `\*\*Specs\*\*: none — <reason>`; never opt out on your own judgment/);
 });
 
-test('E1: /sai-2-design starts from the proposal and anchors interface assertions to it', () => {
+test('E1: /sai-2-design starts from the proposal and names its tests from it', () => {
   const coordinator = read('sai/commands/design/coordinator.md');
   assert.match(coordinator, /either at least one file under `specs\/` or a `\.openspec\.yaml` that sets `skip_specs: true`/);
   assert.match(coordinator, /skip `check-delta-headers\.js`/);
   const worker = read('sai/commands/design/worker.md');
   assert.match(worker, /unless `\.openspec\.yaml` sets `skip_specs: true`/);
   assert.match(worker, /A change with `skip_specs: true` has no specs to approve: write no approval key for it/);
-  assert.match(read('sai/commands/design/steps/interfaces.md'), /anchor each assertion to a statement of `proposal\.md`/);
+  assert.match(read('sai/commands/implement/steps/red-step.md'), /a change whose `\.openspec\.yaml` sets `skip_specs: true` has none: its assertions anchor to `proposal\.md`/);
   assert.match(read('sai/commands/design/steps/tasks.md'), /a change with `skip_specs: true` has no delta spec/);
-});
-
-test('I5: the step contract format anchors assertions to proposal statements under skip_specs', () => {
-  const policy = read('sai/policies/step-contract-format.md');
-  assert.match(policy, /or to a `proposal\.md` statement when the change declares `skip_specs`/);
-  assert.match(policy, /A change whose `\.openspec\.yaml` sets `skip_specs: true` has no spec file: each assertion cites a statement of `proposal\.md` instead/);
 });
 
 test('the implementation and plan phases accept a change that declares skip_specs', () => {

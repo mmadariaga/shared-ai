@@ -221,7 +221,7 @@ test('RED, GREEN, and the Direct Build worker report through the policy in the u
     assert.doesNotMatch(card, /Report `blocked`/, file);
     assert.match(card, /Report `needs_input`/, file);
   }
-  assert.match(read('sai/commands/implement/steps/red-step.md'), /Return `completed`/);
+  assert.match(read('sai/commands/implement/steps/red-step.md'), /Return the report/);
   assert.match(read('sai/commands/implement/steps/green-step.md'), /return `completed`/);
   assert.match(read('sai/commands/explore/direct-build-worker.md'), /closed report schema/);
 });
@@ -311,7 +311,7 @@ test('the plan workers report through the policy in the unified schema', () => {
   assert.match(common, /A message that carries the result inline is an invalid report/);
   assert.doesNotMatch(common, /status: done \| needs_input \| blocked/);
   for (const file of ['sai/commands/spec/worker.md', 'sai/commands/design/worker.md', 'sai/commands/design/steps/design.md',
-    'sai/commands/design/steps/overview.md', 'sai/commands/design/coordinator.md']) {
+    'sai/commands/design/coordinator.md']) {
     const card = read(file);
     assert.doesNotMatch(card, /`blocked`|status: done|never report `done`/, `${file} keeps no retired status`);
   }

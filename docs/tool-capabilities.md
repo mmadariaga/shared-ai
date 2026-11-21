@@ -20,7 +20,7 @@ context.
 Worker contracts retain mutation ownership, allowed files, confirmation gates,
 and delegation rules. Profiles grant access only. Implement's one-time initial
 URL read receives direct web fetch; Design delegates web research and receives
-the budget target needed for overview generation. Audits and Backfill receive
+its budget subagent target. Audits and Backfill receive
 their explorer target. RED/GREEN and the direct implementation/fix roles gain
 no delegation. Archive's validated Direct Build mutations use shell, not native
 file-edit tools. Backfill's draft-write exception receives both native creation

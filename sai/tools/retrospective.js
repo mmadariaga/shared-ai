@@ -73,7 +73,7 @@ const OPENCODE_SKILL_BASE = /Base directory for this skill: (\S+)/;
 const UNAVAILABLE = 'unavailable';
 // The spec, design, and implement parts of a run, told apart by worker type. Every
 // other agent keeps its own type and is reported outside the three segments.
-const PIPELINE_SEGMENTS = { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design', 'sai-3-red-worker': 'implement', 'sai-3-green-worker': 'implement', 'sai-direct-build-worker': 'implement' };
+const PIPELINE_SEGMENTS = { 'sai-1-spec-proposal-worker': 'spec', 'sai-2-design-worker': 'design', 'sai-2-red-worker': 'design', 'sai-3-red-worker': 'implement', 'sai-3-green-worker': 'implement', 'sai-direct-build-worker': 'implement' };
 const COMMAND_SEGMENTS = { 'sai-1-spec': 'spec', 'sai-2-design': 'design', 'sai-3-implement': 'implement' };
 const PLANNING_COMMANDS = ['sai-1-spec', 'sai-2-design', 'sai-plan'];
 const IMPLEMENTATION_COMMANDS = ['sai-3-implement', 'sai-build'];

@@ -15,7 +15,7 @@ async function git(cwd, args, env = {}) {
   if (result.error || result.status !== 0) throw Object.assign(new Error(`git ${args[0]}: ${result.error?.message || result.stderr || `exit ${result.status}`}`), { status: result.status, stderr: result.stderr });
   return result.stdout;
 }
-const documents = ['proposal.md', 'design.md', 'tasks.md', 'interfaces.md', '.openspec.yaml', 'change-overview.md'];
+const documents = ['proposal.md', 'design.md', 'tasks.md', '.openspec.yaml'];
 async function query(request, io) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(request.change || '')) throw new Error('A current change name is required');
   const cwd = io.cwd || process.cwd(), root = `openspec/changes/${request.change}`;

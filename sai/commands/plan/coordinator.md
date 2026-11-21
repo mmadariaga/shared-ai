@@ -6,15 +6,15 @@ Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/change-telemetry.md`
 Fetch `@sai/commands/plan/cycle.md`
 
-You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a `Ready to Propose` block or the reference to one (`--block-file <path> --block-hash <sha256>`), or the name of a change, with the optional `--overview-lang <language>` and the optional `--publish yes|no`.
+You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a `Ready to Propose` block or the reference to one (`--block-file <path> --block-hash <sha256>`), or the name of a change, with the optional `--publish yes|no`.
 
 ## Goal
 
-Turn a crystallized block into the full plan of a change with no human in the loop: `proposal.md` and `specs/` from `/sai-1-spec`, then `design.md`, `tasks.md`, and `interfaces.md` from `/sai-2-design`, each segment reviewed, checked, and committed on its own. A human is needed only for force majeure. The command stops before implementation.
+Turn a crystallized block into the full plan of a change with no human in the loop: `proposal.md` and `specs/` from `/sai-1-spec`, then `design.md`, `tasks.md`, and the interface stubs and failing tests of the whole change (the plan tests) from `/sai-2-design`, each segment reviewed, checked, and committed on its own. A human is needed only for force majeure. The command stops before implementation.
 
 ## Start
 
-1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed. Take `--overview-lang <language>` out and keep it for the design segment. Take `--publish <answer>` out and keep it for the publication answer below; an answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-plan: --publish takes yes or no.`
+1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed. Any `--overview-lang` token is an unknown option now: print `Cannot start /sai-plan: unknown option --overview-lang.` and end the run before anything is written. Take `--publish <answer>` out and keep it for the publication answer below; an answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-plan: --publish takes yes or no.`
 2. Find the input and the change name as `sai/commands/spec/coordinator.md` Start steps 2 and 3 do: a block gives the change name, and otherwise the first token is the name. Text after a name is not feedback here: feedback belongs to `/sai-1-spec` and `/sai-2-design`. When the string holds neither a block nor a name, print this and end the run, writing nothing: `Cannot start /sai-plan: pass a Ready to Propose block (paste it, or use --block-file and --block-hash), or the name of a change that already has proposal.md and specs/.`
 3. Decide which segments run, from what `openspec/changes/{name}/` holds:
    - Both `proposal.md` and a file under `specs/` exist: the specs exist and the disk wins. The spec segment counts as done, the block (if one came) does not rewrite them, and the report says so.
@@ -44,7 +44,7 @@ Record the answer with `emit <id> plan-run@1 --set kind=publication --set value=
 ## Segments
 
 1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch `@sai/commands/spec/coordinator.md` and follow it exactly as the first segment, with the block or its reference as `arguments_value`. Your Start opened the run, so it skips the opening in its own Start. It validates the block, runs the worker, the checks, and the review, and commits its own paths. Resolve the publication answer between its Start step 5 and the creation of its worker.
-2. `/sai-2-design`: Fetch `@sai/commands/design/coordinator.md` and follow it exactly as the second segment, with `{name}` and the `--overview-lang` option as `arguments_value`. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, runs the checks and the review, generates the overview when asked, and commits its own paths.
+2. `/sai-2-design`: Fetch `@sai/commands/design/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, has the plan RED worker write the stubs and the failing tests, runs the checks and the review, and commits its own paths in two commits (the documents, then the plan code).
 
 No wrapper is entered again and no approval is asked between segments. The artifacts on disk are the only interface between them. Each segment disposes its own worker when it closes, as the cycle's Warm and dispose says under `worker-lifecycle.md`, so no worker of a finished segment stays alive when the next one starts.
 

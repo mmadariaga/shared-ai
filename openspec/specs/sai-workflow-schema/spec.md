@@ -4,64 +4,6 @@ Define the shared-AI OpenSpec schema, artifact graph, and authoring-template con
 
 ## Requirements
 
-### Requirement: sai-workflow schema defines the full artifact graph
-A custom OpenSpec schema at `openspec/schemas/sai-workflow/schema.yaml` SHALL declare all artifacts of the shared-AI pipeline with their IDs, output paths, dependency edges, and apply requirements.
-
-#### Scenario: schema declares all nine artifacts
-
-- **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
-- **THEN** it declares eleven artifacts, and `implementation` is not one of them
-
-#### Scenario: schema declares all ten artifacts
-- **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
-- **THEN** it declares artifacts with IDs: proposal, specs, design, tasks, interfaces, change-overview, review, security, performance, accessibility, telemetry — each with an `outputPath` and optional `requires` list
-
-#### Scenario: schema apply requirements are tasks and implementation
-
-- **WHEN** `openspec status` is run on a change using the sai-workflow schema
-- **THEN** `applyRequires` contains `["tasks"]` and does not contain `implementation`
-
-#### Scenario: schema apply requirements are tasks
-- **WHEN** `openspec status` is run on a change using the sai-workflow schema
-- **THEN** `applyRequires` contains `["tasks"]`
-
-#### Scenario: dependency chain is enforced
-- **WHEN** `openspec status` is run on a change with only proposal done
-- **THEN** specs and design show status `ready`, and tasks shows `blocked` with `missingDeps: ["design", "specs"]`
-
-### Requirement: sai-workflow schema provides custom templates for all artifact types
-The schema directory SHALL include a `templates/` subdirectory with a `.md` template file for each of the eleven artifact types. The `design.md`, `tasks.md`, and `interfaces.md` templates SHALL be structural projections of the routed worker and step-owned instructions: they SHALL retain the live headings and ordering needed to scaffold each artifact, carry concise non-normative comments that identify retained fields where useful, carry a non-normative pointer to the corresponding active step-owned authoring section, and SHALL not duplicate normative generation rules or carry endpoint tables. The routed worker and step-local instructions remain authoritative for the ADR/DDR criteria, alternatives behavior, task fields, and interface assertions; the Target State contract remains owned by the design-target-state capability. The `design.md` template SHALL carry no Architecture Snapshot heading and no `**Provenance**` decision marker, and the `tasks.md` template's Implementation Context SHALL carry only the **Test Command** field.
-
-#### Scenario: templates directory contains all artifact templates
-- **WHEN** `openspec/schemas/sai-workflow/templates/` is listed
-- **THEN** files `proposal.md`, `specs.md`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, and `telemetry.md` are present
-
-#### Scenario: design template is a heading-preserving live skeleton
-- **WHEN** `openspec/schemas/sai-workflow/templates/design.md` is read
-- **THEN** it retains the live design headings Target State, File Manifest, Context, Goals / Non-Goals, Decisions, Risks / Trade-offs, Migration Plan, Open Questions, and Manual Verification in their existing order, with no Architecture Snapshot, Deferred, or Endpoint Map heading, a non-normative comment marking Migration Plan conditional, one write-time-authority pointer naming `sai/commands/design/steps/design.md` and `## Generate design.md`, and no duplicated ADR/DDR or alternatives authoring prose or other normative prose or table outside the retained structure
-
-#### Scenario: implementation template includes RED/GREEN blocks
-
-- **WHEN** the `openspec/schemas/sai-workflow/templates/` directory is listed
-- **THEN** no `implementation.md` template exists, and the directory holds the eleven artifact templates
-
-#### Scenario: tasks template is a structural projection
-- **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
-- **THEN** it retains the Step N scaffold, its five ordered step fields, Required Documentation, and Implementation Context headings with only a **Test Command** field under Implementation Context, carries a write-time-authority pointer naming `sai/commands/design/steps/tasks.md` and `## Generate tasks.md`, and contains no normative prose, table, or task-generation rule outside the retained structure
-
-#### Scenario: interfaces template is a structural projection
-- **WHEN** `openspec/schemas/sai-workflow/templates/interfaces.md` is read
-- **THEN** it retains the Step N, Interfaces, and Test assertions headings as structural markers, carries a write-time-authority pointer naming `sai/commands/design/steps/interfaces.md` and `## Generate interfaces.md`, contains no normative prose, table, or interface-generation rule outside the retained structure, and does not retain the semantic `None — no step contracts` literal
-
-#### Scenario: design template retains the decision shape without becoming an authority
-- **WHEN** the decision portion of `openspec/schemas/sai-workflow/templates/design.md` is read
-- **THEN** the `**Record family**` marker and the alternatives block shape remain available for the generated artifact's structure, with no `**Provenance**` marker, and the ADR/DDR criteria, record-family routing, and alternatives-selection rules are sourced from the active routed design step
-
-#### Scenario: templates-use-active-step-authority
-
-- **WHEN** a schema or template authoring pointer is inspected
-- **THEN** it names the active routed worker or step-local authoring surface rather than the deleted monolithic instruction.
-
 ### Requirement: audit report templates always include a Not-Applicable section
 Both template families for the security, performance, and accessibility report artifacts — the schema templates under `openspec/schemas/sai-workflow/templates/` and the write-time contracts under `sai/commands/{security,performance,accessibility}/*-report.template.md` — SHALL each include a mandatory "Not Applicable" section with a justification field.
 
@@ -196,32 +138,6 @@ The `specs` template SHALL start with a `## Purpose` section whose comment limit
 - **WHEN** the `artifacts.specs` instruction in `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** it tells authors to start a new capability's `spec.md` with `## Purpose` and never to add `## Purpose` to a delta spec of an existing capability
 
-### Requirement: Overview schema and template project the source-oriented contract
-
-The sai-workflow overview artifact description SHALL identify a faithful source-oriented projection of selected Proposal, Design, and per-Step Interfaces and Tasks content. Its non-empty instruction SHALL identify the five source artifacts and delegate content selection and organization to `sai/commands/design/change-overview.md`, without imposing thematic organization or duplicating normative generation rules.
-
-The overview template SHALL scaffold Proposal with Why and What Changes, Design with a source-driven section insertion point, and a repeated Tasks-ordered Step wrapper containing Interfaces and Test assertions followed by Tasks Files Affected. It SHALL allow additional present Design sections rather than impose a fixed Design allowlist and SHALL point to the shared write-time contract.
-
-Beneath the English Files Affected label, the template SHALL demonstrate one fenced `text` block containing the literal illustrative entry `A path/to/<timestamp>/example.md`. A non-normative comment SHALL direct replacement of the illustrative entry with the selected Tasks Step's literal entries and omission of absent content under the shared contract.
-
-The existing artifact destination, dependency on Interfaces, apply requirements, opt-in language behavior, materialization lifecycle, and regeneration behavior SHALL remain unchanged.
-
-#### Scenario: schema description matches the generation contract
-- **WHEN** the overview artifact entry is read
-- **THEN** its description and instruction identify source-oriented projection and defer selection to the shared contract rather than require thematic synthesis
-
-#### Scenario: template scaffolds source groups
-- **WHEN** the overview template is read
-- **THEN** it contains Proposal Why and What Changes, an open Design insertion point, and a repeated Step skeleton with Interfaces and Test assertions before Tasks Files Affected, whose literal timestamp-path example appears in one fenced text block beneath its English label
-
-#### Scenario: additional Design sections are permitted
-- **WHEN** source Design contains a non-excluded section absent from the template
-- **THEN** the template does not prohibit its faithful inclusion in source order
-
-#### Scenario: registration and lifecycle remain unchanged
-- **WHEN** the schema overview entry is compared with its prior registration
-- **THEN** its destination remains change-overview.md, its dependency remains Interfaces, and it does not become an apply prerequisite
-
 ### Requirement: Proposal and specs instructions copy the upstream spec-driven text
 The `proposal` and `specs` artifact instructions in `openspec/schemas/sai-workflow/schema.yaml` SHALL copy the `spec-driven` 1.15.0 instruction text verbatim, followed by exactly one SAI additions block delimited by `<!-- sai-additions:begin -->` and `<!-- sai-additions:end -->`. SAI-only rules, including the Proposal Research Documentation, Request Additional Notes, and Additional Notes sections, the no-fenced-code rule, and the `skip_specs` rule, SHALL live inside that block.
 
@@ -265,3 +181,31 @@ The SAI additions block of the `specs` artifact instruction in `openspec/schemas
 #### Scenario: Purpose change is recorded in the proposal
 - **WHEN** a change needs a capability Purpose change
 - **THEN** the SAI additions direct the spec worker to write no file under `openspec/specs/**` and to record the Purpose change in the proposal's Additional Notes
+
+### Requirement: sai-workflow schema declares the reduced artifact graph
+
+`openspec/schemas/sai-workflow/schema.yaml` SHALL declare the artifacts `proposal`, `specs`, `design`, `tasks`, `review`, `security`, `performance`, `accessibility`, and `telemetry`, each with an output path and an optional `requires` list, and SHALL declare neither `interfaces`, `change-overview`, nor `implementation`. Its description SHALL read the pipeline as proposal → specs → design → tasks → review → audits, and `applyRequires` SHALL be `["tasks"]`.
+
+#### Scenario: Retired artifacts are absent
+
+- **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** it declares no `interfaces` and no `change-overview` artifact
+
+#### Scenario: Apply requires tasks
+
+- **WHEN** `openspec status` runs on a change using the sai-workflow schema
+- **THEN** `applyRequires` is `["tasks"]`
+
+### Requirement: sai-workflow templates scaffold the reduced design and tasks
+
+`openspec/schemas/sai-workflow/templates/` SHALL hold one template per declared artifact and SHALL hold no `interfaces.md` and no `change-overview.md` template. The `design.md` template SHALL retain the headings Target State, File Manifest, Decisions, and Risks / Trade-offs with a write-time-authority pointer to `sai/commands/design/steps/design.md`. The `tasks.md` template SHALL scaffold each `## Step N` with the progress checkbox, Routing, Files Affected, What Will Be Done, Tests or Closure criterion, Existing Tests Broken, and Test Command, with a write-time-authority pointer to `sai/commands/design/steps/tasks.md`. Neither template SHALL carry normative generation rules.
+
+#### Scenario: Templates directory
+
+- **WHEN** the templates directory is listed
+- **THEN** it holds no `interfaces.md` and no `change-overview.md`
+
+#### Scenario: tasks template step skeleton
+
+- **WHEN** the `tasks.md` template is read
+- **THEN** its `## Step N` skeleton carries `**Tests**` or `**Closure criterion**` and a per-step `**Test Command**`, and no `**Testing Strategy**`

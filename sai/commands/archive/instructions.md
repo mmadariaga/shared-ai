@@ -26,12 +26,10 @@ an association from a branch number or an ordinary `Refs` mention.
    that key. Anything else (absent file or key, `false`, the string `"true"`,
    `null`) is `false`. A corrupt file is `false` plus one warning line; the check
    continues. Log `[sai-archive] backfilled=<true|false>`.
-3. Group the ten `sai-workflow` artifacts from the JSON `artifacts` array:
+3. Group the eight `sai-workflow` artifacts from the JSON `artifacts` array:
    - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`;
    - **AUDIT** (informational): `review`, `security`, `performance`,
-     `accessibility`, `change-overview`;
-   - **EXEMPT** (silent): `interfaces`, never collected into any set and never
-     named in a diagnostic.
+     `accessibility`.
 4. **CORE.** For a backfilled change, skip `design` and `tasks`; `proposal` and
    `specs` are always checked. A `specs` artifact whose `status` is `skipped`
    (the change declares `skip_specs: true`, so it has no spec files by design)
@@ -45,10 +43,6 @@ an association from a branch number or an ordinary `Refs` mention.
      `done` still counts as present when
      `openspec/changes/$ARGUMENTS/<id>.md` exists and contains the heading
      `## Not Applicable` (case-sensitive); otherwise collect it.
-   - `change-overview` — skipped for a backfilled change. Otherwise read
-     `overview.state` from `.openspec.yaml` (absent means `unmaterialized`) and
-     collect it unless its CLI `status` is `done` **and** the state is
-     `current`. `## Not Applicable` does not apply to it.
    - When anything is collected, report exactly one line:
      `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
 

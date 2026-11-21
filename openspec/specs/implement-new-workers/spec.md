@@ -5,15 +5,6 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ## Requirements
 
-### Requirement: Live workers with a creation-only ready handshake
-
-The RED and GREEN workers SHALL be created when their first step needs them and SHALL live for the whole run unless the coordinator replaces one. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every step SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent` used at creation, the captured `sessionID`, and `background: true` on opencode). A worker that returns no ready SHALL be an obstacle under the attempt budget. A worker created to replace another SHALL receive the same creation-only handshake and a hand-over summary the coordinator wrote, which SHALL be the only account of earlier work it receives.
-
-#### Scenario: Second step reuses the worker
-
-- **WHEN** the coordinator starts the second step of a run
-- **THEN** it continues the existing RED and GREEN workers instead of dispatching new ones, and no new ready handshake runs.
-
 ### Requirement: Pointer delivery of step files
 
 Each worker role SHALL have its own linear step machine, `red-steps@1` and `green-steps@1`, with the steps `task-intake` (no file) followed by `red-step` (`sai/commands/implement/steps/red-step.md`) or `green-step` (`sai/commands/implement/steps/green-step.md`), both registered in `sai-state/registry.js`. The coordinator SHALL reset the role's machine before each step and open every brief with `Active step: <stage> — follow <next.follow>`; when the store fails, it SHALL send the pointer from the static order itself and continue.
@@ -85,3 +76,17 @@ The RED worker SHALL name each test it writes for a spec scenario so that the te
 #### Scenario: RED writes a test for a scenario
 - **WHEN** RED writes a test for a spec scenario of its brief
 - **THEN** the test name contains the scenario title as words separated by spaces
+
+### Requirement: GREEN lives for the run and the fix RED is created on demand
+
+The GREEN worker SHALL be created when the first step needs it and SHALL live for the whole run unless the coordinator replaces it. The fix RED SHALL be created only when a finding needs a new test or a plan test must be corrected, and SHALL then live for the rest of the run. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every brief SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent`, the captured `sessionID`, and `background: true` on opencode). A worker that returns no ready SHALL be an obstacle under the attempt budget, and a replacement SHALL receive the same handshake and a hand-over summary the coordinator wrote.
+
+#### Scenario: Second step reuses GREEN
+
+- **WHEN** the coordinator starts the second step of a run
+- **THEN** it continues the existing GREEN worker, and no new ready handshake runs
+
+#### Scenario: A run without findings that need a test
+
+- **WHEN** a run turns the plan tests green and no finding needs a test
+- **THEN** no fix RED worker is created

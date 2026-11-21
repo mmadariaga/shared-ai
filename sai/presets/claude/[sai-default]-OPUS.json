@@ -39,6 +39,10 @@
     "model": "sonnet",
     "effort": "high"
   },
+  "worker:sai-2-red-worker": {
+    "model": "sonnet",
+    "effort": "high"
+  },
   "command:sai-build": {
     "model": "opus",
     "effort": "medium"

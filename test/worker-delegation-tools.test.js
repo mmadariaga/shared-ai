@@ -42,7 +42,10 @@ function fetchClosure(startPath) {
   return files;
 }
 
+// A step library belongs to the `worker.md` of its command folder: the plan RED card lives beside the design
+// worker but takes its step file from the implement library and never delegates.
 function stepFiles(workerContract) {
+  if (path.posix.basename(workerContract) !== 'worker.md') return [];
   const stepsDir = path.posix.join(path.posix.dirname(workerContract), 'steps');
   const absolute = path.join(REPO_ROOT, stepsDir);
   if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) return [];

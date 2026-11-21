@@ -39,6 +39,10 @@
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
+  "worker:sai-2-red-worker": {
+    "model": "openai/gpt-6-luna",
+    "variant": "max"
+  },
   "command:sai-build": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"

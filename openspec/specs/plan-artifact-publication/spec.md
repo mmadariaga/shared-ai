@@ -100,3 +100,17 @@ Every git call of plan publication SHALL run through the shared asynchronous pro
 
 - **WHEN** a git call of `plan-query` or `plan-commit` other than the commit runs longer than 120 s
 - **THEN** the operation ends with the `process-timeout` failure and no later git call of that operation runs.
+
+### Requirement: Plan publication lists only the current plan documents
+
+`sai/tools/plan-publication.js` SHALL list as plan documents `proposal.md`, `design.md`, `tasks.md`, and `.openspec.yaml`, plus the change's specifications, and SHALL NOT list `interfaces.md` or `change-overview.md`. The code commits of the design segment (stubs and plan tests) SHALL reach the draft pull request through the existing whole-branch `to-pr.js push`, with no publication change for them.
+
+#### Scenario: Plan documents of a new plan
+
+- **WHEN** `plan-query` enumerates the plan documents of a change
+- **THEN** it lists no `interfaces.md` and no `change-overview.md`
+
+#### Scenario: Plan tests reach the draft request
+
+- **WHEN** a `/sai-plan` run with a `yes` publication answer pushes the branch
+- **THEN** the design segment's test and stub commits are part of the pushed branch

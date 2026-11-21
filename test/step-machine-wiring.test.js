@@ -75,7 +75,6 @@ test('step machines own STAGE_FILES with no static pointer tables (source-driven
     research: 'sai/commands/design/steps/research.md',
     design: 'sai/commands/design/steps/design.md',
     tasks: 'sai/commands/design/steps/tasks.md',
-    interfaces: 'sai/commands/design/steps/interfaces.md',
   };
   for (const [machineId, expected] of [['spec-steps@1', expectedSpecStageFiles], ['design-steps@1', expectedDesignStageFiles]]) {
     const machine = registry.get(machineId);
@@ -86,7 +85,9 @@ test('step machines own STAGE_FILES with no static pointer tables (source-driven
     }
   }
   assert.equal(registry.get('design-steps@1').STAGE_FILES.overview, undefined,
-    'the overview is a separate continuation, not a step of design-steps@1');
+    'the overview retired and is not a step of design-steps@1');
+  assert.equal(registry.get('design-steps@1').STAGE_FILES.interfaces, undefined,
+    'interfaces retired and is not a step of design-steps@1');
   // The retired phase contracts and machines no longer exist.
   for (const retired of ['sai/policies/spec-phase-contract.md', 'sai/commands/design/phase-contract.md',
     'sai-state/machines/spec-standalone.js', 'sai-state/machines/design-standalone.js']) {

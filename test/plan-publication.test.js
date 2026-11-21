@@ -14,14 +14,14 @@ function fixture(t) {
   git('init', '-b', 'feature'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.com');
   write('.gitignore', 'openspec/changes/**\n'); write('other.txt', 'base');
   git('add', '.'); git('commit', '-m', 'initial');
-  for (const name of ['proposal.md', 'design.md', 'tasks.md', 'interfaces.md', '.openspec.yaml', 'change-overview.md', 'specs/example/spec.md']) write(`openspec/changes/example/${name}`, name);
+  for (const name of ['proposal.md', 'design.md', 'tasks.md', '.openspec.yaml', 'specs/example/spec.md']) write(`openspec/changes/example/${name}`, name);
   write('openspec/changes/foreign/tasks.md', 'foreign'); write('other.txt', 'staged'); git('add', 'other.txt'); write('other.txt', 'unstaged');
   return { cwd, git, write, request: { change: 'example', harness: 'opencode' }, io: { cwd } };
 }
-test('exact approved complete plan includes excluded control/overview/spec files and preserves unrelated staging and work', async t => {
+test('exact approved complete plan includes excluded control and spec files and preserves unrelated staging and work', async t => {
   const { cwd, git, request, io } = fixture(t);
   const ready = await tool.query(request, io), head = git('rev-parse', 'HEAD'), staged = git('diff', '--cached'), unstaged = git('diff');
-  assert.equal(ready.proposal.files.length, 7);
+  assert.equal(ready.proposal.files.length, 5);
   assert.ok(ready.proposal.files.every(row => row.ignored));
   await assert.rejects(async () => await tool.commit({ ...request, confirmation: ready.confirmation }, io), /approval/);
   assert.equal(git('rev-parse', 'HEAD'), head);
@@ -213,7 +213,7 @@ test('I1 E11: unattended plan-commit needs no approval token, commits only the l
   await assert.rejects(async () => await tool.commit({ ...request, unattended: false, approved: false }, io), /approval/);
   const result = await tool.commit({ ...request, unattended: true }, io);
   assert.equal(result.status, 'complete');
-  assert.equal(result.files.length, 7);
+  assert.equal(result.files.length, 5);
   assert.equal(git('diff', '--cached'), staged);
   assert.equal(git('diff'), unstaged);
   assert.equal(git('show', 'HEAD:other.txt'), 'base');

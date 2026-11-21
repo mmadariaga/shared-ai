@@ -9,10 +9,13 @@
 
 **What Will Be Done**: <!-- prose description -->
 
-**Testing Strategy**: <!-- verification approach -->
+**Tests**:
+<!-- Markdown bullets: - <test path> :: <test name carrying the spec scenario title>, one entry per line; append " [regression guard]" for a test that passes before and after. A step with no meaningful test carries **Closure criterion**: <one checkable sentence> instead of this field. -->
 
 **Existing Tests Broken**:
 <!-- Markdown bullets: - <path> — <compile|runtime>, one entry per line, or None -->
+
+**Test Command**: <!-- command that runs only this step's tests, or None — closure criterion -->
 
 ## Required Documentation
 

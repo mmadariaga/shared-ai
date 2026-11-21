@@ -42,7 +42,7 @@ The block is structured as follows:
 - <out-of-scope `I1`…`In` statement in order, or None>
 **Request Additional Notes**:
 <optional free Markdown: paragraphs or bullets>
-**Overview language**: <explicit `--overview-lang` option value or literal None>
+**Overview language**: None
 
 ---
 ```
@@ -142,6 +142,6 @@ The Manual route has no store and no hash.
   ```
 
   Consumers treat it as informative context only: no requirement, scenario, or mandatory scope derives from it. `/sai-1-spec` and backfill copy it verbatim (no rewriting, summarizing, translating, or merging) into the dedicated `## Request Additional Notes` section of `proposal.md`, kept separate from `## Additional Notes`.
-- **Overview language**: the explicit `--overview-lang` option value or literal None; reflects only what is knowable at print time, so a gate-9-selected value never appears in an already-emitted block
+- **Overview language**: the literal `None`. The change overview and its `--overview-lang` option retired, so the line carries no choice; it stays in the block so blocks stored or published earlier keep validating, and no consumer reads its value.
 
 Provenance citations are optional: with nothing to cite, **Why** and **Decisions & Rationale** carry no citation placeholder. Provenance is evidence for intent only and SHALL NOT designate files to modify; the block has no target-file field.

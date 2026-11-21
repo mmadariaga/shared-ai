@@ -2,12 +2,12 @@
 
 ## Command function
 
-Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then [`/sai-2-design`](sai-2-design.md), and closes with the report of both segments. The plan is `proposal.md` and `specs/` from the first segment, and `design.md`, `tasks.md`, and `interfaces.md` from the second.
+Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then [`/sai-2-design`](sai-2-design.md), and closes with the report of both segments. The plan is `proposal.md` and `specs/` from the first segment, and `design.md`, `tasks.md`, and the interface stubs and failing tests of the whole change (the plan tests, written by the plan RED) from the second. The plan tests fail by design, so the continuous integration of the draft request stays red until the build runs.
 
 ## Flags and behavior modifiers
 
 - A `Ready to Propose` block from [`/sai-explore`](sai-explore.md), pasted or passed as `--block-file <path> --block-hash <sha256>`, which is what `sai-state block --export` produces. Without a block, give the name of a change that already has `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`.
-- `--overview-lang <language>`: generates `change-overview.md` at the end of the design segment, in that language. Without it, no overview is generated.
+- `--overview-lang` no longer exists: passing it ends the run with an unknown-option error before anything is written.
 - `--publish yes|no`: answers the publication question below in advance. Any other value ends the run before anything is written.
 
 ## In detail
@@ -26,7 +26,7 @@ spec and design ask nothing.
 With `no`, nothing is published and nothing is asked again. With `yes`, the answer is the
 authorization for exactly three operations on the current branch, and nothing asks you again:
 one local commit of the plan documents (the exact files `plan-query` lists, including ignored
-files, `.openspec.yaml`, specifications and an optional overview; unrelated staging and work stay
+files, `proposal.md`, `design.md`, `tasks.md`, `.openspec.yaml`, and the specifications; the design segment's stub and test commits are ordinary commits of the branch, carried by the push; unrelated staging and work stay
 untouched, and ordinary planning still never force-adds ignored files), a push without force,
 and the creation or update of the request. The run publishes after its last local commit, the
 telemetry commit included, and prints the verified request URL or the reason nothing was

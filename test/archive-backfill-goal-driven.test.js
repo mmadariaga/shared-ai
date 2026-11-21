@@ -132,5 +132,5 @@ test('the archive worker writes the no-specs drafts before the archive move, fro
   assert.match(execution.slice(materialization), /transfer\.js materialize --dir\n {2}<transfer_dir> --path <path> --sha256 <sha256> --destination <destination>/);
   assert.match(execution, /before the\n {2}CLI archive and the commit, and returns `failed` naming each destination\n {2}already written, which stays uncommitted/);
   assert.match(execution, /A draft section is valid only when it equals the one\nreceived at prepare, reference for reference/);
-  assert.match(worker, /the draft `\.openspec\.yaml` supplies\n`backfilled`, `skip_specs`, `backlog_origin`, and `overview\.state`/);
+  assert.match(worker, /the draft `\.openspec\.yaml` supplies\n`backfilled`, `skip_specs`, and `backlog_origin`; the draft/);
 });

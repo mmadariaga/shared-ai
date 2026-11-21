@@ -135,14 +135,15 @@ test('writer: CRLF files keep CRLF in inserted text', () => {
   assert.equal(read(directory).replace(/\r\n/g, '').includes('\n'), false);
 });
 
-test('E4: the Language settings submenu lists its four rows with today\'s value texts and no headers', async () => {
+test('E4: the Language settings submenu lists its three rows with today\'s value texts and no headers', async () => {
   const directory = project('{"explore":{"overviewLanguage":"English"}}');
   const seen = [];
   const result = await editor(directory, [BACK], [], { seen }).runSection(LANGUAGE);
   assert.equal(result.status, 'back');
   assert.equal(seen[0].question, 'Language settings:');
-  assert.deepEqual(seen[0].options, ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language']);
-  assert.deepEqual(texts(seen[0]), ['Ready to Propose language: ask', 'Change overview language: English', 'Chat language: follow my language', 'PR/MR language: English']);
+  assert.deepEqual(seen[0].options, ['explore.readyToProposeLanguage', 'explore.chatPublicLanguage', 'pr.language']);
+  assert.deepEqual(texts(seen[0]), ['Ready to Propose language: ask', 'Chat language: follow my language', 'PR/MR language: English']);
+  assert.equal(texts(seen[0]).some(text => /overview/i.test(text)), false, 'the retired overview setting is no editable row');
   assert.equal(seen[0].navigator.groupHeaders, undefined);
   assert.equal(fs.existsSync(path.join(directory, FILE)), true);
 });
@@ -164,12 +165,11 @@ test('E16: provider choices are ask plus the registry ids; language choices diff
   assert.deepEqual(providerCalls[0].options, ['ask', 'github', 'gitlab', 'azuredevops']);
   assert.deepEqual(providerCalls[1].options, ['ask', 'github', 'gitlab', 'azuredevops']);
   const languages = [];
-  await editor(directory, [pick('explore.overviewLanguage'), BACK, pick('explore.readyToProposeLanguage'), BACK, pick('explore.chatPublicLanguage'), BACK, BACK], [], { seen: languages }).runSection(LANGUAGE);
+  await editor(directory, [pick('explore.readyToProposeLanguage'), BACK, pick('explore.chatPublicLanguage'), BACK, BACK], [], { seen: languages }).runSection(LANGUAGE);
   const pickers = languages.filter(call => call.question !== LANGUAGE.title);
-  assert.deepEqual(pickers.map(call => call.question), ['Change overview language:', 'Ready to Propose language:', 'Chat language:']);
-  assert.deepEqual(pickers[0].options, ['ask', 'English', 'none', screen.OTHER_LANGUAGE]);
-  assert.deepEqual(pickers[1].options, ['ask', 'English', screen.OTHER_LANGUAGE]);
-  assert.deepEqual(pickers[2].options, ['follow my language', 'English', screen.OTHER_LANGUAGE]);
+  assert.deepEqual(pickers.map(call => call.question), ['Ready to Propose language:', 'Chat language:']);
+  assert.deepEqual(pickers[0].options, ['ask', 'English', screen.OTHER_LANGUAGE]);
+  assert.deepEqual(pickers[1].options, ['follow my language', 'English', screen.OTHER_LANGUAGE]);
   assert.equal(fs.existsSync(path.join(directory, '.sai')), false, 'backing out of every picker writes nothing');
 });
 
@@ -206,10 +206,10 @@ test('E6: an empty free-text answer saves nothing and returns to the submenu wit
   assert.equal(read(directory), COMMENTED);
 });
 
-test('E16: a free-text language keeps its own spelling and the overview accepts none', async () => {
+test('E16: a free-text language keeps its own spelling', async () => {
   const directory = project();
-  await editor(directory, [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, pick('explore.overviewLanguage'), 'none', BACK], [' Español ']).runSection(LANGUAGE);
-  assert.deepEqual(writer.parseText(read(directory)).root, { explore: { readyToProposeLanguage: 'Español', overviewLanguage: 'None' } });
+  await editor(directory, [pick('explore.readyToProposeLanguage'), screen.OTHER_LANGUAGE, BACK], [' Español ']).runSection(LANGUAGE);
+  assert.deepEqual(writer.parseText(read(directory)).root, { explore: { readyToProposeLanguage: 'Español' } });
 });
 
 test('E17: choosing ask writes the string "ask" for an unset id and keeps the key comment for a set one', async () => {
@@ -217,8 +217,8 @@ test('E17: choosing ask writes the string "ask" for an unset id and keeps the ke
   await editor(directory, [pick('backlog.provider'), 'ask', BACK]).runSection(BACKLOG_PR);
   assert.equal(read(directory), COMMENTED.replace('"gitlab"', '"ask"'));
   const fresh = project();
-  await editor(fresh, [pick('explore.overviewLanguage'), 'ask', BACK]).runSection(LANGUAGE);
-  assert.deepEqual(writer.parseText(read(fresh)).root, { explore: { overviewLanguage: 'ask' } });
+  await editor(fresh, [pick('explore.readyToProposeLanguage'), 'ask', BACK]).runSection(LANGUAGE);
+  assert.deepEqual(writer.parseText(read(fresh)).root, { explore: { readyToProposeLanguage: 'ask' } });
 });
 
 test('E5: a chosen value is on disk before the next screen, which shows it, and the user stays in the submenu', async () => {
@@ -733,7 +733,7 @@ test('E9: Cache warming opens the warming flow from the main menu, and Back retu
 });
 
 test('E12: the menus show only the eight settings, none of the repository, project, organization, or publish-after-run keys', async () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.overviewLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'publication.autoApprove', 'experimental.changeTelemetry']);
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'publication.autoApprove', 'experimental.changeTelemetry']);
   const seen = [];
   await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Exit'], seen);
   assert.deepEqual([...seen[1].options, ...seen[3].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));

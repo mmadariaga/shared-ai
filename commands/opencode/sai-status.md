@@ -1,5 +1,5 @@
 ---
-description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, task progress, and a next-command hint. Writes nothing.
+description: Read-only progress panel for one OpenSpec change — the 8 sai-workflow artifacts, specs approval, task progress, and a next-command hint. Writes nothing.
 model: opencode-go/deepseek-v4.1-flash#high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

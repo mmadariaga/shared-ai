@@ -39,6 +39,10 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
+  "worker:sai-2-red-worker": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
+  },
   "command:sai-build": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
@@ -59,7 +63,6 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
-
   "command:sai-4-review": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "high"

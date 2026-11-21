@@ -313,7 +313,6 @@ test('the dispatch policy is the single source and the five dispatch sites point
   ]) {
     assert.match(read(site), /Fetch `@sai\/policies\/opencode-dispatch\.md`/, site);
   }
-  assert.match(read('sai/commands/design/steps/overview.md'), /route query of `@sai\/policies\/opencode-dispatch\.md` first, every time/);
   assert.match(read('sai/policies/worker-lifecycle.md'), /opencode-routed agent \(`@sai\/policies\/opencode-dispatch\.md`\)[^.]*`TaskStop`/);
   assert.match(read('sai/policies/cache-warming.md'), /opencode-routed agent \(`@sai\/policies\/opencode-dispatch\.md`\) receives no switch/);
 });

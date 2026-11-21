@@ -121,9 +121,9 @@ those files yet. Run `transfer.js verify` for each reference and
 `@sai/policies/tool-resolution.md`, read-only) with the accepted fingerprint; a
 failure of either returns `failed`. Then run the pre-flight with the draft files
 standing for the missing change files: the draft `.openspec.yaml` supplies
-`backfilled`, `skip_specs`, `backlog_origin`, and `overview.state`; the draft
+`backfilled`, `skip_specs`, and `backlog_origin`; the draft
 `proposal.md` satisfies `proposal`; `specs` is satisfied as skipped, with no
-delta syncing and no retirement; `design`, `tasks`, and `change-overview` are
+delta syncing and no retirement; `design` and `tasks` are
 skipped as for any backfilled change; the other AUDIT artifacts are collected
 from `openspec/changes/$ARGUMENTS/<id>.md` on disk as usual. `openspec status`
 reads the change directory and is not run. The collision check and the prepared

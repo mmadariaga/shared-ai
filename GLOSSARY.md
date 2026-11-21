@@ -10,7 +10,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Ambient Agent**: "An agent session that is not running a SAI command — the audience for the **Orientation Index**, which it never auto-loads and reaches only through a pointer in a consumer project's own agent instructions."
 *Avoid*: background agent, idle agent, non-SAI agent, ambient session
 
-**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, `/sai-plan`); spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and the plan tests and stubs for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, `/sai-plan`); spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
 **Auto-Answer**: "A grounded answer that `sai-explore` gives to a backfill worker's question during **Direct Build - Unattended** on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
@@ -42,9 +42,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Cause Locus**: "The coordinator's evidence-backed classification of a non-clean closure by ownership — inside the reporting worker's authorized boundary, inside the boundary of another worker still resumable in this run, or outside every in-run boundary — never by the kind of artifact the cause sits in."
 *Avoid*: cause location, recovery scope, failure class
-
-**Change Overview**: "The per-change `change-overview.md` faithful source-oriented review projection of selected Proposal and Design content followed by Tasks-ordered Step blocks joining Interfaces, Test assertions, and Files Affected by Step number; `specs/**` corroborates sources without adding overview content. Generated or regenerated only when the invocation opts in — initially after the sai-2 feedback loop closes and once after each later source-modifying request — while unopted source edits may leave an existing overview stale; a derived projection that is never a source of truth."
-*Avoid*: change summary, change review, review projection, target-state document, overview doc
 
 **Chained Phase Composition**: "Retired with `sai/orchestration/composition.md` (ADR 0200): the **Orchestration Core** rule set that once let one supervising invocation run an ordered sequence of **Phase Adapter**s. No command chains phase adapters any more; `/sai-plan`, `/sai-build`, and `/sai-deep-review` follow coordinator cards as **Segment**s of one session."
 *Avoid*: pipeline supervisor, explore Auto chain, multi-command batch, phase pipeline (unqualified)
@@ -99,16 +96,13 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Failure Class**: "The closed machine-readable classification on a failed routed-worker outcome that identifies the repair boundary without relying on summary prose."
 *Avoid*: failure kind, failure reason, error category
 
-**Failure Details**: "The non-empty English diagnostic attached to an overview-generation failure, naming what went wrong, where it occurred, and the durable carrier that preserves it when the failure is parent-authored."
-*Avoid*: contradiction details, failure note, diagnostic text
-
 **First Filed Step**: "The first step of a linear step machine whose `follow` is a file — the second step in every current machine — whose **Next Pointer** `sai-state reset` returns and the coordinator sends as the first line of the post-ready task disclosure."
 *Avoid*: first step, first real step, startup step
 
 **File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
 *Avoid*: change type, change-kind, file verb, action letter
 
-**File Manifest**: "The flat `design.md` subsection under **Target State** that lists every file the change creates, modifies, deletes, or renames — path-sorted, git-status-style, with step attribution — derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`; excluded from `change-overview.md`, which copies Files Affected per Step without folding."
+**File Manifest**: "The flat `design.md` subsection under **Target State** that lists every file the change creates, modifies, deletes, or renames — path-sorted, git-status-style, with step attribution — derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`; it shows the reviewer the documentation, prompts, configuration, and glue code that never pass through the plan RED."
 *Avoid*: file list, file inventory, change file list
 
 **Finding Identifier**: "The severity-prefixed label that identifies a **Review Finding** within a single review — the severity's initial followed by the finding's sequence within that severity (`H1`, `H2`, `M1`, `L1`) — derived from the finding's `Severity` field, which remains the source of truth."
@@ -123,7 +117,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **GREEN Conflict**: "The state where a **GREEN Worker** cannot make the RED worker's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
 
-**GREEN Worker**: "The `/sai-3-implement` managed worker (`sai-3-green-worker`) that lives for the whole run and writes each step's production code, leaving the tests as RED wrote them and forbidden from creating or modifying any test file or `interfaces.md`; dispatched through the worker-matrix on the budget tier."
+**GREEN Worker**: "The `/sai-3-implement` managed worker (`sai-3-green-worker`) that lives for the whole run and writes each step's production code, leaving the plan tests and the stub signatures as they are and forbidden from creating or modifying any test file; dispatched through the worker-matrix on the budget tier."
 *Avoid*: implementation dispatch, impl agent, code worker, build dispatch, GREEN dispatch
 
 **Handle**: "The harness-native resumable identifier the coordinator captures at dispatch return and retains before any guard snapshot or continuation."
@@ -168,12 +162,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Orientation Index**: "The `SAI_AGENTS.md` document installed at the harness root by the `sai-agents-index` projection, containing one entry per SAI documentation surface — canonical location, purpose, writer, and a pointer to the canonical format file — with conditional-presence wording, no restated normative rules, and no harness named inside the file."
 *Avoid*: agent guide, doc index, SAI manual, agent onboarding doc
 
-**Overview Language**: "The conversation-only, chat-scoped value for a change's overview, supplied by an explicit overview-language flag, selected by the overview-language gate (gate 9), asked in round 3 of the `sai-explore` route round and applied only for **Plan (unattended)** (passed to `/sai-plan` as `--overview-lang`), or set to the literal `None`; it is carried in the `Ready to Propose` block only when knowable at emission, and absence never selects a language implicitly."
-*Avoid*: overview-language value, overview prose language, overview gate value
-
-**Overview State**: "The persisted `overview.state` key in a change's `.openspec.yaml` carrying one of `unmaterialized` / `materializing` / `failed` / `current` / `stale` — the durable signal that lets `sai-status` and `sai-archive` distinguish a not-yet-attempted overview, an in-progress or interrupted generation, a failed first materialization, a current one, and one whose sources changed since materialization, without inspecting `change-overview.md` contents; transitioned by the design worker, who marks `materializing` before generator dispatch and `stale` before the first effective source write of every post-materialization transaction."
-*Avoid*: materialization flag, overview status, overview freshness, stale flag
-
 **Phase Adapter**: "Retired with the **Orchestration Core**; no card declares one. Historically: the per-routed-phase field set consumed by the shared command runner — initial worker envelope, dispatch and continuation operations, permitted nonterminal extensions and handlers, replacement-reconstruction fields, `terminal_navigation`, and optional static `progress_plan`, `step_machine`, and `recovery_policy` — that supplies phase-specific behavior without reimplementing lifecycle mechanics. `progress_plan` controls visual task-list rendering; `step_machine` independently controls just-in-time worker instruction routing."
 *Avoid*: harness boot adapter, command card, standalone invocation shell, phase shell
 
@@ -216,8 +204,20 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Recovery Policy**: "The optional static phase-adapter declaration that opts one routed invocation into the shared bounded same-worker recovery loop without choosing its budget."
 *Avoid*: retry policy, recovery budget, recovery dispatch
 
-**RED Worker**: "The `/sai-3-implement` managed worker (`sai-3-red-worker`) that lives for the whole run and writes each step's failing tests and the interface stubs they import, with no production logic; dispatched through the worker-matrix on the budget tier."
+**RED Worker**: "One of two managed workers that write failing tests and the interface stubs they import, with no production logic, dispatched through the worker-matrix on the budget tier: the **Plan RED Worker** and the fix RED (`sai-3-red-worker`), which writes the test of a review or audit finding during `/sai-3-implement`."
 *Avoid*: test dispatch, test agent, test-first subagent, RED writer
+
+**Plan RED Worker**: "The `/sai-2-design` managed worker (`sai-2-red-worker`, card `sai/commands/design/red-worker.md`, own model) that writes once, for the whole change, the interface stubs and the failing **Plan Tests** that `tasks.md` names; telemetry attributes it to Design."
+*Avoid*: design RED, test author, oracle writer
+
+**Plan Tests**: "The failing tests that `/sai-2-design` leaves in code and commits failing, never skipped, identified per step by the `**Tests**` field of `tasks.md`; `/sai-3-implement` and `/sai-build` turn them green step by step, and they are the plan's test oracle and review surface."
+*Avoid*: prose test contract, interfaces assertions, skeleton tests
+
+**Closure Criterion**: "The checkable completion condition of a `tasks.md` step that has no meaningful test (documentation, prompts, configuration); GREEN satisfies it and the review checks that it holds."
+*Avoid*: acceptance note, done condition
+
+**Red by Assertion**: "The state of a test that fails because an assertion on the behavior under test does not hold, not because of a compile, import, or fixture error; `/sai-2-design` accepts a plan test only in this state, or as a marked regression guard."
+*Avoid*: failing test, red test
 
 **Schema Template Authority**: "The requirement that OpenSpec schema scaffolds under `openspec/schemas/sai-workflow/templates/` remain descriptive discovery surfaces that point at command-owned write-time contracts under `sai/commands/**` via a final Write-time authority HTML comment, rather than duplicating field bodies or severity rules."
 *Avoid*: Report Template Parity, template equality, template unification, template consistency, pinned skeleton parity
@@ -247,7 +247,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Routing Diagnosis**: "Exactly one of the three coordinator routing labels for a non-clean closure — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — distinct from worker **Failure Class**."
 *Avoid*: routing cause, diagnosis class, failure class
 
-**Routing Difficulty**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line stating how hard the step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract; `sai-3-implement` uses it to decide how much production code to write, and an unsure design chooses the higher value."
+**Routing Difficulty**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line stating how hard the step is for the implementer to finish from its plan, its tests, and the signatures of `design.md` `## Target State`; `sai-3-implement` uses it to decide how much production code to write, and an unsure design chooses the higher value."
 *Avoid*: routing complexity, effort estimate, step complexity
 
 **Routing Line**: "The per-step `**Routing**: category=<category> · context=<context> · difficulty=<difficulty>` keyword line on `tasks.md` (key=value tagged, not positional) that records the step's kind of work, the context the implementer must load, and how hard the step is for the implementer, judged by purpose at design time."
@@ -262,10 +262,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Stage Machine**: "The deterministic per-session Node service (`sai-state`) that owns session-scoped state for SAI flows behind a uniform envelope, hosting `explore-idea@1` (pre-crystallize) and `explore-slice@1` (post-crystallize inventory plus Direct Build TODO)."
 *Avoid*: sidecar dotfile, owner-hash file, shared daemon, ephemeral app
 
-**Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
-*Avoid*: interface contract, interfaces section, Step N block, contract file
-
-**Target State**: "The single leading review section of `design.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section; authored and persisted by the design phase. Only content remaining after the Change Overview's exclusions is projected into `change-overview.md`; an empty Target State container is omitted there."
+**Target State**: "The single leading review section of `design.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section; authored and persisted by the design phase."
 *Avoid*: end state, final shape, goal state, summary section
 
 **Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and read by the `/sai-3-implement` coordinator, which finds the project's suites and the scoping idiom for the step tests there."
@@ -308,10 +305,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **File Manifest** belongs to one **Target State** and answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
 - An **Envelope Contract Violation** is a **Failure Class** when a nested result cannot be trusted under its closed output shape.
-- A **Failure Class** belongs to one failed routed-worker outcome and is distinct from the overview generator's inner `failure_kind` field.
-- A **Failure Details** value belongs to one overview-generation failure and is persisted by the design worker in `.openspec.yaml` as `overview.failure_details` when the parent owns the failure route.
-- A **Failure Details** value is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
-- **Failure Details** is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
+- A **Failure Class** belongs to one failed routed-worker outcome.
 - A **Routing Diagnosis** is assigned for every post-resolution non-clean closure before recovery eligibility; a **Duplicate Diagnosis** stops before ledger exhaustion because its normalized **Diagnosis Key** already occupies a slot in the active segment ledger.
 - **Continuation/Transport Loss** spends zero additional recovery attempts and never dispatches a replacement from the recovery path.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
@@ -330,12 +324,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Idea Progress List** gains per-slice items when the slicing assessment identifies each slice, and its reviewed sai-1 / sai-2 items are marked or cleared per the most recent completed **Artifact Review**'s High-finding outcome.
 - A **Pre-Crystallization Stage TODO** belongs to one `sai-explore` chat and is cleared at crystallization, when the session's **Idea Progress List** takes the **Native Task Panel**.
 - A **Pre-Crystallization Stage TODO** is distinct from an **Idea Progress List** and a **Progress Plan**: the stage TODO renders the user-paced pre-crystallization progression, the idea list tracks post-crystallization idea evidence, and the plan is adapter-declared and marked from worker progress events.
-- An **Overview Language** value is supplied by an explicit overview-language flag or selected by the overview-language gate, asked in round 3 of the route round and applied only for **Plan (unattended)** (or is the literal `None`), remains conversation-only per crystallized idea or slice set, and the selected language is forwarded only to the `/sai-plan` coordinator followed by the **Pipeline Selector**'s `Plan (unattended)` option; `None` omits the overview-language option, and the value is never written to any artifact.
 - A **Pipeline Selector** closes every crystallization turn and, after a clean Direct Build (unattended) slice completion while pending slices remain, is re-presented for the next per-slice authorization; `Plan (unattended)` follows the **Plan Command**, `Direct Build (unattended)` starts the direct implementation lane, and `Manual` starts none and leaves later execution to an explicit request.
 - A **Test Command** belongs to one change's `## Implementation Context`, the only field of that section, and is read by the `/sai-3-implement` coordinator.
 - An **Intent Reconciliation** compares a **Backfilled Change**'s verified diff with its optional intent statement and never treats the two sources as interchangeable evidence.
 - An **Intent Reconciliation** reports **Scope Drift** for evidenced work that the intent statement does not name, while still allowing the evidence-backed behavior to be specced.
-- A **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync of the design artifacts that the implement coordinator corrects as a deviation.
 - A **Review-Loop Token** firing enters the per-change review loop over the **Tracked Crystallized Set**; when that set is empty the token yields a one-line acknowledgment instead of any iteration.
 - A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
@@ -350,10 +342,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Unrecoverability Veto** belongs to one failed outcome and stops the remaining bounded recovery attempts without changing the failure's **Failure Class**.
 - A **File Change Type** prefixes every `**Files Affected**` entry of a step; an `R` entry names its source and destination paths.
 - A **Routing Line** is judged by purpose, not derived from paths; its **Routing Difficulty** is measured against the implementer.
-- A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; its snapshot and manifest subsections are excluded from `change-overview.md`. A **Step Contract** belongs to the same `interfaces.md` artifact as the other per-step sections, appearing once per step.
-- A **Change Overview** is derived from the five sai-2 source artifacts of one change — `proposal.md`, `specs/**`, `design.md`, `tasks.md`, and `interfaces.md` — and is generated once after the sai-2 initial feedback loop closes.
-- A **Change Overview** copies Proposal's Why and What Changes, then all present Design sections in source order except **File Manifest** and Context (and the `Architecture Snapshot` section that a design written earlier still carries), then every Tasks Step with corresponding selected **Step Contract** fields and literal Files Affected. **Target State** is retained only when content remains after exclusions; `interfaces.md` carries only **Step Contract** sections.
-- An **Overview State** belongs to one change's `.openspec.yaml` and is written only by the design worker; `sai-status` and `sai-archive` consume it instead of inspecting `change-overview.md` contents.
+- A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; it names the public signatures the **Plan RED Worker** writes its stubs from.
 - A **Verify-First Marker** on a risk constrains **Routing Line** step ordering in `tasks.md`, sequencing the work that resolves the risk before the step it names.
 - A **Question Context Contract** governs every user-facing decision prompt: worker `needs_input` questions, design notice messages, and the fixed instruction gates.
 - A **Question Context Contract** is satisfied at the prompt's authoring surface — the worker or the instruction — and the coordinator forwards the question verbatim without rephrasing or adding context.
@@ -384,8 +373,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 ## Flagged ambiguities
 
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
-- **"Change Overview" vs the design review sections** — the **Change Overview** and the `## Target State` / `### File Manifest` sections hosted in `design.md` all present review-oriented content, so a bare "overview" or "snapshot" is ambiguous about which surface is meant. **Resolution:** **Change Overview** names the whole-change `change-overview.md` source projection; **Target State** and **File Manifest** name the authoritative `design.md` sections. The overview excludes File Manifest and omits an empty Target State container; the qualified terms are always used, and the overview never becomes a source of truth over the source artifacts.
-- **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` (authoritative per step), copied literally into the corresponding Change Overview Step; **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view, excluded from `change-overview.md`) — the two are never synonyms, and `tasks.md` remains the authority.
+- **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` (authoritative per step);  **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view) — the two are never synonyms, and `tasks.md` remains the authority.
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings". Artifact reviews use `H1`/`M1`/`L1` identifiers on the closed `High`/`Medium`/`Low` set (no `Critical`), while all four audit commands share one `Critical`-based severity vocabulary — `Critical`/`High`/`Medium`/`Low`, plus the review-only `Question` category and the `sai-7`/`sai-8`-only `Informational` level — with severity-prefixed identifiers (`C`/`H`/`M`/`L`, plus `Q`/`I`) and a closing `Summary:` tally line per report. **Resolution:** **Review Finding** names the artifact-review item only; audit findings use the shared audit severity vocabulary and are never called Review Findings.
 - **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/commands/{phase}/{artifact}-report.template.md` is the write-time contract fetched by the phase instruction. **Resolution:** schema scaffolds are descriptive under **Schema Template Authority** and point at the command-owned contract via a Write-time authority comment — they are not a second write-time contract and are not pinned to content parity.
 - **"ADR/DDR" as an undecided pair vs a resolved family** — the criteria surfaces (`design.md`'s `## Decisions`, `spec.propose.md`'s ADR/DDR Proposal Check, the schema's design instruction) use "ADR/DDR" as one phrase without resolving a family, and a bare "family" is ambiguous between the record families and the report template families. **Resolution:** "ADR/DDR" names the two-family evaluation surface only; the ordered routing test resolves the family, recorded in `design.md` as `**Record family**: adr|ddr`; **Decision Record Family** names the `adr`/`ddr` families and the qualified term is always used.
@@ -394,6 +382,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Timestamp" vs "Milestone Stamp"** — a bare "timestamp" is a general programming concept (excluded from glossary scope) and also names ISO-8601 metadata such as `approval.specs.approved_at`, so it must not name the progress-list annotation. **Resolution:** **Milestone Stamp** is the qualified term for the HH:mm progress-list annotation on routed phase progress task lists; bare "timestamp" is never used for it.
 - **Milestone Stamp vs Received At** — both name the same instant on a stamped run, so a bare "time" is ambiguous between the response value and its rendering. **Resolution:** **Received At** is the offset-bearing ISO-8601 `received_at` first key of a CLI response; **Milestone Stamp** is that value's own HH:MM field, rendered on a `completed` step of a progress task list. The stamp is read straight off the observation time and from nothing else — the coordinator issues no wall-clock call and resolves no timezone — so the two are never independent readings that could disagree.
 - **"Effort" vs "Model Variant"** — the retired combined-frame customizer treated `effort` as a shared UI concept mapped to opencode's `variant` key, while the real opencode CLI exposes model-specific variants; a bare "effort" is ambiguous between Claude Code's tunable key and opencode's per-model variant. **Resolution:** **Model Variant** names the opencode model-specific settings modifier selected per model through the dependent provider → model → variant flow; `effort` remains Claude Code's tunable key; the shared UI concept is retired and the two harnesses use separate selector sequences.
-- **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while **Overview Language** is the chat-scoped, conversation-only value supplied by an explicit overview-language flag, selected at gate 9 in round 3 of the route round and applied only for **Plan (unattended)**, or set to the literal `None`. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the selected value that forwards only to the `/sai-plan` coordinator followed by a **Pipeline Selector** `Plan (unattended)` run, with `None` omitting the overview-language option; the qualified terms are always used and the two never share a surface.
-- **Failure Class vs generator failure_kind** — both are machine-readable failure labels, but they belong to different nested result envelopes. **Resolution:** **Failure Class** names the outer routed-worker repair boundary, while the overview generator's `failure_kind` remains its inner five-field result value; valid inner kinds propagate unchanged, and an untrusted inner envelope becomes the outer **Envelope Contract Violation** class.
 - **Readiness Signal vs Readiness Statement** — the old wording "readiness signal" described the once-per-stable-idea one-liner naming the crystallize action; the stage-aware reframing folds the maturity judgment into the **Closure Reminder** and stops treating it as navigation. **Resolution:** **Readiness Statement** names the folded maturity judgment carried inside the reminder line; "readiness signal" survives only in test-pinned source sentences that must keep the old noun, and new writing uses the qualified term.

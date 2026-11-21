@@ -12,7 +12,7 @@ Runs a change's build in one invocation. It chains [`/sai-3-implement`](sai-3-im
 
 ## In detail
 
-The command runs the implementation segment, the review segment, and the fix segment in the same session, with no approval between segments. The behavior, preconditions, checks, and stops of each segment are the ones described in [`/sai-3-implement`](sai-3-implement.md) and [`/sai-4-review`](sai-4-review.md).
+The command runs the implementation segment, the review segment, and the fix segment in the same session, with no approval between segments. The behavior, preconditions, checks, and stops of each segment are the ones described in [`/sai-3-implement`](sai-3-implement.md) and [`/sai-4-review`](sai-4-review.md). The implementation segment turns the plan tests that [`/sai-2-design`](sai-2-design.md) left red green, step by step: GREEN only, with the fix RED used only for findings that need a new test. A change planned with the earlier format (it has `interfaces.md` and no plan tests) stops at the implementation segment, which asks you to run `/sai-2-design` again on it; no later segment starts.
 
 The change the implementation segment resolves (the name you gave, or the only active change with a `tasks.md`) is the one the review and fix segments use; they never resolve a change again. Like any `/sai-3-implement` run, the implementation segment also applies the open findings of the audit reports already in the change directory, while the fix segment applies only the findings of the `review.md` this run produced.
 

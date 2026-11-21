@@ -36,9 +36,9 @@ test('every instruction file cited by the sai-workflow schema and templates exis
   }
 });
 
-test('the schema design, tasks, and interfaces instructions cite their design step files', () => {
+test('the schema design and tasks instructions cite their design step files', () => {
   const schema = fs.readFileSync(path.join(repoRoot, schemaDir, 'schema.yaml'), 'utf8');
-  for (const id of ['design', 'tasks', 'interfaces']) {
+  for (const id of ['design', 'tasks']) {
     assert.ok(citedInstructionFiles(schema).includes(`sai/commands/design/steps/${id}.md`),
       `schema.yaml should cite sai/commands/design/steps/${id}.md`);
   }

@@ -3,9 +3,9 @@
 // design-steps@1 — data module for the stateful stage machine that delivers the
 // design worker's step files of `/sai-2-design` and `/sai-plan` by pointer.
 // Built via linear-steps factory; the coordinator emits each reported step to
-// it and sends the next pointer from the response. The overview is not a step
-// of the machine: the coordinator sends it as a separate continuation that
-// names `sai/commands/design/steps/overview.md`.
+// it and sends the next pointer from the response. The plan RED worker of the
+// design segment is not served by this machine: it takes its step file through
+// `red-steps@1`.
 
 const { createLinearStepMachine } = require('./linear-steps.js');
 
@@ -16,14 +16,12 @@ const machine = createLinearStepMachine({
     'research',
     'design',
     'tasks',
-    'interfaces',
   ],
   stageFiles: {
     'design-intake': 'none',
     research: 'sai/commands/design/steps/research.md',
     design: 'sai/commands/design/steps/design.md',
     tasks: 'sai/commands/design/steps/tasks.md',
-    interfaces: 'sai/commands/design/steps/interfaces.md',
   },
 });
 

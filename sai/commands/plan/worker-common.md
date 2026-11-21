@@ -28,7 +28,7 @@ The first message opens with the line `--report-dir <path>`, the report director
 
 Send the output of any command that can run long to a log in your scratch folder, per `@sai/policies/worker-lifecycle.md` § Worker side.
 
-Later messages carry a pointer line for the next step, or none. A message without a pointer line is a fix round, an answer to your question, or an overview continuation that names its own step file; it leaves the active step unchanged. A fix round lists findings in a file: correct exactly those, touch nothing else, and write the report again.
+Later messages carry a pointer line for the next step, or none. A message without a pointer line is a fix round or an answer to your question; it leaves the active step unchanged. A fix round lists findings in a file: correct exactly those, touch nothing else, and write the report again.
 
 ## Questions
 

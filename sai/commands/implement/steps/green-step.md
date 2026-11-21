@@ -1,10 +1,12 @@
 # GREEN step
 
-Write the production code that makes the step's tests pass.
+Write the production code that turns the step's tests green, or that satisfies the step's closure criterion.
 
-1. Read the step's tests and the plan references or audit findings the brief names: the step's tasks in `tasks.md`, the signatures in `interfaces.md`, and the relevant `design.md` decisions. Read the stubs RED left and replace them. When the brief names `SAI_LEARNINGS.md`, Fetch `@sai/policies/sai-learnings-format.md` and read its § Consumption and the file.
+1. Read the step's tests and the plan references or audit findings the brief names: the step in `tasks.md` (its `**Tests**` or `**Closure criterion**`, its `**Files Affected**`, and its `**Test Command**`), the finished signatures in `design.md` `## Target State`, and the relevant `design.md` decisions. Read the stubs the plan RED left and replace them. When the brief names `SAI_LEARNINGS.md`, Fetch `@sai/policies/sai-learnings-format.md` and read its § Consumption and the file.
 2. Write the minimal production code that satisfies the tests and the spec scenarios they name. Follow the project's conventions and `GLOSSARY.md` terms where the file exists, and the `SAI_LEARNINGS.md` entries per its § Consumption.
-3. Run `test_command` and iterate on production files until it passes, within the limits of your card.
+3. Run `test_command` and iterate on production files until the step's tests pass and the tests of the earlier steps stay green, within the limits of your card.
 4. Return the report. When the brief names `SAI_LEARNINGS.md`, put in `notes` each file outside the change whose code contradicts an entry (its path and the entry's key) and each entry that failed on execution (its key and the failure), or nothing about the file when neither happened.
 
-A step with no tests, such as documentation or declarative configuration, is GREEN only: write what the brief lists and return `completed`.
+A step that carries a closure criterion has no tests: it is GREEN only. Write what the brief lists, check the criterion yourself (run the command or read the file it names), say in `notes` how you checked it, and return `completed`. The review of the coordinator checks that the criterion holds.
+
+When passing needs a change to a test or to a stub signature that the tests depend on, change neither: report `needs_input` as your card says.

@@ -39,8 +39,6 @@ const definitions = [
   ['route-selector.md', '5. **Existing expected branch.**'],
   ['route-selector.md', '\nPresent it through the harness-native picker'],
   ['route-selector.md', 'Then present the concise picker question'],
-  ['route-selector.md', 'Only when round 3 left it unresolved'],
-  ['route-selector.md', '**Question.** With nothing resolved'],
   ['review-loop.md', '**On Yes**:'],
   ['common.md', 'After the unchanged existing maturity text question'],
   ['implementation-details.md', 'Only after the established edge-case text question'],

@@ -18,55 +18,6 @@ A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.m
 - **WHEN** `commands/claude/` and `commands/opencode/` are listed
 - **THEN** each contains `sai-status.md`
 
-### Requirement: interfaces.md is exempt; change-overview.md state is read from .openspec.yaml
-
-The panel SHALL treat `interfaces.md` as EXEMPT — its absence SHALL NOT be rendered as a problem or a missing-artifact warning, matching the archive classification (ADR 0023). The panel SHALL derive the `change-overview` overview state from the `overview.state` key in `openspec/changes/{name}/.openspec.yaml` (the persisted state defined by the `change-overview-synchronization` capability), NOT from inspecting `change-overview.md` contents:
-
-- `overview.state: current` — rendered as present and current only when the CLI also reports `change-overview.md` as done; missing or not-`done` file combined with current metadata renders as a problem/inconsistency.
-- `overview.state: stale` — rendered as a problem (the overview is not the change's current review surface).
-- `overview.state: failed` — rendered as a problem (first materialization was attempted at `Continue` and failed; the change requires a retry).
-- `overview.state: materializing` — rendered as a problem (a generator dispatch is in progress or was interrupted; the overview is not committed).
-- key absent or `overview.state: unmaterialized` on a non-backfilled change — rendered as expected, not a problem (the overview is not yet generated; it materializes at the first successful sai-2 `Continue` processing).
-- `backfilled: true` change — not applicable, rendered as `N/A`.
-- file present on disk paired with any non-`current` state — rendered as a problem/inconsistency, because the file is not committed as the change's review surface.
-
-#### Scenario: absent interfaces.md not flagged
-- **WHEN** `/sai-status <change-name>` runs on a change that has no `interfaces.md`
-- **THEN** the panel does not flag the absence as a problem
-
-#### Scenario: unmaterialized overview not flagged before first Continue
-- **WHEN** `/sai-status <change-name>` runs on a non-backfilled change whose `.openspec.yaml` has no `overview.state` key (or `unmaterialized`) and no `change-overview.md` exists
-- **THEN** the panel does not flag the overview as a problem — it is the expected pre-materialization state
-
-#### Scenario: stale overview flagged on an ordinary change
-- **WHEN** `/sai-status <change-name>` runs on a non-backfilled change whose `.openspec.yaml` records `overview.state: stale`
-- **THEN** the panel reports the stale overview as a problem, even when `change-overview.md` still exists (for example carrying a stale record)
-
-#### Scenario: failed first materialization flagged on an ordinary change
-- **WHEN** `/sai-status <change-name>` runs on a non-backfilled change whose `.openspec.yaml` records `overview.state: failed`
-- **THEN** the panel reports the failed overview as a problem, distinct from the expected pre-`Continue` `unmaterialized` state
-
-#### Scenario: interrupted materialization flagged as inconsistent
-- **WHEN** `/sai-status <change-name>` runs on a non-backfilled change whose `.openspec.yaml` records `overview.state: materializing` and `change-overview.md` exists
-- **THEN** the panel reports the interrupted materialization as a problem/inconsistency until reconciliation commits `current` or regenerates
-
-#### Scenario: current overview rendered present only when the file also exists
-- **WHEN** `/sai-status <change-name>` runs on a change whose `.openspec.yaml` records `overview.state: current` and `change-overview.md` exists with status `done`
-- **THEN** the panel renders `change-overview.md` as present and current
-
-#### Scenario: current metadata with missing file rendered as inconsistent
-- **WHEN** `/sai-status <change-name>` runs on a change whose `.openspec.yaml` records `overview.state: current` but `change-overview.md` is missing or not `done` (for example deleted out-of-band)
-- **THEN** the panel does NOT render the overview as current
-- **AND** it reports the inconsistency as a problem, because the metadata claims a review surface the file does not provide
-
-#### Scenario: file present with non-current metadata rendered as inconsistent
-- **WHEN** `/sai-status <change-name>` runs on a change whose `change-overview.md` exists (reported as done by CLI) but `.openspec.yaml` records `overview.state: unmaterialized`, `materializing`, `stale`, or `failed`
-- **THEN** the panel reports the inconsistency as a problem, because the file is not committed as the change's review surface
-
-#### Scenario: backfilled change overview forced to N/A
-- **WHEN** `/sai-status <change-name>` runs on a change whose `.openspec.yaml` records `backfilled: true`
-- **THEN** the panel renders the overview cell as `N/A` regardless of the actual `overview.state` value
-
 ### Requirement: Not Applicable audits are surfaced as present
 
 For the audit artifacts (`review`, `security`, `performance`, `accessibility`), the panel SHALL treat an artifact whose body contains a `## Not Applicable` heading as present, mirroring the Classification Check in `sai-archive.md` so the two commands share semantics.
@@ -166,20 +117,6 @@ The `sai-status` command SHALL run entirely in the main session with no `budget-
 - **WHEN** the `sai-status` command body is read
 - **THEN** it defines no `--fast-track` flag or fast-track parse step
 
-### Requirement: panel covers the 10 sai-workflow schema artifacts
-
-`/sai-status {change-name}` SHALL print a compact panel that reports the presence state of each of the 10 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `review`, `security`, `performance`, and `accessibility` — and SHALL NOT include `implementation.md` or `pr.md` as a panel artifact. Panel derivation is handled by the deterministic status tool.
-
-#### Scenario: all 10 artifacts represented
-
-- **WHEN** `/sai-status <change-name>` runs on an existing change
-- **THEN** the panel shows a per-phase line for each of the 10 schema artifacts and no line for `implementation.md` or `pr.md`
-
-#### Scenario: legacy implementation.md is ignored
-
-- **WHEN** a change still holds an `implementation.md` from the old planner
-- **THEN** the panel neither reads nor reports that file
-
 ### Requirement: A skipped specs artifact shows as skipped and is satisfied
 When `openspec status --json` reports the `specs` artifact as `skipped` (the change declares `skip_specs: true`), the panel SHALL render the specs cell as `skipped` instead of the approval states, and the `Next:` hint SHALL treat specs as present and approved, so it never points to `/sai-1-spec` because of the specs. The panel SHALL identify each artifact by the `id` field of the CLI output, falling back to `name`.
 
@@ -194,3 +131,17 @@ When `openspec status --json` reports the `specs` artifact as `skipped` (the cha
 #### Scenario: Artifacts named by id are recognized
 - **WHEN** the CLI output identifies artifacts by `id` rather than `name`
 - **THEN** the panel maps each artifact to its cell
+
+### Requirement: panel covers the eight sai-workflow schema artifacts
+
+`/sai-status {change-name}` SHALL report the presence state of each of the eight sai-workflow schema artifacts `proposal`, `specs`, `design`, `tasks`, `review`, `security`, `performance`, and `accessibility`, and SHALL NOT report `interfaces.md`, `change-overview.md`, `implementation.md`, or `pr.md`. It SHALL NOT read `overview.state` from `.openspec.yaml`. The bulk table SHALL carry the columns `prop`, `spec`, `dsgn`, `task`, `rev`, `sec`, `perf`, `a11y`, `Impl`, and `Next`.
+
+#### Scenario: Eight artifacts represented
+
+- **WHEN** `/sai-status <change-name>` runs on an existing change
+- **THEN** the panel shows one line for each of the eight artifacts and no line for interfaces or the overview
+
+#### Scenario: A legacy interfaces.md is ignored
+
+- **WHEN** a change still holds an `interfaces.md` or a `change-overview.md`
+- **THEN** the panel neither reads nor reports those files

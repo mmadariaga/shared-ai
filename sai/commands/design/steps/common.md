@@ -10,20 +10,20 @@ lifecycle or write-scope contract.
 
 ## Step delivery meta-rule
 
-The coordinator names each active step by one pointer line — `Active step: <id> — follow <path>`. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely in the coordinator's messages; this file is the only step surface loaded at dispatch. `design-intake` has no step file of its own — it runs from the worker contract plus this file before the first pointer, and the first delivered pointer targets research. The first pointer arrives as the first line of the task message, before the task: run `design-intake` inline, then follow that pointer, and report `design-intake` and `research` together in the first report. Each step ends by writing your report with the step's id in `step_ids`; a message without a pointer line (a fix round or an answer) leaves the active step unchanged. The overview is not a step: it arrives as a continuation that names `steps/overview.md` explicitly.
+The coordinator names each active step by one pointer line — `Active step: <id> — follow <path>`. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely in the coordinator's messages; this file is the only step surface loaded at dispatch. `design-intake` has no step file of its own — it runs from the worker contract plus this file before the first pointer, and the first delivered pointer targets research. The first pointer arrives as the first line of the task message, before the task: run `design-intake` inline, then follow that pointer, and report `design-intake` and `research` together in the first report. Each step ends by writing your report with the step's id in `step_ids`; a message without a pointer line (a fix round or an answer) leaves the active step unchanged.
 
 Fetch `@sai/policies/glossary-format.md`
 Fetch `@sai/policies/remember.md`
 
 ## Generation scope
 
-Generate `design.md`, `tasks.md`, and `interfaces.md` for the resolved change as the default outputs. `proposal.md` and `specs/**` may be amended in place only when a spec problem is discovered during design, clarity on the fix is present, and the coordinator answers `in-place` — never by default.
+Generate `design.md` and `tasks.md` for the resolved change as the default outputs. `proposal.md` and `specs/**` may be amended in place only when a spec problem is discovered during design, clarity on the fix is present, and the coordinator answers `in-place` — never by default.
 
 ## Artifact-only scope
 
-The authorized write surface is the one in `worker.md`. Within `openspec/changes/{name}/`, the design worker writes `design.md`, `tasks.md`, `interfaces.md`, and `.openspec.yaml` under their respective phase rules. The opted-in overview generator writes only `change-overview.md` under `@sai/commands/design/change-overview.md`; the parent worker owns overview state in `.openspec.yaml`. Amend `proposal.md` and `specs/**/*.md` only under the design step's spec-problem handling rule, after the coordinator answers `in-place`.
+The authorized write surface is the one in `worker.md`. Within `openspec/changes/{name}/`, the design worker writes `design.md`, `tasks.md`, and `.openspec.yaml` under their respective phase rules. Amend `proposal.md` and `specs/**/*.md` only under the design step's spec-problem handling rule, after the coordinator answers `in-place`.
 
-Never write `implementation.md`, test files, or any other artifact. Code generation and project modifications are the explicit responsibility of downstream commands.
+The design worker writes only `design.md` and `tasks.md`, plus the `.openspec.yaml` keys and the amendments of `worker.md`; any other artifact is out of scope. The plan RED worker writes the stubs and the tests that `tasks.md` names, and the build writes the production code.
 
 ## Decision style
 

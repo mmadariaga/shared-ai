@@ -29,15 +29,6 @@ The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutti
 - **WHEN** the `/sai-build` coordinator card is inspected
 - **THEN** it fetches `@sai/policies/change-telemetry.md`
 
-### Requirement: Start preconditions
-
-The coordinator SHALL run the OpenSpec prerequisite check before anything else. It SHALL start a change only when `openspec/changes/{name}/` contains `proposal.md`, `tasks.md`, and at least one file under `specs/`; otherwise it SHALL print `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`, write nothing, and end the run without escalating. A missing `design.md` or `interfaces.md` SHALL be recorded as a deviation and SHALL NOT stop the run. An explicit `--fast-track` token SHALL be dropped from the arguments. Without a change name, it SHALL take the only active change with a `tasks.md`; with none or several, it SHALL print `Cannot start /sai-3-implement: name the change ({candidates, or none}).` and end the run without escalating.
-
-#### Scenario: Change lacks its task list
-
-- **WHEN** the named change has no `tasks.md`
-- **THEN** the coordinator prints the fixed precondition message naming `tasks.md` and ends the run without escalation and without writing.
-
 ### Requirement: Baselines before the first step
 
 Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run the unit and integration suites once through the executor, recording the failing tests as the failure baseline, or `unavailable` when no suite can be found or run. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it SHALL do no new work, run the suites exactly once, report their result, and close.
@@ -63,30 +54,6 @@ To find the test commands, the coordinator SHALL take the `**Test Command**` fie
 
 - **WHEN** `**Test Command**` is missing from `tasks.md` or holds `None — no test runner in this project`
 - **THEN** the coordinator falls back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files, and records the baseline as `unavailable` when none of them yields a suite that can be run
-
-### Requirement: Per-step RED, GREEN, review, and commit cycle
-
-The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, the `## Required Documentation` entries of `tasks.md` relevant to the step, writable paths, the run directory for scratch, the name of the report the worker saves in the run's report directory, and the path `SAI_LEARNINGS.md` when that file exists at the project root (the brief SHALL NOT mention the file when it does not). Each documentation entry SHALL carry its path or URL with its note, as context to read that adds no requirement; the brief SHALL carry no documentation entry when the section is missing or every subsection is `None`, and the run SHALL continue. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then run the adversarial step review of the `implement-new-adversarial-review` capability, whose bounded fix rounds are not attempts of the step. After the step's commit it SHALL emit `step-done`.
-
-#### Scenario: GREEN modifies a test file
-
-- **WHEN** the step's tests pass after GREEN but a test file differs from the set staged after RED
-- **THEN** the coordinator restores that file from the index and counts the change as an attempt of the step.
-
-#### Scenario: RED tests fail for a non-assertion reason
-
-- **WHEN** the step's tests fail because of an import, syntax, or fixture error after RED
-- **THEN** the coordinator sends RED a corrected instruction, counted as an attempt of the step, before GREEN starts.
-
-#### Scenario: The brief carries the relevant documentation
-
-- **WHEN** `tasks.md`'s `## Required Documentation` lists entries relevant to a step
-- **THEN** that step's brief carries each relevant path or URL with its note, as context that adds no requirement
-
-#### Scenario: No documentation to carry
-
-- **WHEN** `## Required Documentation` is missing from `tasks.md` or every subsection is `None`
-- **THEN** the step brief carries no documentation entry and the run continues
 
 ### Requirement: Step commits
 
