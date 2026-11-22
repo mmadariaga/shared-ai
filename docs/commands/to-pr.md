@@ -126,8 +126,7 @@ that reaches the 120 s process limit is read back from the remote and reported a
 never as blocked and never repeated on its own; the process group of the push ends with it.
 
 **Auto-approved publication.** With the project setting `publication.autoApprove` set to
-`true` in your personal `.sai/settings.local.jsonc` ([Publication auto-approval](../project-settings.md#publication-auto-approval);
-a `true` in the shared `.sai/settings.jsonc` grants nothing and the tool reports a warning), the command
+`true` ([Publication auto-approval](../project-settings.md#publication-auto-approval)), the command
 shows the complete proposal and then pushes without force and publishes with the unchanged
 push and publish tokens, asking no question. The tools read the setting themselves, bind it
 into both tokens, and apply the refusals of the unattended mode described below (a force push,

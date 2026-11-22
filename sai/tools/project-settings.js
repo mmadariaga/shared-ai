@@ -144,7 +144,7 @@ const CATALOGUE = {
   }])),
   // The answer to the publication question of `/sai-plan` and `/sai-build`; `ask` and an absent key leave the question normal. It is
   // not a destination field of `/to-pr`, so `readPr` never returns it. The screen does not list it: it stays hand-edited.
-  // A `yes` counts only from the local settings file (see CONSENT_IDS); `no` and `ask` count from either file.
+  // A `yes` from either file is the answer; the local file wins key by key.
   'pr.publishAfterRun': {
     validate: value => (typeof value === 'string' && ['yes', 'no'].some(answer => isKeyword(value, answer)) ? null : 'must be yes, no, or ask'),
     normalize: value => value.trim().toLowerCase(),
@@ -158,9 +158,9 @@ const CATALOGUE = {
     absent: 'English',
     fallback: 'the draft falls back to English',
   },
-  // A standing grant of the person who runs the command: with `true` in the local settings file, `/to-pr` and `/to-backlog`
-  // publish right after showing their complete proposal, with no approval question. A `true` in the committed base file
-  // grants nothing (see CONSENT_IDS). Their tools read it themselves, bind it into the confirmation token, and keep every safety refusal.
+  // A standing publication grant: with `true` in either settings file (the local file wins key by key), `/to-pr` and `/to-backlog`
+  // publish right after showing their complete proposal, with no approval question. Their tools read it themselves, bind it
+  // into the confirmation token, and keep every safety refusal.
   // An absent key reads as false, and a non-boolean value is dropped with a warning that names the key.
   'publication.autoApprove': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
@@ -232,13 +232,6 @@ function flatten(value, prefix = '') {
   });
 }
 
-// Publication consent: a granting value of these keys counts only when the personal local file holds it, because a push is
-// visible to others and the consent must come from the person who runs the command, not from a committed file. A restricting
-// value (`false`, `no`, `ask`) keeps its effect from either file.
-const CONSENT_IDS = Object.freeze(['publication.autoApprove', 'pr.publishAfterRun']);
-const grants = (id, value) => (id === 'publication.autoApprove' ? value === true : value === 'yes');
-const consentWarning = id => `Setting ${id} in ${SETTINGS_FILE} grants consent only from ${LOCAL_SETTINGS_FILE}, so that value is ignored; move it to ${LOCAL_SETTINGS_FILE} to grant consent.`;
-
 // What an unusable file means for its readers, worded in the warning that names it.
 const BASE_EFFECT = 'every setting asks its normal question';
 const LOCAL_EFFECT = 'the local overrides are ignored and the base values apply';
@@ -303,11 +296,9 @@ function projectRoot(cwd = process.cwd()) {
 }
 
 /**
- * Read every catalogue value: { values: {id: value}, origins: {id: base|local}, baseValues, localValues, source: setting|absent, warnings, consentWarnings, root, notices? }.
+ * Read every catalogue value: { values: {id: value}, origins: {id: base|local}, baseValues, localValues, source: setting|absent, warnings, root, notices? }.
  * `.sai/settings.local.jsonc`, beside the base file, overrides the base file key by key: a key the local file holds
  * replaces the base value even when its own value is `ask` or invalid, which leaves the question normal.
- * A granting value of a consent key (`CONSENT_IDS`) in the base file stays out of `values` and `baseValues`; its warning is in
- * `consentWarnings` by key, never in `warnings`, so only a read of that key reports it.
  * `providerIds` validates `backlog.provider`, `prProviderIds` validates `pr.provider`; `locate: false` reads the cwd itself.
  */
 function readSettings({ cwd = process.cwd(), providerIds, prProviderIds, locate = true } = {}) {
@@ -317,12 +308,6 @@ function readSettings({ cwd = process.cwd(), providerIds, prProviderIds, locate 
   const base = readLayer(path.join(root, SETTINGS_FILE), SETTINGS_FILE, ids);
   const local = readLayer(path.join(root, LOCAL_SETTINGS_FILE), LOCAL_SETTINGS_FILE, ids, LOCAL_EFFECT);
   const baseValues = { ...base.values };
-  const consentWarnings = {};
-  for (const id of CONSENT_IDS) {
-    if (!Object.hasOwn(baseValues, id) || !grants(id, baseValues[id])) continue;
-    delete baseValues[id];
-    consentWarnings[id] = consentWarning(id);
-  }
   const values = { ...baseValues };
   for (const id of local.present) delete values[id];
   Object.assign(values, local.values);
@@ -335,34 +320,21 @@ function readSettings({ cwd = process.cwd(), providerIds, prProviderIds, locate 
     localValues: local.values,
     source: Object.keys(values).length ? 'setting' : 'absent',
     warnings: [...base.warnings, ...local.warnings],
-    consentWarnings,
     root,
     ...note,
   };
 }
 
-/** One setting: { value, source, warnings, notices? }. A consent key's read also carries its consent warning. */
+/** One setting: { value, source, warnings, notices? }. */
 function get(id, options) {
-  const { values, source, warnings, consentWarnings, notices = [] } = readSettings(options);
+  const { values, source, warnings, notices = [] } = readSettings(options);
   const value = Object.hasOwn(values, id) ? values[id] : null;
-  const own = consentWarnings[id] ? [consentWarnings[id]] : [];
-  return { value, source: value === null ? 'absent' : source, warnings: [...warnings, ...own], ...(notices.length ? { notices } : {}) };
+  return { value, source: value === null ? 'absent' : source, warnings, ...(notices.length ? { notices } : {}) };
 }
 
-/**
- * The standing publication grant of `/to-pr` and `/to-backlog`, with the consent warning of its read: { value, warnings }.
- * `value` is true only for a stored boolean `true` in the local file. An absent, `ask`, or invalid value reads as false, and a
- * `true` held only by the base file reads as false with a warning that names the key.
- */
-function readAutoApprove(options) {
-  const { values, consentWarnings } = readSettings(options);
-  const id = 'publication.autoApprove';
-  return { value: values[id] === true, warnings: consentWarnings[id] ? [consentWarnings[id]] : [] };
-}
-
-/** The standing publication grant of `/to-pr` and `/to-backlog`: true only for a `true` the local file holds. */
+/** The standing publication grant of `/to-pr` and `/to-backlog`: true only for a stored boolean `true`, from either file, the local file winning key by key. */
 function autoApprove(options) {
-  return readAutoApprove(options).value;
+  return readSettings(options).values['publication.autoApprove'] === true;
 }
 
 /**
@@ -477,4 +449,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, CONSENT_IDS, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, grants, parseJsonc, projectRoot, readSettings, get, readAutoApprove, autoApprove, addWarnings, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, autoApprove, addWarnings, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };

@@ -604,30 +604,13 @@ test('E11 E13: to-backlog.js reads publication.autoApprove from the project sett
   const { withAutoApprove } = require('../sai/tools/to-backlog');
   const project = settings => {
     const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'to-backlog-auto-'));
-    if (settings !== undefined) { fs.mkdirSync(path.join(directory, '.sai')); fs.writeFileSync(path.join(directory, '.sai', 'settings.local.jsonc'), settings); }
+    if (settings !== undefined) { fs.mkdirSync(path.join(directory, '.sai')); fs.writeFileSync(path.join(directory, '.sai', 'settings.jsonc'), settings); }
     return directory;
   };
   const read = settings => withAutoApprove({ run: 'kept' }, project(settings));
-  assert.deepEqual(read(undefined), { run: 'kept', autoApprove: false, autoApproveWarnings: [] });
+  assert.deepEqual(read(undefined), { run: 'kept', autoApprove: false });
   assert.equal(read('{ "publication": { "autoApprove": true } }').autoApprove, true);
   assert.equal(read('{ "publication": { "autoApprove": false } }').autoApprove, false);
   assert.equal(read('{ "publication": { "autoApprove": "yes" } }').autoApprove, false);
   assert.equal(read('{ "publication": { "autoApprove": true } }').run, 'kept');
-});
-
-test('E1 E3: a true held only by the shared base settings file grants nothing and is reported as a warning', () => {
-  const { withAutoApprove } = require('../sai/tools/to-backlog');
-  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'to-backlog-base-'));
-  fs.mkdirSync(path.join(directory, '.sai'));
-  fs.writeFileSync(path.join(directory, '.sai', 'settings.jsonc'), '{ "publication": { "autoApprove": true } }');
-  const base = withAutoApprove({}, directory);
-  assert.equal(base.autoApprove, false);
-  assert.equal(base.autoApproveWarnings.length, 1);
-  assert.match(base.autoApproveWarnings[0], /publication\.autoApprove.*\.sai\/settings\.local\.jsonc/);
-  fs.writeFileSync(path.join(directory, '.sai', 'settings.local.jsonc'), '{ "publication": { "autoApprove": false } }');
-  assert.equal(withAutoApprove({}, directory).autoApprove, false);
-  fs.writeFileSync(path.join(directory, '.sai', 'settings.local.jsonc'), '{ "publication": { "autoApprove": true } }');
-  const both = withAutoApprove({}, directory);
-  assert.equal(both.autoApprove, true);
-  assert.equal(both.autoApproveWarnings.length, 1);
 });

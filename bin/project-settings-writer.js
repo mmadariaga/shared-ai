@@ -1,14 +1,13 @@
 'use strict';
 
-// Writer for `.sai/settings.jsonc` and, for the keys it already holds and for the two publication consent keys,
-// the personal `.sai/settings.local.jsonc`. It lives in bin/ because it needs
+// Writer for `.sai/settings.jsonc` and, for the keys it already holds, the
+// hand-created `.sai/settings.local.jsonc`. It lives in bin/ because it needs
 // `jsonc-parser`, which the installed reader (sai/tools/project-settings.js)
 // must not depend on. Setting ids, validation and canonical forms come from the
 // reader's CATALOGUE.
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { CATALOGUE, CONSENT_IDS, SETTINGS_FILE, LOCAL_SETTINGS_FILE, isKeyword, grants } = require('../sai/tools/project-settings.js');
+const { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, isKeyword } = require('../sai/tools/project-settings.js');
 
 let jsoncParser = null;
 try {
@@ -100,20 +99,12 @@ function editText(settingsFile, stored, normalized) {
   return { text };
 }
 
-/** True when git reports the project's local settings file as not ignored; false when it is ignored or git cannot tell. */
-function localFileNotIgnored(projectPath) {
-  const result = spawnSync('git', ['check-ignore', '-q', '--', LOCAL_SETTINGS_FILE], { cwd: projectPath, encoding: 'utf8', shell: false });
-  return !result.error && result.status === 1;
-}
-
 /**
  * Save { id: value } in place: a key goes to `.sai/settings.local.jsonc` when that file already holds it,
- * otherwise to `.sai/settings.jsonc`, which is created when missing. A publication consent key (`CONSENT_IDS`) always goes
- * to the local file, which is created when missing, and never to the base file. Any other key never creates the local file.
- * A value of undefined removes the key. Returns { ok: true, files, warnings? } or { ok: false, error }; every edit is
+ * otherwise to `.sai/settings.jsonc`, which is created when missing. The local file is never created.
+ * A value of undefined removes the key. Returns { ok: true, files } or { ok: false, error }; every edit is
  * prepared before the first write, so a refused edit leaves both files untouched. An empty change set writes nothing.
- * `baseOnly` sends every other key to `.sai/settings.jsonc` and leaves the local file out, even when it holds the key.
- * A warning says that git does not ignore the local file when a granting consent value was written to it.
+ * `baseOnly` sends every key to `.sai/settings.jsonc` and leaves the local file out, even when it holds the key.
  */
 function saveSettings(projectPath, changes, { providerIds, prProviderIds, baseOnly = false } = {}) {
   const entries = Object.entries(changes);
@@ -125,12 +116,11 @@ function saveSettings(projectPath, changes, { providerIds, prProviderIds, baseOn
     normalized.push([id, checked.value]);
   }
   const targets = [[SETTINGS_FILE, readStored(projectPath, SETTINGS_FILE)], [LOCAL_SETTINGS_FILE, readStored(projectPath, LOCAL_SETTINGS_FILE)]];
-  const consent = ([id]) => CONSENT_IDS.includes(id);
   for (const [settingsFile, stored] of targets) {
-    if (stored.status === 'unreadable' && !(baseOnly && settingsFile === LOCAL_SETTINGS_FILE && !normalized.some(consent))) return { ok: false, error: `${settingsFile} cannot be edited: ${stored.error}` };
+    if (stored.status === 'unreadable' && !(baseOnly && settingsFile === LOCAL_SETTINGS_FILE)) return { ok: false, error: `${settingsFile} cannot be edited: ${stored.error}` };
   }
   const [[, base], [, local]] = targets;
-  const inLocal = entry => consent(entry) || (!baseOnly && local.status === 'ok' && storedValue(local.root, entry[0]) !== undefined);
+  const inLocal = ([id]) => !baseOnly && local.status === 'ok' && storedValue(local.root, id) !== undefined;
   const edits = [
     [SETTINGS_FILE, base, normalized.filter(entry => !inLocal(entry))],
     [LOCAL_SETTINGS_FILE, local, normalized.filter(inLocal)],
@@ -152,11 +142,7 @@ function saveSettings(projectPath, changes, { providerIds, prProviderIds, baseOn
       return { ok: false, error: `Cannot write ${settingsFile}: ${error.message}` };
     }
   }
-  const granted = normalized.some(entry => consent(entry) && grants(entry[0], entry[1]));
-  const warnings = granted && localFileNotIgnored(projectPath)
-    ? [`${LOCAL_SETTINGS_FILE} is not ignored by git: committing it shares the publication grant with every clone. Add it to .gitignore yourself; this menu never edits .gitignore.`]
-    : [];
-  return { ok: true, changed: true, files, ...(warnings.length ? { warnings } : {}) };
+  return { ok: true, changed: true, files };
 }
 
 module.exports = { checkValue, parseText, readStored, storedValue, saveSettings };

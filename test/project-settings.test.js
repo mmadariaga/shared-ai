@@ -609,12 +609,34 @@ test('I3: experimental.changeTelemetry is a boolean that reads as absent until s
   assert.deepEqual({ ...settings.CATALOGUE['experimental.changeTelemetry'], validate: undefined }, { validate: undefined, label: 'Telemetry', absent: 'off' });
 });
 
+// Publication consent is shared: a granting value counts from either file, the local file wins key by key, and no read warns.
+test('a granting value of the two publication keys counts from the shared file, the local file wins key by key, and no read reports a consent warning', () => {
+  const both = (base, local) => project({ '.sai/settings.jsonc': base, ...(local ? { '.sai/settings.local.jsonc': local } : {}) });
+  const cases = [
+    ['publication.autoApprove', '{ "publication": { "autoApprove": true } }', '{ "publication": { "autoApprove": false } }', '{ "publication": { "autoApprove": false } }', '{ "publication": { "autoApprove": true } }', true, false],
+    ['pr.publishAfterRun', '{ "pr": { "publishAfterRun": "yes" } }', '{ "pr": { "publishAfterRun": "no" } }', '{ "pr": { "publishAfterRun": "no" } }', '{ "pr": { "publishAfterRun": "yes" } }', 'yes', 'no'],
+  ];
+  for (const [id, grant, deny, baseDeny, localGrant, granted, denied] of cases) {
+    const shared = settings.get(id, { cwd: both(grant) });
+    assert.equal(shared.value, granted, id);
+    assert.deepEqual(shared.warnings, [], id);
+    assert.equal(settings.get(id, { cwd: both(grant, deny) }).value, denied, id);
+    const overGrant = settings.get(id, { cwd: both(baseDeny, localGrant) });
+    assert.equal(overGrant.value, granted, id);
+    assert.deepEqual(overGrant.warnings, [], id);
+  }
+  const shared = both('{ "publication": { "autoApprove": true } }');
+  assert.equal(settings.autoApprove({ cwd: shared }), true);
+  assert.equal(Object.hasOwn(settings.readSettings({ cwd: shared }), 'consentWarnings'), false);
+  assert.equal(settings.autoApprove({ cwd: both('{ "publication": { "autoApprove": true } }', '{ "publication": { "autoApprove": false } }') }), false);
+});
+
 test('E11 E13: publication.autoApprove is a boolean that reads as false until set, and a non-boolean reads as false with a warning', () => {
   const file = (text, local) => project({ '.sai/settings.jsonc': text, ...(local ? { '.sai/settings.local.jsonc': local } : {}) });
   const flag = cwd => settings.autoApprove({ cwd });
   assert.deepEqual(settings.get('publication.autoApprove', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
   assert.equal(flag(project()), false);
-  assert.equal(flag(project({ '.sai/settings.local.jsonc': '{ "publication": { "autoApprove": true } }' })), true);
+  assert.equal(flag(file('{ "publication": { "autoApprove": true } }')), true);
   assert.equal(flag(file('{ "publication": { "autoApprove": false } }')), false);
   assert.equal(flag(file('{ "publication": { "autoApprove": "ask" } }')), false);
   assert.equal(flag(file('{ "publication": { "autoApprove": true } }', '{ "publication": { "autoApprove": false } }')), false);
@@ -630,10 +652,8 @@ test('E11 E13: publication.autoApprove is a boolean that reads as false until se
 test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and an invalid value as the question, and is no destination field', () => {
   const file = value => project({ '.sai/settings.jsonc': `{ "pr": { "publishAfterRun": ${value}, "provider": "github" } }` });
   const get = value => settings.get('pr.publishAfterRun', { cwd: file(value) });
-  const local = value => settings.get('pr.publishAfterRun', { cwd: project({ '.sai/settings.local.jsonc': `{ "pr": { "publishAfterRun": ${value} } }` }) });
   assert.deepEqual(settings.get('pr.publishAfterRun', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
-  assert.deepEqual([local('"yes"').value, local('"no"').value, local('"YES"').value, local('" No "').value], ['yes', 'no', 'yes', 'no']);
-  assert.deepEqual([get('"no"').value, get('" No "').value], ['no', 'no']);
+  assert.deepEqual([get('"yes"').value, get('"no"').value, get('"YES"').value, get('" No "').value], ['yes', 'no', 'yes', 'no']);
   assert.deepEqual(get('"ask"'), { value: null, source: 'absent', warnings: [] });
   for (const value of ['"maybe"', 'true', '1', '""']) {
     const result = get(value);
@@ -641,74 +661,12 @@ test('I4 E3: pr.publishAfterRun reads yes or no, leaves ask, an absent key and a
     assert.deepEqual(result.warnings, ['Setting pr.publishAfterRun in .sai/settings.jsonc must be yes, no, or ask; its question stays normal.'], value);
   }
   // The key is not a destination field: `/to-pr` still reads only its own keys, and the screen keeps it hand-edited.
-  assert.deepEqual(settings.readPr({ cwd: file('"no"'), providerIds: ['github'] }).config, { provider: 'github' });
+  assert.deepEqual(settings.readPr({ cwd: file('"yes"'), providerIds: ['github'] }).config, { provider: 'github' });
   assert.equal(settings.CATALOGUE['pr.publishAfterRun'].label, undefined);
-  const overridden = project({ '.sai/settings.jsonc': '{ "pr": { "publishAfterRun": "yes" } }', '.sai/settings.local.jsonc': '{ "pr": { "publishAfterRun": "no" } }' });
-  assert.equal(settings.get('pr.publishAfterRun', { cwd: overridden }).value, 'no');
+  const local = project({ '.sai/settings.jsonc': '{ "pr": { "publishAfterRun": "yes" } }', '.sai/settings.local.jsonc': '{ "pr": { "publishAfterRun": "no" } }' });
+  assert.equal(settings.get('pr.publishAfterRun', { cwd: local }).value, 'no');
   const row = fs.readFileSync(path.join(__dirname, '../docs/project-settings.md'), 'utf8').split('\n').find(line => line.startsWith('| `pr.publishAfterRun`'));
   assert.match(row, /`ask`, `yes`, or `no`/);
-});
-
-// Publication consent: a granting value counts only from the personal local file; a restricting value counts from either file.
-const consentWarning = key => new RegExp(`Setting ${key.replace('.', '\\.')} in \\.sai/settings\\.jsonc grants consent only from \\.sai/settings\\.local\\.jsonc`);
-test('E1 E3: a granting value held only by the base file grants nothing and its read reports one warning', () => {
-  const cwd = project({ '.sai/settings.jsonc': '{ "publication": { "autoApprove": true }, "pr": { "publishAfterRun": "yes" } }' });
-  for (const key of ['publication.autoApprove', 'pr.publishAfterRun']) {
-    const result = settings.get(key, { cwd });
-    assert.equal(result.value, null, key);
-    assert.equal(result.source, 'absent', key);
-    assert.equal(result.warnings.length, 1, key);
-    assert.match(result.warnings[0], consentWarning(key), key);
-  }
-  assert.equal(settings.autoApprove({ cwd }), false);
-  assert.equal(settings.readAutoApprove({ cwd }).value, false);
-  assert.equal(settings.readAutoApprove({ cwd }).warnings.length, 1);
-  const all = settings.readSettings({ cwd });
-  assert.deepEqual(all.values, {});
-  assert.deepEqual(all.baseValues, {});
-  assert.deepEqual(all.warnings, []);
-});
-
-test('E3: the consent warning travels only with a read of a consent key', () => {
-  const cwd = project({ '.sai/settings.jsonc': '{ "publication": { "autoApprove": true }, "explore": { "chatPublicLanguage": "Euskara" } }' });
-  assert.deepEqual(settings.get('explore.chatPublicLanguage', { cwd }), { value: 'Euskara', source: 'setting', warnings: [] });
-  assert.deepEqual(settings.get('pr.publishAfterRun', { cwd }), { value: null, source: 'absent', warnings: [] });
-  assert.equal(settings.get('publication.autoApprove', { cwd }).warnings.length, 1);
-  const run = spawnSync(process.execPath, [path.join(root, 'sai/tools/project-settings.js'), 'get', 'publication.autoApprove', '--json', '--cwd', cwd], { encoding: 'utf8' });
-  assert.equal(JSON.parse(run.stdout).warnings.length, 1);
-});
-
-test('E3: the warning appears whether or not the local file holds the key, and the local value decides', () => {
-  const text = '{ "publication": { "autoApprove": true }, "pr": { "publishAfterRun": "yes" } }';
-  const cwd = project({ '.sai/settings.jsonc': text, '.sai/settings.local.jsonc': text });
-  assert.equal(settings.get('pr.publishAfterRun', { cwd }).value, 'yes');
-  assert.equal(settings.get('pr.publishAfterRun', { cwd }).warnings.length, 1);
-  assert.equal(settings.readAutoApprove({ cwd }).value, true);
-  assert.equal(settings.readAutoApprove({ cwd }).warnings.length, 1);
-});
-
-test('E2: a restricting value keeps its effect from either file and the local key always wins', () => {
-  const baseNo = project({ '.sai/settings.jsonc': '{ "publication": { "autoApprove": false }, "pr": { "publishAfterRun": "no" } }' });
-  assert.equal(settings.get('pr.publishAfterRun', { cwd: baseNo }).value, 'no');
-  assert.deepEqual(settings.readSettings({ cwd: baseNo }).origins, { 'publication.autoApprove': 'base', 'pr.publishAfterRun': 'base' });
-  const baseAsk = project({ '.sai/settings.jsonc': '{ "pr": { "publishAfterRun": "ask" } }' });
-  assert.equal(settings.get('pr.publishAfterRun', { cwd: baseAsk }).value, null);
-  const localYes = project({ '.sai/settings.jsonc': '{ "pr": { "publishAfterRun": "no" } }', '.sai/settings.local.jsonc': '{ "pr": { "publishAfterRun": "yes" } }' });
-  assert.equal(settings.get('pr.publishAfterRun', { cwd: localYes }).value, 'yes');
-  const localFalse = project({ '.sai/settings.jsonc': '{ "publication": { "autoApprove": true } }', '.sai/settings.local.jsonc': '{ "publication": { "autoApprove": false } }' });
-  assert.equal(settings.autoApprove({ cwd: localFalse }), false);
-});
-
-test('E5: every other setting keeps reading the merged base and local files', () => {
-  const cwd = project({ '.sai/settings.jsonc': '{ "pr": { "language": "Euskara", "provider": "github" }, "publication": { "autoApprove": true } }', '.sai/settings.local.jsonc': '{ "pr": { "provider": "gitlab" } }' });
-  const result = settings.readSettings({ cwd, prProviderIds: ['github', 'gitlab'] });
-  assert.deepEqual(result.values, { 'pr.language': 'Euskara', 'pr.provider': 'gitlab' });
-  assert.deepEqual(result.origins, { 'pr.language': 'base', 'pr.provider': 'local' });
-});
-
-test('addWarnings merges warnings into a result without repeating one', () => {
-  assert.deepEqual(settings.addWarnings({ status: 'ready' }, []), { status: 'ready' });
-  assert.deepEqual(settings.addWarnings({ status: 'ready', warnings: ['a'] }, ['a', 'b']), { status: 'ready', warnings: ['a', 'b'] });
 });
 
 test('pr.language: a language name, normalized like the explore languages, none invalid, and never a destination field of readPr', () => {
