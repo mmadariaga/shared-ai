@@ -44,7 +44,7 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 
 ### Requirement: Binding continuations remain answer-only and harness-native
 
-Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage`, opencode bindings SHALL continue the captured worker through `subagent(agent: ..., sessionID: ..., background: true)` with the agent used at creation and the captured `sessionID`, only after its completion notification has arrived, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it, followed by the warming line of `sai/policies/cache-warming.md` when the worker's resolved timings are not `off`. The Claude binding template SHALL fetch `sai/policies/opencode-dispatch.md`: a worker whose route query answered `opencode` SHALL be created, continued, and disposed as that policy says, with the same ready prompt and the same messages, each continuation being a new `opencode run` turn on the captured `sessionID` instead of `SendMessage` and carrying no warming line.
+Replacing the initial dispatch placeholder SHALL NOT change continuation behavior. Claude bindings SHALL continue the captured worker through `SendMessage` only after the worker's `task-notification` with `status: completed` for the turn that returned the message being answered has arrived, matched by task ID and whatever its summary, because a handback alone never marks the turn as ended; opencode bindings SHALL continue the captured worker through `subagent(agent: ..., sessionID: ..., background: true)` with the agent used at creation and the captured `sessionID`, only after its completion notification has arrived, and both SHALL forward only the selected answer or the exact fixed notice acknowledgement where their existing contract requires it, followed by the warming line of `sai/policies/cache-warming.md` when the worker's resolved timings are not `off`. The Claude binding template SHALL fetch `sai/policies/opencode-dispatch.md`: a worker whose route query answered `opencode` SHALL be created, continued, and disposed as that policy says, with the same ready prompt and the same messages, each continuation being a new `opencode run` turn on the captured `sessionID` instead of `SendMessage` and carrying no warming line.
 
 #### Scenario: Feedback continues the same worker
 
@@ -61,6 +61,11 @@ Replacing the initial dispatch placeholder SHALL NOT change continuation behavio
 
 - **WHEN** the Claude binding continues a worker whose route query answered `opencode`
 - **THEN** it runs a new `opencode-dispatch.js continue --session <sessionID>` turn with the same message and no warming line, instead of `SendMessage`
+
+#### Scenario: Claude continuation waits for the completed notification
+
+- **WHEN** a Claude Code coordinator holds a worker's handback and the `completed` notification of that turn has not arrived
+- **THEN** the binding sends no `SendMessage` until the notification arrives
 
 ### Requirement: Initial dispatch prompt embeds literal ready example
 Each routed worker binding initial dispatch prompt SHALL embed the literal two-line ready example naming event ready and empty changed_files after the ready-only sentence, encoded with escaped newline sequences in the single double-quoted dispatch string so decoding yields the multi-line example.

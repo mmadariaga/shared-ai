@@ -7,7 +7,7 @@ TBD: Define the purpose of the harness panel-render binding capability.
 
 ### Requirement: Routed progress updates and continuation share an assistant turn
 
-Claude Code and opencode panel bindings SHALL make routed progress-event continuation the sole exception to their render-first ordering. After the shared runner validates and registers the event, opencode SHALL issue `todowrite` and the same-worker `subagent` continuation as parallel calls in one assistant turn. Claude Code SHALL issue the necessary independent task-panel updates and `SendMessage` in one assistant turn, resolving panel ids required for those updates beforehand. Both calls SHALL use the registered progress result independently; neither SHALL depend on the other's return value. Emission SHALL remain coordinator-owned, with step-level granularity and validator-sourced milestone stamps. Initial dispatch, other continuations, and non-routed surfaces SHALL retain render-first ordering. The existing one-time unavailable-panel degradation SHALL remain unchanged, and all other panel errors SHALL remain failures without retries.
+Claude Code and opencode panel bindings SHALL make routed progress-event continuation the sole exception to their render-first ordering. After the shared runner validates and registers the event, opencode SHALL issue `todowrite` and the same-worker `subagent` continuation as parallel calls in one assistant turn. Claude Code SHALL issue the necessary independent task-panel updates in the assistant turn that registers the event, resolving panel ids required for those updates beforehand, and SHALL send the `SendMessage` continuation only after the worker's `completed` task notification has arrived, never on the handback alone. Both calls SHALL use the registered progress result independently; neither SHALL depend on the other's return value. Emission SHALL remain coordinator-owned, with step-level granularity and validator-sourced milestone stamps. Initial dispatch, other continuations, and non-routed surfaces SHALL retain render-first ordering. The existing one-time unavailable-panel degradation SHALL remain unchanged, and all other panel errors SHALL remain failures without retries.
 
 #### Scenario: Opencode progress batching
 - **WHEN** a validated progress event marks a new declared step in an opencode routed plan
@@ -15,7 +15,7 @@ Claude Code and opencode panel bindings SHALL make routed progress-event continu
 
 #### Scenario: Claude Code progress batching
 - **WHEN** a validated progress event marks a new declared step in a Claude Code routed plan
-- **THEN** the coordinator registers progress and issues the necessary independent task updates plus `SendMessage` in the same assistant turn without requiring panel completion first
+- **THEN** the coordinator registers progress and issues the necessary independent task updates in that turn without requiring panel completion first, and sends the `SendMessage` once the worker's `completed` task notification has arrived
 
 #### Scenario: Panel calls already disabled
 - **WHEN** progress is registered after the invocation's panel tooling has degraded
