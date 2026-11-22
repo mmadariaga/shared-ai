@@ -67,7 +67,8 @@ For the technical storage and verification rules, see
 
 After displaying the complete Ready to Propose block set, Explore normally asks
 in three conditional rounds, each one native interaction (on opencode, one call
-per question when its picker takes a single question). Round 1: whether to
+per question when its picker takes a single question; on Claude Code, a round with
+more than four questions takes consecutive calls that count as one round). Round 1: whether to
 create or update a backlog item through `to-backlog` and whether to continue to
 implementation (three options, below), whether to create and
 switch to a local branch through `new-change-branch`, and whether to assign the
@@ -77,13 +78,18 @@ the intent to assign the authenticated user once the issue exists. Without a
 linked issue or planned creation, the assignment question is left out. The branch
 and assignment questions are conditional: they take effect only when the backlog
 answer continues to implementation.
-Round 2: the exact publication approval and the branch base. Round 3: the route;
-for several pending slices, whether later Direct Build slices start automatically
-(ignored unless you choose Direct Build); and, when unresolved, whether to create
-`change-overview.md` and in which language (applies only to Plan). An explicit
-overview language, a previously resolved answer, or a project setting answers
-the overview question in advance. Round 3 also asks once per crystallized set
-whether the slices publish a request when their route ends, unless the
+Round 2: the exact publication approval (it is not presented when the
+backlog answer skips publication or the publication needs no approval). Round 3: the
+route; for several pending slices, whether later Direct Build slices start
+automatically (ignored unless you choose Direct Build); when unresolved, whether to
+create `change-overview.md` and in which language (applies only to Plan); and,
+when you chose to create a branch, its base. An explicit overview language, a
+previously resolved answer, or a project setting answers the overview question in
+advance. The base question is asked once per crystallized set, in the first
+round 3, immediately before the publication question; it shows the first page of
+the suggested bases (three bases plus `More` when there are more than four), and
+`More` shows the next page inside the same round. Round 3 also asks once per
+crystallized set whether the slices publish a request when their route ends, unless the
 [`pr.publishAfterRun`](../project-settings.md#plan-publication-answer) setting
 answers it. A Plan slice hands the answer to `/sai-plan`, which publishes a draft
 request; a Direct Build slice pushes its branch without force and publishes a
@@ -92,8 +98,10 @@ The answer is kept for the whole set, so later slices ask nothing, and a failed
 publication never stops a slice. Standalone `/sai-direct-build` publishes nothing. Each
 answer authorizes only its own action; a missing or ambiguous answer leaves it
 pending, and cancelling publication skips only the publication. Publication
-runs first, then the branch is named with the created issue's identifier and
-created; assignment runs only when implementation starts, which re-verifies it.
+runs first, then the branch is named with the created issue's identifier and its
+bases are prepared; the branch is created right after you answer round 3 with a
+valid route, before the route starts (for Manual, before the hand-off, which names
+the branch); assignment runs only when implementation starts, which re-verifies it.
 A publication `edit`, `More` for bases, an ambiguous branch name, or an
 assignee conflict adds an interaction outside the rounds. Answer Yes, No, or
 free text with instructions or a clarification request. No skips only that
@@ -139,9 +147,10 @@ is always asked (for example, “¿Quieres crear una nueva
 rama?”):
 
 - `Sí, crea una única para la issue principal` (`shared`): one branch, created
-  before the route picker and reused by every slice.
+  right after you choose the route and reused by every slice.
 - `Crear una rama por slice` (`per-slice`): each slice gets its own branch. The
-  first starts from the base you select. Each later branch starts from the
+  first is created right after you choose the route and starts from the base you
+  select in round 3. Each later branch starts from the
   previous slice's branch, in dependency order, so independent slices inherit the
   preceding branch's changes too. A later branch is created immediately before
   its slice starts, including Direct Build automatic continuation, and only after
@@ -151,6 +160,15 @@ rama?”):
   you commit them. Choosing `per-slice` authorizes every local creation and switch
   in the chain; nothing is pushed.
 - `No crear nada` (`none`): every branch, including the current one, stays as it is.
+
+When a branch is pending, the publication question names its exact name and its
+remote, says that the branch does not exist yet, and a `yes` authorizes the push of
+that branch only. If you cancel or leave the base question unanswered, no branch is
+created, the route starts on the current branch, and nothing is published, because
+you authorized a push of another branch; the closing report says why. If you cancel
+the route question, nothing is created. If the creation fails (for example because
+the base moved since it was prepared), the route does not start and Explore asks
+whether to retry, skip the branch, or stop.
 
 If a slice's expected branch already exists, the slice resumes on it when this
 conversation prepared it; otherwise you choose between reusing it and giving a
