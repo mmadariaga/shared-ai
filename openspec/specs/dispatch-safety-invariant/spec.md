@@ -47,13 +47,14 @@ A binding that does not name one of these three dispatcher classes SHALL NOT be 
 
 ### Requirement: Dispatch-mode declaration is a binding property on both harnesses
 
-The dispatch mode of a `budget-*` subagent binding SHALL be declared in the binding's skill file (`skills/claude/budget-*/SKILL.md` or `skills/opencode/budget-*/SKILL.md`), not chosen ad hoc by the call site. Both harnesses SHALL declare background dispatch: `run_in_background: true` on Claude Code, and the v2 `subagent` tool with `background: true` on opencode. The declaration SHALL identify the class of dispatcher that may invoke the binding safely: a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child and that awaits the child's completion notification on its own turn without polling.
+The dispatch mode of a `budget-*` subagent binding SHALL be declared in the binding's skill file (`skills/claude/budget-*/SKILL.md` or `skills/opencode/budget-*/SKILL.md`), not chosen ad hoc by the call site. Both harnesses SHALL declare background dispatch: `run_in_background: true` on Claude Code, and the v2 `subagent` tool with `background: true` on opencode. The declaration SHALL identify the class of dispatcher that may invoke the binding safely: a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child and that awaits the child's completion notification on its own turn without polling. On Claude Code the declaration SHALL also state that a `SendMessage` continuation goes only after the `task-notification` with `status: completed` for the previous turn has arrived, whatever its summary, and that notifications are matched to subagents by task ID when several run at once.
 
 #### Scenario: Claude Code binding declares an explicit run_in_background
 
 - **WHEN** a Claude Code `budget-*` skill file is read by a dispatcher
 - **THEN** the file SHALL include a `## Dispatch mode` section that states `run_in_background: true`
 - **AND** SHALL name the dispatcher class (main coordinator, routed worker) that satisfies the outlives-child requirement
+- **AND** SHALL state that a continuation goes only after the previous turn's `completed` task notification, never on a handback alone
 
 #### Scenario: opencode binding declares background dispatch
 

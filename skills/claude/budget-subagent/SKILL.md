@@ -26,7 +26,7 @@ The subagent model is controlled by the `model` frontmatter of the resolved `bud
 
 ## Dispatch mode
 
-Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture and await the continuation on the dispatcher's own turn.
+Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture the returned agent ID and await the completion notification on the dispatcher's own turn, matching each notification to its subagent by task ID when several run at once; never sleep or poll. A continuation (`SendMessage` to the captured agent ID) goes only after the `task-notification` with `status: completed` for the previous turn has arrived, whatever its summary (a summary that says the agent is waiting on its own background work still ends the turn); a handback alone never marks the turn as ended, and a `completed` notification that reports no handback yet is not a result.
 
 ## Spawn prompt
 

@@ -15,9 +15,9 @@ When an invocation declares a progress plan, the coordinator SHALL render the fu
 
 ### Requirement: render-before-progress-continuation
 
-After a validated progress event changes the declared marked-step set, the coordinator SHALL register the marks and changed-file union first, then issue the full task-list update and worker continuation independently in the same assistant turn per the shared runner. It SHALL NOT wait for panel completion before issuing the continuation. An event marking no new declared step SHALL perform no panel update or stamp. The historical requirement name does not impose render-first completion ordering for progress; initial rendering SHALL still precede initial dispatch.
+After a validated progress event changes the declared marked-step set, the coordinator SHALL register the marks and changed-file union first, then issue the full task-list update and worker continuation independently in the same assistant turn per the shared runner. On Claude Code the worker continuation SHALL be sent only after the worker's `completed` task notification has arrived, never on the handback alone, while the task-list update stays in the turn that registers the event. It SHALL NOT wait for panel completion before issuing the continuation. An event marking no new declared step SHALL perform no panel update or stamp. The historical requirement name does not impose render-first completion ordering for progress; initial rendering SHALL still precede initial dispatch.
 
 #### Scenario: live progress update
 - **WHEN** the coordinator receives a progress event
 - **THEN** it SHALL validate the event and mark only declared reported step ids
-- **AND** if the marked set changes, it SHALL issue the list update and `continue_after_progress` in the same assistant turn; otherwise it SHALL continue without a panel update
+- **AND** if the marked set changes, it SHALL issue the list update and `continue_after_progress` in the same assistant turn, with the Claude Code continuation following the worker's `completed` task notification; otherwise it SHALL continue without a panel update
