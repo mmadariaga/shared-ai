@@ -14,18 +14,22 @@ const actions = selector.slice(selector.indexOf('\n## Optional pre-route actions
 const round1 = actions.slice(actions.indexOf('**Round 1.**'), actions.indexOf('**Round 2.**'));
 const round2 = actions.slice(actions.indexOf('**Round 2.**'), actions.indexOf('**After round 2'));
 const afterRound2 = actions.slice(actions.indexOf('**After round 2'), actions.indexOf('**Free-text answers.**'));
+const creation = selector.slice(selector.indexOf('\n## Branch creation point'), selector.indexOf('\n## Publish and stop close'));
+const baseQuestion = selector.slice(selector.indexOf('\n## Branch base question'), selector.indexOf('\n## Publication question'));
 const picker = selector.slice(selector.indexOf('\n## Native route picker'), selector.indexOf('\n## After a valid answer'));
 const continuation = selector.slice(selector.indexOf('\n## Direct Build continuation'), selector.indexOf('\n## Selection, panel, and route state'));
 
 test('the normal flow is three conditional rounds in a fixed question order', () => {
   assert.match(actions, /three conditional question rounds/);
   assert.match(actions, /\*\*round 1\*\* asks the backlog, branch and assignment questions/);
-  assert.match(actions, /\*\*round 2\*\* asks publication approval and the branch base/);
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, and the publication question/);
+  assert.match(actions, /\*\*round 2\*\* asks the publication approval;/);
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, the branch base question, and the publication question/);
   assert.match(actions, /not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures add interactions/);
   const order = ['1. **Backlog question:**', '2. **Branch question:**', '3. **Assignment question:**'].map(label => round1.indexOf(label));
   assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1]);
-  assert.ok(round2.indexOf('1. **Publication approval:**') >= 0 && round2.indexOf('2. **Branch base:**') > round2.indexOf('1. **Publication approval:**'));
+  assert.ok(round2.indexOf('1. **Publication approval:**') >= 0);
+  assert.doesNotMatch(round2, /\*\*Branch base:\*\*/);
+  assert.match(round2, /It asks the publication approval only: the branch base is a round 3 question/);
   assert.doesNotMatch(selector, /Ask one question at a time/);
   assert.doesNotMatch(selector, /exactly one single-select question/);
 });
@@ -43,7 +47,7 @@ test('answer combinations: each question keeps its own scope and condition', () 
   assert.match(round1, /`assign`[\s\S]*`keep`[\s\S]*`replace`[\s\S]*`skip`/);
   assert.match(round1, /assignment executes only when implementation starts/);
   assert.match(round2, /A prior general grant, unattended mode, or any round 1 publish answer is not publication approval/);
-  assert.match(round2, /Never choose a base automatically/);
+  assert.match(baseQuestion, /Never choose a base automatically/);
 });
 
 test('the backlog question offers three options with stable values and the continue answers keep the former flow', () => {
@@ -70,7 +74,8 @@ test('branch and assignment questions are conditional on a continue answer', () 
   assert.match(branch, /conditional question under `@sai\/policies\/question-rounds\.md`[\s\S]*`publish-continue` or `skip-continue`[\s\S]*under `publish-stop`[\s\S]*no branch is created and the base question is not asked/);
   assert.match(assignment, /condition is that the backlog answer is `publish-continue` or `skip-continue`; under `publish-stop`[\s\S]*not applicable[\s\S]*nothing is assigned/);
   assert.match(assignment, /intent form applies only when the backlog answer is `publish-continue`/);
-  assert.match(round2, /under `publish-stop` no branch is prepared, so it asks only the publication approval, never the branch base/);
+  assert.match(baseQuestion, /Under `No`, `none`, and `publish-stop` it is left out/);
+  assert.match(round2, /Runs only when the backlog answer is `publish-continue` or `publish-stop`/);
 });
 
 test('the publish-stop close owns the end of the invocation without round 3', () => {
@@ -109,32 +114,34 @@ test('partial cancellation leaves only the cancelled action pending', () => {
   assert.match(actions, /a missing, cancelled, or ambiguous answer leaves its action pending/);
   assert.match(actions, /Cancelling the whole round leaves all its actions pending/);
   assert.match(afterRound2, /Cancel skips only the publication and the branch decision stands/);
-  assert.match(afterRound2, /A cancelled or missing base answer creates nothing/);
+  assert.match(creation, /\*\*Missing or cancelled base answer\.\*\* Create no branch/);
   assert.match(rounds, /Cancelling the whole round leaves every action of that round pending/);
 });
 
 test('stale context invalidates exactly the answers whose context changed', () => {
   assert.match(actions, /An edit or state change invalidates exactly the answers whose context changed/);
-  assert.match(afterRound2, /An `edit` answer returns to preparation and asks a full confirmation of the edited proposal in an extra interaction; the base answer stays valid/);
+  assert.match(afterRound2, /An `edit` answer returns to preparation and asks a full confirmation of the edited proposal in an extra interaction\./);
+  assert.doesNotMatch(afterRound2, /the base answer stays valid/);
   assert.match(afterRound2, /When the supplied answer no longer matches the proposal, or is missing, the skill asks with its standalone prompt/);
   assert.match(afterRound2, /An approval bound to a proposal whose publication was cancelled or failed lapses and asks again, for that authorization only/);
-  assert.match(round2, /`More` opens one extra interaction for the base only; the round's other answers stand/);
+  assert.match(baseQuestion, /`More` re-presents the base question alone with the next page, in an extra interaction inside the same round[\s\S]*the round's other answers stand/);
 });
 
 test('recovery never repeats completed actions and execution follows dependency order', () => {
   assert.match(actions, /completed actions keep their results and are never repeated during recovery/);
   assert.match(actions, /does not repeat completed actions or re-ask answered rounds/);
-  const order = ['1. **Publication.**', '2. **Branch name.**', '3. **Branch creation.**', '4. **Assignment.**'].map(label => afterRound2.indexOf(label));
+  const order = ['1. **Publication.**', '2. **Branch name.**', '3. **Base preparation.**', '4. **Assignment.**'].map(label => afterRound2.indexOf(label));
   assert.ok(order[0] >= 0 && order[1] > order[0] && order[2] > order[1] && order[3] > order[2]);
   assert.match(afterRound2, /taking the created issue's identifier after publication/);
   assert.match(afterRound2, /use the existing linked issue's identifier, or none/);
-  assert.match(afterRound2, /ask for it in an extra interaction after publication/);
+  assert.match(afterRound2, /ask for it in an extra interaction after publication, so that any name question runs before round 3/);
+  assert.match(afterRound2, /These steps run whether or not round 2 was presented/);
   assert.match(afterRound2, /Nothing is assigned here/);
   assert.match(actions, /conversation state only, scoped to the current crystallized set/);
 });
 
 test('round 3 carries the continuation question only for a multi-slice Direct Build', () => {
-  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question, the change overview question, and the publication question below join the same round only when their conditions are met/);
+  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question, the change overview question, the base question, and the publication question below join the same round only when their conditions are met, in this order: route, Direct Build continuation, change overview, base, publication/);
   assert.match(continuation, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/);
   assert.match(continuation, /takes effect only when the same round's route answer is Direct Build/);
   assert.match(continuation, /When the route answer is Plan or Manual, or no valid route was answered, ignore the continuation answer: it authorizes nothing/);
@@ -145,7 +152,7 @@ test('round 3 carries the continuation question only for a multi-slice Direct Bu
 test('round 3 carries the overview question as a conditional question resolved once per set', () => {
   const overview = selector.slice(selector.indexOf('\n## Change overview question'), selector.indexOf('\n## Publication question'));
 
-  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, and the publication question/);
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation, the change overview question, the branch base question, and the publication question/);
   assert.match(overview, /Round 3 carries it as a conditional question beside the route question/);
   assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?round 3 carries the overview question/);
   assert.match(overview, /first match wins and no overview question joins the round/);
@@ -186,11 +193,50 @@ test('the slice-set branch question and the per-slice chain use the generic supp
 
 test('both harnesses share one round presentation policy', () => {
   assert.match(rounds, /one `AskUserQuestion` call carrying every question of the round/);
+  assert.match(rounds, /A round with more than four questions takes consecutive `AskUserQuestion` calls in the round's question order, which count as one round/);
   assert.match(rounds, /`question` call when the picker accepts several questions, and one call per question, consecutively and in the same order, otherwise/);
   assert.match(rounds, /Consecutive calls in the same order form one round/);
   assert.match(read('sai/commands/explore/steps/route-selector.md'), /Fetch `@sai\/policies\/question-rounds\.md`/, 'route-selector references the shared policy');
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/deep-review/findings-selection.md')), false, 'the deep-review findings round is retired');
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry, or opencode's `question` tool with custom\/free-text input enabled/);
+});
+
+test('round 3 sections follow the question order, with the base question immediately before the publication question', () => {
+  const order = ['\n## Native route picker', '\n## Direct Build continuation', '\n## Change overview question', '\n## Branch base question', '\n## Publication question'].map(heading => selector.indexOf(heading));
+  assert.ok(order[0] >= 0 && order.every((position, index) => index === 0 || position > order[index - 1]));
+  assert.match(baseQuestion, /Round 3 carries it as a conditional question immediately before the publication question/);
+  assert.match(baseQuestion, /It is included only while a branch is pending/);
+  assert.match(baseQuestion, /It is asked only in the first round 3 of the set: a later `per-slice` slice takes the previous slice's branch as its base and a later `shared` slice runs on the shared branch/);
+  assert.match(baseQuestion, /first page of the prepared bases[\s\S]*three bases plus `More`[\s\S]*free-text entry/);
+  assert.match(baseQuestion, /`AskUserQuestion` on Claude Code, `question` on opencode/);
+  assert.match(baseQuestion, /The answer takes effect only when the same round's route answer is valid/);
+  assert.match(afterRound2, /\*\*Branch name\.\*\*[\s\S]*\*\*Base preparation\.\*\*[\s\S]*`git fetch --prune`[\s\S]*Nothing is created here/);
+});
+
+test('one creation point serves single, shared, and per-slice branches', () => {
+  assert.match(creation, /One creation point serves the single, `shared`, and `per-slice` branches: right after exactly one valid route answer of round 3 and before `\{intent: route-choice\}` is emitted \(before the hand-off for Manual\)/);
+  assert.match(creation, /supplied base bound to the base reference it prepared/);
+  assert.match(creation, /never pushes or publishes/);
+  assert.match(creation, /base-SHA recheck in `create` makes a base that moved since the preparation a failed creation/);
+  assert.match(creation, /\*\*No valid route answer\.\*\* A cancelled, absent, or invalid route answer starts no route and creates no branch, whatever the base answer was/);
+  assert.match(creation, /start the route on the current branch, and withhold publication[\s\S]*reads the publication answer as `no`/);
+  assert.match(creation, /\*\*Failed creation\.\*\* The failure blocks the route start[\s\S]*`@sai\/policies\/obstacle-escalation\.md`[\s\S]*`retry`, `skip`, and `stop`/);
+  assert.match(creation, /`retry` prepares the chosen base again and repeats the creation\. `skip` applies the missing-base rule above\. `stop` starts no route/);
+  assert.match(creation, /\*\*Manual\.\*\* The hand-off names the created branch/);
+  assert.doesNotMatch(afterRound2, /\*\*Branch creation\.\*\*/);
+  const afterAnswer = selector.slice(selector.indexOf('\n## After a valid answer'), selector.indexOf('\n## Direct Build continuation'));
+  assert.ok(afterAnswer.indexOf('create the pending branch at the creation point') >= 0);
+  assert.ok(afterAnswer.indexOf('create the pending branch') < afterAnswer.indexOf('record the set\'s publication answer'));
+  assert.ok(afterAnswer.indexOf('record the set\'s publication answer') < afterAnswer.indexOf('emit `{intent: route-choice}`'));
+  assert.match(selector.slice(selector.indexOf('\n## Slice branch chain'), selector.indexOf('\n## Native route picker')), /The first slice's branch is the pending branch, created at the creation point/);
+});
+
+test('the publication question names the pending branch and its remote', () => {
+  const publication = selector.slice(selector.indexOf('\n## Publication question'), selector.indexOf('\n## Selection, panel, and route state'));
+  assert.match(publication, /With a pending branch \(`## Branch base question`\), name the pending branch by its exact name and its remote[\s\S]*the branch does not exist yet[\s\S]*authorizes the push of that branch only/);
+  assert.match(publication, /With no pending branch, name the current branch \(`git symbolic-ref --quiet --short HEAD`\)/);
+  assert.match(publication, /A detached HEAD with no pending branch has no branch to name/);
+  assert.match(publication, /as `no` while `publication_withheld` is set/);
 });
 
 test('to-backlog and new-change-branch stay caller-agnostic and expose preparation and supplied-answer capabilities', () => {

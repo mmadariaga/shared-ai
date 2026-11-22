@@ -7,17 +7,17 @@ TBD - created by archiving change group-post-crystallization-question-rounds. Up
 
 ### Requirement: Post-crystallization close uses three conditional question rounds
 
-After the complete Ready to Propose block set is visible and a pending slice exists, `sai-explore` SHALL normally ask its post-crystallization questions in three conditional rounds, each presented under `sai/policies/question-rounds.md`. Round 1 SHALL ask, in this order, the backlog question, the conditional branch question, and the conditional assignment question. Round 2 SHALL ask, in this order, the publication approval and the branch base. Round 3 SHALL ask the route question and, conditionally, the Direct Build continuation question, the change overview question, and the publication question; the change overview question SHALL join round 3 only when no explicit `--overview-lang`, direct user statement, value already resolved for the set, or `explore.overviewLanguage` setting resolves the overview language, and the publication question SHALL join round 3 only in the first round 3 of the set when neither an answer recorded in `explore-slice@1` nor the `pr.publishAfterRun` setting resolves it. A round with no applicable question SHALL be skipped. A `publish-stop` backlog answer SHALL end the invocation after its publication, before round 3. The three rounds SHALL describe the normal flow, not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures MAY add interactions outside them. Every question SHALL stay explicit when `--fast-track` is passed, on Claude Code and opencode, because `/sai-explore` strips the token silently.
+After the complete Ready to Propose block set is visible and a pending slice exists, `sai-explore` SHALL normally ask its post-crystallization questions in three conditional rounds, each presented under `sai/policies/question-rounds.md`. Round 1 SHALL ask, in this order, the backlog question, the conditional branch question, and the conditional assignment question. Round 2 SHALL ask only the publication approval. Round 3 SHALL ask the route question and, conditionally, the Direct Build continuation question, the change overview question, the branch base question, and the publication question, in that order; the change overview question SHALL join round 3 only when no explicit `--overview-lang`, direct user statement, value already resolved for the set, or `explore.overviewLanguage` setting resolves the overview language, the branch base question SHALL join round 3 only while a branch is pending, and the publication question SHALL join round 3 only in the first round 3 of the set when neither an answer recorded in `explore-slice@1` nor the `pr.publishAfterRun` setting resolves it. A round with no applicable question SHALL be skipped. A `publish-stop` backlog answer SHALL end the invocation after its publication, before round 3. The three rounds SHALL describe the normal flow, not a limit: clarification, corrections, a publication `edit`, `More` for bases, an ambiguous branch name, assignee conflicts, and failures MAY add interactions outside them. Every question SHALL stay explicit when `--fast-track` is passed, on Claude Code and opencode, because `/sai-explore` strips the token silently.
 
 #### Scenario: Single change with backlog and branch accepted
 
 - **WHEN** a single crystallized change is displayed and the user answers `publish-continue` to the backlog question and Yes to the branch question in round 1
-- **THEN** round 2 asks the publication approval before the branch base, and round 3 asks the route only after the round 2 actions finish
+- **THEN** round 2 asks only the publication approval, and round 3 asks the route and the branch base before the publication question only after the round 2 actions finish
 
 #### Scenario: No optional action accepted
 
 - **WHEN** the user answers `skip-continue` to the backlog question and No to the branch question in round 1
-- **THEN** Explore leaves out the publication and base questions, skips round 2, and presents round 3
+- **THEN** Explore leaves out the publication approval and base questions, skips round 2, and presents round 3
 
 #### Scenario: Round 3 carries the overview question when nothing resolves it
 
@@ -36,41 +36,41 @@ After the complete Ready to Propose block set is visible and a pending slice exi
 
 ### Requirement: Round answers authorize only their own actions
 
-A round SHALL collect every answer before it executes any action. Each answer SHALL authorize only its own action, and only an explicit answer SHALL authorize; a missing, cancelled, or ambiguous answer SHALL leave its action pending. Cancelling the whole round SHALL leave all its actions pending. An edit or state change SHALL invalidate exactly the answers whose context changed, and completed actions SHALL keep their results and SHALL NOT be repeated during recovery. A round 1 publish answer (`publish-continue` or `publish-stop`), a prior general grant, unattended mode, or `--fast-track` SHALL NOT count as publication approval, and Explore SHALL never choose a base automatically. The one exception SHALL be a prepared `to-backlog` proposal that reports `auto_approve: true`, which the `publication.autoApprove` project setting grants and which needs no publication answer.
+A round SHALL collect every answer before it executes any action. Each answer SHALL authorize only its own action, and only an explicit answer SHALL authorize; a missing, cancelled, or ambiguous answer SHALL leave its action pending, except that a missing or cancelled base answer beside a valid route answer SHALL give up the branch for the set. Cancelling the whole round SHALL leave all its actions pending. An edit or state change SHALL invalidate exactly the answers whose context changed, and completed actions SHALL keep their results and SHALL NOT be repeated during recovery. A round 1 publish answer (`publish-continue` or `publish-stop`), a prior general grant, unattended mode, or `--fast-track` SHALL NOT count as publication approval, and Explore SHALL never choose a base automatically. The one exception SHALL be a prepared `to-backlog` proposal that reports `auto_approve: true`, which the `publication.autoApprove` project setting grants and which needs no publication answer.
 
 #### Scenario: Publication is cancelled but the branch is created
 
-- **WHEN** round 2 returns cancel for the publication and a valid base for the branch
-- **THEN** Explore skips only the publication and creates the branch as decided
+- **WHEN** round 2 returns cancel for the publication and round 3 returns a valid route answer and a valid base
+- **THEN** Explore skips only the publication and creates the branch as decided at the creation point
 
 #### Scenario: The whole round is cancelled
 
-- **WHEN** the user cancels round 2 as a whole
-- **THEN** every action of that round stays pending and nothing is published or created
+- **WHEN** the user cancels round 3 as a whole
+- **THEN** every action of that round stays pending, no route starts, and nothing is published or created
 
 ### Requirement: Round 2 prepares through the skills and executes in dependency order
 
-Round 2 SHALL run only when the backlog answer is `publish-continue` or `publish-stop`, or a branch will be created; under `publish-stop` no branch SHALL be prepared, so round 2 SHALL ask only the publication approval and never the branch base. Before round 2, Explore SHALL prepare without publishing or creating anything: for a publish answer it SHALL invoke the installed `to-backlog` skill to prepare the full publication proposal without publishing, and for a branch decision it SHALL invoke the installed `new-change-branch` skill to prepare the suggested bases, whose remote fetch updates remote-tracking references and is the only change this preparation makes; the step SHALL NOT be called read-only. Explore SHALL show the complete proposal and its confirmation question before the picker, except that a `to-backlog` proposal reporting `auto_approve: true` SHALL be shown without its confirmation question: round 2 SHALL omit the publication approval question, SHALL keep the branch base question when a branch will be created, and SHALL hold no question when none is. Explore SHALL NOT read `publication.autoApprove` itself. The branch base question SHALL show the first page of suggested bases in the skill's order (with more than four bases, three bases plus `More`; with four or fewer, every base without `More`) and the free-text entry; `More` SHALL open one extra interaction for the base only while the round's other answers stand. After round 2, Explore SHALL execute in this order: publication through a supplied answer bound to the prepared proposal, or, for a proposal reporting `auto_approve: true`, through `to-backlog` publishing it with its unchanged token unless the user asked in the conversation to review before publishing; branch name resolution, taking the created issue's identifier after publication, or the existing linked issue's identifier or none when publication was cancelled or failed; branch creation through a supplied base bound to the prepared base reference, creating nothing when the base answer is cancelled or missing. Under `publish-stop`, the outcome of the publication step SHALL close the invocation, and the origin transport, the branch name resolution, and the branch creation SHALL NOT run. An `edit` publication answer SHALL return to preparation and ask a full confirmation of the edited proposal in an extra interaction while the base answer stays valid. When the change does not determine the branch type or name unambiguously, Explore SHALL ask for it in an extra interaction after publication. Nothing SHALL be assigned in this sequence.
+Round 2 SHALL run only when the backlog answer is `publish-continue` or `publish-stop` and the prepared `to-backlog` proposal does not report `auto_approve: true`; otherwise it SHALL NOT be presented. It SHALL ask only the publication approval; the branch base SHALL be a round 3 question. Before round 2, Explore SHALL prepare without publishing or creating anything by invoking the installed `to-backlog` skill to prepare the full publication proposal without publishing. Explore SHALL show the complete proposal and its confirmation question before the picker, except that a `to-backlog` proposal reporting `auto_approve: true` SHALL be shown without its confirmation question and no round 2 SHALL be presented. Explore SHALL NOT read `publication.autoApprove` itself. After round 2, whether or not it was presented, Explore SHALL execute in this order: publication through a supplied answer bound to the prepared proposal, or, for a proposal reporting `auto_approve: true`, through `to-backlog` publishing it with its unchanged token unless the user asked in the conversation to review before publishing; branch name resolution, taking the created issue's identifier after publication, or the existing linked issue's identifier or none when publication was cancelled, failed, or did not run; and, when a branch is pending, base preparation through the installed `new-change-branch` skill, whose remote fetch updates remote-tracking references and is the only change this preparation makes. No branch SHALL be created in this sequence. Under `publish-stop`, the outcome of the publication step SHALL close the invocation, and the origin transport, the branch name resolution, and the base preparation SHALL NOT run. An `edit` publication answer SHALL return to preparation and ask a full confirmation of the edited proposal in an extra interaction. When the change does not determine the branch type or name unambiguously, Explore SHALL ask for it in an extra interaction after publication and before round 3. Nothing SHALL be assigned in this sequence.
 
 #### Scenario: Created issue names the branch
 
-- **WHEN** round 2 confirms creating an issue and selects a base
-- **THEN** Explore publishes first, then names the branch with the created issue's identifier, then creates the branch from the selected base
+- **WHEN** round 2 confirms creating an issue and a branch is pending
+- **THEN** Explore publishes first, then names the branch with the created issue's identifier before round 3, and creates the branch at the creation point from the base round 3 selects
 
 #### Scenario: Publication edit keeps the base answer
 
 - **WHEN** the publication answer is `edit`
-- **THEN** Explore returns to preparation, asks a full confirmation of the edited proposal in an extra interaction, and keeps the round's base answer
+- **THEN** Explore returns to preparation and asks a full confirmation of the edited proposal in an extra interaction, and the base is still asked in round 3
 
 #### Scenario: Branch base page stays within the picker cap
 
 - **WHEN** the prepared suggested bases number more than four
-- **THEN** the branch base question shows three bases plus `More` and the free-text entry, and with four or fewer it shows every base without `More`
+- **THEN** the round 3 branch base question shows three bases plus `More` and the free-text entry, and with four or fewer it shows every base without `More`
 
 #### Scenario: Auto-approved proposal drops the publication question
 
 - **WHEN** the prepared `to-backlog` proposal reports `auto_approve: true` and a branch will be created
-- **THEN** round 2 shows the complete proposal, asks only the branch base question, and the publication runs with the unchanged token before the branch is named
+- **THEN** round 2 is not presented, the publication runs with the unchanged token, the branch name takes the created issue's identifier, and round 3 carries the base question
 
 #### Scenario: Publish and stop asks no branch base
 
@@ -127,11 +127,15 @@ Round answers, authorizations, completed action results, and the Direct Build co
 
 ### Requirement: Shared round presentation policy
 
-`sai/policies/question-rounds.md` SHALL be the single source for presenting several independent closed questions as one round, and `sai/commands/explore/steps/route-selector.md` SHALL reference it without restating it. On Claude Code a round SHALL be one `AskUserQuestion` call carrying every question. On opencode it SHALL be one `question` call when the picker accepts several questions, and otherwise one call per question, consecutively and in the same order, which together form one round. No question's presentation SHALL wait on another answer in the same round. A conditional question SHALL be included when its condition can still hold before the round, its answer SHALL take effect only when the condition holds, and otherwise the answer SHALL be recorded as not applicable and authorize nothing.
+`sai/policies/question-rounds.md` SHALL be the single source for presenting several independent closed questions as one round, and `sai/commands/explore/steps/route-selector.md` SHALL reference it without restating it. On Claude Code a round SHALL be one `AskUserQuestion` call carrying every question, and a round with more than four questions SHALL take consecutive `AskUserQuestion` calls in the round's question order, which count as one round, with the round's answers collected only after the last call. On opencode it SHALL be one `question` call when the picker accepts several questions, and otherwise one call per question, consecutively and in the same order, which together form one round. No question's presentation SHALL wait on another answer in the same round. A conditional question SHALL be included when its condition can still hold before the round, its answer SHALL take effect only when the condition holds, and otherwise the answer SHALL be recorded as not applicable and authorize nothing.
 
 #### Scenario: opencode picker takes one question per call
 - **WHEN** a round is presented on opencode whose `question` picker accepts only one question per call
 - **THEN** the round's questions are asked one call each, consecutively and in the same order, and count as one round
+
+#### Scenario: Claude Code round with more than four questions
+- **WHEN** a round with more than four questions is presented on Claude Code
+- **THEN** it takes consecutive `AskUserQuestion` calls in the round's question order, which count as one round
 
 ### Requirement: Publish and stop close ends the invocation after the publication
 
@@ -176,3 +180,61 @@ When the backlog answer is `publish-stop`, `sai-explore` SHALL close the invocat
 
 - **WHEN** the backlog answer is `publish-stop`
 - **THEN** no `explore-slice@1` record holds the `publish-stop` answer and no `sai-state close` runs at the close
+
+### Requirement: Round 3 asks the branch base before the publication question
+
+While a branch is pending, round 3 SHALL carry the branch base question as a conditional question immediately before the publication question, in the order route, Direct Build continuation, change overview, base, publication, whatever route the round returns. A branch SHALL be pending when the round 1 branch answer was `Yes`, `shared`, or `per-slice`, its name is resolved, its bases are prepared, and the set has neither created nor given up its branch. Under `No`, `none`, and `publish-stop` the base question SHALL be left out. Before round 3 opens, Explore SHALL resolve the branch name after the backlog publication, so that it can take the created issue's identifier and any name question runs before round 3, and SHALL prepare the suggested bases through the installed `new-change-branch` skill's caller preparation, whose remote fetch is the only change of that preparation. Before the picker Explore SHALL name the branch that will be created and say that nothing is created until the route is answered. The base question SHALL show the first page of the prepared bases in the skill's order (with more than four bases, three bases plus `More`; with four or fewer, every base without `More`) and the free-text entry, and Explore SHALL never choose a base automatically. A `More` answer SHALL re-present the base question alone with the next page inside the same round, before the publication question, while the round's other answers stand. The base question SHALL be asked only in the first round 3 of the set: a later `per-slice` slice SHALL take the previous slice's branch as its base and a later `shared` slice SHALL run on the shared branch, with no base question. A round 3 re-presented after an invalid route answer SHALL ask it again.
+
+#### Scenario: Base question sits immediately before the publication question
+
+- **WHEN** round 3 is presented with a pending branch and every conditional question applies
+- **THEN** the questions appear in the order route, Direct Build continuation, change overview, base, publication
+
+#### Scenario: Skipped backlog still asks the base in round 3
+
+- **WHEN** the backlog answer is `skip-continue` and the round 1 branch answer is Yes
+- **THEN** round 2 is not presented, the branch name is resolved without an issue identifier before round 3, and round 3 carries the base question
+
+#### Scenario: More pages the base inside the round
+
+- **WHEN** the user answers `More` to the base question
+- **THEN** Explore re-presents the base question alone with the next page of prepared bases before the publication question, inside the same round
+
+#### Scenario: Later slices ask no base
+
+- **WHEN** a later slice of a `per-slice` or `shared` set reaches round 3
+- **THEN** round 3 carries no base question and the slice runs on the previous slice's branch or the shared branch
+
+#### Scenario: No branch decision leaves the base out
+
+- **WHEN** the round 1 branch answer is `No` or `none`
+- **THEN** round 3 carries no base question and no branch is created
+
+### Requirement: Pending branches are created at one creation point
+
+The single, `shared`, and first `per-slice` branch SHALL be created at one creation point: right after exactly one valid route answer of round 3 and before `{intent: route-choice}` is emitted, and before the hand-off for Manual. Explore SHALL hand the installed `new-change-branch` skill the round 3 base answer as a supplied base bound to the prepared base reference, together with the resolved name; the skill SHALL create the branch locally, switch to it, and never push or publish, and its base-SHA recheck SHALL turn a base that moved since the preparation into a failed creation. A cancelled, absent, or invalid route answer SHALL start no route and create no branch, whatever the base answer was. A missing or cancelled base answer SHALL create no branch, set the set's branch strategy to `none`, start the route on the current branch, and withhold publication for the set in conversation state, so that every route reads the publication answer as `no` whether it was asked, stored, or set by `pr.publishAfterRun`; the closing report of each slice SHALL say that the branch was not created and why, and that nothing was published for that reason. A failed creation SHALL block the route start as an obstacle under `sai/policies/obstacle-escalation.md`, escalated with the options `retry`, `skip`, and `stop`: `retry` SHALL prepare the chosen base again and repeat the creation, `skip` SHALL apply the missing-base rule, and `stop` SHALL start no route, emit no route intent, and leave the branch pending. For the Manual route the hand-off SHALL name the created branch and its base. Claude Code and opencode SHALL follow the same creation point.
+
+#### Scenario: Single branch is created after the route answer
+
+- **WHEN** round 3 returns one valid route answer and a valid base for a pending single or `shared` branch
+- **THEN** Explore creates and switches to the branch from that base before emitting `{intent: route-choice}`
+
+#### Scenario: Cancelled base withholds publication
+
+- **WHEN** round 3 returns a valid route answer, no base answer, and a `yes` publication answer
+- **THEN** no branch is created, the route starts on the current branch, nothing is published, and the closing report states why
+
+#### Scenario: Invalid route answer creates nothing
+
+- **WHEN** round 3 returns a cancelled or missing route answer and a valid base
+- **THEN** no route starts and no branch is created
+
+#### Scenario: Failed creation offers retry, skip, and stop
+
+- **WHEN** the branch creation fails at the creation point
+- **THEN** the route does not start and Explore asks the user to retry, skip, or stop, where skip applies the missing-base rule and stop starts no route
+
+#### Scenario: Manual hand-off names the created branch
+
+- **WHEN** the route answer is Manual and the branch is created at the creation point
+- **THEN** the hand-off names the created branch

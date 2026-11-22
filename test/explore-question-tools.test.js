@@ -34,7 +34,7 @@ const definitions = [
   ['route-selector.md', '- **More than one recorded change (a slice set):**'],
   ['route-selector.md', '3. **Assignment question:**'],
   ['route-selector.md', '1. **Publication approval:**'],
-  ['route-selector.md', '2. **Branch base:**'],
+  ['route-selector.md', '**Question.** Before the picker, say in the user\'s language which branch will be created'],
   ['route-selector.md', '**Skill ownership and completion.**'],
   ['route-selector.md', '5. **Existing expected branch.**'],
   ['route-selector.md', '\nPresent it through the harness-native picker'],

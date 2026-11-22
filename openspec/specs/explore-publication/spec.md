@@ -7,7 +7,7 @@ TBD - created by archiving change pr-publication-answer-in-explore. Update Purpo
 
 ### Requirement: Round 3 asks the publication question once per crystallized set
 
-Round 3 of `/sai-explore` SHALL carry the publication question as a conditional question beside the route question, never as a separate interaction after the route answer. The question SHALL be asked once for the whole `last_crystallization_set`, in the first round 3 of the set, whatever route that slice takes, Manual included; later round-3 groups of the same set SHALL NOT ask it again. Before round 3, Explore SHALL resolve the answer in this order, and the first match SHALL win with no publication question in the round: the answer `explore-slice@1` already holds for the set; then the `pr.publishAfterRun` setting read with `project-settings.js get`, when it returns `yes` or `no`, printing `Project setting pr.publishAfterRun: <value>` once; then the question. `ask`, an absent key, an invalid value, and a tool that cannot run SHALL leave the question normal. The question SHALL say what a `yes` does on each route and that a `no` pushes nothing, SHALL name the current branch and its remote (or say that the remote cannot be read), and SHALL offer **Publish** (`yes`) and **Do not publish** (`no`) through `AskUserQuestion` on Claude Code and `question` on opencode, with the same text and options on both. A detached HEAD SHALL ask nothing, record no answer, and report that nothing is published. A declined, cancelled, or non-committal answer to the question SHALL resolve `no`; a cancelled round or an invalid route answer SHALL record nothing. The answer SHALL be the held confirmation for the push and the creation or update of the request on the branch each publishing slice is on, and SHALL authorize nothing else.
+Round 3 of `/sai-explore` SHALL carry the publication question as a conditional question beside the route question, never as a separate interaction after the route answer. The question SHALL be asked once for the whole `last_crystallization_set`, in the first round 3 of the set, whatever route that slice takes, Manual included; later round-3 groups of the same set SHALL NOT ask it again. Before round 3, Explore SHALL resolve the answer in this order, and the first match SHALL win with no publication question in the round: the answer `explore-slice@1` already holds for the set; then the `pr.publishAfterRun` setting read with `project-settings.js get`, when it returns `yes` or `no`, printing `Project setting pr.publishAfterRun: <value>` once; then the question. `ask`, an absent key, an invalid value, and a tool that cannot run SHALL leave the question normal. The question SHALL say what a `yes` does on each route and that a `no` pushes nothing. With a branch pending creation, it SHALL name the pending branch by its exact name and its remote (the only remote the repository lists, or say that the remote cannot be read) and SHALL say that the branch does not exist yet and is created after the route answer, so that a `yes` authorizes the push of that branch only. With no pending branch, it SHALL name the current branch and its remote (or say that the remote cannot be read). It SHALL offer **Publish** (`yes`) and **Do not publish** (`no`) through `AskUserQuestion` on Claude Code and `question` on opencode, with the same text and options on both. A detached HEAD with no pending branch SHALL ask nothing, record no answer, and report that nothing is published. A declined, cancelled, or non-committal answer to the question SHALL resolve `no`; a cancelled round or an invalid route answer SHALL record nothing. The answer SHALL be the held confirmation for the push and the creation or update of the request on the branch each publishing slice is on, and SHALL authorize nothing else.
 
 #### Scenario: First round 3 of the set asks the question
 
@@ -26,8 +26,13 @@ Round 3 of `/sai-explore` SHALL carry the publication question as a conditional 
 
 #### Scenario: Detached HEAD publishes nothing
 
-- **WHEN** round 3 would ask the publication question while HEAD is detached
+- **WHEN** round 3 would ask the publication question while HEAD is detached and no branch is pending
 - **THEN** Explore asks nothing, records no answer, and reports that nothing is published because HEAD is detached
+
+#### Scenario: Pending branch is named in the question
+
+- **WHEN** round 3 asks the publication question while a branch is pending creation
+- **THEN** the question names the pending branch's exact name and its remote and says that the branch does not exist yet
 
 ### Requirement: explore-slice@1 records the set-wide publication answer
 

@@ -980,8 +980,8 @@ test('E2: a single change keeps the yes/no branch question and a slice set gets 
   assert.match(question, /Sí, crea una única para la issue principal[\s\S]*Crear una rama por slice[\s\S]*No crear nada/);
   assert.match(question, /says that no branch is published/);
   assert.match(question, /On `none`, skip only this action, keep the current branch and every existing branch as they are/);
-  assert.match(question, /On `shared`, create the branch once after publication through the installed `new-change-branch` skill[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
-  assert.match(question, /On `per-slice`, create the first pending slice's branch the same way, named after that slice/);
+  assert.match(question, /On `shared`, the pending branch is the one shared branch: it is decided through the installed `new-change-branch` skill[\s\S]*originating principal issue's identity[\s\S]*created once at the creation point[\s\S]*every slice reuses it/);
+  assert.match(question, /On `per-slice`, the first pending slice's branch is the pending branch, named after that slice and created at the creation point/);
 });
 
 test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and stays conversation-scoped', () => {
@@ -1000,7 +1000,7 @@ test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and s
   assert.match(chain, /`name` reporting that the branch already exists is the lookup in git/);
   assert.match(chain, /records that branch for this slice[\s\S]*resume on it[\s\S]*create nothing/);
   assert.match(chain, /reuse the existing branch[\s\S]*give a corrected name[\s\S]*Never rename, overwrite, or delete the existing branch/);
-  assert.match(selector, /prepare the slice's branch when `branch_strategy` is `per-slice` and it is not yet prepared[\s\S]*then set `route_choice_reply_pending = false` and emit `\{intent: route-choice\}`/);
+  assert.match(selector, /create the pending branch at the creation point[\s\S]*prepare the slice's branch when `branch_strategy` is `per-slice` and it is not yet prepared[\s\S]*then set `route_choice_reply_pending = false` and emit `\{intent: route-choice\}`/);
   const slice = spec('sai/commands/explore/steps/slice.md');
   assert.match(slice, /`next-slice` confirms the slice is implemented and committed/);
   assert.match(slice, /the slice machine, its inventory, and its transitions stay unchanged and carry no branch data/);

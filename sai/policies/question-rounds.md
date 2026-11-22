@@ -10,7 +10,7 @@ A **conditional question** is included when its condition can still hold before 
 
 ## Presentation
 
-- **Claude Code:** one `AskUserQuestion` call carrying every question of the round.
+- **Claude Code:** one `AskUserQuestion` call carrying every question of the round. A round with more than four questions takes consecutive `AskUserQuestion` calls in the round's question order, which count as one round: each call carries the next questions in that order, and the round's answers are collected only after the last call.
 - **opencode:** the same questions in one `question` call when the picker accepts several questions, and one call per question, consecutively and in the same order, otherwise. Consecutive calls in the same order form one round.
 
 ## Answers
