@@ -1306,12 +1306,11 @@ test('I3: the three provider adapters report merged and closed requests of a bra
 });
 
 // `publication.autoApprove`: with the key true, the tool reads it, binds it into both tokens, skips nothing of the token
-// check, and applies the refusals of the unattended mode to the interactive push and publish. Only the personal local settings
-// file grants it.
+// check, and applies the refusals of the unattended mode to the interactive push and publish.
 function autoApproving(t, { io, ...rest }, setting = '{ "publication": { "autoApprove": true } }') {
   const cwd = temporaryDirectory(t, 'to-pr-auto-');
   fs.mkdirSync(path.join(cwd, '.sai'));
-  if (setting) fs.writeFileSync(path.join(cwd, '.sai', 'settings.local.jsonc'), setting);
+  if (setting) fs.writeFileSync(path.join(cwd, '.sai', 'settings.jsonc'), setting);
   io.cwd = cwd;
   return { io, ...rest };
 }
@@ -1348,7 +1347,7 @@ for (const provider of ['github', 'gitlab']) {
     const { io, request, state } = autoApproving(t, fixture(provider), '');
     state.remoteHead = null;
     const pushQuery = await tool.pushQuery(request, io), query = await tool.query(request, io);
-    fs.writeFileSync(path.join(io.cwd, '.sai', 'settings.local.jsonc'), '{ "publication": { "autoApprove": true } }');
+    fs.writeFileSync(path.join(io.cwd, '.sai', 'settings.jsonc'), '{ "publication": { "autoApprove": true } }');
     await assert.rejects(async () => await tool.push({ ...request, approved: true, confirmation: pushQuery.confirmation }, io), /push approval/);
     await assert.rejects(async () => await tool.publish({ ...request, approved: true, confirmation: query.confirmation, receipt: receipt(t) }, io), /approval|published at the approved commit/);
     assert.equal(state.mutations.length, 0);
@@ -1390,16 +1389,6 @@ for (const provider of ['github', 'gitlab']) {
     assert.equal(state.closedQueries.length, 0);
   });
 }
-test('E1: a true held only by the shared base settings file grants nothing and the proposals stay unbound', async t => {
-  const off = autoApproving(t, fixture('github'), '');
-  const shared = autoApproving(t, fixture('github'), '');
-  fs.writeFileSync(path.join(shared.io.cwd, '.sai', 'settings.jsonc'), '{ "publication": { "autoApprove": true } }');
-  const offQuery = await tool.query(off.request, off.io);
-  const sharedQuery = await tool.query(shared.request, shared.io);
-  assert.equal(Object.hasOwn(sharedQuery.proposal, 'auto_approve'), false);
-  assert.equal(sharedQuery.confirmation, offQuery.confirmation);
-  assert.equal((await tool.pushQuery(shared.request, shared.io)).confirmation, (await tool.pushQuery(off.request, off.io)).confirmation);
-});
 test('E3: a provider that cannot report closed requests refuses an auto-approved publication', async t => {
   const { io, request, state } = autoApproving(t, fixture('github'));
   state.remoteHead = null;

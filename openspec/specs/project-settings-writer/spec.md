@@ -61,9 +61,9 @@ The writer SHALL refuse a file for which `jsonc-parser` `parse` reports errors, 
 - **WHEN** renaming the temporary file fails
 - **THEN** the save fails naming the error, the file is unchanged, and no temporary file remains in `.sai/`
 
-### Requirement: Per-key target file
+### Requirement: Per-key target file under the ordinary base and local rule
 
-`saveSettings` SHALL save each key to `.sai/settings.local.jsonc` when that file already holds the key, and to `.sai/settings.jsonc` otherwise, with the same in-place edit and atomic write for both files. The publication consent keys `publication.autoApprove` and `pr.publishAfterRun` SHALL be the exception: `saveSettings` SHALL always save them to `.sai/settings.local.jsonc`, creating that file when it is absent, granting and restricting values alike, with or without `baseOnly`, and SHALL never save them to `.sai/settings.jsonc`. With the option `baseOnly`, it SHALL save every other key to `.sai/settings.jsonc` even when the local file holds the key, SHALL leave the local file unchanged when the save holds no consent key, and SHALL NOT refuse such a save because the local file cannot be parsed. It SHALL NOT create the local file for any other key; the base file SHALL be created when missing, as on a first save. Without `baseOnly`, or when the save holds a consent key, it SHALL refuse the whole save, writing neither file, when either file cannot be parsed; with `baseOnly` and no consent key, it SHALL refuse the save when the base file cannot be parsed. It SHALL prepare every edit before the first write. A value of `undefined` for a catalogue id SHALL remove the key in place. A successful save SHALL return the list of files it wrote. When the save writes a granting value of a consent key (`publication.autoApprove: true` or `pr.publishAfterRun: yes`) and `git check-ignore` reports `.sai/settings.local.jsonc` as not ignored, the result SHALL also carry the warning `.sai/settings.local.jsonc is not ignored by git: committing it shares the publication grant with every clone. Add it to .gitignore yourself; this menu never edits .gitignore.`; the writer SHALL NOT edit any `.gitignore`.
+`saveSettings` SHALL save each key to `.sai/settings.local.jsonc` when that file already holds the key, and to `.sai/settings.jsonc` otherwise, with the same in-place edit and atomic write for both files. The publication consent keys `publication.autoApprove` and `pr.publishAfterRun` SHALL follow this rule like every other key. With the option `baseOnly`, it SHALL save every key to `.sai/settings.jsonc` even when the local file holds the key, SHALL leave the local file unchanged, and SHALL NOT refuse the save because the local file cannot be parsed. It SHALL NOT create the local file for any key; the base file SHALL be created when missing, as on a first save. Without `baseOnly`, it SHALL refuse the whole save, writing neither file, when either file cannot be parsed; with `baseOnly`, it SHALL refuse the save when the base file cannot be parsed. It SHALL prepare every edit before the first write. A value of `undefined` for a catalogue id SHALL remove the key in place. A successful save SHALL return the list of files it wrote and SHALL carry no warning about whether git ignores `.sai/settings.local.jsonc`; the writer SHALL NOT edit any `.gitignore`.
 
 #### Scenario: Keys split between the two files
 - **WHEN** the local file holds `backlog.provider` and a save changes `backlog.provider` and `explore.overviewLanguage`
@@ -74,7 +74,7 @@ The writer SHALL refuse a file for which `jsonc-parser` `parse` reports errors, 
 - **THEN** `.sai/settings.jsonc` keeps its content and modification time
 
 #### Scenario: Unheld key never creates the local file
-- **WHEN** no local file exists and a save changes a key that is not a publication consent key
+- **WHEN** no local file exists and a save changes any key, `publication.autoApprove` and `pr.publishAfterRun` included
 - **THEN** the key is written to `.sai/settings.jsonc` and no `.sai/settings.local.jsonc` is created
 
 #### Scenario: Undefined removes the key
@@ -89,14 +89,6 @@ The writer SHALL refuse a file for which `jsonc-parser` `parse` reports errors, 
 - **WHEN** `.sai/settings.local.jsonc` holds `warming` and a save with `baseOnly` changes `warming`
 - **THEN** `warming` is written to `.sai/settings.jsonc` and `.sai/settings.local.jsonc` stays unchanged
 
-#### Scenario: Consent keys go to the local file and create it
-- **WHEN** `.sai/settings.jsonc` holds `pr.provider` as `github`, no local file exists, and a save sets `publication.autoApprove` to `true`, `pr.publishAfterRun` to `yes`, and `pr.language` to `Euskara`
-- **THEN** the save returns `.sai/settings.jsonc` and `.sai/settings.local.jsonc`, the local file holds exactly `publication.autoApprove: true` and `pr.publishAfterRun: yes`, and the base file holds exactly `pr.provider: github` and `pr.language: Euskara`
-
-#### Scenario: Consent key without a base file creates no base file
-- **WHEN** no settings file exists and a save sets `pr.publishAfterRun` to `no`
-- **THEN** `.sai/settings.local.jsonc` holds `pr.publishAfterRun: no` and `.sai/settings.jsonc` does not exist
-
-#### Scenario: Granting save warns when git does not ignore the local file
-- **WHEN** a save writes `publication.autoApprove: true` in a git repository that does not ignore `.sai/settings.local.jsonc`, then the same save runs where `.gitignore` lists the file, and then a save writes `false` where the file is not ignored
-- **THEN** only the first result carries the warning that committing `.sai/settings.local.jsonc` shares the publication grant with every clone, and no `.gitignore` is created or changed
+#### Scenario: Consent key held by the local file saves there
+- **WHEN** `.sai/settings.local.jsonc` holds `publication.autoApprove` and a save sets it to `true` and sets `pr.publishAfterRun` to `yes`
+- **THEN** `publication.autoApprove: true` is written to `.sai/settings.local.jsonc`, `pr.publishAfterRun: yes` to `.sai/settings.jsonc`, and the result carries no warning

@@ -800,86 +800,27 @@ test('E10: a telemetry save that fails shows the error and leaves the value as i
 const AUTO_APPROVE = 'publication.autoApprove';
 const autoApproveOf = directory => writer.parseText(read(directory)).root.publication?.autoApprove;
 
-const autoApproveOfLocal = directory => writer.parseText(readLocal(directory)).root.publication?.autoApprove;
-
-test('E12: the auto-approve row reads on for a local true and off for false, an absent key, or a true the base file alone holds, and offers On and Off', async () => {
+test('E12: the auto-approve row reads on for true and off for false or an absent key, and offers On and Off', async () => {
   assert.equal(CATALOGUE[AUTO_APPROVE].label, 'Auto-approve publication');
-  for (const [text, shown] of [['{"publication":{"autoApprove":true}}', 'off'], ['{"publication":{"autoApprove":false}}', 'off'], ['{}', 'off']]) {
+  for (const [text, shown] of [['{"publication":{"autoApprove":true}}', 'on'], ['{"publication":{"autoApprove":false}}', 'off'], ['{}', 'off']]) {
     assert.equal(editor(project(text), []).rowText(AUTO_APPROVE), `Auto-approve publication: ${shown}`, text);
   }
-  assert.equal(editor(projectWithLocal('{}', '{"publication":{"autoApprove":true}}'), []).rowText(AUTO_APPROVE), 'Auto-approve publication: off -> on (local)');
   const seen = [];
   await editor(project('{}'), [pick(AUTO_APPROVE), BACK, BACK], [], { seen }).runSection(BACKLOG_PR);
   assert.equal(seen[1].question, 'Auto-approve publication:');
   assert.deepEqual(seen[1].options, ['On', 'Off']);
 });
 
-test('E4: On saves true to the local file, creating it, and Off saves false there; the base file stays untouched', async () => {
-  const baseText = '// top\n{\n  "other": 1\n}\n';
-  const directory = project(baseText);
+test('E12: On saves true at once, the user stays in the submenu, and Off removes the key from the base file', async () => {
+  const directory = project('// top\n{\n  "other": 1\n}\n');
   const seen = [];
   const onDisk = [];
-  await editor(directory, [pick(AUTO_APPROVE), 'On', () => { onDisk.push(autoApproveOfLocal(directory)); return BACK; }], [], { seen }).runSection(BACKLOG_PR);
+  await editor(directory, [pick(AUTO_APPROVE), 'On', (question, options) => { onDisk.push(autoApproveOf(directory)); return BACK; }], [], { seen }).runSection(BACKLOG_PR);
   assert.deepEqual(onDisk, [true]);
-  assert.equal(texts(seen[2]).at(-1), 'Auto-approve publication: off -> on (local)');
-  assert.equal(read(directory), baseText);
+  assert.equal(texts(seen[2]).at(-1), 'Auto-approve publication: on');
   assert.equal((await editor(directory, ['Off']).editSetting(AUTO_APPROVE)).status, 'saved');
-  assert.equal(autoApproveOfLocal(directory), false);
-  assert.equal(read(directory), baseText);
-  assert.equal(editor(directory, []).rowText(AUTO_APPROVE), 'Auto-approve publication: off -> off (local)');
-});
-
-test('E4: a true that only the base file holds shows Off, and On or Off still write the local file alone', async () => {
-  const baseText = '{"publication":{"autoApprove":true}}';
-  const messages = [];
-  const shown = project(baseText);
-  assert.equal(editor(shown, []).rowText(AUTO_APPROVE), 'Auto-approve publication: off');
-  await editor(shown, [BACK], [], { log: message => messages.push(message) }).runSection(BACKLOG_PR);
-  assert.match(messages.join('\n'), /publication\.autoApprove in \.sai\/settings\.jsonc grants consent only from \.sai\/settings\.local\.jsonc/);
-  const turnedOn = project(baseText);
-  assert.equal((await editor(turnedOn, ['On']).editSetting(AUTO_APPROVE)).status, 'saved');
-  assert.equal(autoApproveOfLocal(turnedOn), true);
-  assert.equal(read(turnedOn), baseText);
-  const turnedOff = project(baseText);
-  assert.equal((await editor(turnedOff, ['Off']).editSetting(AUTO_APPROVE)).status, 'saved');
-  assert.equal(autoApproveOfLocal(turnedOff), false);
-  assert.equal(read(turnedOff), baseText);
-});
-
-test('E4: the writer sends both consent keys to the local file, creating it, and never to the base file', () => {
-  const baseText = '{"pr":{"provider":"github"}}';
-  const directory = project(baseText);
-  const saved = writer.saveSettings(directory, { [AUTO_APPROVE]: true, 'pr.publishAfterRun': 'yes', 'pr.language': 'Euskara' }, { prProviderIds: ['github'] });
-  assert.deepEqual([saved.ok, saved.files], [true, ['.sai/settings.jsonc', '.sai/settings.local.jsonc']]);
-  const local = writer.parseText(readLocal(directory)).root;
-  assert.deepEqual(local, { publication: { autoApprove: true }, pr: { publishAfterRun: 'yes' } });
-  assert.deepEqual(writer.parseText(read(directory)).root, { pr: { provider: 'github', language: 'Euskara' } });
-  const withoutBase = fs.mkdtempSync(path.join(os.tmpdir(), 'settings-screen-'));
-  assert.equal(writer.saveSettings(withoutBase, { 'pr.publishAfterRun': 'no' }, {}).ok, true);
-  assert.equal(fs.existsSync(path.join(withoutBase, FILE)), false);
-  assert.equal(writer.parseText(readLocal(withoutBase)).root.pr.publishAfterRun, 'no');
-});
-
-test('E4: the menu warns that committing the local file shares the grant when git does not ignore it', async () => {
-  const { spawnSync } = require('node:child_process');
-  const git = (directory, ...args) => spawnSync('git', args, { cwd: directory, encoding: 'utf8' });
-  const exposed = project('{}');
-  git(exposed, 'init', '-q');
-  const messages = [];
-  assert.equal((await editor(exposed, ['On'], [], { log: message => messages.push(message) }).editSetting(AUTO_APPROVE)).status, 'saved');
-  assert.match(messages.join('\n'), /\.sai\/settings\.local\.jsonc is not ignored by git: committing it shares the publication grant with every clone/);
-  assert.equal(fs.existsSync(path.join(exposed, '.gitignore')), false);
-  const ignored = project('{}');
-  git(ignored, 'init', '-q');
-  fs.writeFileSync(path.join(ignored, '.gitignore'), '.sai/settings.local.jsonc\n');
-  const quiet = [];
-  assert.equal((await editor(ignored, ['On'], [], { log: message => quiet.push(message) }).editSetting(AUTO_APPROVE)).status, 'saved');
-  assert.deepEqual(quiet, []);
-  const off = project('{}');
-  git(off, 'init', '-q');
-  const none = [];
-  await editor(off, ['Off'], [], { log: message => none.push(message) }).editSetting(AUTO_APPROVE);
-  assert.deepEqual(none, []);
+  assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.publication, 'autoApprove'), false);
+  assert.equal(writer.parseText(read(directory)).root.other, 1);
 });
 
 test('E11: the screen refuses a non-boolean auto-approve value, and a hand-written one reads as false with the reader warning', async () => {

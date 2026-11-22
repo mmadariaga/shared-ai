@@ -90,12 +90,9 @@ function draftLanguage(cwd) {
   return { language: value ?? 'English', ...(warnings.length ? { warnings } : {}) };
 }
 // `publication.autoApprove`: the standing grant of the person who runs the command, to publish right after the complete proposal
-// is shown. Only the personal local settings file grants it; a `true` in the shared base file reads as false and `main` reports
-// it as a warning. The tool reads it on every call and binds it into the proposals, so the confirmation tokens change when the key does;
-// an unusable value reads as false.
+// is shown. A `true` in either settings file grants it, the local file winning key by key. The tool reads it on every call and
+// binds it into the proposals, so the confirmation tokens change when the key does; an unusable value reads as false.
 const autoApproved = io => projectSettings.autoApprove({ cwd: io.cwd || process.cwd() });
-// The operations that read `autoApproved`, and so report its consent warning.
-const CONSENT_OPERATIONS = ['query', 'push-query', 'push', 'publish'];
 const approvalField = flag => (flag ? { auto_approve: true } : {});
 async function collect(request, io) {
   const git = async args => (await io.run('git', args)).trim();
@@ -457,7 +454,6 @@ async function main(rawArgv) {
     if (operation === 'resolve') {
       result = await resolve({ explicit: request.explicit || {}, remotes: (await collect({}, io)).remotes.map(row => row.url) }, registry, io);
     } else result = await operations[operation](request, io);
-    if (CONSENT_OPERATIONS.includes(operation)) result = projectSettings.addWarnings(result, projectSettings.readAutoApprove({ cwd: io.cwd }).warnings);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;
   } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(error.refusal ? { refusal: error.refusal, ...(error.request ? { request: error.request } : {}) } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
