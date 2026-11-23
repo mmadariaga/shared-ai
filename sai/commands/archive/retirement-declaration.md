@@ -22,41 +22,38 @@ is the delta the author wrote; archive carries it out identically on the
 ordinary route, under `--fast-track`, and on the Direct Build (unattended)
 route.
 
-## Detection
+## Detection and preconditions
 
-Detection is read-only and runs in the worker's pre-flight. The worker records
-the emptied capabilities as `retired_capabilities` and checks the preconditions
-below, also read-only. Detect the delta shape directly: `openspec validate`
-checks delta well-formedness or the published spec, never this shape.
-
-## Preconditions
+`sai/tools/archive-plan.js` is their single source. It detects the emptied
+capabilities from the delta and the published spec (`openspec validate` checks
+delta well-formedness or the published spec, never this shape) and checks the
+preconditions read-only. Its plan carries `retired_capabilities` and
+`retirement.declaration`: `write` when the key is absent, `present` when it
+already reads `true`, `none` without a capability-emptying delta.
 
 Each blocking condition is a **declaration refusal**: write nothing, run no CLI
-archive, and report the condition with its way forward. A refusal is a stop,
-never a question, on every route.
+archive, and report the condition with its way forward (the plan is refused with
+a `reason` and the way forward in its `summary`). A refusal is a stop, never a
+question, on every route. The conditions are:
 
-- **Author veto** — `retire_capabilities` is present with the parsed value
-  `false`. Way forward: remove the `retire_capabilities: false` entry, or
-  reshape the delta so it does not empty the capability. Running the CLI anyway
-  fails with `archive_spec_validation_failed` on every rerun, because the CLI
-  cannot tell `false` from an absent key.
-- **Unhonoured value** — `retire_capabilities` is present with a parsed value
-  that is not a boolean (a string such as `"yes"`, `null`, a number). Name the
-  file, the key, and the value. Way forward: set it to `true` to declare, to
-  `false` to veto, or remove it. Archive never guesses which boolean the value
-  meant and never overwrites it: guessing `true` would delete a published spec
-  on a guess.
-- **Unaccounted content** — an emptied capability's published spec has a `##`
-  section other than `## Purpose` above its requirements; the CLI cannot
-  attribute it and refuses the retirement. Name the capability and each
-  heading. Way forward: move that content out of the spec, then rerun
-  `sai-archive`.
-- **Metadata** — `openspec/changes/<name>/.openspec.yaml` is missing, does not
-  parse, or has no `schema:` key. Name the file and the missing or broken key.
-  Archive never creates `.openspec.yaml` and never authors `schema:`: a file
-  without a schema makes the change unreadable to `openspec status`.
+- **Author veto** (`retire-veto`) — `retire_capabilities` is present with the
+  parsed value `false`. Running the CLI anyway fails with
+  `archive_spec_validation_failed` on every rerun, because the CLI cannot tell
+  `false` from an absent key.
+- **Unhonoured value** (`retire-unhonoured`) — `retire_capabilities` is present
+  with a parsed value that is not a boolean (a string such as `"yes"`, `null`, a
+  number). Archive never guesses which boolean it meant and never overwrites it.
+- **Unaccounted content** (`retire-unaccounted-content`) — an emptied
+  capability's published spec has a `##` section other than `## Purpose` and
+  `## Requirements`, above or below the requirements.
+- **Metadata** (`retire-metadata`) — `openspec/changes/<name>/.openspec.yaml` is
+  missing or has no `schema:` key. Archive never creates `.openspec.yaml` and
+  never authors `schema:`.
 - **All or nothing** — when any emptied capability is blocked, the whole
   declaration is refused; no subset is retired.
+
+A `.openspec.yaml` the tool cannot read at all is refused first, with a read
+reason (`metadata-unreadable`), whatever the delta holds.
 
 ## Write
 
@@ -66,10 +63,11 @@ Use the active supported shell and command-execution tool under
 `@sai/policies/command-execution.md`; do not require Bash. With no
 capability-emptying delta, `.openspec.yaml` is not touched.
 
-1. Re-check the preconditions against the current files.
-2. Judge on the parsed YAML value, never on the line's text: a parsed `true`
-   is already a declaration, so skip the write; `false` and non-booleans were
-   refused above. The write therefore only inserts an absent key.
+1. Compute the plan again. A refusal ends the run before any write.
+2. Act on the plan's `retirement.declaration`, never on the line's text: `present`
+   means a parsed `true` is already a declaration, so skip the write; `false`
+   and non-booleans were refused. The write therefore only inserts an absent
+   key.
 3. Insert `retire_capabilities: true` once, as a replace-in-place edit: never a
    second entry (a duplicate key makes the file invalid YAML for every CLI
    surface), every other key and the formatting preserved, no other key and no

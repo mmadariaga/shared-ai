@@ -62,5 +62,5 @@ test('archive keeps the sole sync and move primitive with no schemas duplication
 test('direct-build final commit stages the implementer union including schemas files (E5)', () => {
   const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
 
-  assert.match(pipeline, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?stages only the supplied OWNED paths \(reconstructed artifacts, synced main specs, and the implementer.?s unioned changed paths/);
+  assert.match(pipeline, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?stages only the plan.s OWNED paths \(reconstructed artifacts, synced main specs, and the implementer.?s unioned changed paths/);
 });

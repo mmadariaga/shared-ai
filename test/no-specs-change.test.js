@@ -181,9 +181,9 @@ test('the implementation and plan phases accept a change that declares skip_spec
 });
 
 test('E3: archive treats skipped specs as satisfied and syncs no delta', () => {
-  const instructions = read('sai/commands/archive/instructions.md');
-  assert.match(instructions, /A `specs` artifact whose `status` is `skipped`[\s\S]{0,160}is satisfied and never collected/);
-  assert.match(instructions, /A change whose `specs` status is `skipped` has no delta\s+spec: report that no delta syncs/);
+  const tool = read('sai/tools/archive-plan.js');
+  assert.match(tool, /!\(id === 'specs' && skipSpecs\)/, 'a skipped specs artifact is satisfied and never collected');
+  assert.match(tool, /skip_specs is declared, so no delta syncs/);
   assert.match(read('sai/commands/archive/coordinator.md'), /A change that declares `skip_specs` has no delta spec, so the CLI syncs nothing/);
 });
 

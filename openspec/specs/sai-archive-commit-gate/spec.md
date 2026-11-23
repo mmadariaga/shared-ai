@@ -28,7 +28,7 @@ The new-commit option SHALL carry the `Recommended` marker, and no other option 
 
 ### Requirement: The gate asks first and stages only the archive paths
 
-The gate SHALL be presented before any staging. `git add` SHALL run only after the user selects an option, only for options 1 and 2, and SHALL stage exactly the **archive paths**: `openspec/specs`, `openspec/changes/archive`, and — when the change directory was tracked before the move — `openspec/changes/<name>`, so the commit records the moved directory's removal instead of leaving the original change tracked beside its archived copy. Staging SHALL be pathspec-scoped and deletion-aware; the agent SHALL NOT use an unscoped `git add -A` or any broader sweep and SHALL NOT stage any other path. The do-nothing option SHALL stage nothing and SHALL leave the index untouched. Options 1 and 2 SHALL run their commit action only when the shared empty-index guard passes: when the archive-path staging leaves the index with no staged changes, the agent SHALL stage but SHALL NOT run the commit action.
+The gate SHALL be presented before any staging. `git add` SHALL run only after the user selects an option, only for options 1 and 2, and SHALL stage exactly the **archive paths**: the `owned_staging_paths` of the archive plan the run computed before the CLI archive moved the change. They are the archived copies of the change files, the originals the move removed from the index (so the commit records the moved directory's removal instead of leaving the original change tracked beside its archived copy), and the main specs the archive wrote, created, or deleted. The plan's `omitted_ignored_paths` SHALL stay out, each reported as `[sai-archive] warning: omitted ignored untracked path: <path>`. Staging SHALL be pathspec-scoped and deletion-aware; the agent SHALL NOT use an unscoped `git add -A`, `-f`, or any broader sweep and SHALL NOT stage any other path. The do-nothing option SHALL stage nothing and SHALL leave the index untouched. Options 1 and 2 SHALL run their commit action only when the shared empty-index guard passes: when the archive-path staging leaves the index with no staged changes, the agent SHALL stage but SHALL NOT run the commit action.
 
 #### Scenario: No staging before selection
 
@@ -38,17 +38,17 @@ The gate SHALL be presented before any staging. `git add` SHALL run only after t
 #### Scenario: Amend stages exactly the archive paths
 
 - **WHEN** the user selects the amend option and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent stages only the archive paths and runs `git commit --amend --no-edit`
+- **THEN** the agent stages only the plan's owned staging paths and runs `git commit --amend --no-edit`
 
 #### Scenario: New commit stages exactly the archive paths
 
 - **WHEN** the user selects the new-commit option and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent stages only the archive paths and creates a new commit with the composed message
+- **THEN** the agent stages only the plan's owned staging paths and creates a new commit with the authored message
 
 #### Scenario: A tracked change directory's removal is committed
 
 - **WHEN** the change directory was tracked before the CLI moved it and the user selects a commit option
-- **THEN** the agent also stages `openspec/changes/<name>`, so after the commit neither the original path is tracked nor an unstaged deletion remains
+- **THEN** the plan's owned staging paths include the removed originals, so after the commit neither the original path is tracked nor an unstaged deletion remains
 
 #### Scenario: Do nothing leaves the index untouched
 
@@ -63,35 +63,6 @@ When the CLI archive completes and `git status` shows no changes, `/sai-archive`
 
 - **WHEN** the CLI archive completes and `git status` reports no changes
 - **THEN** the agent does not present the gate and runs no `git add` and no `git commit`
-
-### Requirement: The new-commit message reuses commit.md steps 1–5 and commit-rules.md without duplicating commit rules
-
-For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 with `sai/policies/commit-rules.md` as the single source of message rules. After the retired-capability body lines, it SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. After the shared empty-index guard passes, it SHALL pass the complete composed message literally on standard input to `git commit -F -` under `@sai/policies/command-execution.md`, without requiring Bash heredoc syntax or a `git commit -m` argument. The picker selection remains the per-invocation authorization, and no additional authorization question is presented.
-
-#### Scenario: Message is composed from the staged diff per commit.md steps 1–5
-
-- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
-- **THEN** the agent inspects staged state, classifies the change, determines scope, verifies faithfulness, and commits with the composed message
-
-#### Scenario: Commit rules are referenced, not duplicated
-
-- **WHEN** the archive instruction describes new-commit message composition
-- **THEN** it names commit instructions steps 1–5 and commit-rules as the sources and does not restate their message rules
-
-#### Scenario: The picker selection is the per-invocation authorization
-
-- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
-- **THEN** the agent stages and commits without asking a second authorization question
-
-#### Scenario: The new-commit message is delivered literally
-
-- **WHEN** the authorized archive message contains multiline, Unicode, or shell-sensitive characters
-- **THEN** the available Bash or PowerShell 7 transport passes it unchanged to `git commit -F -`
-
-#### Scenario: The new commit carries the archived change's closing line
-
-- **WHEN** the user selects the new-commit option and the archived change has a GitHub `backlog_origin`
-- **THEN** the committed message carries one `Closes owner/repo#N` line for that origin
 
 ### Requirement: The amend path applies the pushed-HEAD guard per commit-rules
 
@@ -199,3 +170,32 @@ skip rule, the staged paths, the empty-index guard, nor the pushed-HEAD guard.
 
 - **WHEN** the gate takes the `git commit --amend --no-edit` path after a retirement
 - **THEN** no message is authored and no retired-capability line is added
+
+### Requirement: The archive worker authors the new-commit message with the plan's fixed lines
+
+For the new-commit option, the coordinator SHALL create the `sai-archive-worker` when none is alive and SHALL send it the `--archive-commit-message` envelope with the plan's `commit_body_lines` and `closing_line`. The worker SHALL author the subject and body from the staged diff under `sai/policies/commit-rules.md`, the single source of message rules, SHALL put each given body line in the body and the given closing line as the last footer line, and SHALL add no other fixed line and no closing line of its own. After the shared empty-index guard passes, the coordinator SHALL pass the worker's complete message literally on standard input to `git commit -F -` under `@sai/policies/command-execution.md`. The picker selection remains the per-invocation authorization, and no additional authorization question is presented. An amend asks the worker for nothing.
+
+#### Scenario: Message is composed from the staged diff
+
+- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
+- **THEN** the archive worker authors the message from the staged diff and the coordinator commits with it
+
+#### Scenario: Commit rules are referenced, not duplicated
+
+- **WHEN** the archive contract describes new-commit message composition
+- **THEN** it names `commit-rules.md` as the source and does not restate its message rules
+
+#### Scenario: The picker selection is the per-invocation authorization
+
+- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
+- **THEN** the coordinator stages and commits without asking a second authorization question
+
+#### Scenario: The new-commit message is delivered literally
+
+- **WHEN** the authorized archive message contains multiline, Unicode, or shell-sensitive characters
+- **THEN** the available Bash or PowerShell 7 transport passes it unchanged to `git commit -F -`
+
+#### Scenario: The new commit carries the plan's closing line
+
+- **WHEN** the user selects the new-commit option and the plan's `closing_line` is `Closes owner/repo#N`
+- **THEN** the committed message carries that line, taken from the plan and not authored by the worker

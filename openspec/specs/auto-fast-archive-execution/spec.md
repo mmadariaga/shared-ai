@@ -14,15 +14,6 @@ Direct Build (unattended) SHALL use the existing archive worker's read-only prep
 - **WHEN** Direct Build reaches archive execution
 - **THEN** the existing one-commit boundary remains unchanged and the archive worker uses the validated CLI archive order
 
-### Requirement: Validated archive execution continuation
-
-The archive worker SHALL perform classification, completion, informational delta comparison, unchecked-item, and collision checks during preparation before accepting an execution order. Preparation SHALL return the validated archive destination, owned staging paths, and commit boundary without mutating files, archive directories, staging, or commits.
-
-#### Scenario: Direct Build preparation returns a non-mutating plan
-
-- **WHEN** the archive worker prepares a Direct Build operation
-- **THEN** it returns the validated mutation plan without invoking the CLI, writing files, moving directories, staging paths, or creating a commit
-
 ### Requirement: Ordered archive mutations
 
 When the order carries the no-specs draft section, authorized archive execution SHALL first materialize those drafts as the requirement "The archive execute order materializes the no-specs drafts before the archive move" states, before every step below; that materialization is the only way the worker creates `.openspec.yaml`. Authorized archive execution SHALL then, and only when the prepared plan recorded one or more `retired_capabilities`, re-check the declaration preconditions of the archive instructions against the current files: the author veto, an unhonoured `retire_capabilities` value, unaccounted content in each emptied capability's published spec, and the metadata precondition that `.openspec.yaml` exists, parses, and carries `schema:`. If any of them blocks, the worker SHALL write nothing, SHALL NOT run the CLI archive, and SHALL return a closed `failed` result naming the blocking condition and its way forward; outside the draft materialization it MUST NEVER create `.openspec.yaml` and MUST NEVER author a `schema:` value. Otherwise it SHALL write the single key `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml` through the active command-execution tool using Bash or PowerShell 7 as a parse-verified replace-in-place, judging the skip, the veto, and the unhonoured value on the parsed YAML value rather than the literal text, never appending a second entry, and adding that file to `changed_files` when it was written; after writing it SHALL re-parse the file and, if the file no longer parses or `retire_capabilities` does not read back as the boolean `true`, SHALL return a closed `failed` result that names the file it wrote and states the way forward: restore `openspec/changes/<name>/.openspec.yaml` with `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when it is tracked or by hand when it is not before `sai-archive` is rerun, without running the CLI archive and without reverting the write itself. It SHALL then run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive and SHALL parse its JSON result. After successful CLI completion, it SHALL classify every supplied approved path using deletion-aware trackedness and ignore checks before staging, stage only eligible paths, and create one local commit from staged state by passing the complete message on standard input to `git commit -F -` when eligible paths remain. Untracked ignored paths SHALL be omitted with a warning. Force-add and broad staging commands MUST NOT be used. With no recorded `retired_capabilities`, `.openspec.yaml` SHALL NOT be touched beyond the draft materialization, no retirement precondition re-check SHALL run, and a failure of the CLI invocation SHALL NOT revert a written declaration.
@@ -162,65 +153,28 @@ The archive worker SHALL follow `sai/policies/foreign-index-preservation.md` for
 - **WHEN** a foreign entry no longer matches its record at the restore after the commit step
 - **THEN** the worker restores nothing, reports the exact differing paths in the summary, and leaves the record for recovery
 
-### Requirement: The archive worker keeps the Direct Build implementer path set from the prepare envelope
-
-When a Direct Build `--direct-build-prepare` envelope carries a `--implementer-paths` marker line after the change name, the archive worker SHALL read the following lines as the implementer path set, one repository-relative path per line, and SHALL keep that set as worker state. An envelope without the marker, as on the ordinary `/sai-archive` route, SHALL have no implementer path set and SHALL behave as before.
-
-#### Scenario: Envelope with the marker
-
-- **WHEN** the archive worker receives a `--direct-build-prepare` envelope with a `--implementer-paths` marker line followed by paths
-- **THEN** it keeps those paths as the implementer path set in worker state
-
-#### Scenario: Ordinary archive envelope without the marker
-
-- **WHEN** the archive worker receives an envelope that carries no `--implementer-paths` marker
-- **THEN** it has no implementer path set and its preparation and execution behave as before
-
 ### Requirement: Direct Build preparation lists the implementer path set as owned staging paths
 
-In prepare mode, the archive worker's owned staging paths SHALL be only its own `openspec/` paths and every path of the implementer path set. The worker SHALL record each path of that set whose staged diff entry is a deletion as a deletion. Every other staged entry SHALL stay foreign under `sai/policies/foreign-index-preservation.md`.
+The archive plan's owned staging paths SHALL be only the archive's own `openspec/` paths and every path of the implementer path set. A path of that set whose deletion is already staged SHALL be listed in `already_staged_deletions`, SHALL NOT be added again at staging, and SHALL stay in the commit. Every other staged entry SHALL stay foreign under `sai/policies/foreign-index-preservation.md`.
 
 #### Scenario: Implementer deleted a path
 
-- **WHEN** the implementer path set holds a path whose staged diff entry is a deletion
-- **THEN** the prepared plan lists that path as an owned staging path recorded as a deletion
+- **WHEN** the implementer path set holds a path whose deletion is already staged
+- **THEN** the plan lists that path in `already_staged_deletions`, staging does not add it again, and the commit records the deletion
 
 #### Scenario: Staged entry outside the implementer path set
 
-- **WHEN** the index holds a staged entry that is neither an `openspec/` path of the worker nor a path of the implementer path set
-- **THEN** the prepared plan does not list it as owned and the entry stays foreign
-
-### Requirement: Execute validation uses the implementer path set received at prepare
-
-When the archive worker validates a Direct Build execute order, the implementer-owned path set SHALL be exactly the implementer path set received at prepare. An order path outside the allowed `openspec/` paths and that set SHALL fail validation with a closed `failed` result, executing nothing.
-
-#### Scenario: Order path outside the received set
-
-- **WHEN** an execute order names an owned path that is neither an allowed `openspec/` path nor a path of the implementer path set received at prepare
-- **THEN** the worker rejects the order with a closed `failed` result and executes nothing
-
-### Requirement: The archive worker accepts the no-specs draft section
-
-On the no-specs Direct Build route, the archive worker's prepare envelope SHALL carry a `--drafts` marker line after the implementer path set, followed by the draft section printed by `validate-backfill-drafts.js order --target archive`: the transfer directory, the accepted fingerprint, and one `{path, sha256, destination}` reference per draft. The section SHALL name exactly `openspec/changes/{name}/.openspec.yaml` and `openspec/changes/{name}/proposal.md`, each once; a section with any other destination SHALL be an altered envelope that returns `failed` and executes nothing. The pre-flight SHALL run `transfer.js verify` on each reference and `validate-backfill-drafts.js check --fingerprint`, and SHALL read the drafts in place of the missing change files, with the specs artifact satisfied as skipped and no delta sync or retirement. The prepared plan's owned `openspec/` paths SHALL include both draft destinations.
-
-#### Scenario: A prepare envelope with a valid draft section
-
-- **WHEN** the prepare envelope carries a `--drafts` section naming the two allowed destinations with references that verify
-- **THEN** the worker keeps the section as worker state, reads the drafts in place of the change files, and returns a plan whose owned paths include both destinations
-
-#### Scenario: A draft section with a foreign destination
-
-- **WHEN** the `--drafts` section names a destination other than `.openspec.yaml` or `proposal.md` of the change
-- **THEN** the worker returns `failed` and executes nothing
+- **WHEN** the index holds a staged entry that is neither an archive `openspec/` path nor a path of the implementer path set
+- **THEN** the plan does not list it as owned and the entry stays foreign
 
 ### Requirement: The archive execute order materializes the no-specs drafts before the archive move
 
-A Direct Build execute order that carries a draft section SHALL be valid only when that section equals the one received at prepare, reference for reference. Before any other mutation, the worker SHALL run `validate-backfill-drafts.js check --fingerprint` with the accepted fingerprint and, when it holds, SHALL run `transfer.js materialize` for each reference and add both destinations to `changed_files`. A changed fingerprint SHALL write nothing and return `failed` naming the fingerprint check. A failed materialization SHALL stop the order before `openspec archive` and the commit and SHALL return `failed` naming each destination already written, which stays uncommitted.
+A Direct Build execute order that carries a draft section SHALL be valid only when the section has the shape and destinations of "The no-specs draft section travels in the execute order". Before any other mutation, the worker SHALL run `validate-backfill-drafts.js check --fingerprint` with the accepted fingerprint and, when it holds, SHALL run `transfer.js materialize` for each reference and add both destinations to `changed_files`. A changed fingerprint SHALL write nothing and return `failed` naming the fingerprint check. A failed materialization SHALL stop the order before `openspec archive` and the commit and SHALL return `failed` naming each destination already written, which stays uncommitted. The commit paths SHALL be the archived copies of the drafts, never their pre-move destinations.
 
 #### Scenario: Drafts materialize before archive
 
-- **WHEN** the execute order carries the prepared draft section and the fingerprint check holds
-- **THEN** the worker materializes both drafts byte for byte, then runs `openspec archive` and the pre-authorized commit with both destinations among the staged paths
+- **WHEN** the execute order carries the draft section and the fingerprint check holds
+- **THEN** the worker materializes both drafts byte for byte, then runs `openspec archive` and the pre-authorized commit with the archived copies among the staged paths
 
 #### Scenario: A changed fingerprint stops the order
 
@@ -231,3 +185,31 @@ A Direct Build execute order that carries a draft section SHALL be valid only wh
 
 - **WHEN** one materialization fails after another destination was written
 - **THEN** the worker runs no archive and no commit and returns `failed` naming the destination already written
+
+### Requirement: The archive worker validates a recomputed plan before any mutation
+
+The Direct Build archive worker SHALL be created only at Step 8 and SHALL receive one `--direct-build-execute` closed order holding, in order, the change name, `plan_fingerprint: <fingerprint>`, the `--implementer-paths` section with one repository-relative path per line, and on the no-specs route the `--drafts` section. The order SHALL carry no path or action of its own. Before any mutation the worker SHALL validate that the order is complete, duplicate-free, still pending, and in that shape, SHALL run `sai/tools/archive-plan.js` read-only with the order's inputs, and SHALL accept the order only when that plan is not a refusal and its `plan_fingerprint` equals the order's. A refusal, a different fingerprint, or a reordered, foreign, already-executed, or otherwise altered order SHALL return a closed `failed` result, executing nothing. The worker SHALL keep the validated plan as worker state and take the destination, owned staging paths, already staged deletions, omitted ignored paths, retirement declaration, and commit message lines from it.
+
+#### Scenario: A matching fingerprint authorizes the order
+
+- **WHEN** the worker's recomputed plan is not refused and its fingerprint equals the order's
+- **THEN** the worker executes the order with the paths and lines of that plan
+
+#### Scenario: A changed fingerprint rejects the order
+
+- **WHEN** the worker's recomputed plan has a different fingerprint, for example because the date or the index changed
+- **THEN** the worker returns `failed` naming the mismatch and executes nothing
+
+### Requirement: The no-specs draft section travels in the execute order
+
+On the no-specs Direct Build route, the execute order SHALL carry a `--drafts` marker line after the implementer path set, followed by the draft section printed by `validate-backfill-drafts.js order --target archive`: the transfer directory, the accepted fingerprint, and one `{path, sha256, destination}` reference per draft. The section SHALL name exactly `openspec/changes/{name}/.openspec.yaml` and `openspec/changes/{name}/proposal.md`, each once; a section with any other destination SHALL be an altered envelope that returns `failed` and executes nothing. The plan tool SHALL read the drafts through `--drafts-dir` in place of the missing change files, and the plan's covering list SHALL include the change directory that holds both draft destinations.
+
+#### Scenario: An execute order with a valid draft section
+
+- **WHEN** the execute order carries a `--drafts` section naming the two allowed destinations
+- **THEN** the worker recomputes the plan with the drafts directory and proceeds when its fingerprint matches
+
+#### Scenario: A draft section with a foreign destination
+
+- **WHEN** the `--drafts` section names a destination other than `.openspec.yaml` or `proposal.md` of the change
+- **THEN** the worker returns `failed` and executes nothing

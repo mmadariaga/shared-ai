@@ -1,76 +1,68 @@
-# Archive Pre-flight
+# Archive Plan
 
-The read-only pre-flight of the `sai-archive-worker`. Every check here reads;
-none writes. `$ARGUMENTS` is the resolved change name.
+The archive pre-flight is a computation, so `sai/tools/archive-plan.js` makes it
+and the coordinator runs it directly: no worker turn computes a plan. The tool
+is the single source of the Classification Check (the CORE gate and the AUDIT
+line), the delta-sync summary, the capability-retirement detection and its
+preconditions (`@sai/commands/archive/retirement-declaration.md` defines the
+declaration), the collision check, the date-prefixed destination, the owned
+staging paths, and the closing line of the archive commit. It reads the
+repository and spawns only `git` and `check-delta-headers.js`; it writes nothing.
+`openspec archive <name> --yes --json` stays the sole sync and move primitive.
 
-Transport: where this file says **report**, the worker carries the exact text
-in its returned `summary` and the coordinator presents it verbatim; where it
-says **ask**, the worker returns the question and ordered options as a
-`needs_input` result. Every mutation — the retirement declaration, the CLI
-archive, and every git operation — runs outside this pre-flight: coordinator-side
-on the ordinary route, and in the validated Direct Build execute continuation on
-that route.
+## Running the tool
 
-## Classification Check
+Fetch `@sai/policies/tool-resolution.md` and resolve `archive-plan.js`:
 
-Fetch `@sai/policies/issue-origin-preservation.md` and read the selected change's
-`backlog_origin` before the archive move and carry that known value in the
-pre-flight summary for the mutation owner to compare with archived metadata.
-If a known origin is absent or unverifiable, warn and continue. Do not infer
-an association from a branch number or an ordinary `Refs` mention.
+```
+node <tool-path> plan <change-name> --json --cwd <project-root>
+```
 
-1. Run `openspec status --change "$ARGUMENTS" --json` for the artifact
-   completion status.
-2. Resolve `backfilled` from `openspec/changes/$ARGUMENTS/.openspec.yaml`: it is
-   `true` only when the file exists, parses, and holds the boolean `true` under
-   that key. Anything else (absent file or key, `false`, the string `"true"`,
-   `null`) is `false`. A corrupt file is `false` plus one warning line; the check
-   continues. Log `[sai-archive] backfilled=<true|false>`.
-3. Group the ten `sai-workflow` artifacts from the JSON `artifacts` array:
-   - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`;
-   - **AUDIT** (informational): `review`, `security`, `performance`,
-     `accessibility`, `change-overview`;
-   - **EXEMPT** (silent): `interfaces`, never collected into any set and never
-     named in a diagnostic.
-4. **CORE.** For a backfilled change, skip `design` and `tasks`; `proposal` and
-   `specs` are always checked. A `specs` artifact whose `status` is `skipped`
-   (the change declares `skip_specs: true`, so it has no spec files by design)
-   is satisfied and never collected. Collect every
-   remaining CORE artifact whose `status` is not `done`. When any is collected,
-   close the run with a terminal result whose summary is exactly
-   **"Missing CORE artifact(s): <id1>, <id2>. Archive blocked."**, with no AUDIT
-   line.
-5. **AUDIT**, once CORE is complete:
-   - `review`, `security`, `performance`, `accessibility` — an artifact not
-     `done` still counts as present when
-     `openspec/changes/$ARGUMENTS/<id>.md` exists and contains the heading
-     `## Not Applicable` (case-sensitive); otherwise collect it.
-   - `change-overview` — skipped for a backfilled change. Otherwise read
-     `overview.state` from `.openspec.yaml` (absent means `unmaterialized`) and
-     collect it unless its CLI `status` is `done` **and** the state is
-     `current`. `## Not Applicable` does not apply to it.
-   - When anything is collected, report exactly one line:
-     `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
+Direct Build adds `--implementer-paths-file <path>` (one repository-relative
+path per line, deletions included), or one `--implementer-path <path>` argument
+per path, and, on the no-specs route, `--drafts-dir <transfer directory>`: the
+draft `.openspec.yaml` and `proposal.md` there stand in for the change files
+that no backfill worker wrote yet. Exit 0 is a plan, exit 1 is a refusal, exit 2
+is a usage or tooling error. Every exit prints one JSON object.
 
-## Delta-sync summary
+## Refusal
 
-For each delta spec capability, compare it with its main spec at
-`openspec/specs/<capability>/spec.md` and report a combined, informational
-delta-sync summary. A capability with no main spec is a new addition, reported
-as `[ADD] <capability>`. A change whose `specs` status is `skipped` has no delta
-spec: report that no delta syncs and list no capability. The `openspec archive <name> --yes --json` CLI performs
-the actual synchronization and move in one validated operation; SAI reports,
-and never duplicates, that work.
+A refusal (`ok: false`, `refused: true`) carries `reason` and a `summary` to
+print verbatim. Nothing was written and no archive runs. A refusal is a planned
+stop, never a question and never an obstacle. The reasons are `core-missing` (the
+summary is exactly `Missing CORE artifact(s): <ids>. Archive blocked.`),
+`collision`, `scenario-dropped`, `metadata-unreadable`, `comparison-incomplete`,
+`change-not-found`, and the declaration refusals `retire-veto`,
+`retire-unhonoured`, `retire-unaccounted-content`, and `retire-metadata`.
 
-## Capability retirement
+## The plan
 
-Detect capability-emptying deltas and check the declaration preconditions as
-defined in `@sai/commands/archive/retirement-declaration.md`. A blocking
-precondition closes the pre-flight with the refusal; otherwise the emptied
-capabilities travel in the summary as `retired_capabilities`.
+A plan (`ok: true`) holds:
 
-## Collision check
+- `report_lines`: the confirming report, to print verbatim. It restates the
+  change, schema, collision verdict, delta-sync summary, every retired
+  capability, the AUDIT line, and the warnings.
+- `archive_destination`: the date-prefixed destination, with the CLI's naming (a
+  name that already starts with `YYYY-MM-DD-` keeps it).
+- `retired_capabilities` and `retirement.declaration`: `none`, `write` (the
+  declaration is still to be written), or `present` (the key already reads
+  `true`).
+- `affected_main_specs`, `owned_staging_paths`, `already_staged_deletions`,
+  `omitted_ignored_paths`, `omitted_absent_paths`, and `covering_paths`: the
+  paths the commit owns and the ones it leaves out. `owned_staging_paths` is the
+  exact allowlist for staging. An already staged deletion is not added again and
+  still belongs to the commit. `covering_paths` is the covering list of the
+  `verify` check of `@sai/policies/slice-path-scope.md`.
+- `closing_line` and `commit_body_lines`: the lines the commit message carries,
+  from the tool and never from a model: `Closes owner/repo#N` for a verified
+  origin, and one `Retired capability: <id>` line per retired capability.
+- `plan_fingerprint`: the digest of the fields above. A plan computed again that
+  differs from the one a decision rested on (the date changed at midnight, the
+  index changed) is a different plan.
 
-Report whether `openspec/changes/archive/YYYY-MM-DD-$ARGUMENTS/` already
-exists, using the CLI's naming: a name that already starts with `YYYY-MM-DD-`
-keeps it, and no second date is stacked.
+## Origin
+
+Fetch `@sai/policies/issue-origin-preservation.md`. `origin.backlog_origin` is
+the known pre-move value; compare it with the archived `.openspec.yaml` after the
+move. A lost or unverifiable origin warns and never blocks, and gives no closing
+line.

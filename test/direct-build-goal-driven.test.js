@@ -108,7 +108,7 @@ test('I8: sai-direct-build-worker renders from the standalone template on both h
 test('E12: standalone archive and backfill keep their gates after leaving worker-core', () => {
   const archive = read('sai/commands/archive/worker.md');
   const backfill = read('sai/commands/backfill/worker.md');
-  assert.match(archive, /--direct-build-prepare/);
+  assert.match(archive, /--archive-commit-message/);
   assert.match(archive, /--direct-build-execute/);
   assert.match(archive, /status: needs_input[\s\S]*resolved_change_name: string\nquestion: string/);
   assert.match(backfill, /status: needs_input\nsummary: string\nchanged_files: string\[\]\nquestion: string/);

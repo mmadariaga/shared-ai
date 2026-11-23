@@ -52,12 +52,13 @@ test('backfill execution completes writes before archive preparation and archive
 
   const backfillPrepare = backfill.indexOf('--direct-build-prepare');
   const backfillExecute = backfill.indexOf('--direct-build-execute');
-  const archivePrepare = archive.indexOf('--direct-build-prepare');
-  const archiveExecute = archive.indexOf('--direct-build-execute');
   assert.ok(backfillPrepare >= 0 && backfillPrepare < backfillExecute,
     'backfill preparation must precede its explicit execution continuation');
-  assert.ok(archivePrepare >= 0 && archivePrepare < archiveExecute,
-    'archive preparation must precede its explicit execution continuation');
+  // The archive plan is a tool run: the archive worker has no prepare stretch, only the execute order.
+  assert.equal(archive.includes('--direct-build-prepare'), false, 'the archive worker has no prepare stretch');
+  assert.ok(archive.indexOf('--direct-build-execute') >= 0);
+  assert.ok(explore.indexOf('archive-plan.js') >= 0 && explore.indexOf('archive-plan.js') < explore.indexOf('8. **Archive execution and pre-authorized commit**'),
+    'the plan tool runs before the archive execution step');
   assert.match(backfill, /openspec\/changes\/\{name\}\/\.openspec\.yaml/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/proposal\.md/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/specs\/\{capability\}\/spec\.md/);
@@ -72,6 +73,7 @@ test('backfill execution completes writes before archive preparation and archive
   assert.match(explore, /6\. \*\*Backfill execution\*\*/);
   assert.match(explore, /7\. \*\*Archive preparation\*\*[\s\S]*?read-only pre-flight/);
   assert.match(explore, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?SAME `sai-archive-worker`/);
+  assert.match(explore, /7\. \*\*Archive preparation\*\*[\s\S]*?no archive worker and no archive window/);
 });
 
 function executionStep(archive, start, end) {
@@ -125,27 +127,30 @@ function coordinatorSteps() {
   };
 }
 
-test('the Step 7 prepare envelope carries the implementer path set under a marker after the change name', () => {
-  const { prepare } = coordinatorSteps();
+test('the Step 7 plan call carries the implementer path set, and the Step 8 order repeats it under a marker after the plan fingerprint', () => {
+  const { prepare, execute } = coordinatorSteps();
 
-  assertInOrder(prepare, ['--direct-build-prepare', '<change-name>', '--implementer-paths', '<path>']);
+  assertInOrder(prepare, ['plan <change-name> --json --cwd <project-root> --implementer-paths-file <path>', 'archive-plan.js']);
   assert.match(prepare, /first-seen changed-path union of Step 1, deletions included/);
   assert.match(prepare, /one repository-relative path per line/);
-  assert.match(prepare, /missing from run state[\s\S]*?stops the route before the dispatch[\s\S]*?never rebuild it from the git index/);
+  assert.match(prepare, /missing from run state[\s\S]*?stops the route before the tool runs[\s\S]*?never rebuild it from the git index/);
+  assert.match(prepare, /--drafts-dir <transfer directory>/);
+  assertInOrder(execute, ['--direct-build-execute', "the plan's `plan_fingerprint`", '--implementer-paths']);
 });
 
 test('the prepare-time coverage check runs before any execute order and returns gaps to the archive worker', () => {
   const { coverage, execute } = coordinatorSteps();
 
   assert.match(coverage, /before any execute order/);
-  assert.match(coverage, /`verify` check of `@sai\/policies\/slice-path-scope\.md` § Commit coverage with `slice_snapshot`[\s\S]*?prepared plan's owned staging paths as the covering list/);
+  assert.match(coverage, /`verify` check of `@sai\/policies\/slice-path-scope\.md` § Commit coverage with `slice_snapshot`[\s\S]*?plan's `covering_paths` as the covering list/);
   assert.match(coverage, /non-empty `uncovered` sends no execute order/);
-  assert.match(coverage, /corrected-result request that names the uncovered paths and carries no execute order/);
+  assert.match(coverage, /a gap in the plan is not patched by hand[\s\S]*?compute the plan again/);
   assert.match(coverage, /one `step-7` attempt/);
   assert.match(coverage, /escalates under `@sai\/policies\/obstacle-escalation\.md`/);
 
-  assert.match(execute, /keep the order unchanged and return to Step 7 with a corrected-result request/);
-  assert.match(execute, /plan-consistency rule/);
+  assert.match(execute, /compute the plan again with the same inputs right before the order/);
+  assert.match(execute, /the new plan repeats the Step 7b check/);
+  assert.match(execute, /rejects the order when its fingerprint differs from the order's/);
   assert.match(execute, /stops the route before this continuation/);
 });
 
@@ -159,38 +164,37 @@ test('slice path scope sends a prepared-plan gap back to the plan owner instead 
   assert.match(coverage, /applies to an order that no prepared plan binds/);
 });
 
-test('the archive worker lists the envelope implementer paths as owned staging paths in prepare mode', () => {
+test('the archive worker re-runs the plan from the implementer paths of its order and stages the plan\'s owned paths', () => {
   const archive = read('sai/commands/archive/worker.md');
 
-  assert.match(archive, /`--implementer-paths` marker line followed by one\s+repository-relative path per line/);
-  assert.match(archive, /An envelope without the marker \(the ordinary `\/sai-archive` route\) has no\s+implementer path set and behaves as before/);
-  assert.match(archive, /the owned staging paths are only the worker's own `openspec\/`\s+paths and every path of the implementer path set/);
-  assert.match(archive, /whose staged diff entry is a deletion as a deletion/);
-  assert.match(archive, /Every other staged entry\s+stays foreign under `foreign-index-preservation\.md`/);
-  assert.match(archive, /the implementer-owned set is exactly the implementer path set received at\s+prepare/);
+  assert.match(archive, /`--implementer-paths` section carries one repository-relative path per line/);
+  assert.match(archive, /one `--implementer-path <path>` per path of the section/);
+  assert.match(archive, /valid only when that plan\s+is not a refusal and its `plan_fingerprint` equals the order's/);
+  assert.match(archive, /the approved\s+paths are the plan's `owned_staging_paths`/);
+  assert.match(archive, /A path\s+the plan lists in `already_staged_deletions` is already staged: never add it\s+again, and it stays in the commit/);
+  assert.match(archive, /with the owned staging paths and the already\s+staged deletions as the owned paths/);
+  assert.match(archive, /Every other staged entry|foreign entries under\s+`foreign-index-preservation\.md`/);
 });
 
 const RETIREMENT_SOURCE = 'sai/commands/archive/retirement-declaration.md';
 
-// The retirement declaration is single-sourced: every rule lives in
-// retirement-declaration.md, and the other archive cards point to it.
+// The retirement declaration is single-sourced: the definition, the write, and the disclosure live in
+// retirement-declaration.md; the detection and the preconditions run in archive-plan.js; the other archive
+// cards point to them.
 const RETIREMENT_DECLARATION_RULES = [
   ['an explicit retire_capabilities: false is an author veto', [
     [/\*\*Author veto\*\*/, 'names the author veto'],
-    [/present with the parsed value\s+`false`/, 'judges the veto on the parsed value `false`'],
-    [/reshape the delta so it does not empty the\s+capability/, 'states both ways forward'],
+    [/present with the\s+parsed value `false`/, 'judges the veto on the parsed value `false`'],
     [/archive_spec_validation_failed/, 'states why the veto cannot be skipped'],
   ]],
   ['a non-boolean retire_capabilities refuses the declaration', [
     [/\*\*Unhonoured value\*\*/, 'names the unhonoured value'],
-    [/parsed value\s+that is not a boolean/, 'defines an unhonoured value'],
+    [/parsed value that is not a boolean/, 'defines an unhonoured value'],
     [/never guesses which boolean/, 'never guesses which boolean it meant'],
-    [/`false` to veto, or remove it/, 'states the three ways forward'],
   ]],
   ['unaccounted content refuses the declaration', [
     [/\*\*Unaccounted content\*\*/, 'names unaccounted content'],
     [/has a `##`\s+section other than `## Purpose`/, 'defines unaccounted content'],
-    [/move that content out of the spec/, 'states the way forward'],
   ]],
   ['the declaration requires existing, parseable, schema-carrying metadata', [
     [/has no `schema:` key/, 'requires the schema key'],
@@ -198,7 +202,7 @@ const RETIREMENT_DECLARATION_RULES = [
     [/never authors `schema:`/, 'never authors a schema value'],
   ]],
   ['the write judges the parsed YAML value and verifies itself', [
-    [/Judge on the parsed YAML value, never on the line's text/, 'judges on the parsed value'],
+    [/Act on the plan's `retirement\.declaration`, never on the line's text/, 'acts on the plan, not on the text'],
     [/replace-in-place/, 'specifies replace-in-place'],
     [/never a\s+second entry/, 'forbids a second entry'],
     [/Re-parse the file/, 're-parses the file after writing'],
@@ -210,9 +214,19 @@ const RETIREMENT_DECLARATION_RULES = [
     [/\*\*All or nothing\*\*/, 'states the all-or-nothing rule'],
   ]],
   ['every refusal is a stop, not a question', [
-    [/A refusal is a stop,\s+never a question/, 'states that a refusal is a stop'],
+    [/A refusal is a stop, never a\s+question/, 'states that a refusal is a stop'],
     [/write nothing, run no CLI\s+archive/, 'writes nothing on a refusal'],
   ]],
+];
+
+// The way forward of each refusal is printed by the tool.
+const RETIREMENT_TOOL_RULES = [
+  [/remove the \\?`retire_capabilities: false\\?` entry, or reshape the delta so it does not empty the capability/, 'states both ways forward of the veto'],
+  [/archive never guesses which boolean it meant/, 'never guesses which boolean it meant'],
+  [/set it to \\?`true\\?` to declare, to \\?`false\\?` to veto, or remove it/, 'states the three ways forward'],
+  [/move that content out of the spec, then rerun archive/, 'states the way forward of unaccounted content'],
+  [/has no \\?`schema:\\?` key, and archive never authors it/, 'never authors a schema value'],
+  [/is missing, and archive never creates it/, 'never creates .openspec.yaml'],
 ];
 
 test('the retirement declaration single source states every rule', () => {
@@ -225,6 +239,9 @@ test('the retirement declaration single source states every rule', () => {
   assert.match(source, /does not block the archive/);
   assert.match(source, /The CLI is the only\s+component that deletes anything under `openspec\/specs\/\*\*`/);
   assert.match(source, /The retirement adds no question, gate, or per-route branch/);
+  assert.match(source, /`sai\/tools\/archive-plan\.js` is their single source/);
+  const tool = read('sai/tools/archive-plan.js');
+  for (const [pattern, what] of RETIREMENT_TOOL_RULES) assert.match(tool, pattern, `archive-plan.js ${what}`);
 });
 
 test('archive cards point to the retirement declaration instead of restating it', () => {
@@ -249,9 +266,10 @@ test('the retirement declaration is a named member of the direct-build closed or
   const worker = read('sai/commands/archive/worker.md');
   const coordinator = read('sai/commands/archive/coordinator.md');
 
-  assert.match(worker, /may contain only the resolved change name, the retirement declaration with the\s+capabilities it retires/);
-  assert.match(worker, /An order carrying\s+the retirement declaration is therefore not an altered order/);
-  assert.match(coordinator, /the\s+retirement declaration as a named member of the order/);
+  assert.match(worker, /holds only these lines, in this order/);
+  assert.match(worker, /only when the plan's `retirement\.declaration` is\s+`write`/);
+  assert.match(worker, /holds the destination, the owned staging paths, the\s+already staged deletions, the omitted ignored paths, the retirement declaration/);
+  assert.match(coordinator, /The retirement declaration is a named member of the plan the order binds/);
 });
 
 test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {

@@ -14,7 +14,7 @@ The `sai-archive` command SHALL classify the ten artifacts defined by the `sai-w
 - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`, `change-overview`.
 - **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
 
-The classification SHALL be defined natively inside `sai/commands/archive/instructions.md` (no CLI flags, no environment variables, no schema changes). The instruction file SHALL name ten artifacts in total and SHALL NOT refer to "eleven" artifacts anywhere in the Classification Check.
+The classification SHALL be computed by the archive plan tool `sai/tools/archive-plan.js`, which reports it in the plan's `report_lines`, and `sai/commands/archive/instructions.md` SHALL describe that plan (no CLI flags, no environment variables, no schema changes). The tool SHALL classify ten artifacts in total, and neither the tool nor the instruction file SHALL refer to "eleven" artifacts.
 
 The `sai-archive` Classification Check SHALL evaluate `interfaces` independently of the CORE not-`done` collection and the AUDIT missing collection. The `interfaces` artifact id SHALL NOT appear in either the "Missing CORE artifact(s)" halt message or the "informational: missing AUDIT artifact(s)" message under any input condition. EXEMPT is strictly weaker than AUDIT: it produces no log line, no warning, and no prompt.
 
@@ -91,7 +91,7 @@ The `sai-archive` command SHALL run its classification check before archive muta
 
 ### Requirement: No new flags and no upstream modifications
 
-The AUDIT soft-warning behavior SHALL live in the archive pre-flight (`sai/commands/archive/instructions.md`) and SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. It SHALL NOT modify OpenSpec-generated skill files or the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`).
+The AUDIT soft-warning behavior SHALL live in the archive plan tool (`sai/tools/archive-plan.js`, described by `sai/commands/archive/instructions.md`) and SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. It SHALL NOT modify OpenSpec-generated skill files or the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`).
 
 #### Scenario: Non-interactive archive run with AUDIT-only gaps
 
@@ -161,9 +161,9 @@ The requirement is at the behavior level, not the implementation level. The impl
 
 ### Requirement: Read-only delta comparison supplies informational CLI context
 
-During preflight, `sai-archive` SHALL compare delta specs with their matching main specs and report additions or differences as informational context. The comparison SHALL not expose a synchronization choice or perform writes; the coordinator or validated Direct Build execute continuation SHALL rely on the CLI archive command to synchronize and move the change.
+The archive plan tool `sai/tools/archive-plan.js` SHALL compare delta specs with their matching main specs and report additions or differences as informational context. The comparison SHALL not expose a synchronization choice or perform writes; the coordinator or validated Direct Build execute continuation SHALL rely on the CLI archive command to synchronize and move the change.
 
 #### Scenario: A delta capability has no matching main spec
 
 - **WHEN** a delta capability has no matching `openspec/specs/<capability>/spec.md`
-- **THEN** the worker reports `[ADD] <capability>` as informational context and the later CLI archive invocation remains responsible for creating the main spec and moving the change
+- **THEN** the plan reports `[ADD] <capability>` as informational context and the later CLI archive invocation remains responsible for creating the main spec and moving the change
