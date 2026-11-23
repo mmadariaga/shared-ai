@@ -52,8 +52,7 @@ class ToolError extends Error {}
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
 const DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}-/;
-// The ten sai-workflow artifacts: CORE blocks the archive, AUDIT only informs (`change-overview` joins it below,
-// except for a backfilled change), and `interfaces` is exempt: never collected and never named in a diagnostic.
+// The eight sai-workflow artifacts: CORE blocks the archive, AUDIT only informs.
 const CORE_ARTIFACTS = ['proposal', 'specs', 'design', 'tasks'];
 const AUDIT_FILES = ['review', 'security', 'performance', 'accessibility'];
 
@@ -436,11 +435,6 @@ function computePlan(root, change, options) {
 
   // AUDIT (informational).
   const auditMissing = AUDIT_FILES.filter((id) => !exists(path.join(changeDir, `${id}.md`)));
-  if (!backfilled) {
-    const state = metaGet(meta, ['overview', 'state']);
-    const overviewState = typeof state === 'string' && state ? state : 'unmaterialized';
-    if (!(exists(path.join(changeDir, 'change-overview.md')) && overviewState === 'current')) auditMissing.push('change-overview');
-  }
   const auditLine = auditMissing.length ? `[sai-archive] informational: missing AUDIT artifact(s): ${auditMissing.join(', ')}` : null;
 
   // Delta specs, the delta-sync summary, and the retirement.

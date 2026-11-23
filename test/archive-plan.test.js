@@ -331,7 +331,6 @@ fixture('E6: a missing CORE artifact refuses the plan with the literal, unless t
   const ok = plan(backfilled);
   assert.equal(ok.status, 0);
   assert.deepEqual(ok.json.core.skipped, ['design', 'tasks']);
-  assert.equal(ok.json.audit.missing.includes('change-overview'), false, 'a backfilled change skips the overview');
 
   const skip = project(t, { delta: null, meta: `${META}skip_specs: true\n` });
   const skipped = plan(skip);
@@ -345,12 +344,11 @@ fixture('E6: a missing CORE artifact refuses the plan with the literal, unless t
   assert.equal(plan(noSpecs).json.summary, 'Missing CORE artifact(s): specs. Archive blocked.');
 });
 
-fixture('the AUDIT line names every artifact that is absent, and the overview counts only when current', (t) => {
-  const root = project(t, { meta: `${META}overview:\n  state: current\n`, extra: { 'openspec/changes/demo/review.md': '# r\n', 'openspec/changes/demo/change-overview.md': '# o\n' } });
+fixture('the AUDIT line names every audit report that is absent', (t) => {
+  const root = project(t, { extra: { 'openspec/changes/demo/review.md': '# r\n' } });
   const result = plan(root);
   assert.equal(result.json.audit.line, '[sai-archive] informational: missing AUDIT artifact(s): security, performance, accessibility');
-  fs.writeFileSync(path.join(root, 'openspec/changes/demo/.openspec.yaml'), `${META}overview:\n  state: stale\n`);
-  assert.match(plan(root).json.audit.line, /accessibility, change-overview$/);
+  assert.deepEqual(result.json.audit.missing, ['security', 'performance', 'accessibility']);
 });
 
 fixture('E7: an implementer deletion that is already staged is not added again and stays in the commit', (t) => {

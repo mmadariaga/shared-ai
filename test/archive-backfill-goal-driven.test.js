@@ -134,5 +134,5 @@ test('the archive worker writes the no-specs drafts before the archive move, fro
   assert.match(worker, /a draft section that names any\nother destination is an altered envelope/);
   // The plan tool reads the drafts in place of the change files that no backfill worker wrote yet.
   const tool = read('sai/tools/archive-plan.js');
-  for (const key of ["'backfilled'", "'skip_specs'", "'backlog_origin'", "'overview', 'state'"]) assert.ok(tool.includes(key), `the plan tool reads ${key} from the draft metadata`);
+  for (const key of ["'backfilled'", "'skip_specs'", "'backlog_origin'"]) assert.ok(tool.includes(key), `the plan tool reads ${key} from the draft metadata`);
 });
