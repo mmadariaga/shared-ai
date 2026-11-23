@@ -151,6 +151,20 @@ test('contract preservation: route names stay English while route guidance is lo
   assert.match(languageGate, /post-block route guide, later-turn clarification, and post-Manual handoff prose follow the selected crystallization language[\s\S]{0,220}route names remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
 });
 
+test('list display language: list-writing owns the conversation-language rule and issue intake points to it', () => {
+  const listWriting = fs.readFileSync(
+    path.join(repoRoot, 'sai', 'commands', 'explore', 'list-writing.md'),
+    'utf8',
+  );
+  const intake = fs.readFileSync(path.join(stepsDir, 'issue-intake.md'), 'utf8');
+
+  assert.match(listWriting, /\*\*Display language\.\*\* Display every item of the list in the conversation language/);
+  assert.match(listWriting, /translated for the display, including every revision/);
+  assert.match(listWriting, /Identifiers, item order, paths, code, and technical literals stay verbatim and untranslated/);
+  assert.match(listWriting, /A domain term with no faithful translation keeps its original form and is explained once/);
+  assert.match(intake, /an open `What`\/`Why` is displayed in the conversation language by the display rule of `sai\/commands\/explore\/list-writing\.md` § Display language/);
+});
+
 test('open decisions: the step pins one notice, a closed-choice question per decision, and two outcomes', () => {
   const step = fs.readFileSync(path.join(stepsDir, 'open-decisions.md'), 'utf8');
   assert.match(step, /complete when every open decision is answered or explicitly left open/);
