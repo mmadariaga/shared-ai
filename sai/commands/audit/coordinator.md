@@ -30,7 +30,7 @@ The run is a cycle for one worker: create it, disclose the task, process its pro
 
 Fetch `@sai/orchestration/workers/bindings/{audit}-worker.md` and use it.
 
-Create the audit's worker once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent` and the captured `sessionID` on opencode, after the worker's completion notification has arrived.
+Create the audit's worker once for the run. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and the task goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue the worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `subagent` with the same `agent` and the captured `sessionID` on opencode. On Claude Code the timing of each continuation is that of `@sai/policies/worker-lifecycle.md` § Continuation timing; on opencode, send it after the worker's completion notification has arrived.
 
 The task message opens with the line `--report-dir <report directory>` (a replacement's first message opens with it too, and no later message does), then the first pointer line, `Active step: <stage> — follow <pointer>`, then names the change, the options of the run exactly as given (the `--url` value included when one was collected), the path `{report}`, and the scratch folder.
 
