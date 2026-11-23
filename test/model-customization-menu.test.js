@@ -4465,7 +4465,7 @@ test('empty target enumeration notices the user, returns to scope, and never ope
     outcomes: [],
     ops,
   }));
-  const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', BACK, BACK, 'Exit'];
+  const answers = ['Model customization', 'Customize models', 'OpenCode', 'Workers', BACK, BACK, BACK, 'Exit'];
   const scopeQuestions = [];
   const terminal = captureTerminalEvents();
   let checklistCalls = 0;

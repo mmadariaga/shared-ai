@@ -272,15 +272,15 @@ function scriptedChoice(answers, questions) {
   };
 }
 
-test('back at the harness picker re-opens the main menu instead of cancelling', { timeout: INTERACTION_TIMEOUT }, async () => {
+test('back at the harness picker re-opens the Model customization submenu instead of cancelling', { timeout: INTERACTION_TIMEOUT }, async () => {
   const ops = { select: [], create: [], enumerate: 0 };
   const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(AGENTS, ops));
   const questions = [];
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      // menu -> model submenu -> harness (back) -> menu -> model submenu -> harness -> scope -> targets
-      promptChoice: scriptedChoice(['Model customization', 'Customize models', BACK, 'Model customization', 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
+      // menu -> model submenu -> harness (back) -> model submenu -> harness -> scope -> targets
+      promptChoice: scriptedChoice(['Model customization', 'Customize models', BACK, 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
     assert.equal(result.status, 'skipped');
@@ -289,12 +289,80 @@ test('back at the harness picker re-opens the main menu instead of cancelling', 
       'Post-setup customization:',
       'Model customization:',
       'Choose a harness:',
-      'Post-setup customization:',
       'Model customization:',
       'Choose a harness:',
       'Choose a customization scope:',
       'Post-setup customization:',
-    ], 'stepping back from the harness picker should redisplay the main menu, then the picker again');
+    ], 'stepping back from the harness picker should redisplay the submenu, then the picker again');
+  } finally {
+    restore();
+  }
+});
+
+test('back at the Model customization submenu re-opens the main menu with the cursor on its entry', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(AGENTS, { select: [], create: [], enumerate: 0 }));
+  const initials = [];
+  const questions = [];
+  const answers = ['Model customization', BACK, 'Exit'];
+  try {
+    const result = await runPostSetupMenu({
+      isTTY: true,
+      promptChoice: async (question, options, _a, _b, config) => {
+        questions.push(question);
+        if (question === 'Post-setup customization:') initials.push(config && config.initial);
+        return answers.shift();
+      },
+      promptChecklist: async (items) => ({ status: 'confirmed', items }),
+    });
+    assert.equal(result.reason, 'cancelled');
+    assert.deepEqual(questions, ['Post-setup customization:', 'Model customization:', 'Post-setup customization:']);
+    assert.equal(initials[1], 'Model customization');
+  } finally {
+    restore();
+  }
+});
+
+test('back from the harness picker returns the submenu cursor to the chosen action for every submenu action', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(AGENTS, { select: [], create: [], enumerate: 0 }));
+  try {
+    for (const action of ['Customize models', 'Reset to default models', 'Save preset', 'Load preset']) {
+      const submenuInitials = [];
+      const answers = ['Model customization', action, BACK, BACK, 'Exit'];
+      const result = await runPostSetupMenu({
+        isTTY: true,
+        promptChoice: async (question, options, _a, _b, config) => {
+          if (question === 'Model customization:') submenuInitials.push(config && config.initial);
+          return answers.shift();
+        },
+        promptChecklist: async (items) => ({ status: 'confirmed', items }),
+      });
+      assert.equal(result.reason, 'cancelled');
+      assert.deepEqual(submenuInitials, [undefined, action], `the cursor returns to ${action}`);
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('choosing a different submenu action after returning from the harness picker runs that action\'s flow', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(AGENTS, { select: [], create: [], enumerate: 0 }));
+  const questions = [];
+  try {
+    const result = await runPostSetupMenu({
+      isTTY: true,
+      // Customize models -> harness (back) -> submenu -> Reset to default models -> harness -> reset targets
+      promptChoice: scriptedChoice(['Model customization', 'Customize models', BACK, 'Reset to default models', 'OpenCode', BACK, BACK, BACK, 'Exit'], questions),
+      promptChecklist: async (items) => ({ status: 'confirmed', items }),
+    });
+    assert.equal(result.reason, 'cancelled');
+    assert.deepEqual(questions.slice(0, 5), [
+      'Post-setup customization:',
+      'Model customization:',
+      'Choose a harness:',
+      'Model customization:',
+      'Choose a harness:',
+    ]);
+    assert.ok(!questions.includes('Choose a customization scope:'), 'the reset flow never shows the customize-models scope screen');
   } finally {
     restore();
   }

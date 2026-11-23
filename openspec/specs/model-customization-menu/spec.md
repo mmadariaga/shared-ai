@@ -598,7 +598,7 @@ The setup flow MUST present the `Post-setup customization:` main menu only after
 
 ### Requirement: Model customization submenu
 
-Selecting `Model customization` in the main menu MUST open a submenu titled `Model customization:` that lists exactly `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`, in this order. Each action MUST keep its existing flow: `Customize models` continues to exclusive harness selection, `Reset to default models` routes harness selection to the reset-targets screen, and `Save preset` and `Load preset` route harness selection to the save-preset or load-preset screen with no scope screen. When an action finishes or is cancelled, the flow MUST return to the main menu, not to the submenu. Back or Esc in the submenu MUST return to the main menu with the cursor on `Model customization`. When the submenu opens again, its cursor MUST start on the action chosen last.
+Selecting `Model customization` in the main menu MUST open a submenu titled `Model customization:` that lists exactly `Customize models`, `Reset to default models`, `Save preset`, and `Load preset`, in this order. Each action MUST keep its existing flow: `Customize models` continues to exclusive harness selection, `Reset to default models` routes harness selection to the reset-targets screen, and `Save preset` and `Load preset` route harness selection to the save-preset or load-preset screen with no scope screen. When an action finishes or is cancelled, the flow MUST return to the main menu, not to the submenu; back navigation from the harness selector is not a cancellation of the action. Back or Esc in the submenu MUST return to the main menu with the cursor on `Model customization`. Back or Esc on the `Choose a harness:` screen reached from the submenu MUST reopen the `Model customization:` submenu, not the main menu, for every submenu action. When the submenu opens again, its cursor MUST start on the action chosen last, and choosing an action there MUST run that action's own flow. Pressing `q` or Ctrl-C in the submenu MUST cancel the whole menu with the normal cancelled outcome.
 
 #### Scenario: User enters model customization
 
@@ -619,6 +619,26 @@ Selecting `Model customization` in the main menu MUST open a submenu titled `Mod
 
 - **WHEN** a model action finishes or is cancelled
 - **THEN** the flow MUST present the main menu, not the `Model customization` submenu
+
+#### Scenario: Back from the harness selector reopens the submenu
+
+- **WHEN** the user selects `Model customization`, then any of `Customize models`, `Reset to default models`, `Save preset`, or `Load preset`, and presses back or Esc on the `Choose a harness:` screen
+- **THEN** the flow MUST present the `Model customization:` submenu with its cursor on the action chosen before, not the main menu
+
+#### Scenario: Back from the submenu returns to the main menu
+
+- **WHEN** the user presses back or Esc on the `Model customization:` submenu
+- **THEN** the flow MUST present the `Post-setup customization:` main menu with its cursor on `Model customization`
+
+#### Scenario: A different action chosen after returning runs its own flow
+
+- **WHEN** the user returns from the harness selector to the submenu and chooses a different action than before
+- **THEN** the flow MUST run the newly chosen action's flow, not the flow of the action chosen before
+
+#### Scenario: Cancelling the submenu cancels the menu
+
+- **WHEN** the user presses `q` or Ctrl-C on the `Model customization:` submenu
+- **THEN** the post-setup menu MUST stop with its normal cancelled outcome without presenting another screen
 
 ### Requirement: Post-setup menu documentation
 
