@@ -1639,12 +1639,7 @@ async function runPostSetupMenuInternal({
         // Coming back from a topic, the cursor returns to its entry.
         mainMenuCursor = options.indexOf(action);
         if (action === MODEL_CUSTOMIZATION_ENTRY) {
-          const modelAction = await promptChoice('Model customization:', [...MODEL_MENU_OPTIONS], undefined, undefined, { initial: modelMenuCursor });
-          if (modelAction === BACK) continue;
-          if (modelAction === null || !Object.hasOwn(MODEL_ACTION_MODES, modelAction)) return skippedOutcome('cancelled');
-          modelMenuCursor = modelAction;
-          mode = MODEL_ACTION_MODES[modelAction];
-          screen = 'harness';
+          screen = 'model-menu';
           continue;
         }
         const section = { [LANGUAGE_SETTINGS_ENTRY]: LANGUAGE_IDS, [BACKLOG_PR_SETTINGS_ENTRY]: BACKLOG_PR_IDS }[action];
@@ -1678,10 +1673,23 @@ async function runPostSetupMenuInternal({
         return skippedOutcome('cancelled');
       }
 
+      if (screen === 'model-menu') {
+        const modelAction = await promptChoice('Model customization:', [...MODEL_MENU_OPTIONS], undefined, undefined, { initial: modelMenuCursor });
+        if (modelAction === BACK) {
+          screen = 'menu';
+          continue;
+        }
+        if (modelAction === null || !Object.hasOwn(MODEL_ACTION_MODES, modelAction)) return skippedOutcome('cancelled');
+        modelMenuCursor = modelAction;
+        mode = MODEL_ACTION_MODES[modelAction];
+        screen = 'harness';
+        continue;
+      }
+
       if (screen === 'harness') {
         const chosen = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
         if (chosen === BACK) {
-          screen = 'menu';
+          screen = 'model-menu';
           continue;
         }
         if (chosen === null) return skippedOutcome('cancelled');
