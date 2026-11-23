@@ -18,13 +18,16 @@ The explorer SHALL return exactly event ready with empty changed_files before an
 - **THEN** it returns event ready with empty changed_files without expensive work
 
 ### Requirement: Task travels only in post-ready continuation
-The goal plus output contract SHALL travel only in the post-ready continuation on the same task handle, with each parallel explorer performing its own independent ready and no shared batch ready existing. On Claude Code the continuation SHALL use SendMessage to the captured agent handle with no run_in_background change, and SHALL be sent, after the ready reply and for every later search, only after that explorer's `completed` task notification (matched to the explorer by task ID, whatever its summary) has arrived, because its handback alone never marks the turn as ended. On opencode the continuation SHALL use task with the captured task ID with no run_in_background change.
+The goal plus output contract SHALL travel only in the post-ready continuation on the same task handle, with each parallel explorer performing its own independent ready and no shared batch ready existing. On Claude Code the continuation SHALL use SendMessage to the captured agent handle with no run_in_background change, and SHALL be sent, after the ready reply and for every later search, as `sai/policies/worker-lifecycle.md` § Continuation timing says: as soon as the explorer's handback arrives, waiting for that explorer's `completed` task notification (matched to the explorer by task ID) only to resend a rejected continuation. On opencode the continuation SHALL use task with the captured task ID with no run_in_background change.
 #### Scenario: Same-handle task continuation
 - **WHEN** an explorer has returned ready
 - **THEN** it receives goal plus output contract only in the continuation on its own handle
 #### Scenario: Claude Code continuation waits for the completed notification
-- **WHEN** a Claude Code explorer has returned its ready reply or a search result and its `completed` task notification has not arrived
-- **THEN** the session sends it no continuation until that notification arrives
+- **WHEN** a Claude Code explorer answers a continuation by repeating its previous handback and the `completed` task notification of that turn has not arrived
+- **THEN** the session waits for that notification, matched by task ID, and sends the same continuation once more
+#### Scenario: Claude Code continuation on the handback
+- **WHEN** a Claude Code explorer has returned its ready reply or a search result
+- **THEN** the session sends the next continuation at once, without waiting for the explorer's `completed` task notification
 
 ### Requirement: Guard absence and split retry discipline
 Explore ready SHALL open no guard window and SHALL retain the handle or task ID with no guard snapshot, for the post-ready continuation and, because the explorer is live for the whole run, for every later sequential search sent as a further continuation on the same handle with no new ready. A missing ready SHALL be a dispatch failure relaunched fresh with the original minimal envelope and no resume-before-ready. Ready and task SHALL retry separately with identical prompts under the shared bounded retry budget with at most two retries per operation, and a closed result SHALL never be retried here.

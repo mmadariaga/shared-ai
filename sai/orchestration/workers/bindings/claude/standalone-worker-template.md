@@ -25,23 +25,12 @@ Agent(
 ## Continue
 
 Send every later message (each step's brief, a fix round, or a corrected
-instruction) to the captured handle, only after the worker's completion
-notification has arrived: the `task-notification` with `status: completed` for
-the turn that returned the message you answer, matched to the worker by its task
-ID, whatever its summary:
+instruction) to the captured handle, when to send it as
+`@sai/policies/worker-lifecycle.md` § Continuation timing says:
 
 ```
 SendMessage(to: "<captured agent ID>", message: "<message>")
 ```
-
-A handback (the `ready` reply or a report reference) reaches the coordinator
-before the worker's turn has ended, so the handback alone never marks the turn
-as ended. A `completed` notification whose summary says the worker is waiting on
-its own background work (its armed cache-warm wait) ends the turn: send the
-message without waiting for that work. A `completed` notification that says the
-worker has not reported yet is not a result: send nothing and keep waiting for
-the handback under the recovery rules that already apply. A stop call at a
-dispose point is not a continuation and never waits for a notification.
 
 ## Warm and dispose
 

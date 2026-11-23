@@ -21,17 +21,22 @@ TBD - created by archiving change recover-undelivered-worker-reports. Update Pur
 
 ### Requirement: Accepted references are recorded and duplicates ignored
 
-After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
+After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. One exception: a repeated reference that answers a message the coordinator sent is a rejected continuation, handled under `sai/policies/worker-lifecycle.md` § Continuation timing, not a duplicate. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
 
 #### Scenario: A repeated reference costs nothing
 
-- **WHEN** a worker's wake repeats a reference that the coordinator already accepted
+- **WHEN** a worker's wake repeats a reference that the coordinator already accepted, and the coordinator has sent the worker no message since
 - **THEN** the coordinator acts on no validation result, emits nothing, spends no attempt, and sends no continuation
 
 #### Scenario: Acceptance survives compaction
 
 - **WHEN** a coordinator resumes after a context compaction and receives a reference that the ledger already holds
 - **THEN** it does not process that report again
+
+#### Scenario: A repeated reference that answers a sent message
+
+- **WHEN** a worker answers a message the coordinator sent with a reference the coordinator already accepted
+- **THEN** the coordinator handles the reply as a rejected continuation under `sai/policies/worker-lifecycle.md` § Continuation timing
 
 ### Requirement: Background watch while waiting for a worker
 

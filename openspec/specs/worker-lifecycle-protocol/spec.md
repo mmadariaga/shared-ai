@@ -7,7 +7,7 @@ Define the common lifecycle protocol shared across all worker types (design, imp
 ## Requirements
 
 ### Requirement: Canonical shared lifecycle ownership
-The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications. Cache warming (the warming line on a task message or continuation, arming, waking, and the warming declaration) SHALL be defined once in `sai/policies/cache-warming.md`. Ending a worker or helper (the dispose points, the per-harness stop call, and the already-ended, lost-handle, and failure outcomes) and the worker-side shell hygiene rule SHALL be defined once in `sai/policies/worker-lifecycle.md`. The binding templates SHALL fetch both policies, and phase contracts SHALL NOT restate either.
+The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications. Cache warming (the warming line on a task message or continuation, arming, waking, and the warming declaration) SHALL be defined once in `sai/policies/cache-warming.md`. Ending a worker or helper (the dispose points, the per-harness stop call, and the already-ended, lost-handle, and failure outcomes), the Claude Code continuation timing (§ Continuation timing: when a dispatcher sends the next message to a subagent it created, and how it recovers a rejected continuation), and the worker-side shell hygiene rule SHALL be defined once in `sai/policies/worker-lifecycle.md`. The binding templates SHALL fetch both policies, and phase contracts SHALL NOT restate either.
 
 #### Scenario: Common lifecycle mechanics are changed
 - **WHEN** a maintainer changes statuses, payload validation, binding-owned continuation metadata, changed-file aggregation, continuation, or fallback mechanics
@@ -21,6 +21,10 @@ The worker lifecycle protocol SHALL be defined once at the shared orchestration 
 #### Scenario: Dispose mechanics are changed
 - **WHEN** a maintainer changes when or how a worker or helper is disposed
 - **THEN** the change is made in `sai/policies/worker-lifecycle.md`, which the binding templates fetch, and not in `sai/policies/cache-warming.md`
+
+#### Scenario: Continuation timing is changed
+- **WHEN** a maintainer changes when a Claude Code dispatcher sends the next message to a subagent or how it recovers a rejected continuation
+- **THEN** the change is made in `sai/policies/worker-lifecycle.md` § Continuation timing, and the Claude Code dispatch sites only point to it
 
 ### Requirement: implementation-worker-terminal-statuses
 
