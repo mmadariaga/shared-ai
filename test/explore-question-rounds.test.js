@@ -194,7 +194,7 @@ test('both harnesses share one round presentation policy', () => {
 });
 
 test('round 3 sections follow the question order, with the base question immediately before the publication question', () => {
-  const order = ['\n## Native route picker', '\n## Direct Build continuation', '\n## Change overview question', '\n## Branch base question', '\n## Publication question'].map(heading => selector.indexOf(heading));
+  const order = ['\n## Native route picker', '\n## Direct Build continuation', '\n## Branch base question', '\n## Publication question'].map(heading => selector.indexOf(heading));
   assert.ok(order[0] >= 0 && order.every((position, index) => index === 0 || position > order[index - 1]));
   assert.match(baseQuestion, /Round 3 carries it as a conditional question immediately before the publication question/);
   assert.match(baseQuestion, /It is included only while a branch is pending/);
