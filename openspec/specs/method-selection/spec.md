@@ -7,7 +7,7 @@ TBD - created by archiving change merge-method-selector. Update Purpose after ar
 
 ### Requirement: Method comes from the invocation arguments
 
-`/sai-merge` SHALL take its integration method from the invocation arguments when they carry one: `--rebase` for a rebase and `--squash` for squash-then-rebase, `--squash` winning when both are given, and an explicit option SHALL keep the run free of the method question. When the arguments carry neither option, the coordinator SHALL ask the method (merge, rebase, or squash) through the native picker before the baseline suite run, and SHALL use a merge when no native picker is available. With nothing to squash, `--squash` SHALL run the plain rebase.
+`/sai-merge` SHALL take its integration method from the invocation arguments when they carry one: `--rebase` for a rebase and `--squash` for squash-then-rebase, `--squash` winning when both are given, and an explicit option SHALL keep the run free of the method question. When the arguments carry neither option, the coordinator SHALL ask the method (merge, rebase, or squash) through the native picker before the baseline suite run, in the same picker call as the other open start questions, and SHALL use a merge when no native picker is available. The method question SHALL NOT depend on the pre-launch simulation and SHALL mark no option as recommended. With nothing to squash, `--squash` SHALL run the plain rebase.
 
 #### Scenario: Squash with nothing to squash
 
@@ -23,3 +23,8 @@ TBD - created by archiving change merge-method-selector. Update Purpose after ar
 
 - **WHEN** `/sai-merge feature` is invoked on a harness with a native picker
 - **THEN** the coordinator asks for merge, rebase, or squash before the baseline runs and uses the answer as the method
+
+#### Scenario: Method question recommends no option
+
+- **WHEN** no method option is given and the branch would produce 3 or more predicted stops on one file
+- **THEN** the method question marks no option as recommended and names no predicted stop

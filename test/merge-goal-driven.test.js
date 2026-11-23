@@ -68,7 +68,7 @@ test('arguments: the branch is optional, --squash wins, and --fast-track is acce
   assert.match(card, /`\[<branch>\] \[--rebase\|--squash\]`/);
   assert.match(card, /`--squash` wins when both are given/);
   assert.match(start, /Accept and ignore `--fast-track`, with no banner/);
-  assert.match(start, /Without a branch in the arguments, ask which branch to integrate through the native picker/);
+  assert.match(start, /\*\*Branch\*\*, open without a branch in the arguments, with the newest `candidates` of the preflight as options up to the picker capacity/);
   assert.match(start, /Fetch nothing/);
   assert.doesNotMatch(card, /FAST-TRACK MODE ACTIVE|fast_track_active/);
   assert.doesNotMatch(card, /working language|Which language|language selection/i, 'the language question retired: the report uses the chat language');
@@ -76,20 +76,30 @@ test('arguments: the branch is optional, --squash wins, and --fast-track is acce
   assert.match(card, /You write in the language of the chat/);
 });
 
-test('start: the method is asked after the branch and the simulation, and autostash is asked right after it, before the baseline', () => {
+test('start: the branch, method, and autostash questions are asked in one picker call before the simulation and the baseline', () => {
   const start = section(coordinator(), '## Start', '## A conflict stop');
-  assert.match(start, /Without `--rebase` or `--squash`, ask the method: merge, rebase, or squash/);
-  assert.match(start, /When the native picker is unavailable the method is a merge and the run goes on/);
-  assert.match(start, /Cancelling either question ends the run with nothing launched and nothing written/);
+  const step = start.slice(start.indexOf('3. Settle'), start.indexOf('4. Staged content'));
+  assert.match(step, /Without `--rebase` or `--squash`|open without `--rebase` or `--squash`: merge, rebase, or squash/);
+  assert.ok(step.indexOf('**Branch**') < step.indexOf('**Method**'));
+  assert.ok(step.indexOf('**Method**') < step.indexOf('**Autostash**'));
+  assert.match(step, /Ask every open question in one native picker call, in that order, answered in one turn/);
+  assert.match(step, /one `AskUserQuestion` call with one entry of `questions` per open question on Claude Code, one `question` call with several questions on opencode/);
+  assert.match(step, /fewer than 2 candidates and the branch is open, ask the branch first in plain text, because `AskUserQuestion` needs at least 2 options/);
+  assert.match(step, /With no open question, open no picker/);
+  assert.match(step, /Without a native picker, ask a missing branch in plain text, take a merge as the method, and ask no autostash question/);
+  assert.match(step, /Cancelling or dismissing the picker ends the run with nothing launched and nothing written/);
+  assert.match(step, /A merge ignores the autostash answer and launches without `--autostash`/);
+  assert.match(step, /on no, or with no picker for an explicit `--rebase` or `--squash`, end the run with the cause, before the first mutation: no suite has run and nothing is launched/);
+  assert.match(step, /untracked files never open it/);
+  assert.match(step, /Never change `git config`/);
+  assert.doesNotMatch(step, /recommend squash|mark squash|as recommended/);
+  assert.equal(start.split('AskUserQuestion').length - 1, 2, 'one picker step: the only two mentions are the grouped call and the one-option rule');
   assert.match(start, /the method comes from the store and nothing is asked/);
-  assert.ok(start.indexOf('ask the method') < start.indexOf('Fix the test command once'));
-  assert.ok(start.indexOf('ask the method') < start.indexOf('5. Autostash'));
-  assert.ok(start.indexOf('5. Autostash') < start.indexOf('6. Open the run state'));
-  assert.ok(start.indexOf('5. Autostash') < start.indexOf('Run `merge.js provenance`'));
-  assert.ok(start.indexOf('5. Autostash') < start.indexOf('Take the baseline'));
-  assert.match(start, /On no, or with no picker, end the run with the cause, before the first mutation: no suite has run and nothing is launched/);
-  assert.match(start, /Untracked files never trigger the question, and a merge keeps its behavior/);
-  assert.match(start, /Never change `git config`/);
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('5. Simulate'));
+  assert.ok(start.indexOf('5. Simulate') < start.indexOf('6. Open the run state'));
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('Fix the test command once'));
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('Run `merge.js provenance`'));
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('Take the baseline'));
   assert.match(start, /rebase command line carries `--autostash`/);
   assert.match(coordinator(), /name the stash entry that stays[\s\S]+`git stash pop`/);
 });
