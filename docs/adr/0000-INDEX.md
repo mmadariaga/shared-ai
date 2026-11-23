@@ -278,7 +278,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0222 — `/sai-plan` asks its publication answer at the start of the run](./0222-sai-plan-asks-the-publication-answer-at-run-start.md) — Supersedes 0209b (decision 4)
 - [0223 — Publication auto-approve is a standing publication grant](./0223-publication-auto-approve-is-a-standing-publication-grant.md) — **Amends** 0209b (decision 4), **Amends** 0222
 - [0224 — Publication consent comes only from the local settings file](./0224-publication-consent-comes-only-from-the-local-settings-file.md) — **Amends** 0222, **Amends** 0223
-- [0227 — Publication consent comes from either settings file](./0227-publication-consent-comes-from-either-settings-file.md) — Supersedes 0224, Refs 0222, Refs 0223
+- [0227b — Publication consent comes from either settings file](./0227b-publication-consent-comes-from-either-settings-file.md) — Supersedes 0224, Refs 0222, Refs 0223
 
 ### `/sai-deep-review`, `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`
 
@@ -578,7 +578,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
 - [0149b — Structural tests co-land with the instruction sources they pin](./0149b-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
-- [0227 — Design leaves the test oracle in code](./0227-design-leaves-the-test-oracle-in-code.md)
+- [0227a — Design leaves the test oracle in code](./0227a-design-leaves-the-test-oracle-in-code.md)
 
 ### The `interfaces.md` contract
 
@@ -716,7 +716,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0049](./archive/0049-fast-track-flag-strip-before-change-picker.md) |
-| [0227](./0227-publication-consent-comes-from-either-settings-file.md) | supersedes | [0224](./0224-publication-consent-comes-only-from-the-local-settings-file.md) |
+| [0227b](./0227b-publication-consent-comes-from-either-settings-file.md) | supersedes | [0224](./0224-publication-consent-comes-only-from-the-local-settings-file.md) |
 
 ## Superseded ADRs (historical)
 
@@ -750,4 +750,4 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./archive/0090-centralize-copilot-inline-planning-lifecycle.md) — *Superseded by the retire-inline-harness-model change, which removed the Copilot inline adapter*
 - [0093 — Route spec through workers while Copilot remains inline](./archive/0093-route-spec-through-workers-while-copilot-remains-inline.md) — *Superseded by the retire-inline-harness-model change, which retired the Copilot inline harness*
 - [0173a — Dual-canonical instruction sources with no synchronization mechanism](./0173a-dual-canonical-instruction-sources-no-sync.md) — Refs 0172c — *Superseded by the retirement of `sai/commands/implement/instructions.md`*
-- [0224 — Publication consent comes only from the local settings file](./0224-publication-consent-comes-only-from-the-local-settings-file.md) — **Amends** 0222, **Amends** 0223 — *Superseded by [0227](./0227-publication-consent-comes-from-either-settings-file.md)*
+- [0224 — Publication consent comes only from the local settings file](./0224-publication-consent-comes-only-from-the-local-settings-file.md) — **Amends** 0222, **Amends** 0223 — *Superseded by [0227b](./0227b-publication-consent-comes-from-either-settings-file.md)*

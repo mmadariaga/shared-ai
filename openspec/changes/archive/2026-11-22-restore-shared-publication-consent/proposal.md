@@ -12,7 +12,7 @@ A user who enabled automatic publication in the shared `.sai/settings.jsonc` saw
 - `bin/project-settings-screen.js`: the Auto-approve publication row shows and saves through the ordinary base/local override rules, with no consent-specific branch, and no consent warning is printed when a screen opens or after a save.
 - `skills/universal/safe-operations/SKILL.md` and `AGENTS.md` (§ Optional plan publication, § Safe Operations): a granting value of either key, from either file, is a held confirmation for the publication that key covers.
 - `skills/universal/to-pr/SKILL.md`, `skills/universal/to-backlog/SKILL.md`, `docs/project-settings.md`, `docs/commands/to-pr.md`, `docs/commands/to-backlog.md`: the local-only rule and its warning are removed from the prose; the Publication consent section of `docs/project-settings.md` is deleted.
-- `docs/adr/0227-publication-consent-comes-from-either-settings-file.md`: new ADR that supersedes ADR 0224 and records the accepted risk; `docs/adr/0000-INDEX.md` lists it and moves ADR 0224 to the superseded section. The ADR 0224 file is not edited.
+- `docs/adr/0227b-publication-consent-comes-from-either-settings-file.md`: new ADR that supersedes ADR 0224 and records the accepted risk; `docs/adr/0000-INDEX.md` lists it and moves ADR 0224 to the superseded section. The ADR 0224 file is not edited.
 - Tests updated to the shared rule: `test/project-settings.test.js`, `test/project-settings-screen.test.js`, `test/to-pr.test.js`, `test/to-backlog.test.js`.
 
 Unchanged: the unattended refusals of `to-pr.js` (force push, default branch, detached HEAD, merged or closed request), the confirmation token binding the setting, the approval question after a `stale-baseline` or `divergent` renewal or an explicit request to review, and `pr.publishAfterRun` having no setup menu row. Claude Code and opencode apply the rule identically.
@@ -33,7 +33,7 @@ None
 
 ## Impact
 
-- New: `docs/adr/0227-publication-consent-comes-from-either-settings-file.md`
+- New: `docs/adr/0227b-publication-consent-comes-from-either-settings-file.md`
 - Modified: `sai/tools/project-settings.js`, `sai/tools/to-pr.js`, `sai/tools/to-backlog.js`, `bin/project-settings-writer.js`, `bin/project-settings-screen.js`, `skills/universal/safe-operations/SKILL.md`, `skills/universal/to-pr/SKILL.md`, `skills/universal/to-backlog/SKILL.md`, `AGENTS.md`, `docs/project-settings.md`, `docs/commands/to-pr.md`, `docs/commands/to-backlog.md`, `docs/adr/0000-INDEX.md`, `test/project-settings.test.js`, `test/project-settings-screen.test.js`, `test/to-pr.test.js`, `test/to-backlog.test.js`
 - Accepted risk: anyone who clones a repository whose shared settings file grants publication publishes pull requests and backlog issues without being asked; a person opts out with a local `false` or `no`.
 

@@ -1,4 +1,4 @@
-# ADR 0227: Design leaves the test oracle in code
+# ADR 0227a: Design leaves the test oracle in code
 
 ## Status
 

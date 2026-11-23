@@ -1,4 +1,4 @@
-# ADR 0227: Publication consent comes from either settings file
+# ADR 0227b: Publication consent comes from either settings file
 
 <!-- adr-index: supersedes 0224; refs 0222; refs 0223 -->
 
