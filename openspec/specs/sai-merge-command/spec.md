@@ -561,12 +561,12 @@ Claude Code and opencode SHALL run `/sai-merge` from the same coordinator, worke
 
 ### Requirement: Start questions precede the baseline
 
-When the invocation leaves the branch or the method open, the coordinator SHALL settle what is open before it fixes the test command and takes the baseline, in this order: the branch through the native picker when no branch argument is given; then the pre-launch simulation; then the method (merge, rebase, or squash) when neither `--rebase` nor `--squash` is given. When the branch is missing and the method is open, the branch and the method SHALL be two consecutive questions; with the branch in the arguments the method SHALL be the only question. When the native picker is unavailable, the method SHALL be a merge and the run SHALL go on. Cancelling either question SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
+When the invocation leaves the branch or the method open, or the autostash question applies, the coordinator SHALL settle what is open in one question step right after the preflight, before it runs the pre-launch simulation, opens the run state, fixes the test command, and takes the baseline. The open questions, in this order, SHALL be: the branch, when no branch argument is given, with the newest preflight `candidates` as options up to the picker capacity and the picker's free text for any other branch; the method (merge, rebase, or squash), when neither `--rebase` nor `--squash` is given, with no option marked as recommended; and the autostash question, when it applies. The coordinator SHALL ask every open question in one native picker call, answered in one turn: one `AskUserQuestion` call with one entry of `questions` per open question on Claude Code, and one `question` call with several questions on opencode. With no open question, the coordinator SHALL open no picker. On Claude Code, when the branch is open and the preflight returns fewer than 2 candidates, the coordinator SHALL ask the branch first in plain text and then the remaining open questions in one picker call; opencode SHALL keep one picker. When the native picker is unavailable, the coordinator SHALL ask a missing branch in plain text, the method SHALL be a merge, no autostash question SHALL be asked, and the run SHALL go on. Cancelling or dismissing the picker SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
 
 #### Scenario: Method is asked with the branch before the baseline
 
-- **WHEN** `/sai-merge` is invoked with no arguments on a harness with a native picker
-- **THEN** the branch is asked first, the simulation runs, and the method is asked next, all before the test command is fixed and before the baseline suite run
+- **WHEN** `/sai-merge` is invoked with no arguments on a harness with a native picker and the preflight returns at least 2 candidates
+- **THEN** the branch and the method are asked in one picker call, answered in one turn, before the simulation runs, before the test command is fixed, and before the baseline suite run
 
 #### Scenario: No picker falls back to a merge
 
@@ -575,37 +575,52 @@ When the invocation leaves the branch or the method open, the coordinator SHALL 
 
 #### Scenario: Cancelled question launches nothing
 
-- **WHEN** the user cancels the method or branch question
-- **THEN** the run ends before the baseline with nothing launched and nothing written
+- **WHEN** the user cancels or dismisses the start picker
+- **THEN** the run ends before the simulation and the baseline with nothing launched and nothing written
 
 #### Scenario: Resumed run asks no method
 
 - **WHEN** the invocation resumes an interrupted run of the same branch
 - **THEN** the method comes from the store and no question is asked
 
+#### Scenario: Arguments that fix branch and method open no picker
+
+- **WHEN** `/sai-merge feature --rebase` is invoked and the autostash question does not apply
+- **THEN** no picker opens and the run goes on to the simulation
+
+#### Scenario: Claude Code with fewer than 2 candidates asks the branch in plain text first
+
+- **WHEN** `/sai-merge` is invoked with no arguments on Claude Code and the preflight returns fewer than 2 candidates
+- **THEN** the branch is asked in plain text first and the remaining open questions are asked in one `AskUserQuestion` call
+
 ### Requirement: Autostash question for a rebase or squash
 
-For a rebase or squash only, as soon as the method is known and before the run state is opened, the provenance is captured, the test command is fixed, and the baseline is taken, when the preflight reports a tracked file with unstaged modifications and `git config rebase.autoStash` is not true, the coordinator SHALL ask through the native picker whether to launch with `--autostash`. Untracked files SHALL NOT trigger the question, and a merge SHALL keep its existing behavior. On yes, the coordinator SHALL record the stash reference before the launch in the run directory and SHALL pass `--autostash` on the `git rebase` command line; the squash commit SHALL never take unstaged changes. On no, or when no native picker exists, the run SHALL end with the cause before the first mutation, having run no suite and launched nothing. The coordinator SHALL never change `git config`. When git cannot reapply the stashed changes at the end of the rebase, the stash entry SHALL stay in place. A resumed run SHALL NOT ask the question.
+The autostash question SHALL apply when the preflight reports a tracked file with unstaged modifications (a `dirty` entry that is not untracked `??`) and `git config rebase.autoStash` is not true. When it applies, the coordinator SHALL ask whether to launch with `--autostash` in the same picker call as the other open start questions, after the branch and the method questions, before the run state is opened, the provenance is captured, the test command is fixed, and the baseline is taken; its wording SHALL say that it applies only to a rebase or squash. Untracked files SHALL NOT trigger the question. When the method is a merge, the coordinator SHALL ignore the autostash answer and SHALL launch without `--autostash`. For a rebase or squash, on yes the coordinator SHALL record the stash reference before the launch in the run directory and SHALL pass `--autostash` on the `git rebase` command line; the squash commit SHALL never take unstaged changes. For a rebase or squash, on no, or when no native picker exists for an explicit `--rebase` or `--squash`, the run SHALL end with the cause before the first mutation, having run no suite and launched nothing. The coordinator SHALL never change `git config`. When git cannot reapply the stashed changes at the end of the rebase, the stash entry SHALL stay in place. A resumed run SHALL NOT ask the question.
 
 #### Scenario: Tracked unstaged changes on a rebase ask for autostash
 
-- **WHEN** the method is rebase and a tracked file carries unstaged modifications
-- **THEN** the coordinator asks whether to launch with `--autostash` once the method is known, before the provenance, the baseline, and any mutation
+- **WHEN** a tracked file carries unstaged modifications, `rebase.autoStash` is not true, and the start questions are asked
+- **THEN** the autostash question is asked in the same picker call as the other open start questions, before the provenance, the baseline, and any mutation
 
 #### Scenario: Untracked files never ask
 
-- **WHEN** the method is rebase and the only working-tree changes are untracked files
+- **WHEN** the only working-tree changes are untracked files
 - **THEN** no autostash question is asked
 
 #### Scenario: Declined autostash ends the run unchanged
 
-- **WHEN** the user declines the autostash question, or no native picker exists
+- **WHEN** the method is a rebase or squash and the user declines the autostash question, or no native picker exists under an explicit `--rebase` or `--squash`
 - **THEN** the run ends with the cause before the first mutation, no suite has run, nothing is launched, and `git config` is unchanged
 
 #### Scenario: Unreapplied stash stays in place
 
 - **WHEN** autostash was used and git cannot reapply the changes at the end of the rebase
 - **THEN** the stash entry stays and the run does not drop or pop it
+
+#### Scenario: Merge ignores the autostash answer
+
+- **WHEN** the user picks merge as the method in the same picker call that asked the autostash question
+- **THEN** the autostash answer is ignored and the merge launches without `--autostash`
 
 ### Requirement: Rebase in progress is detected from the operation directories
 
@@ -839,7 +854,7 @@ A completed `resolve` report MAY carry `recipe`, a list of `{path, signature}` e
 
 ### Requirement: Pre-launch stop simulation
 
-Before the launch, once the branch is known, the `/sai-merge` coordinator SHALL run `merge.js simulate --source-ref <full-ref> --method merge|rebase|squash`, with the method of the arguments or `rebase` while the method is still open. The simulation SHALL use `git merge-tree --write-tree` and SHALL change no working tree, index, or ref. A merge SHALL be one step (`HEAD` with the source); a squash SHALL be one step (the current branch's own commits since the merge base as one change replayed on the source), and none when there is nothing to squash; a rebase SHALL be one step per commit `git rebase` would replay, oldest first, leaving out merges and commits whose patch the source already holds. After a predicted stop, the next step SHALL start from the merged tree with the current tip's version (`ours`, the upstream side) of each conflicted file, built in a temporary index and never the real one, so the prediction runs to the end of the range and later commits that change the same lines of that file are predicted to stop again. The tool SHALL write the detail as `simulation.json` (every predicted stop with its position, commit, subject, and conflicted files) in a private directory under the SAI temp root, because the run directory does not exist yet, and SHALL print a summary with `predicted_stops`, `repeated_files` (each file with 3 or more predicted stops and its count, most stops first), and the `record` path and `record_hash` of the detail file. A simulation that cannot run SHALL report `not-applicable` with `data.status: unavailable` and a `reason`, SHALL write no file, and SHALL NOT be a failed check: the run SHALL go on. The prediction SHALL be advisory: when the real stops differ from the predicted ones, the real stops govern.
+Before the launch, once the start questions are answered and the branch and the method are known (the method of the arguments, the answer, or a merge without a native picker), the `/sai-merge` coordinator SHALL run `merge.js simulate --source-ref <full-ref> --method merge|rebase|squash` for that method. No start question SHALL read the simulation, and the simulation SHALL recommend no method: its predicted stops and `repeated_files` SHALL go only to the `simulation` record and the closing report. The simulation SHALL use `git merge-tree --write-tree` and SHALL change no working tree, index, or ref. A merge SHALL be one step (`HEAD` with the source); a squash SHALL be one step (the current branch's own commits since the merge base as one change replayed on the source), and none when there is nothing to squash; a rebase SHALL be one step per commit `git rebase` would replay, oldest first, leaving out merges and commits whose patch the source already holds. After a predicted stop, the next step SHALL start from the merged tree with the current tip's version (`ours`, the upstream side) of each conflicted file, built in a temporary index and never the real one, so the prediction runs to the end of the range and later commits that change the same lines of that file are predicted to stop again. The tool SHALL write the detail as `simulation.json` (every predicted stop with its position, commit, subject, and conflicted files) in a private directory under the SAI temp root, because the run directory does not exist yet, and SHALL print a summary with `predicted_stops`, `repeated_files` (each file with 3 or more predicted stops and its count, most stops first), and the `record` path and `record_hash` of the detail file. A simulation that cannot run SHALL report `not-applicable` with `data.status: unavailable` and a `reason`, SHALL write no file, and SHALL NOT be a failed check: the run SHALL go on and the closing report SHALL note that the prediction was unavailable. The prediction SHALL be advisory: when the real stops differ from the predicted ones, the real stops govern.
 
 #### Scenario: Rebase predicts one stop per conflicting replayed commit
 
@@ -861,28 +876,14 @@ Before the launch, once the branch is known, the `/sai-merge` coordinator SHALL 
 - **WHEN** git has no `merge-tree --write-tree` or cannot read the source ref
 - **THEN** `simulate` reports `not-applicable` with a reason, writes no file, and the run continues
 
-### Requirement: Squash recommendation in the method question
+#### Scenario: Simulation runs after the start answers for the chosen method
 
-When the arguments carry neither `--rebase` nor `--squash`, the coordinator SHALL ask the method (merge, rebase, or squash) after the branch is known and the simulation has run, and SHALL mark squash as recommended in that question, naming the file and its predicted stops, when the simulation summary lists `repeated_files`. An explicit method option SHALL add no question: its prediction SHALL go in the closing report. An unavailable simulation SHALL drop only the recommendation.
-
-#### Scenario: Repeated stops recommend squash
-
-- **WHEN** no method option is given and the simulation predicts 3 or more stops on one file
-- **THEN** the method question marks squash as recommended and names that file and its predicted stops
-
-#### Scenario: Explicit method adds no question
-
-- **WHEN** `/sai-merge feature --rebase` is invoked and the simulation predicts repeated stops on one file
-- **THEN** no method question is asked and the prediction appears in the closing report
-
-#### Scenario: Unavailable simulation asks without a recommendation
-
-- **WHEN** no method option is given and the simulation is unavailable
-- **THEN** the method question is asked with no recommendation and the closing report says that the prediction was unavailable
+- **WHEN** no method option is given and the user picks squash in the start picker
+- **THEN** `merge.js simulate` runs after the answers with `--method squash`, and its prediction appears only in the closing report
 
 ### Requirement: Simulation file in the merge run state
 
-When Start produced a simulation file, the coordinator SHALL emit `record` (`simulation`) to `merge-run@1` with its path once the run state opens. A completed run SHALL remove the simulation directory with `temp-root.js remove` in the same close batch as the run directory; a stopped, escalated, or unanswered run SHALL keep it. A run that ends before the simulation is recorded, including one that ends while the run state opens (a tool error, or a stored run that ended outside this command), SHALL remove the simulation directory.
+When Start produced a simulation file, the coordinator SHALL emit `record` (`simulation`) to `merge-run@1` with its path once the run state opens. A completed run SHALL remove the simulation directory with `temp-root.js remove` in the same close batch as the run directory; a stopped, escalated, or unanswered run SHALL keep it. A run that ends before the simulation is recorded, including one that ends while the run state opens (a tool error, or a stored run that ended outside this command), SHALL remove the simulation directory. A run that ends at the start questions SHALL leave no simulation directory, because the simulation runs only after the answers.
 
 #### Scenario: Simulation file is recorded when the run state opens
 
@@ -890,10 +891,11 @@ When Start produced a simulation file, the coordinator SHALL emit `record` (`sim
 - **THEN** the coordinator emits `record` with ref `simulation` and that file's path
 
 #### Scenario: Run that ends while the run state opens removes the simulation directory
+
 - **WHEN** Start produced a simulation file and the run ends in the step that opens the run state, before `record` (`simulation`) is emitted
 - **THEN** the simulation directory is removed
 
 #### Scenario: Cancelled method question removes the simulation directory
 
-- **WHEN** the user cancels the method question after the simulation wrote its file
-- **THEN** the run ends with nothing launched and the simulation directory is removed
+- **WHEN** the user cancels the start picker that holds the method question
+- **THEN** the run ends with nothing launched and no simulation directory exists, because the simulation has not run

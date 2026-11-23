@@ -210,28 +210,30 @@ test('E2: a ref git cannot read is an unavailable simulation, while a malformed 
   assert.equal(withRecord.status, 2);
 });
 
-test('I4, E4: the method question follows the branch and the simulation, recommends squash only without a method flag, and an explicit method adds no question', () => {
+test('I2, E10, E11: the simulation runs after the answers for the chosen method, recommends nothing, and an explicit method adds no question', () => {
   const start = section(read('sai/commands/merge/coordinator.md'), '## Start', '## A conflict stop');
-  const step = start.slice(start.indexOf('3. Settle'), start.indexOf('4. Staged content'));
-  assert.ok(step.indexOf('**Branch.**') < step.indexOf('**Simulation.**'));
-  assert.ok(step.indexOf('**Simulation.**') < step.indexOf('**Method.**'));
-  assert.match(step, /run `merge\.js simulate` for the method of the arguments, or `rebase` while it is missing/);
-  assert.match(step, /Without `--rebase` or `--squash`, ask the method: merge, rebase, or squash\. When the summary lists `repeated_files`, mark squash as recommended in that question/);
-  assert.match(step, /An explicit method adds no question: its prediction goes in the report/);
-  assert.ok(start.indexOf('merge.js simulate') < start.indexOf('5. Autostash'));
+  const questions = start.slice(start.indexOf('3. Settle'), start.indexOf('4. Staged content'));
+  const step = start.slice(start.indexOf('5. Simulate'), start.indexOf('6. Open the run state'));
+  assert.doesNotMatch(questions, /merge\.js simulate|repeated_files|mark squash|as recommended/, 'the questions neither run nor read the simulation');
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('merge.js simulate'));
   assert.ok(start.indexOf('merge.js simulate') < start.indexOf('Take the baseline'));
+  assert.match(step, /with the branch and the method known \(the method of the arguments, the answer, or a merge without a picker\): run `merge\.js simulate` for that method/);
+  assert.match(step, /It asks nothing and recommends nothing: its predicted stops and `repeated_files` go only to the `simulation` record and the closing report/);
+  assert.doesNotMatch(read('sai/commands/merge/coordinator.md'), /mark squash as recommended|`rebase` while it is missing/);
 });
 
-test('E2, E3: an unavailable simulation drops only the recommendation, and the real stops govern', () => {
-  const step = section(read('sai/commands/merge/coordinator.md'), '3. Settle', '4. Staged content');
-  assert.match(step, /A call that exits non-zero or reports `not-applicable` is an unavailable simulation: go on, with no recommendation and a note in the report/);
+test('E10: an unavailable simulation is noted in the report and stops nothing, and the real stops govern', () => {
+  const step = section(read('sai/commands/merge/coordinator.md'), '5. Simulate', '6. Open the run state');
+  assert.match(step, /A call that exits non-zero or reports `not-applicable` is an unavailable simulation: go on, with a note in the report/);
   assert.match(step, /It is advisory, the real stops govern/);
+  assert.match(step, /removes the simulation directory/);
   assert.match(read('sai/commands/merge/mechanics.md'), /The prediction is advisory: hooks, autostash, and rerere can change what git does, and the real stops govern/);
+  assert.match(read('sai/commands/merge/mechanics.md'), /feeds only the closing report: no question reads it and none recommends a method/);
 });
 
 test('I1: the run state records the simulation file, the close removes its directory, and the report shows the prediction', () => {
   const card = read('sai/commands/merge/coordinator.md');
-  assert.match(section(card, '6. Open the run state', '7. Run `merge.js provenance`'), /When step 3 produced a simulation file, emit `record` \(`simulation`\) with its path/);
+  assert.match(section(card, '6. Open the run state', '7. Run `merge.js provenance`'), /When step 5 produced a simulation file, emit `record` \(`simulation`\) with its path/);
   assert.match(card, /`record` takes `ref` \(`obstacle`, `finding`, `assumption`, `shortcut`, `simulation`, or `report-dir`\)/);
   assert.match(section(card, '## Close', null), /remove the simulation directory the same way/);
   assert.match(section(card, '## Close', null), /the prediction of the simulation \(the method it simulated, its predicted stops and repeated files\) beside the stops that happened, or that the prediction was unavailable/);
