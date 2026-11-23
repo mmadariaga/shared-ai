@@ -69,7 +69,20 @@ const GOTO_REASONS = Object.freeze(['user-request', 'correction']);
 // past the route selector, which no forward move crosses.
 const PAST_CEILING_TARGETS = Object.freeze(['direct-build', 'plan', 'build-implement', 'backfill', 'archive', 'sai-1', 'sai-2', 'implement', 'pending', 'waiting']);
 
+// The exploration's own life, apart from its stage: `active` is the exploration
+// the explore contract governs, `paused` keeps every stage, section, list, and
+// move while the contract is suspended, and `closed` is the mark an ended
+// exploration leaves so a context compaction or the load receipt left in the
+// chat never reopens it. Only a new invocation (`sai-state reset`) leaves
+// `closed`; only the `resume` intent leaves `paused`.
+const EXPLORATIONS = Object.freeze(['active', 'paused', 'closed']);
+const PAUSE_INTENT = 'pause';
+const RESUME_INTENT = 'resume';
+const CLOSE_INTENT = 'close-explore';
+const STATUS_INTENT = 'status';
+
 const initialState = Object.freeze({
+  exploration: 'active',
   stage: 'explore-change',
   ideaList: [],
   candidateList: null,
@@ -117,6 +130,7 @@ function cloneMoves(src) {
 
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
+  const exploration = EXPLORATIONS.includes(src.exploration) ? src.exploration : 'active';
   const stage = typeof src.stage === 'string' ? src.stage : STAGES[0];
   const ideaList = Array.isArray(src.ideaList) ? src.ideaList.slice() : [];
   // Distinguish unrecorded (null) from recorded-empty (empty array)
@@ -128,12 +142,14 @@ function cloneState(state) {
   const pocLane = src.pocLane === true;
   const sections = cloneSections(src.sections);
   const moves = cloneMoves(src.moves);
-  return { stage, ideaList, candidateList, edgeCaseList, implementationDetailsList, pocLane, sections, moves };
+  return { exploration, stage, ideaList, candidateList, edgeCaseList, implementationDetailsList, pocLane, sections, moves };
 }
 
-// Identifiers only: the accepted moves travel to the closing report as this view.
+// Identifiers only: the accepted moves travel to the closing report as this view,
+// and `exploration` is the one value a turn reads to know whether the explore
+// contract governs it.
 function viewOf(current) {
-  return { moves: current.moves.map((move) => Object.assign({}, move)) };
+  return { exploration: current.exploration, moves: current.moves.map((move) => Object.assign({}, move)) };
 }
 
 function sameList(a, b) {
@@ -165,6 +181,19 @@ function hintFor(stage, follow) {
 function nextFor(stage) {
   const follow = STAGE_FILES[stage] || COMMON_STEP;
   return { follow, hint: hintFor(stage, follow) };
+}
+
+// A paused or closed exploration has no step to follow: the pointer names the
+// common step only so the response keeps its shape, and the hint says the
+// explore contract is not in force.
+function pointerFor(current) {
+  if (current.exploration === 'paused') {
+    return { follow: COMMON_STEP, hint: 'the exploration is paused: follow no explore step until the user resumes it' };
+  }
+  if (current.exploration === 'closed') {
+    return { follow: COMMON_STEP, hint: 'the exploration is closed: follow no explore step; a new /sai-explore invocation starts a new one' };
+  }
+  return nextFor(current.stage);
 }
 
 function advanceState(current) {
@@ -212,7 +241,7 @@ function project(state) {
   const current = cloneState(state);
   return {
     snapshot: { state: cloneState(current), machineId },
-    next: nextFor(current.stage),
+    next: pointerFor(current),
     run: viewOf(current),
   };
 }
@@ -221,7 +250,7 @@ function result(state, extra) {
   const next = {
     state,
     snapshot: { state: cloneState(state), machineId },
-    next: nextFor(state.stage),
+    next: pointerFor(state),
     run: viewOf(state),
   };
   return extra ? Object.assign(next, extra) : next;
@@ -276,9 +305,33 @@ function goto(current, sig) {
   return result(moved);
 }
 
+// Pause, resume, and close act on the exploration, not on its stage. `status`
+// reads the exploration and changes nothing, so a turn that must know whether
+// the explore contract governs it can ask in any exploration. A paused
+// exploration keeps every section, list, and move and accepts only `resume`;
+// a closed one keeps no explore state and accepts nothing, so a late event can
+// neither revive it nor record into it. An exploration that is not paused has
+// nothing to resume. Returns null for every other event: the stage machine
+// below handles it.
+function explorationTransition(current, sig) {
+  if (sig.intent === STATUS_INTENT) return result(cloneState(current));
+  if (current.exploration === 'closed') return result(cloneState(current), { rejected: 'EXPLORATION_CLOSED' });
+  if (current.exploration === 'paused') {
+    if (sig.intent !== RESUME_INTENT) return result(cloneState(current), { rejected: 'EXPLORATION_PAUSED' });
+    return result(Object.assign(cloneState(current), { exploration: 'active' }));
+  }
+  if (sig.intent === RESUME_INTENT) return result(cloneState(current), { rejected: 'NOT_PAUSED' });
+  if (sig.intent === PAUSE_INTENT) return result(Object.assign(cloneState(current), { exploration: 'paused' }));
+  if (sig.intent === CLOSE_INTENT) return result(Object.assign(cloneState(initialState), { exploration: 'closed' }));
+  return null;
+}
+
 function transition(state, signal) {
   const current = cloneState(state);
   const sig = signal && typeof signal === 'object' ? signal : {};
+
+  const lifecycle = explorationTransition(current, sig);
+  if (lifecycle) return lifecycle;
 
   // Section recording (issue seeding and deviation marking): records state,
   // source, and an optional starting list per section without moving the stage.
@@ -356,4 +409,4 @@ function transition(state, signal) {
   return result(advanceState(current));
 }
 
-module.exports = { machineId, initialState, transition, project, STAGES, PRECONDITIONS, SECTION_STAGES };
+module.exports = { machineId, initialState, transition, project, STAGES, PRECONDITIONS, SECTION_STAGES, EXPLORATIONS };

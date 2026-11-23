@@ -21,7 +21,7 @@ The `/sai-explore` load SHALL be the sequence of reads and calls of the command,
 
 ### Requirement: Every explore turn checks the load receipt
 
-Every explore turn, meaning any turn after a `/sai-explore` invocation, SHALL start by looking for the load receipt. With the receipt present, the turn SHALL handle its message. With the receipt missing, including after an interrupted load, a compaction that removed the receipt, or a stale cached wrapper, the turn SHALL first complete the load (the prerequisite check, the instruction loads, and `sai-state spawn`, with the invocation's arguments) and then handle its message. A recovery load, meaning a turn that is not an invocation, lacks the load receipt, and completes the load before answering, SHALL run `sai-state spawn` only and SHALL NOT reset either explore machine. It SHALL keep the current stage, the agreed lists, and the slice inventory, because `sai-state spawn` with the same key returns the existing session.
+Every turn after a `/sai-explore` invocation SHALL start by reading the exploration's state, then looking for the load receipt. A paused or closed exploration SHALL NOT be an explore turn: it SHALL run no recovery load and apply no explore contract, and the load receipt left in the chat SHALL NOT reopen it. The state SHALL be the `run.exploration` of the latest `explore-idea@1` response in the chat; when the chat holds none, the turn SHALL run `sai-state spawn` with the stable key and emit `intent=status` to `explore-idea@1` to read it before any recovery load. With the exploration active, the turn SHALL look for the load receipt. With the receipt present, the turn SHALL handle its message. With the receipt missing, including after an interrupted load, a compaction that removed the receipt, or a stale cached wrapper, the turn SHALL first complete the load (the prerequisite check, the instruction loads, and `sai-state spawn`, with the invocation's arguments) and then handle its message. A recovery load, meaning a turn that is not an invocation, lacks the load receipt, and completes the load before answering, SHALL run `sai-state spawn` only and SHALL NOT reset either explore machine. It SHALL keep the current stage, the agreed lists, and the slice inventory, because `sai-state spawn` with the same key returns the existing session.
 
 #### Scenario: Missing receipt triggers a recovery load
 
@@ -33,19 +33,29 @@ Every explore turn, meaning any turn after a `/sai-explore` invocation, SHALL st
 - **WHEN** a recovery load runs within the same invocation after stage progress, agreed lists, or a slice inventory were recorded
 - **THEN** the load runs `sai-state spawn` only, no machine reset runs, and the current stage, the agreed lists, and the slice inventory are kept
 
+#### Scenario: A paused or closed exploration is not reopened
+
+- **WHEN** a turn starts after the exploration was paused or closed, including after a context compaction that removed the latest response
+- **THEN** the turn reads `run.exploration` (through a `status` emit when the chat holds none), runs no recovery load, and applies no explore contract
+
 ### Requirement: Deferred messages wait for the load receipt
 
-A user message that arrives while the load is in progress SHALL receive a one-line acknowledgement and SHALL be evaluated once the load receipt exists, in arrival order, for every load including a recovery load. A deferred message that invokes a skill or command SHALL run once the receipt exists, under the explore contract (read-only, with staged progression), and exploration SHALL continue at its current stage when it finishes. Claude Code (a message delivered mid-turn) and opencode (a queued user message) SHALL follow the same deferral rule and the same receipt check.
+A user message that arrives while the load is in progress SHALL receive a one-line acknowledgement and SHALL be evaluated once the load receipt exists, in arrival order, for every load including a recovery load. A deferred message that invokes a skill or command SHALL run once the receipt exists, under the explore contract (read-only, with staged progression), and when it finishes the leave rule of `sai/commands/explore/instructions.md` (rule 4) SHALL decide whether exploration continues at its current stage or the leave selector appears. Claude Code (a message delivered mid-turn) and opencode (a queued user message) SHALL follow the same deferral rule and the same receipt check.
 
 #### Scenario: Queued command runs after the load
 
 - **WHEN** a `/from-backlog <url>` message arrives while the explore load is in progress
-- **THEN** the message is acknowledged in one line, runs once the load receipt exists under the read-only explore contract, and exploration then continues at its current stage
+- **THEN** the message is acknowledged in one line, runs once the load receipt exists under the read-only explore contract, and, because the skill ends only by reporting, exploration then continues at its current stage
 
 #### Scenario: Multiple deferred messages keep arrival order
 
 - **WHEN** several messages arrive during the load
 - **THEN** each is evaluated after the receipt exists, in the order it arrived
+
+#### Scenario: A deferred skill that proposes leaving shows the leave selector
+
+- **WHEN** a deferred skill run during the load finishes with a close that proposes or requires going elsewhere
+- **THEN** the leave selector of rule 4 is presented before that proposal is followed
 
 ### Requirement: Load interruption outcomes
 

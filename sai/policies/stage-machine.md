@@ -259,6 +259,36 @@ the response.
   empties the list. The lock opens only when every stored block was amended or
   the set was registered again.
 
+## Explore pause and close
+
+`explore-idea@1` also records the life of the exploration, apart from its stage, as
+`exploration`: `active`, `paused`, or `closed`. Every response carries it as
+`run.exploration`. The leave rule that decides when to emit these intents lives in
+`sai/commands/explore/instructions.md` (rule 4); the machine only guards them.
+
+- **`pause`** (`--set intent=pause`): `exploration` becomes `paused`. Every stage,
+  section, list, and move stays as it is, and so do the stored blocks and the slice
+  inventory of `explore-slice@1`.
+- **`resume`** (`--set intent=resume`): a paused exploration becomes `active` at the
+  stage it was paused in. Any other exploration answers `rejected: "NOT_PAUSED"` (an
+  active one) or `rejected: "EXPLORATION_CLOSED"` and changes nothing.
+- **`close-explore`** (`--set intent=close-explore`): `exploration` becomes `closed`
+  and the stage, sections, lists, and moves return to their initial values. The
+  session file stays, so the mark survives a context compaction. Only
+  `sai-state reset <id> explore-idea@1`, which every new `/sai-explore` invocation
+  runs, leaves `closed`. Close concerns `explore-idea@1` alone; the command card
+  that closes an exploration also runs `sai-state reset <id> explore-slice@1` and
+  `sai-state reset <id> direct-build-run@1` (no route is running then), which drop
+  the slice inventory, the cursors, the publication answer, and the Direct Build
+  run state, so no stored block can start a route afterwards.
+- **`status`** (`--set intent=status`): reads the exploration and changes nothing,
+  in any exploration. The turn check of `sai/commands/explore/body.md` uses it.
+- **While `paused`**, every intent other than `resume` (and `status`) answers
+  `rejected: "EXPLORATION_PAUSED"`, including the section and list events, and
+  changes nothing. **While `closed`**, every intent other than `status` answers
+  `rejected: "EXPLORATION_CLOSED"`. The `next` pointer of both names the common step
+  and says no explore step is in force.
+
 ## Responses
 
 A machine error exits 1 with `{error, next}` and one closed literal:

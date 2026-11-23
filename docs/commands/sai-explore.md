@@ -25,6 +25,23 @@ When the conversation starts from an issue, you answer once whether to work on i
 
 The stage order is a default path, not a gate. You can ask to go back to an earlier stage at any time, and going back keeps what you already agreed; changing the problem or goal reopens the later sections with their content as a starting proposal. Moving forward needs the data of the stages it skips and stops at the route selector, which stays the only authorization of a route. When a move is not possible, Explore names what is missing and continues at the first stage that owns it. After crystallization, a slice that is stopped, running, or parked can be corrected and moved back to pending or to its first step in the same conversation, without resetting the exploration: completed slices and the publication answer stay. A correction that changes only the backlog or exploration origin keeps the route you chose; any other change returns the slice to pending and shows the route selector again. Every accepted move is listed with its reason in the closing report.
 
+While no route is running (before the route selector is answered, and again whenever the
+selector comes back for a later or parked slice), Explore does not let the chat drift out
+of the exploration without you deciding it. When your message mainly asks to stop exploring
+or to do other work, when Explore itself would propose going elsewhere, or when a
+skill's close proposes or requires going elsewhere, a selector asks you to pick
+**Stay**, **Pause**, or **Close**. Stay keeps exploring and does not run that request.
+Pause keeps the stage, the agreed lists, and (after crystallization) the blocks and
+the slice inventory, suspends the Explore contract (the read-only rule too, so the chat
+may write files for the other request), and returns on `resume-explore` or a clear
+request to go back; `resume-explore` without a paused exploration changes nothing.
+Close ends the exploration, releases its explorers, and discards its state, the slice
+inventory included. A cancelled
+or dismissed selector counts as Stay. Implementation requests are idea content and
+show no selector, a skill that only reports shows none, and neither does an explicit
+`/sai-*` command; a new `/sai-explore` starts over, and discards a paused exploration.
+Running Plan and Direct Build routes keep their own park and abandon rules.
+
 The edge-case and implementation-detail lists use the optional third-party
 `writing-for-agents` skill for wording: Explore drafts each list, runs a silent
 review pass over it (after the probes on edge-case lists, and again after every

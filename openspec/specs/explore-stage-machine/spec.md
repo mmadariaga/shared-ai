@@ -176,7 +176,7 @@ The recorded empty edge-case list auto-advance SHALL be advancement by content, 
 
 In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
-The machine SHALL also accept the `goto` intent (see the goto requirement) and the section-recording event. The retired `issue-shortcut` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage. An issue reaches `crystallize` directly from `explore-change` only when its sections were recorded `agreed` with the source `issue` and a `goto` to `crystallize` passes the preconditions; an implementation-details section the issue states as none SHALL be recorded as an agreed empty list.
+The machine SHALL also accept the `goto` intent (see the goto requirement) and the section-recording event. It SHALL also accept the `pause`, `resume`, `close-explore`, and `status` intents, which act on the exploration rather than on its stage (see the requirement on the exploration's pause and close) and are evaluated before every stage event. The retired `issue-shortcut` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage. An issue reaches `crystallize` directly from `explore-change` only when its sections were recorded `agreed` with the source `issue` and a `goto` to `crystallize` passes the preconditions; an implementation-details section the issue states as none SHALL be recorded as an agreed empty list.
 
 #### Scenario: Stray intent does not advance
 
@@ -232,6 +232,11 @@ The machine SHALL also accept the `goto` intent (see the goto requirement) and t
 
 - **WHEN** the caller emits the retired `issue-shortcut` intent at any stage, or a section-recording event whose list holds a non-identifier entry
 - **THEN** the machine returns READINESS_IS_NOT_INTENT or SECTIONS_INVALID respectively, with an unchanged state
+
+#### Scenario: Exploration intents are not stage intents
+
+- **WHEN** the caller emits `pause`, `resume`, `close-explore`, or `status` at any stage
+- **THEN** the machine evaluates it as an exploration intent and does not answer READINESS_IS_NOT_INTENT
 
 ### Requirement: The POC lane is a conditional stage of explore-idea
 
@@ -351,3 +356,27 @@ Every explore stage-event turn (a user intent that advances the progression, or 
 
 - **WHEN** a `goto` is rejected
 - **THEN** `run.moves` is unchanged
+
+### Requirement: Explore-idea records the exploration's pause and close
+
+The explore-idea machine SHALL record the life of the exploration, apart from its stage, as `exploration` with the values `active`, `paused`, and `closed`, and every response SHALL carry it as `run.exploration`. A state stored before the field existed SHALL read as `active`. The `pause` intent SHALL set `paused` and keep every stage, section, list, and move. The `resume` intent SHALL return a paused exploration to `active` at the stage it was paused in, and SHALL answer `rejected: "NOT_PAUSED"` with an unchanged state on an active exploration. The `close-explore` intent SHALL set `closed` and return the stage, sections, lists, and moves to their initial values while the session file stays, so the mark survives a context compaction; only `sai-state reset <id> explore-idea@1` SHALL leave `closed`. The `status` intent SHALL read the exploration and change nothing in any exploration. While `paused`, every intent other than `resume` and `status`, the section and list events included, SHALL answer `rejected: "EXPLORATION_PAUSED"` and change nothing; while `closed`, every intent other than `status` SHALL answer `rejected: "EXPLORATION_CLOSED"`. The `next` pointer of a paused or closed exploration SHALL name the common step and state that no explore step is in force. `sai/policies/stage-machine.md` SHALL document these intents.
+
+#### Scenario: Pause keeps the progression and only resume leaves it
+
+- **WHEN** the caller emits `pause` at review-edge-cases with a recorded edge-case list, then emits `next-step`, `goto`, `poc-lane-late`, a recorded list, a section event, `pause`, or `close-explore`
+- **THEN** each later event answers EXPLORATION_PAUSED with an unchanged state, and a `resume` returns the exploration to `active` at review-edge-cases with the same list
+
+#### Scenario: Close leaves the closed mark
+
+- **WHEN** the caller emits `close-explore` at any stage
+- **THEN** the exploration is `closed`, the stage and lists are back to their initial values, and every later intent other than `status` answers EXPLORATION_CLOSED
+
+#### Scenario: Resume on an active exploration is rejected
+
+- **WHEN** the caller emits `resume` on an active exploration
+- **THEN** the machine answers NOT_PAUSED and the state is unchanged
+
+#### Scenario: The marks survive in the store until a reset
+
+- **WHEN** a paused or closed session is spawned again with the same key and read with `status`
+- **THEN** `run.exploration` still reads `paused` or `closed`, and only `sai-state reset <id> explore-idea@1` returns it to an active exploration at explore-change
