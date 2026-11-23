@@ -804,26 +804,28 @@ test('completed Review change-overview forms findings only and marks no review i
 // ─── Step 6: Eleven-artifact archive classification and status panel ─
 
 test('archive names ten artifacts with change-overview in AUDIT and interfaces in EXEMPT', () => {
-  const archive = artifact('sai/commands/archive/instructions.md');
+  const archive = artifact('sai/tools/archive-plan.js');
 
-  assert.match(archive, /ten[\s-]?(?:`?sai-workflow`?\s+)?artifact/i, 'archive classification should name ten artifacts');
+  assert.match(archive, /The ten sai-workflow artifacts/, 'archive classification should name ten artifacts');
   assert.doesNotMatch(archive, /eleven/, 'archive should drop the retired eleven-artifact wording');
+  assert.match(archive, /CORE_ARTIFACTS = \['proposal', 'specs', 'design', 'tasks'\]/);
+  assert.match(archive, /AUDIT_FILES = \['review', 'security', 'performance', 'accessibility'\]/);
   assert.match(archive, /change-overview/, 'archive should classify change-overview among the ten');
-  assert.match(archive, /interfaces/, 'archive should classify interfaces');
+  assert.match(archive, /`interfaces` is exempt: never collected and never named in a diagnostic/, 'archive should classify interfaces');
 
-  const auditIndex = archive.indexOf('AUDIT');
+  const auditIndex = archive.indexOf('AUDIT_FILES');
   assert.ok(auditIndex !== -1, 'archive should define an AUDIT group');
-  const changeOverviewIndex = archive.indexOf('change-overview');
-  assert.ok(changeOverviewIndex > auditIndex, 'change-overview should sit inside the AUDIT group');
+  assert.ok(archive.indexOf("auditMissing.push('change-overview')") > auditIndex, 'change-overview should sit inside the AUDIT group');
+  assert.match(artifact('sai/commands/archive/instructions.md'), /the Classification Check \(the CORE gate and the AUDIT\s+line\)/);
 });
 
 test('backfilled changes skip change-overview alongside interfaces', () => {
-  const archive = artifact('sai/commands/archive/instructions.md');
+  const archive = artifact('sai/tools/archive-plan.js');
 
-  assert.match(archive, /change-overview/, 'the backfill skip should treat change-overview as done');
-  assert.match(archive, /backfill/, 'the skip should live on the backfill path');
-  assert.match(archive, /interfaces/, 'the skip should name interfaces');
-  assert.match(archive, /skip/i, 'the skip should be expressed as a skip');
+  assert.match(archive, /if \(!backfilled\) \{[\s\S]{0,200}change-overview/, 'the backfill skip should treat change-overview as done');
+  assert.match(archive, /backfilled && \(id === 'design' \|\| id === 'tasks'\)/, 'the skip should live on the backfill path');
+  assert.match(archive, /`interfaces` is exempt/, 'the skip should name interfaces');
+  assert.match(archive, /except for a backfilled change/i, 'the skip should be expressed as a skip');
 });
 
 test('archive synchronizes delta specs via CLI without presenting a sync choice', () => {
@@ -831,9 +833,9 @@ test('archive synchronizes delta specs via CLI without presenting a sync choice'
 
   assert.match(archive, /`openspec archive <name> --yes --json`/,
     'archive should use the CLI as the sync + move primitive');
-  assert.match(archive, /performs\s+the actual synchronization and move in one validated\s+operation/,
-    'archive should reference CLI validation as the scenario-preservation guarantee');
-  assert.match(archive, /never\s+duplicates, that work/,
+  assert.match(archive, /stays the sole sync and move primitive/,
+    'archive should reference the CLI as the only sync and move primitive');
+  assert.match(archive, /reads the\s+repository and spawns only `git` and `check-delta-headers\.js`; it writes nothing/,
     'archive should report rather than duplicate the CLI sync');
 });
 

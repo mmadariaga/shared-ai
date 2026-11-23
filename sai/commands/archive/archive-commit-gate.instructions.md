@@ -7,20 +7,23 @@ the ordinary route after `openspec archive <name> --yes --json` succeeded.
 
 ## Archive paths
 
-The gate stages exactly the **archive paths** with pathspec-scoped,
-deletion-aware commands, never an unscoped `git add -A` or `git add .`, and
-never any other path:
+The gate stages exactly the **archive paths** of the plan the run holds
+(`archive-plan.js`, computed before the CLI archive moved the change; the tool
+cannot plan a change that is already archived): its `owned_staging_paths`, with pathspec-scoped,
+deletion-aware commands, never an unscoped `git add -A` or `git add .`, never
+`-f`, and never any other path:
 
 ```bash
-git add -A -- openspec/specs openspec/changes/archive
-# only when the change directory was tracked before the move:
-git add -A -- openspec/changes/<name>
+git add -A -- <owned_staging_paths>
 ```
 
-The second command records the removal of the change directory the CLI moved;
-without it the commit would leave the original change tracked beside its
-archived copy. Decide it with `git ls-files -- openspec/changes/<name>`
-before staging: non-empty output means tracked.
+The plan lists the archived copies of the change files, the originals that the
+move removed from the index (so the commit records their removal), and the main
+specs the archive wrote, created, or deleted. Its `omitted_ignored_paths` stay
+out, and each is reported as
+`[sai-archive] warning: omitted ignored untracked path: <path>`. A plan whose
+`owned_staging_paths` is empty leaves the index empty, which the empty-index
+guard below reports.
 
 ## Skip rule
 
@@ -52,19 +55,21 @@ no further git mutation. Exit 1 continues with the selected action.
 
 1. Stage the archive paths.
 2. Run the empty-index guard.
-3. Compose the message by applying `sai/commands/commit/instructions.md`
-   Steps 1–5 with `sai/policies/commit-rules.md` as the single source of
-   message rules. The guard has already ruled out Step 1's "No staged changes"
-   stop.
-4. Add the retired-capability body lines of
-   `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
-   retired capabilities.
-5. Fetch `@sai/policies/issue-origin-preservation.md` and check the known
-   pre-move origin against the archived metadata, warning without blocking
-   when lost or unverifiable. Add the closing lines of `sai/policies/commit-rules.md` § Closing Lines for
-   the archived change.
-6. Commit with the composed message passed literally on standard input to
-   `git commit -F -` under `@sai/policies/command-execution.md`.
+3. Author the message with the `sai-archive-worker`: create it when none is
+   alive (the coordinator card's Start steps 4 and 5) and send it the
+   `--archive-commit-message` envelope of `sai/commands/archive/worker.md` with
+   the plan's `commit_body_lines` and `closing_line`. The worker writes the
+   subject and body from the staged diff under `sai/policies/commit-rules.md`,
+   the single source of message rules; the retired-capability body lines
+   (`sai/commands/archive/retirement-declaration.md` § Disclosure) and the
+   closing line come from the plan, never from the worker. The guard has already
+   ruled out an empty index.
+4. Fetch `@sai/policies/issue-origin-preservation.md` and check the known
+   pre-move origin of the plan against the archived metadata, warning without
+   blocking when lost or unverifiable.
+5. Commit with the worker's message (the `summary` of its accepted report)
+   passed literally on standard input to `git commit -F -` under
+   `@sai/policies/command-execution.md`.
 
 ## Amend the latest commit
 
@@ -77,12 +82,11 @@ no further git mutation. Exit 1 continues with the selected action.
 2. Stage the archive paths.
 3. Run the empty-index guard.
 4. Read the latest commit message with `git log -1 --format=%B` and add the
-   closing lines of `sai/policies/commit-rules.md` § Closing Lines for the
-   archived change that the message does not already contain. With no missing
-   line, run `git commit --amend --no-edit`. Otherwise run
-   `git commit --amend -F -` with the current message plus the missing lines
+   plan's `closing_line` when the message does not already contain it. With no
+   missing line, run `git commit --amend --no-edit`. Otherwise run
+   `git commit --amend -F -` with the current message plus the missing line
    passed literally on standard input under
-   `@sai/policies/command-execution.md`.
+   `@sai/policies/command-execution.md`. An amend asks the worker for nothing.
 
 ## Do nothing
 

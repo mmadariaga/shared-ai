@@ -123,14 +123,16 @@ test('the archive and backfill command profiles carry the safe-operations skill'
 
 test('the archive worker writes the no-specs drafts before the archive move, from a closed draft section', () => {
   const worker = read('sai/commands/archive/worker.md');
-  assert.match(worker, /`--drafts` marker\nline after the path set/);
-  assert.match(worker, /names exactly the two destinations\n`openspec\/changes\/\{name\}\/\.openspec\.yaml` and\n`openspec\/changes\/\{name\}\/proposal\.md`/);
+  assert.match(worker, /The `--drafts` section is the\none that `validate-backfill-drafts\.js order --target archive` prints/);
+  assert.match(worker, /names exactly the two destinations `openspec\/changes\/\{name\}\/\.openspec\.yaml`\nand `openspec\/changes\/\{name\}\/proposal\.md`, each once/);
   const execution = worker.slice(worker.indexOf('## Direct Build (unattended) execute continuation'));
   const materialization = execution.indexOf('**Draft materialization**');
   assert.ok(materialization > 0 && materialization < execution.indexOf('0. **Retirement declaration**'));
   assert.match(execution.slice(materialization), /validate-backfill-drafts\.js check --fingerprint/);
   assert.match(execution.slice(materialization), /transfer\.js materialize --dir\n {2}<transfer_dir> --path <path> --sha256 <sha256> --destination <destination>/);
   assert.match(execution, /before the\n {2}CLI archive and the commit, and returns `failed` naming each destination\n {2}already written, which stays uncommitted/);
-  assert.match(execution, /A draft section is valid only when it equals the one\nreceived at prepare, reference for reference/);
-  assert.match(worker, /the draft `\.openspec\.yaml` supplies\n`backfilled`, `skip_specs`, `backlog_origin`, and `overview\.state`/);
+  assert.match(worker, /a draft section that names any\nother destination is an altered envelope/);
+  // The plan tool reads the drafts in place of the change files that no backfill worker wrote yet.
+  const tool = read('sai/tools/archive-plan.js');
+  for (const key of ["'backfilled'", "'skip_specs'", "'backlog_origin'", "'overview', 'state'"]) assert.ok(tool.includes(key), `the plan tool reads ${key} from the draft metadata`);
 });

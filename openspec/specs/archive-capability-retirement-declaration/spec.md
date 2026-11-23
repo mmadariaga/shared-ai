@@ -114,12 +114,17 @@ When `retire_capabilities` is already present and its parsed YAML value is not a
 
 ### Requirement: Unaccounted content in an emptied capability SHALL refuse the declaration
 
-For each capability the delta empties, archive SHALL read its published spec at `openspec/specs/<capability>/spec.md`, read-only, and SHALL look for **unaccounted content**: any `##` section other than `## Purpose` above the spec's requirements. When any emptied capability carries unaccounted content, archive SHALL refuse to declare, SHALL name the capability and each offending section heading, and SHALL state the way forward: move that content out of the spec, then rerun `sai-archive`.
+For each capability the delta empties, archive SHALL read its published spec at `openspec/specs/<capability>/spec.md`, read-only, and SHALL look for **unaccounted content**: any `##` section other than `## Purpose` and `## Requirements`, whether above or below the spec's requirements. When any emptied capability carries unaccounted content, archive SHALL refuse to declare with reason `retire-unaccounted-content`, SHALL name the capability and each offending section heading, and SHALL state the way forward: move that content out of the spec, then rerun `sai-archive`.
 
 #### Scenario: A spec the merge cannot name blocks the declaration
 
-- **WHEN** an emptied capability's published spec carries a `##` section other than `## Purpose` above its requirements
+- **WHEN** an emptied capability's published spec carries a `##` section other than `## Purpose` and `## Requirements` above its requirements
 - **THEN** archive refuses to declare, names the capability and each offending heading, and states that the content must be moved before `sai-archive` is rerun
+
+#### Scenario: A section below the requirements blocks the declaration
+
+- **WHEN** an emptied capability's published spec carries a `##` section other than `## Purpose` and `## Requirements` below its requirements
+- **THEN** archive refuses to declare with reason `retire-unaccounted-content` and names the capability and the heading
 
 ### Requirement: A single blocked capability SHALL refuse the whole declaration
 
@@ -147,4 +152,3 @@ Every retirement-declaration rule — detection, preconditions, the write proced
 
 - **WHEN** a retirement-declaration rule clause is restated in another archive card, or a card that performs the declaration does not fetch the single source
 - **THEN** the contract test fails and names the file and the clause
-

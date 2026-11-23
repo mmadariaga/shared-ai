@@ -74,30 +74,30 @@ Before continuing an uncertain execute operation, the coordinator SHALL apply ex
 - **WHEN** the existing checks cannot establish the execute operation's effects
 - **THEN** execution remains stopped without a new order or renewed authorization
 
-### Requirement: Direct Build delivers the implementer path set in the archive prepare envelope
-
-The Direct Build coordinator SHALL carry the implementer path set in the Step 7 `--direct-build-prepare` envelope to the archive worker. The implementer path set SHALL be the first-seen union of the implementer's returned `changed_files`, deletions included. The envelope SHALL place a dedicated `--implementer-paths` marker line after the change name, followed by one repository-relative path per line. When the implementer path set is missing from run state at Step 7 or at Step 8, the coordinator SHALL stop the route before that dispatch or continuation and SHALL escalate under `sai/policies/obstacle-escalation.md`; it MUST NOT rebuild the set from the git index.
-
-#### Scenario: Prepare envelope carries the implementer path set
-
-- **WHEN** the Direct Build coordinator dispatches the archive worker at Step 7
-- **THEN** the envelope holds `--direct-build-prepare`, the change name, the `--implementer-paths` marker line, and then each path of the implementer path set on its own line, including paths the implementer deleted
-
-#### Scenario: Implementer path set lost from run state
-
-- **WHEN** the implementer path set is missing from coordinator run state at Step 7 or Step 8, for example after a compaction
-- **THEN** the coordinator stops the route before the dispatch or continuation and escalates under `obstacle-escalation.md` without reading the git index to rebuild the set
-
 ### Requirement: Direct Build checks commit coverage on the prepared plan before any execute order
 
-After it reads the archive worker's prepared plan and before it sends any execute order, the Direct Build coordinator SHALL run the `verify` check of `sai/policies/slice-path-scope.md` § Commit coverage with `slice_snapshot`, the Step 8 slice paths, and the prepared plan's owned staging paths as the covering list. When `uncovered` is non-empty, the coordinator SHALL NOT send an execute order; it SHALL continue the same archive worker with a corrected-result request that names the uncovered paths and carries no execute order, SHALL spend one `step-7` attempt per request, and SHALL repeat the check on the corrected plan. An exhausted `step-7` budget SHALL escalate under `sai/policies/obstacle-escalation.md`.
+After it reads the archive plan and before it sends any execute order, the Direct Build coordinator SHALL run the `verify` check of `sai/policies/slice-path-scope.md` § Commit coverage with `slice_snapshot`, the Step 8 slice paths, and the plan's `covering_paths` as the covering list. When `uncovered` is non-empty, the coordinator SHALL NOT send an execute order and SHALL NOT patch the plan by hand; it SHALL compute the plan again, SHALL spend one `step-7` attempt per repetition, and SHALL repeat the check on the new plan. An exhausted `step-7` budget SHALL escalate under `sai/policies/obstacle-escalation.md`.
 
 #### Scenario: Prepared plan misses a slice path
 
 - **WHEN** the prepare-time coverage check returns a non-empty `uncovered`
-- **THEN** the coordinator sends no execute order, continues the same archive worker with a corrected-result request naming the uncovered paths, and spends one `step-7` attempt
+- **THEN** the coordinator sends no execute order, computes the plan again, and spends one `step-7` attempt
 
 #### Scenario: Prepared plan covers the slice
 
 - **WHEN** the prepare-time coverage check returns an empty `uncovered`
 - **THEN** the coordinator continues to Step 8
+
+### Requirement: Direct Build passes the implementer path set to the archive plan tool
+
+At Step 7 the Direct Build coordinator SHALL run `sai/tools/archive-plan.js` itself, with no archive worker, passing the implementer path set as `--implementer-paths-file <path>`, a file in the run directory with one repository-relative path per line. The implementer path set SHALL be the first-seen union of the implementer's returned `changed_files`, deletions included. On the no-specs route the call SHALL add `--drafts-dir <transfer directory>`. A refusal SHALL stop the route with no dispatch and no mutation; a tool failure (exit 2) SHALL be an obstacle of `step-7`. When the implementer path set is missing from run state at Step 7 or at Step 8, the coordinator SHALL stop the route before the tool runs or before the continuation and SHALL escalate under `sai/policies/obstacle-escalation.md`; it MUST NOT rebuild the set from the git index.
+
+#### Scenario: The plan receives the implementer path set
+
+- **WHEN** the Direct Build coordinator reaches Step 7
+- **THEN** it runs the plan tool with the implementer path file, including paths the implementer deleted, and creates no archive worker
+
+#### Scenario: Implementer path set lost from run state
+
+- **WHEN** the implementer path set is missing from coordinator run state at Step 7 or Step 8, for example after a compaction
+- **THEN** the coordinator stops the route before the tool run or the continuation and escalates under `obstacle-escalation.md` without reading the git index to rebuild the set

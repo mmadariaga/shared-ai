@@ -287,8 +287,8 @@ test('the Direct Build card opens its backfill and archive windows per Window pa
   const windows = card.slice(card.indexOf('**No-commit guard windows.**'), card.indexOf('**Block provider.**'));
   assert.ok(windows.includes('(1) The implementer window opens at the Step 1 snapshot'));
   assert.ok(windows.includes('and opens per § Window pairing; it spans the findings and execute continuations'));
-  assert.ok(windows.includes('(3) The archive window opens per § Window pairing immediately before the Step 7 prepare dispatch'));
-  assert.ok(windows.includes('that continuation carries `allow_commit`, opens its own window per the policy\'s `allow_commit` isolation'));
+  assert.ok(windows.includes('(3) The archive window is the one of the Step 8 execute continuation: it carries `allow_commit`, opens its own window per the policy\'s `allow_commit` isolation'));
+  assert.ok(windows.includes('No archive worker stretch precedes it, because the plan of Step 7 is a tool run'));
   assert.ok(!windows.includes('fresh snapshot'), 'the card restates no snapshot condition of the policy');
   assert.ok(!windows.includes('Reuse of a clean verify'), 'the reuse conditions stay in the policy');
 });

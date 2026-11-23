@@ -5,14 +5,15 @@
 Makes the archive Classification Check consult `.openspec.yaml`, so a backfilled change is exempt from the design and tasks artifacts while other changes are unaffected.
 
 ## Requirements
+
 ### Requirement: Classification Check MUST consult .openspec.yaml
 
-`sai/commands/archive/instructions.md` Classification Check MUST read `openspec/changes/$ARGUMENTS/.openspec.yaml` and look up the `backfilled` field. The lookup MUST happen after step 1 (status JSON parse) and before step 3 (CORE artifact evaluation), so the exemption can short-circuit the missing-CORE check.
+The archive plan tool `sai/tools/archive-plan.js` MUST read `openspec/changes/<name>/.openspec.yaml` itself, with its flat-key parser and no status-JSON step, and look up the `backfilled` field. The lookup MUST happen before the CORE artifact evaluation, so the exemption can short-circuit the missing-CORE check, and the plan MUST report the resolved value in its `report_lines`. `sai/commands/archive/instructions.md` describes the plan that carries the check.
 
 #### Scenario: Lookup precedes CORE evaluation
 
-    - **WHEN** the agent executes the Classification Check
-    - **THEN** the agent MUST read `.openspec.yaml` and extract the `backfilled` value BEFORE evaluating CORE artifact statuses, and MUST log the resolved value as part of the check's intermediate state
+- **WHEN** the plan tool executes the Classification Check
+- **THEN** the tool MUST read `.openspec.yaml` and extract the `backfilled` value BEFORE evaluating CORE artifact statuses, and MUST report the resolved value as a line of the plan's report
 
 ### Requirement: Backfilled changes are exempt from design/tasks/implementation
 
@@ -42,15 +43,6 @@ When `.openspec.yaml` does not exist, does not contain `backfilled`, or contains
     - **WHEN** `.openspec.yaml` exists and contains `backfilled: false`
     - **THEN** the Classification Check MUST NOT apply the exemption and MUST block on missing `design`/`tasks`/`implementation` per the existing rules
 
-### Requirement: Corrupt .openspec.yaml falls back to non-backfilled
-
-When `openspec/changes/$ARGUMENTS/.openspec.yaml` exists but cannot be parsed as YAML, the Classification Check MUST treat `backfilled` as `false` and emit a single warning line. The archive MUST NOT abort; CORE and AUDIT evaluation MUST proceed as if `.openspec.yaml` were absent.
-
-#### Scenario: Corrupt metadata file
-
-- **WHEN** `.openspec.yaml` exists and is not valid YAML
-- **THEN** the Classification Check prints a warning line and treats `backfilled` as `false`; no exemption is applied to CORE
-
 ### Requirement: AUDIT behavior is unchanged
 
 The Classification Check MUST NOT modify its AUDIT step for backfilled changes. Missing `review`/`security`/`performance`/`accessibility` artifacts MUST still be evaluated by the same rules (file existence + `## Not Applicable` heading) and the same informational line MUST be printed when AUDIT artifacts are missing.
@@ -59,3 +51,12 @@ The Classification Check MUST NOT modify its AUDIT step for backfilled changes. 
 
     - **WHEN** `.openspec.yaml` declares `backfilled: true` AND one or more AUDIT artifacts are missing (and not present via `## Not Applicable`)
     - **THEN** the Classification Check MUST still print exactly one `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>` line
+
+### Requirement: An unreadable .openspec.yaml refuses the archive plan
+
+When `openspec/changes/<name>/.openspec.yaml` exists but its shape cannot be read by the archive plan tool's flat-key parser, the tool MUST refuse the plan with reason `metadata-unreadable` and a read reason, and MUST NOT guess the value of `backfilled`. No archive, write, or commit SHALL follow the refusal.
+
+#### Scenario: Unreadable metadata refuses the plan
+
+- **WHEN** `.openspec.yaml` exists and its shape cannot be read by the flat-key parser
+- **THEN** the plan tool refuses with reason `metadata-unreadable`, names the read reason, and the archive does not run

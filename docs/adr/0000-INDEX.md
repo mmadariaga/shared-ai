@@ -237,6 +237,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0172a — Fast-track backfill defers spec-conflict consent to archive's delta-spec sync gate](./0172a-fast-track-backfill-conflict-consent-lives-at-archive-sync.md)
 - [0172b — Backfill inputs always ask when data is absent; fast-track only omits gates](./0172b-backfill-inputs-always-ask-flags-only-omit-gates.md)
 
+### `/sai-archive`
+
+- [0228 — Compute the archive plan with a deterministic tool run by the coordinator](./0228-archive-plan-computed-by-a-deterministic-tool.md)
+
 ### `/sai-commit`
 
 - [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006

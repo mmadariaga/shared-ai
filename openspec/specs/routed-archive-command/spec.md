@@ -30,20 +30,6 @@ The archive coordinator SHALL be a goal-driven card with Goal, Start, run, Obsta
 - **WHEN** the archive worker of a standalone `/sai-archive` run returns a report reference
 - **THEN** the coordinator validates it with `--command archive` and acts only on the accepted payload, treating an inline result or an invalid report as a `worker` obstacle
 
-### Requirement: Worker owns the read-only pre-flight and never mutates
-
-The dispatched `sai-archive-worker` SHALL perform the complete read-only technical pre-flight: classification, completion scanning, informational delta-spec comparison, and target-name collision checking. It SHALL return all findings as report content, including AUDIT warnings, the combined delta comparison, and the collision verdict, in report files saved with `transfer.js put` in the report directory outside the repository. It SHALL preserve the CORE-missing stop text and SHALL never move a directory, write a repository file, synchronize main specs, or run a git command during preparation.
-
-#### Scenario: Pre-flight findings arrive as payloads
-
-- **WHEN** an archive worker completes classification, checkbox scanning, delta comparison, and collision checking
-- **THEN** every finding reaches the coordinator as the payload of a validated report and the worker has performed no repository write, directory move, or state-changing git operation
-
-#### Scenario: The CORE-missing hard stop keeps its exact text
-
-- **WHEN** any CORE artifact of the resolved change is not `done`
-- **THEN** the worker returns exactly `Missing CORE artifact(s): <ids>. Archive blocked.` without an AUDIT warning
-
 ### Requirement: Needs-input gate transport and coordinator-only execution
 
 The ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, parse its JSON result, and stop on failure or invalid JSON without manual fallback, staging, or commit. The Direct Build execute continuation SHALL run the same CLI primitive before exact-path staging and the authorized local commit. Terminal navigation SHALL print the worker-authored summary verbatim and SHALL close with exactly `Archive done.` only when the archive move executed.
@@ -82,12 +68,12 @@ The `sai-archive-worker` identity SHALL be registered across the full projection
 
 ### Requirement: Fixed content assignment across the two cards
 
-The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, and collision checking. The retirement declaration is single-sourced in `sai/commands/archive/retirement-declaration.md`, fetched by both cards. The coordinator owns the retirement declaration write, the CLI archive invocation, and the post-archive commit gate on the ordinary route; no OpenSpec skill is loaded. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
+The technical split SHALL remain single-sourced: `sai/tools/archive-plan.js` is the single source of the read-only pre-flight computation (verification, completeness scanning, delta comparison, retirement detection, and collision checking), run by the coordinator, and `sai/commands/archive/instructions.md` is the reading contract of its plan. The retirement declaration is single-sourced in `sai/commands/archive/retirement-declaration.md`, fetched by both cards. The coordinator owns the plan run, the retirement declaration write, the CLI archive invocation, and the post-archive commit gate on the ordinary route; no OpenSpec skill is loaded. The archive worker SHALL only author the commit message or, on the Direct Build route, run the validated closed execution order built from the coordinator's plan, consisting of the retirement declaration when the plan names it, the CLI archive invocation, exact-path staging, and the local commit.
 
 #### Scenario: Each technical duty lives in exactly one card
 
 - **WHEN** the archive card set is audited after the change
-- **THEN** preflight checks trace to the worker while CLI archive execution and git operations trace to the coordinator or validated Direct Build continuation
+- **THEN** preflight checks trace to the plan tool run by the coordinator, commit-message authoring traces to the worker, and CLI archive execution and git operations trace to the coordinator or the validated Direct Build continuation
 
 ### Requirement: Archive guard windows and the single allow_commit carrier
 
@@ -163,3 +149,22 @@ Immediately before ordinary archive CLI execution or authorization of a Direct B
 
 - **WHEN** the archive worker of a standalone `/sai-archive` run reports `failed` after the change name resolved
 - **THEN** its saved report carries `failure_class` and `unrecoverable` beside `status`, `summary`, `changed_files`, and `resolved_change_name`
+
+### Requirement: The coordinator runs the archive plan tool and the worker only authors the commit message
+
+The `/sai-archive` coordinator SHALL run `sai/tools/archive-plan.js` itself and SHALL create no worker while the plan is computed. It SHALL print a refusal's `summary` verbatim and end the run with nothing written, or print the plan's `report_lines` verbatim as the confirming report. It SHALL open the report directory and the guard window only when a worker is about to be created. The `sai-archive-worker` SHALL be created only to author the commit message at the post-archive commit gate (the `--archive-commit-message` envelope) and, on the Direct Build route, to run the execute order; outside that order it SHALL only read and SHALL return the complete message as the `summary` of a `completed` report. A failing plan tool (exit 2) SHALL be an obstacle named `plan`.
+
+#### Scenario: The plan runs without a worker
+
+- **WHEN** `/sai-archive` resolves a change
+- **THEN** the coordinator runs the plan tool itself and no archive worker exists while the plan is computed
+
+#### Scenario: A refusal ends the run before any worker
+
+- **WHEN** the plan tool refuses the change
+- **THEN** the coordinator prints the refusal summary verbatim, creates no worker, and writes nothing
+
+#### Scenario: The worker returns only the commit message
+
+- **WHEN** the commit gate needs a new-commit message
+- **THEN** the coordinator creates the archive worker with the `--archive-commit-message` envelope and the worker returns the complete message as its report summary without running a git mutation
