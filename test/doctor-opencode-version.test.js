@@ -7,7 +7,7 @@ const os = require('os');
 const fs = require('fs');
 const { PassThrough } = require('stream');
 
-const { main, opencodeVersionRecords, opencodeConfigDepthRecords, defaultExecOpencode } = require('../bin/doctor.js');
+const { main, opencodeVersionRecords, opencodeConfigDepthRecords, defaultExecOpencode, cliVersionRecords } = require('../bin/doctor.js');
 const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 function exec(stdout, extra = {}) {
@@ -121,7 +121,9 @@ test('the depth check passes on experimental.subagent_depth >= 2 and ignores an 
   }
 });
 
-async function runDoctor({ claudeBase, opencodeBase, execOpencode }) {
+const absentCodegraph = () => ({ status: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn codegraph ENOENT'), { code: 'ENOENT' }) });
+
+async function runDoctor({ claudeBase, opencodeBase, execOpencode, execOpenspec = exec('1.4.1\n'), execCodegraph = absentCodegraph }) {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-version-project-'));
   fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
   fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
@@ -134,7 +136,8 @@ async function runDoctor({ claudeBase, opencodeBase, execOpencode }) {
       projectRoot,
       claudeBase,
       opencodeBase,
-      execOpenspec: exec('1.4.1\n'),
+      execOpenspec,
+      execCodegraph,
       execOpencode,
       out,
     });
@@ -193,4 +196,91 @@ test('doctor reports the opencode version check only for an installed opencode h
   } finally {
     fs.rmSync(opencodeBase, { recursive: true, force: true });
   }
+});
+
+// --- CLI minimum versions: codegraph and openspec ---
+
+const absentExec = () => ({ status: null, stdout: '', stderr: '', error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) });
+
+function recordOf(records, name) {
+  return records.find(r => r.name === name);
+}
+
+test('codegraph below 1.6.4 is a warning naming the installed and the minimum version', () => {
+  for (const installed of ['1.6.3', '1.1.6', '0.9.0']) {
+    const records = cliVersionRecords({ execOpenspec: exec('1.13.1\n'), execCodegraph: exec(`codegraph ${installed}\n`) });
+    const record = recordOf(records, 'codegraph version');
+    assert.equal(record.severity, 'warn', installed);
+    assert.match(record.message, new RegExp(installed.replace(/\./g, '\\.')));
+    assert.match(record.message, /1\.6\.4/);
+    assert.match(record.recommendation, /codegraph upgrade/);
+  }
+});
+
+test('codegraph at or above 1.6.4 is ok, ignoring a suffix such as -beta', () => {
+  for (const installed of ['1.6.4', '1.6.5', '1.10.0', '2.0.0-beta']) {
+    const record = recordOf(cliVersionRecords({ execOpenspec: exec('1.13.1\n'), execCodegraph: exec(`${installed}\n`) }), 'codegraph version');
+    assert.equal(record.severity, 'ok', installed);
+  }
+  const beta = recordOf(cliVersionRecords({ execOpenspec: exec('1.13.1\n'), execCodegraph: exec('1.6.3-beta\n') }), 'codegraph version');
+  assert.equal(beta.severity, 'warn', 'the suffix does not lift 1.6.3 to the minimum');
+});
+
+test('E9: doctor reports nothing about codegraph when it is not installed', () => {
+  for (const run of [absentExec, () => { throw new Error('boom'); }, () => ({ status: 127, stdout: '', stderr: 'not found', error: null })]) {
+    const records = cliVersionRecords({ execOpenspec: exec('1.13.1\n'), execCodegraph: run });
+    assert.equal(recordOf(records, 'codegraph version'), undefined);
+  }
+});
+
+test('E2: a codegraph or openspec version that cannot be parsed is a warning that it is unverified', () => {
+  const records = cliVersionRecords({ execOpenspec: exec('openspec dev\n'), execCodegraph: exec('codegraph 1.6\n') });
+  for (const name of ['codegraph version', 'openspec version']) {
+    const record = recordOf(records, name);
+    assert.equal(record.severity, 'warn', name);
+    assert.match(record.message, /unverified/, name);
+  }
+});
+
+test('openspec below 1.13.1 is a warning, at or above is ok, and an absent binary adds no record', () => {
+  const below = recordOf(cliVersionRecords({ execOpenspec: exec('1.13.0\n'), execCodegraph: absentExec }), 'openspec version');
+  assert.equal(below.severity, 'warn');
+  assert.match(below.message, /1\.13\.0/);
+  assert.match(below.message, /1\.13\.1/);
+  assert.match(below.recommendation, /@fission-ai\/openspec@latest/);
+
+  for (const installed of ['1.13.1', '1.14.0', '2.0.0']) {
+    const record = recordOf(cliVersionRecords({ execOpenspec: exec(`${installed}\n`), execCodegraph: absentExec }), 'openspec version');
+    assert.equal(record.severity, 'ok', installed);
+  }
+  assert.equal(recordOf(cliVersionRecords({ execOpenspec: absentExec, execCodegraph: absentExec }), 'openspec version'), undefined);
+});
+
+test('doctor never fails on an outdated codegraph or openspec: both stay warnings and the exit code is 0', async () => {
+  const claudeBase = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-cli-claude-'));
+  try {
+    installClaude(claudeBase);
+    const { code, report } = await runDoctor({
+      claudeBase,
+      opencodeBase: absent('sai-doctor-cli-opencode'),
+      execOpencode: exec('2.2.5\n'),
+      execOpenspec: exec('1.13.0\n'),
+      execCodegraph: exec('1.1.6\n'),
+    });
+    const records = flatten(report['[CLI versions]']);
+    assert.equal(recordOf(records, 'codegraph version').severity, 'warn');
+    assert.equal(recordOf(records, 'openspec version').severity, 'warn');
+    assert.equal(flatten(report).some(r => r.severity === 'error' && /codegraph|openspec version/.test(r.message)), false);
+    assert.equal(code, 0);
+  } finally {
+    fs.rmSync(claudeBase, { recursive: true, force: true });
+  }
+});
+
+test('the opencode minimum stays 2.2.0 and an old opencode is still an error', () => {
+  const { OPENCODE_MIN_VERSION, CODEGRAPH_MIN_VERSION, OPENSPEC_MIN_VERSION } = require('../bin/cli-versions.js');
+  assert.equal(OPENCODE_MIN_VERSION, '2.2.0');
+  assert.equal(CODEGRAPH_MIN_VERSION, '1.6.4');
+  assert.equal(OPENSPEC_MIN_VERSION, '1.13.1');
+  assert.equal(opencodeVersionRecords(exec('2.1.9\n'))[0].severity, 'error');
 });

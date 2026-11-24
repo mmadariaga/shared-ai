@@ -6,7 +6,14 @@ const fs = require('fs');
 const path = require('path');
 const childProcess = require('child_process');
 const readline = require('readline');
-const { offerCodegraphInstall, probeCodegraph, offerOpenspecInstall } = require('./install-flow.js');
+const {
+  offerCodegraphInstall,
+  probeCodegraph,
+  offerOpenspecInstall,
+  readCliVersion,
+  offerCliUpgrade,
+  offerCodegraphReindex,
+} = require('./install-flow.js');
 const modelCustomization = require('./model-customization.js');
 
 /**
@@ -144,10 +151,15 @@ async function main(options = {}) {
   const projectPath = resolvePath(argv);
   console.log(`Configuring SAI workflow at ${projectPath}`);
 
+  // Read before the install offers: a CLI that setup installs now is never compared with the minimum.
+  const installedVersions = { openspec: readCliVersion('openspec'), codegraph: readCliVersion('codegraph') };
   if (!(await offerOpenspecInstall())) {
     return 'required-failure';
   }
   await offerCodegraphInstall();
+  await offerCliUpgrade({ cli: 'openspec', current: installedVersions.openspec });
+  const codegraphUpgrade = await offerCliUpgrade({ cli: 'codegraph', current: installedVersions.codegraph });
+  await offerCodegraphReindex({ projectPath, upgradeStatus: codegraphUpgrade });
   ensureCodegraphIndex(projectPath);
   // Opened only now: the offers prompt through their own readline on stdin, and
   // a second live interface would echo each key twice and be left on a paused stdin.
