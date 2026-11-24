@@ -85,5 +85,5 @@ test('generated opencode agents, command wrappers, and configuration match the c
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 44);
-  assert.equal(hash(JSON.stringify(output)), '8138de5a016bbeaa1ffd5ca3d3a9b3574c99e1d48584279f8d87fde73cc6bee2');
+  assert.equal(hash(JSON.stringify(output)), 'f77f0db6294572d1dbe01e52f996f401ba924b2412b4b1654a959c659e9019a3');
 });

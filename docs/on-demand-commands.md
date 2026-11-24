@@ -15,7 +15,7 @@ are in the [backlog command reference](backlog-commands.md).
 | [`/sai-direct-build`](commands/sai-direct-build.md) | Implement, review, backfill, archive, and commit one local change from a `Ready to Propose` block file: `/sai-direct-build --block-file <path> --block-hash <sha256>`. Unattended; never pushes. |
 | [`/sai-commit`](commands/sai-commit.md) | Draft a message for staged changes and commit after your approval. |
 | [`/sai-merge`](commands/sai-merge.md) | Integrate a branch locally: `/sai-merge [<branch>] [--rebase\|--squash]`. Asks only at the start (branch, method, autostash) and on escalation; never pushes. |
-| [`/sai-archive`](commands/sai-archive.md) | Sync specs, archive a completed change, and offer a local commit. |
+| [`/sai-archive`](commands/sai-archive.md) | Sync specs, archive a completed change, and offer a local commit. `/sai-archive [change-name] [--fast-track] [--push yes\|no]` can also push the branch at the end, after a question or `--push`, without force. |
 | [`/sai-status`](commands/sai-status.md) | Show progress and a suggested next command for one change or all active changes, read-only. |
 | [`/sai-worktree`](commands/sai-worktree.md) | Create or remove separate Git working folders for parallel work, with confirmation before removal. |
 | [`/sai-retire-docs`](commands/sai-retire-docs.md) | Find obsolete decision records and specs; archive only candidates you approve. |
@@ -31,7 +31,7 @@ See also [Sequential pipeline](sequential-pipeline.md#fast-track-mode---fast-tra
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
 | `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
-| `/sai-archive` | Skips the commit selector after the archive and creates the local commit directly. Other safety confirmations remain. |
+| `/sai-archive` | Skips the commit selector after the archive and creates the local commit directly. Other safety confirmations remain, the push question included. |
 
 Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, and never skips an input question (a missing diff-source token still asks).
 
