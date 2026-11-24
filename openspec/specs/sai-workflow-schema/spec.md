@@ -198,7 +198,7 @@ The SAI additions block of the `specs` artifact instruction in `openspec/schemas
 
 ### Requirement: sai-workflow templates scaffold the reduced design and tasks
 
-`openspec/schemas/sai-workflow/templates/` SHALL hold one template per declared artifact and SHALL hold no `interfaces.md` and no `change-overview.md` template. The `design.md` template SHALL retain the headings Target State, File Manifest, Decisions, and Risks / Trade-offs with a write-time-authority pointer to `sai/commands/design/steps/design.md`. The `tasks.md` template SHALL scaffold each `## Step N` with the progress checkbox, Routing, Files Affected, What Will Be Done, Tests or Closure criterion, Existing Tests Broken, and Test Command, with a write-time-authority pointer to `sai/commands/design/steps/tasks.md`. Neither template SHALL carry normative generation rules.
+`openspec/schemas/sai-workflow/templates/` SHALL hold one template per declared artifact and SHALL hold no `interfaces.md` and no `change-overview.md` template. The `design.md` template SHALL retain the headings Target State, File Manifest, Decisions, and Risks / Trade-offs with a write-time-authority pointer to `sai/commands/design/steps/design.md`; its Target State comment SHALL ask for one `- <path> :: <signature>` bullet per new or changed public symbol with no function body, and its File Manifest comment SHALL name the fold of the Files Affected of the steps without tests and both sentinels, `None — no files affected` and `None — every file passes through the plan RED`. The `tasks.md` template SHALL scaffold a step with tests (the progress checkbox, Routing, and Scenarios, with a comment saying that the write-back adds Tests and Test Command) and a step without tests (the progress checkbox, Routing, Files Affected, What Changes, and Closure criterion), followed by `## Implementation Context`, with a write-time-authority pointer to `sai/commands/design/steps/tasks.md`. The `tasks.md` template SHALL carry no What Will Be Done, Existing Tests Broken, or Required Documentation scaffold. Neither template SHALL carry normative generation rules.
 
 #### Scenario: Templates directory
 
@@ -208,4 +208,18 @@ The SAI additions block of the `specs` artifact instruction in `openspec/schemas
 #### Scenario: tasks template step skeleton
 
 - **WHEN** the `tasks.md` template is read
-- **THEN** its `## Step N` skeleton carries `**Tests**` or `**Closure criterion**` and a per-step `**Test Command**`, and no `**Testing Strategy**`
+- **THEN** it shows a step with `**Scenarios**` and a step with `**Files Affected**`, `**What Changes**`, and `**Closure criterion**`, and no `**Testing Strategy**`, `**What Will Be Done**`, `**Existing Tests Broken**`, or `## Required Documentation`
+
+#### Scenario: design template Target State comment
+
+- **WHEN** the `design.md` template is read
+- **THEN** its Target State comment asks for `- <path> :: <signature>` bullets with no function body, and its File Manifest comment names both sentinels
+
+### Requirement: sai-workflow schema describes the tasks artifact by scenarios
+
+The `tasks` artifact of `openspec/schemas/sai-workflow/schema.yaml` SHALL describe `tasks.md` as an implementation task list with one step per testable behavior, each listing the spec scenarios whose plan tests it turns green, or carrying its closure criterion, for human review and `sai-3-implement` to work through.
+
+#### Scenario: tasks artifact description
+
+- **WHEN** the `tasks` artifact of `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** its description says each step lists the spec scenarios whose plan tests it turns green or carries its closure criterion

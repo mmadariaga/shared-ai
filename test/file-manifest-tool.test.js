@@ -228,14 +228,12 @@ test('shared design instructions and spec/design templates require bullet file a
   const read = file => fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
   const tasks = read('sai/commands/design/steps/tasks.md');
   assert.ok(tasks.includes('`- <token> <path>`'));
-  assert.ok(tasks.includes('Render every path/URL entry in these three subsections as a Markdown bullet prefixed with `- `'));
-  assert.ok(tasks.includes('keep `None` unbulleted when empty'));
   const design = read('sai/commands/design/steps/design.md');
   assert.ok(design.includes('Each non-empty manifest entry is a Markdown bullet prefixed with `- `'));
   assert.ok(design.includes('Verification accepts legacy unbulleted entries without rewriting existing artifacts'));
   const tasksTemplate = read('openspec/schemas/sai-workflow/templates/tasks.md');
-  for (const entry of ['- <A|M|D|R> <path>', '- <path> — <note>', '- <URL> — <note>']) {
-    assert.ok(tasksTemplate.includes(entry));
+  for (const entry of ['- <A|M|D|R> <path>', '- <spec scenario title>', '- <test path> :: <test name>']) {
+    assert.ok(tasksTemplate.includes(entry), entry);
   }
   assert.ok(read('openspec/schemas/sai-workflow/templates/design.md').includes('Markdown bullets (- <token> <path> (Step N))'));
   const proposal = read('openspec/schemas/sai-workflow/templates/proposal.md');
@@ -280,4 +278,150 @@ test('fold reads the canonical case-sensitive None declaration', () => {
       else assert.equal(fs.readFileSync(design, 'utf8'), DESIGN_WITH);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   }
+});
+
+// ─── ADR 0227a decision 4: the manifest folds steps without tests; write-back and format check ───
+
+const NEW_TASKS = [
+  '## Step 1: Alpha', '', '- [ ] Step 1: Alpha', '', '**Routing**: category=backend · context=small · difficulty=low', '',
+  '**Scenarios**:', '- Alpha works', '- Alpha edge', '',
+  '## Step 2: Docs', '', '- [ ] Step 2: Docs', '', '**Routing**: category=docs · context=small · difficulty=low', '',
+  '**Files Affected**:', '- M docs/a.md', '', '**What Changes**: edit it', '', '**Closure criterion**: the file holds x.', '',
+  '## Step 3: Beta', '', '- [ ] Step 3: Beta', '', '**Routing**: category=backend · context=small · difficulty=low', '',
+  '**Scenarios**:', '- Beta works', '',
+  '## Implementation Context', '', '**Test Command**:', 'node --test', '',
+].join('\n');
+
+const RED_REPORT = [
+  'status: completed', 'summary: done', 'changed_files:', '  - test/a.test.js', 'test_command: node --test', 'notes: ""',
+  'plan_tests:',
+  '  - step: 1', '    test_command: node --test test/a.test.js', '    tests:',
+  '      - path: test/a.test.js', '        name: Alpha works',
+  '      - path: test/a.test.js', '        name: Alpha edge', '        regression_guard: true',
+  '  - step: 3', '    test_command: node --test test/b.test.js', '    tests:',
+  '      - path: test/b.test.js', '        name: Beta works',
+  'modified_tests:', '  - path: test/old.test.js', '    reason: uses a changed signature', '',
+].join('\n');
+
+function writeReport(root, text) {
+  const file = path.join(root, 'red-report.yaml');
+  fs.writeFileSync(file, text);
+  return file;
+}
+function writeback(root, report, ...extra) {
+  const r = spawnSync(process.execPath, [TOOL, 'writeback', 'c', '--input-file', report, '--json', '--cwd', root, ...extra], { encoding: 'utf8' });
+  return { status: r.status, payload: r.stdout.trim() ? JSON.parse(r.stdout) : null };
+}
+
+test('fold folds only the steps that carry Files Affected', () => {
+  const { root, design } = project(NEW_TASKS, DESIGN_WITH);
+  try {
+    assert.equal(run('fold', root).status, 0);
+    assert.match(fs.readFileSync(design, 'utf8'), /### File Manifest\n\n- M docs\/a\.md \(Step 2\)\n\n## Context/);
+    assert.equal(run('verify', root).status, 0);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a change whose steps all have tests writes the plan RED sentinel and never the no-files sentinel', () => {
+  const tasks = '## Step 1: a\n\n- [ ] Step 1: a\n\n**Scenarios**:\n- A works\n\n## Step 2: b\n\n- [ ] Step 2: b\n\n**Scenarios**:\n- B works\n';
+  const { root, design } = project(tasks, DESIGN_WITH);
+  try {
+    assert.equal(run('fold', root).status, 0);
+    const text = fs.readFileSync(design, 'utf8');
+    assert.match(text, /### File Manifest\n\nNone — every file passes through the plan RED/);
+    assert.doesNotMatch(text, /None — no files affected/);
+    assert.equal(run('verify', root).status, 0);
+    assert.equal(run('fold', root).payload.status, 'unchanged');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a change whose steps all lack tests folds every step', () => {
+  const tasks = '## Step 1: a\n\n**Files Affected**:\n- A x/a.md\n\n**Closure criterion**: x\n\n## Step 2: b\n\n**Files Affected**:\n- M x/b.md\n\n**Closure criterion**: y\n';
+  const { root, design } = project(tasks, DESIGN_WITH);
+  try {
+    assert.equal(run('fold', root).status, 0);
+    assert.match(fs.readFileSync(design, 'utf8'), /- A x\/a\.md \(Step 1\)\n- M x\/b\.md \(Step 2\)/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('format answers current for the new format and earlier for each earlier-format signal', () => {
+  const cases = [
+    [NEW_TASKS, 'current'],
+    [NEW_TASKS + '\n## Required Documentation\n\n### Spec files\n\nNone\n', 'earlier'],
+    [NEW_TASKS.replace('**Closure criterion**', '**What Will Be Done**: x\n\n**Closure criterion**'), 'earlier'],
+    [NEW_TASKS.replace('**Scenarios**:\n- Beta works', '**Scenarios**:\n- Beta works\n\n**Existing Tests Broken**:\nNone'), 'earlier'],
+    [NEW_TASKS.replace('**Scenarios**:\n- Beta works', '**Files Affected**:\n- M src/b.js\n\n**Scenarios**:\n- Beta works'), 'earlier'],
+  ];
+  for (const [tasks, expected] of cases) {
+    const { root } = project(tasks, DESIGN_WITH);
+    try {
+      const r = run('format', root);
+      assert.equal(r.payload.status, expected);
+      assert.equal(r.status, expected === 'current' ? 0 : 1);
+      if (expected === 'earlier') assert.ok(r.payload.signals.length > 0);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+test('writeback writes Tests, Test Command, and guard marks after the Scenarios, and is idempotent', () => {
+  const { root } = project(NEW_TASKS, DESIGN_WITH);
+  try {
+    const report = writeReport(root, RED_REPORT);
+    const tasksFile = path.join(root, 'openspec', 'changes', 'c', 'tasks.md');
+    const first = writeback(root, report);
+    assert.equal(first.status, 0);
+    assert.equal(first.payload.status, 'written');
+    assert.deepEqual(first.payload.modified_tests, [{ path: 'test/old.test.js', reason: 'uses a changed signature' }]);
+    const text = fs.readFileSync(tasksFile, 'utf8');
+    assert.match(text, /\*\*Scenarios\*\*:\n- Alpha works\n- Alpha edge\n\n\*\*Tests\*\*:\n- test\/a\.test\.js :: Alpha works\n- test\/a\.test\.js :: Alpha edge \[regression guard\]\n\n\*\*Test Command\*\*: node --test test\/a\.test\.js\n\n## Step 2/);
+    assert.match(text, /- test\/b\.test\.js :: Beta works\n\n\*\*Test Command\*\*: node --test test\/b\.test\.js\n\n## Implementation Context/);
+    assert.doesNotMatch(text.split('## Step 2')[1].split('## Step 3')[0], /\*\*Tests\*\*/);
+    assert.equal(run('format', root).payload.status, 'current');
+    const second = writeback(root, report);
+    assert.equal(second.payload.status, 'unchanged');
+    assert.equal(fs.readFileSync(tasksFile, 'utf8'), text);
+    // Only the write-back writes a mark: --guard adds one for a test the coordinator accepted as a guard.
+    const guarded = writeback(root, report, '--guard', 'test/b.test.js :: Beta works');
+    assert.equal(guarded.payload.status, 'written');
+    assert.match(fs.readFileSync(tasksFile, 'utf8'), /- test\/b\.test\.js :: Beta works \[regression guard\]/);
+    assert.equal(writeback(root, report, '--guard', 'test/b.test.js :: Beta works').payload.status, 'unchanged');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('writeback refuses a report that omits a step with tests, names a step without tests, or is not completed', () => {
+  const { root } = project(NEW_TASKS, DESIGN_WITH);
+  try {
+    const tasksFile = path.join(root, 'openspec', 'changes', 'c', 'tasks.md');
+    const original = fs.readFileSync(tasksFile, 'utf8');
+    const missingStep3 = RED_REPORT.replace(/  - step: 3[\s\S]*?Beta works\n/, '');
+    const namesStep2 = RED_REPORT.replace('  - step: 3', '  - step: 2');
+    const failed = RED_REPORT.replace('status: completed', 'status: failed');
+    const noPlan = RED_REPORT.slice(0, RED_REPORT.indexOf('plan_tests:')) + '\n';
+    const unknownGuard = ['--guard', 'test/z.test.js :: nope'];
+    for (const [text, extra] of [[missingStep3, []], [namesStep2, []], [failed, []], [noPlan, []], [RED_REPORT, unknownGuard]]) {
+      const r = writeback(root, writeReport(root, text), ...extra);
+      assert.equal(r.status, 1);
+      assert.equal(r.payload.status, 'error');
+      assert.equal(fs.readFileSync(tasksFile, 'utf8'), original, 'nothing is written');
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('writeback refuses a tasks.md in the earlier format', () => {
+  const { root } = project(NEW_TASKS + '\n## Required Documentation\n\n### Spec files\n\nNone\n', DESIGN_WITH);
+  try {
+    const r = writeback(root, writeReport(root, RED_REPORT));
+    assert.equal(r.status, 1);
+    assert.match(r.payload.errors[0].message, /earlier format/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('writeback and format are the only sub-commands that take the report and guard options', () => {
+  const { root } = project(NEW_TASKS, DESIGN_WITH);
+  try {
+    const r = spawnSync(process.execPath, [TOOL, 'fold', 'c', '--input-file', 'x', '--cwd', root], { encoding: 'utf8' });
+    assert.equal(r.status, 2);
+    const noReport = spawnSync(process.execPath, [TOOL, 'writeback', 'c', '--cwd', root], { encoding: 'utf8' });
+    assert.equal(noReport.status, 2);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

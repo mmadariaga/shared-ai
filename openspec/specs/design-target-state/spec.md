@@ -8,11 +8,11 @@ Define the target-state design artifact and its derived Architecture Snapshot an
 
 ### Requirement: design.md opens with a Target State section
 
-Design SHALL begin with `## Target State`, authored and persisted as the authoritative finished-shape record before other design sections. Its File Manifest SHALL be folded deterministically from Tasks entries. Interfaces SHALL begin with its first numbered Step and SHALL NOT contain Target State, Architecture Snapshot, or File Manifest sections.
+Design SHALL begin with `## Target State`, authored and persisted as the authoritative finished-shape record before other design sections. Its File Manifest SHALL be folded deterministically from the `**Files Affected**` entries of the steps without tests in Tasks. Interfaces SHALL begin with its first numbered Step and SHALL NOT contain Target State, Architecture Snapshot, or File Manifest sections.
 
-Target State SHALL present one concrete finished artifact rather than a Step walkthrough or motivation restatement. For code changes this includes the final payload, signature, schema, layout, or configuration. For prose changes this includes the resulting document section and field structure. A reader SHALL be able to determine the finished shape without reading Steps. If no expressible finished shape exists, Target State SHALL carry explicit None and a one-line reason rather than be silently omitted.
+Target State SHALL present one concrete finished artifact rather than a Step walkthrough or motivation restatement, and SHALL hold only what the code of the plan RED does not express: no function body, no test prose, and no instruction for how to build. For code changes it SHALL carry one Markdown bullet per new or changed public symbol in the pinned form `- <repository-relative path> :: <signature>`, where the path is the production file that holds the symbol and the signature is the exact declaration a caller sees, with no body. These entries SHALL be the only declaration of the signatures: the plan RED writes its stubs from them, and `/sai-3-implement` derives the production paths GREEN may write from them. A symbol that already exists with the same signature SHALL NOT be listed; a payload, schema, or configuration shape SHALL be listed the same way, with the shape as the signature. For prose changes Target State SHALL carry the resulting document section and field structure. A reader SHALL be able to determine the finished shape without reading Steps. If no expressible finished shape exists, Target State SHALL carry explicit None and a one-line reason rather than be silently omitted.
 
-After that artifact, Target State SHALL contain exactly one subsection, `### File Manifest`. The design step SHALL NOT emit an `### Architecture Snapshot` subsection, and the `design.md` template SHALL NOT scaffold one. When the File Manifest is absent, `sai/tools/file-manifest.js fold` SHALL create it at the end of `## Target State`; in a `design.md` written earlier that still carries `### Architecture Snapshot`, it SHALL place the manifest after that subsection. The deterministic manifest rules and the manifest's absence sentinel SHALL remain unchanged.
+After that artifact, Target State SHALL contain exactly one subsection, `### File Manifest`. The design step SHALL NOT emit an `### Architecture Snapshot` subsection, and the `design.md` template SHALL NOT scaffold one. When the File Manifest is absent, `sai/tools/file-manifest.js fold` SHALL create it at the end of `## Target State`; in a `design.md` written earlier that still carries `### Architecture Snapshot`, it SHALL place the manifest after that subsection.
 
 The overview SHALL NOT validate the manifest fold. It SHALL exclude the File Manifest subtree, and, for a design written earlier, the Architecture Snapshot subtree at any heading depth, retain any remaining selected Target State content, and omit the Target State heading if empty after exclusions.
 
@@ -22,7 +22,7 @@ The overview SHALL NOT validate the manifest fold. It SHALL exclude the File Man
 
 #### Scenario: Target State is one concrete artifact, not a step walkthrough
 - **WHEN** a change modifies a public signature and serialized schema
-- **THEN** Target State shows their final shapes without describing intermediate Step shapes
+- **THEN** Target State lists their final shapes as `- <path> :: <signature>` bullets with no function body and no intermediate Step shapes
 
 #### Scenario: prose change states its finished document structure
 - **WHEN** a change modifies instructions or documentation
@@ -42,7 +42,11 @@ The overview SHALL NOT validate the manifest fold. It SHALL exclude the File Man
 
 #### Scenario: target-state-folds-task-entries
 - **WHEN** the design worker generates Target State from task entries
-- **THEN** it contains the authoritative finished-shape artifact and the deterministically derived manifest at the end of the section
+- **THEN** it contains the `path :: signature` entries and the deterministically derived manifest of the steps without tests at the end of the section
+
+#### Scenario: an existing symbol with an unchanged signature is not listed
+- **WHEN** a change calls an existing public function without changing its signature
+- **THEN** Target State carries no `path :: signature` entry for that function
 
 ### Requirement: Target State does not replace or duplicate per-step interfaces
 
@@ -67,7 +71,7 @@ Where a signature appears in both `## Target State` and a `## Step N` section, t
 
 ### Requirement: File Manifest is a deterministic net fold over Files Affected
 
-The `### File Manifest` subsection SHALL be a flat, git-status-style list produced by a deterministic net fold over the same change's per-Step Files Affected entries. Each non-empty generated manifest entry SHALL be a Markdown bullet prefixed with `- `. Ordinary exact-file entries SHALL yield exactly one line per file the change creates, modifies, deletes, or renames, using the A/M/D/R tokens and R source-to-destination form defined by tasks-scaffold-format. One exact path SHALL have one net line rather than concatenated per-Step entries.
+The `### File Manifest` subsection SHALL be a flat, git-status-style list produced by a deterministic net fold over the `**Files Affected**` entries of the steps without tests of the same change's Tasks. A step with tests carries no `**Files Affected**`, so the manifest lists the documentation, prompts, configuration, and glue code that never pass through the plan RED; the tests and stubs of the steps with tests are shown by the plan's pull request and by the `path :: signature` entries. Each non-empty generated manifest entry SHALL be a Markdown bullet prefixed with `- `. Ordinary exact-file entries SHALL yield exactly one line per file those steps create, modify, delete, or rename, using the A/M/D/R tokens and R source-to-destination form defined by tasks-scaffold-format. One exact path SHALL have one net line rather than concatenated per-Step entries.
 
 Bounded generated A families SHALL be the sole exception to the individual-file line contract. The manifest SHALL retain one derivative family line as `- A <directory>/<prefix>*<suffix> — generated count=<positive integer> (Step <n>)`, preserving the declaration's directory, family, expected count, and attribution. This line SHALL not be an executable path or independently authorize writes. Apply SHALL resolve the authoritative task declaration to exact paths before close. Overlapping generated families and generated-family collisions recognized by the fold SHALL be rejected rather than silently merged.
 
@@ -97,7 +101,7 @@ Ordinary exact-path transitions SHALL remain:
 | R | D | D original source |
 | R | R | R original source -> final destination |
 
-Existence-based ordinary token derivation SHALL retain the table's reachable pairs: a path absent at a Step's baseline is touched only by A or as an R destination; a present path is never A and is touched only by M, D, R, or as an R source. Content rewrites after R SHALL remain described by the Step prose rather than alter the rename token.
+Existence-based ordinary token derivation SHALL retain the table's reachable pairs: a path absent at a Step's baseline is touched only by A or as an R destination; a present path is never A and is touched only by M, D, R, or as an R source. Content rewrites after R SHALL remain described by the Step's `**What Changes**` rather than alter the rename token.
 
 An exact path whose final state is ∅ SHALL be omitted even though it appears in tasks. Intermediate ∅ SHALL not suppress later recreation or renaming onto that path. Final ∅ SHALL remain the only omission asymmetry for ordinary exact entries; every other touched exact path SHALL appear in both surfaces. Generated declarations SHALL appear as bounded derivatives rather than individual unresolved paths.
 
@@ -165,11 +169,17 @@ The bullet prefix SHALL change presentation only. Verification SHALL continue to
 - **WHEN** Step 1 declares `A generated/migration-*.sql — generated count=2`
 - **THEN** the manifest contains `- A generated/migration-*.sql — generated count=2 (Step 1)` rather than inventing filenames or authorizing wildcard staging
 
+#### Scenario: steps with tests contribute no manifest line
+- **WHEN** Step 1 lists `**Scenarios**` and Step 2, a step without tests, lists `M docs/guide.md`
+- **THEN** the manifest contains only `- M docs/guide.md (Step 2)` and no line for the tests or stubs of Step 1
+
 ### Requirement: File Manifest has an independent None sentinel
 
 When the net fold produces no lines, File Manifest SHALL carry the exact sentinel `None — no files affected` followed by a one-line reason. An empty fold SHALL be valid when every ordinary touched path cancels to ∅ or when recognized None declarations explicitly identify no affected files. Explicit empty declarations SHALL not be confused with missing declarations.
 
 For the cancellation case, a conforming reason SHALL remain `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`.
+
+When no step of Tasks carries `**Files Affected**` because every step has tests, File Manifest SHALL carry the sentinel `None — every file passes through the plan RED` instead, and that sentinel SHALL never be replaced by `None — no files affected`.
 
 A change without public surfaces but with affected files SHALL still emit its full manifest.
 
@@ -185,15 +195,19 @@ A change without public surfaces but with affected files SHALL still emit its fu
 - **WHEN** recognized task declarations explicitly identify no affected files
 - **THEN** the empty manifest carries its own no-files-affected sentinel and one-line reason
 
+#### Scenario: every step has tests
+- **WHEN** every step of Tasks lists `**Scenarios**` and none carries `**Files Affected**`
+- **THEN** the manifest carries the sentinel `None — every file passes through the plan RED`, not `None — no files affected`
+
 ### Requirement: File Manifest glossary term
 
-The Language section of project-root GLOSSARY SHALL retain exactly one File Manifest entry defining the flat design subsection beneath Target State that lists net created, modified, deleted, or renamed files, sorted by path in Git-status form with Step attribution and derived by deterministic folding of Tasks Files Affected. The manifest SHALL remain distinct from the literal per-Step Files Affected selected by the overview; the overview SHALL exclude the manifest rather than project it.
+The Language section of project-root GLOSSARY SHALL retain exactly one File Manifest entry defining the flat design subsection beneath Target State that lists net created, modified, deleted, or renamed files, sorted by path in Git-status form with Step attribution and derived by deterministic folding of the Tasks Files Affected of the steps without tests. The manifest SHALL remain distinct from the literal per-Step Files Affected selected by the overview; the overview SHALL exclude the manifest rather than project it.
 
-The entry SHALL retain its Avoid aliases for file list, file inventory, and change file list. Relationships SHALL link File Manifest to Target State, as the answer to which files will change, and to File Change Type, as the consumer of per-Step change-type tokens. The glossary SHALL define no Architecture Snapshot, External Surface, or Internal Public Surface entry. Flagged ambiguities SHALL distinguish per-Step Files Affected from the aggregated design File Manifest.
+The entry SHALL retain its Avoid aliases for file list, file inventory, and change file list. Relationships SHALL link File Manifest to Target State, as the answer to which files will change, and to File Change Type, as the consumer of per-Step change-type tokens. The glossary SHALL define no Architecture Snapshot, External Surface, or Internal Public Surface entry. Flagged ambiguities SHALL distinguish the per-Step Files Affected, which only a step without tests carries, from the aggregated design File Manifest.
 
 #### Scenario: File Manifest entry present in Language with Avoid aliases
 - **WHEN** the glossary's File Manifest entry is read
-- **THEN** exactly one Language entry and its existing Avoid aliases identify the aggregated design subsection
+- **THEN** exactly one Language entry and its existing Avoid aliases identify the aggregated design subsection folded from the steps without tests
 
 #### Scenario: File Manifest linked to Target State and File Change Type in Relationships
 - **WHEN** glossary relationships are read
@@ -201,7 +215,7 @@ The entry SHALL retain its Avoid aliases for file list, file inventory, and chan
 
 #### Scenario: Files Affected vs File Manifest ambiguity resolved in Flagged ambiguities
 - **WHEN** the glossary distinction is read
-- **THEN** Files Affected denotes the per-Step Tasks field and File Manifest denotes the aggregated design subsection, not an overview file list
+- **THEN** Files Affected denotes the per-Step Tasks field of a step without tests and File Manifest denotes the aggregated design subsection, not an overview file list
 
 ### Requirement: Snapshot boundary changes are prospective and preserve existing artifacts
 

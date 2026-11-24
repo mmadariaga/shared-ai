@@ -672,3 +672,20 @@ test('a relative report file resolves against the report directory, with contain
     transfer.close(dir);
   }
 });
+
+test('the plan RED report carries per-step plan_tests and modified_tests, typed and completed-only', () => {
+  const plan = [{ step: 1, test_command: 'node --test test/a.test.js', tests: [{ path: 'test/a.test.js', name: 'Alpha works' }, { path: 'test/a.test.js', name: 'Alpha edge', regression_guard: true }] }];
+  const modified = [{ path: 'test/old.test.js', reason: 'uses a changed signature' }];
+  const good = base({ test_command: 't', notes: '', plan_tests: plan, modified_tests: modified });
+  assert.deepEqual(verdict(good, 'implement').errors, []);
+  assert.deepEqual(verdict(base({ test_command: 't', notes: '' }), 'implement').errors, [], 'the fields stay optional for the fix RED and GREEN');
+  const bad = (override) => verdict(base({ test_command: 't', notes: '', plan_tests: plan, ...override }), 'implement').errors;
+  assert.ok(bad({ plan_tests: [{ ...plan[0], step: 0 }] }).includes('plan_tests[0].step must be a positive integer'));
+  assert.ok(bad({ plan_tests: [{ ...plan[0], tests: [] }] }).includes('plan_tests[0].tests must be a non-empty array'));
+  assert.ok(bad({ plan_tests: [{ ...plan[0], tests: [{ path: 'p', name: '' }] }] }).includes('plan_tests[0].tests[0].name must be a non-empty string'));
+  assert.ok(bad({ plan_tests: [{ ...plan[0], tests: [{ path: 'p', name: 'n', regression_guard: 'yes' }] }] }).includes('plan_tests[0].tests[0].regression_guard must be a boolean'));
+  assert.ok(bad({ plan_tests: [{ ...plan[0], extra: 1 }] }).includes('plan_tests[0] has the unknown key extra'));
+  assert.ok(bad({ modified_tests: [{ path: 'p' }] }).some((e) => e.startsWith('modified_tests[0] must have exactly the keys')));
+  const needs = verdict({ status: 'needs_input', summary: 's', changed_files: [], question: 'q', options: [], plan_tests: plan }, 'implement');
+  assert.ok(needs.errors.includes('plan_tests is allowed only on a completed report'));
+});

@@ -6,106 +6,14 @@ This capability requires task steps to identify affected existing tests and expl
 
 ## Requirements
 
-### Requirement: Each tasks.md step declares the existing tests it breaks
-
-The active task-generation step at `sai/commands/design/steps/tasks.md` SHALL require every `## Step N` section of `openspec/changes/{name}/tasks.md` to declare which **existing** tests the step's change breaks.
-
-The declaration SHALL be emitted under the pinned literal label `**Existing Tests Broken**`, as the fifth and last sub-field of the step section, immediately following `**Testing Strategy**`. The label and position are fixed by the `tasks-scaffold-format` capability; this capability defines the field's content.
-
-The field SHALL name the affected test files or test suites concretely. When the step breaks no existing test, the field SHALL be emitted with an explicit `None` rather than omitted, so a reader can distinguish "no impact" from "not analyzed".
-
-The field concerns *existing* tests only. New tests the step adds are covered by the step's `**Testing Strategy**` and by `interfaces.md`; they SHALL NOT be listed here.
-
-#### Scenario: step breaking existing tests names them
-
-- **WHEN** a step changes behavior that existing tests assert on
-- **THEN** the step's existing-tests-broken field names each affected test file by its exact repository-relative path
-
-#### Scenario: step breaking no existing test
-
-- **WHEN** a step breaks no existing test
-- **THEN** the field is present with an explicit `None`
-- **AND** it is NOT omitted from the step
-
-#### Scenario: new tests are not listed in this field
-
-- **WHEN** a step adds new tests
-- **THEN** those new tests appear in `**Testing Strategy**` and `interfaces.md`
-- **AND** they do NOT appear in the existing-tests-broken field
-
-#### Scenario: task-test-impact-uses-live-authority
-- **WHEN** a task step is generated
-- **THEN** its existing-test-impact field is emitted according to the active step-local task rule.
-
-### Requirement: Each declared breakage states its failure mode
-
-Every existing test named in the field SHALL state its failure mode as one of two tokens:
-
-- `compile` — the test no longer compiles or resolves (a changed signature, a removed symbol, a renamed type). The failure is structural and surfaces before the test runs.
-- `runtime` — the test compiles but its assertions no longer hold against the new behavior.
-
-The distinction carries **effort and ordering** information: `compile` breakage is structural, mechanical, and bulk-fixable; `runtime` breakage requires per-test judgment about what the new expected value is.
-
-The distinction SHALL NOT be read as a commit-boundary discriminator. Per `atomic-commit-planning`, both failure modes SHALL be resolved within the same step — a commit boundary never leaves the suite red. `runtime` records that the fix is costlier per test, not that it may be postponed.
-
-#### Scenario: signature change breaks compilation
-
-- **WHEN** a step changes a function signature that existing tests call
-- **THEN** those tests are declared with failure mode `compile`
-
-#### Scenario: behavior change breaks assertions only
-
-- **WHEN** a step changes behavior without changing any signature the tests reference
-- **THEN** the affected tests are declared with failure mode `runtime`
-
-#### Scenario: failure mode is always stated
-
-- **WHEN** any existing test is named in the field
-- **THEN** it carries exactly one of `compile` or `runtime`
-
-#### Scenario: runtime mode does not defer the fix
-
-- **WHEN** a test is declared with failure mode `runtime`
-- **THEN** its assertions are still updated within the same step
-- **AND** the mode is NOT treated as permission to commit the step with that test failing
-
-### Requirement: Central fixtures are ordered first within a step's breakage list
-
-Within a step's existing-tests-broken field, shared or central test infrastructure — fixtures, builders, factories, base classes, and test helpers used by more than one test file — SHALL be listed before the individual test files that depend on them.
-
-The ordering exists so the implementation phase updates the shared surface once, before the dependent tests, rather than discovering the shared dependency partway through.
-
-#### Scenario: shared fixture listed before dependent tests
-
-- **WHEN** a step breaks a shared test fixture and three test files that consume it
-- **THEN** the fixture appears first in the field
-- **AND** the three dependent test files follow it
-
-#### Scenario: no shared infrastructure affected
-
-- **WHEN** a step breaks only leaf test files with no shared fixture involved
-- **THEN** no reordering obligation applies and the test files are listed directly
-
-### Requirement: The field is a declaration, not a restatement of test content
-
-The existing-tests-broken field SHALL name each affected test file by its exact repository-relative path, never a suite name, with its failure mode; shared infrastructure entries SHALL be test-only files, never production files. It SHALL NOT reproduce assertion values, expected outputs, or test body content — that content is excluded from `tasks.md` by the existing rule of conciseness and lives in `interfaces.md`.
-
-#### Scenario: field stays at the naming altitude
-
-- **WHEN** a step declares a broken test with failure mode `runtime`
-- **THEN** the field names the test file and the failure mode
-- **AND** it does NOT restate the assertion values that will change
-
 ### Requirement: Contract changes require semantic consumer and fixture review
 
-When a Step changes mandatory fields, constraints, or results of an existing contract, Design SHALL review current consumers and shared test fixtures, including runtime assertions rather than only compilation references.
-
-Testing Strategy SHALL record reviewed paths and explain required adaptations or continued compatibility. Existing Tests Broken SHALL name identified test-only adaptations by exact backticked repository-relative paths, fixtures before dependent tests, with compile or runtime modes. The adaptations SHALL be assigned to the same Step's RED work. None SHALL require supporting review when an existing contract changes. Semantic completeness SHALL remain agent-owned and SHALL not be claimed as a deterministic preflight guarantee.
+When a Step changes mandatory fields, constraints, or results of an existing contract, Design SHALL review current consumers and shared test fixtures, including runtime assertions rather than only compilation references, and SHALL decide whether each consumer needs its own step: a consumer that is production code tested by the same scenarios SHALL stay in the step, and a consumer that no test can pin SHALL go to a step without tests that lists it under `**Files Affected**`. Existing tests of the old contract SHALL be updated by the plan RED inside its bound, not declared in `tasks.md`. Semantic completeness SHALL remain agent-owned and SHALL not be claimed as a deterministic preflight guarantee.
 
 #### Scenario: Contract result changes
-- **WHEN** an existing contract changes a mandatory result consumed by tests or fixtures
-- **THEN** Design records its consumer review and declares identified adaptations for the same Step's RED work
+- **WHEN** an existing contract changes a mandatory result consumed by production code, tests, and documentation
+- **THEN** Design keeps the tested production consumers in the changing step, puts the documentation in a step without tests, and leaves the existing tests to the plan RED
 
 #### Scenario: Review finds no broken existing tests
-- **WHEN** a contract-changing Step declares Existing Tests Broken as None
-- **THEN** Testing Strategy records supporting consumer and fixture review rather than relying only on compilation success
+- **WHEN** a contract-changing Step has no existing test that uses the changed signature or asserts a modified or removed scenario
+- **THEN** `tasks.md` carries no `**Existing Tests Broken**` field and the plan RED reports no entry in `modified_tests`

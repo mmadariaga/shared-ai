@@ -90,19 +90,16 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Envelope Contract Violation**: "A result that cannot be accepted under its closed lifecycle envelope because a required field is missing, a value is invalid, or an undeclared field is present."
 *Avoid*: malformed result, output-shape error, protocol typo
 
-**Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
-*Avoid*: Tests Affected, Broken Tests, test impact, regressions
-
 **Failure Class**: "The closed machine-readable classification on a failed routed-worker outcome that identifies the repair boundary without relying on summary prose."
 *Avoid*: failure kind, failure reason, error category
 
 **First Filed Step**: "The first step of a linear step machine whose `follow` is a file — the second step in every current machine — whose **Next Pointer** `sai-state reset` returns and the coordinator sends as the first line of the post-ready task disclosure."
 *Avoid*: first step, first real step, startup step
 
-**File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
+**File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step without tests, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
 *Avoid*: change type, change-kind, file verb, action letter
 
-**File Manifest**: "The flat `design.md` subsection under **Target State** that lists every file the change creates, modifies, deletes, or renames — path-sorted, git-status-style, with step attribution — derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`; it shows the reviewer the documentation, prompts, configuration, and glue code that never pass through the plan RED."
+**File Manifest**: "The flat `design.md` subsection under **Target State** that lists every file the change creates, modifies, deletes, or renames — path-sorted, git-status-style, with step attribution — derived by a deterministic net fold over the `**Files Affected**` entries of the steps without tests in `tasks.md`; it shows the reviewer the documentation, prompts, configuration, and glue code that never pass through the plan RED."
 *Avoid*: file list, file inventory, change file list
 
 **Finding Identifier**: "The severity-prefixed label that identifies a **Review Finding** within a single review — the severity's initial followed by the finding's sequence within that severity (`H1`, `H2`, `M1`, `L1`) — derived from the finding's `Severity` field, which remains the source of truth."
@@ -295,6 +292,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Worktree Name Triple**: "The three derived names of one git worktree under the `/sai-worktree` convention — the sibling directory suffix, the branch name, and the counter slot — each derivable from the others: the default `<main-dir>.worktree-<n>` directory maps to the `worktree-<n>` branch, a custom name maps to the branch obtained by stripping a leading `<main-dir>.` prefix (falling back to the whole name when no such prefix is present), and `n` is the first free slot."
 *Avoid*: worktree naming, directory-branch pair, worktree pair, worktree slot naming
 
+**Write-back**: "The deterministic write, by `file-manifest.js writeback`, of `**Tests**`, `**Test Command**`, and `[regression guard]` marks into each `tasks.md` step with tests from the accepted plan RED report, so no model copies test facts by hand."
+*Avoid*: test sync, manual guard marking, report copy
+
 ## Relationships
 
 - A **Boot Request**, a **Command Bootstrap**, and a **Harness Boot Adapter** are retired: a /sai-* wrapper forwards its `InvocationEnvelope` straight to its **Command Card**.
@@ -340,9 +340,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
 - A **Routing Line** contains exactly one **Routing Category**, one **Routing Context**, and one **Routing Difficulty** token, in that order, each emitted as a `key=value` pair separated by middle dots.
 - An **Unrecoverability Veto** belongs to one failed outcome and stops the remaining bounded recovery attempts without changing the failure's **Failure Class**.
-- A **File Change Type** prefixes every `**Files Affected**` entry of a step; an `R` entry names its source and destination paths.
+- A **File Change Type** prefixes every `**Files Affected**` entry of a step without tests; an `R` entry names its source and destination paths.
 - A **Routing Line** is judged by purpose, not derived from paths; its **Routing Difficulty** is measured against the implementer.
-- A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; it names the public signatures the **Plan RED Worker** writes its stubs from.
+- A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; it names the public signatures, as `path :: signature` entries with no function bodies, that the **Plan RED Worker** writes its stubs from.
 - A **Verify-First Marker** on a risk constrains **Routing Line** step ordering in `tasks.md`, sequencing the work that resolves the risk before the step it names.
 - A **Question Context Contract** governs every user-facing decision prompt: worker `needs_input` questions, design notice messages, and the fixed instruction gates.
 - A **Question Context Contract** is satisfied at the prompt's authoring surface — the worker or the instruction — and the coordinator forwards the question verbatim without rephrasing or adding context.
@@ -373,7 +373,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 ## Flagged ambiguities
 
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
-- **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` (authoritative per step);  **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view) — the two are never synonyms, and `tasks.md` remains the authority.
+- **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` that only a step without tests carries (authoritative per step);  **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view) — the two are never synonyms, and `tasks.md` remains the authority.
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings". Artifact reviews use `H1`/`M1`/`L1` identifiers on the closed `High`/`Medium`/`Low` set (no `Critical`), while all four audit commands share one `Critical`-based severity vocabulary — `Critical`/`High`/`Medium`/`Low`, plus the review-only `Question` category and the `sai-7`/`sai-8`-only `Informational` level — with severity-prefixed identifiers (`C`/`H`/`M`/`L`, plus `Q`/`I`) and a closing `Summary:` tally line per report. **Resolution:** **Review Finding** names the artifact-review item only; audit findings use the shared audit severity vocabulary and are never called Review Findings.
 - **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/commands/{phase}/{artifact}-report.template.md` is the write-time contract fetched by the phase instruction. **Resolution:** schema scaffolds are descriptive under **Schema Template Authority** and point at the command-owned contract via a Write-time authority comment — they are not a second write-time contract and are not pinned to content parity.
 - **"ADR/DDR" as an undecided pair vs a resolved family** — the criteria surfaces (`design.md`'s `## Decisions`, `spec.propose.md`'s ADR/DDR Proposal Check, the schema's design instruction) use "ADR/DDR" as one phrase without resolving a family, and a bare "family" is ambiguous between the record families and the report template families. **Resolution:** "ADR/DDR" names the two-family evaluation surface only; the ordered routing test resolves the family, recorded in `design.md` as `**Record family**: adr|ddr`; **Decision Record Family** names the `adr`/`ddr` families and the qualified term is always used.

@@ -2,41 +2,21 @@
 
 ## Purpose
 TBD - created by archiving change cost-optimizations. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Each tasks.md step SHALL describe HOW to build, not WHAT to build
 
-Steps in `tasks.md` are a planning scaffold. They MUST reference the relevant `specs/<capability>/spec.md` by path and describe the implementation approach mapped to the existing codebase. They MUST NOT copy scenario text, field names, or detailed behavior from specs.
+Steps in `tasks.md` are a planning scaffold that records only what the code of the plan RED does not express. They MUST NOT copy scenario text, field names, or detailed behavior from specs, and MUST NOT describe how to build a behavior that a test and a `path :: signature` entry of `design.md` already pin. A step with tests MUST name only the titles of the scenarios it covers; a step without tests MUST describe in `**What Changes**` what changes in each of its files and reference the relevant `specs/<capability>/spec.md` by path. A step MUST NOT carry `**What Will Be Done**`.
 
 #### Scenario: Step describes implementation approach
-- **WHEN** a tasks.md step is authored for a capability
-- **THEN** the "What Will Be Done" field describes the implementation mechanics (e.g. which class to extend, which pattern to follow) and ends with a reference to the spec file path
-- **THEN** it does NOT restate requirements or copy scenario text already present in the spec
+- **WHEN** a tasks.md step without tests is authored for a capability
+- **THEN** its `**What Changes**` field describes what changes in each file it lists, references the spec file path, and does not restate requirements or copy scenario text already present in the spec
 
 #### Scenario: Step restates spec content
 - **WHEN** a tasks.md step duplicates behavior description from the spec
-- **THEN** this violates the conciseness rule; the content MUST be replaced with a spec reference
+- **THEN** this violates the conciseness rule; the content MUST be replaced with the scenario titles (a step with tests) or a spec reference (a step without tests)
 
----
-
-### Requirement: The Required Documentation section in tasks.md SHALL include a Spec files subsection
-
-The `## Required Documentation` section MUST contain a `### Spec files` subsection, placed first, before `### Local files` and `### External URLs`. It lists every `specs/**/*.md` file consulted during the design step, including both change delta specs under `openspec/changes/{change-name}/specs/**` and consulted main specs under `openspec/specs/**`. This subsection MUST NOT be empty.
-
-#### Scenario: Design step completes
-- **WHEN** `tasks.md` is written
-- **THEN** `## Required Documentation` contains `### Spec files`, `### Local files`, and `### External URLs` subsections in that order
-- **THEN** `### Spec files` lists every spec file path referenced by the implementation steps, delta and main specs alike
-
-#### Scenario: No spec files consulted
-- **WHEN** no spec files were consulted (impossible in a valid SAI workflow)
-- **THEN** the subsection MUST still appear and MUST NOT be empty or contain "None"
-
-### Requirement: Required Documentation SHALL be populated entirely from the explore subagent's report
-
-The `### Local files` and `### External URLs` subsections MUST be derived from the explore subagent's output and the design-phase documentation research, never from files the main agent read directly. Each `### Local files` entry MUST be a whole-file path with no line range, followed by ` — ` and its relevance note; each `### External URLs` entry MUST be a URL followed by ` — ` and its relevance note.
-
-#### Scenario: Main agent populates Required Documentation
-- **WHEN** the main agent writes the `### Local files` and `### External URLs` subsections
-- **THEN** every entry corresponds to a file or URL reported by the explore subagent or consulted during design research, written as `<path or URL> — <relevance note>`
-- **THEN** the relevance note is one short sentence stating why that resource matters for implementing the change
-
+#### Scenario: Step with tests names only scenarios
+- **WHEN** a tasks.md step changes behavior that a test can pin
+- **THEN** it carries `**Scenarios**` with the scenario titles and no prose about how to build the behavior
