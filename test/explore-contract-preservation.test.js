@@ -65,11 +65,11 @@ test('approach comparison: fixed choices, refinements, and material-change prece
 
 test('approach comparison: conversation-only decisions reuse handoff fields without new machinery (E7, I3–I4)', () => {
   const contract = comparison();
-  const format = source('sai/policies/ready-to-propose-format.md');
+  const format = source('sai/policies/issue-format.md');
   assert.match(contract, /Keep the recommendation, alternatives, pending questions, and chosen approach only in conversation/);
   assert.match(contract, /chosen approach and its rationale into `Decisions`, rejected alternatives into `Alternatives considered`, and accepted trade-offs into `Trade-offs accepted`, preserving the change document format/);
-  for (const field of ['Decisions & Rationale', 'Alternatives Considered', 'Trade-offs Accepted']) {
-    assert.ok(format.includes(`**${field}**`), `Existing format must own ${field}`);
+  for (const field of ['Decisions', 'Alternatives considered', 'Trade-offs accepted']) {
+    assert.ok(format.includes(`### ${field} — optional`), `Existing format must own ${field}`);
   }
   assert.match(contract, /uses `explore-idea@1` unchanged: no new stage, persistent state, event, panel entry, or instruction file/);
   assert.match(contract, /replaces no technical experiment and authorizes no implementation or route/);

@@ -95,7 +95,7 @@ async function resolve(value, io) {
 // deterministic HTML detector decides, and Markdown is the answer when it is in doubt.
 function descriptionFormat(multiline, description) {
   if (multiline && typeof multiline === 'object') return String(multiline['System.Description']).toLowerCase() === 'markdown' ? 'markdown' : 'html';
-  return require('./ready-to-propose').isHtmlDescription(description) ? 'html' : 'markdown';
+  return require('./change-document').isHtmlDescription(description) ? 'html' : 'markdown';
 }
 
 async function read(reference, io) {

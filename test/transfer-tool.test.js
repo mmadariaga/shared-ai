@@ -368,7 +368,7 @@ test('every worker card that spells the report put command saves with --exclusiv
   }
   // Block export and backfill drafts keep the replacing default.
   assert.doesNotMatch(read('sai/commands/backfill/worker.md'), /put --dir <transfer-dir>[^`]*--exclusive/);
-  assert.doesNotMatch(read('sai/policies/ready-to-propose-format.md'), /--exclusive/);
+  assert.doesNotMatch(read('sai/policies/issue-format.md'), /--exclusive/);
 });
 
 // ─── accept and watch: recovery of undelivered worker reports ────────────────

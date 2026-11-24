@@ -35,7 +35,7 @@ On request from any workflow, `to-backlog` SHALL run its inspection and review s
 
 ### Requirement: Backlog skill files stay caller-agnostic
 
-`skills/universal/to-backlog/SKILL.md` and `skills/universal/to-backlog/slice-set.md` SHALL contain no reference to `sai-explore` or Explore. The slice-set correspondence hand-off to `backlog-origin-transport.md` SHALL apply whenever the caller stores the blocks for later planning dispatch.
+`skills/universal/to-backlog/SKILL.md` and `skills/universal/to-backlog/slice-set.md` SHALL contain no reference to `sai-explore` or Explore. The slice-set correspondence hand-off to `backlog-origin-transport.md` SHALL apply whenever the caller stores the change documents for later planning dispatch.
 
 #### Scenario: Caller references are absent
 
@@ -179,3 +179,22 @@ When the `ready` proposal reports `auto_approve: true`, the `to-backlog` skill S
 #### Scenario: Base-file true grants and a local value overrides it
 - **WHEN** only `.sai/settings.jsonc` sets `publication.autoApprove` to `true`, then `.sai/settings.local.jsonc` also sets it to `false`, and then the local file sets it to `true`
 - **THEN** the value passed to the adapter is `true`, `false`, and `true`, and none of the three invocations carries a consent warning
+
+### Requirement: A stored change document is published without a rewrite
+
+When a caller supplies a stored change document, `to-backlog` SHALL pass its verified file reference as `document` (`{document_file, document_hash}`) in place of `title` and `description`, and `sai/tools/to-backlog.js` SHALL verify the file against its hash, require a complete change document, and fill the issue title from the document's `# <title>` line and the description from the rest of the document, unchanged. The skill SHALL draft and rewrite nothing for such a request, and its review and confirmation SHALL show that exact title and description. A request that names both a document and a title or description, a missing, unreadable, or mismatched file, or an incomplete document SHALL end the run with the tool's message and publish nothing. Claude Code and opencode SHALL behave alike.
+
+#### Scenario: A document reference fills the title and the description
+
+- **WHEN** a create request carries a `document` reference whose file matches its hash and holds a complete change document
+- **THEN** the proposal's title is the document's title line and its description is the rest of the document, byte for byte
+
+#### Scenario: A request names a document and a title
+
+- **WHEN** a request carries a `document` reference together with a `title` or a `description`
+- **THEN** the tool refuses the request and publishes nothing
+
+#### Scenario: A mismatched document file
+
+- **WHEN** the `document` file does not match its hash or is not a complete change document
+- **THEN** the run ends with the tool's message and publishes nothing

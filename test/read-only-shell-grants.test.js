@@ -26,7 +26,7 @@ const TABLE = {
   research: { plain: PLAIN, nodes: [FETCH, { node: S('sai-cache-warmer/wait.js'), args: 'begin --agent budget-explorer --harness claude' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --chain abc123' }, { node: S('sai-cache-warmer/wait.js'), args: 'warm --state eyJhIjoxfQ' }] },
   'explore-command': { plain: ['openspec list --json', 'git status --short', ...PLAIN.slice(4)], nodes: [FETCH,
     { node: T('to-backlog.js'), args: 'create' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness}' }, { node: S('to-backlog/scripts/prepare-temp.js'), args: '{harness} --dir x' },
-    { node: S('sai-cache-warmer/wait.js'), args: 'wait' }, { node: T('ready-to-propose.js'), args: `check --profile strict ${INPUT}` }, OPEN] },
+    { node: S('sai-cache-warmer/wait.js'), args: 'wait' }, { node: T('change-document.js'), args: `sections ${INPUT}` }, OPEN] },
   'status-command': { plain: ['openspec status --change x --json', ...PLAIN.slice(4)], nodes: [FETCH,
     { node: T('status.js'), args: 'panel my-change --json --cwd .' }, { node: T('change-picker.js'), args: '--json' }] },
   'retrospective-command': { plain: PLAIN.slice(4), nodes: [FETCH, { node: T('retrospective.js'), args: 'index target --limit 5' }] },

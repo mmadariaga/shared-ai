@@ -17,18 +17,24 @@ origins are not permission to overwrite either one: retain the existing valid
 value, warn, and continue without assigning new closing intent.
 
 For a published slice set, use `backlog-origin-transport.md`'s validated
-`attach-origin` and amendment protocol with the verified child correspondence.
-For an imported single issue, include its verified URL when creating the document.
-If that document was already prepared, read it from the store, add only its
-`Backlog origin:` line, run the existing dispatchable check and bounded hygiene
-judgment, then submit it through `sai-state emit`'s existing
-`--amend <name> --document-file <path>` operation. Re-read the amended document with
-`sai-state block <id> <change-name> --export --harness <claude|opencode>` and
-check its extracted origin and the refreshed `hash` it returns before dispatch;
-when the export returns `BLOCK_EXPORT_FAILED` or `BLOCK_NOT_FOUND`, stop before
-dispatch. Never patch
-the session file or reuse a pre-amendment hash. This amendment uses the same
-document line and validation mechanism, not a separate origin envelope.
+`change-document.js attach-origin` and amendment protocol with the verified child
+correspondence. For an imported single issue, include its verified URL when creating
+the document. A published change document holds no URL of its own publication, so
+when the imported issue is a change document, `change-document.js sections --origin
+<url>` reports the `Backlog origin:` the change takes: the imported URL when the
+document has none, the existing value with a warning when it names a different
+issue. If the document was already prepared, export it from the store, run
+`change-document.js set-origin --document-file <path> --origin <url> --harness
+<claude|opencode>` (it adds only its `Backlog origin:` line, keeps a different
+existing value, and returns a new private file and its hash), run the existing
+dispatchable check and bounded hygiene judgment on that file, then submit it through
+`sai-state emit`'s existing `--amend <name> --document-file <path>` operation.
+Re-read the amended document with `sai-state block <id> <change-name> --export
+--harness <claude|opencode>` and check its extracted origin and the refreshed `hash`
+it returns before dispatch; when the export returns `BLOCK_EXPORT_FAILED` or
+`BLOCK_NOT_FOUND`, stop before dispatch. Never patch the session file or reuse a
+pre-amendment hash. This amendment uses the same document line and validation
+mechanism, not a separate origin envelope.
 
 At each handoff where an origin is known, compare the received origin with the
 outgoing document or metadata: planning output, backfill draft, materialized

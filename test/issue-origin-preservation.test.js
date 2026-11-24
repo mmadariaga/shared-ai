@@ -6,44 +6,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
-const detector = require('../sai/tools/ready-to-propose');
+const detector = require('../sai/tools/change-document');
+const { document } = require('./helpers/change-document-fixture');
 const { readOpenspecYaml } = require('../sai/tools/openspec-yaml');
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-
-function block(name) {
-  return `## Ready to Propose
-
-**Change name**: ${name}
-**Depends on**: None
-**What**: Preserve an origin.
-**Why**: Keep the issue identity.
-**Capabilities in scope**:
-- origin: Preserve the issue.
-**Research Leads**:
-- None
-**Decisions & Rationale**:
-- None
-**Alternatives Considered**:
-- None
-**Trade-offs Accepted**:
-- None
-**Model / Re-framings**:
-- None
-**Key constraints**:
-- Keep scope small.
-**Terms**:
-- None
-**Edge Cases**:
-- E1: Retain the selected issue.
-**Implementation Details**:
-- I1: Preserve the origin.
-**Out of scope Implementation Details**:
-- None
-**Overview language**: None
-
----`;
-}
 
 test('backfill and both Direct Build validators allow origin independently of intent', () => {
   const instruction = read('sai/commands/backfill/instructions.md');
@@ -84,14 +51,14 @@ for (const priorIntent of [false, true]) test(`sai-workflow ${priorIntent ? 'usa
   fs.cpSync(path.join(root, 'openspec', 'schemas', 'sai-workflow'), path.join(cwd, 'openspec', 'schemas', 'sai-workflow'), { recursive: true });
   fs.writeFileSync(path.join(cwd, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
   const correspondence = { version: 1, platform: 'github', role: 'parent', parent: 'https://github.com/team/repo/issues/10', slices: [11, 12, 13].map(number => ({ change_name: `child-${number}`, issue: `https://github.com/team/repo/issues/${number}`, depends_on: [] })) };
-  const attached = detector.attachBacklogOrigins(correspondence.slices.map(slice => block(slice.change_name)).join('\n\n'), correspondence);
+  const attached = detector.attachBacklogOrigins(correspondence.slices.map(slice => document(slice.change_name)), correspondence);
   const closingLines = [];
-  for (const updated of attached.blocks) {
-    assert.notEqual(updated.hash, detector.hashBlock(block(updated.name)));
-    assert.equal(updated.hash, detector.hashBlock(updated.text));
-    const intake = detector.checkDispatchable(updated.text);
-    assert.equal(intake.dispatchable, true);
-    const origin = intake.blocks[0].backlog_origin;
+  for (const updated of attached.documents) {
+    assert.notEqual(updated.hash, detector.hashDocument(document(updated.name)));
+    assert.equal(updated.hash, detector.hashDocument(updated.text));
+    const intake = detector.checkDocument(updated.text);
+    assert.equal(intake.ok, true);
+    const origin = intake.change.backlog_origin;
     assert.equal(origin, correspondence.slices.find(slice => slice.change_name === updated.name).issue);
     assert.notEqual(origin, correspondence.parent);
     // The prompt-owned planning/backfill writer's canonical metadata, followed by

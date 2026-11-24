@@ -1,15 +1,17 @@
 # Backlog issue format
 
 Use this provider-neutral reference when drafting a title and description for
-`to-backlog`; `/sai-explore` reads the same format to recognize an issue and its
-Maturity. A backlog item records the current agreement boundary, not a
+`to-backlog` that has no stored change document to publish; `/sai-explore` reads
+the same format to recognize an issue and its Maturity. A backlog item records the current agreement boundary, not a
 transcript or permission to implement.
 
-The same format is the **change document** of a crystallized change: the issue
-extended with the block-only sections and a `## Change` metadata section, stored
-as one file that `sai/tools/change-document.js` parses, validates, hashes, and
-verifies (§ Change document). One format records the agreement, so publishing it
-copies the document and re-importing it loses no field.
+This file is the only definition of the format of a crystallized change. The same
+format is the **change document** of a crystallized change: the issue extended
+with the sections of an agreed implementation and a `## Change` metadata section,
+stored as one file that `sai/tools/change-document.js` parses, validates, hashes,
+and verifies (§ Change document). One format records the agreement, so publishing
+it copies the document as it is and re-importing it loses no field. The
+`Ready to Propose` block and its tool are retired and never read.
 
 ## Agreement and update boundary
 
@@ -114,9 +116,15 @@ empty set permits `Edge cases agreed` without an empty Edge cases section.
 
 ### Implementation notes — optional
 
-List agreed necessary implementation details using `I#` identifiers. Omit when
-empty or unagreed; recommendations belong in Open questions. Include only details
-needed for this work, not a copy of repository-wide conventions.
+List agreed necessary implementation details using `I#` identifiers, in their
+established order with identifiers preserved. Omit when empty or unagreed;
+recommendations belong in Open questions. Include only details needed for this
+work, not a copy of repository-wide conventions: the list holds technical decisions
+about how to implement, not tasks, so what to build travels in Scope, Edge cases,
+and Capabilities. A single change with no qualifying decision omits the section once
+the user confirmed the empty list. Every slice of a slice set owns at least one item,
+and a shared `I#` may stay in scope of several slices. Preserving the wording means
+identifiers and order, not source language.
 
 ### Out-of-scope implementation notes — optional
 
@@ -156,9 +164,18 @@ no other section, such as future behavior excluded from this change, follow-up
 items, or a point the conversation left explicitly undecided (one `Undecided:`
 sentence each, naming the `E#` or `I#` it affects). A non-goal is a binding
 exclusion and belongs in Non-goals; only the detail of how the excluded behavior
-should work later belongs here. Carry each fact once, in the section that owns it.
-Omit when empty. Consumers read it as context: no requirement or scope derives
-from it.
+should work later belongs here, and the pair is not duplication. A requirement that
+describes future behavior outside this change goes here as future context; an
+obligation of this change goes to Scope, Edge cases, or Implementation notes. This
+section is the single place where an open decision travels: every other section
+states decided behavior only. Carry each fact once, in the section that owns it.
+Before the document is written, check that every discussed-and-excluded topic whose
+detail goes beyond its non-goal has that detail here, and that every Scope or
+Non-goals line constrains the change. In a slice set each document carries only its
+own slice's notes. Omit when empty. Consumers read it as context: no requirement or
+scope derives from it, and `/sai-1-spec` and backfill copy it verbatim (no
+rewriting, summarizing, translating, or merging) into the `## Request Additional
+Notes` section of `proposal.md`.
 
 ### Open questions — mandatory
 
@@ -195,14 +212,40 @@ stays directly after Maturity, ahead of this section.
 
 - `Change name:` — required; the kebab-case name of the change.
 - `Depends on:` — optional; the immediate dependency change names, comma-separated,
-  or `None`. A change never depends on itself and lists a dependency once.
+  or `None`: real immediate dependencies only, never branch ancestry. A change never
+  depends on itself and lists a dependency once. A slice set is validated as a whole
+  before storage, display, amendment, or publication, and the tool returns a stable
+  blocker-first order; a contradiction that needs an agreement change goes to the
+  user, and an agreed edge is never invented or deleted to pass validation.
 - `Specs:` — optional; `none — <reason>` declares that the change has no
-  spec-level behavior, with a reason after the dash.
+  spec-level behavior (a pure refactor, tooling, or documentation change), with a
+  reason after the dash. The crystallization agrees it with the user and no worker
+  decides it. Every phase then honors it: `/sai-1-spec` writes only `proposal.md`
+  and sets `skip_specs: true` in `.openspec.yaml`, `/sai-2-design` and
+  `/sai-3-implement` work from the proposal, `/sai-status` shows the specs as
+  `skipped`, `/sai-archive` syncs no delta, and Direct Build backfills no spec. A
+  document without the line keeps the rule that every phase requires at least one
+  non-empty spec file, and files already under `specs/` win over the line.
 - `Explore origin:` — optional; `<harness> <sessionID>[, <harness> <sessionID>…]`
   with harness `opencode` (`ses_…`) or `claude` (a session UUID); an entry without
-  a harness inherits the previous entry's. Provenance only.
+  a harness inherits the previous entry's, so the first entry always names its own.
+  The ordered root sessions of the `/sai-explore` chats that crystallized the
+  document; a value in any other form, or an id whose shape does not match its
+  harness, fails the check (`INVALID_EXPLORE_ORIGIN`). Spec, backfill, and Direct
+  Build persist the bare ids as the `explore_origin` list in `.openspec.yaml`, and
+  the change's `telemetry.md` records each listed exploration
+  (`@sai/policies/change-telemetry.md` § Exploration). Re-crystallizing an imported
+  document copies the list in order and appends the current session when it
+  qualifies. Provenance only: no requirement, scenario, or scope derives from it.
 - `Backlog origin:` — optional; the canonical GitHub, GitLab, or Azure DevOps issue
   URL of the item the change came from. Provenance, not remote-mutation authority.
+  Retain the selected child URL, never its parent context URL; Spec preserves it
+  under `.openspec.yaml`'s `backlog_origin`, and the implementation coordinators
+  verify the selected child and parent independently before assignment. A document
+  cannot name the URL of its own publication, so a published change document that is
+  imported again takes the imported URL as `Backlog origin:` when it has none, and
+  keeps a different existing value with a warning
+  (`@sai/policies/issue-origin-preservation.md`).
 
 An unknown key, a repeated key, or a value of an invalid form makes the document
 not dispatchable.
@@ -271,7 +314,8 @@ the document file, because the hash covers the whole file and leaves no room for
 an appended marker.
 
 **Transport.** The document and its verdicts travel as files: no document content
-passes through a shell command. `node <tool-path> check --document-file <path>
+passes through a shell command (no stdin pipe, heredoc, or here-string), on Claude
+Code and opencode alike. `node <tool-path> check --document-file <path>
 [--verdicts-file <path>] [--slice]` validates one document, `check-set` validates a
 set (`--document-file` once per document), `hash` prints the hash, `verify-file
 --document-file <path> --document-hash <sha256>` verifies an exported file and
@@ -279,6 +323,47 @@ changes nothing, and `compare --stored-file <path> --document-file <path>` repor
 `metadata` when only the `Backlog origin:` or `Explore origin:` lines of
 `## Change` changed and `content` otherwise. `change-document.js` is resolved per
 `@sai/policies/tool-resolution.md`.
+
+- **Preparing a document.** Run `transfer.js open --harness <claude|opencode>`; it
+  creates one private directory under the SAI temp root and returns its absolute
+  `dir`. Write each document as UTF-8 to its own file in `dir`, exactly as it will be
+  displayed, with the harness-native file-write tool (`Write` on Claude Code,
+  `write` on opencode); `transfer.js put` is not used, because it reads its content
+  on stdin. The write goes outside the repository, so a `/sai-explore` session writes
+  no repository file. Run `check`, judge each flagged line, write the verdicts as one
+  JSON array (`[]` when no line is flagged), and run `check` again with
+  `--verdicts-file` to confirm `dispatchable: true`.
+- **Registering.** `sai-state emit <id> explore-slice@1 --document-file <path>
+  [--verdicts-file <path>] …` takes one repeatable `--document-file` per document,
+  each optionally followed by its own `--verdicts-file`, and stores `{text, hash,
+  verdicts}` per `Change name`. An amendment (`--amend <name> --document-file
+  <path>`) takes exactly one document. A document without a `# <title>` first line,
+  or a `Ready to Propose` block, is rejected (`RETIRED_FORMAT`), never converted.
+  Close the directory with `transfer.js close --dir <dir>` once the registration or
+  amendment is recorded.
+- **Dispatching.** Plan - Unattended and Direct Build - Unattended dispatch a document
+  only from the `sai-state` store. Run `sai-state block <id> <change-name> --export
+  --harness <claude|opencode>` and send the returned `document_file` and `hash`
+  together as `--document-file <absolute path>` and `--document-hash <sha256>`
+  envelope lines. The tool writes the stored text into a private transfer file; no
+  model copies its content into a message or heredoc. Every receiving worker or
+  coordinator requires both lines and runs `verify-file` before dependent work. On a
+  missing, unreadable, unsafe, or mismatched file it returns `failed` with no
+  changes, naming the problem, and never reconstructs or repairs the document from
+  chat; it reads the verified file as the sole document input only after success.
+  Export anew after every amendment and before every fresh dispatch or replacement,
+  and carry the new file and its hash as one reference: a previous file is never
+  paired with a new hash. Retain transfer directories while any continuation or
+  recovery may need them. The Manual route has no store and no hash.
+- **Publishing.** The title line of the document is the issue title and the rest is
+  the description, with nothing rewritten: `split --document-file <path>` prints that
+  pair, and `to-backlog` takes a document by its verified file reference. Each child
+  issue of a published slice set is its document plus the `sai-backlog-slices@1`
+  correspondence marker. After a completed set publication,
+  `@sai/policies/backlog-origin-transport.md` gives each stored document its actual
+  child URL as `Backlog origin:` (`attach-origin`), and `set-origin` does the same for
+  the imported URL of a single stored document. Both write a new private file and its
+  hash, never amended text for a model to copy.
 
 An example of a dispatchable document:
 

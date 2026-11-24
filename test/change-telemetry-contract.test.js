@@ -84,9 +84,9 @@ test('the tool resolution policy lists the collector and its invocation', () => 
   assert.match(resolution, /`change-telemetry\.js`: `node <tool-path> collect --harness/);
 });
 
-test('Explore origin: the block label, its persistence, and the exploration section are documented where each owner reads them', () => {
-  assert.match(read('sai/policies/ready-to-propose-format.md'), /\*\*Explore origin\*\*: <harness> <sessionID>\[, <harness> <sessionID>…\]/);
-  assert.match(read('sai/policies/ready-to-propose-format.md'), /INVALID_EXPLORE_ORIGIN/);
+test('Explore origin: the document key, its persistence, and the exploration section are documented where each owner reads them', () => {
+  assert.match(read('sai/policies/issue-format.md'), /`Explore origin:` — optional; `<harness> <sessionID>\[, <harness> <sessionID>…\]`/);
+  assert.match(read('sai/policies/issue-format.md'), /INVALID_EXPLORE_ORIGIN/);
   const crystallization = read('sai/commands/explore/steps/crystallization-protocol.md');
   assert.match(crystallization, /copy its list in order and unchanged/);
   assert.match(crystallization, /`experimental\.changeTelemetry` is `true`/);

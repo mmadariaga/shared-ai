@@ -167,12 +167,12 @@ Offline tests SHALL cover exact planning approval, content-before-planning write
 
 ### Requirement: Boards slice sets preserve type content and native relationship meaning
 
-Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. When the set is published under an originating work item, that work item SHALL be the parent and SHALL keep its own work-item type; only the created children SHALL use the invocation-selected type, and each child SHALL be linked to the origin with a `Hierarchy-Reverse` relation. Every work item the set creates SHALL be created in Markdown format, with the format operation in its creation request: child blocks SHALL be preserved losslessly as fenced code blocks whose fence is longer than any backtick run inside the block, relationship references SHALL be Markdown lines, and correspondence SHALL be stored in a fenced `sai-backlog-slices@1` code block. An originating work item SHALL keep its own description format and SHALL NOT receive the format operation: a Markdown origin SHALL be rewritten in Markdown, and an HTML origin SHALL be rewritten in HTML with escaped relationship lines and a visible escaped `sai-backlog-slices@1` pre block. The full outgoing content of each item SHALL be shown before approval. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
+Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. When the set is published under an originating work item, that work item SHALL be the parent and SHALL keep its own work-item type; only the created children SHALL use the invocation-selected type, and each child SHALL be linked to the origin with a `Hierarchy-Reverse` relation. Every work item the set creates SHALL be created in Markdown format, with the format operation in its creation request: each child SHALL be its change document, titled by the document's title line and described by the rest of the document written as Markdown as it is, with no code fence around it and no block tags; a child document with raw HTML outside code, which Azure would rewrite, SHALL be refused before any write; relationship references SHALL be Markdown lines, and correspondence SHALL be stored in a fenced `sai-backlog-slices@1` code block. An originating work item SHALL keep its own description format and SHALL NOT receive the format operation: a Markdown origin SHALL be rewritten in Markdown, and an HTML origin SHALL be rewritten in HTML with escaped relationship lines and a visible escaped `sai-backlog-slices@1` pre block. The full outgoing content of each item SHALL be shown before approval. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
 
 #### Scenario: Approved slice set
 
 - **WHEN** exact publication approval covers the selected project, type, parent, child contents and relationships
-- **THEN** publication creates and verifies those items and relationships while preserving each child's complete block.
+- **THEN** publication creates and verifies those items and relationships while preserving each child's complete change document.
 
 #### Scenario: Project rejects a native relationship
 
@@ -187,12 +187,17 @@ Azure DevOps crystallized slice publication SHALL create the agreed parent and o
 #### Scenario: Created set items are Markdown
 
 - **WHEN** a slice set publication creates its parent or its children
-- **THEN** each creation request carries the `add /multilineFieldsFormat/System.Description = Markdown` operation, each child block is a fenced code block, and the slice marker is a fenced `sai-backlog-slices@1` code block.
+- **THEN** each creation request carries the `add /multilineFieldsFormat/System.Description = Markdown` operation, each child description is its change document as Markdown with no code fence around it, and the slice marker is a fenced `sai-backlog-slices@1` code block.
 
 #### Scenario: HTML origin keeps HTML
 
 - **WHEN** a slice set is published under an originating work item whose description format is HTML
 - **THEN** the origin's rewritten description is HTML with a visible escaped `sai-backlog-slices@1` pre block, no format operation is sent for it, and its created children are Markdown.
+
+#### Scenario: A child document with raw HTML is refused
+
+- **WHEN** a child change document contains raw HTML outside code spans and fenced code blocks
+- **THEN** preparation fails before any write and no work item is created.
 
 ### Requirement: Boards child assignment is revision conditional and separate from content
 

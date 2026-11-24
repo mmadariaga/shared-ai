@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const blocks = require('./ready-to-propose');
+const documents = require('./change-document');
 const identity = require('./backlog-slice-identity');
 const { digest, receiptPath, save } = require('./to-backlog-github');
 const origin = require('./backlog-set-origin');
@@ -14,7 +14,7 @@ function bind(provider, mechanics) {
   // A provider may keep a description format per issue; the origin keeps its own and every created item has the provider's.
   const formatOf = (receipt, index) => mechanics.formatOf?.(receipt.proposal, index);
   async function query(request, io) {
-    const validation = blocks.validateDependencySet(request.blocks);
+    const validation = documents.readSet(Array.isArray(request.documents) ? request.documents : []);
     if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
     let ready = request.origin ? undefined : await mechanics.query(request, io), existing;
     if (request.origin) {
@@ -24,10 +24,10 @@ function bind(provider, mechanics) {
       ({ ready, origin: existing } = prepared);
     }
     if (ready.status !== 'ready') return ready;
-    const texts = blocks.extractBlockTexts(request.blocks);
+    // Each child is its change document: the title line is the issue title and the rest the description.
     const slices = validation.order.map(name => {
-      const index = validation.blocks.findIndex(row => row.name === name);
-      return { change_name: name, title: name, description: mechanics.renderBlock(texts[index]), depends_on: validation.blocks[index].dependencies };
+      const document = validation.documents.find(row => row.name === name);
+      return { change_name: name, title: document.title, description: mechanics.renderDocument(document.description), depends_on: document.dependencies };
     });
     const representation = mechanics.representation;
     const proposal = { ...ready.proposal, ...(io.autoApprove === true ? { auto_approve: true } : {}), operation: 'set', ...(existing ? { origin: existing } : {}), slices, ...representation,

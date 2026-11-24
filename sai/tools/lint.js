@@ -14,8 +14,8 @@
  *   commit-rules <file>                  Check that a commit message follows commit rules.
  *   pr-title-rules <text>                Check that a PR title follows title rules.
  *   glossary-format <file>               Check that GLOSSARY.md follows glossary format.
- *   ready-to-propose <file>              Check that a file follows ready-to-propose format
- *                                        (delegates to sai/tools/ready-to-propose.js, dispatchable profile).
+ *   change-document <file>               Check that a file is a dispatchable change document
+ *                                        (delegates to sai/tools/change-document.js, the structural checks).
  *   artifact-review <file>               Check that artifact review findings follow the contract.
  *   audit-report <file> --audit <name>   Check that a security, performance, or accessibility
  *                                        report keeps its template structure, its audit's severity
@@ -27,7 +27,7 @@
  *   node sai/tools/lint.js commit-rules <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js pr-title-rules <text> [--json]
  *   node sai/tools/lint.js glossary-format <file> [--json] [--cwd <dir>]
- *   node sai/tools/lint.js ready-to-propose <file> [--json] [--cwd <dir>]
+ *   node sai/tools/lint.js change-document <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js artifact-review <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js audit-report <file> --audit <security|performance|accessibility> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js sai-learnings-format <file> [--json] [--cwd <dir>]
@@ -39,7 +39,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { checkDispatchable: checkDispatchableReadyToPropose } = require('./ready-to-propose.js');
+const { checkDocument } = require('./change-document.js');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -238,24 +238,14 @@ function checkGlossaryFormat(content) {
 }
 
 /**
- * Check Ready to Propose block format.
- * Delegates to the deterministic checks of the dispatchable profile of
- * sai/tools/ready-to-propose.js, the single definition of
- * sai/policies/ready-to-propose-format.md; no section list lives here. The
- * hygiene pre-filter and its judgment are not lint findings.
+ * Check change document format.
+ * Delegates to the deterministic checks of sai/tools/change-document.js, the
+ * single definition of the format of sai/policies/issue-format.md; no section
+ * list lives here. The hygiene pre-filter and its judgment are not lint
+ * findings.
  */
-function checkReadyToPropose(content) {
-  const verdict = checkDispatchableReadyToPropose(content);
-  const violations = [];
-  for (const v of verdict.violations) {
-    violations.push({ file: 'block', line: v.line, problem: v.problem, detail: v.detail });
-  }
-  for (const block of verdict.blocks) {
-    for (const v of block.violations) {
-      violations.push({ file: 'block', line: v.line, problem: v.problem, detail: v.detail });
-    }
-  }
-  return violations;
+function checkChangeDocument(content) {
+  return checkDocument(content).violations.map((v) => ({ file: 'document', line: v.line, problem: v.problem, detail: v.detail }));
 }
 
 /**
@@ -791,7 +781,7 @@ function usage() {
     '                      - commit-rules: Validate commit message format',
     '                      - pr-title-rules: Validate pull request title format',
     '                      - glossary-format: Validate GLOSSARY.md format',
-    '                      - ready-to-propose: Validate Ready to Propose block format',
+    '                      - change-document: Validate change document format',
     '                      - artifact-review: Validate artifact review finding format',
     '                      - audit-report: Validate a security, performance, or accessibility report (needs --audit)',
     '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
@@ -892,8 +882,8 @@ function main(argv) {
       case 'glossary-format':
         violations = checkGlossaryFormat(content);
         break;
-      case 'ready-to-propose':
-        violations = checkReadyToPropose(content);
+      case 'change-document':
+        violations = checkChangeDocument(content);
         break;
       case 'artifact-review':
         violations = checkArtifactReview(content);
@@ -947,7 +937,7 @@ module.exports = {
   checkCommitRules,
   checkPrTitleRules,
   checkGlossaryFormat,
-  checkReadyToPropose,
+  checkChangeDocument,
   checkArtifactReview,
   checkAuditReport,
   checkSaiLearningsFormat,

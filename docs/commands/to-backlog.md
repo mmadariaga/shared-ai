@@ -17,10 +17,15 @@ selected invocation-scoped type applies to every item, with project rules
 enabled. See [Backlog workflows](../backlog.md#import-an-item) for dependency
 validation and partial-result recovery.
 
+A crystallized change from `/sai-explore` is published as its change document: the
+title line is the issue title and the rest is the description, with nothing
+rewritten, and an imported published document takes the imported URL as its
+`Backlog origin:` when it has none.
+
 An imported already-published slice set can be refined and updated in place.
 One confirmation covers the exact parent and child content; only issues with
 differences are written. Change names, child identities, and dependency edges
-must stay unchanged (block order may change). Added, removed, renamed, missing,
+must stay unchanged (document order may change). Added, removed, renamed, missing,
 or ambiguous children block the entire update. Remote edits require refreshed
 comparison and approval. Partial results retain a private recovery record so
 completed updates are not repeated. This content-only lane changes no issue

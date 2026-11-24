@@ -37,7 +37,14 @@
  *   node sai/tools/change-document.js hash --document-file <path>
  *   node sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>
  *   node sai/tools/change-document.js compare --stored-file <path> --document-file <path>
- *   node sai/tools/change-document.js sections [--input-file <path>]  (issue description on stdin without a file)
+ *   node sai/tools/change-document.js sections [--origin <issue-url>] [--input-file <path>]  (issue description on stdin without a file)
+ *   node sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]
+ *   node sai/tools/change-document.js set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]
+ *   node sai/tools/change-document.js attach-origin [--harness <claude|opencode>] --input-file <path>
+ *
+ * Publication: the title line of a document is the issue title and the rest is the
+ * issue description (`split`, `splitDocument`); `readSet` reads a published set and
+ * `attach-origin` gives each document its child issue URL as `Backlog origin:`.
  *
  * Every verdict is one JSON object on stdout. Exit codes: 0 = valid
  * (`check`: `dispatchable` is true), 1 = violations, a failed verification, or
@@ -734,6 +741,133 @@ function compareDocuments(storedText, amendedText) {
   return { amend_kind: content ? 'content' : 'metadata', changed_fields: changed };
 }
 
+/**
+ * The publication form of a document: the title line is the issue title and the
+ * rest, from the first non-blank line after it, is the issue description. Nothing
+ * is rewritten; a document without a title line is not publishable.
+ */
+function splitDocument(text) {
+  const shape = documentShape(text);
+  if (shape) throw new Error(`Not one change document: ${shape}`);
+  const lines = normalize(text).split('\n');
+  const doc = parseIssueSections(text);
+  let first = 1;
+  while (first < lines.length && lines[first].trim() === '') first += 1;
+  return { title: doc.title, description: lines.slice(first).join('\n').replace(/\s+$/, '') };
+}
+
+/**
+ * Read a document set for publication: the structural checks of the set, the
+ * dependency order, and the facts each publisher needs per document (name, title,
+ * description, immediate dependencies, backlog origin, text, hash). `ok` is false
+ * when the set or any document fails its structural checks.
+ */
+function readSet(texts) {
+  const set = checkSet(texts);
+  const documents = [];
+  const violations = set.violations.slice();
+  texts.forEach((text, index) => {
+    const checked = checkDocument(text, { sliced: texts.length > 1 });
+    for (const entry of checked.violations) violations.push({ ...entry, document: index + 1 });
+    let parts = { title: checked.title, description: '' };
+    try { parts = splitDocument(text); } catch { /* the structural violation already names it */ }
+    documents.push({
+      name: checked.name,
+      title: parts.title,
+      description: parts.description,
+      dependencies: checked.change.depends_on,
+      backlog_origin: checked.change.backlog_origin,
+      text,
+      hash: checked.hash,
+    });
+  });
+  return { ok: set.ok && violations.length === 0, order: set.order, documents, violations };
+}
+
+/** The section lines and their line indexes of a document, for the line-level edits below. */
+function changeSectionLines(text) {
+  const lines = normalize(text).split('\n');
+  const section = parseIssueSections(text).first('change');
+  if (!section) throw new Error('The document has no "## Change" section');
+  const start = section.bodyStart - 1;
+  return { lines, section, start, end: start + section.body.length };
+}
+
+/**
+ * Set one `Key: value` line of the `## Change` section: replace the line of that key,
+ * or insert it before the first later key of the documented order, or at the end of
+ * the section. Every other line stays as it was.
+ */
+function setChangeLine(text, key, value) {
+  const { lines, section, start, end } = changeSectionLines(text);
+  const own = new RegExp(`^(\\s*(?:[-*+][ \\t]+)?)${key}[ \\t]*:`);
+  const rank = CHANGE_KEYS.indexOf(key);
+  let insertAt = -1;
+  let lastContent = start - 1;
+  let prefix = null;
+  for (let i = start; i < end; i++) {
+    if (section.fenced[i - start] || lines[i].trim() === '') continue;
+    lastContent = i;
+    const match = own.exec(lines[i]);
+    if (match) {
+      lines[i] = `${match[1]}${key}: ${value}`;
+      return lines.join('\n');
+    }
+    const other = /^(\s*(?:[-*+][ \t]+)?)([A-Za-z][A-Za-z ]*?)[ \t]*:/.exec(lines[i]);
+    if (other && prefix === null) prefix = other[1];
+    if (insertAt === -1 && other && CHANGE_KEYS.indexOf(other[2]) > rank) insertAt = i;
+  }
+  // A new line takes the list marker the other lines of the section use.
+  lines.splice(insertAt === -1 ? lastContent + 1 : insertAt, 0, `${prefix || ''}${key}: ${value}`);
+  return lines.join('\n');
+}
+
+/**
+ * The origin a document takes from an imported issue: the imported URL fills a
+ * missing `Backlog origin:`; a different existing value is kept and warned about.
+ */
+function resolveImportedOrigin(documentOrigin, imported) {
+  if (!imported) return { value: documentOrigin || null, source: documentOrigin ? 'document' : null, warning: null };
+  if (!canonicalBacklogOrigin(imported)) throw Object.assign(new Error('--origin must be a canonical GitHub, GitLab or Azure DevOps issue URL'), { usage: true });
+  if (!documentOrigin) return { value: imported, source: 'imported', warning: null };
+  if (documentOrigin === imported) return { value: documentOrigin, source: 'imported', warning: null };
+  return {
+    value: documentOrigin,
+    source: 'document',
+    warning: `The change document names ${documentOrigin} as its Backlog origin and the imported issue is ${imported}; the existing value is kept.`,
+  };
+}
+
+/** Add the imported URL to a stored document as `Backlog origin:`, keeping a different existing value. */
+function applyImportedOrigin(text, imported) {
+  const { change } = checkStructure(text);
+  const origin = resolveImportedOrigin(change.backlog_origin, imported);
+  if (origin.source !== 'imported' || change.backlog_origin === origin.value) return { text, action: origin.warning ? 'kept' : 'unchanged', origin };
+  return { text: setChangeLine(text, 'Backlog origin', origin.value), action: 'inserted', origin };
+}
+
+/**
+ * Attach the verified child identities of a published set to its documents: each
+ * document receives its own issue URL as `Backlog origin:`. A document that names the
+ * set's parent (an adopted originating issue) takes its child URL in its place; any
+ * other conflicting origin or an incomplete correspondence is refused.
+ */
+function attachBacklogOrigins(texts, correspondence) {
+  const association = require('./backlog-slice-identity').checkIdentity(correspondence);
+  if (association.role !== 'parent') throw new Error('Complete parent/child publication correspondence is required');
+  const set = readSet(texts);
+  if (!set.ok || set.documents.length !== association.slices.length) throw new Error('Publication correspondence must cover the complete stored document set');
+  const documents = set.documents.map((document) => {
+    const slice = association.slices.find((entry) => entry.change_name === document.name);
+    if (!slice || JSON.stringify(slice.depends_on.slice().sort()) !== JSON.stringify(document.dependencies.slice().sort())) throw new Error('Publication correspondence differs from the agreed slice dependencies');
+    const adopted = document.backlog_origin === association.parent;
+    if (document.backlog_origin && !adopted && document.backlog_origin !== slice.issue) throw new Error('Existing selected issue origin conflicts with publication; obtain a user decision');
+    const text = document.backlog_origin === slice.issue ? document.text : setChangeLine(document.text, 'Backlog origin', slice.issue);
+    return { name: document.name, text, hash: hashDocument(text), backlog_origin: slice.issue };
+  });
+  return { ok: true, order: set.order, documents };
+}
+
 /* ------------------------------------------------------------------------ *
  * The section reading of the issue intake (/sai-explore): per-stage state,
  * open questions, and the `explore-idea@1` seed, read from any issue.
@@ -899,18 +1033,43 @@ function proposeChangeName(goal) {
   return words.slice(0, 5).join('-');
 }
 
-/** Read an issue description (Markdown or HTML) of any Maturity: its Maturity value and its section reading. */
-function readIssue(text) {
+/** The `Key: value` lines of an issue's `## Change` section, as the text each key holds (a re-imported published change document). */
+function readChangeLines(lines) {
+  const found = {};
+  for (const raw of lines || []) {
+    const match = /^\s*(?:[-*+][ \t]+)?([A-Za-z][A-Za-z ]*?)[ \t]*:[ \t]*(.*?)[ \t]*$/.exec(raw);
+    if (match && CHANGE_KEYS.includes(match[1]) && !(match[1] in found)) found[match[1]] = match[2];
+  }
+  const list = (value) => (value === undefined || /^none\.?$/i.test(value) || value === '' ? [] : value.split(',').map((part) => part.trim()).filter(Boolean));
+  return {
+    name: found['Change name'] && KEBAB_CASE.test(found['Change name']) ? found['Change name'] : null,
+    depends_on: list(found['Depends on']),
+    backlog_origin: found['Backlog origin'] ? canonicalBacklogOrigin(found['Backlog origin']) : null,
+    explore_origin: found['Explore origin'] || null,
+    specs: found.Specs || null,
+  };
+}
+
+/**
+ * Read an issue description (Markdown or HTML) of any Maturity: its Maturity value and its section reading.
+ * A re-imported published change document also reports its `## Change` lines (`change`) and the
+ * `Backlog origin` the change takes: the imported URL fills a missing one, a different existing one is kept
+ * with a warning.
+ */
+function readIssue(text, { origin = null } = {}) {
   const parsed = parseIssueSections(issueToMarkdown(text), { lenient: true });
   const map = sectionMap(parsed);
   const maturityLines = map.get('maturity');
   const maturity = maturityLines ? sectionText(maturityLines).replace(/[*_`]/g, '').replace(/\.$/, '').trim() : null;
   const goalText = sectionText(map.get('goal') || []);
+  const change = readChangeLines(map.get('change'));
   return Object.assign({
     ready_to_propose_form: maturity !== null && maturity.toLowerCase() === READY_MATURITY.toLowerCase(),
     maturity,
-    proposed_change_name: isEmptySource(goalText) ? null : proposeChangeName(goalText),
+    proposed_change_name: change.name || (isEmptySource(goalText) ? null : proposeChangeName(goalText)),
     declared_clean_note: DECLARED_CLEAN_NOTE,
+    change,
+    backlog_origin: resolveImportedOrigin(change.backlog_origin, origin),
   }, analyzeIssueSections(map));
 }
 
@@ -921,19 +1080,25 @@ function usage() {
     '       node sai/tools/change-document.js hash --document-file <path>',
     '       node sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>',
     '       node sai/tools/change-document.js compare --stored-file <path> --document-file <path>',
-    '       node sai/tools/change-document.js sections [--input-file <path>]  (issue description; stdin also accepted)',
+    '       node sai/tools/change-document.js sections [--origin <issue-url>] [--input-file <path>]  (issue description; stdin also accepted)',
+    '       node sai/tools/change-document.js set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]',
+    '       node sai/tools/change-document.js attach-origin [--harness <claude|opencode>] --input-file <path>  (JSON {document_files: [{document_file, hash}], correspondence})',
+    '       node sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]',
     '',
     '  check        Validate one change document and report whether it is dispatchable; the verdicts file holds the JSON array of hygiene verdicts',
     '  check-set    Validate a slice set: each document, unique names, implementation items, dependencies',
     '  hash         Print the sha256 of the whole document file (line endings normalized to LF)',
     '  verify-file  Verify an exported document file against its hash; a file without a "# <title>" first line or with more than one document fails',
     '  compare      Report whether the amended document differs from the stored one in content or in metadata only',
-    '  sections     Read the sections of an issue description for the issue intake',
+    '  sections     Read the sections of an issue description for the issue intake; --origin is the imported issue URL a missing Backlog origin takes',
+    '  set-origin   Write a copy of a stored document whose Backlog origin is the imported URL (a different existing value is kept and reported)',
+    '  attach-origin  Give each document of a published set its child issue URL as Backlog origin and write the amended documents to a private directory',
+    '  split        Print the title line and the description of a verified document: the issue title and the issue description of its publication',
     '  --slice      Treat the document as a member of a slice set (it owes one in-scope I#)',
   ].join('\n');
 }
 
-const VALUE_FLAGS = ['--document-file', '--document-hash', '--verdicts-file', '--stored-file', '--input-file'];
+const VALUE_FLAGS = ['--document-file', '--document-hash', '--verdicts-file', '--stored-file', '--input-file', '--origin', '--harness'];
 
 function parseArgs(argv) {
   const opts = { command: null, help: false, slice: false, documents: [] };
@@ -1030,7 +1195,36 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
     }
     if (opts.command === 'sections') {
       const input = opts['input-file'] ? inputReader.readInputFile(opts['input-file']) : readStdin();
-      emit(Object.assign({ ok: true }, readIssue(input)));
+      emit(Object.assign({ ok: true }, readIssue(input, { origin: opts.origin || null })));
+      return 0;
+    }
+    if (opts.command === 'split') {
+      const file = single();
+      const text = opts['document-hash'] ? verifyDocumentFile(file, opts['document-hash']) : readDocument(file);
+      emit(Object.assign({ ok: true }, splitDocument(text)));
+      return 0;
+    }
+    if (opts.command === 'set-origin') {
+      if (!opts.origin) throw Object.assign(new Error('set-origin requires --origin'), { usage: true });
+      const result = applyImportedOrigin(readDocument(single()), opts.origin);
+      const transfer = require('./transfer');
+      const { dir } = transfer.open(opts.harness);
+      const reference = transfer.put(dir, 'document.md', Buffer.from(result.text, 'utf8'));
+      emit({ ok: true, action: result.action, origin: result.origin, hash: hashDocument(result.text), document_file: reference.path, transfer_dir: dir });
+      return 0;
+    }
+    if (opts.command === 'attach-origin') {
+      if (!opts['input-file']) throw Object.assign(new Error('attach-origin requires --input-file'), { usage: true });
+      const request = JSON.parse(inputReader.readInputFile(opts['input-file']));
+      if (!Array.isArray(request.document_files)) throw new Error('attach-origin needs document_files: [{document_file, hash}]');
+      const result = attachBacklogOrigins(request.document_files.map((reference) => verifyDocumentFile(reference.document_file, reference.hash)), request.correspondence);
+      const transfer = require('./transfer');
+      const { dir } = transfer.open(opts.harness);
+      const documents = result.documents.map((document) => {
+        const reference = transfer.put(dir, `${document.name}.md`, Buffer.from(document.text, 'utf8'));
+        return { name: document.name, hash: document.hash, backlog_origin: document.backlog_origin, document_file: reference.path };
+      });
+      emit({ ok: true, order: result.order, documents, transfer_dir: dir });
       return 0;
     }
   } catch (error) {
@@ -1038,14 +1232,14 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
       process.stderr.write(`${error.message}\n`);
       return 2;
     }
-    if (['verify-file', 'compare'].includes(opts.command)) {
+    if (['verify-file', 'compare', 'attach-origin', 'set-origin'].includes(opts.command)) {
       emit({ ok: false, error: error.message });
       return 1;
     }
     process.stderr.write(`${error.message}\n`);
     return 2;
   }
-  process.stderr.write(`sub-command "check", "check-set", "hash", "verify-file", "compare" or "sections" required.\n${usage()}\n`);
+  process.stderr.write(`sub-command "check", "check-set", "hash", "verify-file", "compare", "sections", "split", "set-origin" or "attach-origin" required.\n${usage()}\n`);
   return 2;
 }
 
@@ -1068,6 +1262,12 @@ module.exports = {
   documentShape,
   verifyDocumentFile,
   compareDocuments,
+  splitDocument,
+  readSet,
+  setChangeLine,
+  applyImportedOrigin,
+  resolveImportedOrigin,
+  attachBacklogOrigins,
   analyzeIssueSections,
   readIssue,
   issueToMarkdown,

@@ -107,7 +107,7 @@ test('the plan coordinators load only the policies that never stop a run', () =>
   const allowed = {
     'sai/commands/spec/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/remember.md', '@skills/safe-operations/SKILL.md', '@skills/budget/SKILL.md',
-      '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/policies/ready-to-propose-format.md',
+      '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/policies/issue-format.md',
       '@sai/policies/block-hygiene-judgment.md', '@sai/orchestration/workers/bindings/spec-worker.md', '@sai/policies/cache-warming.md',
     ],
     'sai/commands/design/coordinator.md': [

@@ -71,9 +71,11 @@ parent as context, not siblings. `origin` remains the selected issue and never
 becomes the parent-context issue. A failed required read or delivery leaves the
 entire hierarchical import pending: show the limitation, offer retry/chunked
 delivery or stop, and wait. Reading the set authorizes no assignment or work.
-Carry the selected child's explicit URL as `**Backlog origin**` in any later
-crystallized block for that child (provenance outside source sections); preserve
-the original imported source text separately. A parent requires explicit child
+Carry the selected child's explicit URL as the `Backlog origin:` line of `## Change`
+in any later change document for that child (provenance outside source sections);
+when the imported description is itself a published change document without that
+line, the imported URL fills it, and a different existing value is kept with a
+warning. Preserve the original imported source text separately. A parent requires explicit child
 selection before a slice is started. Planning performs no assignment; the
 implementation coordinator owns `sai/policies/backlog-implementation-start.md`.
 

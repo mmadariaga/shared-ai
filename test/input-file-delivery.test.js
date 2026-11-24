@@ -84,7 +84,7 @@ test('E1 and E2 the validator reads the same payload from the input file and fro
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('E1 tool-access, ready-to-propose, from-next-backlog-item and the cache warmer take the input file', () => {
+test('E1 tool-access, change-document, from-next-backlog-item and the cache warmer take the input file', () => {
   const dir = scratch();
   try {
     const access = path.join(dir, 'access.json');
@@ -95,10 +95,10 @@ test('E1 tool-access, ready-to-propose, from-next-backlog-item and the cache war
 
     const block = path.join(dir, 'issue.md');
     fs.writeFileSync(block, 'Some issue text with "quotes" and {braces}\n');
-    const converted = run(tool('sai', 'tools', 'ready-to-propose.js'), ['convert', '--input-file', block]);
-    assert.ok([0, 1].includes(converted.status), converted.stderr);
-    assert.equal(typeof JSON.parse(converted.stdout), 'object');
-    const absent = run(tool('sai', 'tools', 'ready-to-propose.js'), ['convert', '--input-file', path.join(dir, 'gone.md')]);
+    const read = run(tool('sai', 'tools', 'change-document.js'), ['sections', '--input-file', block]);
+    assert.equal(read.status, 0, read.stderr);
+    assert.equal(typeof JSON.parse(read.stdout), 'object');
+    const absent = run(tool('sai', 'tools', 'change-document.js'), ['sections', '--input-file', path.join(dir, 'gone.md')]);
     assert.equal(absent.status, 2);
     assert.match(absent.stderr, /gone\.md/);
 

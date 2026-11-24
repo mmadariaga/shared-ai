@@ -16,9 +16,11 @@ an unmarked origin or a child marker keeps the new-set route below.
 ## Published set update
 
 Use `query-set-update` with `origin` (the canonical parent URL), the agreed
-whole-objective `title` and `description`, and `blocks` (the complete refined
-Ready to Propose set). Preserve each block's existing child Backlog origin.
-The tool resolves children by recorded change name and URL, not block order,
+whole-objective `title` and `description`, and `documents` (one verified file
+reference `{"document_file": "<absolute path>", "document_hash": "<sha256>"}` per
+document of the complete refined set). Preserve each document's existing child
+`Backlog origin:`. The tool resolves children by recorded change name and URL, not
+document order,
 and verifies the complete correspondence before execution. Added, removed or
 renamed slices, or changed dependency edges, return `composition-changed` with
 the differences: show them and publish nothing. An unreadable or incompatible
@@ -88,10 +90,14 @@ read: read it again, prepare, and ask for approval again. A user who wants a new
 parent publishes without an origin.
 
 Use the existing whole-objective parent title/description and every agreed
-slice block verbatim. There is no second decomposition or breakdown approval.
-Resolve content ambiguity with the user; do not synthesize replacement slices.
-Call `query-set` with the selected provider's ordinary destination/content fields and
-`blocks` (the complete Ready to Propose text). The single dependency validator
+slice document verbatim: each child issue is its change document (the title line is
+the issue title and the rest is the description) plus the `sai-backlog-slices@1`
+correspondence marker, with no model drafting. There is no second decomposition or
+breakdown approval. Resolve content ambiguity with the user; do not synthesize
+replacement slices. Call `query-set` with the selected provider's ordinary
+destination/content fields and `documents` (one verified file reference
+`{"document_file": "<absolute path>", "document_hash": "<sha256>"}` per document of
+the complete set). The tool verifies each file, and the single dependency validator
 checks the whole set and returns stable blocker-first order. Resolve invalid
 dependencies before delivery or publication without changing agreements alone.
 
@@ -117,9 +123,9 @@ separate verified operation when applicable. Retain returned `correspondence` wi
 `version`, `platform`, `parent`, and `slices` (change_name, issue, depends_on).
 The same mapping is stored in each issue's `sai-backlog-slices@1` marker, so
 import and `lookup-slice` can recover it independently of this conversation.
-When the caller stores the blocks for later planning dispatch, return the
+When the caller stores the documents for later planning dispatch, return the
 complete verified correspondence to `sai/policies/backlog-origin-transport.md`: that owner
-amends the stored blocks with actual child origins and new hashes before cold
+amends the stored documents with actual child origins and new hashes before cold
 planning dispatch. Conversation-only retention is not sufficient for that path.
 
 On a partial or uncertain result, follow `publication-recovery.md` beside this

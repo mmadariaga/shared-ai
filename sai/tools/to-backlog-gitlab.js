@@ -181,7 +181,7 @@ async function recoverUpdate(request, io) {
 
 const sliceIdentity = require('./backlog-slice-identity');
 const set = require('./backlog-provider-set').bind('gitlab', {
-  query, origin: readOrigin, representation: { hierarchy: 'written', dependencies: 'native' }, renderBlock: text => text,
+  query, origin: readOrigin, representation: { hierarchy: 'written', dependencies: 'native' }, renderDocument: text => text,
   append: (description, links, value) => `${description}\n\n${links.join('\n')}\n${sliceIdentity.encode(value)}`,
   inventory: async (p, io) => (await list(p, io)).map(row => ({ issue: identity(row), title: row.title, description: row.description ?? '', actor: row.author.id })),
   read: async (p, item, io) => {

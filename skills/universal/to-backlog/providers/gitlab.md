@@ -30,7 +30,7 @@ than retry creation. Report the verified issue link or concrete blocker.
 
 For a crystallized set, use the shared `slice-set.md` contract and
 `query-set|publish-set|recover-set|continue-set` with the same destination fields
-and `blocks`. Ordinary GitLab issues use disclosed written parent/child references,
+and `documents`. Ordinary GitLab issues use disclosed written parent/child references,
 not a claimed native hierarchy. Immediate dependencies use separately verified
 native `is_blocked_by` issue links. Follow shared publication recovery for pending
 relations before consulting about a permission or tier limitation. The explicitly approved written

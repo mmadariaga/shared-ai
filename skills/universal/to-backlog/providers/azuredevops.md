@@ -65,14 +65,15 @@ verification first. A conflict needs reconciliation and fresh approval.
 
 For a crystallized set, use the shared `slice-set.md` contract and
 `query-set|publish-set|recover-set|continue-set`, with the ordinary project,
-explicit invocation-scoped `type`, source parent content and complete `blocks`.
+explicit invocation-scoped `type`, source parent content and the complete `documents`.
 The selected type applies to parent and children: show it for each item before
 approval. Project rules remain enabled; follow shared publication recovery for
 pending operations. Incompatible types or hierarchy rules require a human
 decision about scope changes, not an automatic type change.
 Every work item a set creates is Markdown (the format operation is sent in its
-creation request): child blocks are losslessly kept as fenced code blocks, links
-are Markdown lines, and structured correspondence is a fenced
+creation request): each child is its change document written as Markdown (a
+document with raw HTML outside code, which Azure rewrites, is refused before any
+write, and no code fence wraps it), links are Markdown lines, and structured correspondence is a fenced
 `sai-backlog-slices@1` code block that Azure keeps, unlike a comment. Show the
 full outgoing Markdown of each item. An originating work item keeps its own
 format and never receives the format operation: a Markdown origin is rewritten in

@@ -4,12 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const detector = require('../sai/tools/ready-to-propose');
+const detector = require('../sai/tools/change-document');
+const { document } = require('./helpers/change-document-fixture');
 const identity = require('../sai/tools/backlog-slice-identity');
 
-function block(name, dependencies = 'None') {
-  return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : '\n- I1: agreed full content α'}`), '---'].join('\n');
-}
+const block = (name, dependencies = 'None', notes) => document(name, { dependencies, ...(notes ? { notes } : {}) });
 function fixture(platform) {
   const azure = platform === 'azuredevops', repository = azure ? 'https://dev.azure.com/org/Project' : 'https://gitlab.example/group/repo';
   const adapter = require(`../sai/tools/to-backlog-${platform}`), source = require(`../sai/tools/from-backlog-${platform}`);
@@ -119,7 +118,7 @@ function fixture(platform) {
     }
     throw new Error(`Unexpected transport ${command} ${args.join(' ')}`);
   } };
-  return { platform, adapter, source, state, io, actor, url, create, request: { provider: platform, repository, ...(azure ? { type: 'Task' } : {}), title: 'Whole objective', description: 'Full parent α', blocks: block('dependent', 'blocker') + '\n' + block('blocker') } };
+  return { platform, adapter, source, state, io, actor, url, create, request: { provider: platform, repository, ...(azure ? { type: 'Task' } : {}), title: 'Whole objective', description: 'Full parent α', documents: [block('dependent', 'blocker'), block('blocker')] } };
 }
 async function publish(t, fixture) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-parity-')); fs.chmodSync(directory, 0o700);
@@ -133,7 +132,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     const f = fixture(platform), published = await publish(t, f);
     assert.equal(published.result.status, 'complete');
     const marker = published.result.correspondence;
-    const request = { origin: await f.url(1), title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+    const request = { origin: await f.url(1), title: f.request.title, description: f.request.description, documents: [block('blocker'), block('dependent', 'blocker')] };
     const original = JSON.stringify(f.state.rows);
     assert.equal((await f.adapter['query-set-update'](request, f.io)).status, 'no_changes');
     assert.equal(JSON.stringify(f.state.rows), original);
@@ -150,7 +149,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.deepEqual(result.updated.map(item => item.url), [await f.url(1)]);
     assert.deepEqual(result.correspondence, marker);
     assert.equal((await f.adapter['recover-set-update']({ receipt: file }, f.io)).status, 'complete');
-    request.blocks = block('renamed') + '\n' + block('dependent', 'renamed');
+    request.documents = [block('renamed'), block('dependent', 'renamed')];
     const blocked = await f.adapter['query-set-update'](request, f.io);
     assert.equal(blocked.reason, 'composition-changed');
     assert.deepEqual(blocked.added, ['renamed']);
@@ -198,11 +197,11 @@ for (const platform of ['gitlab', 'azuredevops']) {
       const numeric = await f.source.readSet({ status: 'resolved', organization: 'https://dev.azure.com/org', number: 3 }, f.io);
       assert.equal(numeric.status, 'complete', numeric.message); assert.equal(numeric.origin.issue, await f.url(3));
     }
-    const attached = detector.attachBacklogOrigins(f.request.blocks, result.correspondence);
-    for (const entry of attached.blocks) {
-      assert.equal(detector.checkStrict(entry.text).ok, true);
-      assert.equal(detector.hashBlock(entry.text), entry.hash);
-      assert.equal(detector.checkStrict(entry.text).blocks[0].backlog_origin, entry.backlog_origin);
+    const attached = detector.attachBacklogOrigins(f.request.documents, result.correspondence);
+    for (const entry of attached.documents) {
+      assert.equal(detector.checkDocument(entry.text).ok, true);
+      assert.equal(detector.hashDocument(entry.text), entry.hash);
+      assert.equal(detector.checkDocument(entry.text).change.backlog_origin, entry.backlog_origin);
     }
     assert.equal((await f.adapter['lookup-slice']({ ...f.request, change_name: 'dependent' }, f.io)).issue, await f.url(3));
     assert.equal(f.state.writes.length, before, 'import and lookup never mutate remote content');
@@ -240,15 +239,15 @@ for (const platform of ['gitlab', 'azuredevops']) {
   });
   test(`${platform}: dependency failures and incomplete required reads never silently succeed`, async t => {
     const f = fixture(platform);
-    for (const blocks of [block('one', 'missing'), block('one', 'one'), block('one', 'two, two') + '\n' + block('two'), block('one', 'two') + '\n' + block('two', 'one')]) {
-      assert.equal((await f.adapter['query-set']({ ...f.request, blocks }, f.io)).reason, 'invalid-dependencies');
+    for (const documents of [[block('one', 'missing')], [block('one', 'one')], [block('one', 'two, two'), block('two')], [block('one', 'two'), block('two', 'one')]]) {
+      assert.equal((await f.adapter['query-set']({ ...f.request, documents }, f.io)).reason, 'invalid-dependencies');
     }
     await publish(t, f); f.state.failRead = 3;
     const result = await f.source.readSet(await f.source.resolve(await f.url(1), f.io), f.io);
     assert.equal(result.status, 'incomplete'); assert.equal(result.item.url, await f.url(1));
   });
   test(`${platform}: singleton sets still create a parent; marker errors and duplicate identities reject`, async t => {
-    const f = fixture(platform); f.request.blocks = block('only');
+    const f = fixture(platform); f.request.documents = [block('only')];
     const { result } = await publish(t, f); assert.equal(result.status, 'complete', result.message); assert.equal(result.created.length, 2);
     const value = result.correspondence;
     assert.throws(() => identity.checkIdentity({ ...value, slices: [...value.slices, value.slices[0]] }), /correspondence/);
@@ -400,7 +399,7 @@ test('H2 GitLab arbitrary native read failures stay pending; only established un
 test('GitLab recovery exhausts inventory pages and excludes every pre-existing identity', async t => {
   const f = fixture('gitlab');
   for (let i = 1; i <= 101; i++) f.state.rows.push({ id: i + 100, iid: i, project_id: 1, title: 'Existing', description: 'Existing full content', web_url: await f.url(i), author: { id: f.actor }, assignees: [], issue_type: 'issue', state: 'opened', updated_at: 'v1' });
-  f.request.blocks = block('only'); f.state.lost = true;
+  f.request.documents = [block('only')]; f.state.lost = true;
   const { file } = await publish(t, f);
   const verified = await f.adapter['recover-set']({ receipt: file }, f.io);
   assert.deepEqual(verified.candidates[0].issues.map(issue => issue.url), [await f.url(102)]);
@@ -666,7 +665,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(first.result.status, 'complete');
     const url = await f.url(2), parent = await f.url(1);
     const row = f.state.rows[1];
-    const request = { ...f.request, blocks: block('sub-one'), origin: url, origin_baseline: (await f.adapter['read-update']({ reference: url }, f.io)).baseline, description: 'Agreed sub objective' };
+    const request = { ...f.request, documents: [block('sub-one')], origin: url, origin_baseline: (await f.adapter['read-update']({ reference: url }, f.io)).baseline, description: 'Agreed sub objective' };
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-provider-origin-')); fs.chmodSync(directory, 0o700);
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
     const ready = await f.adapter['query-set'](request, f.io);
@@ -692,7 +691,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     const relationships = JSON.stringify(f.state.rows.map(row => row.relations));
     const blockers = JSON.stringify([...f.state.blockers]);
     const updateRequest = { origin: parent, title: f.request.title, description: f.request.description,
-      blocks: block('dependent', 'blocker') + '\n' + block('blocker').replace('**What**: None', '**What**: Refined upper slice') };
+      documents: [block('dependent', 'blocker'), block('blocker', 'None', 'Refined upper slice')] };
     const prepared = await f.adapter['query-set-update'](updateRequest, f.io);
     assert.equal(prepared.status, 'ready', JSON.stringify(prepared));
     const before = f.state.writes.length;
@@ -721,7 +720,7 @@ const publishSet = async (t, f) => {
   return { file, ready, result: await f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, f.io) };
 };
 const creations = f => sets(f).filter(write => write.method === 'POST');
-test('azuredevops E1 E4 I2 I4: a set creates Markdown work items with fenced blocks, Markdown links and a fenced marker', async t => {
+test('azuredevops E1 E4 I2 I4: a set creates Markdown work items holding the change documents, Markdown links and a fenced marker', async t => {
   const f = fixture('azuredevops'), { file, ready, result } = await publishSet(t, f);
   assert.equal(ready.proposal.format, 'markdown');
   assert.equal(result.status, 'complete', JSON.stringify(result));
@@ -733,13 +732,13 @@ test('azuredevops E1 E4 I2 I4: a set creates Markdown work items with fenced blo
   const [parent, ...children] = f.state.rows.map(row => row.fields['System.Description']);
   assert.match(parent, /^Full parent α\n\nChild: blocker — .*\nChild: dependent — .*\n```\nsai-backlog-slices@1 /);
   for (const child of children) {
-    assert.match(child, /^```\n## Ready to Propose[\s\S]*\n```\n\nParent: .*\n(Depends on: .*\n)?```\nsai-backlog-slices@1 /);
+    assert.match(child, /^## Problem\n[\s\S]*\n## Change\n[\s\S]*\n\nParent: .*\n(Depends on: .*\n)?```\nsai-backlog-slices@1 /);
     assert.doesNotMatch(child, /<pre>|<p>/);
   }
   assert.equal(identity.decode(parent).role, 'parent');
   assert.equal((await f.adapter['recover-set']({ receipt: file }, f.io)).status, 'complete');
   // A later update reads each work item as Markdown and finds nothing to change.
-  const update = { origin: await f.url(1), title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  const update = { origin: await f.url(1), title: f.request.title, description: f.request.description, documents: [block('blocker'), block('dependent', 'blocker')] };
   assert.equal((await f.adapter['query-set-update'](update, f.io)).status, 'no_changes');
 });
 test('azuredevops E1 E3 E8: raw HTML in the parent description is rejected before any set write', async t => {
@@ -761,8 +760,8 @@ test('azuredevops E3 E8: an existing HTML origin keeps HTML and never receives t
   assert.equal(identity.decode(body).role, 'parent');
   for (const child of f.state.rows.slice(1)) {
     assert.equal(child.multilineFieldsFormat['System.Description'], 'markdown');
-    assert.ok(text(f, child).startsWith('```\n## Ready to Propose'));
-    assert.ok(text(f, child).includes(`\n\`\`\`\n\nParent: ${url}\n`));
+    assert.ok(text(f, child).startsWith('## Problem\n'));
+    assert.ok(text(f, child).includes(`\n\nParent: ${url}\n`));
     assert.ok(text(f, child).includes('\n```\nsai-backlog-slices@1 '));
   }
   assert.equal((await f.adapter['recover-set']({ receipt: file }, f.io)).status, 'complete');
@@ -794,7 +793,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(f.state.rows.length, 0);
     const published = await f.adapter['publish-set']({ ...f.request, receipt: path.join(directory, 'receipt.json'), confirmation: on.confirmation }, keyed);
     assert.equal(published.status, 'complete', JSON.stringify(published));
-    const request = { origin: await f.url(1), title: 'Refined objective', description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+    const request = { origin: await f.url(1), title: 'Refined objective', description: f.request.description, documents: [block('blocker'), block('dependent', 'blocker')] };
     const updateOff = await f.adapter['query-set-update'](request, f.io), updateOn = await f.adapter['query-set-update'](request, keyed);
     assert.equal(updateOff.status, 'ready', JSON.stringify(updateOff));
     assert.equal(Object.hasOwn(updateOff.proposal, 'auto_approve'), false);

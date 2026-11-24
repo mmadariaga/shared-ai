@@ -31,9 +31,11 @@ URL that matches a provider keeps that provider.
 
 GitHub, GitLab and Azure DevOps crystallized slices can be published as one parent and one child per
 agreed slice, including a one-slice set. `/to-backlog` retains full publication
-confirmation, without a second breakdown approval. Dependencies stay inside
-each block as comma-separated immediate change names and are validated before
-storage/publication. Blockers publish and run first; independent slices retain
+confirmation, without a second breakdown approval. Each child issue is the slice's
+change document as `/sai-explore` agreed it (its title line is the issue title and
+the rest is the description, with no model rewrite) plus the correspondence marker.
+Dependencies stay inside each document as the `Depends on:` line, comma-separated
+immediate change names, and are validated before storage/publication. Blockers publish and run first; independent slices retain
 their original order. When the conversation started from an existing issue, that
 originating issue is the parent: the slices become its children and its
 description is rewritten with the agreed whole objective (title and state are
@@ -173,7 +175,7 @@ pending planning changes, requiring explicit approval without recreating content
 
 Before publication, you see the exact destination and full outgoing content and
 can confirm, edit, or cancel. Azure Boards work items are created in Markdown
-format and receive your Markdown as written; raw HTML outside code blocks is
+format and receive your Markdown (a change document included) as written; raw HTML outside code blocks is
 rejected before approval. An update follows the format of the work item itself:
 a Markdown item receives Markdown, and an existing HTML item keeps receiving HTML
 through the converter, which blocks unsupported forms. A title-only update
