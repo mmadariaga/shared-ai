@@ -120,7 +120,7 @@ Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks 
 |--------|----------------|--------------|
 | **Plan - Unattended** | The change needs careful design and you want to approve the plan before coding. More rigorous, but uses more tokens. | Runs [`/sai-plan`](docs/commands/sai-plan.md): prepares, checks, reviews, and commits specs and design, then stops for your feedback. Run `/sai-build` when ready. |
 | **Direct Build - Unattended** | The change is small and clear, such as a focused fix. Less planning overhead. | Implements and reviews the change, reconstructs specs, archives it, and makes one local commit, plus a second one for the change's telemetry when [change telemetry](#change-telemetry-experimental) is on. No push. |
-| **Manual** | You want to review and control each phase separately. More interaction. | Gives you the `Ready to Propose` block for `/sai-1-spec` in a new chat. Follow the [numbered pipeline](docs/sequential-pipeline.md). |
+| **Manual** | You want to review and control each phase separately. More interaction. | Gives you the change document for `/sai-1-spec` in a new chat. Follow the [numbered pipeline](docs/sequential-pipeline.md). |
 
 For sliced work, you choose again for each slice. Ambiguous decisions still come back to you on unattended routes.
 
@@ -149,7 +149,7 @@ Use these workflows alongside the main pipeline in Claude Code and opencode.
 |---------|---------|
 | [`/sai-commit`](docs/commands/sai-commit.md) | Draft a message for staged changes and commit after approval. |
 | [`/sai-backfill`](docs/commands/sai-backfill.md) | Reconstruct proposal/specs from a code-first change. |
-| [`/sai-direct-build`](docs/commands/sai-direct-build.md) | Build a change from a stored `Ready to Propose` block file in one unattended run, with one local commit. |
+| [`/sai-direct-build`](docs/commands/sai-direct-build.md) | Build a change from a stored change document file in one unattended run, with one local commit. |
 | [`/sai-merge`](docs/commands/sai-merge.md) | Merge, rebase, or squash-rebase with conflict resolution and decision-record repair. |
 | [`/sai-worktree`](docs/commands/sai-worktree.md) | Create or remove separate Git working folders so you can work on changes in parallel. |
 | [`/sai-status`](docs/commands/sai-status.md) | Check progress for one change or all active changes without modifying files. |

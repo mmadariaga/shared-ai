@@ -32,13 +32,13 @@ test('direct-build implementer uses repository-artifact scope and protects publi
 test('direct-build step-1 scope delegates published-spec protection to the shared policy', () => {
   const pipeline = read('sai/commands/explore/direct-build-coordinator.md');
 
-  assert.match(pipeline, /Fetch `@sai\/policies\/repository-artifact-scope\.md`: the implementer may write any repository artifact required by the block, regardless of format, under that policy's protected update protocols/);
+  assert.match(pipeline, /Fetch `@sai\/policies\/repository-artifact-scope\.md`: the implementer may write any repository artifact required by the change document, regardless of format, under that policy's protected update protocols/);
 });
 
 test('explore instructions reflect the repository-artifact implementer boundary (E1)', () => {
   const instructions = read('sai/commands/explore/direct-build-coordinator.md');
 
-  assert.match(instructions, /repository artifact required by the block, regardless of format/);
+  assert.match(instructions, /repository artifact required by the change document, regardless of format/);
 });
 
 test('backfill keeps the specs-only closed file set with no schemas duplication (I4)', () => {

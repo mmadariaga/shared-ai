@@ -12,70 +12,71 @@ The worker receives exactly one opaque string: `arguments_value`. Under
 strict-zero two-phase startup the initial dispatch carries only the ready
 prompt plus base instructions with no task content; `arguments_value` arrives
 only in the post-ready same-worker continuation after `event: ready`. Its first
-line is the marker `--direct-build`; the next two lines are `--block-file <path>`
-and `--block-hash <sha256>`, referencing the complete crystallized `Ready to
-Propose` block exported directly from the `sai-state` store. Before any
-other work, verify that block against the hash per
-`@sai/policies/ready-to-propose-format.md` § Stored block transport: the
+line is the marker `--direct-build`; the next two lines are `--document-file <path>`
+and `--document-hash <sha256>`, referencing the complete crystallized change
+document exported directly from the `sai-state` store. Before any
+other work, verify that document against the hash per
+`@sai/policies/issue-format.md` § Change document (Transport): the
 both reference lines are required, and a missing/unreadable file or a mismatch returns
 `failed` with no changes. The one exception is the pinned `--no-specs` POC
-profile, which has no stored block: its first line is `--direct-build --no-specs`,
+profile, which has no stored document: its first line is `--direct-build --no-specs`,
 its second line is `--work-root <path>`, it carries no file or hash line, and
 nothing is verified. The POC worker reads and writes only under that work root,
 the isolated worktree that the coordinator created for the POC. Then strip the marker and reference
-lines and treat that block as your sole substantive input: no design or
+lines and treat that document as your sole substantive input: no design or
 tasks artifacts exist, no conversation context is forwarded, and none may be
-inferred from repository discovery beyond what implementing the block
+inferred from repository discovery beyond what implementing the document
 requires. Binding metadata remains outside the worker request.
 
 A task message may close with a `Scratch folder: <path>` line (outside the
-envelope, after the block reference lines): strip it, keep it, create the folder when it does not exist, and follow
+envelope, after the document reference lines): strip it, keep it, create the folder when it does not exist, and follow
 `@sai/policies/worker-lifecycle.md` § Worker side for it. Every command that
 can run long, such as the test suite, sends its output to a log in that
 folder, so the coordinator's watch counts the running command as activity.
 
-## Block-driven direct implementation
+## Document-driven direct implementation
 
-Implement the change directly from the block. Work from **Capabilities in
-scope**, **Key constraints**, **Implementation Details** (`I1`…`In`), and
-**Edge Cases** (`E1`…`En`); treat **Research Leads** as non-authoritative
-starting points only, and read **Request Additional Notes**, when present, as
-non-authoritative context in the same way — it adds no scope and no
+Implement the change directly from the document. Read it by its headings: the
+`Goal` is what the change does and the `Problem` is why. Work from
+**Capabilities**, **Scope**, **Non-goals**, **Implementation notes**
+(`I1`…`In`), and **Edge cases** (`E1`…`En`); treat **Research leads** as
+non-authoritative starting points only, and read **Additional notes**, when
+present, as non-authoritative context in the same way — it adds no scope and no
 requirement. Follow the project's existing code conventions,
 glossary terms where `GLOSSARY.md` exists, and format rules. When the root
 `SAI_LEARNINGS.md` exists, read it once as context about the repository: it
 records how the repository builds, tests, and behaves. It adds no requirement,
-scope, or file, and when an entry contradicts the block the block prevails. Ignore
+scope, or file, and when an entry contradicts the document the document prevails. Ignore
 an entry that cites paths that no longer exist; never correct it and never write
-`SAI_LEARNINGS.md`. When the file does not exist, proceed from the block alone
+`SAI_LEARNINGS.md`. When the file does not exist, proceed from the document alone
 with no error and no notice. Keep the diff minimal and reviewable.
 
-**Scope rule**: `**Capabilities in scope**` and `**Implementation Details**`
+**Scope rule**: `## Capabilities`, `## Scope`, and `## Implementation notes`
 bound this run; implement exactly the items listed under
-`**Implementation Details**`. `**Out of scope Implementation Details**` is
+`## Implementation notes`. `## Out-of-scope implementation notes` is
 context only: use its items solely to choose among options that are equivalent
 for this run, so a choice does not block a later slice. Never implement an
 out-of-scope item and never do anticipatory implementation — no whole item,
 stub, hook, "for later" abstraction, or reference whose only purpose is to
 serve a later slice.
 
-**Empty Implementation Details.** When `**Implementation Details**` is
-`- None`, the user confirmed that no technical decision qualifies: implement the
-request within the bounds of the `**Edge Cases**` and `**Capabilities in
-scope**`. An empty list never causes a stop without a report; return `failed`
+**Empty Implementation notes.** When the document has no `## Implementation notes`
+section, the user confirmed that no technical decision qualifies: implement the
+request within the bounds of the `## Edge cases`, `## Capabilities`, and
+`## Scope`. An empty list never causes a stop without a report; return `failed`
 only when that request cannot be implemented as written.
 
 Write any artifact the crystallized change requires, within the
 repository-artifact scope and its protected update protocols, and never create
 planning artifacts (`design.md`, `tasks.md`, `implementation.md`). The shared
-code-quality stack applies within the block's scope.
+code-quality stack applies within the document's scope.
 
 ## Functional fix loop
 
-Explore reviews the resulting diff against the block's Capabilities and Edge
-Cases and continues THIS same worker with findings when correction is needed.
+Explore reviews the resulting diff against the document's Capabilities and Edge
+cases and continues THIS same worker with findings when correction is needed.
 A continuation payload is an ordered finding list (or a verification note);
-apply exactly the listed corrections within the block's scope, return the
+apply exactly the listed corrections within the document's scope, return the
 closed lifecycle result again, and add every touched path to
 `changed_files`. Do not re-plan, expand scope, or "improve" beyond findings.
 
@@ -87,12 +88,12 @@ into `changed_files`.
 
 **Runtime-repair verification note.** When Explore continues this worker with
 the verification note allowed by the unattended runtime-recovery rule, accept
-it only as one same-worker correction to the already-disclosed block. The note
+it only as one same-worker correction to the already-disclosed document. The note
 states verified current effects, one reversible correction within the
-crystallized block's existing scope, and one concrete verification check.
+crystallized document's existing scope, and one concrete verification check.
 Confirm the affected state before editing; apply only that correction and run
 the named check before returning. The note adds no requirement or task,
-authorizes no artifact outside the block's existing scope, and grants no new
+authorizes no artifact outside the document's existing scope, and grants no new
 mutation authority. Do not use it for deletion or a destructive, irreversible,
 or shared-system action. If the effects, scope, reversibility, or check cannot
 be established, make no correction. Return the ordinary closed lifecycle
@@ -101,7 +102,7 @@ ordered-findings continuation or its route-owned round limit, nor does it add a
 result status or payload field; preserve the lifecycle shapes and `changed_files`
 union below.
 
-**Decision-record order.** When Explore continues this worker with a decision-record order, write exactly the records and index entries it lists, as `@sai/policies/decision-record-creation.md` directs (Fetch it when the order names it). The order carries the families, numbers, titles, and paths, already checked against what exists and against the ignore rules. Records describe the code you implemented and cite any departure from the block's decision with its reason. Never edit an existing record. Return the ordinary closed lifecycle result and add every written path to `changed_files`; the order adds no requirement, scope, or result field.
+**Decision-record order.** When Explore continues this worker with a decision-record order, write exactly the records and index entries it lists, as `@sai/policies/decision-record-creation.md` directs (Fetch it when the order names it). The order carries the families, numbers, titles, and paths, already checked against what exists and against the ignore rules. Records describe the code you implemented and cite any departure from the document's decision with its reason. Never edit an existing record. Return the ordinary closed lifecycle result and add every written path to `changed_files`; the order adds no requirement, scope, or result field.
 
 ## Lifecycle
 
@@ -112,7 +113,7 @@ are non-normative context: do not apply them, do not copy them into any
 artifact, and list them in the result `summary`.
 
 Emit no progress events. Every stretch opens with the shared ready return as
-its first nonterminal return before any expensive work; the block arrives only
+its first nonterminal return before any expensive work; the document arrives only
 in the post-ready same-worker continuation.
 
 Every stretch closes with exactly one terminal result, with a concrete English
@@ -142,11 +143,11 @@ Every `needs_input` question is shaped per `@sai/policies/question-context.md`
 at its source; presentation belongs to the coordinator, which forwards your
 `question` and `options` unchanged.
 
-`resolved_change_name` is the block's `Change name`, present once the block has
+`resolved_change_name` is the document's `Change name:` value, present once the document has
 verified; a result before that point, and every `--no-specs` result, omits it.
 Results carry no time field and no continuation identifier: you never read a
 clock and never write a timestamp. On the full route, a `failed` result after
-the block verified also carries the failure fields that
+the document verified also carries the failure fields that
 `@sai/policies/worker-report-transport.md` § Direct Build role fields defines.
-Return `failed` with a concrete cause in `summary` when the block cannot be
+Return `failed` with a concrete cause in `summary` when the document cannot be
 implemented as written; never silently substitute a different feature.

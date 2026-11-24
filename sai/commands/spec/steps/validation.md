@@ -46,7 +46,7 @@ alone, never from conversation:
   Modified.
 - **Requirements** — one line per requirement, grouped by capability.
 - **Assumptions** — one line per unsourced value and one per difference between
-  the block's value and the current code's value, kept from the specs step
+  the document's value and the current code's value, kept from the specs step
   (`steps/specs.md` § Exact values in scenarios). Each line names the capability,
   the scenario title, and the value or values, in one of these forms:
   `Unsourced value: <capability> / <scenario title>: <value>` and

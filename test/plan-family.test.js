@@ -142,26 +142,26 @@ test('/sai-plan chains the spec and design coordinators as segments like /sai-bu
   assert.match(plan, /Fetch `@sai\/commands\/spec\/coordinator\.md` and follow it exactly as the first segment/);
   assert.match(plan, /Fetch `@sai\/commands\/design\/coordinator\.md` and follow it exactly as the second segment/);
   assert.match(plan, /No wrapper is entered again and no approval is asked between segments/);
-  assert.match(plan, /the disk wins\. The spec segment counts as done, the block \(if one came\) does not rewrite them/);
+  assert.match(plan, /the disk wins\. The spec segment counts as done, the document \(if one came\) does not rewrite them/);
   assert.match(plan, /Only one of them exists: the change is partly present, which is neither a creation nor a complete set/);
   assert.match(plan, /Complete it with \/sai-1-spec \{name\} followed by your feedback/);
   assert.match(plan, /do not start the design segment/);
   assert.match(plan, /Review findings still pending after the third round do not stop the run/);
   assert.match(plan, /A change left with specs and no design continues with `\/sai-2-design \{name\}`/);
-  assert.match(plan, /Cannot start \/sai-plan: pass a Ready to Propose block/);
+  assert.match(plan, /Cannot start \/sai-plan: pass a change document/);
   assert.match(plan, /Cannot start \/sai-plan for \{name\}: missing/);
   assert.match(plan, /Plan done in openspec\/changes\/\{name\}\//);
   assert.match(plan, /accepted and ignored/);
   assert.doesNotMatch(plan, /composition\.md/);
 });
 
-test('the spec coordinator carries its startup literals, block intake, and closing line', () => {
+test('the spec coordinator carries its startup literals, document intake, and closing line', () => {
   const spec = read('sai/commands/spec/coordinator.md');
-  assert.match(spec, /Cannot start \/sai-1-spec: creation needs a dispatchable Ready to Propose block/);
+  assert.match(spec, /Cannot start \/sai-1-spec: creation needs a dispatchable change document/);
   assert.match(spec, /Cannot start \/sai-1-spec for \{name\}: it already has artifacts/);
-  assert.match(spec, /`--block-file <path>` with a `--block-hash <sha256>`/);
-  assert.match(spec, /verify-file --block-file <path> --block-hash <hash>/);
-  assert.match(spec, /check --profile dispatchable --block-file <path>/);
+  assert.match(spec, /`--document-file <path>` with a `--document-hash <sha256>`/);
+  assert.match(spec, /verify-file --document-file <path> --document-hash <hash>/);
+  assert.match(spec, /check --document-file <path>/);
   assert.match(spec, /before any dispatch/);
   assert.match(spec, /`--fast-track` and `--supervised`[\s\S]{0,80}accepted and ignored, and no banner is printed/);
   assert.match(spec, /openspec validate \{name\}/);
@@ -267,7 +267,7 @@ test('the worker cards own their write surfaces and never ask the user or run gi
   const spec = read('sai/commands/spec/worker.md');
   assert.match(spec, /## Write surface/);
   assert.match(spec, /preserve the validator's returned `backlog_origin`/);
-  assert.match(spec, /Only the items under `Implementation Details` count/);
+  assert.match(spec, /Only the items under `Implementation notes` count/);
 
   const design = read('sai/commands/design/worker.md');
   assert.match(design, /## Write surface/);

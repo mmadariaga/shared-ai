@@ -20,7 +20,7 @@ The task arrives in the next message to you, and every later message arrives the
 
 ## Messages
 
-The first message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. It then carries the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the mode (creation, refinement, or a rerun with feedback), the references to read (the block file, the feedback file), the report name, the run directory, and the path of your scratch folder. The brief is complete; ask nothing of the user, because nobody is there to answer.
+The first message opens with the line `--report-dir <path>`, the report directory of the run: strip it, keep it for every later message, and save each report there. It then carries the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the mode (creation, refinement, or a rerun with feedback), the references to read (the document file, the feedback file), the report name, the run directory, and the path of your scratch folder. The brief is complete; ask nothing of the user, because nobody is there to answer.
 
 1. Run your intake step inline: read the brief and what it names.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do that step.
@@ -32,7 +32,7 @@ Later messages carry a pointer line for the next step, or none. A message withou
 
 ## Questions
 
-When you cannot settle a decision and its answer would change a normative statement of your artifacts, stop and report `needs_input`. State the decision, why it matters, the options with their consequences, and which one you recommend. Ask for nothing else: a question whose answer you can derive from the block, the artifacts, or the repository is yours to settle.
+When you cannot settle a decision and its answer would change a normative statement of your artifacts, stop and report `needs_input`. State the decision, why it matters, the options with their consequences, and which one you recommend. Ask for nothing else: a question whose answer you can derive from the document, the artifacts, or the repository is yours to settle.
 
 ## Report
 

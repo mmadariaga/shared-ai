@@ -185,6 +185,6 @@ test('both Explore read-only reminders preserve the exact confirmed to-backlog e
   assert.match(reminder, /permits no repository writes and never bypasses that confirmation/);
   assert.match(reminder, /Temporary preparation and receipts remain outside the repository/);
   assert.match(reminder, /Repository writes happen only inside a route the user explicitly selects/);
-  assert.match(reminder, /emitting a `Ready to Propose` block selects no route and authorizes no writes/);
+  assert.match(reminder, /emitting a change document selects no route and authorizes no writes/);
   assert.doesNotMatch(reminder, /deletes no files|\. Writes happen only inside a route/);
 });

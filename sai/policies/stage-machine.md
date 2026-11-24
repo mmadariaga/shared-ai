@@ -50,7 +50,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `sai-state/machines/run-core.js`; a `--set-path` value holds no `"`, `$`,
   backtick, or control character. A violation, a field named twice by `--set`
   or by both `--set` and `--add`, or a flag combined with `--input-file`, stdin
-  `-`, `--progress`, or `--ready-to-propose` is a usage error (exit 2) that
+  `-`, `--progress`, or `--document-file` is a usage error (exit 2) that
   changes no state; a rejected path names `--input-file` as the alternative.
   `sai-state emit <id> <machineId> --input-file <path>` reads one event as JSON
   from the input file instead, for an event that holds free text or a path the
@@ -82,96 +82,101 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
   error: discriminate by `validation.ok`. A validator module found in
   neither location relative to the CLI exits 2 naming the tried paths and
-  emits nothing. Only the progress emit and the block emit load that module;
+  emits nothing. Only the progress emit and the document emit load that module;
   `spawn`, `reset`, `close`, `block`, and an identifier-event `emit` run without
   it. Every verb takes `received_at` from its own clock module
   (`sai/tools/received-at.js`, the single source the validator also uses), and a
   clock module found in neither location exits 2 naming the tried paths. Every
   stdout JSON response, machine errors (exit 1) included, carries `received_at`
   as its first key; stderr carries no time.
-- **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>`
-  reads the complete `Ready to Propose` block set as text from the block file
-  instead of a hand-composed event, and the bounded-judgment verdicts
+- **Document emit**: `sai-state emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> [--verdicts-file <path>] ...]`
+  reads the complete set of change documents, one file per document in display
+  order, and the bounded-judgment verdicts of each document
   (`@sai/policies/block-hygiene-judgment.md`) as a JSON array from the
-  verdicts file (`[]` when no line is flagged). Both files are prepared per
-  `@sai/policies/ready-to-propose-format.md` § Block and verdict delivery. It
-  validates the set with the `dispatchable` profile of
-  `sai/tools/ready-to-propose.js` before any session, machine, or registry
-  read; the set is dispatchable when it is structurally valid and every line
-  the lexical pre-filter flagged carries a `context` verdict. On a dispatchable
-  verdict it derives `{"recordedList": [...]}` from the extracted
-  `**Change name**` values in display order, advances the machine, and stores in
-  the session file, per change name, each block's text, its sha256 hash, and
-  the verdicts of its flagged lines, in the same session-file write as the
-  inventory; a later successful block emit replaces the stored blocks together
-  with the inventory, except that a slice whose block hash equals the stored
-  one keeps its completion and its parked cursor, and the publication answer
-  stays when the set of change names is unchanged (the CLI hands the machine
-  the names whose hash is unchanged as `unchanged`). A successful block emit
-  also empties the `staleBlocks` list of § Explore movement. The inventory,
-  the block texts, their hashes, and their
-  verdicts are one session-file write: when it fails the response is the
-  `STORE_WRITE_FAILED` (or `STORE_CONFLICT`) error of § Responses, and the
-  earlier inventory and blocks stay intact. The set is validated as a whole: a
-  structural violation, a flagged line without a verdict, or a `violation`
-  verdict records nothing and leaves the machine untouched. It always
-  returns `received_at` and `validation: {ok, structural_ok, profile, blocks:
-  [{index, line, violations, flagged}], violations, flagged, judgment: {ok,
-  pending, violations, unknown, invalid}}` (change names stay off the wire;
-  `ok` is true only for a dispatchable set), plus the ordinary emit fields on a
-  dispatchable verdict. A non-dispatchable verdict exits 1; `judgment.pending`
-  lists the lines awaiting a verdict. An empty block file, a block file with no
-  block heading, a final block cut off before its `---` line, or verdicts that
-  leave a flagged line without a `context` verdict is a delivery failure
-  instead (`INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"`, exit 1).
-  A dispatchable
-  set is accepted only while `explore-idea@1` in the same session is at its
-  `crystallize` stage (an absent state counts as `explore-change`); at any
-  other stage nothing is recorded and the response is `INVALID_EVENT` with
-  `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1`
-  pointer (exit 1). `--amend` is outside this check. On any other
-  machine, or combined with `--progress`, the option is a
-  usage error (exit 2). A detector or validator module found in neither location
-  relative to the CLI exits 2 naming the tried paths.
-- **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --block-file <path> --verdicts-file <path>`
-  reads exactly one `Ready to Propose` block as text from the block file, in the
-  block emit's delivery form and with the same verdicts file. It
-  validates the block with the `dispatchable` profile exactly as the block emit
-  does, then requires the block's `**Change name**` to equal `<change-name>`
-  (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the block
-  file to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
-  then accepts the amendment for a pending, stopped, or running slice: a slice
-  that is completed (`rejected: "SLICE_COMPLETED"`) or not in the recorded
-  inventory (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0 and nothing
-  stored. An accepted amendment replaces only that slice's stored text, hash,
-  and verdicts in the session file; the inventory order, the other slices'
-  stored entries, and the completed slices stay unchanged. The CLI compares the
-  stored and the new block field by field (`ready-to-propose.js compare`) and
-  answers `amend_kind`: `metadata` when only block metadata (`Backlog origin`,
-  `Explore origin`) changed, `content` otherwise. A `metadata` amendment keeps
-  the route authorization: a running slice is amended in place and a parked
-  cursor stays. A `content` amendment voids it: the slice returns to pending
-  without a cursor (a running slice is released) and the route gate closes, so
-  the route selector is presented again. An accepted amendment removes its
-  slice from the `staleBlocks` list of § Explore movement. It returns the block emit's
-  `validation` block, the `amend_kind`, plus the ordinary emit fields. The
-  replacement is written together with the machine outcome in one session-file
-  write, so a store failure (§ Responses) leaves the previous entry stored. A
-  non-dispatchable block returns
-  `validation` alone, exits 1, and replaces nothing. The option is accepted
-  only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
-  error (exit 2).
-  Both registration and amendment use the `--block-file <path> --verdicts-file <path>` form on both harnesses. It invokes `ready-to-propose.js`'s shared composer before validation or state reads, inserting the required newline boundary without changing the hashed block. Invalid/missing files, incomplete or non-dispatchable blocks, or invalid or incomplete verdicts return `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"` and a `detail` (exit 1), with no transition or write; the per-line `validation` of such a block comes from `ready-to-propose.js check --profile dispatchable --block-file <path>` (`@sai/policies/ready-to-propose-format.md` § Block and verdict delivery).
+  `--verdicts-file` that follows it (`[]`, or no verdicts file, when no line is
+  flagged), instead of a hand-composed event. Every file is prepared per
+  `@sai/policies/issue-format.md` § Change document (Transport). It
+  validates the set with `sai/tools/change-document.js` before any session,
+  machine, or registry read: each document is checked as one change document
+  (as a member of a slice set when there are several) and the set is checked as
+  a whole (unique change names, every out-of-scope `I#` in scope of a
+  document, `Depends on:` names inside the set and acyclic). The set is
+  dispatchable when it is structurally valid and every line the lexical
+  pre-filter flagged carries a `context` verdict. On a dispatchable verdict it
+  derives `{"recordedList": [...]}` from the `Change name:` values in
+  dependency order, advances the machine, and stores in the session file, per
+  change name, each document's text, its sha256 hash, and the verdicts of its
+  flagged lines, in the same session-file write as the inventory; a later
+  successful document emit replaces the stored documents together with the
+  inventory, except that a slice whose document hash equals the stored one keeps
+  its completion and its parked cursor, and the publication answer stays when the
+  set of change names is unchanged (the CLI hands the machine the names whose
+  hash is unchanged as `unchanged`). A successful document emit also empties the
+  `staleBlocks` list of § Explore movement. The inventory, the document texts,
+  their hashes, and their verdicts are one session-file write: when it fails the
+  response is the `STORE_WRITE_FAILED` (or `STORE_CONFLICT`) error of § Responses,
+  and the earlier inventory and documents stay intact. The set is validated as
+  a whole: a structural violation, a repeated change name, a `Depends on:` that
+  names a change outside the set or forms a cycle, a flagged line without a
+  verdict, or a `violation` verdict records nothing and leaves the machine
+  untouched. It always returns `received_at` and `validation: {ok,
+  structural_ok, profile, documents: [{index, violations, flagged}], violations,
+  flagged, judgment: {ok, pending, violations, unknown, invalid}}` (change names
+  stay off the wire; `ok` is true only for a dispatchable set), plus the ordinary
+  emit fields and the dependency `order` on a dispatchable verdict. A
+  non-dispatchable verdict exits 1; `judgment.pending` lists the lines awaiting
+  a verdict. A file that is not one change document (no `# <title>` first line,
+  or a second document), an unreadable file, or an unparseable verdicts file is
+  a delivery failure instead (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`
+  or `"DOCUMENT_READ_FAILED"`, exit 1). A change document is a retired
+  format: it answers `reason: "RETIRED_FORMAT"` (exit 1), is rejected, and is
+  never converted; the retired `--ready-to-propose` and `--document-file` forms
+  are a usage error (exit 2). A dispatchable set is accepted only while
+  `explore-idea@1` in the same session is at its `crystallize` stage (an absent
+  state counts as `explore-change`); at any other stage nothing is recorded and
+  the response is `INVALID_EVENT` with `reason: "STAGE_NOT_CRYSTALLIZE"`, the
+  found `stage`, and the `explore-idea@1` pointer (exit 1). `--amend` is outside
+  this check. On any other machine, or combined with `--progress`, the option is
+  a usage error (exit 2). A document tool or validator module found in neither
+  location relative to the CLI exits 2 naming the tried paths.
+- **Document amend**: `sai-state emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`
+  reads exactly one change document from the file, in the document emit's
+  delivery form and with the same verdicts file. It validates the document
+  exactly as the document emit does, then requires its `Change name:` to equal
+  `<change-name>` (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1)
+  and the call to carry one document (`reason: "AMEND_DOCUMENT_COUNT"`, exit 1).
+  `explore-slice@1` then accepts the amendment for a pending, stopped, or
+  running slice: a slice that is completed (`rejected: "SLICE_COMPLETED"`) or not
+  in the recorded inventory (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0
+  and nothing stored. An accepted amendment replaces only that slice's stored
+  text, hash, and verdicts in the session file; the inventory order, the other
+  slices' stored entries, and the completed slices stay unchanged. The CLI
+  compares the stored and the new document field by field
+  (`change-document.js compare`) and answers `amend_kind`: `metadata` when only
+  the `Backlog origin:` or `Explore origin:` lines of `## Change` changed,
+  `content` otherwise. A `metadata` amendment keeps the route authorization: a
+  running slice is amended in place and a parked cursor stays. A `content`
+  amendment voids it: the slice returns to pending without a cursor (a running
+  slice is released) and the route gate closes, so the route selector is
+  presented again. An accepted amendment removes its slice from the
+  `staleBlocks` list of § Explore movement. It returns the document emit's
+  `validation`, the `amend_kind`, plus the ordinary emit fields. The replacement
+  is written together with the machine outcome in one session-file write, so a
+  store failure (§ Responses) leaves the previous entry stored. A
+  non-dispatchable document returns `validation` alone, exits 1, and replaces
+  nothing. The option is accepted only with `--document-file` on
+  `explore-slice@1`; otherwise it is a usage error (exit 2).
+  Both registration and amendment use the `--document-file <path> [--verdicts-file <path>]` form on both harnesses, with no content through a shell command; the per-line `validation` of a document comes from `change-document.js check --document-file <path>` (`@sai/policies/issue-format.md` § Change document (Transport)).
 - **Block**: `sai-state block <id> <change-name>` returns
-  `{received_at, hash, text}` for one recorded slice: the exact validated block
-  text and its sha256 hash as the block emit (or the latest amendment) stored
-  them. When the session, the stored blocks, or that change name is absent it
-  returns `{received_at, error: "BLOCK_NOT_FOUND"}` and exits 1, with no text.
-  Plan and Direct Build dispatches, and every later reading of a slice's block
-  by an Explore route, take block text only from this verb, never from
-  conversation. The receiving worker runs `verify-file` on the exported
-  `block_file` (`@sai/policies/ready-to-propose-format.md` § Stored block
-  transport). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, block_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing block still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the stored-block transport policy.
+  `{received_at, hash, text}` for one recorded slice: the exact validated change
+  document text and its sha256 hash as the document emit (or the latest
+  amendment) stored them. When the session, the stored documents, or that change
+  name is absent it returns `{received_at, error: "BLOCK_NOT_FOUND"}` and exits 1,
+  with no text. Plan and Direct Build dispatches, and every later reading of a
+  slice's document by an Explore route, take document text only from this verb,
+  never from conversation. The receiving worker runs `verify-file` on the
+  exported `document_file` (`@sai/policies/issue-format.md` § Change document
+  (Transport)). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, document_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing document still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the change document transport policy.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
@@ -255,8 +260,8 @@ the response.
   `staleBlocks` in the session file. While any name is listed the route intents of
   `explore-slice@1` (`route-choice`, `direct-build`, `plan`, `auto-continue`,
   `resume-direct-build`) answer `rejected: "BLOCKS_STALE"` and change nothing. An
-  accepted amendment removes only its own name; a block emit (re-registration)
-  empties the list. The lock opens only when every stored block was amended or
+  accepted amendment removes only its own name; a document emit (re-registration)
+  empties the list. The lock opens only when every stored document was amended or
   the set was registered again.
 
 ## Explore pause and close
@@ -267,7 +272,7 @@ the response.
 `sai/commands/explore/instructions.md` (rule 4); the machine only guards them.
 
 - **`pause`** (`--set intent=pause`): `exploration` becomes `paused`. Every stage,
-  section, list, and move stays as it is, and so do the stored blocks and the slice
+  section, list, and move stays as it is, and so do the stored documents and the slice
   inventory of `explore-slice@1`.
 - **`resume`** (`--set intent=resume`): a paused exploration becomes `active` at the
   stage it was paused in. Any other exploration answers `rejected: "NOT_PAUSED"` (an
@@ -280,7 +285,7 @@ the response.
   that closes an exploration also runs `sai-state reset <id> explore-slice@1` and
   `sai-state reset <id> direct-build-run@1` (no route is running then), which drop
   the slice inventory, the cursors, the publication answer, and the Direct Build
-  run state, so no stored block can start a route afterwards.
+  run state, so no stored document can start a route afterwards.
 - **`status`** (`--set intent=status`): reads the exploration and changes nothing,
   in any exploration. The turn check of `sai/commands/explore/body.md` uses it.
 - **While `paused`**, every intent other than `resume` (and `status`) answers
@@ -366,38 +371,38 @@ accepts them as received, so events carry identifiers,
 never free text: a `recordedList` holds only list ids (`"E1"`, `"E2"`, …,
 `"I1"`, …, or the Step ids), because the machine reads only whether the list
 is recorded or empty. `explore-slice@1` is the one exception: its
-`recordedList` carries `**Change name**` values, which are kebab-case ASCII
+`recordedList` carries `Change name:` values, which are kebab-case ASCII
 identifiers, because that machine tracks slices by name. Route events carry no
 slice name; the machine always chooses the first pending entry in that ordered
 inventory.
 
-**Block emits are the one exception.** The block emit carries the free-text
-block set, so it travels as files, never as single-quoted JSON and never
-through a shell command: the block set in a block file and its verdicts in a
-verdicts file, both written with the harness-native file-write tool per
-`@sai/policies/ready-to-propose-format.md` § Block and verdict delivery, then
+**Document emits are the one exception.** The document emit carries free-text
+documents, so it travels as files, never as single-quoted JSON and never
+through a shell command: each document in its own file and its verdicts in a
+verdicts file, all written with the harness-native file-write tool per
+`@sai/policies/issue-format.md` § Change document (Transport), then
 passed as absolute paths. The invocation is identical in Bash and PowerShell 7
-on both Claude Code and opencode. Write the set exactly as it will be
+on both Claude Code and opencode. Write each document exactly as it will be
 displayed:
 
 ```text
-node <tool-path> emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>
+node <tool-path> emit <id> explore-slice@1 --document-file <path> --verdicts-file <path> --document-file <path> --verdicts-file <path>
 ```
 
-The verdicts file holds one JSON array: the verdicts the hygiene judgment
-supplies, or `[]` when no line is flagged. The composer adds the
-`<<<VERDICTS>>>` line mechanically, so the displayed set never contains it. A
-file write keeps non-ASCII characters byte for byte; the labels are English and
-the change names are kebab-case ASCII. A block emit that cannot be delivered
-returns `BLOCK_COMPOSITION_FAILED` and falls under § Corrective retry; a
-validation failure does not, and follows the retry rule of the command that
-sends the block set. When the files cannot be prepared, the emit stops and
+Each verdicts file holds one JSON array: the verdicts the hygiene judgment
+supplies for the document before it, or `[]` when no line is flagged, with each
+`line` counted in the document file. A file write keeps non-ASCII characters
+byte for byte; the section headings and the keys of `## Change` are English and
+the change names are kebab-case ASCII. A document emit that cannot be delivered
+returns `DOCUMENT_READ_FAILED` or `EVENT_UNPARSEABLE` and falls under § Corrective
+retry; a validation failure does not, and follows the retry rule of the command
+that sends the document set. When the files cannot be prepared, the emit stops and
 reports the error: there is no stdin fallback.
 
 ## Corrective retry
 
 A delivery failure — `reason: "EVENT_UNPARSEABLE"`,
-`reason: "BLOCK_COMPOSITION_FAILED"`, or an `emit` usage error (exit 2) — gets
+`reason: "DOCUMENT_READ_FAILED"`, or an `emit` usage error (exit 2) — gets
 up to 2 retries of that same emit without asking the user, before any store
 failure is declared. Each retry corrects the delivery form to
 the canonical example; repeating the same command is not a retry. When both

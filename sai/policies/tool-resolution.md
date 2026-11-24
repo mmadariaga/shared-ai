@@ -113,8 +113,8 @@ takes one — never substitute one for the other.
   <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
   <project-root> --fingerprint <hash>`, with the complete reference set in
   `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
-- `backfill-no-specs.js`: `node <tool-path> compose --block-file <path>
-  --block-hash <sha256> --change-name <name> --transfer-dir <dir> [--cwd
+- `backfill-no-specs.js`: `node <tool-path> compose --document-file <path>
+  --document-hash <sha256> --change-name <name> --transfer-dir <dir> [--cwd
   <project-root>]`, adding `--backlog-origin <url>` or `--explore-origin <value>`
   only to carry an existing origin; it prints one JSON object. The `order`
   sub-command of `validate-backfill-drafts.js` takes `--target backfill|archive`
@@ -130,7 +130,8 @@ takes one — never substitute one for the other.
   <review.md> [--cwd <project-root>]`. It always prints one JSON object
   (`status: ok` with the merge-base, fingerprint, and floors, or with the stored
   block's `state`; or `status: blocked` with a `message`).
-- `ready-to-propose.js`: `node <tool-path> check --profile loose|strict|dispatchable
+- `change-document.js`: `node <tool-path> check --document-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist and `--slice` for a member of a slice set; `check-set` with one `--document-file <path>` per document; `verify-file --document-file <path> --document-hash <sha256>`; `hash --document-file <path>`; `compare --stored-file <path> --document-file <path>`; `sections --input-file <path>` for an issue description. It always prints one JSON verdict and takes no `--cwd`.
+- `ready-to-propose.js` (the retired block format, kept for the backlog tools): `node <tool-path> check --profile loose|strict|dispatchable
   --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts
   exist (the tool composes the `<<<VERDICTS>>>` line itself). It always prints one JSON verdict; `--json` is
   accepted and changes nothing, and it takes no `--cwd`. `convert [--change-name

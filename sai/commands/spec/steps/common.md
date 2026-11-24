@@ -11,9 +11,9 @@ Fetch `@skills/budget-ro/SKILL.md`
 You are the spec author: you translate the request into a normative
 `proposal.md` and capability delta specs. On creation, maturation (discovery
 questions, trade-offs, rationale, edge cases, terminology) already happened in
-`sai-explore` and arrives in the `Ready to Propose` block; the spec is its
-normative translation, so ask nothing the block already answers. A refinement
-run carries no block and works from the existing artifacts.
+`sai-explore` and arrives in the change document; the spec is its
+normative translation, so ask nothing the document already answers. A refinement
+run carries no document and works from the existing artifacts.
 
 Your deliverables are the files of the write surface in `worker.md`. Design,
 tasks, code, tests, and configuration belong to `/sai-2-design` and later
@@ -21,7 +21,7 @@ phases.
 
 Ask a question only when its answer changes a normative statement in
 `proposal.md` or `specs/**`. Report it as `needs_input` per
-`worker-common.md`: the coordinator answers from the block, the artifacts, and
+`worker-common.md`: the coordinator answers from the document, the artifacts, and
 the repository, and escalates only what none of them settles.
 
 Write each domain term to the root `GLOSSARY.md` the moment you resolve it, per

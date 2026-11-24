@@ -107,12 +107,12 @@ function loadBriefs(corpusDir, problems) {
   const briefs = [];
   for (const id of names) {
     const dir = path.join(briefsDir, id);
-    const blockFile = path.join(dir, 'block.md');
-    const changeName = fs.existsSync(blockFile)
-      ? /^\*\*Change name\*\*:\s*(\S+)\s*$/m.exec(fs.readFileSync(blockFile, 'utf8'))?.[1]
+    const documentFile = path.join(dir, 'document.md');
+    const changeName = fs.existsSync(documentFile)
+      ? /^[ \t]*(?:[-*+][ \t]+)?Change name[ \t]*:[ \t]*(\S+)[ \t]*$/m.exec(fs.readFileSync(documentFile, 'utf8'))?.[1]
       : undefined;
-    if (!fs.existsSync(blockFile)) problems.push(`brief ${id}: block.md is missing`);
-    else if (!changeName) problems.push(`brief ${id}: block.md has no Change name line`);
+    if (!fs.existsSync(documentFile)) problems.push(`brief ${id}: document.md is missing`);
+    else if (!changeName) problems.push(`brief ${id}: document.md has no Change name line`);
     if (!isDirectory(path.join(dir, 'plan')) || fs.readdirSync(path.join(dir, 'plan')).length === 0) {
       problems.push(`brief ${id}: plan/ must hold the fixed plan`);
     }

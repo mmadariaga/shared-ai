@@ -139,6 +139,18 @@ function violation(line, problem, detail) {
   return { line, problem, detail };
 }
 
+/**
+ * Whether the text is a `Ready to Propose` block, the retired crystallized
+ * format: a `## Ready to Propose` heading line, or the block's bold
+ * `**Change name**:` field label. A block is rejected, never converted.
+ */
+const RETIRED_FORMAT_DETAIL = 'the "Ready to Propose" block is a retired format; a change is crystallized as a change document (first line "# <title>"), and a block is rejected, never converted';
+
+function isRetiredBlockFormat(text) {
+  const normalized = normalize(text);
+  return /^\s*##[ \t]+Ready to Propose\b/m.test(normalized) || /^\s*\*\*Change name\*\*[ \t]*:/m.test(normalized);
+}
+
 /** sha256 hex of a document's text (newlines normalized to LF); it covers the whole file. */
 function hashDocument(text) {
   return crypto.createHash('sha256').update(normalize(text), 'utf8').digest('hex');
@@ -478,6 +490,7 @@ function checkStructure(text, { sliced = false } = {}) {
   const doc = parseIssueSections(text);
   const violations = [];
 
+  if (isRetiredBlockFormat(text)) violations.push(violation(1, 'RETIRED_FORMAT', RETIRED_FORMAT_DETAIL));
   if (doc.titleProblem === 'MISSING_TITLE') violations.push(violation(1, 'MISSING_TITLE', 'the first line must be "# <title>"'));
   if (doc.titleProblem === 'EMPTY_TITLE') violations.push(violation(1, 'EMPTY_TITLE', 'the title after "# " must not be empty'));
   for (const line of doc.extraTitles) {
@@ -664,6 +677,7 @@ function checkSet(texts) {
 
 /** The shape failure of a document file, or null: no title line, an empty title, or more than one document. */
 function documentShape(text) {
+  if (isRetiredBlockFormat(text)) return RETIRED_FORMAT_DETAIL;
   const doc = parseIssueSections(text);
   if (doc.titleProblem === 'MISSING_TITLE') return 'the first line must be "# <title>"';
   if (doc.titleProblem === 'EMPTY_TITLE') return 'the title after "# " must not be empty';
@@ -872,15 +886,31 @@ function analyzeIssueSections(sections) {
   return { sections: reading, open_questions: openQuestions, seed: { sections: seedSections } };
 }
 
+/** The note a `declared-clean` drift outcome adds to the document's `Additional notes`. */
+const DECLARED_CLEAN_NOTE = 'The user declared that the issue has no drift from the current code without validating it.';
+
+const NAME_STOP_WORDS = new Set(['a', 'an', 'the', 'to', 'of', 'for', 'in', 'on', 'and', 'or', 'every', 'that', 'is', 'are',
+  'with', 'it', 'its', 'this', 'from', 'by', 'be', 'as', 'at', 'so', 'one', 'when', 'then', 'into', 'than', 'whether']);
+
+/** A kebab-case change name proposal from the Goal text: its first five significant words. */
+function proposeChangeName(goal) {
+  const words = goal.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+    .filter((word) => word !== '' && !NAME_STOP_WORDS.has(word));
+  return words.slice(0, 5).join('-');
+}
+
 /** Read an issue description (Markdown or HTML) of any Maturity: its Maturity value and its section reading. */
 function readIssue(text) {
   const parsed = parseIssueSections(issueToMarkdown(text), { lenient: true });
   const map = sectionMap(parsed);
   const maturityLines = map.get('maturity');
   const maturity = maturityLines ? sectionText(maturityLines).replace(/[*_`]/g, '').replace(/\.$/, '').trim() : null;
+  const goalText = sectionText(map.get('goal') || []);
   return Object.assign({
     ready_to_propose_form: maturity !== null && maturity.toLowerCase() === READY_MATURITY.toLowerCase(),
     maturity,
+    proposed_change_name: isEmptySource(goalText) ? null : proposeChangeName(goalText),
+    declared_clean_note: DECLARED_CLEAN_NOTE,
   }, analyzeIssueSections(map));
 }
 
@@ -1034,6 +1064,7 @@ module.exports = {
   resolveJudgment,
   flagDocument,
   hashDocument,
+  isRetiredBlockFormat,
   documentShape,
   verifyDocumentFile,
   compareDocuments,

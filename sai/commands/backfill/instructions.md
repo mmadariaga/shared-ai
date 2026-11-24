@@ -38,9 +38,9 @@ Parse `$ARGUMENTS` worker-side — the phase-owned parse; no wrapper and no coor
 
 - Scan for the diff-source tokens `--staged`, `--unstaged`, and `--diff` followed by one whitespace-delimited SHA value, in any position. Strip every recognized token (and the SHA value with `--diff`) from `$ARGUMENTS` and carry the resolved diff source into Phase 1.
 - Scan separately for the positional token `--fast-track`. Its presence sets the in-memory boolean `fast_track_active`; strip the token as well.
-- The trimmed remainder is the **request body**: an optional explicit kebab-case name and/or a pasted handoff block, read as-is by Phase 2 and Phase 5.
+- The trimmed remainder is the **request body**: an optional explicit kebab-case name and/or a pasted change document, read as-is by Phase 2 and Phase 5.
 
-This flow is branched by data, not by flags alone: an unattended envelope — a detected crystallized block, a resolved diff-source token, and every consumed field derivable — completes with zero `needs_input` results; any datum that cannot be resolved restores exactly that ask's existing channel below. Without a detected block and without tokens, every phase behaves byte-for-byte as before.
+This flow is branched by data, not by flags alone: an unattended envelope — a detected change document, a resolved diff-source token, and every consumed field derivable — completes with zero `needs_input` results; any datum that cannot be resolved restores exactly that ask's existing channel below. Without a detected document and without tokens, every phase behaves byte-for-byte as before.
 
 ## Phase 1: Diff Source Selection
 
@@ -69,23 +69,23 @@ The diff source MUST be selected before any question is asked, before any spec i
 
 ## Phase 2: Optional Intent Capture
 
-### Crystallized-block intake
+### Change document intake
 
-Detect a crystallized block with the deterministic detector, never by inference: write the request body, exactly as received, to a file in a private `transfer.js open` directory with the harness-native file-write tool (`@sai/policies/ready-to-propose-format.md` § Block and verdict delivery) and run `node <tool-path> check --profile loose --block-file <path>` (adding `--verdicts-file <path>` when verdicts exist), where `<tool-path>` resolves `ready-to-propose.js` per `@sai/policies/tool-resolution.md` (fetch it; when no candidate exists, name the tried paths and stop). Exit 0 (`"ok": true`) means quorum: treat the block as supplied structured intent and SKIP the intent-capture choice entirely — the block replaces it. Exit 1 means no quorum: the text falls through intact to the generic flow below with no partial parsing. Exit 2 is a tool failure: report it and stop.
+Detect a change document with the deterministic tool, never by inference: write the request body, exactly as received, to a file in a private `transfer.js open` directory with the harness-native file-write tool (`@sai/policies/issue-format.md` § Change document, Transport) and run `node <tool-path> check --document-file <path>`, where `<tool-path>` resolves `change-document.js` per `@sai/policies/tool-resolution.md` (fetch it; when no candidate exists, name the tried paths and stop). A verdict with `"ok": true` means the text is a structurally valid change document (the exit code also reflects the hygiene judgment, which a backfill never needs: the document is read as intent, never dispatched): treat it as supplied structured intent and SKIP the intent-capture choice entirely — the document replaces it. A verdict with `"ok": false` and a `RETIRED_FORMAT` violation means the text is a `Ready to Propose` block, a retired format that is rejected and never converted: return a terminal `failed` payload whose summary says so and stop. Any other `"ok": false` verdict means no document: the text falls through intact to the generic flow below with no partial parsing. Exit 2 is a tool failure: report it and stop.
 
-The `loose` profile implements exactly this quorum: the nine mandatory consulted plain literals (`Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, `Implementation Details`) present as substrings. Detection is bold-insensitive: `**` is stripped before searching, then each plain literal matches case-sensitive with the exact written spacing, anywhere with no line-start anchor. The `## Ready to Propose` heading is not required; when present it is ignored and forms no part of the gate. No validation of extra colons, position, order, or content beyond the literal itself. A literal present but empty or with `- None` still counts as present. A literal inside ordinary prose counts the same as a label — false positives accepted as the cost of minimalism. A paste from a rendered view with lost bold, extra spaces outside the literal, or collapsed line breaks still detects while the literals appear; casing or spacing variants different from the literal do not match. Extras are ignored and `Request Additional Notes` is never required nor counted.
+The tool reads the document by its headings, which are always English (`Problem`, `Goal`, `Scope`, `Non-goals`, `Capabilities`, `Edge cases`, `Implementation notes`, `Out-of-scope implementation notes`, `Decisions`, `Alternatives considered`, `Trade-offs accepted`, `Research leads`, `Additional notes`, `Change`). A paste from a rendered view with lost heading markers or a missing title line is not a document and falls through to the generic flow.
 
-Every consumed block field resolves by existence alone, identically with and without `fast_track_active`:
+Every consumed document section resolves by existence alone, identically with and without `fast_track_active`:
 
-1. When its plain literal exists, skip that slot's question by existence — carry the labeled value when it carries content; when it is empty or `- None`, still skip with no content fallback and no ask.
+1. When its section exists, skip that slot's question by existence — carry the section value when it carries content; when it reads `None.`, still skip with no content fallback and no ask.
 2. Otherwise mine the answer from the surrounding pasted prose, even when the paste is off-format.
 3. Otherwise restore that question's ordinary ask channel in Phase 3.
 
-Map the resolved fields onto the in-memory intent records: `Why` (bold-insensitive) answers Question 1 and `Trade-offs Accepted` (with `Key constraints` non-goals, both required to skip Question 2) answers Question 2; `Capabilities in scope`, `Key constraints`, `Edge Cases`, `Implementation Details`, and `Decisions & Rationale` items when present become intent items (only the `Implementation Details` section's items — items under `Out of scope Implementation Details` are non-normative context and never become intent items); `Alternatives Considered` entries become rejected-alternative context. When the block carries `**Specs**: none — <reason>`, the run is a **no-specs run**: the change has no spec-level behavior, and Phase 6 drafts no capability spec (6a and 6c say how). Without that line, no draft carries `skip_specs`. Carry the `Diff loaded. Proceeding to interview.` confirmation as usual, then proceed directly into Intent Reconciliation with those records — a usable record set takes the usable-intent path everywhere below, including the four-key `prior_intent` form.
+Map the resolved sections onto the in-memory intent records: `Problem` answers Question 1 and `Trade-offs accepted` (with `Non-goals`, both required to skip Question 2) answers Question 2; `Capabilities`, `Scope`, `Edge cases`, `Implementation notes`, and `Decisions` items when present become intent items (only the `Implementation notes` section's items — items under `Out-of-scope implementation notes` are non-normative context and never become intent items); `Alternatives considered` entries become rejected-alternative context. When the `## Change` section carries `Specs: none — <reason>`, the run is a **no-specs run**: the change has no spec-level behavior, and Phase 6 drafts no capability spec (6a and 6c say how). Without that line, no draft carries `skip_specs`. Carry the `Diff loaded. Proceeding to interview.` confirmation as usual, then proceed directly into Intent Reconciliation with those records — a usable record set takes the usable-intent path everywhere below, including the four-key `prior_intent` form.
 
 ### Optional intent-capture choice
 
-When no crystallized block was detected, after the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been carried, return the intent-capture ask as a `needs_input` result offering exactly two declared choices, which the coordinator renders through the harness's native option-picker, in this order:
+When no change document was detected, after the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been carried, return the intent-capture ask as a `needs_input` result offering exactly two declared choices, which the coordinator renders through the harness's native option-picker, in this order:
 
 1. `Provide intent (Recommended)`
 2. `Continue without intent`
@@ -102,13 +102,13 @@ Resolve the interaction as follows:
 - Selecting `Provide intent (Recommended)` without non-empty text emits this clean follow-up exactly once, rendered by the same language rule, returned as a `needs_input` result with empty `options`, and then waits for the free-text response: `Share your statement of intent below.`
 - A free-text value maps to a declared option only when its trimmed, case-insensitive value exactly equals that option's value. A value that matches neither option is captured as the candidate statement.
 - After trimming for emptiness, whitespace-only text means no intent.
-- Accept any non-empty explanatory prose, including a `/sai-explore` handoff block or a different handoff format, without schema validation, normalization into a file, or a file-path request.
+- Accept any non-empty explanatory prose, including a `/sai-explore` change document or a different handoff format, without schema validation, normalization into a file, or a file-path request.
 
 When the result is no intent, discard any attached text and continue through the existing fixed interview without intent-specific parsing, reconciliation, conflict context, provenance, marker text, or artifact content. Do not change the no-intent behavior.
 
 ## Intent Reconciliation
 
-When a non-empty candidate statement is captured, retain the raw statement only in the current conversation and worker state. Before the fixed interview, derive the following in-memory records without persisting the raw statement or a parsed-intent file. Records derived from a detected crystallized block (Phase 2) enter this classification identically, with no raw statement retained:
+When a non-empty candidate statement is captured, retain the raw statement only in the current conversation and worker state. Before the fixed interview, derive the following in-memory records without persisting the raw statement or a parsed-intent file. Records derived from a detected change document (Phase 2) enter this classification identically, with no raw statement retained:
 
 1. **Intent items** — each stated capability, constraint, and boundary, kept in the statement's order.
 2. **Rejected-alternative context** — each explicitly rejected alternative that constrains the result. Keep it separate from intent items; it is never an intent item, diff item, normative requirement, or targeted-question item. Report each retained rejected alternative to the user and keep it for the conflict scan.
@@ -133,7 +133,7 @@ Ask the following two questions **one at a time, sequentially**. After each ques
 
 **Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply to its presentation. Return each question string **exactly once** as a `needs_input` result with empty `options`; the coordinator then renders it as ordinary conversation text and ends the turn there. The coordinator does NOT route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and neither side echoes, restates, or re-prints the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
 
-When a crystallized block was detected, resolve each fixed question by existence BEFORE asking it: Question 1 skips when the `Why` plain literal exists, Question 2 skips when `Trade-offs Accepted` plus `Key constraints` both exist, carrying the labeled value when it carries content and still skipping when empty or `- None` with no content fallback. Otherwise fall back to mined prose, then to the ask. A question whose literal exists or whose answer resolved from mined prose is never asked — carry that value as its fixed answer; a question with no derivable answer is asked exactly as written. This resolution is identical with and without `fast_track_active`. Minimal detection only gates block-attempt; reconciliation, conflict auto-continue, and name auto-accept keep their token rules.
+When a change document was detected, resolve each fixed question by existence BEFORE asking it: Question 1 skips when the `Problem` section exists, Question 2 skips when `Trade-offs accepted` plus `Non-goals` both exist, carrying the section value when it carries content and still skipping when it reads `None.` with no content fallback. Otherwise fall back to mined prose, then to the ask. A question whose section exists or whose answer resolved from mined prose is never asked — carry that value as its fixed answer; a question with no derivable answer is asked exactly as written. This resolution is identical with and without `fast_track_active`. Detection only gates the document attempt; reconciliation, conflict auto-continue, and name auto-accept keep their token rules.
 
 **Question 1:** "What problem does this solve?"
 
@@ -227,8 +227,8 @@ Do NOT write any file until this phase completes.
 ## Phase 5: Change Name Confirmation
 
 Derive the change name using this priority order:
-1. If the request body carries an explicit kebab-case identifier, use it as the name; a block-supplied `Change name` plain literal (bold-insensitive) present at the same time is ignored.
-2. Otherwise, when a crystallized block supplied a `Change name` plain literal (bold-insensitive, case-sensitive exact spacing, anywhere): with `fast_track_active` false, state the proposed name in ordinary chat per the concise-format rule in `@sai/policies/question-context.md` and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask. Minimal detection only gates block-attempt; name auto-accept requires resolved diff-source plus `--fast-track`.
+1. If the request body carries an explicit kebab-case identifier, use it as the name; a document-supplied `Change name:` line present at the same time is ignored.
+2. Otherwise, when a change document supplied a `Change name:` line in its `## Change` section: with `fast_track_active` false, state the proposed name in ordinary chat per the concise-format rule in `@sai/policies/question-context.md` and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask. Detection only gates the document attempt; name auto-accept requires resolved diff-source plus `--fast-track`.
 3. If no name exists yet but one can be clearly inferred from the diff file paths or interview answers, state the inference in ordinary chat per the same rule and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`.
 4. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
@@ -241,13 +241,13 @@ Only after Phases 1–5 complete with no abort and a confirmed change name, comp
 ### 6a. Draft `.openspec.yaml`
 
 Fetch `@sai/policies/issue-origin-preservation.md` and apply it to the received
-block and the selected change's existing metadata, when present. Preserve the
+document and the selected change's existing metadata, when present. Preserve the
 validated `backlog_origin` as an optional key in either form below; it is
 independent of usable intent and never sets `prior_intent` by itself. Compare
 the draft with the known origin before handing over its transfer reference.
-When the received block carries `**Explore origin**`, carry the validator's
+When the received document's `## Change` section carries `Explore origin:`, carry the validator's
 `explore_origin` list as the optional flat flow list
-`explore_origin: [<sessionID>, <sessionID>]`, in the block's order, in either
+`explore_origin: [<sessionID>, <sessionID>]`, in the document's order, in either
 form below; it too never sets `prior_intent`.
 
 For a run with no usable intent context, carry these three required keys and
@@ -291,7 +291,7 @@ Then follow the standard proposal structure. Derive all content from the selecte
 
 The proposal MUST contain these headings in this order: `## Why`, `## What Changes`, `## Capabilities`, `### New Capabilities`, `### Modified Capabilities`, and `## Impact`. Fill `Why` from the first fixed answer and the diff. Fill `What Changes` with the implemented file and behavior changes, including evidenced scope drift only as implemented behavior. List each diff-backed new or modified capability under the corresponding capability subsection; a no-specs run writes `None` under both. Under `## Impact`, list concrete new and modified files and end with `Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill`. Do not leave instructional text, template markers, or unresolved placeholders in the written proposal.
 
-When a detected crystallized block carries `**Request Additional Notes**` with content, copy that content byte-for-byte (no rewriting, summarizing, translating, or merging) into a `## Request Additional Notes` section placed after `## Impact` and before any `## Additional Notes` section. The field is non-normative: it feeds no intent record, fixed answer, or requirement. When the block has no such field, or no block was detected, omit the section.
+When a detected change document carries an `## Additional notes` section with content, copy that content byte-for-byte (no rewriting, summarizing, translating, or merging) into a `## Request Additional Notes` section placed after `## Impact` and before any `## Additional Notes` section. The section is non-normative: it feeds no intent record, fixed answer, or requirement. When the document has no such section, or no document was detected, omit the section.
 
 ### 6c. Draft capability specs
 

@@ -464,7 +464,7 @@ test('route-selector acknowledges NO_PENDING_SLICE as missing inventory without 
   const selector = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'route-selector.md'), 'utf8');
   assert.match(selector, /NO_PENDING_SLICE/);
   assert.match(selector, /no change has been crystallized/);
-  assert.match(selector, /block-first/);
+  assert.match(selector, /document-first/);
   assert.match(selector, /An answer that does not map to exactly one fixed picker option is ambiguous/i);
   assert.doesNotMatch(selector, /maps to neither route option is treated as \*\*Manual\*\*/i);
 });

@@ -26,7 +26,7 @@ Give `/sai-explore` one defined, source-agnostic intake for any issue, bug, or t
 
 ### Requirement: The work question decides whether the issue becomes the candidate idea
 
-Once the issue's complete content is in the conversation, Explore SHALL ask the work question through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `work` and `context` in that order, and the question SHALL close that turn. When several unrelated issues arrive in one message, the question SHALL list one `work` option per issue plus `context`, falling back to numbered plain text beyond the picker capacity, and the user SHALL pick at most one issue to work on while the rest stay as context. A message that states the intent to work on the issue while bringing it SHALL answer the question with `work` without asking. The issue SHALL have the Ready to Propose form when its `Maturity` section reads `Ready to propose`, and Explore SHALL read that from the conversion tool's `ready_to_propose_form`, never from its own judgment. For such an issue the question SHALL also show a kebab-case `Change name` proposed from the issue's `Goal`, starting from the tool's `proposed_change_name`, correctable through the free-text answer. `--fast-track` SHALL NOT skip the work question.
+Once the issue's complete content is in the conversation, Explore SHALL ask the work question through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `work` and `context` in that order, and the question SHALL close that turn. When several unrelated issues arrive in one message, the question SHALL list one `work` option per issue plus `context`, falling back to numbered plain text beyond the picker capacity, and the user SHALL pick at most one issue to work on while the rest stay as context. A message that states the intent to work on the issue while bringing it SHALL answer the question with `work` without asking. The issue SHALL be mature when its `Maturity` section reads `Ready to propose`, and Explore SHALL read that from the `ready_to_propose_form` of `change-document.js sections`, never from its own judgment. For such an issue the question SHALL also show a kebab-case `Change name` proposed from the issue's `Goal`, starting from the tool's `proposed_change_name`, correctable through the free-text answer. `--fast-track` SHALL NOT skip the work question.
 
 #### Scenario: Work question closes the turn
 
@@ -51,7 +51,7 @@ Once the issue's complete content is in the conversation, Explore SHALL ask the 
 #### Scenario: The form comes from the conversion tool
 
 - **WHEN** an issue enters the conversation
-- **THEN** Explore runs the conversion tool and takes the Ready to Propose form and the proposed `Change name` from its `ready_to_propose_form` and `proposed_change_name`
+- **THEN** Explore runs `change-document.js sections` and takes the maturity form and the proposed `Change name` from its `ready_to_propose_form` and `proposed_change_name`
 
 ### Requirement: A worked issue becomes the candidate idea with carried starting lists
 
@@ -89,21 +89,21 @@ On `work`, in the same turn and with no separate activation turn, the issue SHAL
 
 ### Requirement: The conversion tool owns the issue-to-block mapping in the intake
 
-Explore SHALL NOT judge which sections an issue agrees and SHALL NOT write the block from the issue itself. It SHALL run `ready-to-propose.js convert` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation, written with the harness-native file-write tool in a directory from `transfer.js open`, once the issue's complete content is in the conversation, and again with the confirmed `--change-name` only when a later step needs a block draft. Explore SHALL read the tool's `sections`, `open_questions`, `seed`, `ready_to_propose_form`, `proposed_change_name`, and `declared_clean_note` whatever `converted` or the exit code say, and SHALL send `seed` verbatim to `explore-idea@1` as an input-file event. A `converted: false` result with `rejections` SHALL be a conversion rejection of the block draft only: Explore SHALL show each reason in one line in the ambient conversation language and SHALL continue with the seeded sections. On `SECTIONS_INVALID`, Explore SHALL report it in one line and continue from `Explore change` with every section `open`.
+Explore SHALL NOT judge which sections an issue agrees, and the intake SHALL build no block and no change document from the issue: the change document is composed at `Crystallize` from the agreed sections. Explore SHALL run `change-document.js sections` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation (Markdown or HTML), written with the harness-native file-write tool in a directory from `transfer.js open`, once the issue's complete content is in the conversation. The tool SHALL accept an issue of any `Maturity`. Explore SHALL read the tool's `sections`, `open_questions`, `seed`, `ready_to_propose_form`, `proposed_change_name`, and `declared_clean_note`, and SHALL send `seed` verbatim to `explore-idea@1` as an input-file event. When the seed event answers `SECTIONS_INVALID`, Explore SHALL report it in one line and continue from `Explore change` with every section `open`.
 
 #### Scenario: Conversion rejection continues with the planned steps
 
-- **WHEN** the conversion tool rejects the block derived from an issue
-- **THEN** Explore shows each rejection reason in one line and continues with the seeded sections through the planned Explore steps
+- **WHEN** the seed event sent to `explore-idea@1` answers `SECTIONS_INVALID`
+- **THEN** Explore reports it in one line and continues from `Explore change` with every section `open`
 
 #### Scenario: Open questions reject the conversion
 
-- **WHEN** an issue with the Ready to Propose form still has entries in `Open questions`
-- **THEN** the block conversion is rejected and the sections those entries affect are seeded `open`
+- **WHEN** an issue whose `Maturity` reads `Ready to propose` still has entries in `Open questions`
+- **THEN** no change document is built from the issue and the sections those entries affect are seeded `open`
 
 ### Requirement: The drift check validates every section an issue seeded agreed
 
-Explore SHALL ask the drift check once `work` is answered and at least one section was seeded `agreed`, through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `validate` and `declared-clean` in that order. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare each `agreed` section's behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path. The outcome SHALL be exactly one of `clean` (every agreed section stays agreed), `drift` (a mismatch was found, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation; every seeded section stays agreed and the block composed at `Crystallize` carries the tool's `declared_clean_note` as a `Request Additional Notes` line). On `drift`, each mismatch, doubt, or improvement SHALL be shown with its evidence and SHALL mark only the section it touches `open`, keeping that section's list as the starting proposal; every other section SHALL stay `agreed`. The same rule SHALL hold for a deviation found in an `agreed` section at any later point of the conversation. `--fast-track` SHALL NOT skip the drift check.
+Explore SHALL ask the drift check once `work` is answered and at least one section was seeded `agreed`, through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `validate` and `declared-clean` in that order. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare each `agreed` section's behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path. The outcome SHALL be exactly one of `clean` (every agreed section stays agreed), `drift` (a mismatch was found, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation; every seeded section stays agreed and the change document composed at `Crystallize` carries the tool's `declared_clean_note` line in its `## Additional notes` section). On `drift`, each mismatch, doubt, or improvement SHALL be shown with its evidence and SHALL mark only the section it touches `open`, keeping that section's list as the starting proposal; every other section SHALL stay `agreed`. The same rule SHALL hold for a deviation found in an `agreed` section at any later point of the conversation. `--fast-track` SHALL NOT skip the drift check.
 
 #### Scenario: Drift opens only the touched section
 
@@ -113,7 +113,7 @@ Explore SHALL ask the drift check once `work` is answered and at least one secti
 #### Scenario: Declared-clean keeps the seeded sections
 
 - **WHEN** the user answers the drift check with `declared-clean`
-- **THEN** every seeded section stays agreed and the block carries the declared-clean `Request Additional Notes` line
+- **THEN** every seeded section stays agreed and the change document carries the declared-clean line in its `## Additional notes` section
 
 #### Scenario: No agreed section means no drift check
 
@@ -122,12 +122,12 @@ Explore SHALL ask the drift check once `work` is answered and at least one secti
 
 ### Requirement: A seeded issue resumes at its first open section through goto
 
-Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to `crystallize` with reason `user-request`. When every section is agreed the move SHALL be accepted, the slicing assessment SHALL run as always, a single change SHALL take its block from the agreed sections, and a sliced set SHALL distribute the `I` items across slices with their literal text. When a section is open the move SHALL answer `MISSING_PRECONDITIONS`; Explore SHALL then `goto` `resume_at` and present that stage with the issue's starting content, and the next forward move SHALL skip every stage whose section is still `agreed`. When `resume_at` is the current stage, Explore SHALL stay and present it. No route SHALL start without the explicit route-selector answer. Claude Code and opencode SHALL follow the same path.
+Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to `crystallize` with reason `user-request`. When every section is agreed the move SHALL be accepted, the slicing assessment SHALL run as always, a single change SHALL take its change document from the agreed sections, and a sliced set SHALL distribute the `I` items across slices with their literal text. When a section is open the move SHALL answer `MISSING_PRECONDITIONS`; Explore SHALL then `goto` `resume_at` and present that stage with the issue's starting content, and the next forward move SHALL skip every stage whose section is still `agreed`. When `resume_at` is the current stage, Explore SHALL stay and present it. No route SHALL start without the explicit route-selector answer. Claude Code and opencode SHALL follow the same path.
 
 #### Scenario: Fully agreed issue enters Crystallize
 
 - **WHEN** every section of a worked issue is agreed after the drift check
-- **THEN** the `goto` to `crystallize` is accepted and the block set is followed by the route selector
+- **THEN** the `goto` to `crystallize` is accepted and the change document set is followed by the route selector
 
 #### Scenario: An open section is presented first
 

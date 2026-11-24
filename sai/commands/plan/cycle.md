@@ -36,7 +36,7 @@ Fetch `@sai/commands/plan/worker-common.md` for the report shape and the task me
 
 **Questions.** A report with `status: needs_input` carries a question the worker could not settle. You answer it, because the run has no human in the loop:
 
-- When the Ready to Propose block, the change's artifacts, or the repository answers it, give that answer. Append the question, the answer, and its source to `assumptions.md` in the run directory, emit `record` (`assumption`) the first time the file is written, and continue the worker with the answer alone.
+- When the change document, the change's artifacts, or the repository answers it, give that answer. Append the question, the answer, and its source to `assumptions.md` in the run directory, emit `record` (`assumption`) the first time the file is written, and continue the worker with the answer alone.
 - When none of them answers it and the answer would not change the artifacts, choose the most conservative reading, record it as an assumption with the source `judgment`, and continue the same way.
 - When none of them answers it and the answer would change the artifacts, the question is force majeure: escalate it at once (see Obstacles) with the worker's options as the ways to continue, and carry the user's answer to the worker.
 

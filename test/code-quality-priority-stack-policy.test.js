@@ -50,7 +50,7 @@ test('code-writing workers explicitly load the single-source policy within their
     assert.equal(read(file).split('\n').filter(line => line === FETCH_LINE).length, 1, file);
   }
   assert.match(read(CODE_WRITERS[0]), /within your role and the brief/);
-  assert.match(read('sai/commands/explore/direct-build-worker.md'), /code-quality stack applies within the block's scope/);
+  assert.match(read('sai/commands/explore/direct-build-worker.md'), /code-quality stack applies within the document's scope/);
   for (const file of ['sai/commands/implement/red-worker.md', 'sai/commands/implement/green-worker.md', 'sai/commands/explore/direct-build-worker.md']) {
     assert.ok(read(file).includes('Fetch `@sai/commands/implement/worker-common.md`'), file);
   }

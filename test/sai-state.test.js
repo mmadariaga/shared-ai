@@ -1037,7 +1037,7 @@ test('store (E5): without the validator module the common verbs succeed with rec
     assert.match(progress.stderr, /tried: /);
     assert.equal(progress.stdout, '');
 
-    const block = run(['emit', id, 'explore-slice@1', '--ready-to-propose', '-'], 'x');
+    const block = run(['emit', id, 'explore-slice@1', '--document-file', 'x.md']);
     assert.equal(block.exitCode, 2);
     assert.match(block.stderr, /worker-report-validator\.js/);
     assert.equal(block.stdout, '');
@@ -1191,7 +1191,7 @@ test('flags (E7): the flags refuse every other event source and a field named tw
       ['--input-file', eventFile, '--set', 'kind=status'],
       ['-', '--set', 'kind=status'],
       ['--progress', '--set', 'kind=status'],
-      ['--ready-to-propose', '--set', 'kind=status'],
+      ['--document-file', 'document.md', '--set', 'kind=status'],
       ['--set', 'kind=status', '--set', 'kind=start'],
       ['--set', 'recordedList=a', '--add', 'recordedList=b'],
       ['--add', 'recordedList=b', '--set', 'recordedList=a'],

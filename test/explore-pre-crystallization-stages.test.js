@@ -61,14 +61,14 @@ test('phase-navigation questions fall through while substantive uncertainty rema
   assert.match(source, /question that contains substantive uncertainty capable of changing the idea remains a genuine unresolved question/i);
 });
 
-test('the Ready to Propose block template orders Edge Cases, Implementation Details, Overview language', () => {
+test('the change document composition orders Edge cases, Implementation notes, Change', () => {
   const source = explore();
-  const edgeCases = source.indexOf('**Edge Cases**');
-  assert.ok(edgeCases >= 0, 'the template should carry **Edge Cases**');
-  const implementationDetails = source.indexOf('**Implementation Details**', edgeCases);
-  assert.ok(implementationDetails > edgeCases, '**Implementation Details** should follow **Edge Cases**');
-  const overviewLanguage = source.indexOf('**Overview language**', implementationDetails);
-  assert.ok(overviewLanguage > implementationDetails, '**Overview language** should follow **Implementation Details**');
+  const edgeCases = source.indexOf('`Edge cases`');
+  assert.ok(edgeCases >= 0, 'the composition should carry `Edge cases`');
+  const implementationDetails = source.indexOf('`Implementation notes`', edgeCases);
+  assert.ok(implementationDetails > edgeCases, '`Implementation notes` should follow `Edge cases`');
+  const change = source.indexOf('`## Change`', implementationDetails);
+  assert.ok(change > implementationDetails, '`## Change` should follow `Implementation notes`');
 });
 
 test('the overview question and gate 9 retired from the route round and the Plan activation', () => {

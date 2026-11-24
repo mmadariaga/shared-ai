@@ -6,7 +6,7 @@ The runner is `bin/benchmark.js`. It runs from a `shared-ai` checkout only: `sai
 
 ## Terms
 
-- **brief**: the implementation request a run receives, stored in the corpus as a `Ready to Propose` block.
+- **brief**: the implementation request a run receives, stored in the corpus as a change document.
 - **corpus**: the private repository holding the base project, the briefs, the reviewed plans, the hidden suites, and `benchmark.json`. Keep it outside `shared-ai`: this repository is public, and a hidden suite stored here would stop being hidden.
 - **configuration**: one combination of harness, route, and model per worker role.
 - **price table**: the per-model price per million tokens by token type (input, output, cache read, 5-minute cache write, and 1-hour cache write), dated, in `benchmark.json`.
@@ -29,7 +29,7 @@ node bin/benchmark.js report --out <folder>
 ```
 benchmark.json
 project/                     base project, already prepared with `openspec init` for the harnesses used
-briefs/<brief>/block.md      the brief (its `**Change name**` names the change)
+briefs/<brief>/document.md   the brief, a change document (its `Change name:` line names the change)
 briefs/<brief>/plan/         the fixed, human-reviewed plan; copied to openspec/changes/<change>/
 briefs/<brief>/acceptance/   the hidden suite, with suite.json
 ```
@@ -62,7 +62,7 @@ briefs/<brief>/acceptance/   the hidden suite, with suite.json
 }
 ```
 
-- `route` is `plan` (launches `/sai-3-implement <change>` on a base project that holds the fixed plan) or `direct-build` (launches `/sai-direct-build --block-file --block-hash`).
+- `route` is `plan` (launches `/sai-3-implement <change>` on a base project that holds the fixed plan) or `direct-build` (launches `/sai-direct-build --document-file --document-hash`).
 - `models` maps worker roles to their agent-file tunables: `model` and `effort` on Claude Code, `model` and `variant` on opencode. The runner writes them as project-local agent files inside the container.
 - `env` names the credential environment variables. The runner passes them to the container by name; their values never reach the corpus or the reports.
 - `prices` is checked for shape only: a date and, per entry, `inputPerMTok` and `outputPerMTok`, with `cacheReadPerMTok`, `cacheWrite5mPerMTok`, and `cacheWrite1hPerMTok` optional. A configured model may have no entry. The `prices` date appears in the reports. Prices change, so the table lives in the corpus; updating it needs no change to `shared-ai`.

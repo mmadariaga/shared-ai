@@ -1,5 +1,5 @@
 ---
-description: Build a change from a Ready to Propose block file in one unattended run — implement, review, reconstruct specs, archive, and make one local commit. Accepts --block-file <path> --block-hash <sha256>.
+description: Build a change from a change document file in one unattended run — implement, review, reconstruct specs, archive, and make one local commit. Accepts --document-file <path> --document-hash <sha256>.
 model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---

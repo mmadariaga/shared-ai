@@ -1,10 +1,10 @@
 # Block Hygiene Judgment
 
-The bounded judgment of the dispatchable `Ready to Propose` contract. The deterministic tool `sai/tools/ready-to-propose.js` (`check --profile dispatchable`) reports the lines a lexical pre-filter flagged, as `{block, line, clause}`; it cannot tell requested work from subject matter, because a change about `/sai-commit` legitimately mentions git. This judgment decides, for each flagged line and nothing else, whether the line asks the implementer to do something forbidden or only describes the change's subject. Consumed by reference from the crystallization close and from `/sai-1-spec` creation intake; never restated there.
+The bounded judgment of the dispatchable change document contract. The deterministic tool `sai/tools/change-document.js` (`check`) reports the lines a lexical pre-filter flagged over the whole document, as `{line, clause}`; it cannot tell requested work from subject matter, because a change about `/sai-commit` legitimately mentions git. This judgment decides, for each flagged line and nothing else, whether the line asks the implementer to do something forbidden or only describes the change's subject. Consumed by reference from the crystallization close and from `/sai-1-spec` creation intake; never restated there.
 
 ## Clauses
 
-The block hygiene clauses are the four things a block must not request as implementation work. The ids below are the tool's `HYGIENE_CLAUSES` ids and are the only ids a verdict may carry:
+The hygiene clauses are the four things a change document must not request as implementation work. The ids below are the tool's `HYGIENE_CLAUSES` ids and are the only ids a verdict may carry:
 
 - `planning-artifact` — creating the planning artifacts `design.md`, `tasks.md`, or `implementation.md`.
 - `mutating-git` — running a mutating git command (add, commit, push, branch, tag, stash, reset, rebase, merge, and the like).
@@ -30,8 +30,8 @@ One JSON object per flagged `(line, clause)` pair, collected in one array:
 {"clause": "<clause id>", "line": <line number reported by the tool>, "evidence": "<one sentence>", "verdict": "violation|context"}
 ```
 
-The array travels in the verdicts file, beside the block file, to `sai-state emit --ready-to-propose` or to `ready-to-propose.js check --profile dispatchable --block-file <path> --verdicts-file <path>`. The tool composes the `<<<VERDICTS>>>` line below the block set mechanically (`ready-to-propose.js compose --block-file <path> --verdicts-file <path>`) per `ready-to-propose-format.md` § Block and verdict delivery, for registration and amendment alike. The tool matches verdicts to flagged lines by `line` and `clause`; a missing verdict, a verdict for a line the tool did not flag, and a malformed verdict each leave the set undispatchable. A block set is dispatchable when it is structurally valid and every flagged line carries a `context` verdict. Line numbers refer to the exact text sent: after any edit of the block, run the tool again and judge again.
+The array travels in the verdicts file, beside the document file (each `line` counted in the document file, because the hash covers the whole file and leaves no room for an appended marker), to `sai-state emit --document-file <path> --verdicts-file <path>` or to `change-document.js check --document-file <path> --verdicts-file <path>`, per `issue-format.md` § Change document (Transport), for registration and amendment alike. The tool matches verdicts to flagged lines by `line` and `clause`; a missing verdict, a verdict for a line the tool did not flag, and a malformed verdict each leave the document undispatchable. A document is dispatchable when it is structurally valid and every flagged line carries a `context` verdict. Line numbers refer to the exact text sent: after any edit of the document, run the tool again and judge again.
 
 ## Violation handling
 
-A `violation` verdict means the block cannot be dispatched. Show the clause, the line number, and the evidence. The author of the block corrects the line (or, in `/sai-1-spec`, the user re-copies a corrected block) and the set is validated again from the start.
+A `violation` verdict means the document cannot be dispatched. Show the clause, the line number, and the evidence. The author of the document corrects the line (or, in `/sai-1-spec`, the user re-copies a corrected document) and the set is validated again from the start.
