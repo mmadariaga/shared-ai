@@ -4,7 +4,7 @@
     "universal": { "shell": ["node {skills}/fetch/fetch.js *", "opencode debug paths"] },
     "profiles": {
       "boot": { "read": true, "skills": ["*"] },
-      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["git grep *", "codegraph explore *", "node {skills}/sai-cache-warmer/wait.js *"] },
+      "research": { "extends": "boot", "search": true, "write": "temp", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["git grep *", "codegraph explore *", "node {skills}/sai-cache-warmer/wait.js *", "node {sai}/tools/transfer.js put *"] },
       "executor": { "extends": "boot", "shell": ["*"] },
       "task": { "extends": "boot", "search": true, "write": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["*"] },
       "worker-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*", "node {sai}/tools/transfer.js put *"], "message": true },

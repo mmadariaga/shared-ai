@@ -22,7 +22,7 @@ Turn a crystallized block into the full plan of a change with no human in the lo
    - Neither exists and the input is a block: the spec segment runs.
    - Neither exists and the input is a name: print this and end the run, writing nothing: `Cannot start /sai-plan for {name}: missing proposal.md and specs/. Pass the Ready to Propose block to create them.`
    - Only one of them exists: the change is partly present, which is neither a creation nor a complete set. Print this and end the run, writing nothing: `Cannot start /sai-plan for {name}: missing {the absent item}. Complete it with /sai-1-spec {name} followed by your feedback, then run /sai-plan {name}.`
-4. Open the run once, per the cycle's Opening the run, with the key `plan-{name}`; the segments run inside it, and you close it.
+4. Open the run once, per the cycle's Opening the run, with the key `plan-{name}`; the segments run inside it, and you close it. When the spec segment runs, also open the research directory of the cycle's Research hand-over, right after the report directory.
 
 ## Publication answer
 
@@ -43,8 +43,8 @@ Record the answer with `emit <id> plan-run@1 --set kind=publication --set value=
 
 ## Segments
 
-1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch `@sai/commands/spec/coordinator.md` and follow it exactly as the first segment, with the block or its reference as `arguments_value`. Your Start opened the run, so it skips the opening in its own Start. It validates the block, runs the worker, the checks, and the review, and commits its own paths. Resolve the publication answer between its Start step 5 and the creation of its worker.
-2. `/sai-2-design`: Fetch `@sai/commands/design/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, has the plan RED worker write the stubs and the failing tests, runs the checks and the review, and commits its own paths in two commits (the documents, then the plan code).
+1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch `@sai/commands/spec/coordinator.md` and follow it exactly as the first segment, with the block or its reference as `arguments_value`; its task message names the research directory. Your Start opened the run, so it skips the opening in its own Start. It validates the block, runs the worker, the checks, and the review, and commits its own paths. Resolve the publication answer between its Start step 5 and the creation of its worker.
+2. `/sai-2-design`: Fetch `@sai/commands/design/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`, handing it the valid research pointers of the cycle's Research hand-over for its brief. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, has the plan RED worker write the stubs and the failing tests, runs the checks and the review, and commits its own paths in two commits (the documents, then the plan code).
 
 No wrapper is entered again and no approval is asked between segments. The artifacts on disk are the only interface between them. Each segment disposes its own worker when it closes, as the cycle's Warm and dispose says under `worker-lifecycle.md`, so no worker of a finished segment stays alive when the next one starts.
 
@@ -58,6 +58,8 @@ After the last segment that ran ends, the reports it printed stand as the report
 
 - **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created and close the planning report with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` This literal closes the planning report, not the command interaction.
 - **A segment failed, was stopped, or ended on an unanswered escalation**: end the run with the reports printed so far and no closing line, and publish nothing.
+
+**Research hand-over.** When the cycle's Research hand-over kept a line (a research directory that could not be opened, or saved research files that were unusable), print it with the reports of the run, before the closing line.
 
 **Publication.** With both segments completed and the answer `yes`, publish after the last local commit of the run, the telemetry commit included, and before the closing line: Fetch `@sai/commands/plan/publication.md` and follow it with the change name. It runs unattended and asks nothing. Print its one-paragraph outcome with the reports: the request URL it verified, or the reason nothing was published (detached HEAD, default branch, no provider or remote, failed authentication, a rejected push, a merged or closed request of the branch). A publication that fails or is skipped never stops the run and never changes its outcome: planning stays completed, any confirmed commit or push stays, and nothing is retried with force. With the answer `no`, or without an answer, nothing is published and nothing is asked. Explore's **Plan - Unattended** route follows this same Start, so the question reaches the user inside that route when no `--publish` was handed over.
 

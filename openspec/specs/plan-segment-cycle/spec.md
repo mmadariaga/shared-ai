@@ -153,7 +153,7 @@ The segment cycle SHALL open the report directory of a fresh run with `transfer.
 
 ### Requirement: Spec and design reports use the unified status schema
 
-The spec and design workers SHALL report with a `status` of `completed`, `needs_input`, `failed`, or `cancelled`, and SHALL keep `step_ids`, `warnings`, and `notes` as role fields; a `needs_input` report SHALL add `question` and `options`. `done` and `blocked` SHALL be invalid statuses. A step that cannot finish, a spec defect the design worker cannot patch, a failed artifact write or verification, and a failed overview generation SHALL report `failed` with the reason. The coordinator SHALL advance the segment's step machine only from the `step_ids` of an accepted report.
+The spec and design workers SHALL report with a `status` of `completed`, `needs_input`, `failed`, or `cancelled`, and SHALL keep `step_ids`, `warnings`, and `notes` as role fields; the spec worker SHALL also carry `research_files`, a list of `{path, sha256}` references, required on `completed`, and the design worker SHALL carry no such field. A `needs_input` report SHALL add `question` and `options`. `done` and `blocked` SHALL be invalid statuses. A step that cannot finish, a spec defect the design worker cannot patch, a failed artifact write or verification, and a failed overview generation SHALL report `failed` with the reason. The coordinator SHALL advance the segment's step machine only from the `step_ids` of an accepted report.
 
 #### Scenario: a done status is invalid
 
@@ -169,3 +169,51 @@ The spec and design workers SHALL report with a `status` of `completed`, `needs_
 
 - **WHEN** the coordinator accepts a design report whose `step_ids` is not empty
 - **THEN** it emits those ids, copied from the accepted payload, to `design-steps@1` and sends the next pointer from the response
+
+#### Scenario: a completed spec report without research_files is invalid
+
+- **WHEN** a spec worker saves a `completed` report that carries no `research_files`
+- **THEN** the validator rejects it with `--command spec`, while a `completed` design report without the field is accepted
+
+### Requirement: The plan run hands spec research to design through a research directory
+
+Research the spec worker already did SHALL reach the design segment of the same `/sai-plan` run, the `/sai-explore` Plan - Unattended route included, as pointers to the explorers' original reports, never as a rewrite or summary. When the spec segment runs, the plan coordinator SHALL open a second private directory with `transfer.js open --harness <claude|opencode>` right after the report directory and SHALL record it in `plan-run@1` as a `record` of kind `research-dir`; the machine SHALL admit that kind and list it as `research_dirs` in its run view. The spec brief SHALL name `research_dir: <path>`, and the watch of the spec segment SHALL list that path among the worker's writable paths. After each accepted `completed` spec report, the coordinator SHALL write that report's `research_files`, copied from the accepted payload, to `research-files.json` in the run directory. Before composing the design brief, it SHALL check each reference with `transfer.js verify` and SHALL put only the valid ones into the brief as `inherited research:` pointers. A research directory that cannot be opened, or a reference that fails the check, SHALL never stop the run and SHALL spend no attempt: the closing report SHALL carry one line about it and design SHALL research what the lost references covered. A completed run SHALL close the research directory together with the report directory; a stopped run, a blocked run, and an unanswered escalation SHALL keep it. A segment that runs alone and `/sai-explore`'s own research SHALL neither save nor inherit research.
+
+#### Scenario: a plan run records its research directory
+
+- **WHEN** `/sai-plan` starts a run whose spec segment runs
+- **THEN** it opens the research directory right after the report directory, emits `record` (`research-dir`) with the returned path, and names it as `research_dir` in the spec brief and in the spec watch's writable paths
+
+#### Scenario: an unusable reference costs one closing-report line
+
+- **WHEN** a `research_files` reference is missing, has a different hash, or its research directory is gone before the design brief
+- **THEN** the coordinator leaves it out of the design brief, the closing report carries one `Research hand-over:` line, and the run continues
+
+#### Scenario: specs already on disk leave nothing to inherit
+
+- **WHEN** `/sai-plan` starts with `proposal.md` and `specs/` already on disk, so the spec segment counts as done
+- **THEN** there is no spec report and no `research-files.json`, and design researches as it does alone with no warning
+
+#### Scenario: an interrupted run resumes the hand-over
+
+- **WHEN** a `/sai-plan` run interrupted between spec and design resumes
+- **THEN** it reads `research-files.json` from the run directory and checks each reference against the research directory recorded in `research_dirs`
+
+#### Scenario: a completed run closes the research directory
+
+- **WHEN** a `/sai-plan` run that holds a research directory completes
+- **THEN** the research directory is closed with `transfer.js close` in the same batch as the report directory, and a stopped run keeps it
+
+### Requirement: The spec worker saves its research for the design segment
+
+When its brief names `research_dir`, the spec worker SHALL open every `budget-explorer` task with the line `--report-dir <research_dir>` and SHALL keep each returned reference without rewriting, summarizing, or re-saving the report. It SHALL save its exceptions only, once, when the `research` step ends, as `spec-annotations.md` in the research directory with `transfer.js put --exclusive`, and only when it has at least one entry. Each entry SHALL be one line `<kind> <path>:<line> - <reason>`, with `kind` one of `corrected`, `rejected`, `own-read`, or `gap`; an unannotated citation SHALL mean that spec did not contradict it, not that spec confirmed it. Every `completed` spec report SHALL list in `research_files` the reference of each saved report and of the annotations file, and every later `completed` report SHALL repeat the whole list unchanged. Without `research_dir`, `research_files` SHALL be an empty list. The annotations write SHALL be the one write the spec worker makes outside its run directory and report directory.
+
+#### Scenario: no exception means no annotations file
+
+- **WHEN** the spec worker ends its `research` step with no exception to any explorer report
+- **THEN** it saves no `spec-annotations.md`, and `research_files` lists only the explorer reports
+
+#### Scenario: standalone spec lists no research files
+
+- **WHEN** `/sai-1-spec` runs alone and its brief names no `research_dir`
+- **THEN** its explorers reply in text and every `completed` spec report carries an empty `research_files` list

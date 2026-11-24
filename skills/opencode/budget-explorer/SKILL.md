@@ -20,6 +20,8 @@ Fetch `@sai/policies/explore-agent.md`
 
 Every spawn prompt states the **goal** and the **output contract**: exact response fields, a hard word-or-line length cap, and the raw-content rule (`no raw file contents`, or bounded verbatim excerpts when an audit needs them). State what to find, not how: a spawn prompt MUST NOT prescribe a research tool, a procedure, a numbered sequence of steps, or a method, because the tool-preference ladder in `@sai/policies/explore-agent.md` governs tool choice whatever the prompt says.
 
+A caller that wants the report as a file starts the spawn prompt with `--report-dir <dir>`, a directory it opened with `transfer.js open`. The explorer then saves its complete response there and replies with the `{path, sha256}` reference only, as `@sai/policies/explore-agent.md` § Saved report says; without the line it replies in text. The line goes at the top of the `subagent` prompt, before the goal.
+
 ## Dispatch mode
 
 Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child: `subagent(agent: "budget-explorer", description: "budget-explorer", prompt: <prompt>, background: true)`. Capture the returned `sessionID` and await the completion notification on the dispatcher's own turn, matching each notification to its subagent by `sessionID` when several run at once; never sleep or poll. A continuation passes the same `agent` plus the captured `sessionID` and `background: true`, and only after the previous notification has arrived.

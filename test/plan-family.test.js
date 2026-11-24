@@ -315,6 +315,38 @@ test('plan-run@1 is a run machine over the shared core with the segments spec an
   assert.equal(planRun.transition(closed.state, { kind: 'status' }).run.status, 'completed');
 });
 
+test('plan-run@1 records the research directory of the research hand-over, and the cards wire it from spec to design', () => {
+  const started = planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-x' });
+  const recorded = planRun.transition(started.state, { kind: 'record', ref: 'research-dir', path: '/tmp/claude-1000/sai/sai-transfer-research' });
+  assert.equal(recorded.rejected, undefined);
+  assert.deepEqual(recorded.run.research_dirs, ['/tmp/claude-1000/sai/sai-transfer-research']);
+  assert.deepEqual(planRun.transition(recorded.state, { kind: 'record', ref: 'research-dir', path: '/tmp/claude-1000/sai/sai-transfer-research' }).run.research_dirs, ['/tmp/claude-1000/sai/sai-transfer-research'], 'recording a path twice keeps one entry');
+  assert.deepEqual(planRun.transition(planRun.initialState, { kind: 'status' }).run.research_dirs, []);
+
+  const cycle = read('sai/commands/plan/cycle.md');
+  const section = cycle.slice(cycle.indexOf('## Research hand-over'), cycle.indexOf('## Mechanical checks'));
+  assert.match(section, /emits `record` \(`research-dir`\)/);
+  assert.match(section, /transfer\.js verify --dir <research directory> --path <path> --sha256 <sha256>/);
+  assert.match(section, /`research-files\.json` in the run directory/);
+  assert.match(section, /Research hand-over: \{n\} of \{m\} saved research files were unusable/);
+  assert.match(cycle, /in the spec segment of a run that holds a research directory, that directory/);
+  assert.match(cycle, /`transfer\.js close --dir \{research directory\}`/);
+  assert.match(read('sai/commands/plan/coordinator.md'), /also open the research directory of the cycle's Research hand-over/);
+  assert.match(read('sai/commands/spec/coordinator.md'), /`research_dir`/);
+  const specWorker = read('sai/commands/spec/worker.md');
+  assert.match(specWorker, /`--report-dir <research_dir>`/);
+  assert.match(specWorker, /transfer\.js put --dir <research_dir> --path spec-annotations\.md --exclusive/);
+  for (const kind of ['corrected', 'rejected', 'own-read', 'gap']) assert.match(specWorker, new RegExp(`\`${kind}\``));
+  assert.match(read('sai/commands/spec/steps/common.md'), /open each explorer task with the line\s+`--report-dir <research_dir>`/);
+  assert.match(read('sai/commands/design/coordinator.md'), /`inherited research:`/);
+  const research = read('sai/commands/design/steps/research.md');
+  assert.match(research, /Read `spec-annotations\.md` first/);
+  assert.match(research, /an annotation prevails over the report it contradicts/);
+  assert.match(research, /with no freshness check/);
+  assert.match(research, /each `gap` entry of the annotations/);
+  assert.match(research, /inherited research counting as verified/);
+});
+
 test('I5: plan-run@1 records the publication answer, an explicit value replaces it, and the run view returns it', () => {
   assert.equal(planRun.initialState.publication, '');
   assert.equal(planRun.transition(planRun.initialState, { kind: 'publication', value: 'yes' }).rejected, 'run is not running');

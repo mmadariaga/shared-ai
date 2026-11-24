@@ -260,7 +260,7 @@ test('the worker profiles grant the transfer put call and no retired kind surviv
 test('the policy covers the plan and review workers, the progress kind, and the file-name rule', () => {
   const policy = read(POLICY);
   assert.match(policy, /the spec and design workers of the plan commands, the review worker of `\/sai-4-review`/);
-  assert.match(policy, /\| `spec` \| spec \| `step_ids`, `warnings`, `notes` \|/);
+  assert.match(policy, /\| `spec` \| spec \| `step_ids`, `warnings`, `notes`, `research_files` \|/);
   assert.match(policy, /\| `review` \| review \| `review_path`, `counts`, `recommended_audits` \|/);
   assert.match(policy, /`plan-run@1` for the plan commands, the conversation for `\/sai-4-review`, the audit cycles, `\/sai-commit`, `\/sai-archive`, `\/sai-backfill`, and `\/sai-direct-build`, `direct-build-run@1` for Direct Build on the `\/sai-explore` route, and `merge-run@1` for `\/sai-merge`/);
   assert.match(policy, /`spec` or `design` for the plan workers; `review` for the review worker/);
@@ -287,14 +287,17 @@ test('a progress report travels through the file transport and is validated with
 test('spec and design reports are validated per command; done and blocked are invalid', t => {
   const completed = { status: 'completed', summary: 'Wrote the proposal.', changed_files: ['openspec/changes/x/proposal.md'],
     step_ids: ['spec-intake', 'research'], warnings: [], notes: '' };
+  const specReport = { ...completed, research_files: [] };
   const { dir, reference } = fixture(t, Buffer.from(JSON.stringify(completed)));
-  for (const command of ['spec', 'design']) {
-    const verdict = validateFile(dir, reference, 'terminal', { command });
+  const specReference = transfer.put(dir, 'spec-report.json', Buffer.from(JSON.stringify(specReport)));
+  for (const [command, ref] of [['spec', specReference], ['design', reference]]) {
+    const verdict = validateFile(dir, ref, 'terminal', { command });
     assert.equal(verdict.outcome, 'accepted', command);
     assert.deepEqual(verdict.payload.step_ids, completed.step_ids);
   }
+  assert.equal(validateFile(dir, reference, 'terminal', { command: 'spec' }).outcome, 'report-invalid', 'a spec report without research_files is invalid');
   for (const status of ['done', 'blocked']) {
-    const stale = transfer.put(dir, `${status}.json`, Buffer.from(JSON.stringify({ ...completed, status })));
+    const stale = transfer.put(dir, `${status}.json`, Buffer.from(JSON.stringify({ ...specReport, status })));
     assert.equal(validateFile(dir, stale, 'terminal', { command: 'spec' }).outcome, 'report-invalid', status);
   }
   const outcome = transfer.put(dir, 'outcome.json', Buffer.from(JSON.stringify({ ...completed, outcome: 'no-changes' })));

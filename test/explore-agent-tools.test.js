@@ -90,3 +90,19 @@ test('the shared explorer policy states the single-command shell rule and its ou
   assert.match(policy, /never with a trailing `\| head`/);
   assert.match(policy, /record `shell operation refused: <description>` in `ladder_discards`/);
 });
+
+test('the explorer saves its report only when the task carries --report-dir, and may run only transfer.js put to do so', () => {
+  const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/explore-agent.md'), 'utf8');
+  const saved = policy.slice(policy.indexOf('## Saved report'), policy.indexOf('A dispatch that carries no goal'));
+  assert.match(saved, /first line is `--report-dir <path>`/);
+  assert.match(saved, /every other task is answered in text/);
+  assert.match(saved, /put --dir <report-dir> --path <unique-name>\.md --exclusive --input-file/);
+  assert.match(saved, /A name that already exists makes `put` fail and changes nothing: save again under another name/);
+  assert.match(saved, /Reply with only the `\{path, sha256\}`/);
+  assert.match(policy, /only for a task that carries `--report-dir`, the `transfer\.js put` call/);
+  for (const harness of ['claude', 'opencode']) {
+    const skill = fs.readFileSync(path.join(repoRoot, `skills/${harness}/budget-explorer/SKILL.md`), 'utf8');
+    assert.match(skill, /starts the spawn prompt with `--report-dir <dir>`/, harness);
+  }
+  assert.doesNotMatch(policy, /\b(?:claude|opencode)\b/i, 'the explorer policy stays harness-neutral');
+});

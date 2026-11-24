@@ -122,12 +122,16 @@ const PLAN_FIELDS = {
   warnings: { type: records('spec_assertion', 'other_side', 'disagreement'), required: ['completed'] },
   notes: { type: STRING, required: ['completed'] },
 };
+const SPEC_FIELDS = {
+  ...PLAN_FIELDS,
+  research_files: { type: records('path', 'sha256'), required: ['completed'] },
+};
 const auditFields = (...keys) => ({
   report_path: { type: STRING, required: ['completed'] },
   counts: { type: counts(...keys), required: ['completed'] },
 });
 const COMMAND_FIELDS = Object.freeze({
-  spec: PLAN_FIELDS,
+  spec: SPEC_FIELDS,
   design: PLAN_FIELDS,
   implement: {
     test_command: { type: STRING, required: ['completed'] },

@@ -1,5 +1,5 @@
 ---
-description: Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.
+description: Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes only the report that a --report-dir line names.
 mode: subagent
 model: opencode-go/deepseek-v4.1-flash
 variant: high

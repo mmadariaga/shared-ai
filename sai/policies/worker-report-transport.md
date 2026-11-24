@@ -34,8 +34,8 @@ The validator closes each terminal report to its command's role fields (`COMMAND
 | `--command` | Workers | Role fields | Shape |
 |---|---|---|---|
 | `implement` | RED, GREEN | `test_command`, `notes` | strings; both required on completed |
-| `spec` | spec | `step_ids`, `warnings`, `notes` | string list, list of {spec_assertion, other_side, disagreement} strings, string; all required on completed |
-| `design` | design | `step_ids`, `warnings`, `notes` | as spec |
+| `spec` | spec | `step_ids`, `warnings`, `notes`, `research_files` | string list, list of {spec_assertion, other_side, disagreement} strings, string, list of {path, sha256} strings; all required on completed |
+| `design` | design | `step_ids`, `warnings`, `notes` | the first three of spec |
 | `review` | review | `review_path`, `counts`, `recommended_audits` | string, counts {critical, high, medium, low, questions}, string; all required on completed without outcome |
 | `security` | security | `report_path`, `counts` | string, counts {critical, high, medium, low}; both required on completed |
 | `performance` | performance | `report_path`, `counts` | string, counts {critical, high, medium, low, informational}; both required on completed |

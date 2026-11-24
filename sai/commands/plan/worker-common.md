@@ -61,4 +61,4 @@ A `needs_input` report adds `question` and `options` (`{label, value}` items) af
 - Write only your segment's write surface. Leave every checkbox, review, and fixed mark to others.
 - Run no git command that changes the repository, and create no commit.
 - Dispatch only the subagents your steps name, never to write.
-- Scratch lives in the run directory the brief names, outside the repository; list no scratch path in `changed_files`. The report draft, in that run directory, is the only write you make there besides the saved report in the report directory.
+- Scratch lives in the run directory the brief names, outside the repository; list no scratch path in `changed_files`. The report draft, in that run directory, is the only write you make there besides the saved report in the report directory. One exception: when a spec brief names `research_dir`, the spec worker also writes its annotations draft in that run directory and saves `spec-annotations.md` into the research directory (`sai/commands/spec/worker.md` § Research hand-over).

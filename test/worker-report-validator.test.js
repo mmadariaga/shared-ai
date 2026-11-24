@@ -495,7 +495,7 @@ const base = (extra = {}) => ({ status: 'completed', summary: 'ok', changed_file
 // One accepted completed report per command, shaped as its worker card spells it.
 const CONTRACT_REPORTS = {
   implement: base({ test_command: 'node --test test/x.test.js', notes: '' }),
-  spec: base({ step_ids: ['spec-intake'], warnings: [{ spec_assertion: 'a', other_side: 'b', disagreement: 'c' }], notes: '' }),
+  spec: base({ step_ids: ['spec-intake'], warnings: [{ spec_assertion: 'a', other_side: 'b', disagreement: 'c' }], notes: '', research_files: [{ path: '/tmp/research/explorer-1.md', sha256: 'f'.repeat(64) }] }),
   design: base({ step_ids: [], warnings: [], notes: 'n' }),
   review: base(REVIEW_FIELDS),
   security: base({ report_path: 'openspec/changes/x/security.md', counts: { critical: 0, high: 0, medium: 1, low: 0 } }),
@@ -514,6 +514,20 @@ test('the role-field table covers every command that has an outcome entry, and e
   for (const [command, report] of Object.entries(CONTRACT_REPORTS)) {
     assert.deepEqual(verdict(report, command).errors, [], command);
   }
+});
+
+test('a spec report lists its research_files as {path, sha256} references, and a design report admits no such field', () => {
+  const spec = CONTRACT_REPORTS.spec;
+  assert.deepEqual(verdict({ ...spec, research_files: [] }, 'spec').errors, [], 'an empty list is valid');
+  const missing = { ...spec };
+  delete missing.research_files;
+  assert.deepEqual(verdict(missing, 'spec').errors, ['research_files is missing']);
+  assert.ok(verdict({ ...spec, research_files: 'x' }, 'spec').errors.some(error => /research_files must be an array/.test(error)));
+  assert.ok(verdict({ ...spec, research_files: [{ path: '/tmp/a' }] }, 'spec').errors.some(error => /research_files\[0\] must have exactly the keys \[path, sha256\]/.test(error)));
+  assert.ok(verdict({ ...spec, research_files: [{ path: '/tmp/a', sha256: 1 }] }, 'spec').errors.some(error => /research_files\[0\] must have string values/.test(error)));
+  assert.deepEqual(verdict({ ...spec, status: 'failed' }, 'spec').errors, [], 'a failed spec report owes no research_files');
+  assert.deepEqual(verdict({ ...spec, status: 'failed', research_files: undefined }, 'spec').errors, []);
+  assert.ok(verdict({ ...CONTRACT_REPORTS.design, research_files: [] }, 'design').errors.some(error => /research_files/.test(error)), 'design does not list research_files');
 });
 
 test('E1: a role field of the wrong type is rejected, and a missing required one too', () => {

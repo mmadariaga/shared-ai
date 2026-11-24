@@ -120,13 +120,20 @@ test('scoped write grants native writes inside the SAI temp root only, on both h
   assert.ok(opencode.toolRequirements.some(entry => entry.capability === 'write'));
 });
 
-test('the research profile (the explorer) has no write grant and no Write tool on either harness', () => {
-  assert.equal(registry.profiles.research.write, undefined);
+test('the research profile (the explorer) writes only inside the SAI temp root and may save a report with transfer.js put', () => {
+  assert.equal(registry.profiles.research.write, 'temp');
   const claude = translate(registry, 'research', 'claude');
-  assert.ok(!claude.tools.split(', ').some(tool => ['Write', 'Edit'].includes(tool)));
-  assert.ok(!claude.allowedTools.split(', ').some(entry => /^(Write|Edit)\b/.test(entry)));
-  assert.ok(!translate(registry, 'research', 'opencode').permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'));
-  assert.ok(!registry.profiles.research.shell.some(rule => /transfer\.js/.test(rule)));
+  const tools = claude.tools.split(', ');
+  const allowed = claude.allowedTools.split(', ');
+  assert.ok(tools.includes('Write') && !tools.includes('Edit'), 'Write only, no Edit tool');
+  assert.ok(!allowed.includes('Write') && !allowed.includes('Edit'), 'no unscoped write rule');
+  assert.ok(allowed.some(entry => /^Edit\(.*\/sai\/\*\*\)$/.test(entry)), 'one write rule scoped to the SAI temp root');
+  const edits = translate(registry, 'research', 'opencode').permissions.filter(rule => rule.action === 'edit' && rule.effect === 'allow');
+  assert.equal(edits.length, 1);
+  assert.notEqual(edits[0].resource, '*', 'the opencode write grant is scoped');
+  assert.ok(edits[0].resource.endsWith('/sai/*'));
+  assert.deepEqual(registry.profiles.research.shell.filter(rule => /transfer\.js/.test(rule)), ['node {sai}/tools/transfer.js put *'], 'the explorer may only put');
+  assert.ok(allowed.some(entry => /transfer\.js\b.*put/.test(entry)), 'the put rule reaches the Claude Code projection');
 });
 
 test('full write stays unscoped and an unknown write value fails closed', () => {
