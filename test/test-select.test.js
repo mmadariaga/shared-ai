@@ -37,8 +37,11 @@ const name = args[0];
 let stdin = '';
 if (!process.stdin.isTTY) { try { stdin = fs.readFileSync(0, 'utf8'); } catch (error) { stdin = ''; } }
 if (process.env.FAKE_CODEGRAPH_LOG) fs.appendFileSync(process.env.FAKE_CODEGRAPH_LOG, JSON.stringify({ args, stdin }) + '\\n');
-const answer = config[name] || {};
+// An affected call answers per file (config.perFile, keyed by the file on stdin) before it falls back to config.affected.
+const answer = (name === 'affected' && config.perFile && config.perFile[stdin.trim()]) || config[name] || {};
+const started = Date.now();
 if (answer.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, answer.sleep);
+if (name === 'affected' && process.env.FAKE_CODEGRAPH_TIMES) fs.appendFileSync(process.env.FAKE_CODEGRAPH_TIMES, JSON.stringify({ started, ended: Date.now() }) + '\\n');
 if (answer.exit) process.exit(answer.exit);
 if (answer.raw !== undefined) { process.stdout.write(answer.raw); process.exit(0); }
 process.stdout.write(JSON.stringify(answer.json === undefined ? {} : answer.json));
@@ -48,8 +51,13 @@ const HAPPY = {
   sync: {},
   status: { json: { initialized: true, pendingChanges: { added: 0, modified: 0, removed: 0 } } },
   files: { json: [{ path: 'src/a.js' }, { path: 'src/b.js' }, { path: 'test/a.test.js' }] },
-  affected: { json: { changedFiles: [], affectedTests: ['test/b.test.js', 'test/a.test.js', 'test/a.test.js'] } },
+  affected: { json: { changedFiles: [], affectedTests: ['test/b.test.js', 'test/a.test.js', 'test/a.test.js'], totalDependentsTraversed: 2 } },
 };
+
+// A complete index, as `codegraph status --json` prints it, and the answer of one single-file affected call.
+const INDEX = { builtWithVersion: '1.6.4', builtWithExtractionVersion: 29, currentExtractionVersion: 29, reindexRecommended: false, state: 'complete', pendingRefs: 0, filesNeedingReindex: 0 };
+const statusWith = (index, extra = {}) => ({ status: { json: { initialized: true, pendingChanges: { added: 0, modified: 0, removed: 0 }, rebuildInProgress: false, ...extra, ...(index ? { index } : {}) } } });
+const answerFor = (tests, dependents, extra = {}) => ({ json: { changedFiles: [], affectedTests: tests, totalDependentsTraversed: dependents }, ...extra });
 
 function selectFixture(t, { indexed = true, installed = true } = {}) {
   const root = scratch(t, 'sai-test-select-');
@@ -68,16 +76,18 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
     }
   }
   const log = path.join(root, 'calls.log');
+  const times = path.join(root, 'times.log');
   const select = (files, config = HAPPY, extra = []) => {
     const input = write(root, 'files.json', JSON.stringify(files));
     const result = spawnSync(process.execPath, [tool, 'select', '--input-file', input, '--cwd', project, ...extra], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: bin, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log },
+      env: { ...process.env, PATH: bin, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
     });
     return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
   };
   const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
-  return { select, calls };
+  const spans = () => (fs.existsSync(times) ? fs.readFileSync(times, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
+  return { select, calls, spans };
 }
 
 test('E1: a trusted index selects the tests codegraph affected reports, sorted and without duplicates', (t) => {
@@ -87,15 +97,16 @@ test('E1: a trusted index selects the tests codegraph affected reports, sorted a
   assert.deepEqual(report, { verdict: 'selected', tests: ['test/a.test.js', 'test/b.test.js'], reason: null });
 });
 
-test('I2: select syncs, reads status and files, then asks affected with the files on stdin', (t) => {
+test('I3: select syncs, reads status and files, then asks affected once per file with only fixed arguments and the file alone on stdin', (t) => {
   const f = selectFixture(t);
   f.select(['src/a.js', 'src/b.js']);
   const calls = f.calls();
-  assert.deepEqual(calls.map((call) => call.args[0]), ['sync', 'status', 'files', 'affected']);
+  assert.deepEqual(calls.map((call) => call.args[0]), ['sync', 'status', 'files', 'affected', 'affected']);
   assert.deepEqual(calls[1].args, ['status', '--json']);
   assert.deepEqual(calls[2].args, ['files', '--json']);
-  assert.deepEqual(calls[3].args, ['affected', '--json', '--stdin']);
-  assert.equal(calls[3].stdin, 'src/a.js\nsrc/b.js\n');
+  const affected = calls.slice(3).sort((a, b) => a.stdin.localeCompare(b.stdin));
+  assert.deepEqual(affected.map((call) => call.args), [['affected', '--json', '--stdin', '--depth', '2'], ['affected', '--json', '--stdin', '--depth', '2']]);
+  assert.deepEqual(affected.map((call) => call.stdin), ['src/a.js\n', 'src/b.js\n']);
 });
 
 test('I2: the tool never opens the codegraph database', () => {
@@ -166,7 +177,178 @@ test('E4: output that is not valid JSON runs the full suite with invalid-output'
   const f = selectFixture(t);
   assert.equal(f.select(['src/a.js'], { ...HAPPY, status: { raw: 'not json' } }).report.reason, 'invalid-output');
   assert.equal(f.select(['src/a.js'], { ...HAPPY, files: { json: { nope: true } } }).report.reason, 'invalid-output');
-  assert.equal(f.select(['src/a.js'], { ...HAPPY, affected: { json: { affectedTests: 'test/a.test.js' } } }).report.reason, 'invalid-output');
+  assert.equal(f.select(['src/a.js'], { ...HAPPY, affected: answerFor('test/a.test.js', 1) }).report.reason, 'invalid-output');
+  assert.equal(f.select(['src/a.js'], { ...HAPPY, affected: { json: { affectedTests: [] } } }).report.reason, 'invalid-output');
+  assert.equal(f.select(['src/a.js'], { ...HAPPY, affected: { raw: 'not json' } }).report.reason, 'invalid-output');
+});
+
+// ---- depth, trust, and per-file calls (E1-E9 of the trustworthy selection) ---
+
+test('E1 I1: select always asks affected at depth 2, and no option or environment variable changes it', (t) => {
+  const f = selectFixture(t);
+  f.select(['src/a.js', 'src/b.js']);
+  const asked = f.calls().filter((call) => call.args[0] === 'affected');
+  assert.equal(asked.length, 2);
+  for (const call of asked) assert.deepEqual(call.args.slice(-2), ['--depth', '2']);
+  assert.match(toolSource, /const AFFECTED_DEPTH = 2;/);
+
+  const root = scratch(t, 'sai-test-select-depth-');
+  const input = write(root, 'files.json', '["src/a.js"]');
+  for (const flag of ['--depth', '--affected-depth']) {
+    assert.equal(spawnSync(process.execPath, [tool, 'select', '--input-file', input, flag, '3'], { encoding: 'utf8' }).status, 2, flag);
+  }
+  // The environment does not change it either.
+  const calls = selectFixture(t);
+  const before = process.env.CODEGRAPH_DEPTH;
+  process.env.CODEGRAPH_DEPTH = '5';
+  try {
+    calls.select(['src/a.js']);
+  } finally {
+    if (before === undefined) delete process.env.CODEGRAPH_DEPTH;
+    else process.env.CODEGRAPH_DEPTH = before;
+  }
+  assert.deepEqual(calls.calls().find((call) => call.args[0] === 'affected').args.slice(-2), ['--depth', '2']);
+});
+
+test('E2: each stale-index signal of the status index block runs the full suite with stale-index', (t) => {
+  const f = selectFixture(t);
+  const stale = [
+    ['reindexRecommended', { ...INDEX, reindexRecommended: true }, {}],
+    ['older extractor', { ...INDEX, builtWithExtractionVersion: 24 }, {}],
+    ['state null', { ...INDEX, state: null }, {}],
+    ['state other than complete', { ...INDEX, state: 'rebuilding' }, {}],
+    ['filesNeedingReindex', { ...INDEX, filesNeedingReindex: 3 }, {}],
+    ['rebuildInProgress', INDEX, { rebuildInProgress: true }],
+  ];
+  for (const [label, index, extra] of stale) {
+    const { report } = f.select(['src/a.js'], { ...HAPPY, ...statusWith(index, extra) });
+    assert.deepEqual(report, { verdict: 'full', tests: [], reason: 'stale-index' }, label);
+  }
+  assert.equal(f.select(['src/a.js'], { ...HAPPY, ...statusWith(INDEX) }).report.verdict, 'selected');
+});
+
+test('E2: pending changes keep running the full suite even when the index block is complete', (t) => {
+  const f = selectFixture(t);
+  const config = { ...HAPPY, status: { json: { initialized: true, pendingChanges: { added: 1, modified: 0, removed: 0 }, index: INDEX } } };
+  assert.equal(f.select(['src/a.js'], config).report.reason, 'stale-index');
+});
+
+test('E3: a status with no index block is checked by its pending changes alone', (t) => {
+  const f = selectFixture(t);
+  assert.equal(f.select(['src/a.js'], { ...HAPPY, ...statusWith(null) }).report.verdict, 'selected');
+  const rebuilding = f.select(['src/a.js'], { ...HAPPY, ...statusWith(null, { rebuildInProgress: true }) });
+  assert.equal(rebuilding.report.verdict, 'selected');
+});
+
+test('E4: a changed non-test file without dependents runs the full suite with no-dependents and lists exactly those files', (t) => {
+  const f = selectFixture(t);
+  const config = {
+    ...HAPPY,
+    files: { json: [{ path: 'src/a.js' }, { path: 'src/b.js' }, { path: 'src/c.js' }] },
+    perFile: { 'src/a.js': answerFor(['test/a.test.js'], 3), 'src/b.js': answerFor([], 0), 'src/c.js': answerFor([], 0) },
+  };
+  const { status, report } = f.select(['src/a.js', 'src/b.js', 'src/c.js'], config);
+  assert.equal(status, 0);
+  assert.deepEqual(report, { verdict: 'full', tests: [], reason: 'no-dependents', files: ['src/b.js', 'src/c.js'] });
+});
+
+test('E5 I5: a test file is the one whose own call lists it, so it never triggers no-dependents and a fixture does', (t) => {
+  const f = selectFixture(t);
+  const config = {
+    ...HAPPY,
+    files: { json: [{ path: 'src/a.js' }, { path: 'test/a.test.js' }, { path: 'test/fixtures/data.js' }, { path: 'src/odd.test.js' }, { path: 'checks/odd.js' }] },
+    perFile: {
+      'src/a.js': answerFor(['test/a.test.js'], 2),
+      'test/a.test.js': answerFor(['test/a.test.js'], 0),
+      'test/fixtures/data.js': answerFor([], 0),
+      'src/odd.test.js': answerFor([], 0),
+      'checks/odd.js': answerFor(['checks/odd.js'], 0),
+    },
+  };
+  assert.deepEqual(f.select(['src/a.js', 'test/a.test.js'], config).report, { verdict: 'selected', tests: ['test/a.test.js'], reason: null });
+  const fixture = f.select(['src/a.js', 'test/fixtures/data.js'], config).report;
+  assert.deepEqual([fixture.reason, fixture.files], ['no-dependents', ['test/fixtures/data.js']]);
+  // No naming pattern of our own: a name that looks like a test is code until its call lists it.
+  assert.deepEqual(f.select(['src/odd.test.js'], config).report.files, ['src/odd.test.js']);
+  assert.deepEqual(f.select(['checks/odd.js'], config).report, { verdict: 'selected', tests: ['checks/odd.js'], reason: null });
+});
+
+test('E6: without no-dependents the selection is the sorted, deduplicated union of every single-file call', (t) => {
+  const f = selectFixture(t);
+  const config = {
+    ...HAPPY,
+    files: { json: [{ path: 'src/a.js' }, { path: 'src/b.js' }, { path: 'src/c.js' }] },
+    perFile: {
+      'src/a.js': answerFor(['test/z.test.js', 'test/m.test.js'], 2),
+      'src/b.js': answerFor(['test/m.test.js', './test/a.test.js'], 1),
+      'src/c.js': answerFor([], 1),
+    },
+  };
+  assert.deepEqual(f.select(['src/a.js', 'src/b.js', 'src/c.js'], config).report, { verdict: 'selected', tests: ['test/a.test.js', 'test/m.test.js', 'test/z.test.js'], reason: null });
+});
+
+test('E7 I4: the per-file calls overlap, at most 4 at a time, and the finishing order changes neither verdict nor tests', (t) => {
+  const f = selectFixture(t);
+  const names = ['a', 'b', 'c', 'd', 'e', 'f'].map((letter) => `src/${letter}.js`);
+  const config = {
+    ...HAPPY,
+    files: { json: names.map((file) => ({ path: file })) },
+    perFile: Object.fromEntries(names.map((file) => [file, answerFor([`test/${file.slice(4, 5)}.test.js`], 1, { sleep: 400 })])),
+  };
+  const started = Date.now();
+  const { report } = f.select(names, config);
+  const elapsed = Date.now() - started;
+  assert.equal(report.verdict, 'selected');
+  assert.deepEqual(report.tests, names.map((file) => `test/${file.slice(4, 5)}.test.js`));
+  const spans = f.spans();
+  assert.equal(spans.length, 6);
+  const concurrent = Math.max(...spans.map((span) => spans.filter((other) => other.started < span.ended && other.ended > span.started).length));
+  assert.ok(concurrent >= 2, `calls overlap (${concurrent})`);
+  assert.ok(concurrent <= 4, `at most 4 at a time (${concurrent})`);
+  assert.ok(elapsed < 6 * 400, `faster than serial calls (${elapsed} ms)`);
+
+  const slowFirst = { ...config, perFile: { ...config.perFile, [names[0]]: answerFor(['test/a.test.js'], 1, { sleep: 800 }), [names[1]]: answerFor(['test/b.test.js'], 1, { sleep: 0 }) } };
+  const fastFirst = { ...config, perFile: { ...config.perFile, [names[0]]: answerFor(['test/a.test.js'], 1, { sleep: 0 }), [names[1]]: answerFor(['test/b.test.js'], 1, { sleep: 800 }) } };
+  assert.deepEqual(f.select(names, slowFirst).report, report);
+  assert.deepEqual(f.select(names, fastFirst).report, report);
+
+  const failing = (first, second) => ({
+    ...HAPPY,
+    files: { json: [{ path: 'src/a.js' }, { path: 'src/b.js' }] },
+    perFile: { 'src/a.js': { exit: 3, sleep: first }, 'src/b.js': { raw: 'not json', sleep: second } },
+  });
+  assert.equal(f.select(['src/a.js', 'src/b.js'], failing(600, 0)).report.reason, 'codegraph-error');
+  assert.equal(f.select(['src/a.js', 'src/b.js'], failing(0, 600)).report.reason, 'codegraph-error');
+});
+
+test('E8: the earlier reasons keep priority over no-dependents', (t) => {
+  const f = selectFixture(t);
+  const bare = { src: answerFor([], 0) };
+  const perFile = { 'src/a.js': bare.src, 'src/b.js': bare.src };
+  const base = { ...HAPPY, perFile };
+  assert.equal(f.select(['src/a.js'], { ...base, sync: { exit: 1 } }).report.reason, 'sync-failed');
+  assert.equal(f.select(['src/a.js'], { ...base, ...statusWith({ ...INDEX, reindexRecommended: true }) }).report.reason, 'stale-index');
+  const unindexed = f.select(['src/a.js', 'README.md'], base).report;
+  assert.deepEqual([unindexed.reason, unindexed.files], ['unindexed-file', ['README.md']]);
+  assert.equal(f.select(['src/a.js', 'src/b.js'], { ...base, perFile: { ...perFile, 'src/b.js': { exit: 2 } } }).report.reason, 'codegraph-error');
+  assert.equal(f.select(['src/a.js', 'src/b.js'], { ...base, perFile: { ...perFile, 'src/b.js': { raw: 'x' } } }).report.reason, 'invalid-output');
+  assert.equal(f.select(['src/a.js'], base).report.reason, 'no-dependents');
+});
+
+test('E8 I4: --timeout-ms is one deadline for the whole set of per-file calls, and the calls still running are ended', (t) => {
+  const f = selectFixture(t);
+  const names = ['a', 'b', 'c', 'd', 'e', 'f'].map((letter) => `src/${letter}.js`);
+  const config = {
+    ...HAPPY,
+    files: { json: names.map((file) => ({ path: file })) },
+    perFile: Object.fromEntries(names.map((file) => [file, answerFor(['test/a.test.js'], 1, { sleep: 700 })])),
+  };
+  const started = Date.now();
+  const { report } = f.select(names, config, ['--timeout-ms', '1100']);
+  assert.deepEqual(report, { verdict: 'full', tests: [], reason: 'timeout' });
+  assert.ok(Date.now() - started < 5000, 'the run ended at its deadline');
+  // Each call alone is shorter than the timeout: a per-call timeout would have let all of them finish.
+  assert.equal(f.select(names.slice(0, 2), config, ['--timeout-ms', '1100']).report.verdict, 'selected');
 });
 
 test('I1: plan artifacts under openspec/ are not code and never force the full suite', (t) => {
