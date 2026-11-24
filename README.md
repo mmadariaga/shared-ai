@@ -203,6 +203,12 @@ SAI uses different models for different kinds of work, balancing quality and cos
 Install [CodeGraph](#third-party-tools) to reduce repeated code searches and
 the tokens they consume. Project `setup` builds its index when available;
 SAI also works without it.
+`setup` also reads the installed `codegraph` and `openspec` versions and, when
+one is below the minimum SAI supports (CodeGraph 1.6.4, OpenSpec 1.13.1), warns
+and offers to upgrade it. After a CodeGraph upgrade it offers `codegraph index`
+for an existing `.codegraph/` index, because an index built by an older version
+survives the upgrade. Declining never blocks setup, and `doctor` reports an
+outdated version as a warning.
 
 ### Explore Sub-Agent
 Research and documentation lookup can run on lower-cost agents that return concise findings instead of filling the main conversation with raw material. This keeps the focus on decisions while reducing cost.

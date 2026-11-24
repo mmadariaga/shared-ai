@@ -13,6 +13,13 @@ const uninstall = require('./uninstall-flow');
 const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 const { resolveOpencode, SHIM_UNRESOLVED } = require('../sai/tools/opencode-launcher');
+const {
+  CODEGRAPH_MIN_VERSION,
+  OPENSPEC_MIN_VERSION,
+  OPENCODE_MIN_VERSION,
+  readVersion,
+  compareVersions,
+} = require('./cli-versions');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
@@ -224,13 +231,17 @@ function readGeneratedBy(skillMdPath) {
   return m ? m[1].trim() : null;
 }
 
-function openspecCliVersion(execOpenspec) {
+// `present` is true when `--version` runs and exits 0; `version` is its first X.Y.Z, or null.
+function readCliVersion(exec) {
   try {
-    const r = execOpenspec(['--version']);
-    if (!r || r.error || r.status !== 0 || !r.stdout) return null;
-    const m = String(r.stdout).match(/\d+\.\d+\.\d+/);
-    return m ? m[0] : null;
-  } catch { return null; }
+    const r = exec(['--version']);
+    if (!r || r.error || r.status !== 0) return { present: false, version: null };
+    return { present: true, version: readVersion(r.stdout) };
+  } catch { return { present: false, version: null }; }
+}
+
+function openspecCliVersion(execOpenspec) {
+  return readCliVersion(execOpenspec).version;
 }
 
 function checkSkillStaleness({ projectRoot, execOpenspec }) {
@@ -516,8 +527,6 @@ function opencodeConfigDepthRecords(opencodeBase) {
   return [{ section, name, severity: 'ok', message: `experimental.subagent_depth valid in ${short}` }];
 }
 
-const OPENCODE_MIN_VERSION = '2.2.0';
-
 // Spawns the command that opencode-launcher.js resolves, without a shell, as opencode-dispatch.js and dispose-shells.js
 // do: on Windows that is the .exe behind npm's .cmd shim. A command the launcher cannot resolve is not spawned; the
 // result carries the launcher's cause (and the shim path) so the version record can name it.
@@ -525,15 +534,6 @@ function defaultExecOpencode(args, { resolve = resolveOpencode, spawn = childPro
   const { command, shim, cause } = resolve();
   if (command === null) return { status: null, stdout: '', stderr: '', error: Object.assign(new Error(cause), { code: cause }), cause, shim };
   return spawn(command, args, { encoding: 'utf8' });
-}
-
-function compareVersions(a, b) {
-  const left = a.split('.').map(Number);
-  const right = b.split('.').map(Number);
-  for (let i = 0; i < 3; i += 1) {
-    if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1;
-  }
-  return 0;
 }
 
 // Runs `opencode --version` and compares the first X.Y.Z of its output with the
@@ -551,18 +551,59 @@ function opencodeVersionRecords(execOpencode = defaultExecOpencode) {
   const output = result && !result.error && result.status === 0
     ? `${result.stdout || ''}\n${result.stderr || ''}`
     : '';
-  const match = /(?<!\d)(\d+\.\d+\.\d+)/.exec(output);
-  if (!match && result && result.cause === SHIM_UNRESOLVED) {
+  const installed = readVersion(output);
+  if (!installed && result && result.cause === SHIM_UNRESOLVED) {
     return [{ section, name, severity: 'warn', message: `opencode version unverified: ${SHIM_UNRESOLVED}: the shim ${result.shim} names no opencode executable that exists (minimum ${OPENCODE_MIN_VERSION})`, recommendation: 'Reinstall opencode with npm, or put the directory of opencode.exe on PATH' }];
   }
-  if (!match) {
+  if (!installed) {
     return [{ section, name, severity: 'warn', message: `opencode version unverified: the opencode binary was not found or its version output could not be parsed (minimum ${OPENCODE_MIN_VERSION})`, recommendation: `Install opencode ${OPENCODE_MIN_VERSION} or later and make sure \`opencode --version\` runs` }];
   }
-  const installed = match[1];
   if (compareVersions(installed, OPENCODE_MIN_VERSION) < 0) {
     return [{ section, name, severity: 'error', message: `opencode ${installed} is installed; the minimum supported version is ${OPENCODE_MIN_VERSION}`, recommendation: `Upgrade opencode to ${OPENCODE_MIN_VERSION} or later` }];
   }
   return [{ section, name, severity: 'ok', message: `opencode ${installed} meets the minimum ${OPENCODE_MIN_VERSION}` }];
+}
+
+function defaultExecCodegraph(args) {
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync(['codegraph', ...args].join(' '), { encoding: 'utf8', shell: true });
+  }
+  return childProcess.spawnSync('codegraph', args, { encoding: 'utf8' });
+}
+
+// One warning record for an optional or required CLI whose version is below the
+// minimum SAI supports, or cannot be read. An absent binary yields no record:
+// CodeGraph is optional and the OpenSpec presence check already reports its absence.
+function cliMinimumVersionRecord({ label, name, exec, min, recommendation }) {
+  const section = '[CLI versions]';
+  const { present, version } = readCliVersion(exec);
+  if (!present) return [];
+  if (version === null) {
+    return [{ section, name, severity: 'warn', message: `${label} version unverified: its version output could not be parsed (minimum ${min})`, recommendation }];
+  }
+  if (compareVersions(version, min) < 0) {
+    return [{ section, name, severity: 'warn', message: `${label} ${version} is installed; the minimum supported version is ${min}`, recommendation }];
+  }
+  return [{ section, name, severity: 'ok', message: `${label} ${version} meets the minimum ${min}` }];
+}
+
+function cliVersionRecords({ execOpenspec, execCodegraph }) {
+  return [
+    ...cliMinimumVersionRecord({
+      label: 'openspec',
+      name: 'openspec version',
+      exec: execOpenspec,
+      min: OPENSPEC_MIN_VERSION,
+      recommendation: `Upgrade OpenSpec to ${OPENSPEC_MIN_VERSION} or later: npm i -g @fission-ai/openspec@latest`,
+    }),
+    ...cliMinimumVersionRecord({
+      label: 'codegraph',
+      name: 'codegraph version',
+      exec: execCodegraph,
+      min: CODEGRAPH_MIN_VERSION,
+      recommendation: `Upgrade CodeGraph to ${CODEGRAPH_MIN_VERSION} or later with \`codegraph upgrade\` (or npm i -g @colbymchenry/codegraph@latest), then rebuild the index with \`codegraph index\``,
+    }),
+  ];
 }
 
 function versionSkewRecords(harness, expectedEntries, latest) {
@@ -590,6 +631,7 @@ async function main(options = {}) {
     opencodeBase,
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
+    execCodegraph = defaultExecCodegraph,
     execOpencode = defaultExecOpencode,
     out = process.stdout,
     fetchLatestVersion = defaultFetchLatestVersion,
@@ -600,6 +642,7 @@ async function main(options = {}) {
 
   const records = [];
   records.push(...checkProjectHealth({ projectRoot, execOpenspec }));
+  records.push(...cliVersionRecords({ execOpenspec, execCodegraph }));
 
   const latest = argv.includes('--offline') ? null : await fetchLatestVersion();
   const harnesses = detectHarnesses({ claudeBase, opencodeBase: effectiveOpencodeBase });
@@ -638,4 +681,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords, opencodeVersionRecords, defaultExecOpencode };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords, opencodeVersionRecords, defaultExecOpencode, cliVersionRecords, defaultExecCodegraph };

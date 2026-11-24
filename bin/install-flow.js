@@ -22,6 +22,7 @@ const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort', 'harness']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
 const { splitCustomizations, preserveCustomizations } = require('./managed-customizations');
 const { resolveGlobalRoot, parseOpencodeConfigLine } = require('../skills/universal/fetch/harness-root');
+const { CODEGRAPH_MIN_VERSION, OPENSPEC_MIN_VERSION, readVersion, compareVersions } = require('./cli-versions');
 
 const parseOpencodeDebugPathsOutput = parseOpencodeConfigLine;
 
@@ -591,6 +592,10 @@ const OPENCODE_INSTALL_CMD = 'npm i -g --allow-scripts=@opencode/cli @opencode/c
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
 const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install -y -t claude,opencode';
 const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
+const CODEGRAPH_UPGRADE_CMD = 'codegraph upgrade';
+const CODEGRAPH_MANUAL_UPGRADE_CMD = 'npm i -g @colbymchenry/codegraph@latest';
+const CODEGRAPH_INDEX_CMD = 'codegraph index';
+const OPENSPEC_UPGRADE_CMD = 'npm i -g @fission-ai/openspec@latest';
 
 function emitInstallerNotice(notices, line) {
   if (Array.isArray(notices)) notices.push(line);
@@ -873,6 +878,145 @@ async function offerOpenspecInstall({
   }
   console.log(OPENSPEC_INSTALL_CMD);
   return false;
+}
+
+// What setup offers for a CLI that runs but is older than the minimum SAI supports.
+// `upgradeCmd` is what the offer runs and prints; `manualCmd` is printed when it fails.
+const CLI_UPGRADES = {
+  codegraph: {
+    label: 'CodeGraph',
+    min: CODEGRAPH_MIN_VERSION,
+    upgradeCmd: CODEGRAPH_UPGRADE_CMD,
+    manualCmd: CODEGRAPH_MANUAL_UPGRADE_CMD,
+  },
+  openspec: {
+    label: 'OpenSpec',
+    min: OPENSPEC_MIN_VERSION,
+    upgradeCmd: OPENSPEC_UPGRADE_CMD,
+    manualCmd: OPENSPEC_UPGRADE_CMD,
+  },
+};
+
+// Reads `<cli> --version` of the binary the PATH resolves. `installed` follows the
+// probe semantics (the command runs and exits 0); `version` is its first X.Y.Z or null.
+function readCliVersion(cli) {
+  const result = childProcess.spawnSync(`${cli} --version`, { shell: true, encoding: 'utf8' });
+  if (!result || result.error || result.status !== 0) return { installed: false, version: null };
+  return { installed: true, version: readVersion(`${result.stdout || ''}\n${result.stderr || ''}`) };
+}
+
+function resolveCliPath(cli) {
+  const lookup = process.platform === 'win32' ? `where ${cli}` : `command -v ${cli}`;
+  const result = childProcess.spawnSync(lookup, { shell: true, encoding: 'utf8' });
+  if (!result || result.error || result.status !== 0) return null;
+  return String(result.stdout || '').split(/\r?\n/).map(line => line.trim()).find(Boolean) || null;
+}
+
+function runCliUpgrade(cli) {
+  const result = childProcess.spawnSync(CLI_UPGRADES[cli].upgradeCmd, { shell: true, stdio: 'inherit' });
+  return !result.error && result.status === 0;
+}
+
+// Compares the read version of an installed CLI with its minimum and offers the upgrade.
+// `current` is the read taken before the install offers, so a CLI that setup has just
+// installed is never compared. Never blocks setup. Resolves to a status string:
+// not-installed | unverified | current | printed (no TTY) | declined | failed | still-below | upgraded.
+async function offerCliUpgrade({
+  cli,
+  current = readCliVersion(cli),
+  readVersionAgain = readCliVersion,
+  runUpgrade = runCliUpgrade,
+  resolvePath = resolveCliPath,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+  notices,
+} = {}) {
+  const { label, min, upgradeCmd, manualCmd } = CLI_UPGRADES[cli];
+
+  if (!current.installed) {
+    return 'not-installed';
+  }
+  if (current.version === null) {
+    emitInstallerNotice(notices, `Cannot verify the ${label} version; skipping the version check.`);
+    return 'unverified';
+  }
+  if (compareVersions(current.version, min) >= 0) {
+    return 'current';
+  }
+
+  emitInstallerNotice(notices, `${label} ${current.version} is older than the minimum ${min} that SAI supports.`);
+
+  if (!isTTY) {
+    emitInstallerNotice(notices, upgradeCmd);
+    return 'printed';
+  }
+
+  const answer = await promptYesNo(`Upgrade ${label} now? [y/n] `);
+  if (!answer) {
+    emitInstallerNotice(notices, upgradeCmd);
+    return 'declined';
+  }
+
+  if (!runUpgrade(cli)) {
+    emitInstallerNotice(notices, `The ${label} upgrade failed. Run it yourself:`);
+    emitInstallerNotice(notices, manualCmd);
+    return 'failed';
+  }
+
+  const after = readVersionAgain(cli);
+  if (after.version === null) {
+    emitInstallerNotice(notices, `Cannot verify the ${label} version after the upgrade.`);
+    return 'unverified';
+  }
+  if (compareVersions(after.version, min) < 0) {
+    const where = resolvePath(cli);
+    emitInstallerNotice(
+      notices,
+      `${label} is still ${after.version} after the upgrade: the PATH resolves another, older binary${where ? ` at ${where}` : ''}.`
+    );
+    return 'still-below';
+  }
+  return 'upgraded';
+}
+
+function runCodegraphIndex(projectPath) {
+  const result = childProcess.spawnSync(CODEGRAPH_INDEX_CMD, { shell: true, cwd: projectPath, stdio: 'inherit' });
+  return !result.error && result.status === 0;
+}
+
+// An index built by an older CodeGraph survives the upgrade, so an existing
+// `.codegraph/` is rebuilt after a successful upgrade (TTY, on yes) and its command
+// is printed when the upgrade command was only printed (no TTY). A project without
+// `.codegraph/` gets nothing here: the index bootstrap builds it.
+async function offerCodegraphReindex({
+  projectPath,
+  upgradeStatus,
+  indexExists = () => fs.existsSync(path.join(projectPath, '.codegraph')),
+  runIndex = runCodegraphIndex,
+  promptYesNo = promptYesNoReadline,
+  notices,
+} = {}) {
+  if (upgradeStatus !== 'upgraded' && upgradeStatus !== 'printed') {
+    return;
+  }
+  if (!indexExists()) {
+    return;
+  }
+
+  if (upgradeStatus === 'printed') {
+    emitInstallerNotice(notices, CODEGRAPH_INDEX_CMD);
+    return;
+  }
+
+  const answer = await promptYesNo('Rebuild the CodeGraph index now? [y/n] ');
+  if (!answer) {
+    emitInstallerNotice(notices, CODEGRAPH_INDEX_CMD);
+    return;
+  }
+  if (!runIndex(projectPath)) {
+    emitInstallerNotice(notices, 'The CodeGraph index rebuild failed. Run it yourself:');
+    emitInstallerNotice(notices, CODEGRAPH_INDEX_CMD);
+  }
 }
 
 // Sentinel resolved by promptSelect when the user steps back out of a screen.
@@ -1962,6 +2106,16 @@ module.exports = {
   probeOpenspec,
   runOpenspecInstall,
   offerOpenspecInstall,
+  CODEGRAPH_UPGRADE_CMD,
+  CODEGRAPH_MANUAL_UPGRADE_CMD,
+  CODEGRAPH_INDEX_CMD,
+  OPENSPEC_UPGRADE_CMD,
+  readCliVersion,
+  resolveCliPath,
+  runCliUpgrade,
+  offerCliUpgrade,
+  runCodegraphIndex,
+  offerCodegraphReindex,
   MANAGED_WORKERS,
   CLAUDE_DESIGN_WORKER_AGENT,
   CLAUDE_SPEC_WORKER_AGENT,

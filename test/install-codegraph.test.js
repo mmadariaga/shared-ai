@@ -350,8 +350,14 @@ test('setup opens its readline only after the CLI install offers settle', async 
       argv: ['node', 'bin/setup.js', projectDir],
       createReadline: () => { events.push('createReadline'); return rl; },
     });
-    // The second codegraph probe is ensureCodegraphIndex, which also runs before.
-    assert.deepEqual(events, ['openspec --version', 'codegraph --version', 'codegraph --version', 'createReadline']);
+    // The first pair is the version read taken before the offers; the last codegraph
+    // probe is ensureCodegraphIndex, which also runs before createReadline.
+    assert.deepEqual(events, [
+      'openspec --version', 'codegraph --version',
+      'openspec --version', 'codegraph --version',
+      'codegraph --version',
+      'createReadline',
+    ]);
   } finally {
     cap.restore();
     childProcess.spawnSync = orig;
@@ -562,5 +568,292 @@ test('setup CLI maps a successful run to exit 0 (success)', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(binDir, { recursive: true, force: true });
+  }
+});
+
+// --- CLI minimum version: CodeGraph upgrade offer and index rebuild ---
+
+const {
+  CODEGRAPH_UPGRADE_CMD,
+  CODEGRAPH_MANUAL_UPGRADE_CMD,
+  CODEGRAPH_INDEX_CMD,
+  readCliVersion,
+  resolveCliPath,
+  offerCliUpgrade,
+  offerCodegraphReindex,
+} = require('../bin/install-flow.js');
+
+function codegraphUpgradeHarness(overrides = {}) {
+  const notices = [];
+  const calls = { prompts: [], upgrades: [], rereads: 0 };
+  const options = {
+    cli: 'codegraph',
+    current: { installed: true, version: '1.1.6' },
+    readVersionAgain: () => { calls.rereads += 1; return { installed: true, version: '1.6.4' }; },
+    runUpgrade: (cli) => { calls.upgrades.push(cli); return true; },
+    resolvePath: () => '/usr/bin/codegraph',
+    promptYesNo: async (question) => { calls.prompts.push(question); return true; },
+    isTTY: true,
+    notices,
+    ...overrides,
+  };
+  return { options, notices, calls };
+}
+
+test('the CodeGraph commands are declared beside the install commands', () => {
+  assert.equal(CODEGRAPH_UPGRADE_CMD, 'codegraph upgrade');
+  assert.equal(CODEGRAPH_MANUAL_UPGRADE_CMD, 'npm i -g @colbymchenry/codegraph@latest');
+  assert.equal(CODEGRAPH_INDEX_CMD, 'codegraph index');
+});
+
+test('E1: CodeGraph that is not installed gets no version check', async () => {
+  const { options, notices } = codegraphUpgradeHarness({ current: { installed: false, version: null } });
+  assert.equal(await offerCliUpgrade(options), 'not-installed');
+  assert.deepEqual(notices, []);
+});
+
+test('E2/E3: an unreadable CodeGraph version prints one line; a version at the minimum passes silently', async () => {
+  const unread = codegraphUpgradeHarness({ current: { installed: true, version: null } });
+  assert.equal(await offerCliUpgrade(unread.options), 'unverified');
+  assert.equal(unread.notices.length, 1);
+  assert.match(unread.notices[0], /Cannot verify the CodeGraph version/);
+
+  for (const version of ['1.6.4', '1.6.5', '1.10.0']) {
+    const ok = codegraphUpgradeHarness({ current: { installed: true, version } });
+    assert.equal(await offerCliUpgrade(ok.options), 'current', version);
+    assert.deepEqual(ok.notices, [], version);
+  }
+});
+
+test('CodeGraph below 1.6.4 with a TTY: yes runs the upgrade and reads the version again', async () => {
+  const { options, notices, calls } = codegraphUpgradeHarness();
+  assert.equal(await offerCliUpgrade(options), 'upgraded');
+  assert.deepEqual(calls.prompts, ['Upgrade CodeGraph now? [y/n] ']);
+  assert.deepEqual(calls.upgrades, ['codegraph']);
+  assert.ok(notices.some(m => m.includes('1.1.6') && m.includes('1.6.4')));
+});
+
+test('E4: declining the CodeGraph upgrade prints the command and runs nothing', async () => {
+  const { options, notices, calls } = codegraphUpgradeHarness({ promptYesNo: async () => false });
+  assert.equal(await offerCliUpgrade(options), 'declined');
+  assert.deepEqual(calls.upgrades, []);
+  assert.ok(notices.includes(CODEGRAPH_UPGRADE_CMD));
+});
+
+test('E5: a failing codegraph upgrade prints the npm command', async () => {
+  const { options, notices } = codegraphUpgradeHarness({ runUpgrade: () => false });
+  assert.equal(await offerCliUpgrade(options), 'failed');
+  assert.ok(notices.includes(CODEGRAPH_MANUAL_UPGRADE_CMD));
+});
+
+test('E6: CodeGraph still below the minimum after the upgrade names the PATH binary', async () => {
+  const { options, notices } = codegraphUpgradeHarness({
+    readVersionAgain: () => ({ installed: true, version: '1.1.6' }),
+    resolvePath: () => '/home/user/.local/bin/codegraph',
+  });
+  assert.equal(await offerCliUpgrade(options), 'still-below');
+  assert.ok(notices.some(m => m.includes('/home/user/.local/bin/codegraph') && /older binary/.test(m)));
+});
+
+test('readCliVersion reads the first X.Y.Z of the PATH binary and follows the probe semantics', () => {
+  const orig = childProcess.spawnSync;
+  const results = [
+    { status: 0, stdout: 'codegraph v1.6.4-beta (build 9.9.9)\n', stderr: '', error: null },
+    { status: 0, stdout: 'codegraph dev\n', stderr: '', error: null },
+    { status: 1, stdout: '', stderr: '', error: null },
+    { status: null, stdout: '', stderr: '', error: new Error('ENOENT') },
+  ];
+  const commands = [];
+  childProcess.spawnSync = (cmd, opts) => { commands.push([cmd, opts?.shell]); return results.shift(); };
+  try {
+    assert.deepEqual(readCliVersion('codegraph'), { installed: true, version: '1.6.4' });
+    assert.deepEqual(readCliVersion('codegraph'), { installed: true, version: null });
+    assert.deepEqual(readCliVersion('codegraph'), { installed: false, version: null });
+    assert.deepEqual(readCliVersion('codegraph'), { installed: false, version: null });
+    assert.ok(commands.every(([cmd, shell]) => cmd === 'codegraph --version' && shell === true));
+  } finally {
+    childProcess.spawnSync = orig;
+  }
+});
+
+test('resolveCliPath returns the first path the lookup prints, or null', () => {
+  const orig = childProcess.spawnSync;
+  const results = [
+    { status: 0, stdout: '\n/usr/bin/codegraph\n/opt/other/codegraph\n', error: null },
+    { status: 1, stdout: '', error: null },
+  ];
+  childProcess.spawnSync = () => results.shift();
+  try {
+    assert.equal(resolveCliPath('codegraph'), '/usr/bin/codegraph');
+    assert.equal(resolveCliPath('codegraph'), null);
+  } finally {
+    childProcess.spawnSync = orig;
+  }
+});
+
+test('E7: after a successful upgrade an existing .codegraph/ is offered codegraph index', async () => {
+  const prompts = [];
+  const indexed = [];
+  const notices = [];
+  await offerCodegraphReindex({
+    projectPath: '/project',
+    upgradeStatus: 'upgraded',
+    indexExists: () => true,
+    runIndex: (p) => { indexed.push(p); return true; },
+    promptYesNo: async (q) => { prompts.push(q); return true; },
+    notices,
+  });
+  assert.deepEqual(prompts, ['Rebuild the CodeGraph index now? [y/n] ']);
+  assert.deepEqual(indexed, ['/project']);
+  assert.deepEqual(notices, []);
+});
+
+test('E7: a failed or declined index rebuild prints codegraph index and never blocks', async () => {
+  for (const [answer, runIndex] of [[true, () => false], [false, () => assert.fail('must not run')]]) {
+    const notices = [];
+    await offerCodegraphReindex({
+      projectPath: '/project',
+      upgradeStatus: 'upgraded',
+      indexExists: () => true,
+      runIndex,
+      promptYesNo: async () => answer,
+      notices,
+    });
+    assert.ok(notices.includes(CODEGRAPH_INDEX_CMD));
+  }
+});
+
+test('E7: without .codegraph/ no index offer follows the upgrade', async () => {
+  await offerCodegraphReindex({
+    projectPath: '/project',
+    upgradeStatus: 'upgraded',
+    indexExists: () => false,
+    runIndex: () => assert.fail('must not run'),
+    promptYesNo: async () => assert.fail('must not ask'),
+    notices: [],
+  });
+});
+
+test('E8: without a TTY the upgrade was printed, so codegraph index is printed too when .codegraph/ exists', async () => {
+  const notices = [];
+  await offerCodegraphReindex({
+    projectPath: '/project',
+    upgradeStatus: 'printed',
+    indexExists: () => true,
+    runIndex: () => assert.fail('must not run'),
+    promptYesNo: async () => assert.fail('must not ask'),
+    notices,
+  });
+  assert.deepEqual(notices, [CODEGRAPH_INDEX_CMD]);
+});
+
+test('E4/E5/E6: no index offer after a declined, failed, or still-below upgrade', async () => {
+  for (const upgradeStatus of ['declined', 'failed', 'still-below', 'unverified', 'current', 'not-installed']) {
+    await offerCodegraphReindex({
+      projectPath: '/project',
+      upgradeStatus,
+      indexExists: () => true,
+      runIndex: () => assert.fail('must not run'),
+      promptYesNo: async () => assert.fail('must not ask'),
+      notices: [],
+    });
+  }
+});
+
+function versionStub({ codegraph, openspec }) {
+  const orig = childProcess.spawnSync;
+  const commands = [];
+  childProcess.spawnSync = (cmd, args) => {
+    const line = Array.isArray(args) ? `${cmd} ${args.join(' ')}` : String(cmd);
+    commands.push(line);
+    if (line.startsWith('openspec --version')) return { status: 0, stdout: `${openspec}\n`, stderr: '', error: null };
+    if (line.startsWith('codegraph --version')) {
+      return codegraph === null
+        ? { status: 1, stdout: '', stderr: '', error: null }
+        : { status: 0, stdout: `${codegraph}\n`, stderr: '', error: null };
+    }
+    return { status: 1, stdout: '', stderr: '', error: null };
+  };
+  return { commands, restore: () => { childProcess.spawnSync = orig; } };
+}
+
+test('setup without a TTY prints the upgrade commands and codegraph index for an outdated CLI pair, then continues', async () => {
+  const stub = versionStub({ codegraph: '1.1.6', openspec: '1.13.0' });
+  const projectDir = makeProjectDir();
+  fs.mkdirSync(path.join(projectDir, '.codegraph'));
+  const cap = captureConsole();
+  const origIsTTY = process.stdin.isTTY;
+  process.stdin.isTTY = false;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => fakeReadline(),
+      postSetupMenu: async () => ({ status: 'skipped' }),
+    });
+    assert.equal(outcome, 'success');
+    const upgrade = cap.logs.indexOf('codegraph upgrade');
+    const index = cap.logs.indexOf('codegraph index');
+    assert.ok(cap.logs.includes('npm i -g @fission-ai/openspec@latest'));
+    assert.ok(upgrade >= 0 && index > upgrade, 'codegraph upgrade is printed before codegraph index');
+    assert.ok(!stub.commands.some(c => c.startsWith('codegraph upgrade') || c.startsWith('codegraph index')), 'nothing is run without a TTY');
+  } finally {
+    process.stdin.isTTY = origIsTTY;
+    cap.restore();
+    stub.restore();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup prints nothing about versions when both CLIs meet the minimum', async () => {
+  const stub = versionStub({ codegraph: '1.6.4', openspec: '1.13.1' });
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => fakeReadline(),
+      postSetupMenu: async () => ({ status: 'skipped' }),
+    });
+    assert.equal(outcome, 'success');
+    assert.ok(!cap.logs.some(m => /minimum|Cannot verify|upgrade/i.test(m)), cap.logs.join('\n'));
+  } finally {
+    cap.restore();
+    stub.restore();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup does not compare the version of a CLI that appears after its start-of-run read (E1)', async () => {
+  const orig = childProcess.spawnSync;
+  let codegraphReads = 0;
+  childProcess.spawnSync = (cmd, args) => {
+    const line = Array.isArray(args) ? `${cmd} ${args.join(' ')}` : String(cmd);
+    if (line.startsWith('openspec --version')) return { status: 0, stdout: '1.13.1\n', stderr: '', error: null };
+    if (line.startsWith('codegraph --version')) {
+      codegraphReads += 1;
+      // Absent at the first read, as before an install offer; present (and old) afterwards.
+      return codegraphReads === 1
+        ? { status: 1, stdout: '', stderr: '', error: null }
+        : { status: 0, stdout: '1.1.6\n', stderr: '', error: null };
+    }
+    return { status: 1, stdout: '', stderr: '', error: null };
+  };
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const origIsTTY = process.stdin.isTTY;
+  process.stdin.isTTY = false;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => fakeReadline(),
+      postSetupMenu: async () => ({ status: 'skipped' }),
+    });
+    assert.equal(outcome, 'success');
+    assert.ok(!cap.logs.some(m => /older than the minimum|codegraph upgrade/.test(m)), cap.logs.join('\n'));
+  } finally {
+    process.stdin.isTTY = origIsTTY;
+    cap.restore();
+    childProcess.spawnSync = orig;
+    fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });
