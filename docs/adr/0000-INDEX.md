@@ -624,6 +624,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
 - [0197 — `next-step` is the only stage-advancement keyword](./0197-next-step-is-the-only-stage-advancement-keyword.md) — **Amends** 0137a
 - [0207 — Explore writes `Ready to Propose` block files with the native write tool into a private transfer directory](./0207-explore-writes-block-files-with-the-native-write-tool.md)
+- [0230 — The issue format is the only crystallized change format](./0230-issue-format-is-the-only-crystallized-change-format.md)
 
 ### Artifact metadata & routing tokens
 

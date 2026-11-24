@@ -61,3 +61,26 @@ The Manual route SHALL have no store and no hash. In the spec worker, a `--block
 
 - **WHEN** Direct Build dispatches the implementer with the `--direct-build --no-specs` marker line
 - **THEN** the envelope carries no hash line and the implementer runs no hash verification
+
+### Requirement: A change document hash covers the whole file
+
+`sai/tools/change-document.js hash --document-file <path>` SHALL print the sha256 of the whole document file with line endings normalized to LF, so a CRLF copy hashes like its LF text, and SHALL exit 1 naming the reason when the file is not one change document.
+
+#### Scenario: CRLF hashes like LF
+
+- **WHEN** the same document is hashed with CRLF and with LF line endings
+- **THEN** both hashes are equal, and a change anywhere in the file changes the hash.
+
+### Requirement: verify-file verifies an exported change document
+
+`sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>` SHALL require an absolute path to a regular file in a transfer directory, SHALL fail naming the reason when the first line is not `# <title>`, the title is empty, or the file holds more than one document, SHALL fail when the file does not match its hash, and SHALL change nothing in every case.
+
+#### Scenario: A file without a title line fails
+
+- **WHEN** `verify-file` receives a document file whose first line is not `# <title>`
+- **THEN** it exits 1 naming the missing title line and changes nothing.
+
+#### Scenario: Two documents in one file fail
+
+- **WHEN** a document file holds a second `# ` heading outside a fenced code block
+- **THEN** `verify-file` exits 1 naming the second document.
