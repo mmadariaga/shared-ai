@@ -98,7 +98,9 @@ test('steps and references are recorded as identifiers and paths without duplica
     { kind: 'record', ref: 'deviation', path: '/tmp/claude-1000/sai/implement-demo-1a2b/deviations.md' },
     { kind: 'record', ref: 'override', path: '/tmp/claude-1000/sai/implement-demo-1a2b/overrides.md' },
     { kind: 'record', ref: 'finding', path: '/tmp/claude-1000/sai/implement-demo-1a2b/findings.md' },
-    { kind: 'record', ref: 'baseline', path: '/tmp/claude-1000/sai/implement-demo-1a2b/baseline.md' },
+    { kind: 'record', ref: 'baseline', path: '/tmp/claude-1000/sai/implement-demo-1a2b/baseline-dirty.txt' },
+    { kind: 'record', ref: 'swap', path: '/tmp/claude-1000/sai/implement-demo-1a2b/swap.json' },
+    { kind: 'record', ref: 'swap', path: '/tmp/claude-1000/sai/implement-demo-1a2b/swap.json' },
     { kind: 'step-done', step: 'step-1' },
     { kind: 'step-done', step: 'step-1' });
   assert.deepEqual(result.run.committed, ['step-1']);
@@ -108,6 +110,7 @@ test('steps and references are recorded as identifiers and paths without duplica
   assert.equal(result.run.overrides.length, 1);
   assert.equal(result.run.findings.length, 1);
   assert.equal(result.run.baselines.length, 1);
+  assert.deepEqual(result.run.swaps, ['/tmp/claude-1000/sai/implement-demo-1a2b/swap.json']);
   assert.equal(machine.transition(result.state, { kind: 'record', ref: 'essay', path: '/x' }).rejected, 'unknown reference kind');
   assert.equal(machine.transition(result.state, { kind: 'record', ref: 'report', path: 'a\nb' }).rejected, 'path required');
   assert.equal(machine.transition(result.state, { kind: 'step-start', step: 'free text with spaces' }).rejected, 'step id required');

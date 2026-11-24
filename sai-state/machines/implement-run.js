@@ -15,7 +15,10 @@
 //   attempt    {obstacle}                spends one of the obstacle's attempts
 //   escalate   {obstacle}                the run waits for the user's answer
 //   answer     {obstacle, choice}        `continue` resets the obstacle, `stop` stops the run
-//   record     {ref, path}               ref: deviation | override | report | report-dir | finding | baseline
+//   record     {ref, path}               ref: deviation | override | report | report-dir | finding | baseline | swap
+//                                        (`baseline` points only to the dirty baseline, the uncommitted paths the run
+//                                        never owns; `swap` points to the record file of the Close base check,
+//                                        which a resumed run reads to bring the change's files back to HEAD)
 //   record     {ref: worker, role, handle, reason}
 //                                        registers the handle of the worker of a role; reason:
 //                                        create | replace | resume. A second distinct handle for a
@@ -37,6 +40,7 @@ const REFS = Object.freeze({
   'report-dir': 'report_dirs',
   finding: 'findings',
   baseline: 'baselines',
+  swap: 'swaps',
 });
 
 function handleEvent(ctx, current, sig) {

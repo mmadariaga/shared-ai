@@ -70,3 +70,11 @@ The `sai-tools` projection SHALL install `sai/tools/scenario-coverage.js` and it
 #### Scenario: The tool is projected and documented
 - **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
 - **THEN** `scenario-coverage.js` is installed under both harness roots as a managed file with no `sai/install-manifest.json` change, and the row and the tool-resolution invocation list name the tool
+
+### Requirement: test-select.js and change-base.js join the registered deterministic tool roster
+
+The `sai-tools` projection SHALL install `sai/tools/test-select.js` and its shared module `sai/tools/change-base.js` into `sai/tools/` under both harness roots as managed, content-tracked files, with no manifest edit required because the projection installs every `*.js` under `sai/tools/`. The `AGENTS.md` tools-directory row SHALL register `change-base.js` as the one change-base computation shared by `scenario-coverage.js` and `test-select.js`, and `test-select.js` with its `select`, `swap`, and `restore` sub-commands and their verdicts, and `sai/policies/tool-resolution.md` SHALL list the invocation forms of `test-select.js`.
+
+#### Scenario: The selection tool is projected and documented
+- **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
+- **THEN** `test-select.js` and `change-base.js` are installed under both harness roots as managed files with no `sai/install-manifest.json` change, the row names both tools, and the tool-resolution invocation list names `test-select.js`

@@ -26,7 +26,7 @@ The implement coordinator SHALL run the OpenSpec prerequisite check first, SHALL
 
 ### Requirement: Implement checks that the plan tests are still red
 
-Before the first step, after the failure baseline, the coordinator SHALL run each unclosed step's `**Test Command**` through the executor and SHALL check that every plan test is still red by assertion and every `[regression guard]` passes. A test that now fails to compile, or already passes without being a guard, SHALL be the obstacle `plan-tests`, whose approach is the fix RED realigning the test to the spec, recorded as a deviation. The still-red plan tests SHALL be part of the failure baseline and SHALL be green at Close.
+Before the first step, after recording the dirty baseline and without running any baseline suite, the coordinator SHALL run each unclosed step's `**Test Command**` through the executor and SHALL check that every plan test is still red by assertion and every `[regression guard]` passes. A test that now fails to compile, or already passes without being a guard, SHALL be the obstacle `plan-tests`, whose approach is the fix RED realigning the test to the spec, recorded as a deviation. Every plan test SHALL be green at Close.
 
 #### Scenario: The branch changed after the plan
 
@@ -35,12 +35,12 @@ Before the first step, after the failure baseline, the coordinator SHALL run eac
 
 ### Requirement: Each step is a GREEN, review, and commit cycle over its plan tests
 
-Each step SHALL be one GREEN, review, and commit cycle, normally one `## Step N` of `tasks.md`. Its brief SHALL carry the goal, the task ids, the step's scenarios, the step's tests and `**Test Command**` or its closure criterion, `**Files Affected**`, and `**What Changes**`, the `path :: signature` entries of `design.md` `## Target State` that the step's tests exercise or that its files touch, the spec files the step's scenarios belong to, and the production paths GREEN may write: for a step with tests, the paths of those `path :: signature` entries and any other production file the step's behavior needs; for a step without tests, its `**Files Affected**`. The brief SHALL never name a test path among the writable paths and SHALL carry no `## Required Documentation` entries. GREEN SHALL be closed when the step's tests pass, the tests of earlier steps stay green, and no test file and no stub signature the tests depend on changed since the step began; tests of later steps MAY stay red or turn green early. A step with a closure criterion SHALL be closed when the review confirms the criterion holds. The run SHALL end with every test of the change green.
+Each step SHALL be one GREEN, review, and commit cycle, normally one `## Step N` of `tasks.md`. Its brief SHALL carry the goal, the task ids, the step's scenarios, the step's tests and `**Test Command**` or its closure criterion, `**Files Affected**`, and `**What Changes**`, the `path :: signature` entries of `design.md` `## Target State` that the step's tests exercise or that its files touch, the spec files the step's scenarios belong to, and the production paths GREEN may write: for a step with tests, the paths of those `path :: signature` entries and any other production file the step's behavior needs; for a step without tests, its `**Files Affected**`. The brief SHALL never name a test path among the writable paths and SHALL carry no `## Required Documentation` entries. GREEN SHALL be closed when the step's own `**Test Command**` and the tests that the test selection adds for the files the step changed (or the full suite, when the selection cannot be trusted) pass, and no test file and no stub signature the tests depend on changed since the step began; a selected test that `tasks.md` lists under a later step MAY stay red or turn green early. The coordinator SHALL NOT run the tests of every earlier step as a separate rule. A step with a closure criterion SHALL be closed when the review confirms the criterion holds. The run SHALL end with every test of the change green.
 
 #### Scenario: Earlier tests stay green
 
-- **WHEN** GREEN finishes step 3
-- **THEN** the coordinator runs the tests of steps 1 to 3, and closes the step only when all of them pass
+- **WHEN** GREEN finishes step 3 and the selection for the files it changed includes a test of step 1
+- **THEN** the coordinator runs step 3's `**Test Command**` plus the selected tests, and closes the step only when step 3's tests and that test of step 1 pass
 
 #### Scenario: A later step's test turns green early
 
