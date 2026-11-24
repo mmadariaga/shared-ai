@@ -8,7 +8,12 @@
  *
  * Terms.
  * - selection: the test files `codegraph affected` reports for the files a step
- *   changed. The coordinator runs it together with the step's own test command.
+ *   changed, one call per file at a fixed depth of 2. The coordinator runs it
+ *   together with the step's own test command.
+ * - test file: a changed file that codegraph classifies as a test, that is, a
+ *   file its own single-file `affected` call lists in `affectedTests`.
+ * - no dependents: a single-file `affected` call that reports
+ *   `totalDependentsTraversed: 0`; the graph cannot vouch for that file.
  * - full: the answer when the selection cannot be trusted; the coordinator runs
  *   the project's full unit and integration suites and warns with the reason.
  * - change base: the merge-base of HEAD with the parent branch, computed by
@@ -26,11 +31,15 @@
  * empty on `full`), and `reason`: null on `selected`, else one of `no-binary`
  * (no `codegraph` on PATH), `no-index` (no `.codegraph/` or an uninitialized
  * one), `sync-failed` (`codegraph sync` exited non-zero), `stale-index`
- * (`codegraph status --json` still reports pending changes), `unindexed-file`
- * (a changed file is not in `codegraph files --json`; `files` lists them),
- * `codegraph-error` (a call failed), `timeout` (a call exceeded
- * `--timeout-ms`, 60000 by default), or `invalid-output` (a call printed JSON
- * the tool cannot read). It uses only the public codegraph CLI and never opens
+ * (`codegraph status --json` reports pending changes, or its `index` block shows
+ * an index that an older extractor built, that is still rebuilding, or that needs
+ * a reindex), `unindexed-file` (a changed file is not in `codegraph files --json`;
+ * `files` lists them), `codegraph-error` (a call failed), `timeout` (the calls
+ * exceeded `--timeout-ms`, 60000 by default), `invalid-output` (a call printed
+ * JSON the tool cannot read), or `no-dependents` (a changed non-test file has no
+ * dependents in the graph; `files` lists them). The per-file calls run in
+ * parallel, at most 4 at a time, under one shared `--timeout-ms` deadline. It
+ * uses only the public codegraph CLI and never opens
  * `.codegraph/codegraph.db`. Paths under `openspec/` are plan artifacts, not
  * code, and are left out of the list.
  *
@@ -50,11 +59,13 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { InputFileError, extractInputFile, readInputFile } = require('./input-reader.js');
 const { UsageError, git, resolveChangeBase } = require('./change-base.js');
 
 const DEFAULT_TIMEOUT_MS = 60000;
+const AFFECTED_DEPTH = 2;
+const AFFECTED_CONCURRENCY = 4;
 const RECORD_VERSION = 1;
 
 class Fallback extends Error {
@@ -75,7 +86,7 @@ function usage() {
     '  swap             restores the change\'s files to the change base in the working tree and saves them in --record.',
     '  restore          brings the files saved in --record back to HEAD.',
     '  --dirty-baseline File with the `git status --porcelain` output recorded before the run.',
-    '  --timeout-ms     Timeout of each codegraph call (default 60000).',
+    '  --timeout-ms     Timeout of each codegraph call, one shared deadline for the per-file `affected` calls (default 60000).',
     '  --cwd            Project root (default: the working directory).',
   ].join('\n');
 }
@@ -124,11 +135,15 @@ child.on('error', () => { clearTimeout(timer); process.exit(1); });
 child.on('close', (code) => { clearTimeout(timer); process.exitCode = code === null ? 1 : code; });
 `;
 
-function codegraph(args, { cwd, timeoutMs, input, failure }) {
-  const windows = process.platform === 'win32';
-  const [file, argv] = windows
+function invocation(args, timeoutMs) {
+  return process.platform === 'win32'
     ? [process.execPath, ['-e', SUPERVISOR, String(timeoutMs), process.env.ComSpec || 'cmd.exe', ...args]]
     : ['codegraph', args];
+}
+
+function codegraph(args, { cwd, timeoutMs, input, failure }) {
+  const windows = process.platform === 'win32';
+  const [file, argv] = invocation(args, timeoutMs);
   const result = spawnSync(file, argv, {
     cwd,
     encoding: 'utf8',
@@ -142,6 +157,48 @@ function codegraph(args, { cwd, timeoutMs, input, failure }) {
   if (windows && (result.stderr || '').includes(TIMEOUT_MARK)) throw new Fallback('timeout');
   if (result.status !== 0) throw new Fallback(failure);
   return result.stdout;
+}
+
+/** The asynchronous variant of `codegraph`: the same call, ended at `deadline` (a time in ms) instead of after a timeout. */
+function codegraphAsync(args, { cwd, input, failure, deadline }) {
+  return new Promise((resolve, reject) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      reject(new Fallback('timeout'));
+      return;
+    }
+    const windows = process.platform === 'win32';
+    const [file, argv] = invocation(args, remaining);
+    const child = spawn(file, argv, { cwd, stdio: ['pipe', 'pipe', windows ? 'pipe' : 'ignore'], windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const settle = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    // The supervisor enforces the deadline on Windows; this timer only bounds a supervisor that never ends.
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      settle(reject, new Fallback('timeout'));
+    }, windows ? remaining + 30000 : remaining);
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    if (windows) {
+      child.stderr.setEncoding('utf8');
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+    }
+    child.stdin.on('error', () => {});
+    child.on('error', () => settle(reject, new Fallback(failure)));
+    child.on('close', (code) => {
+      if (windows && stderr.includes(TIMEOUT_MARK)) settle(reject, new Fallback('timeout'));
+      else if (code !== 0) settle(reject, new Fallback(failure));
+      else settle(resolve, stdout);
+    });
+    child.stdin.end(input);
+  });
 }
 
 function codegraphJson(args, options) {
@@ -176,7 +233,59 @@ function stringList(value, what) {
   return value;
 }
 
-function selectTests(files, cwd, timeoutMs) {
+/** The `index` signals of `codegraph status --json` that show an index the tool cannot trust; none when the block is absent. */
+function staleIndex(status) {
+  const index = status.index;
+  if (!index || typeof index !== 'object') return false;
+  return index.reindexRecommended === true
+    || index.builtWithExtractionVersion !== index.currentExtractionVersion
+    || index.state !== 'complete'
+    || Number(index.filesNeedingReindex) > 0
+    || status.rebuildInProgress === true;
+}
+
+/** What one single-file `affected` call reports: its tests and whether the graph has dependents for the file. */
+function readAffected(text) {
+  let affected;
+  try {
+    affected = JSON.parse(text);
+  } catch (error) {
+    throw new Fallback('invalid-output');
+  }
+  if (!affected || typeof affected !== 'object') throw new Fallback('invalid-output');
+  const traversed = affected.totalDependentsTraversed;
+  if (typeof traversed !== 'number' || !Number.isFinite(traversed)) throw new Fallback('invalid-output', { detail: 'totalDependentsTraversed' });
+  return { tests: stringList(affected.affectedTests, 'affectedTests').map(normalizePath), noDependents: traversed === 0 };
+}
+
+/**
+ * One `affected --depth` call per file, each file alone on stdin, at most AFFECTED_CONCURRENCY at a time under one
+ * shared deadline. Every call runs to its end, so the results, kept in file order, do not depend on which call finishes first.
+ */
+async function affectedPerFile(files, { cwd, timeoutMs }) {
+  const deadline = Date.now() + timeoutMs;
+  const results = new Array(files.length);
+  let next = 0;
+  const lane = async () => {
+    while (next < files.length) {
+      const i = next;
+      next += 1;
+      try {
+        const text = await codegraphAsync(['affected', '--json', '--stdin', '--depth', String(AFFECTED_DEPTH)], {
+          cwd, deadline, input: `${files[i]}\n`, failure: 'codegraph-error',
+        });
+        results[i] = { ...readAffected(text), file: files[i] };
+      } catch (error) {
+        if (!(error instanceof Fallback)) throw error;
+        results[i] = { error };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(AFFECTED_CONCURRENCY, files.length) }, lane));
+  return results;
+}
+
+async function selectTests(files, cwd, timeoutMs) {
   if (files.length === 0) return { verdict: 'selected', tests: [], reason: null };
   const options = { cwd, timeoutMs };
   try {
@@ -190,6 +299,7 @@ function selectTests(files, cwd, timeoutMs) {
     const pending = status.pendingChanges;
     if (!pending || typeof pending !== 'object') throw new Fallback('invalid-output');
     if (Object.values(pending).some((count) => Number(count) > 0)) throw new Fallback('stale-index');
+    if (staleIndex(status)) throw new Fallback('stale-index');
 
     const listing = codegraphJson(['files', '--json'], options);
     if (!Array.isArray(listing) || listing.some((entry) => !entry || typeof entry.path !== 'string')) throw new Fallback('invalid-output');
@@ -197,9 +307,13 @@ function selectTests(files, cwd, timeoutMs) {
     const unindexed = files.filter((file) => /[\r\n]/.test(file) || !indexed.has(file));
     if (unindexed.length) throw new Fallback('unindexed-file', { files: unindexed });
 
-    const affected = codegraphJson(['affected', '--json', '--stdin'], { ...options, input: `${files.join('\n')}\n` });
-    if (!affected || typeof affected !== 'object') throw new Fallback('invalid-output');
-    const tests = [...new Set(stringList(affected.affectedTests, 'affectedTests').map(normalizePath))].sort();
+    const results = await affectedPerFile(files, options);
+    const failed = results.find((result) => result.error);
+    if (failed) throw failed.error;
+    // A test file is one whose own call lists it; every other file, fixtures and mocks included, is code.
+    const bare = results.filter((result) => result.noDependents && !result.tests.includes(result.file)).map((result) => result.file);
+    if (bare.length) throw new Fallback('no-dependents', { files: bare });
+    const tests = [...new Set(results.flatMap((result) => result.tests))].sort();
     return { verdict: 'selected', tests, reason: null };
   } catch (error) {
     if (!(error instanceof Fallback)) throw error;
@@ -386,7 +500,7 @@ function parse(argv) {
   return { command: positional[0], extra: positional.slice(1), inputFile, options };
 }
 
-function main(argv) {
+async function main(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
     process.stdout.write(`${usage()}\n`);
     return 0;
@@ -396,7 +510,7 @@ function main(argv) {
     if (extra.length) throw new UsageError(`unexpected positional argument: ${extra[0]}`);
     let result;
     if (name === 'select') {
-      result = selectTests(readFileList(inputFile), options.cwd, options.timeoutMs);
+      result = await selectTests(readFileList(inputFile), options.cwd, options.timeoutMs);
     } else if (name === 'swap' || name === 'restore') {
       if (inputFile) throw new UsageError(`${name} takes no --input-file`);
       result = name === 'swap' ? runSwap(options) : runRestore(options);
@@ -414,6 +528,6 @@ function main(argv) {
 
 // `node --test` discovers every file named `test-*.js` and runs it with no argument: that run is not a call of the tool.
 const discoveredAsTest = Boolean(process.env.NODE_TEST_CONTEXT) && process.argv.length <= 2;
-if (require.main === module && !discoveredAsTest) process.exitCode = main(process.argv.slice(2));
+if (require.main === module && !discoveredAsTest) main(process.argv.slice(2)).then((code) => { process.exitCode = code; });
 
 module.exports = { main, selectTests, dirtyBaselinePaths };

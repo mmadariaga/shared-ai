@@ -154,7 +154,7 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
   assert.match(cycle, /\*\*Test selection\.\*\*/);
   assert.match(cycle, /`test-select\.js` \(resolved per `tool-resolution\.md`\)/);
   assert.match(cycle, /select --input-file <file> --cwd <project root>/);
-  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'codegraph-error', 'timeout', 'invalid-output']) {
+  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'codegraph-error', 'timeout', 'invalid-output']) {
     assert.match(cycle, new RegExp(`\`${reason}\``), reason);
   }
   assert.match(cycle, /no scoping idiom/);

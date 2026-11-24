@@ -105,8 +105,8 @@ takes one — never substitute one for the other.
   [--parent-branch <branch>] --cwd <project-root>`, or `node <tool-path> restore
   --record <path> --cwd <project-root>`. `select` prints `verdict` (`selected`
   or `full`), `tests`, and `reason` (null, or `no-binary`, `no-index`,
-  `sync-failed`, `stale-index`, `unindexed-file`, `codegraph-error`, `timeout`,
-  `invalid-output`); `swap` and `restore` print `verdict` `swapped`, `refused`,
+  `sync-failed`, `stale-index`, `unindexed-file`, `no-dependents`,
+  `codegraph-error`, `timeout`, `invalid-output`); `swap` and `restore` print `verdict` `swapped`, `refused`,
   `restored`, `clean`, or `failed`. Exit 0 is any verdict but `refused` and
   `failed` (1); 2 is a usage or I/O error.
 - `validate-backfill-drafts.js`: `node <tool-path> validate --harness

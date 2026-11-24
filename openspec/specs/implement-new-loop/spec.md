@@ -211,12 +211,12 @@ For a step with tests, the coordinator SHALL run the step's own `**Test Command*
 
 ### Requirement: Test selection tool
 
-`sai/tools/test-select.js select --input-file <path> [--timeout-ms <n>] --cwd <project-root>` SHALL read a JSON list of changed files, leave out paths under `openspec/`, and print one JSON object with `verdict` (`selected` or `full`), `tests`, and `reason` (null on `selected`). It SHALL use only the public codegraph CLI, each call with a timeout of 60000 ms unless `--timeout-ms` says otherwise: `codegraph sync`, then `codegraph status --json`, then `codegraph files --json`, then `codegraph affected --json --stdin`, and SHALL never open `.codegraph/codegraph.db`. It SHALL answer `full` with the reason `no-binary` when `codegraph` is not on the path, `no-index` when `.codegraph/` is missing or uninitialized, `sync-failed` when the sync fails, `stale-index` when the status still reports pending changes, `unindexed-file` with the files in `files` when a changed file is not in the index, `codegraph-error` when a call fails, `timeout` when a call exceeds its timeout, and `invalid-output` when a call prints JSON the tool cannot read. The tool SHALL compute the change base through `sai/tools/change-base.js`, the one computation it shares with `sai/tools/scenario-coverage.js`. Exit 0 SHALL be any verdict except `refused` and `failed`, which exit 1; exit 2 SHALL be a usage or I/O error.
+`sai/tools/test-select.js select --input-file <path> [--timeout-ms <n>] --cwd <project-root>` SHALL read a JSON list of changed files, leave out paths under `openspec/`, and print one JSON object with `verdict` (`selected` or `full`), `tests`, and `reason` (null on `selected`). It SHALL use only the public codegraph CLI and SHALL never open `.codegraph/codegraph.db`: `codegraph sync`, then `codegraph status --json`, then `codegraph files --json`, each with a timeout of 60000 ms unless `--timeout-ms` says otherwise, then one `codegraph affected --json --stdin --depth 2` call per changed file, with that file alone on stdin so the command line carries only fixed arguments. The depth SHALL be the fixed value 2, with no setting, option, or environment variable that changes it. The per-file calls SHALL run concurrently, at most 4 at a time, under one shared `--timeout-ms` deadline for the whole set, and the order in which they finish SHALL change neither the verdict nor the test list. A changed file SHALL be a test file when its own call lists it in `affectedTests`; every other changed file, fixtures, mocks, and configuration included, SHALL count as code. It SHALL answer `full` with the reason `no-binary` when `codegraph` is not on the path, `no-index` when `.codegraph/` is missing or uninitialized, `sync-failed` when the sync fails, `stale-index` when the status reports pending changes or, when the status carries an `index` block, when `index.reindexRecommended` is true, `index.builtWithExtractionVersion` differs from `index.currentExtractionVersion`, `index.state` is anything other than `"complete"`, `index.filesNeedingReindex` is above 0, or `rebuildInProgress` is true, `unindexed-file` with the files in `files` when a changed file is not in the index, `codegraph-error` when a call fails, `timeout` when a call exceeds its timeout or the per-file calls exceed the shared deadline, `invalid-output` when a call prints JSON the tool cannot read, and `no-dependents` with the files in `files` when the call of a changed file that is not a test file reports `totalDependentsTraversed: 0`. These reasons SHALL be checked in that order, so `no-dependents` is answered only when no earlier reason applies. Without a `full` reason, `selected` SHALL list the union, deduplicated and sorted, of the `affectedTests` of every per-file call. The tool SHALL compute the change base through `sai/tools/change-base.js`, the one computation it shares with `sai/tools/scenario-coverage.js`. Exit 0 SHALL be any verdict except `refused` and `failed`, which exit 1; exit 2 SHALL be a usage or I/O error.
 
 #### Scenario: Affected tests are selected
 
-- **WHEN** codegraph is installed, its index is in sync, and every changed file is indexed
-- **THEN** `select` prints `verdict: selected` with the deduplicated, sorted test files that `codegraph affected` reports
+- **WHEN** codegraph is installed, its index is in sync, every changed file is indexed, and every changed non-test file has dependents
+- **THEN** `select` prints `verdict: selected` with the deduplicated, sorted union of the test files that the per-file `codegraph affected` calls report
 
 #### Scenario: A changed file is not indexed
 
@@ -237,6 +237,41 @@ For a step with tests, the coordinator SHALL run the step's own `**Test Command*
 
 - **WHEN** the changed-file list holds paths under `openspec/`
 - **THEN** `select` ignores them, and a list made only of such paths is `selected` with no tests
+
+#### Scenario: Every affected call uses depth 2
+
+- **WHEN** `select` queries the affected tests of the changed files
+- **THEN** each `codegraph affected` call carries `--depth 2` and a single file on stdin
+
+#### Scenario: An index built by an older extractor is stale
+
+- **WHEN** `codegraph status --json` reports no pending changes but its `index` block shows `reindexRecommended: true`, a `builtWithExtractionVersion` different from `currentExtractionVersion`, a `state` other than `"complete"`, `filesNeedingReindex` above 0, or `rebuildInProgress` is true
+- **THEN** `select` prints `verdict: full` with the reason `stale-index`
+
+#### Scenario: A status without an index block
+
+- **WHEN** `codegraph status --json` carries no `index` block and reports no pending changes
+- **THEN** `select` does not answer `stale-index` for that reason and goes on with the selection
+
+#### Scenario: A changed code file has no dependents
+
+- **WHEN** the single-file `affected` call of a changed file that is not a test file reports `totalDependentsTraversed: 0`
+- **THEN** `select` prints `verdict: full` with the reason `no-dependents` and lists exactly the files without dependents in `files`
+
+#### Scenario: A changed test file without dependents
+
+- **WHEN** a changed file is listed in the `affectedTests` of its own call and reports no dependents
+- **THEN** it does not trigger `no-dependents`
+
+#### Scenario: The finishing order of the calls does not matter
+
+- **WHEN** the per-file `affected` calls finish in a different order from one run to another
+- **THEN** `select` prints the same verdict and the same test list
+
+#### Scenario: The per-file calls exceed the shared deadline
+
+- **WHEN** the per-file `affected` calls of one run are still running when `--timeout-ms` expires
+- **THEN** the calls still running are ended and `select` prints `verdict: full` with the reason `timeout`
 
 ### Requirement: Base check swap and restore
 
