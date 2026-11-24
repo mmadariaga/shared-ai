@@ -172,3 +172,68 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 
 - **WHEN** the amended block changes an `Implementation Details` item
 - **THEN** `compare` prints `amend_kind: content`
+
+### Requirement: Change document validator names each failed dispatchable check
+
+`sai/tools/change-document.js check --document-file <path> [--verdicts-file <path>] [--slice]` SHALL parse a change document with a section parser that tracks fenced code blocks and SHALL print one JSON result that names each failed check. A document SHALL be dispatchable only when every `##` heading is a known section that appears once and in the agreed order, every present optional section is non-empty, Problem, Goal, Scope, and Non-goals are not `Not agreed yet.`, Open questions reads `None.`, Maturity reads `Ready to propose`, every item of Edge cases, Implementation notes, and Out-of-scope implementation notes carries its `E#` or `I#` with each `I#` appearing once, `## Change` is present with a valid `Change name:`, and every flagged hygiene line carries a `context` verdict. With Maturity at `Ready to propose`, an absent Edge cases or Implementation notes section SHALL mean the set was agreed empty; with `--slice`, the document SHALL also carry at least one `I#` in Implementation notes. The command SHALL exit 0 when the document is dispatchable, 1 when it is not, and 2 on a usage or input error.
+
+#### Scenario: Unready agreement is named
+
+- **WHEN** a document has Maturity other than `Ready to propose`, Open questions other than `None.`, a mandatory section reading `Not agreed yet.`, or no `## Change` section or `Change name:` line
+- **THEN** it is not dispatchable and the result names each failed check.
+
+#### Scenario: Unknown, out-of-order, or empty sections are named
+
+- **WHEN** a document has an unknown `##` heading, sections out of the agreed order, or a present optional section with no content
+- **THEN** it is not dispatchable and the result names the heading.
+
+#### Scenario: Fenced headings are ignored
+
+- **WHEN** a heading or a `---` line appears inside a fenced code block
+- **THEN** the validator treats it as content of the enclosing section.
+
+#### Scenario: A slice member owes an implementation item
+
+- **WHEN** a ready document without Edge cases or Implementation notes is checked alone, and then with `--slice`
+- **THEN** it is dispatchable alone, and with `--slice` it is not dispatchable for lacking an in-scope `I#`.
+
+#### Scenario: An invalid Change value is refused
+
+- **WHEN** `Change name` is not kebab-case, `Explore origin` is malformed, or `Specs: none` has no reason
+- **THEN** the document is not dispatchable and the result names the field.
+
+### Requirement: Change document set check validates a slice set
+
+`sai/tools/change-document.js check-set` SHALL take one `--document-file` per document of a set, check each document as a slice member when the set holds more than one, and SHALL refuse a set with a repeated change name, an out-of-scope `I#` that no document holds in Implementation notes, a dependency on a change absent from the set, or a dependency cycle. It SHALL print the dependency order of the set and exit 0 only when the set and every document pass.
+
+#### Scenario: A dependency cycle is refused
+
+- **WHEN** two documents of a set depend on each other
+- **THEN** `check-set` exits 1 and names the dependency cycle.
+
+### Requirement: Change document compare classifies an amendment
+
+`sai/tools/change-document.js compare --stored-file <path> --document-file <path>` SHALL report `amend_kind: metadata` when only the `Backlog origin:` or `Explore origin:` lines of `## Change` changed, an identical document included, and `amend_kind: content` otherwise, with the changed fields listed.
+
+#### Scenario: Origin-only change of a document is metadata
+
+- **WHEN** an amended document differs from the stored one only in its `Backlog origin:` line
+- **THEN** `compare` reports `metadata`.
+
+### Requirement: Change document tool reads issue sections for the intake
+
+`sai/tools/change-document.js sections` SHALL read an issue description, Markdown or HTML, from `--input-file` or stdin and SHALL print its per-stage state, open questions, and seed for the issue intake.
+
+#### Scenario: An issue's sections are read
+
+- **WHEN** `sections` receives an issue description
+- **THEN** it prints the stage state, the open questions, and the seed as JSON with exit 0.
+
+### Requirement: The change document tool coexists with the block detector
+
+`sai/tools/change-document.js` SHALL be added next to `sai/tools/ready-to-propose.js`, which SHALL remain the tool of every block consumer, and the issue optional-section constants of `ready-to-propose.js` SHALL list the same optional sections as `sai/policies/issue-format.md`.
+
+#### Scenario: The block detector keeps working
+
+- **WHEN** a consumer validates a `Ready to Propose` block after this change
+- **THEN** `ready-to-propose.js` validates it as before.

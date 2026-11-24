@@ -7,7 +7,7 @@ Define a provider-neutral backlog title and description format that distinguishe
 
 ### Requirement: Provider-neutral title and section structure
 
-The to-backlog format SHALL require an imperative, outcome-focused title without a type prefix. Creation descriptions SHALL use `##` headings for Problem, Goal, Scope, Non-goals, Open questions, and Maturity, in that order. Optional Edge cases, Implementation notes, Decisions, and Research leads SHALL appear between Non-goals and Open questions in that order and SHALL be omitted when empty. Each section's rules SHALL be defined beside its required or optional status in the authoritative companion reference.
+The to-backlog format SHALL require an imperative, outcome-focused title without a type prefix. Creation descriptions SHALL use `##` headings for Problem, Goal, Scope, Non-goals, Open questions, and Maturity, in that order. Optional Capabilities, Terms, Edge cases, Implementation notes, Out-of-scope implementation notes, Decisions, Alternatives considered, Trade-offs accepted, Research leads, and Additional notes SHALL appear between Non-goals and Open questions in that order and SHALL be omitted when empty. A `## Change` section, required for a dispatchable change document and optional for an idea, SHALL come last. Each section's rules SHALL be defined beside its required or optional status in the authoritative companion reference.
 
 #### Scenario: Create a complete description
 
@@ -18,6 +18,11 @@ The to-backlog format SHALL require an imperative, outcome-focused title without
 
 - **WHEN** an optional section has no agreed content, or Research leads has no references
 - **THEN** that section is omitted rather than populated with an empty-section marker.
+
+#### Scenario: Block-only sections take their agreed place
+
+- **WHEN** a description carries agreed Capabilities, Terms, Out-of-scope implementation notes, Alternatives considered, Trade-offs accepted, or Additional notes
+- **THEN** each appears between Non-goals and Open questions in the agreed order, and `## Change` comes after Maturity as the last section.
 
 ### Requirement: Explicit agreement boundaries
 
@@ -121,3 +126,31 @@ The issue format definition SHALL live at `sai/policies/issue-format.md`, read b
 
 - **WHEN** the repository is inspected for the issue format definition
 - **THEN** it exists only at `sai/policies/issue-format.md` and the `to-backlog` skill references that path
+
+### Requirement: The change document is the issue format stored as one file
+
+`sai/policies/issue-format.md` SHALL define the change document: the issue format of one crystallized change stored as one file whose first line is `# <title>` with a non-empty title, followed by the description, with `## Change` last. Section headings and the keys of `## Change` SHALL be English whatever the language of the content. A heading or a `---` line inside a fenced code block SHALL be content, and a `---` outside a fence SHALL separate nothing. A slice set SHALL be several files, never several documents in one file. Problem and Goal SHALL take the place of the block's `Why` and `What` instead of being repeated under a second name.
+
+#### Scenario: One document per file
+
+- **WHEN** a change document is stored for one crystallized change
+- **THEN** the file opens with `# <title>`, holds one document, and ends with its `## Change` section.
+
+#### Scenario: A horizontal rule is content
+
+- **WHEN** a document contains a `---` line outside a fenced code block
+- **THEN** the line is ordinary content and does not start a second document.
+
+### Requirement: The Change section carries the change metadata as visible lines
+
+The `## Change` section SHALL hold the change metadata as visible `Key: value` lines, a list marker before the key accepted, in any order: `Change name:` (required, kebab-case), `Depends on:` (optional, comma-separated change names or `None`, never the change itself and never a name twice), `Specs:` (optional, `none — <reason>` with a non-empty reason), `Explore origin:` (optional, `<harness> <sessionID>` entries with harness `opencode` or `claude`), and `Backlog origin:` (optional, a canonical GitHub, GitLab, or Azure DevOps issue URL). An unknown key, a repeated key, or a value of an invalid form SHALL make the document not dispatchable.
+
+#### Scenario: Metadata is readable text
+
+- **WHEN** a change document carries its change name and origins
+- **THEN** they appear as `Key: value` lines of the last `## Change` section, not as hidden markers.
+
+#### Scenario: An unknown key is refused
+
+- **WHEN** the `## Change` section carries a key outside the five known keys
+- **THEN** the document is not dispatchable and the validator names the key.

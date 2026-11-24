@@ -26,7 +26,9 @@ function region(text, heading) {
 }
 
 test('optional-section omission is consistent locally and in the mandatory skeleton', () => {
-  const optional = ['Edge cases', 'Implementation notes', 'Decisions', 'Research leads'];
+  const optional = ['Capabilities', 'Terms', 'Edge cases', 'Implementation notes',
+    'Out-of-scope implementation notes', 'Decisions', 'Alternatives considered',
+    'Trade-offs accepted', 'Research leads', 'Additional notes'];
   const skeleton = format.match(/```markdown\n([\s\S]*?)\n```/)[1];
   for (const name of optional) {
     const local = region(format, `### ${name} — optional`);
@@ -104,9 +106,12 @@ test('canonical format co-locates section rules and supplies ordered mandatory s
     .map(match => [match[1], match[2]]);
   assert.deepEqual(sections, [
     ['Problem', 'mandatory'], ['Goal', 'mandatory'], ['Scope', 'mandatory'],
-    ['Non-goals', 'mandatory'], ['Edge cases', 'optional'],
-    ['Implementation notes', 'optional'], ['Decisions', 'optional'],
-    ['Research leads', 'optional'], ['Open questions', 'mandatory'], ['Maturity', 'mandatory'],
+    ['Non-goals', 'mandatory'], ['Capabilities', 'optional'], ['Terms', 'optional'],
+    ['Edge cases', 'optional'], ['Implementation notes', 'optional'],
+    ['Out-of-scope implementation notes', 'optional'], ['Decisions', 'optional'],
+    ['Alternatives considered', 'optional'], ['Trade-offs accepted', 'optional'],
+    ['Research leads', 'optional'], ['Additional notes', 'optional'],
+    ['Open questions', 'mandatory'], ['Maturity', 'mandatory'],
   ]);
   const skeleton = format.match(/```markdown\n([\s\S]*?)\n```/)[1];
   assert.deepEqual([...skeleton.matchAll(/^## (.+)$/gm)].map(match => match[1]),

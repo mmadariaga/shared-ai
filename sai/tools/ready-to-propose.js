@@ -827,7 +827,8 @@ function detect(text, profile) {
  * test. The intake reads them from here; the policy stays their definition.
  */
 const ISSUE_MANDATORY_SECTIONS = ['Problem', 'Goal', 'Scope', 'Non-goals', 'Open questions', 'Maturity'];
-const ISSUE_OPTIONAL_SECTIONS = ['Edge cases', 'Implementation notes', 'Decisions', 'Research leads'];
+const ISSUE_OPTIONAL_SECTIONS = ['Capabilities', 'Terms', 'Edge cases', 'Implementation notes', 'Out-of-scope implementation notes',
+  'Decisions', 'Alternatives considered', 'Trade-offs accepted', 'Research leads', 'Additional notes'];
 const MATURITY_VALUES = ['Idea', 'Scope agreed', 'Edge cases agreed', 'Ready to propose'];
 const READY_MATURITY = 'Ready to propose';
 

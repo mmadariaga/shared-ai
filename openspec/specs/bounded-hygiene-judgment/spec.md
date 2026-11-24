@@ -50,3 +50,17 @@ A `violation` verdict SHALL mean the block cannot be dispatched; its clause, lin
 
 - **WHEN** a judgment returns a `violation` verdict
 - **THEN** the clause, line number, and evidence are shown and nothing is recorded or written
+
+### Requirement: Hygiene judgment runs over a whole change document
+
+`sai/tools/change-document.js check` SHALL run the lexical hygiene pre-filter over every line of a change document, with the four clauses of `sai/policies/block-hygiene-judgment.md` unchanged, and SHALL take the verdicts as a JSON array in a separate `--verdicts-file`, each verdict's `line` counted in the document file. A flagged line SHALL be cleared only by a `context` verdict with non-empty evidence; a `violation` verdict, a missing verdict, a verdict for a line that is not flagged, or a malformed verdict SHALL keep the document from being dispatchable, and a verdicts file that is not a JSON array SHALL be reported as unparseable.
+
+#### Scenario: A flagged line is cleared by context
+
+- **WHEN** a document line is flagged and the verdicts file gives it a `context` verdict with evidence
+- **THEN** the judgment is clean and the line no longer blocks dispatch.
+
+#### Scenario: A missing verdict blocks dispatch
+
+- **WHEN** a document line is flagged and the verdicts file gives it no verdict
+- **THEN** the document is not dispatchable and the line is listed as pending.
