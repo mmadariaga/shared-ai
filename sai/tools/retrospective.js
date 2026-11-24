@@ -42,7 +42,9 @@
  * `~/.local/share/opencode`), opened read-only through `node:sqlite` after a
  * schema guard. opencode v2.2.0 keeps current and migrated sessions in
  * `session_v2` and their messages in `session_message`; the older `session`,
- * `message` and `part` tables stopped receiving data. The opencode HTTP API is
+ * `message` and `part` tables stopped receiving data. A message's content items
+ * sit in `session_message.data.content` up to v2.2 and in `session_part` from
+ * v2.4.1; the shared reader of `opencode-db.js` reads both. The opencode HTTP API is
  * not used: it has no children route and truncates message responses.
  *
  * Exit codes: 0 = JSON payload printed; 2 = usage error or unreadable input
@@ -54,7 +56,7 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
-const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeSessionMessages, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
+const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeSessionMessages, withOpencodeContent, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
 const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents, dispatchedWorkers, claudeWaitTasks, claudeWakes } = require('./claude-transcripts');
 
 const DEFAULT_LIMIT = 5;
@@ -395,7 +397,7 @@ function measureRouted(opencode, reader, worker, principal) {
     if (found === null) return unavailable(`session ${worker.session} is not in opencode.db`);
     const records = principal ? opencodeRecords(db, worker.session) : found.map(opencodeRecord);
     const priced = { ...reader, opencodeTokens: data => { const tokens = reader.opencodeTokens(data); return tokens === UNAVAILABLE ? tokens : { ...tokens, cost: tokens.cost > 0 ? tokens.cost : null }; } };
-    return { reason: null, rows: principal ? records : null, metrics: opencodeMetrics(records, priced, opencodeWakes(db, worker.session)) };
+    return { reason: null, rows: principal ? records : null, withoutContent: messagesWithoutContent(records), metrics: opencodeMetrics(records, priced, opencodeWakes(db, worker.session)) };
   } catch (error) {
     return unavailable(`the opencode database could not be read (${error.message})`);
   }
@@ -415,6 +417,7 @@ function routedHelpers(opencode, reader, routed, workers, unread, where) {
   return found.map(child => {
     const measured = measureRouted(opencode, reader, { session: child.id, agent: child.agent }, workers.has(child.agent));
     if (measured.reason) unread.push({ kind: 'opencode-routed-helper', ...where, agent: child.agent, opencode_session: child.id, reason: measured.reason });
+    if (measured.withoutContent) unread.push(contentGap(where.project, child.id, measured.withoutContent));
     return { ...base, agent_id: child.id, agent_type: child.agent, description: 'helper of an opencode-routed worker', parent_agent_id: child.parent_id, spawn_depth: routed.spawn_depth + child.depth, rows: measured.rows, metrics: measured.metrics };
   });
 }
@@ -467,6 +470,7 @@ function buildSession({ reader, workers, project, group, sessionDir, text, sessi
     routed.rows = measured.rows;
     routed.metrics = measured.metrics;
     if (measured.reason) routedUnread.push({ kind: 'opencode-routed-worker', project, session, agent: worker.agent, opencode_session: worker.session, reason: measured.reason });
+    if (measured.withoutContent) routedUnread.push(contentGap(project, worker.session, measured.withoutContent));
     agents.push(routed);
     if (!measured.reason) agents.push(...routedHelpers(opencode, reader, routed, workers, routedUnread, { project, session }));
   }
@@ -543,31 +547,38 @@ function findSubagentSession(projectsRoot, projectPaths, agentId) {
 // opencode source
 // ---------------------------------------------------------------------------
 
+// A record carries the `content` the shared reader found for it (`withOpencodeContent`): the items of an assistant
+// message from either storage layout, which the readers below use instead of `data.content`.
 function opencodeRecord(row) {
   let data = {}, parsed = true;
   try { data = JSON.parse(row.data) ?? {}; } catch { parsed = false; }
-  return { id: row.id, type: row.type, timestamp: new Date(row.time_created).toISOString(), time: row.time_created, data, parsed };
+  return { id: row.id, type: row.type, timestamp: new Date(row.time_created).toISOString(), time: row.time_created, data, parsed, content: row.content ?? { items: [], unparsed: 0, unread: false } };
 }
 
 function opencodeRecords(db, sessionId) {
   const types = OPENCODE_RECORD_TYPES.map(type => `'${type}'`).join(',');
-  return db.prepare(`SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type IN (${types}) ORDER BY seq`).all(sessionId).map(opencodeRecord);
+  return withOpencodeContent(db, sessionId, db.prepare(`SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type IN (${types}) ORDER BY seq`).all(sessionId)).map(opencodeRecord);
 }
 
 // The assistant messages alone, which hold the usage of a session read for its figures only.
 function opencodeAssistants(db, sessionId) {
-  return db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId).map(opencodeRecord);
+  return withOpencodeContent(db, sessionId, db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId)).map(opencodeRecord);
 }
+
+// What the records of one session leave unread: the part rows with invalid JSON, and the assistant messages that carry
+// usage but no content item in either layout.
+const unparsedParts = records => records.reduce((sum, record) => sum + record.content.unparsed, 0);
+const messagesWithoutContent = records => records.filter(record => record.content.unread).length;
 
 function opencodeText(record) {
   const { data } = record;
-  if (record.type === 'assistant') return (Array.isArray(data.content) ? data.content : []).filter(item => item?.type === 'text').map(item => item.text).join('\n');
+  if (record.type === 'assistant') return record.content.items.filter(item => item.type === 'text').map(item => item.text).join('\n');
   const text = data.text ?? data.summary ?? data.command;
   return typeof text === 'string' ? text : '';
 }
 
 function opencodeToolItems(record) {
-  return Array.isArray(record.data.content) ? record.data.content.filter(item => item?.type === 'tool') : [];
+  return record.content.items.filter(item => item.type === 'tool');
 }
 
 function opencodeToolText(item) {
@@ -655,8 +666,9 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
     segmentOfSession.set(child.id, segment);
     const principal = segment >= 0 && registry.workers.has(child.agent);
     const rows = principal ? opencodeRecords(db, child.id) : null;
-    const metrics = segment >= 0 ? opencodeMetrics(rows ?? opencodeAssistants(db, child.id), reader, opencodeWakes(db, child.id)) : null;
-    return { agent_id: child.id, agent_type: child.agent, description: child.title, tool_use_id: null, parent_agent_id: child.parent_id === root.id ? null : child.parent_id, spawn_depth: child.depth, finished: null, segment, rows, metrics };
+    const measured = segment >= 0 ? rows ?? opencodeAssistants(db, child.id) : null;
+    const metrics = measured ? opencodeMetrics(measured, reader, opencodeWakes(db, child.id)) : null;
+    return { agent_id: child.id, agent_type: child.agent, description: child.title, tool_use_id: null, parent_agent_id: child.parent_id === root.id ? null : child.parent_id, spawn_depth: child.depth, finished: null, segment, rows, measured, metrics };
   });
 
   const recordId = record => record.id;
@@ -690,12 +702,17 @@ function buildOpencodeSession({ db, registry, reader, root, member }) {
       tool_errors: scans.flatMap(scan => scan.errors).sort(byTimeThenRecord),
     };
   });
-  const unparsed = [records, ...children.map(child => child.rows ?? [])].reduce((sum, set) => sum + set.filter(record => !record.parsed).length, 0);
+  // The records that feed the counts above are the ones checked here: the root's, each principal worker's, and the
+  // assistant messages of every other linked child.
+  const read = [records, ...children.map(child => child.measured ?? [])];
+  const unparsed = read.reduce((sum, set) => sum + set.filter(record => !record.parsed).length + unparsedParts(set), 0);
+  const withoutContent = [{ session: root.id, count: messagesWithoutContent(records) }, ...children.map(child => ({ session: child.agent_id, count: messagesWithoutContent(child.measured ?? []) }))].filter(entry => entry.count > 0);
   return {
     executions,
     unlinked: children.filter(child => child.segment < 0).map(child => agentSummary(child, null, recordId)),
     before_first_invocation: segmentOf.filter(segment => segment < 0).length,
     unparsed,
+    withoutContent,
   };
 }
 
@@ -749,6 +766,7 @@ function indexOpencode({ db, registry, reader, members, target, scoped }) {
       result.unlinked_agents.push(...built.unlinked.map(agent => ({ session: root.id, ...agent })));
       if (built.executions.length && built.before_first_invocation) result.unread.push({ kind: 'records-before-first-invocation', project: member.path, session: root.id, count: built.before_first_invocation, reason: 'these records precede the first SAI invocation of the session' });
       if (built.unparsed) result.unread.push({ kind: 'unparseable-records', project: member.path, session: root.id, count: built.unparsed, reason: 'the record data is not valid JSON' });
+      for (const entry of built.withoutContent) result.unread.push(contentGap(member.path, entry.session, entry.count));
     } catch (error) {
       result.unread.push({ kind: 'session', project: member.path, session: root.id, reason: error.message });
     }
@@ -759,6 +777,12 @@ function indexOpencode({ db, registry, reader, members, target, scoped }) {
     : { harness: 'opencode', project, project_group: group, status: 'inaccessible', reason: 'No opencode session is recorded for this project', sessions_read: 0 });
   if (child) result.executions = result.executions.filter(execution => [...execution.principal_workers, ...execution.auxiliary_agents].some(agent => agent.agent_id === child));
   return result;
+}
+
+// The `unread` entry of a session whose assistant messages carry usage but no readable content: the session is still
+// analyzed, and the gap stays visible.
+function contentGap(project, session, count) {
+  return { kind: 'messages-without-content', project, session, count, reason: 'these assistant messages record token usage but no readable content item (text, tool call, or reasoning) in session_message.data.content or session_part' };
 }
 
 function renderOpencodeRecord(record, max) {

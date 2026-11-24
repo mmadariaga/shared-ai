@@ -315,17 +315,25 @@ function openCodeSessions() {
 const SESSION_COLUMNS = 'id text primary key, project_id text, parent_id text, agent text, title text, directory text NOT NULL, time_created integer NOT NULL';
 const MESSAGE_COLUMNS = 'id text primary key, session_id text NOT NULL, type text NOT NULL, seq integer NOT NULL, time_created integer NOT NULL, data text NOT NULL';
 
-function makeOpencodeDb(config, { sessionColumns = SESSION_COLUMNS, sessions = openCodeSessions(), rows = openCodeRows() } = {}) {
+const PART_COLUMNS = 'message_id text NOT NULL, session_id text NOT NULL, ordinal integer NOT NULL, type text NOT NULL, data text NOT NULL';
+
+// `partColumns` adds the optional `session_part` table (opencode v2.4.1) and `parts` fills it.
+function makeOpencodeDb(config, { sessionColumns = SESSION_COLUMNS, sessions = openCodeSessions(), rows = openCodeRows(), partColumns = null, parts = [] } = {}) {
   const directory = path.join(config, 'data', 'opencode');
   fs.mkdirSync(directory, { recursive: true });
   const file = path.join(directory, 'opencode.db');
   const db = new DatabaseSync(file);
   db.exec(`CREATE TABLE session_v2 (${sessionColumns}); CREATE TABLE session_message (${MESSAGE_COLUMNS});`);
+  if (partColumns) db.exec(`CREATE TABLE session_part (${partColumns});`);
   if (sessionColumns === SESSION_COLUMNS) {
     const insertSession = db.prepare('INSERT INTO session_v2 (id, parent_id, agent, title, directory, time_created) VALUES (?, ?, ?, ?, ?, ?)');
     for (const [id, parent, agent, dir, clock] of sessions) insertSession.run(id, parent, agent, `title ${id}`, dir, at(clock));
     const insertMessage = db.prepare('INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)');
     for (const { id, session, seq, type, time, data } of rows) insertMessage.run(id, session, type, seq, time, data);
+    if (partColumns === PART_COLUMNS) {
+      const insertPart = db.prepare('INSERT INTO session_part (message_id, session_id, ordinal, type, data) VALUES (?, ?, ?, ?, ?)');
+      for (const { message, session, ordinal, type, data } of parts) insertPart.run(message, session, ordinal, type, typeof data === 'string' ? data : JSON.stringify(data));
+    }
   }
   db.close();
   return file;
@@ -459,6 +467,109 @@ test('opencode: a runtime without node:sqlite reports opencode as not analyzed a
     assert.deepEqual(payload.harnesses.map(h => [h.harness, h.status]), [['claude', 'analyzed'], ['opencode', 'not-analyzed']]);
     assert.match(payload.harnesses[1].reason, /node:sqlite is not available in this Node runtime/);
     assert.equal(payload.executions.length, 3);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+// A session whose messages follow the opencode v2.4.1 part layout (content in `session_part`), a legacy message that
+// also has parts, and messages that carry usage but no readable content.
+const USAGE = { input: 5, output: 2, reasoning: 0, cache: { read: 0, write: 0 } };
+const PART_ROOT = { message: n => `msg_${OC.root}_${String(n).padStart(2, '0')}` };
+
+function partLayoutFixture() {
+  const row = (seq, type, clock, data) => ({ id: PART_ROOT.message(seq), session: OC.root, seq, type, time: at(clock), data: JSON.stringify(data) });
+  const assistant = (seq, clock, extra) => row(seq, 'assistant', clock, { time: doneTime(clock), agent: 'build', tokens: USAGE, content: [], ...extra });
+  const part = (seq, ordinal, type, data) => ({ message: PART_ROOT.message(seq), session: OC.root, ordinal, type, data: data === undefined ? { type } : data });
+  const rows = [
+    row(1, 'user', '13:00:00.000', { time: { created: at('13:00:00.000') }, text: envelope('design', 'my-change') }),
+    // part layout: text, a settled read of an instruction file, reasoning, an ignored step marker, and a part that is not JSON
+    assistant(2, '13:00:02.000'),
+    // legacy layout: its own content wins, so the parts below are never read (nothing counts twice)
+    assistant(3, '13:00:04.000', { content: [{ type: 'text', text: 'legacy text' }] }),
+    // usage and no content item in either layout
+    assistant(4, '13:00:06.000'),
+    // reasoning alone is readable content
+    assistant(5, '13:00:08.000'),
+    // an ignored step marker alone is not
+    assistant(6, '13:00:10.000'),
+    row(7, 'assistant', '13:00:12.000', { time: doneTime('13:00:12.000'), agent: 'build', content: [] }),
+  ];
+  const parts = [
+    // inserted out of order: `ordinal` decides
+    part(2, 3, 'tool', reading('call-b', '/repo/sai/policies/remember.md', 'remember text')),
+    part(2, 0, 'text', { type: 'text', text: 'part text' }),
+    part(2, 1, 'reasoning', { type: 'reasoning', text: 'secret thinking' }),
+    part(2, 2, 'step-start'),
+    part(2, 4, 'text', '{not json'),
+    part(3, 0, 'tool', reading('call-ignored', '/repo/sai/policies/ignored.md', 'ignored text')),
+    part(5, 0, 'reasoning', { type: 'reasoning', text: 'only thinking' }),
+    part(6, 0, 'step-start'),
+    part(6, 1, 'file', { type: 'file', mime: 'text/plain' }),
+  ];
+  return { sessions: [[OC.root, null, 'build', PROJECT, '12:59:00.000']], rows, parts };
+}
+
+opencodeTest('opencode part layout: content comes from session_part by ordinal, a non-empty data.content wins, and a message without readable content is reported', () => {
+  const config = makeConfig();
+  try {
+    makeOpencodeDb(config, { ...partLayoutFixture(), partColumns: PART_COLUMNS });
+    const { status, payload } = run(config, ['index', 'sai-2-design', '--paths', PROJECT]);
+    assert.equal(status, 0);
+    assert.deepEqual(payload.harnesses.map(h => [h.harness, h.status]), [['claude', 'analyzed'], ['opencode', 'analyzed']]);
+    const [design] = payload.executions;
+    assert.equal(design.coordinator.tool_calls, 1, 'one read from the parts; the parts of a legacy message are not read');
+    assert.deepEqual(design.loaded_instructions.map(l => [l.path, l.source, l.record]), [['/repo/sai/policies/remember.md', 'Read', PART_ROOT.message(2)]]);
+    assert.deepEqual(payload.unread.filter(u => u.kind === 'messages-without-content').map(u => [u.session, u.count]), [[OC.root, 2]], 'one entry per session, counting the messages with usage and no content item; the reasoning-only message is readable and the message without usage is not counted');
+    assert.deepEqual(payload.unread.filter(u => u.kind === 'unparseable-records').map(u => [u.session, u.count]), [[OC.root, 1]], 'a part whose data is not JSON is skipped and counted');
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('opencode part layout: excerpt shows the text and tools of a part-layout record under its message ID and leaves reasoning out', () => {
+  const config = makeConfig();
+  try {
+    makeOpencodeDb(config, { ...partLayoutFixture(), partColumns: PART_COLUMNS });
+    const { records } = run(config, ['excerpt', '--project', PROJECT, '--session', OC.root]).payload;
+    const record = records.find(r => r.id === PART_ROOT.message(2));
+    assert.equal(record.text, 'part text');
+    assert.deepEqual(record.tool_uses.map(u => [u.id, u.name]), [['call-b', 'read']]);
+    assert.deepEqual(record.tool_results.map(r => [r.tool_use_id, r.is_error, r.text]), [['call-b', false, 'remember text']]);
+    assert.ok(!JSON.stringify(records).includes('thinking'), 'reasoning parts stay out of the excerpt');
+    assert.equal(records.find(r => r.id === PART_ROOT.message(3)).text, 'legacy text');
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('opencode part layout: a database without session_part is read as before and adds no unread entry', () => {
+  const config = makeConfig();
+  try {
+    const fixture = partLayoutFixture();
+    makeOpencodeDb(config, { sessions: fixture.sessions, rows: fixture.rows });
+    const { status, payload } = run(config, ['index', 'sai-2-design', '--paths', PROJECT]);
+    assert.equal(status, 0);
+    assert.equal(payload.harnesses[1].status, 'analyzed');
+    assert.equal(payload.executions[0].coordinator.tool_calls, 0);
+    assert.equal(payload.unread.filter(u => u.kind === 'messages-without-content').length, 0);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('opencode part layout: a session_part table that lacks a required column reports opencode as not analyzed', () => {
+  const config = makeConfig();
+  try {
+    const fixture = partLayoutFixture();
+    makeOpencodeDb(config, { sessions: fixture.sessions, rows: fixture.rows, partColumns: 'message_id text NOT NULL, session_id text NOT NULL, type text NOT NULL, data text NOT NULL' });
+    const { status, payload } = run(config, ['index', 'sai-2-design', '--paths', PROJECT]);
+    assert.equal(status, 0);
+    assert.deepEqual(payload.harnesses.map(h => [h.harness, h.status]), [['claude', 'analyzed'], ['opencode', 'not-analyzed']]);
+    assert.match(payload.harnesses[1].reason, /session_part table lacks the column\(s\) ordinal/);
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
+opencodeTest('opencode part layout: a run mixing both layouts reads every message once', () => {
+  const config = makeConfig();
+  try {
+    const fixture = partLayoutFixture();
+    makeOpencodeDb(config, { ...fixture, partColumns: PART_COLUMNS });
+    const { records } = run(config, ['excerpt', '--project', PROJECT, '--session', OC.root, '--count', '20']).payload;
+    assert.deepEqual(records.filter(r => r.text).map(r => [r.id, r.text]), [[PART_ROOT.message(1), envelope('design', 'my-change').slice(0, 1500)], [PART_ROOT.message(2), 'part text'], [PART_ROOT.message(3), 'legacy text']]);
+    assert.equal(records.filter(r => r.tool_uses).length, 1, 'the part of the legacy message adds no tool call');
   } finally { fs.rmSync(config, { recursive: true, force: true }); }
 });
 

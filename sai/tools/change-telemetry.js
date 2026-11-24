@@ -50,7 +50,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, changeNameFromArgs, writtenChanges } = require('./opencode-db');
+const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeWakes, withOpencodeContent, changeNameFromArgs, writtenChanges } = require('./opencode-db');
 const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
 const { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION } = require('./openspec-yaml');
 const { PRICES, PER_MILLION, findPrice, priceFromTable } = require('./model-prices');
@@ -125,6 +125,8 @@ function dispatchLink(item) {
   return content.match(/<(?:subagent sessionID|task id)="([^"]+)"/)?.[1] ?? null;
 }
 
+// `row.content` is the reading of the shared reader (`withOpencodeContent`): the items of the message from either
+// storage layout. A message that records usage but has no readable content leaves its tool data unavailable.
 function toRequest(row) {
   let data = {};
   try {
@@ -133,7 +135,7 @@ function toRequest(row) {
   } catch { /* an unreadable message leaves every datum of the request unavailable */ }
   const tokens = data.tokens ?? {};
   const created = number(data.time?.created), completed = number(data.time?.completed);
-  const items = toolItems(data);
+  const items = toolItems(row.content);
   const dispatches = items.filter(item => DISPATCH_TOOLS.has(item.name));
   return {
     id: row.id,
@@ -153,6 +155,7 @@ function toRequest(row) {
     model: label(data.model?.id),
     variant: label(data.model?.variant),
     items,
+    unreadable: row.content?.unread === true,
     calls: items.filter(item => !DISPATCH_TOOLS.has(item.name)),
     dispatches: dispatches.length,
     links: dispatches.map(dispatchLink).filter(Boolean).map(session => ({ session, time: row.time_created })),
@@ -204,10 +207,13 @@ function missOf(previous, request) {
   return { misses: 1, rewritten, overcost };
 }
 
+// A tool figure over requests: a request whose message has no readable content supplies none, so the total is
+// partial, and unavailable when no request supplies one.
+const toolFigure = (requests, pick) => sum(requests.map(request => (request.unreadable ? null : pick(request))));
+
 // `wakes` is the number of wakes of the agent in the same window as `requests`.
 function figuresOf(requests, wakes) {
   if (requests.length === 0) return { ...UNKNOWN_FIGURES, requests: exact(0), wakes: exact(wakes) };
-  const calls = requests.flatMap(request => request.calls);
   // An agent's first request always writes the cache, so only later requests can miss.
   const misses = requests.slice(1).map((request, index) => missOf(requests[index], request));
   const missFigure = key => (requests.length === 1 ? exact(0) : sum(misses.map(miss => miss[key])));
@@ -224,9 +230,9 @@ function figuresOf(requests, wakes) {
     overcost: missFigure('overcost'),
     cost: costSum(requests),
     ms: sum(requests.map(request => request.ms)),
-    toolCalls: exact(calls.length),
-    toolErrors: exact(calls.filter(item => item.state?.status === 'error').length),
-    subagents: exact(requests.reduce((total, request) => total + request.dispatches, 0)),
+    toolCalls: toolFigure(requests, request => request.calls.length),
+    toolErrors: toolFigure(requests, request => request.calls.filter(item => item.state?.status === 'error').length),
+    subagents: toolFigure(requests, request => request.dispatches),
   };
 }
 
@@ -251,6 +257,7 @@ function combine(list, metrics = STORED) {
 const distinct = (requests, field) => (requests.length ? [...new Set(requests.map(request => request[field] ?? UNAVAILABLE))].join(', ') : UNAVAILABLE);
 
 function toolBreakdown(requests) {
+  if (requests.some(request => request.unreadable) && requests.every(request => request.unreadable || request.calls.length === 0)) return UNAVAILABLE;
   const counts = new Map();
   for (const item of requests.flatMap(request => request.calls)) counts.set(item.name ?? UNAVAILABLE, (counts.get(item.name ?? UNAVAILABLE) ?? 0) + 1);
   const entries = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
@@ -278,9 +285,9 @@ const missingRow = (session, depth, store) => unavailableRow(`session ${session}
 //   children(root)         every subagent session below a root, parents first
 //   hasSession(id), isRoot(id), userTexts(session), routeId(root, anchor), close()
 
-// The tool items of one opencode message's parsed `data`.
-function toolItems(data) {
-  return Array.isArray(data?.content) ? data.content.filter(item => item?.type === 'tool') : [];
+// The tool items of one opencode message's content, as the shared reader read it from either storage layout.
+function toolItems(content) {
+  return (content?.items ?? []).filter(item => item.type === 'tool');
 }
 
 function userText(data) {
@@ -308,9 +315,10 @@ function opencodeSource(db) {
     routeId: (rootId, anchorId) => anchorId,
     requests(sessionId, from, to) {
       const wakeIds = new Set(wakesOf(sessionId).flatMap(wake => wake.requests));
-      return db
-        .prepare("SELECT id, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
-        .all(sessionId, from, to).map(row => ({ ...toRequest(row), wake: wakeIds.has(row.id) }));
+      const rows = db
+        .prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' AND time_created >= ? AND time_created < ? ORDER BY seq")
+        .all(sessionId, from, to);
+      return withOpencodeContent(db, sessionId, rows).map(row => ({ ...toRequest(row), wake: wakeIds.has(row.id) }));
     },
     wakes: (sessionId, from, to) => wakesOf(sessionId).filter(wake => wake.time >= from && wake.time < to),
     userTexts: sessionId => db.prepare("SELECT data FROM session_message WHERE session_id = ? AND type = 'user'").all(sessionId).map(row => userText(row.data)),

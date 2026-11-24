@@ -87,7 +87,7 @@ The collector SHALL return `skipped` without writing when the change's folder is
 
 ### Requirement: The collector measures the latest execution of the command on the change in the project directory
 
-On opencode the collector SHALL read `opencode.db` read-only, only its V2 tables `session_v2` and `session_message`; on Claude Code it SHALL read the project's session transcripts read-only. It SHALL select the latest invocation of the command whose root session belongs to the project directory, in any separator form, and whose change is the given one. An execution SHALL span from its invocation to the next invocation in the same root session, with the descendant sessions (on Claude Code, the subagents) created in that span as its subagents.
+On opencode the collector SHALL read `opencode.db` read-only, only its V2 tables `session_v2` and `session_message` and, when the database has it, the `session_part` table; on Claude Code it SHALL read the project's session transcripts read-only. It SHALL select the latest invocation of the command whose root session belongs to the project directory, in any separator form, and whose change is the given one. An execution SHALL span from its invocation to the next invocation in the same root session, with the descendant sessions (on Claude Code, the subagents) created in that span as its subagents.
 
 #### Scenario: a sibling worktree is not mixed in
 - **WHEN** a later `/sai-build` execution on the same change ran in a sibling worktree directory
@@ -103,11 +103,19 @@ The collector SHALL take the change of an execution from its invocation argument
 
 ### Requirement: Per-agent rows report model, tokens, cost, time, and tool calls
 
-For the coordinator and each subagent, the collector SHALL report the model and variant, requests, input, output, reasoning, cache read and cache write tokens, cache misses, cost, model time, tool calls, tool errors, a per-tool breakdown, and subagents dispatched. Each assistant message SHALL be one request; tool calls SHALL be its `data.content[]` entries with `type: "tool"`, and a tool error a call whose `state.status` is `error`.
+For the coordinator and each subagent, the collector SHALL report the model and variant, requests, input, output, reasoning, cache read and cache write tokens, cache misses, cost, model time, tool calls, tool errors, a per-tool breakdown, and subagents dispatched. Each assistant message SHALL be one request; on opencode, tool calls SHALL be the content items of the message with `type: "tool"`, read from its `data.content[]` entries when that array is non-empty and otherwise from the `data` of its `session_part` rows in `ordinal` order, and a tool error a call whose `state.status` is `error`. Token and cost figures SHALL keep coming from the message's `session_message.data`.
 
 #### Scenario: a tool error is counted
 - **WHEN** an agent made three `read` calls and one of them has `state.status` `error`
 - **THEN** its row shows three tool calls, one tool error, and the breakdown `read×3`
+
+#### Scenario: tool calls stored as session parts are counted
+- **WHEN** an agent's assistant message has an empty `data.content` and `session_part` rows holding two `read` calls and one `task` call
+- **THEN** its row shows two tool calls and one subagent dispatched, and the dispatched child session is linked to that agent
+
+#### Scenario: content in data.content is not counted twice
+- **WHEN** an assistant message has a non-empty `data.content` and also has `session_part` rows
+- **THEN** only the `data.content` tool items are counted
 
 ### Requirement: A missing datum is unavailable, never zero
 
@@ -576,3 +584,19 @@ The collector SHALL use the cost recorded in `opencode.db` for an opencode-route
 #### Scenario: a provider that reports no price
 - **WHEN** every request of an opencode-routed worker records a cost of 0
 - **THEN** the worker's row shows its tokens with an unavailable cost, never `$0.0000`
+
+### Requirement: Tool figures of a request without readable content are unavailable
+
+When `opencode.db` has the `session_part` table, an assistant message with at least one token counter above 0 and no `text`, `tool`, or `reasoning` item in either storage layout SHALL be a request without readable content. Such a request SHALL supply no tool calls, tool errors, or subagents dispatched: a total that includes it SHALL be marked partial, and a total with no request that supplies a value SHALL be `unavailable`, never 0. An agent's per-tool breakdown SHALL be `unavailable` when it has at least one request without readable content and none of its other requests made a tool call. Its token, cost, and time figures SHALL be read as for any other request. A database without the `session_part` table SHALL produce no request without readable content.
+
+#### Scenario: every request of an agent is unreadable
+- **WHEN** every assistant message of an agent records token usage and has no content item in either layout
+- **THEN** its tool calls, tool errors, subagents dispatched, and per-tool breakdown are `unavailable`, and its tokens are reported
+
+#### Scenario: one unreadable request among readable ones
+- **WHEN** an agent has one request with two `read` calls and one request without readable content
+- **THEN** its tool-call total is two marked partial
+
+#### Scenario: a session_part table missing a column
+- **WHEN** `opencode.db` has a `session_part` table without its `ordinal` column
+- **THEN** the collector returns `skipped` because the schema is unsupported and writes no `telemetry.md`

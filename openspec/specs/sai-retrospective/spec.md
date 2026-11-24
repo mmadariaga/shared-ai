@@ -239,7 +239,7 @@ The command SHALL be registered as the utility target `utility:sai-retrospective
 
 ### Requirement: opencode database source
 
-The collector SHALL read opencode executions from `opencode.db` in the opencode data directory (`$XDG_DATA_HOME/opencode`, default `~/.local/share/opencode`), opened read-only through `node:sqlite`. It SHALL read root and child sessions from `session_v2` (`id`, `parent_id`, `agent`, `title`, `directory`, `time_created`) and conversation records from `session_message` (`id`, `session_id`, `type`, `seq`, `time_created`, `data`), ordered by `seq` and addressed by message ID. It SHALL NOT use the opencode HTTP API and SHALL leave every harness storage file unchanged.
+The collector SHALL read opencode executions from `opencode.db` in the opencode data directory (`$XDG_DATA_HOME/opencode`, default `~/.local/share/opencode`), opened read-only through `node:sqlite`. It SHALL read root and child sessions from `session_v2` (`id`, `parent_id`, `agent`, `title`, `directory`, `time_created`) and conversation records from `session_message` (`id`, `session_id`, `type`, `seq`, `time_created`, `data`), ordered by `seq` and addressed by message ID. When the database has the `session_part` table, it SHALL also read the content items of messages from `session_part` (`message_id`, `ordinal`, `type`, `data`). It SHALL NOT use the opencode HTTP API and SHALL leave every harness storage file unchanged.
 
 #### Scenario: Reading leaves the database unchanged
 - **WHEN** the collector indexes opencode executions and pages an opencode excerpt
@@ -251,7 +251,7 @@ The collector SHALL read opencode executions from `opencode.db` in the opencode 
 
 ### Requirement: opencode schema guard
 
-Before its first query, the collector SHALL check that every table and column the opencode reader uses exists. When the guard fails, when the database file is missing or cannot be opened read-only, when the Node runtime has no `node:sqlite`, or when an SQLite read fails, the collector SHALL report opencode as `not-analyzed` with the reason, SHALL read and present no opencode data, and SHALL still read the Claude Code data.
+Before its first query, the collector SHALL check that every table and column the opencode reader uses exists. The `session_part` table SHALL be optional: its columns (`message_id`, `ordinal`, `type`, `data`) SHALL be checked only when the table exists, and a database without it SHALL be read from `session_message` alone. When the guard fails, when the database file is missing or cannot be opened read-only, when the Node runtime has no `node:sqlite`, or when an SQLite read fails, the collector SHALL report opencode as `not-analyzed` with the reason, SHALL read and present no opencode data, and SHALL still read the Claude Code data.
 
 #### Scenario: Missing column
 - **WHEN** the opencode database lacks a column the reader uses
@@ -264,6 +264,14 @@ Before its first query, the collector SHALL check that every table and column th
 #### Scenario: File that is not a database
 - **WHEN** the file at the opencode database path is not an SQLite database
 - **THEN** the index reports opencode as `not-analyzed` with the reason
+
+#### Scenario: Database without the session_part table
+- **WHEN** the opencode database has no `session_part` table
+- **THEN** the index reports opencode as `analyzed`, reads message content from `session_message.data.content`, and adds no `unread` entry for the missing table
+
+#### Scenario: session_part table missing a required column
+- **WHEN** the opencode database has a `session_part` table without its `ordinal` column
+- **THEN** the index reports opencode as `not-analyzed` with a reason naming `session_part` and the missing column
 
 ### Requirement: Per-harness project status
 
@@ -400,3 +408,39 @@ The collector SHALL drop a currency cost of 0 recorded for an opencode-routed wo
 #### Scenario: a provider that reports no price
 - **WHEN** an opencode-routed worker's requests record a cost of 0
 - **THEN** its `usage` carries its token figures and no currency cost
+
+### Requirement: opencode message content from both storage layouts
+
+The collector SHALL read the content items of an opencode message from either storage layout. When the message's `session_message.data.content` is a non-empty array, that array SHALL be its content and its `session_part` rows SHALL NOT be read. Otherwise its content SHALL be the parsed `data` of its `session_part` rows in `ordinal` order. The collector SHALL use only the `text`, `tool`, and `reasoning` items and SHALL ignore items of any other type. The text, tool calls, tool errors, loaded instructions, and excerpts of opencode records SHALL come from these items, and `reasoning` items SHALL appear neither in `excerpt` output nor in tool counts. A part row whose `data` is not valid JSON SHALL be skipped and counted in the `unparseable-records` unread portion, and the other parts of the message SHALL still be read. `excerpt` SHALL keep addressing a record by its `session_message` ID, whichever layout holds its content.
+
+#### Scenario: Content stored as session parts
+- **WHEN** an assistant message has an empty `data.content` and `session_part` rows holding a `text` item and a `tool` item
+- **THEN** the index counts that tool call and its excerpt, addressed by the message ID, shows the text and the tool call
+
+#### Scenario: Content in data.content is not counted twice
+- **WHEN** an assistant message has a non-empty `data.content` and also has `session_part` rows
+- **THEN** only the `data.content` items are read, and each tool call is counted once
+
+#### Scenario: Invalid part data
+- **WHEN** one `session_part` row of a message holds data that is not valid JSON and another row of the same message holds a `text` item
+- **THEN** the invalid row is counted in the `unparseable-records` unread portion and the excerpt still shows the text of the other row
+
+#### Scenario: Reasoning and other part types
+- **WHEN** a message's parts hold a `reasoning` item, a `step-start` item, and a `text` item
+- **THEN** the excerpt shows only the text, and neither the reasoning nor the `step-start` item appears in the excerpt or in tool counts
+
+### Requirement: opencode messages without readable content are listed as unread
+
+When the opencode database has the `session_part` table, an assistant message with at least one token counter above 0 and no `text`, `tool`, or `reasoning` item in either storage layout SHALL be a message without readable content. Each session (a root session, a linked child session, an opencode-routed worker, or a helper of one) with at least one such message SHALL receive one `unread` entry of kind `messages-without-content` that names the project and the session and carries the number of such messages. The rest of the session SHALL still be analyzed and opencode SHALL stay `analyzed`. A database without the `session_part` table SHALL raise no such entry.
+
+#### Scenario: A session with an unreadable message
+- **WHEN** a session with the `session_part` table has two assistant messages with token usage, one with a `text` part and one with no content item in either layout
+- **THEN** the index lists one `messages-without-content` unread entry for that session with count 1, and opencode stays `analyzed`
+
+#### Scenario: A reasoning-only message is readable
+- **WHEN** an assistant message with token usage holds only a `reasoning` part
+- **THEN** no `messages-without-content` entry is raised for it
+
+#### Scenario: Legacy database
+- **WHEN** the database has no `session_part` table and an assistant message with token usage has an empty `data.content`
+- **THEN** no `messages-without-content` entry is raised
