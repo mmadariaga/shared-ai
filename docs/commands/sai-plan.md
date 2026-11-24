@@ -6,7 +6,7 @@ Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then
 
 ## Flags and behavior modifiers
 
-- A `Ready to Propose` block from [`/sai-explore`](sai-explore.md), pasted or passed as `--block-file <path> --block-hash <sha256>`, which is what `sai-state block --export` produces. Without a block, give the name of a change that already has `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`.
+- A change document from [`/sai-explore`](sai-explore.md), pasted or passed as `--document-file <path> --document-hash <sha256>`, which is what `sai-state block --export` produces. Without a document, give the name of a change that already has `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`.
 - `--overview-lang` no longer exists: passing it ends the run with an unknown-option error before anything is written.
 - `--publish yes|no`: answers the publication question below in advance. Any other value ends the run before anything is written.
 
@@ -14,7 +14,7 @@ Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then
 
 The command asks one question at its start: whether to publish a **draft PR/MR** of the plan
 on GitHub, GitLab or Azure DevOps when the run ends, through [`/to-pr`](to-pr.md). It asks
-after its input checks pass (the block and its hash, the change name) and before the first
+after its input checks pass (the document and its hash, the change name) and before the first
 worker starts, and it names the current branch, its remote, and the request state: a new
 request is created as a draft, and an open request of the branch is updated and keeps its
 draft or ready state. The answer comes from, in this order, the `--publish yes|no` argument,
@@ -41,7 +41,7 @@ accept that when you answer `yes`.
 
 The command runs the spec segment and the design segment in the same session, with no approval between segments. The behavior, checks, and stops of each segment are the ones described in [`/sai-1-spec`](sai-1-spec.md) and [`/sai-2-design`](sai-2-design.md). Invoking the command approves the specs.
 
-Both segments run unattended. A worker question that the block, the change's artifacts, or the repository answers is answered by the command and recorded as an assumption with its source; a question that none of them answers and whose answer would change the artifacts is escalated to you through the native picker. Each segment runs its mechanical checks (`openspec validate`, the delta-header check, the cited-path check, and in design the file-manifest check), reviews its own artifacts in up to three incremental rounds, and commits only its own paths locally. Findings still open after the third round do not stop the run: the design segment starts over specs with known holes, and the closing report lists the findings. Nothing is pushed.
+Both segments run unattended. A worker question that the document, the change's artifacts, or the repository answers is answered by the command and recorded as an assumption with its source; a question that none of them answers and whose answer would change the artifacts is escalated to you through the native picker. Each segment runs its mechanical checks (`openspec validate`, the delta-header check, the cited-path check, and in design the file-manifest check), reviews its own artifacts in up to three incremental rounds, and commits only its own paths locally. Findings still open after the third round do not stop the run: the design segment starts over specs with known holes, and the closing report lists the findings. Nothing is pushed.
 
 When the change already has `proposal.md` and a spec file, or `proposal.md` and `.openspec.yaml` with `skip_specs: true`, the disk wins: the spec segment counts as done and a block you pass does not rewrite it. When the spec segment fails, is stopped, or is blocked, the design segment does not start. An incomplete set without that no-specs declaration stops before dispatch and points to `/sai-1-spec {change-name}` with feedback. A change ready for design continues with `/sai-2-design {change-name}` or another `/sai-plan {change-name}`. An interrupted run resumes from its run state, or from the artifacts on disk and `git log` when the state is gone.
 

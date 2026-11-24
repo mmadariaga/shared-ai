@@ -137,7 +137,7 @@ test('the native selector follows the authoritative shared close after inventory
   assert.match(source, /route intents blocked until a valid picker answer/i);
   assert.match(source, /\*\*Plan - Unattended\*\* \(`plan-unattended`\) — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
   assert.match(source, /\*\*Direct Build - Unattended\*\* \(`direct-build-unattended`\) — Implements the change directly and updates specs afterward: ideal for fixes and simple changes\./);
-  assert.match(source, /\*\*Manual\*\* \(`manual`\) — Paste the `Ready to Propose` block into a new chat with `\/sai-1-spec`\./);
+  assert.match(source, /\*\*Manual\*\* \(`manual`\) — Paste the change document into a new chat with `\/sai-1-spec`\./);
   assert.match(source, /The only accepted route choices, in order, are/i);
   assert.match(source, /\*\*Plan\*\* \(`route_mode = plan-unattended`\)/);
 
@@ -180,9 +180,9 @@ test('the shared crystallization close records inventory before presenting route
 
   const steps = [
     '1. **Stage panel.**',
-    '2. **Block emit.**',
+    '2. **Document emit.**',
     '3. **Load the pointer.**',
-    '4. **Print the blocks.**',
+    '4. **Print the documents.**',
     '5. **Act on the loaded file.**',
   ];
   let previous = -1;
@@ -193,11 +193,11 @@ test('the shared crystallization close records inventory before presenting route
   }
   assert.doesNotMatch(close, /The final `---` starts this close/i, 'the final-separator trigger is retired');
   assert.doesNotMatch(close, /three conditions/i, 'the three ordered conditions are retired');
-  assert.match(close, /The blocks are composed inside the block emit, never printed first/i);
-  assert.match(close, /`sai-state emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>`/);
-  assert.doesNotMatch(close, /heredoc|here-string|--ready-to-propose -`/i);
+  assert.match(close, /The documents are composed inside the document emit, never printed first/i);
+  assert.match(close, /`sai-state emit <id> explore-slice@1 --document-file <path> \[--verdicts-file <path>\] \[--document-file <path> \.\.\.\]`/);
+  assert.doesNotMatch(close, /heredoc|here-string|--ready-to-propose/i);
   assert.match(close, /never compose a `recordedList` by hand/i);
-  assert.match(close, /Print the block set exactly as sent in step 2/i);
+  assert.match(close, /Print each document exactly as sent in step 2/i);
   assert.match(close, /Set `route_choice_reply_pending = true`[\s\S]{0,200}start its optional pre-route actions as the final action of this turn/i);
   assert.match(close, /do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,180}until the user returns one valid option/i);
 
@@ -212,8 +212,8 @@ test('the shared crystallization close records inventory before presenting route
       `${name} should not repeat the close procedure`);
   }
   assert.doesNotMatch(protocol, /Inline proposal refusal|inline-refusal/i, 'the inline proposal refusal path is retired');
-  assert.match(selector, /The shared close in `crystallization-protocol\.md` owns block emission, stage-panel handling, and ordered inventory recording/i);
-  assert.match(selector, /its block emit records the complete ordered inventory before any block is displayed/i);
+  assert.match(selector, /The shared close in `crystallization-protocol\.md` owns document emission, stage-panel handling, and ordered inventory recording/i);
+  assert.match(selector, /its document emit records the complete ordered inventory before any document is displayed/i);
   assert.match(selector, /only after a complete ordered inventory has been recorded successfully/i);
   assert.match(selector, /This event is emitted only after the user's picker answer/i);
 });
@@ -234,7 +234,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
     assert.doesNotMatch(wrapper, /route-selector|route-choice|Plan - Unattended|Direct Build - Unattended/,
       `${harness} wrapper must not implement a separate route-choice path`);
   }
-  assert.match(instructions, /picker may be presented in the block-emission turn only after every proposal block is visible and its complete inventory is recorded/i);
+  assert.match(instructions, /picker may be presented in the document-emission turn only after every change document is visible and its complete inventory is recorded/i);
   assert.match(routeChoice, /"Closed-choice prompts" rule in `sai\/policies\/remember\.md` \(`AskUserQuestion` on Claude Code, `question` on opencode\)/);
   assert.match(routeChoice, /cancelled picker, an absent response, an `Other`\/free-text answer/i);
   assert.match(routeChoice, /native picker answer is the only route-choice input/i);
@@ -249,7 +249,7 @@ test('the Ready to Propose format carries no post-block close cue; the block emi
 
   assert.doesNotMatch(format, /When `\/sai-explore` emits a `Ready to Propose` block/);
   assert.doesNotMatch(format, /continue the same turn with \*\*Crystallization-turn close/);
-  assert.match(protocol, /--ready-to-propose --block-file <path> --verdicts-file <path>/);
+  assert.match(protocol, /--document-file <path> \[--verdicts-file <path>\]/);
 });
 
 test('the close records one or many names in order before exposing the native route picker', () => {
@@ -257,7 +257,7 @@ test('the close records one or many names in order before exposing the native ro
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
   const close = protocol.slice(closeStart);
   assert.match(close, /extracts the change names, and records them as the ordered inventory in one step/i);
-  assert.match(close, /The set is validated as a whole: when any block fails, no name is recorded/i);
+  assert.match(close, /The set is validated as a whole: when any document fails/i);
   assert.match(close, /Use the existing session; do not reset either machine/i);
 
   const previousState = {
@@ -295,7 +295,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
   const close = protocol.slice(closeStart);
   const panelIndex = close.indexOf('**Stage panel.**');
-  const emitIndex = close.indexOf('**Block emit.**');
+  const emitIndex = close.indexOf('**Document emit.**');
   const pointerIndex = close.indexOf('**Load the pointer.**');
   const panelStep = close.slice(panelIndex, emitIndex);
   const emitStep = close.slice(emitIndex, pointerIndex);
@@ -305,13 +305,13 @@ test('panel errors never block the close; validation, delivery, store, and step-
   assert.match(panelStep, /never blocks the close/i);
   assert.match(ideaList, /> Panel rendering unavailable; continuing without task-panel updates\./);
   assert.match(emitStep, /\*\*Validation failure\*\*[\s\S]*?machine is untouched[\s\S]*?without showing anything to the user — at most two retries/i);
-  assert.match(emitStep, /show the violations \(block index, line, and problem for each\) and stop: print no block, open no picker/i);
+  assert.match(emitStep, /show the violations \(document index, line, and problem for each\) and stop: print no document, open no picker/i);
   assert.match(emitStep, /\*\*Delivery failure\*\*[\s\S]*?corrective retry, whose counter of two is separate from the validation counter/i);
   assert.match(emitStep, /\*\*Any other error or a rejection\*\*[\s\S]*?no picker opens and no route may start/i);
   assert.match(close, /load the returned `next\.follow` file under policy, whatever it names/i);
   assert.match(close, /The picker presentation is not a choice: do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,220}until the user returns one valid option/i);
-  assert.match(stageMachine, /\*\*Block emits are the one exception\.\*\*[\s\S]*?travels as files[\s\S]*?never\s+through a shell command/i);
-  assert.match(stageMachine, /node <tool-path> emit <id> explore-slice@1 --ready-to-propose --block-file <path> --verdicts-file <path>/);
+  assert.match(stageMachine, /\*\*Document emits are the one exception\.\*\*[\s\S]*?travels as files[\s\S]*?never\s+through a shell command/i);
+  assert.match(stageMachine, /node <tool-path> emit <id> explore-slice@1 --document-file <path> --verdicts-file <path>/);
   assert.doesNotMatch(stageMachine, /SAI_BLOCKS|here-string|quoted\s+heredoc/i);
   assert.match(stageMachine, /there is no stdin fallback/i);
   assert.match(stageMachine, /A follow-load failure or an emit error stops the run/i);
@@ -798,8 +798,8 @@ test('the Plan route follows /sai-plan and keeps the plan family out of explore'
   const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
 
   assert.match(plan, /Fetch `@sai\/commands\/plan\/coordinator\.md` and follow it exactly/);
-  assert.match(plan, /--block-file <absolute path returned by export>/);
-  assert.match(plan, /--block-hash <sha256 returned by export>/);
+  assert.match(plan, /--document-file <absolute path returned by export>/);
+  assert.match(plan, /--document-hash <sha256 returned by export>/);
   assert.match(plan, /Set \`active_change\` before dispatch and reject duplicate starts for the full active interval/);
   assert.match(plan, /\{intent: complete\}\` \(\`sai-1\` → \`sai-2\`\) before the design segment starts/);
   assert.match(plan, /\{intent: complete\}\` \(\`sai-2\` → \`implement\`\)/);

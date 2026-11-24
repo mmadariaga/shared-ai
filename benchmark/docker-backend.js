@@ -11,7 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { ROUTES } = require('./corpus');
-const { hashBlock } = require('../sai/tools/ready-to-propose.js');
+const { hashDocument } = require('../sai/tools/change-document.js');
 const { measureClaude, measureOpencode } = require('./measure');
 
 const IMAGE = 'sai-benchmark';
@@ -20,7 +20,7 @@ const SETUP_TIMEOUT_MS = 10 * 60 * 1000;
 const COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
 const SUITE_RESULT_LINE = /^SUITE_RESULT\s+(\{.*\})\s*$/;
 const TRANSFER_TOOL = '/opt/shared-ai/sai/tools/transfer.js';
-const BLOCK_STAGING_FILE = '/tmp/benchmark-block.md';
+const DOCUMENT_STAGING_FILE = '/tmp/benchmark-document.md';
 // Where each harness keeps its data for the container's unprivileged user.
 const HARNESS_DATA = Object.freeze({
   claude: { container: '/home/dev/.claude/projects', local: 'projects', measure: measureClaude },
@@ -59,9 +59,9 @@ function launchCommand({ harness, prompt }) {
     : ['opencode', 'run', '--format', 'json', prompt];
 }
 
-function launchPrompt({ route, brief, blockHash, blockPath }) {
+function launchPrompt({ route, brief, documentHash, documentPath }) {
   const command = ROUTES[route].command;
-  return route === 'plan' ? `${command} ${brief.changeName}` : `${command} --block-file ${blockPath} --block-hash ${blockHash}`;
+  return route === 'plan' ? `${command} ${brief.changeName}` : `${command} --document-file ${documentPath} --document-hash ${documentHash}`;
 }
 
 function parseSuiteResult(stdout) {
@@ -123,23 +123,23 @@ class DockerBackend {
     await this.step('Installing SAI', ['exec', name, 'node', '/opt/shared-ai/benchmark/container-setup.js', '/tmp/benchmark-setup.json'], { timeoutMs: SETUP_TIMEOUT_MS });
     const cli = await this.docker(['exec', name, 'sh', '-c', `command -v ${configuration.harness}`]);
     if (cli.code !== 0) throw new Error(`the ${configuration.harness} CLI is missing in the image`);
-    return route === 'plan' ? {} : { blockPath: await this.storeBlock(name, configuration.harness, brief) };
+    return route === 'plan' ? {} : { documentPath: await this.storeDocument(name, configuration.harness, brief) };
   }
 
   /**
-   * Put the brief block through the transport users run: the harness temporary root, a transfer
+   * Put the brief document through the transport users run: the harness temporary root, a transfer
    * directory that `transfer.js open` returns, and `transfer.js put`. The agent is never launched
-   * with a block placed any other way. Returns the path `put` printed.
+   * with a document placed any other way. Returns the path `put` printed.
    */
-  async storeBlock(name, harness, brief) {
+  async storeDocument(name, harness, brief) {
     const dev = (label, args) => this.step(label, ['exec', name, ...args]);
     let root = '/tmp/opencode';
     if (harness === 'claude') root = `/tmp/claude-${(await dev('Reading the container user id', ['id', '-u'])).stdout.trim()}`;
     await dev('Creating the harness temporary root', ['mkdir', '-p', '-m', '700', root]);
     const opened = JSON.parse((await dev('Opening the transfer directory', ['node', TRANSFER_TOOL, 'open', '--harness', harness])).stdout);
-    await this.step('Copying the brief block', ['cp', path.join(brief.dir, 'block.md'), `${name}:${BLOCK_STAGING_FILE}`]);
-    await this.step('Setting block ownership', ['exec', '-u', 'root', name, 'chown', 'dev:dev', BLOCK_STAGING_FILE]);
-    const stored = JSON.parse((await dev('Storing the brief block', ['node', TRANSFER_TOOL, 'put', '--dir', opened.dir, '--path', 'block.md', '--input-file', BLOCK_STAGING_FILE])).stdout);
+    await this.step('Copying the brief document', ['cp', path.join(brief.dir, 'document.md'), `${name}:${DOCUMENT_STAGING_FILE}`]);
+    await this.step('Setting document ownership', ['exec', '-u', 'root', name, 'chown', 'dev:dev', DOCUMENT_STAGING_FILE]);
+    const stored = JSON.parse((await dev('Storing the brief document', ['node', TRANSFER_TOOL, 'put', '--dir', opened.dir, '--path', 'document.md', '--input-file', DOCUMENT_STAGING_FILE])).stdout);
     return stored.path;
   }
 
@@ -178,8 +178,8 @@ class DockerBackend {
       } catch (error) {
         return { infraError: error.message, wallMs: 0 };
       }
-      const blockHash = hashBlock(fs.readFileSync(path.join(brief.dir, 'block.md'), 'utf8'));
-      const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, blockHash, blockPath: prepared.blockPath }) });
+      const documentHash = hashDocument(fs.readFileSync(path.join(brief.dir, 'document.md'), 'utf8'));
+      const command = launchCommand({ harness: configuration.harness, prompt: launchPrompt({ route, brief, documentHash, documentPath: prepared.documentPath }) });
       const agents = await this.docker(['exec', '-w', '/work', name, ...command], { timeoutMs: timeLimitMs });
       const usage = await this.measureUsage(name, configuration.harness, scratch);
       if (agents.timedOut) return { timedOut: true, output: agents.stdout, wallMs: agents.wallMs, usage };

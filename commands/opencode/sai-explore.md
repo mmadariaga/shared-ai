@@ -1,5 +1,5 @@
 ---
-description: Think through an idea, problem, or requirement with a read-only partner until it settles into a Ready to Propose block, then plan it, build it unattended, or hand it off manually. Pass a change name to explore an existing change.
+description: Think through an idea, problem, or requirement with a read-only partner until it settles into a change document, then plan it, build it unattended, or hand it off manually. Pass a change name to explore an existing change.
 model: opencode-go/deepseek-v4.1-flash#max
 ---
 Receipt: check the load receipt at the start of every explore turn and finish the load first when it is missing; the rule lives in `@sai/commands/explore/body.md` § Load receipt.

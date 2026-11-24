@@ -18,7 +18,7 @@ Every finding carries exactly one severity from the closed set `High`, `Medium`,
 
 ## Scope observations
 
-The **approved scope** is what the reviewed artifacts were asked to deliver: for `proposal.md` and `specs/**`, what the `Ready to Propose` block asks for; for `design.md`, `tasks.md`, and the plan tests and stubs, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its `Ready to Propose` block asks for.
+The **approved scope** is what the reviewed artifacts were asked to deliver: for `proposal.md` and `specs/**`, what the change document asks for; for `design.md`, `tasks.md`, and the plan tests and stubs, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its change document asks for.
 
 A **scope observation** is a true observation whose fix requires behavior the approved scope does not ask for. Classify every observation against the approved scope before assigning a severity:
 

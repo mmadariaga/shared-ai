@@ -1,5 +1,5 @@
 ---
-description: Write or refine a change's proposal.md and specs/ with no human in the loop, from a /sai-explore Ready to Propose block or from a change name plus feedback. Reviewed, checked, and committed locally; stops before design.
+description: Write or refine a change's proposal.md and specs/ with no human in the loop, from a /sai-explore change document or from a change name plus feedback. Reviewed, checked, and committed locally; stops before design.
 model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---

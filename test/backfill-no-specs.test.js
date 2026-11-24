@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { makeTempDir, removeInside } = require('../sai/tools/temp-root');
 const transfer = require('../sai/tools/transfer');
-const { hashBlock } = require('../sai/tools/ready-to-propose');
+const { hashDocument } = require('../sai/tools/change-document');
 const { validate } = require('../sai/tools/validate-backfill-drafts');
 const { compose, BANNER, OUT_OF_SCOPE } = require('../sai/tools/backfill-no-specs');
 const root = path.resolve(__dirname, '..');
@@ -16,63 +16,69 @@ const SESSION = '805971e2-a1f0-4587-9672-97ffc6bb9d39';
 const ISSUE = 'https://github.com/acme/widgets/issues/12';
 const NOTES = 'Context kept as is.\n\n- Undecided: the retry count.\n  Indented line.';
 
-function blockText({ specs = '**Specs**: none — pure tooling change\n', notes = true, origins = true, leads = true } = {}) {
+function documentText({ specs = '- Specs: none — pure tooling change\n', notes = true, origins = true, leads = true } = {}) {
   return [
-    '## Ready to Propose',
+    '# Draft the change files with a tool',
     '',
-    '**Change name**: sample-change',
-    '**Depends on**: None',
-    ...(origins ? [`**Backlog origin**: ${ISSUE}`, `**Explore origin**: claude ${SESSION}`] : []),
-    '**What**: Add a tool that drafts the change files.',
-    '**Why**: The drafting round costs minutes for two files.',
-    ...(specs ? [specs.trimEnd()] : []),
-    '**Capabilities in scope**:',
-    '- sample-capability: the tool drafts the files',
-    '**Research Leads**:',
-    ...(leads ? ['- sai/tools/ready-to-propose.js:10-20 - the block detector', '- `sai/commands/backfill/instructions.md` - section 6a', '- sai/tools/ready-to-propose.js:30 - the same file again'] : ['- None']),
-    '**Decisions & Rationale**:',
-    '- A tool drafts the files because they derive from the block,',
-    '  which the archive worker then writes.',
-    '**Alternatives Considered**:',
-    '- None',
-    '**Trade-offs Accepted**:',
-    '- None',
-    '**Model / Re-framings**:',
-    '- None',
-    '**Key constraints**:',
+    '## Problem',
+    'The drafting round costs minutes for two files.',
+    '',
+    '## Goal',
+    'Add a tool that drafts the change files.',
+    '',
+    '## Scope',
     '- Only one route changes.',
     '- The POC lane is unaffected.',
-    '**Terms**:',
-    '- None',
-    '**Edge Cases**:',
-    '- E1. The block declares no specs.',
+    '',
+    '## Non-goals',
+    '- No second route is touched.',
+    '',
+    '## Capabilities',
+    '- sample-capability: the tool drafts the files',
+    '',
+    '## Edge cases',
+    '- E1. The document declares no specs.',
     '- E2. A populated specs directory changes the route.',
-    '**Implementation Details**:',
+    '',
+    '## Implementation notes',
     '- I1. Add the tool under sai/tools.',
     '- I2. Test the tool.',
-    '**Out of scope Implementation Details**:',
-    '- None',
-    ...(notes ? ['**Request Additional Notes**:', NOTES] : []),
-    '**Overview language**: None',
     '',
-    '---',
+    '## Decisions',
+    '- A tool drafts the files because they derive from the document,',
+    '  which the archive worker then writes.',
+    '',
+    ...(leads ? ['## Research leads', '- sai/tools/change-document.js:10-20 - the document tool', '- `sai/commands/backfill/instructions.md` - section 6a', '- sai/tools/change-document.js:30 - the same file again', ''] : []),
+    ...(notes ? ['## Additional notes', NOTES, ''] : []),
+    '## Open questions',
+    'None.',
+    '',
+    '## Maturity',
+    'Ready to propose',
+    '',
+    '## Change',
+    '- Change name: sample-change',
+    '- Depends on: None',
+    ...(origins ? [`- Backlog origin: ${ISSUE}`, `- Explore origin: claude ${SESSION}`] : []),
+    ...(specs ? [specs.trimEnd()] : []),
+    '',
   ].join('\n');
 }
 
 function fixture(t, options) {
   const cwd = makeTempDir('claude', 'no-specs-test-');
   const { dir } = transfer.open('claude');
-  const text = blockText(options);
-  const block = transfer.put(dir, 'block.md', Buffer.from(text));
-  const hash = hashBlock(text);
-  const args = { 'block-file': block.path, 'block-hash': hash, 'change-name': 'sample-change', 'transfer-dir': dir, cwd, created: '2026-11-13' };
+  const text = documentText(options);
+  const document = transfer.put(dir, 'document.md', Buffer.from(text));
+  const hash = hashDocument(text);
+  const args = { 'document-file': document.path, 'document-hash': hash, 'change-name': 'sample-change', 'transfer-dir': dir, cwd, created: '2026-11-13' };
   t.after(() => { transfer.close(dir); removeInside('claude', cwd); });
   return { cwd, dir, args, text };
 }
 const content = ref => fs.readFileSync(ref.path, 'utf8');
 const byName = (result, name) => result.draft_references.find(ref => ref.destination.endsWith(`/${name}`));
 
-test('compose writes the two drafts of a no-specs block as transfer files with their destinations', t => {
+test('compose writes the two drafts of a no-specs document as transfer files with their destinations', t => {
   const f = fixture(t);
   const result = compose(f.args);
   assert.equal(result.ok, true, JSON.stringify(result));
@@ -82,7 +88,7 @@ test('compose writes the two drafts of a no-specs block as transfer files with t
   assert.deepEqual(result.warnings, []);
 });
 
-test('the proposal restates the block under the required headings and copies the notes byte for byte', t => {
+test('the proposal restates the document under the required headings and copies the notes byte for byte', t => {
   const f = fixture(t);
   const proposal = content(byName(compose(f.args), 'proposal.md'));
   assert.ok(proposal.startsWith(`${BANNER}\n\n## Why\n`));
@@ -92,20 +98,20 @@ test('the proposal restates the block under the required headings and copies the
   assert.match(proposal, /## Why\n\nThe drafting round costs minutes for two files\./);
   assert.match(proposal, /- Add a tool that drafts the change files\.\n- I1\. Add the tool under sai\/tools\.\n- I2\. Test the tool\./);
   assert.match(proposal, /### New Capabilities\n- None\n\n### Modified Capabilities\n- None/);
-  assert.match(proposal, /- sample-capability: the tool drafts the files\n\nEdge cases agreed for this change:\n- E1\. The block declares no specs\.\n- E2\. A populated specs directory changes the route\.\n\nKey constraints of this change:\n- Only one route changes\.\n- The POC lane is unaffected\.\n\n/);
-  assert.match(proposal, new RegExp(`The POC lane is unaffected\\.\\n\\n${OUT_OF_SCOPE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\n## Proposal Research Documentation\\n`));
-  assert.match(proposal, new RegExp(`\\n${NOTES.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\n## Additional Notes\\n\\nDecisions & Rationale agreed for this change:\\n- A tool drafts the files because they derive from the block,\\n {2}which the archive worker then writes\\.\\n$`));
+  assert.match(proposal, /- sample-capability: the tool drafts the files\n\nEdge cases agreed for this change:\n- E1\. The document declares no specs\.\n- E2\. A populated specs directory changes the route\.\n\nScope of this change:\n- Only one route changes\.\n- The POC lane is unaffected\.\n\nNon-goals of this change:\n- No second route is touched\.\n\n/);
+  assert.match(proposal, new RegExp(`No second route is touched\\.\\n\\n${OUT_OF_SCOPE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\n## Proposal Research Documentation\\n`));
+  assert.match(proposal, new RegExp(`\\n${NOTES.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n\\n## Additional Notes\\n\\nDecisions agreed for this change:\\n- A tool drafts the files because they derive from the document,\\n {2}which the archive worker then writes\\.\\n$`));
   assert.doesNotMatch(proposal, /<!--|TODO|\{name\}/);
 });
 
 test('the research documentation lists the lead paths once, without line ranges, and the empty marker otherwise', t => {
   const proposal = content(byName(compose(fixture(t).args), 'proposal.md'));
-  assert.match(proposal, /## Proposal Research Documentation\n\n\*\*Local files\*\*:\n- sai\/tools\/ready-to-propose\.js\n- sai\/commands\/backfill\/instructions\.md\n\n\*\*External URLs\*\*:\n- None\n/);
+  assert.match(proposal, /## Proposal Research Documentation\n\n\*\*Local files\*\*:\n- sai\/tools\/change-document\.js\n- sai\/commands\/backfill\/instructions\.md\n\n\*\*External URLs\*\*:\n- None\n/);
   const none = content(byName(compose(fixture(t, { leads: false }).args), 'proposal.md'));
   assert.match(none, /\*\*Local files\*\*:\n- None\n\n\*\*External URLs\*\*:\n- None\n/);
 });
 
-test('a block without notes or origins yields a proposal without the notes section and a key-minimal metadata file', t => {
+test('a document without notes or origins yields a proposal without the notes section and a key-minimal metadata file', t => {
   const f = fixture(t, { notes: false, origins: false });
   const result = compose(f.args);
   assert.doesNotMatch(content(byName(result, 'proposal.md')), /Request Additional Notes/);
@@ -133,12 +139,12 @@ test('compose defaults the creation date to the local calendar day', t => {
   assert.match(content(byName(compose(f.args), '.openspec.yaml')), /^schema: sai-workflow\ncreated: \d{4}-\d{2}-\d{2}\n/);
 });
 
-test('E1 and E2: only a no-specs block with an empty specs directory takes the no-specs route', t => {
+test('E1 and E2: only a no-specs document with an empty specs directory takes the no-specs route', t => {
   const without = fixture(t, { specs: '' });
   const result = compose(without.args);
   assert.equal(result.ok, false);
   assert.equal(result.eligible, false);
-  assert.equal(fs.readdirSync(without.dir).filter(file => file !== 'block.md' && !file.startsWith('.')).length, 0, 'ineligible writes no draft');
+  assert.equal(fs.readdirSync(without.dir).filter(file => file !== 'document.md' && !file.startsWith('.')).length, 0, 'ineligible writes no draft');
   const populated = fixture(t);
   fs.mkdirSync(path.join(populated.cwd, 'openspec/changes/sample-change/specs/cap'), { recursive: true });
   fs.writeFileSync(path.join(populated.cwd, 'openspec/changes/sample-change/specs/cap/spec.md'), 'x');
@@ -150,15 +156,15 @@ test('E1 and E2: only a no-specs block with an empty specs directory takes the n
   assert.equal(compose(emptyDirectory.args).ok, true);
 });
 
-test('a block that does not verify, a wrong change name, or a missing argument writes nothing and fails', t => {
+test('a document that does not verify, a wrong change name, or a missing argument writes nothing and fails', t => {
   const f = fixture(t);
-  assert.throws(() => compose({ ...f.args, 'block-hash': '0'.repeat(64) }), /does not match its hash/);
+  assert.throws(() => compose({ ...f.args, 'document-hash': '0'.repeat(64) }), /does not match its hash/);
   assert.throws(() => compose({ ...f.args, 'change-name': 'other-change' }), /not other-change/);
-  assert.throws(() => compose({ ...f.args, 'transfer-dir': undefined }), /Expected --block-file/);
+  assert.throws(() => compose({ ...f.args, 'transfer-dir': undefined }), /Expected --document-file/);
   assert.throws(() => compose({ ...f.args, created: '13-11-2026' }), /YYYY-MM-DD/);
 });
 
-test('E3: a supplied origin replaces the block origin with a warning, and an invalid one is left out with a warning', t => {
+test('E3: a supplied origin replaces the document origin with a warning, and an invalid one is left out with a warning', t => {
   const other = 'https://github.com/acme/widgets/issues/99';
   const f = fixture(t);
   const replaced = compose({ ...f.args, 'backlog-origin': other });
@@ -179,7 +185,7 @@ test('the command line prints one JSON object and exits 0 for a composed set and
   const ok = spawnSync(process.execPath, [tool, 'compose', ...flags], { encoding: 'utf8' });
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
   assert.equal(JSON.parse(ok.stdout).draft_references.length, 2);
-  const bad = spawnSync(process.execPath, [tool, 'compose', ...flags.slice(0, -2), '--block-hash', 'nope'], { encoding: 'utf8' });
+  const bad = spawnSync(process.execPath, [tool, 'compose', ...flags.slice(0, -2), '--document-hash', 'nope'], { encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.equal(JSON.parse(bad.stdout).ok, false);
   assert.equal(spawnSync(process.execPath, [tool, 'unknown'], { encoding: 'utf8' }).status, 1);
@@ -200,7 +206,7 @@ test('E4: the real CLI accepts the generated draft set', { skip: cli.error || cl
 test('the coordinator and both workers describe the no-specs route', () => {
   const card = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(card, /`backfill-no-specs\.js`/);
-  assert.match(card, /\*\*Specs\*\*: none — <reason>/);
+  assert.match(card, /Specs: none — <reason>/);
   assert.match(card, /no backfill worker is created or bound/);
   assert.match(card, /validate-backfill-drafts\.js/);
   assert.match(card, /order --target archive/);

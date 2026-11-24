@@ -97,7 +97,7 @@ test('Explore origin: the block label, its persistence, and the exploration sect
   assert.match(read('sai/commands/spec/worker.md'), /write the validator's returned `explore_origin` list as the flat flow list/);
   assert.match(read('sai/commands/backfill/instructions.md'), /`explore_origin: \[<sessionID>, <sessionID>\]`/);
   assert.match(read('sai/commands/backfill/coordinator.md'), /`backlog_origin` and `explore_origin`/);
-  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`Backlog origin` and `Explore origin` unchanged to backfill/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`Backlog origin:` and `Explore origin:` lines unchanged to backfill/);
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`backlog_origin` and `explore_origin` of section 6a/);
   assert.match(read('sai/policies/change-telemetry.md'), /## Exploration[\s\S]*recorded once per change/);
   assert.match(read('sai/policies/tool-resolution.md'), /explore-origin --harness <claude\|opencode> --session <sessionID>/);

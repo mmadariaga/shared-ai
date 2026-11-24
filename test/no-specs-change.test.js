@@ -138,10 +138,10 @@ test('the bulk table shows a skipped specs cell for CLI output that names artifa
 
 test('E1: /sai-1-spec writes only the proposal, sets skip_specs, and keeps the files on disk (E2)', () => {
   const worker = read('sai/commands/spec/worker.md');
-  assert.match(worker, /\*\*Specs\*\*: none — <reason>/);
+  assert.match(worker, /Specs: none — <reason>/);
   assert.match(worker, /Write `proposal\.md` only[\s\S]{0,120}write no file under `specs\/`[\s\S]{0,60}set `skip_specs: true` in `\.openspec\.yaml`/);
   assert.match(worker, /files already exist under `specs\/`, leave them and do not set the marker: the files on disk win/);
-  assert.match(worker, /to set `skip_specs: true` when the block declares no specs/);
+  assert.match(worker, /to set `skip_specs: true` when the document declares no specs/);
   const proposalStep = read('sai/commands/spec/steps/proposal.md');
   assert.match(proposalStep, /merge `skip_specs: true` into the change's `\.openspec\.yaml`/);
   assert.match(proposalStep, /`specs\/` holds no\s+file/);
@@ -151,7 +151,7 @@ test('E1: /sai-1-spec writes only the proposal, sets skip_specs, and keeps the f
 
 test('E8: no spec worker sets skip_specs on its own judgment', () => {
   const worker = read('sai/commands/spec/worker.md');
-  assert.match(worker, /A block without that line never leads to `skip_specs`: no judgment of yours replaces the block's declaration/);
+  assert.match(worker, /A document without that line never leads to `skip_specs`: no judgment of yours replaces the document's declaration/);
   assert.match(read('sai/commands/spec/coordinator.md'), /without that declaration, `skip_specs` is never set/);
   const schema = read('openspec/schemas/sai-workflow/schema.yaml');
   assert.match(schema, /only when the Ready to Propose block declares `\*\*Specs\*\*: none — <reason>`; never opt out on your own judgment/);

@@ -238,7 +238,7 @@ test('plan departures need execution evidence and every deviation reaches the cl
   assert.doesNotMatch(coordinator, /whenever that is cheaper/);
   assert.match(coordinator, /only when execution shows that following it does not work/);
   assert.match(coordinator, /Saving work is not a reason/);
-  assert.match(coordinator, /also when the decision came from the `Ready to Propose` block/);
+  assert.match(coordinator, /also when the decision came from the change document/);
   assert.match(coordinator, /you never stop to ask/);
   const design = read('sai/commands/design/steps/design.md');
   assert.doesNotMatch(design, /Provenance/);

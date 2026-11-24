@@ -273,12 +273,12 @@
         "tier": "budget",
         "claudeAgent": {
           "agentName": "sai-direct-build-worker",
-          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
+          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its change document.",
           "model": "sonnet",
           "effort": "high"
         },
         "opencodeAgent": {
-          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
+          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its change document.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }

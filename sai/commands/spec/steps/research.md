@@ -22,13 +22,13 @@ scenario the change needs.
 
 ## Handoff input
 
-A creation run's `Ready to Propose` block may carry `file:line` provenance in
-**Why** or **Decisions & Rationale**, and entries in **Research Leads**. Treat
+A creation run's change document may carry `file:line` provenance in
+`Problem` or `Decisions`, and entries in `Research leads`. Treat
 them as premises to confirm and extend: they start your research and never
 replace it, and the stop criterion above still decides when research ends.
 
 - Validate each cited path or range, inspect it, and follow related code and
-  docs beyond it. Research Leads are starting points.
+  docs beyond it. Research leads are starting points.
 - When a source contradicts or under-supports the premise it is cited for,
   including a range that now points at unrelated content, reject the premise
   and write specs from what current sources support.

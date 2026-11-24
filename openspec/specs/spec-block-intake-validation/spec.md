@@ -7,26 +7,31 @@ Validate Ready to Propose blocks pasted into `/sai-1-spec` creation with the dis
 
 ### Requirement: Block attempts are validated before resolution or any write
 
-In creation mode a request SHALL be a block attempt when it carries the Ready to Propose heading or passes the loose profile. Before resolution or writes the spec worker SHALL validate the request with `check --profile dispatchable`, using `--block-file` for a verified supervised request and stdin for a manual paste. Structural violations SHALL write nothing and identify every block index, line, problem, and detail. A degraded paste SHALL fail validation. Existing implementation-item rules SHALL remain in force.
+In creation mode the input of `/sai-1-spec`, and of `/sai-plan` through its spec segment, SHALL be exactly one change document: a `--document-file <path>` with a `--document-hash <sha256>` referencing a stored document, or a pasted text whose first line is `# <title>` and that holds a `## Change` section. Before any worker dispatch, change resolution, or write, the spec coordinator SHALL verify a referenced document with `change-document.js verify-file --document-file <path> --document-hash <hash>`, ending the run on a missing, unreadable, or mismatched file, and SHALL then validate the document with `change-document.js check --document-file <path>`, a pasted document first being written verbatim to `document.md` in the run directory. A structural violation (`"ok": false`) SHALL end the run, write nothing, and show every violation with its line number, problem, and detail. A degraded paste SHALL fail validation. Existing implementation-note rules of the dispatchable contract SHALL remain in force. A `Ready to Propose` block, or a `--block-file` or `--block-hash` line, SHALL be reported as a retired format that must be crystallized again as a change document, ending the run with nothing written. The change name SHALL be the `Change name:` line of the document's `## Change` section.
 
 #### Scenario: Degraded paste is rejected
 
-- **WHEN** a block with lost bold labels is pasted into `/sai-1-spec`
-- **THEN** the worker writes nothing and shows the violations with line numbers
+- **WHEN** a change document whose heading markers were lost in a rendered copy is pasted into `/sai-1-spec`
+- **THEN** the coordinator writes nothing and shows the violations with line numbers
 
 #### Scenario: Block without an implementation item is rejected
 
-- **WHEN** a pasted block carries `**Implementation Details**` as `- None`
+- **WHEN** a pasted change document breaks the implementation-note rules of the dispatchable contract
 - **THEN** validation fails before change resolution and nothing is written
+
+#### Scenario: A retired block ends the run
+
+- **WHEN** `/sai-1-spec` or `/sai-plan` receives a `Ready to Propose` block or a `--block-file` and `--block-hash` pair
+- **THEN** it reports that the block format is retired and that the change must be crystallized again as a change document, and writes nothing
 
 ### Requirement: Flagged lines are judged before creation proceeds
 
-When validation lists pending flagged lines the worker SHALL judge exactly those lines, save a JSON-array verdict file, and rerun dispatchable validation with `--block-file` and `--verdicts-file` through the shared composer. Manual pasted requests SHALL first be saved to a file for this step. A violation SHALL prevent resolution and writes and report its clause, line, and evidence. Creation SHALL proceed only on `dispatchable: true`, then resolve the block change name. Manual requests SHALL remain validated on their own merits without hash comparison; supervised requests SHALL first pass stored-file verification.
+When validation lists pending flagged lines (`judgment.pending`), the spec coordinator SHALL judge exactly those lines per `sai/policies/block-hygiene-judgment.md`, save the verdicts as a JSON array in the run directory, and rerun `change-document.js check --document-file <path> --verdicts-file <path>`. A confirmed violation SHALL prevent resolution and writes and report its clause, line, and evidence. Creation SHALL proceed only when the document is dispatchable, then take the change name from the document's `Change name:` line. A pasted document SHALL remain validated on its own merits without hash comparison; a referenced document SHALL first pass `verify-file`.
 
 #### Scenario: Hand-edited dispatchable block proceeds
 
-- **WHEN** a hand-edited block passes the profile and every flagged line receives a `context` verdict
-- **THEN** the worker resolves the change name from the block and proceeds as creation
+- **WHEN** a hand-edited change document passes the check and every flagged line receives a `context` verdict
+- **THEN** the coordinator resolves the change name from the document's `Change name:` line and proceeds as creation
 
 ### Requirement: Refinement mode is unchanged
 

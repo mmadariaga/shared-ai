@@ -9,7 +9,7 @@ const path = require('node:path');
 const manifest = require('../sai/install-manifest.json');
 const { resolveProfile, translate } = require('../bin/capabilities');
 const { ROUTES } = require('../benchmark/corpus');
-const { hashBlock } = require('../sai/tools/ready-to-propose.js');
+const { hashDocument } = require('../sai/tools/change-document.js');
 
 const repoRoot = path.join(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
@@ -27,16 +27,16 @@ test('the wrappers fetch the harness skill and the direct-build coordinator, mir
     ], harness);
     assert.match(source, /command_name: direct-build\n {2}arguments_value: \$ARGUMENTS/);
   }
-  assert.match(read('commands/claude/sai-direct-build.md'), /^argument-hint: "--block-file <path> --block-hash <sha256>"$/m);
+  assert.match(read('commands/claude/sai-direct-build.md'), /^argument-hint: "--document-file <path> --document-hash <sha256>"$/m);
   assert.doesNotMatch(read('commands/opencode/sai-direct-build.md'), /^argument-hint:/m);
 });
 
-test('the card verifies the stored block with verify-file and ends before any write when it does not verify', () => {
+test('the card verifies the stored document with verify-file and ends before any write when it does not verify', () => {
   const card = read(CARD);
-  assert.match(card, /ready-to-propose\.js/);
-  assert.match(card, /`verify-file --block-file <path> --block-hash <hash>`/);
-  assert.match(card, /Cannot start \/sai-direct-build: pass --block-file <path> and --block-hash <sha256>/);
-  assert.match(card, /Cannot start \/sai-direct-build: the block file does not verify against --block-hash \(\{problem\}\)\./);
+  assert.match(card, /change-document\.js/);
+  assert.match(card, /`verify-file --document-file <path> --document-hash <hash>`/);
+  assert.match(card, /Cannot start \/sai-direct-build: pass --document-file <path> and --document-hash <sha256>/);
+  assert.match(card, /Cannot start \/sai-direct-build: the document file does not verify against --document-hash \(\{problem\}\)\./);
   assert.match(card, /write nothing, and dispatch nothing/);
 });
 
@@ -53,7 +53,7 @@ test('the card follows the explore Direct Build card as its run and keeps its si
   assert.doesNotMatch(card, /command-bootstrap|boot adapter/);
 });
 
-test('the explore card keeps exporting the block from the store and its two-commit grant', () => {
+test('the explore card keeps exporting the document from the store and its two-commit grant', () => {
   const explore = read('sai/commands/explore/direct-build-coordinator.md');
   assert.match(explore, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(explore, /pre-authorized exactly two local commits for this slice: the archived change and its change telemetry/);
@@ -77,18 +77,18 @@ test('the command holds a coordinator profile that delegates to the Direct Build
   }
 });
 
-test('verify-file accepts a stored block with its hash and rejects a mismatched hash', () => {
+test('verify-file accepts a stored document with its hash and rejects a mismatched hash', () => {
   const tool = name => path.join(repoRoot, 'sai', 'tools', name);
   const run = (name, args) => spawnSync(process.execPath, [tool(name), ...args], { encoding: 'utf8' });
   const opened = JSON.parse(run('transfer.js', ['open', '--harness', 'claude']).stdout);
   try {
-    const file = path.join(opened.dir, 'block.md');
-    const block = read('test/fixtures/benchmark-corpus/briefs/greeting/block.md').trimEnd();
-    fs.writeFileSync(file, block);
-    const matching = run('ready-to-propose.js', ['verify-file', '--block-file', file, '--block-hash', hashBlock(block)]);
+    const file = path.join(opened.dir, 'document.md');
+    const document = read('test/fixtures/benchmark-corpus/briefs/greeting/document.md');
+    fs.writeFileSync(file, document);
+    const matching = run('change-document.js', ['verify-file', '--document-file', file, '--document-hash', hashDocument(document)]);
     assert.equal(matching.status, 0, matching.stderr);
     assert.equal(JSON.parse(matching.stdout).ok, true);
-    const mismatch = run('ready-to-propose.js', ['verify-file', '--block-file', file, '--block-hash', '0'.repeat(64)]);
+    const mismatch = run('change-document.js', ['verify-file', '--document-file', file, '--document-hash', '0'.repeat(64)]);
     assert.notEqual(mismatch.status, 0);
   } finally {
     run('transfer.js', ['close', '--dir', opened.dir]);
@@ -97,7 +97,7 @@ test('verify-file accepts a stored block with its hash and rejects a mismatched 
 
 test('the command page, the README, and the on-demand index document the command', () => {
   const page = read('docs/commands/sai-direct-build.md');
-  assert.match(page, /\/sai-direct-build --block-file|`--block-file <path> --block-hash <sha256>`/);
+  assert.match(page, /\/sai-direct-build --document-file|`--document-file <path> --document-hash <sha256>`/);
   assert.ok(page.includes(CLOSING));
   assert.match(read('README.md'), /docs\/commands\/sai-direct-build\.md/);
   assert.match(read('docs/on-demand-commands.md'), /commands\/sai-direct-build\.md/);

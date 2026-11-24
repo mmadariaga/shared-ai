@@ -61,7 +61,7 @@ test('known loss warns, no issue stays silent, and all handoff owners apply the 
   assert.match(policy, /missing or\nunverifiable origin is non-blocking/);
   assert.match(policy, /no issue association was ever known, omit the key silently/);
   assert.match(policy, /Retain a valid existing origin/);
-  assert.match(policy, /--ready-to-propose --amend <name>/);
+  assert.match(policy, /--amend <name> --document-file <path>/);
   assert.match(policy, /Claude Code and opencode/);
   for (const file of [
     'sai/commands/explore/steps/issue-intake.md',

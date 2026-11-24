@@ -1,6 +1,6 @@
 # Open decisions (Crystallize entry)
 
-This step asks every open decision (defined in `crystallization-protocol.md`, **Open decisions first**) again while the user is still present. It is complete when every open decision is answered or explicitly left open; the slicing assessment starts only then, so every `Ready to Propose` block is printed after it.
+This step asks every open decision (defined in `crystallization-protocol.md`, **Open decisions first**) again while the user is still present. It is complete when every open decision is answered or explicitly left open; the slicing assessment starts only then, so every change document is printed after it.
 
 **Notice.** Before the first question, show this notice once per idea as plain text, in the conversation language:
 
@@ -10,11 +10,11 @@ This step asks every open decision (defined in `crystallization-protocol.md`, **
 
 **Outcomes.** Each open decision ends in exactly one of two outcomes, held in the conversation only: `explore-idea@1` receives no event for this step and the panel gains no entry.
 
-- **Answered**: the user chose one of the decision's answers, or stated one clearly in free text. The answer becomes a decision of the block: write it with its rationale to `Decisions & Rationale`, and rewrite the `Edge Cases` or `Implementation Details` item that held the open decision so that the item states the decided behavior. The item keeps its identifier and position, and both agreed lists stay agreed with no second review.
-- **Left open**: the user chose `Leave it open` for that decision. Write it to `Request Additional Notes` in the `Undecided:` form that `sai/policies/ready-to-propose-format.md` owns.
+- **Answered**: the user chose one of the decision's answers, or stated one clearly in free text. The answer becomes a decision of the document: write it with its rationale to `Decisions`, and rewrite the `Edge cases` or `Implementation notes` item that held the open decision so that the item states the decided behavior. The item keeps its identifier and position, and both agreed lists stay agreed with no second review.
+- **Left open**: the user chose `Leave it open` for that decision. Write it to the document's `## Additional notes` section in the `Undecided:` form that `sai/policies/issue-format.md` owns (§ Additional notes).
 
 Any other reply — ambiguous, missing, or a dismissed picker — leaves the open decision without an outcome: ask that same decision again. A reply that materially changes the idea follows **Material change** in `common.md`: the progression returns to `Explore change` and no block is printed.
 
-**Sliced ideas.** The step runs once per idea. When the slicing assessment then cuts the idea, attribute each answered decision and each `Undecided:` entry to the block of the change it belongs to.
+**Sliced ideas.** The step runs once per idea. When the slicing assessment then cuts the idea, attribute each answered decision and each `Undecided:` entry to the document of the change it belongs to.
 
 **Resumed crystallization.** When crystallization is interrupted and resumed with the idea unchanged, the recorded outcomes stand: ask only the open decisions that have no outcome yet, without repeating the notice.

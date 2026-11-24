@@ -15,7 +15,7 @@ A stopped, blocked, or unanswered run creates none. Invoking the command authori
 
 ## What qualifies
 
-The decision source is `design.md`'s `## Decisions` (Direct Build: the block's Decisions & Rationale, resolved by its ADR/DDR pass). A decision qualifies when it carries `**Record family**: adr|ddr`. A design with no such decision creates no record and leaves the indexes untouched.
+The decision source is `design.md`'s `## Decisions` (Direct Build: the document's Decisions, resolved by its ADR/DDR pass). A decision qualifies when it carries `**Record family**: adr|ddr`. A design with no such decision creates no record and leaves the indexes untouched.
 
 A change receives its records once. Skip a decision when a record of its family, in `docs/<family>/` or its `archive/` folder, already cites it: that record's `## Provenance` names the change in backticks and the decision's title. A later run on the same change, such as another `/sai-3-implement` or a `/sai-deep-review` after a `/sai-build`, creates nothing for a decision already cited, even when that run has deviations of its own.
 

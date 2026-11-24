@@ -7,7 +7,7 @@ TBD - created by archiving change sai-direct-build-command. Update Purpose after
 
 ### Requirement: Mirrored non-interactive Direct Build command
 
-SAI SHALL ship a `/sai-direct-build` command on Claude Code and opencode whose wrappers fetch the harness fetch skill and `sai/commands/direct-build/coordinator.md`, and forward an invocation envelope with `command_name: direct-build` and `arguments_value: $ARGUMENTS`. The two wrappers SHALL stay mirrored, and the Claude Code wrapper SHALL declare the argument hint `--block-file <path> --block-hash <sha256>`. The command SHALL run the Direct Build route with no route picker and SHALL NOT be `/sai-build`: it plans nothing and does not use the RED and GREEN workers.
+SAI SHALL ship a `/sai-direct-build` command on Claude Code and opencode whose wrappers fetch the harness fetch skill and `sai/commands/direct-build/coordinator.md`, and forward an invocation envelope with `command_name: direct-build` and `arguments_value: $ARGUMENTS`. The two wrappers SHALL stay mirrored, and the Claude Code wrapper SHALL declare the argument hint `--document-file <path> --document-hash <sha256>`. The command SHALL run the Direct Build route with no route picker and SHALL NOT be `/sai-build`: it plans nothing and does not use the RED and GREEN workers.
 
 #### Scenario: Both wrappers fetch the same coordinator card
 
@@ -16,30 +16,30 @@ SAI SHALL ship a `/sai-direct-build` command on Claude Code and opencode whose w
 
 ### Requirement: Block reference arguments
 
-The command SHALL drop every `--fast-track` and `--supervised` token silently, with no banner. It SHALL then require exactly one `--block-file <path>` and exactly one `--block-hash <sha256>`, on separate lines or in either order, and nothing else. When either is missing or repeated, or the arguments hold anything else, the command SHALL print `Cannot start /sai-direct-build: pass --block-file <path> and --block-hash <sha256> (the pair that sai-state block --export returns).` and end the run, writing nothing.
+The command SHALL drop every `--fast-track` and `--supervised` token silently, with no banner. It SHALL then require exactly one `--document-file <path>` and exactly one `--document-hash <sha256>`, on separate lines or in either order, and nothing else. When either is missing or repeated, or the arguments hold anything else (a pasted document, a change name, another option, or a retired `--block-file` or `--block-hash` line), the command SHALL print `Cannot start /sai-direct-build: pass --document-file <path> and --document-hash <sha256> (the pair that sai-state block --export returns).` and end the run, writing nothing.
 
 #### Scenario: Pasted block instead of a reference
 
-- **WHEN** `/sai-direct-build` receives a pasted block or a change name instead of the `--block-file` and `--block-hash` pair
+- **WHEN** `/sai-direct-build` receives a pasted document, a change name, or a retired `--block-file` and `--block-hash` pair instead of the `--document-file` and `--document-hash` pair
 - **THEN** it prints the usage stop line and ends the run without writing anything
 
 ### Requirement: Block verification before any work
 
-Before any dispatch or write, the command SHALL verify the block file against the hash with `ready-to-propose.js verify-file --block-file <path> --block-hash <hash>`. A file that is missing, unreadable, unsafe, or does not match the hash SHALL end the run with `Cannot start /sai-direct-build: the block file does not verify against --block-hash ({problem}).`, naming the tool's problem, writing nothing and dispatching nothing. The command SHALL never rebuild the block from chat. A verified block without a `Change name` line SHALL end the run the same way, naming the missing line. The verified block file SHALL be the only substantive input of the run.
+Before any dispatch or write, the command SHALL verify the document file against the hash with `change-document.js verify-file --document-file <path> --document-hash <hash>`. A file that is missing, unreadable, unsafe, is a retired `Ready to Propose` block, or does not match the hash SHALL end the run with `Cannot start /sai-direct-build: the document file does not verify against --document-hash ({problem}).`, naming the tool's problem, writing nothing and dispatching nothing. The command SHALL never rebuild the document from chat. A verified document without a `Change name:` line in its `## Change` section SHALL end the run the same way, naming the missing line. The verified document file SHALL be the only substantive input of the run.
 
 #### Scenario: Mismatched hash writes nothing
 
-- **WHEN** `/sai-direct-build` receives a `--block-file` whose content does not match `--block-hash`
+- **WHEN** `/sai-direct-build` receives a `--document-file` whose content does not match `--document-hash`
 - **THEN** it prints the verification stop line with the problem, writes nothing, and starts no worker
 
 ### Requirement: Explore Direct Build card as the run
 
-After verification the command SHALL follow `sai/commands/explore/direct-build-coordinator.md` as its run, acting as that card's block provider: the verified pair SHALL serve every dispatch of the card, the backfill preparation and any replacement worker included, and the command SHALL neither export a block nor close or remove the block file. The card's `sai-state` store, route entries, slice machine, idea list, intent events, and Resume SHALL NOT apply; a new invocation starts from the beginning, and the active change is the block's change name. The command SHALL skip the backlog implementation start and perform no remote operation, keeping the block's `Backlog origin` as provenance for the backfill and the archive. The Direct Build route of `/sai-explore` SHALL keep its behavior.
+After verification the command SHALL follow `sai/commands/explore/direct-build-coordinator.md` as its run, acting as that card's document provider: the verified pair SHALL serve every dispatch of the card, the backfill preparation and any replacement worker included, and the command SHALL neither export a document nor close or remove the document file. The card's `sai-state` store, route entries, slice machine, idea list, intent events, and Resume SHALL NOT apply; a new invocation starts from the beginning, and the active change is the document's change name. The command SHALL skip the backlog implementation start and perform no remote operation, keeping the document's `Backlog origin:` line as provenance for the backfill and the archive. The Direct Build route of `/sai-explore` SHALL keep its behavior.
 
 #### Scenario: Explore route unchanged
 
 - **WHEN** the Direct Build route runs from `/sai-explore`
-- **THEN** it still exports the block from the `sai-state` store and keeps its grant of two local commits
+- **THEN** it still exports the change document from the `sai-state` store and keeps its grant of two local commits
 
 ### Requirement: Single local commit authorization
 

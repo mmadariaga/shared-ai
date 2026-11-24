@@ -30,10 +30,10 @@ const OPENCODE_OPTIONAL_SCHEMA = {
 const CONTENT_TYPES = new Set(['text', 'tool', 'reasoning']);
 const OPENCODE_MAX_DEPTH = 16;
 const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
-const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
+const CHANGE_NAME_IN_BLOCK = /(?:\*\*Change name\*\*|^[ \t]*(?:[-*+][ \t]+)?Change name):[ \t]*([a-z0-9][a-z0-9-]*)/m;
 // The opencode command wrappers embed the invoked command in an envelope.
 const OPENCODE_ENVELOPE = /InvocationEnvelope:\s*\n\s*command_name:[ \t]*(\S+)[^\S\n]*\n\s*arguments_value:([\s\S]*?)\s*(?:<!-- User customizations|$)/;
-const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
+const VALUE_OPTIONS = new Set(['block-file', 'block-hash', 'document-file', 'document-hash', 'overview-lang', 'parent-branch', 'path', 'tier', 'url']);
 // The command of a cache-warm wait: `wait.js` followed by `warm`, whatever description the shell carries.
 const WAIT_WARM = /wait\.js["']?\s+warm\b/;
 // The records that open a turn; the next one ends the turn a wake opened.

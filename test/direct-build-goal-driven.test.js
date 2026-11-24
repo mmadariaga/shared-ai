@@ -45,12 +45,12 @@ test('E8: the card keeps the user-visible Direct Build contract', () => {
 
 test('E9: a missing or unexportable block stops before dispatch and offers the same recovery choices', () => {
   const card = read(CARD);
-  assert.match(card, /`BLOCK_NOT_FOUND` or `BLOCK_EXPORT_FAILED` at an export \(dispatch nothing; the options offer retrying the export and re-emitting the block with `--amend`/);
+  assert.match(card, /`BLOCK_NOT_FOUND` or `BLOCK_EXPORT_FAILED` at an export \(dispatch nothing; the options offer retrying the export and re-emitting the document with `--amend`/);
   for (const file of [PIPELINE, 'sai/commands/explore/steps/pipeline-plan-unattended.md']) {
     const source = read(file);
     assert.match(source, /BLOCK_NOT_FOUND/);
     assert.match(source, /escalate per `@sai\/policies\/obstacle-escalation\.md`/);
-    assert.match(source, /retrying the export and re-emitting the block \(`--amend` for one pending or stopped slice\)/);
+    assert.match(source, /retrying the export and re-emitting the document \(`--amend` for one pending or stopped slice\)/);
   }
 });
 
@@ -58,7 +58,7 @@ test('I4: the pipeline step keeps the export, the card fetch, its arguments, and
   const pipeline = read(PIPELINE);
   assert.match(pipeline, /Fetch `@sai\/commands\/explore\/direct-build-coordinator\.md` and follow it exactly/);
   assert.match(pipeline, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
-  assert.match(pipeline, /--block-file <absolute path returned by export>\n {2}--block-hash <sha256 returned by export>/);
+  assert.match(pipeline, /--document-file <absolute path returned by export>\n {2}--document-hash <sha256 returned by export>/);
   assert.match(pipeline, /Direct Build `--no-specs` profile \(POC\)/);
   assert.match(pipeline, /Successful slice completion transition/);
   assert.doesNotMatch(pipeline, LEGACY);
@@ -137,7 +137,7 @@ test('the no-specs route replaces the backfill worker with the compose tool and 
   const step = number => card.slice(card.indexOf(`\n${number}. **`), card.indexOf('\n', card.indexOf(`\n${number}. **`) + 1));
   // Step 3 chooses the route with the tool, and only the worker route dispatches the backfill worker.
   assert.match(step(3), /`backfill-no-specs\.js`/);
-  assert.match(step(3), /`eligible: true` only for a block that declares `\*\*Specs\*\*: none — <reason>` while `openspec\/changes\/\{name\}\/specs\/` holds no file/);
+  assert.match(step(3), /`eligible: true` only for a document that declares `Specs: none — <reason>` in `## Change` while `openspec\/changes\/\{name\}\/specs\/` holds no file/);
   assert.match(card, /no backfill worker is created or bound, no backfill window opens, and no prepare dispatch happens/);
   assert.match(card, /On the worker route, the backfill window opens/);
   // Step 4 validates the generated drafts without scenario preservation and without a correction round.

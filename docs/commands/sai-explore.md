@@ -15,13 +15,13 @@ The user starts with an idea, a question, a problem with several possible explan
 
 If the idea is too large for one reviewable change, it splits it into a small, useful first result called a Walking Skeleton, followed by an ordered list of later changes. Each part is described so it can enter the workflow separately.
 
-When a change or slice has no spec-level behavior, such as a pure refactor, tooling, or documentation change, Explore asks at crystallization whether the block declares `**Specs**: none — <reason>`, once per such slice. It proposes the reason, and you can edit it. The question states the consequence: no spec files and no delta sync at archive. You can also ask for the line on a change Explore did not flag; it confirms the consequence first. A change with spec-level behavior gets no such question. The line's labels, the literal `none` with its dash, `**Depends on**` values, and `**Backlog origin**` URL stay in English whatever the crystallization language is; only the reason is translated.
+When a change or slice has no spec-level behavior, such as a pure refactor, tooling, or documentation change, Explore asks at crystallization whether the change document declares `Specs: none — <reason>`, once per such slice. It proposes the reason, and you can edit it. The question states the consequence: no spec files and no delta sync at archive. You can also ask for the line on a change Explore did not flag; it confirms the consequence first. A change with spec-level behavior gets no such question. The section headings, the keys of `## Change`, the literal `none` with its dash, `Depends on:` values, and `Backlog origin:` URL stay in English whatever the crystallization language is; only the reason is translated.
 
 If it detects that the place where the feature would be added mixes too many responsibilities or does not offer a clear extension point, it may first propose a reorganization that preserves current behavior. This gives the new feature a clearer place to connect.
 
 When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it. The POC runs in a dedicated sibling worktree on its own branch, created from your committed `HEAD`, so your checkout and its uncommitted changes are never touched. Whenever the POC lane ends, it asks whether to destroy the POC: on confirmation it removes both the worktree and the branch, and otherwise it keeps them and tells you where they are. Its verdict names one agreed candidate or `none`.
 
-When the conversation starts from an issue, you answer once whether to work on it. If you do, Explore reads each section of the issue (the problem and goal, the edge cases, the implementation notes) and treats a section as agreed only when the issue states it explicitly, including an explicit `None`. Sections the issue leaves absent, blank, or covered by an open question stay open, and the issue's content is their starting proposal. Explore then discusses only the open sections and any deviation it finds in an agreed one, and skips the stages whose data is already agreed. Open sections and their revisions are shown in your conversation language, while the block's language keeps its current rules. An issue given only as context seeds nothing.
+When the conversation starts from an issue, you answer once whether to work on it. If you do, Explore reads each section of the issue (the problem and goal, the edge cases, the implementation notes) and treats a section as agreed only when the issue states it explicitly, including an explicit `None`. Sections the issue leaves absent, blank, or covered by an open question stay open, and the issue's content is their starting proposal. Explore then discusses only the open sections and any deviation it finds in an agreed one, and skips the stages whose data is already agreed. Open sections and their revisions are shown in your conversation language, while the document's language keeps its current rules. An issue given only as context seeds nothing.
 
 The stage order is a default path, not a gate. You can ask to go back to an earlier stage at any time, and going back keeps what you already agreed; changing the problem or goal reopens the later sections with their content as a starting proposal. Moving forward needs the data of the stages it skips and stops at the route selector, which stays the only authorization of a route. When a move is not possible, Explore names what is missing and continues at the first stage that owns it. After crystallization, a slice that is stopped, running, or parked can be corrected and moved back to pending or to its first step in the same conversation, without resetting the exploration: completed slices and the publication answer stay. A correction that changes only the backlog or exploration origin keeps the route you chose; any other change returns the slice to pending and shows the route selector again. Every accepted move is listed with its reason in the closing report.
 
@@ -31,7 +31,7 @@ of the exploration without you deciding it. When your message mainly asks to sto
 or to do other work, when Explore itself would propose going elsewhere, or when a
 skill's close proposes or requires going elsewhere, a selector asks you to pick
 **Stay**, **Pause**, or **Close**. Stay keeps exploring and does not run that request.
-Pause keeps the stage, the agreed lists, and (after crystallization) the blocks and
+Pause keeps the stage, the agreed lists, and (after crystallization) the change documents and
 the slice inventory, suspends the Explore contract (the read-only rule too, so the chat
 may write files for the other request), and returns on `resume-explore` or a clear
 request to go back; `resume-explore` without a paused exploration changes nothing.
@@ -50,7 +50,7 @@ warns once (`Warning: the writing-for-agents skill is unavailable, so the list
 is shown without its review.`), skips the review pass, and continues with its
 own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
-Direct Build also creates the ADR or DDR records of the block's qualifying decisions, written by the implementer on the coordinator's order, inside the archived-change commit.
+Direct Build also creates the ADR or DDR records of the document's qualifying decisions, written by the implementer on the coordinator's order, inside the archived-change commit.
 
 In Claude Code and opencode, each E/I list question explains that a bare
 `next-step` confirms the displayed list and advances. Confirmation applies only
@@ -61,28 +61,28 @@ list and asks again before accepting confirmation. A revision paired with
 does not. An empty E list can still be recorded automatically, while an I list
 containing `- None` requires your confirmation.
 
-Explore records a Ready to Propose block set only when every block is dispatchable,
-so any route you choose receives a block it can run. A dispatchable block follows the
-block format, carries a confirmed `- None` or at least one in-scope implementation
-detail (the implementation details stage proposes `- None` when no technical decision
+Explore records a change document set only when every document is dispatchable,
+so any route you choose receives a document it can run. A dispatchable document follows the
+change document format (`sai/policies/issue-format.md`), carries a confirmed empty list or at least one in-scope implementation
+note (the implementation details stage proposes `- None` when no technical decision
 qualifies and advances only on your confirmation; every slice of a sliced set, a
-refactor-first slice 0 included, owns an item, and no item is repeated within a block
+refactor-first slice 0 included, owns an item, and no item is repeated within a document
 or left without a slice), and requests none of the following as work: creating planning
 artifacts, running mutating git commands, dispatching subagents, or editing
 published specs directly. Lines that merely mention these are judged as context.
 A confirmed violation records nothing; Explore shows the clause, line, and evidence,
-and corrects the block.
+and corrects the change document.
 
 Plan - Unattended and Direct Build - Unattended retain the validated proposal
 outside the conversation context, so compaction does not change the next slice's
 input. If that proposal becomes unavailable or fails verification, execution
 stops before changes and offers recovery options, including emitting it again.
 Ask Explore to revise a pending or stopped slice; a running or completed slice
-cannot be amended. Manual gives you the block to paste into a new chat.
+cannot be amended. Manual gives you the change document to paste into a new chat.
 For the technical storage and verification rules, see
-[stored block transport](../../sai/policies/ready-to-propose-format.md#stored-block-transport).
+[change document transport](../../sai/policies/issue-format.md#change-document).
 
-After displaying the complete Ready to Propose block set, Explore normally asks
+After displaying the complete change document set, Explore normally asks
 in three conditional rounds, each one native interaction (on opencode, one call
 per question when its picker takes a single question; on Claude Code, a round with
 more than four questions takes consecutive calls that count as one round). Round 1: whether to
@@ -193,11 +193,11 @@ standalone [`new-change-branch`](new-change-branch.md), while preserving exact
 Git references internally.
 
 After rounds 1 and 2 finish or are skipped (and unless you chose `Publish and stop`), choose how to continue. `Manual` hands you the
-Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` follows [`/sai-plan`](sai-plan.md)
+change document for `/sai-1-spec`. `Plan - Unattended` follows [`/sai-plan`](sai-plan.md)
 for the first pending slice: spec and design run with up to three review rounds per
 segment, one local commit per segment (plus one for `telemetry.md` when
 [change telemetry](../project-settings.md#change-telemetry) is on), then it stops for your review before `/sai-build`.
-A worker question that nothing in the block, the artifacts, or the repository settles
+A worker question that nothing in the change document, the artifacts, or the repository settles
 still escalates. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and two local commits
 (the archived change and its change telemetry); it never pushes. For slices, the selector repeats per slice.

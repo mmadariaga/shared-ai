@@ -6,21 +6,21 @@ Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/change-telemetry.md`
 Fetch `@sai/commands/plan/cycle.md`
 
-You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a `Ready to Propose` block or the reference to one (`--block-file <path> --block-hash <sha256>`), or the name of a change, with the optional `--publish yes|no`.
+You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a change document or the reference to one (`--document-file <path> --document-hash <sha256>`), or the name of a change, with the optional `--publish yes|no`.
 
 ## Goal
 
-Turn a crystallized block into the full plan of a change with no human in the loop: `proposal.md` and `specs/` from `/sai-1-spec`, then `design.md`, `tasks.md`, and the interface stubs and failing tests of the whole change (the plan tests) from `/sai-2-design`, each segment reviewed, checked, and committed on its own. A human is needed only for force majeure. The command stops before implementation.
+Turn a crystallized change document into the full plan of a change with no human in the loop: `proposal.md` and `specs/` from `/sai-1-spec`, then `design.md`, `tasks.md`, and the interface stubs and failing tests of the whole change (the plan tests) from `/sai-2-design`, each segment reviewed, checked, and committed on its own. A human is needed only for force majeure. The command stops before implementation.
 
 ## Start
 
 1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed. Any `--overview-lang` token is an unknown option now: print `Cannot start /sai-plan: unknown option --overview-lang.` and end the run before anything is written. Take `--publish <answer>` out and keep it for the publication answer below; an answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-plan: --publish takes yes or no.`
-2. Find the input and the change name as `sai/commands/spec/coordinator.md` Start steps 2 and 3 do: a block gives the change name, and otherwise the first token is the name. Text after a name is not feedback here: feedback belongs to `/sai-1-spec` and `/sai-2-design`. When the string holds neither a block nor a name, print this and end the run, writing nothing: `Cannot start /sai-plan: pass a Ready to Propose block (paste it, or use --block-file and --block-hash), or the name of a change that already has proposal.md and specs/.`
+2. Find the input and the change name as `sai/commands/spec/coordinator.md` Start steps 2 and 3 do: a document gives the change name (its `Change name:` line), and otherwise the first token is the name. Text after a name is not feedback here: feedback belongs to `/sai-1-spec` and `/sai-2-design`. When the string holds neither a document nor a name, print this and end the run, writing nothing: `Cannot start /sai-plan: pass a change document (paste it, or use --document-file and --document-hash), or the name of a change that already has proposal.md and specs/.`
 3. Decide which segments run, from what `openspec/changes/{name}/` holds:
-   - Both `proposal.md` and a file under `specs/` exist: the specs exist and the disk wins. The spec segment counts as done, the block (if one came) does not rewrite them, and the report says so.
+   - Both `proposal.md` and a file under `specs/` exist: the specs exist and the disk wins. The spec segment counts as done, the document (if one came) does not rewrite them, and the report says so.
    - `proposal.md` exists, `specs/` holds no file, and `.openspec.yaml` sets `skip_specs: true`: the change has no specs by declaration. The spec segment counts as done and the report says so.
-   - Neither exists and the input is a block: the spec segment runs.
-   - Neither exists and the input is a name: print this and end the run, writing nothing: `Cannot start /sai-plan for {name}: missing proposal.md and specs/. Pass the Ready to Propose block to create them.`
+   - Neither exists and the input is a document: the spec segment runs.
+   - Neither exists and the input is a name: print this and end the run, writing nothing: `Cannot start /sai-plan for {name}: missing proposal.md and specs/. Pass the change document to create them.`
    - Only one of them exists: the change is partly present, which is neither a creation nor a complete set. Print this and end the run, writing nothing: `Cannot start /sai-plan for {name}: missing {the absent item}. Complete it with /sai-1-spec {name} followed by your feedback, then run /sai-plan {name}.`
 4. Open the run once, per the cycle's Opening the run, with the key `plan-{name}`; the segments run inside it, and you close it. When the spec segment runs, also open the research directory of the cycle's Research hand-over, right after the report directory.
 
@@ -28,7 +28,7 @@ Turn a crystallized block into the full plan of a change with no human in the lo
 
 A run publishes a draft PR/MR of its plan only when it holds a `yes` answer, and it asks the user at most once, here, so nothing after this point waits for a human. The answer is the held confirmation for the three local and remote operations of `@sai/commands/plan/publication.md` on this exact branch and request, in the sense of `safe-operations`: the plan-document commit, the non-force push of the branch, and the creation or update of its request. It authorizes nothing else.
 
-Resolve it once, after the input checks have passed (Start steps 2 and 3, and, when the spec segment runs, the block validation of its Start step 5) and before the first worker is created, so a run that ends at those checks asks nothing. When the spec segment counts as done, resolve it right after Start step 4. The first of these that yields a value is the answer, and nothing after it is asked. An explicit `--publish` value wins over the recorded answer and replaces it:
+Resolve it once, after the input checks have passed (Start steps 2 and 3, and, when the spec segment runs, the document validation of its Start step 5) and before the first worker is created, so a run that ends at those checks asks nothing. When the spec segment counts as done, resolve it right after Start step 4. The first of these that yields a value is the answer, and nothing after it is asked. An explicit `--publish` value wins over the recorded answer and replaces it:
 
 1. The `--publish yes|no` argument.
 2. The answer recorded in the run state: the `publication` field of the `run` view of `plan-run@1`. Without a `--publish` argument a resumed run reuses it and asks nothing. A resumed run with no recorded answer goes on to the next source.
@@ -43,7 +43,7 @@ Record the answer with `emit <id> plan-run@1 --set kind=publication --set value=
 
 ## Segments
 
-1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch `@sai/commands/spec/coordinator.md` and follow it exactly as the first segment, with the block or its reference as `arguments_value`; its task message names the research directory. Your Start opened the run, so it skips the opening in its own Start. It validates the block, runs the worker, the checks, and the review, and commits its own paths. Resolve the publication answer between its Start step 5 and the creation of its worker.
+1. `/sai-1-spec`, when step 3 of Start says it runs: Fetch `@sai/commands/spec/coordinator.md` and follow it exactly as the first segment, with the document or its reference as `arguments_value`; its task message names the research directory. Your Start opened the run, so it skips the opening in its own Start. It validates the document, runs the worker, the checks, and the review, and commits its own paths. Resolve the publication answer between its Start step 5 and the creation of its worker.
 2. `/sai-2-design`: Fetch `@sai/commands/design/coordinator.md` and follow it exactly as the second segment, with `{name}` as `arguments_value`, handing it the valid research pointers of the cycle's Research hand-over for its brief. Its worker stamps the approval of the specs when it starts: invoking this command approves the specs. It writes the design artifacts, has the plan RED worker write the stubs and the failing tests, runs the checks and the review, and commits its own paths in two commits (the documents, then the plan code).
 
 No wrapper is entered again and no approval is asked between segments. The artifacts on disk are the only interface between them. Each segment disposes its own worker when it closes, as the cycle's Warm and dispose says under `worker-lifecycle.md`, so no worker of a finished segment stays alive when the next one starts.

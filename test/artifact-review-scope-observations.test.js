@@ -24,7 +24,7 @@ test('the review contract defines the scope observation and the approved scope o
   const scope = section(read(CONTRACT), 'Scope observations');
 
   assert.match(scope, /\*\*approved scope\*\*/);
-  assert.match(scope, /`proposal\.md` and `specs\/\*\*`, what the `Ready to Propose` block asks for/);
+  assert.match(scope, /`proposal\.md` and `specs\/\*\*`, what the change document asks for/);
   assert.match(scope, /`design\.md`, `tasks\.md`, and the plan tests and stubs, what the approved `proposal\.md` and `specs\/\*\*` ask for/);
   assert.match(scope, /\*\*scope observation\*\* is a true observation whose fix requires behavior the approved scope does not ask for/);
 });

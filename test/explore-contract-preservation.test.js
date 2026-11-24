@@ -67,7 +67,7 @@ test('approach comparison: conversation-only decisions reuse handoff fields with
   const contract = comparison();
   const format = source('sai/policies/ready-to-propose-format.md');
   assert.match(contract, /Keep the recommendation, alternatives, pending questions, and chosen approach only in conversation/);
-  assert.match(contract, /chosen approach and its rationale into `Decisions & Rationale`, rejected alternatives into `Alternatives Considered`, and accepted trade-offs into `Trade-offs Accepted`, preserving the existing block format/);
+  assert.match(contract, /chosen approach and its rationale into `Decisions`, rejected alternatives into `Alternatives considered`, and accepted trade-offs into `Trade-offs accepted`, preserving the change document format/);
   for (const field of ['Decisions & Rationale', 'Alternatives Considered', 'Trade-offs Accepted']) {
     assert.ok(format.includes(`**${field}**`), `Existing format must own ${field}`);
   }
@@ -148,7 +148,7 @@ test('contract preservation: route names stay English while route guidance is lo
   assert.match(selector, /\*\*Direct Build - Unattended\*\*/);
   assert.match(selector, /\*\*Manual\*\*/);
   assert.match(selector, /The route explanation renders in the user's language[\s\S]{0,180}fixed route names remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
-  assert.match(languageGate, /post-block route guide, later-turn clarification, and post-Manual handoff prose follow the selected crystallization language[\s\S]{0,220}route names remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(languageGate, /post-document route guide, later-turn clarification, and post-Manual handoff prose follow the selected crystallization language[\s\S]{0,220}route names remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
 });
 
 test('list display language: list-writing owns the conversation-language rule and issue intake points to it', () => {
@@ -175,12 +175,12 @@ test('open decisions: the step pins one notice, a closed-choice question per dec
   assert.match(step, /sai\/policies\/remember\.md/);
   assert.match(step, /@sai\/policies\/question-context\.md/);
   assert.match(step, /followed by `Leave it open` as the last option/);
-  assert.match(step, /write it with its rationale to `Decisions & Rationale`, and rewrite the `Edge Cases` or `Implementation Details` item/);
+  assert.match(step, /write it with its rationale to `Decisions`, and rewrite the `Edge cases` or `Implementation notes` item/);
   assert.match(step, /both agreed lists stay agreed with no second review/);
-  assert.match(step, /Write it to `Request Additional Notes` in the `Undecided:` form/);
+  assert.match(step, /Write it to the document's `## Additional notes` section in the `Undecided:` form/);
   assert.match(step, /ask that same decision again/);
   assert.match(step, /follows \*\*Material change\*\* in `common\.md`/);
-  assert.match(step, /attribute each answered decision and each `Undecided:` entry to the block of the change it belongs to/);
+  assert.match(step, /attribute each answered decision and each `Undecided:` entry to the document of the change it belongs to/);
   assert.match(step, /ask only the open decisions that have no outcome yet, without repeating the notice/);
 });
 

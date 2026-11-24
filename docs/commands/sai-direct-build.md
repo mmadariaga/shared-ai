@@ -2,17 +2,17 @@
 
 ## Command function
 
-Builds a change from a stored `Ready to Propose` block in one unattended run, with no route picker and no questions. It runs the Direct Build route that [`/sai-explore`](sai-explore.md) offers as **Direct Build - Unattended**: it implements the block, reviews the result, reconstructs the specs, archives the change, and makes one local commit.
+Builds a change from a stored change document in one unattended run, with no route picker and no questions. It runs the Direct Build route that [`/sai-explore`](sai-explore.md) offers as **Direct Build - Unattended**: it implements the document, reviews the result, reconstructs the specs, archives the change, and makes one local commit.
 
 ## Flags and behavior modifiers
 
-- `--block-file <path> --block-hash <sha256>`: required. The block file and the hash that `sai-state block --export` returns for it. The block is the only input of the run.
+- `--document-file <path> --document-hash <sha256>`: required. The document file and the hash that `sai-state block --export` returns for it. The document is the only input of the run.
 
 ## In detail
 
-The command checks the block file against the hash before it does anything else. A missing or unreadable file, or a hash that does not match, ends the run with `Cannot start /sai-direct-build: the block file does not verify against --block-hash`, writes nothing, and starts no worker. A block without a `Change name` line ends the run the same way.
+The command checks the document file against the hash before it does anything else. A missing or unreadable file, a hash that does not match, or a retired `Ready to Propose` block ends the run with `Cannot start /sai-direct-build: the document file does not verify against --document-hash`, writes nothing, and starts no worker. A document without a `Change name:` line in its `## Change` section ends the run the same way.
 
-After that the run follows the Direct Build coordinator that `/sai-explore` uses: the implementer works from the block, a review loop of up to three rounds corrects the diff, the project test suite runs once as a gate, the backfill and archive workers reconstruct and archive the change, and the run ends with the closing report. A block that declares `**Specs**: none — <reason>` reconstructs no specs: the run writes only `proposal.md` and `.openspec.yaml` (with `skip_specs: true`) from the block, with no backfill worker, before archiving. The command is not [`/sai-build`](sai-build.md): it plans nothing, writes no `design.md` or `tasks.md`, and does not use the RED and GREEN workers.
+After that the run follows the Direct Build coordinator that `/sai-explore` uses: the implementer works from the document, a review loop of up to three rounds corrects the diff, the project test suite runs once as a gate, the backfill and archive workers reconstruct and archive the change, and the run ends with the closing report. A document that declares `Specs: none — <reason>` in `## Change` reconstructs no specs: the run writes only `proposal.md` and `.openspec.yaml` (with `skip_specs: true`) from the document, with no backfill worker, before archiving. The command is not [`/sai-build`](sai-build.md): it plans nothing, writes no `design.md` or `tasks.md`, and does not use the RED and GREEN workers.
 
 Invoking the command is the consent to the delegated writes and the pre-authorization of one local commit, the archived change. The command makes no second commit, records no change telemetry, assigns no backlog item, and never pushes. An escalation that needs you goes through the native picker; a run that cannot reach you ends without the closing line.
 

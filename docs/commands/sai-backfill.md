@@ -9,7 +9,7 @@ Reconstructs the basic documentation for a change that was made directly in code
 - `--staged`: uses changes staged for commit as the information source. It stops when nothing is staged.
 - `--unstaged`: uses local changes that are not yet staged for commit, including untracked files.
 - `--diff <sha>`: uses the difference between the current state and the specified commit.
-- `--fast-track`: skips generated reconciliation questions, automatically continues after reporting specification conflicts, and accepts the change name from a `/sai-explore` block without confirmation, once a diff source is given.
+- `--fast-track`: skips generated reconciliation questions, automatically continues after reporting specification conflicts, and accepts the change name from a `/sai-explore` change document without confirmation, once a diff source is given.
 
 ## In detail
 

@@ -31,13 +31,13 @@ draft content. The `--fix-delta-headers` envelope below carries the
 report-directory line and no transfer-directory line.
 
 The Direct Build (unattended) composition may prefix the initial envelope with the marker
-`--direct-build-prepare` on its own line, followed by `--block-file <path>` and
-`--block-hash <sha256>`, the reference to the exported crystallized block.
-Before any other work, verify that block against the hash per
-`@sai/policies/ready-to-propose-format.md` § Stored block transport: the hash
+`--direct-build-prepare` on its own line, followed by `--document-file <path>` and
+`--document-hash <sha256>`, the reference to the exported crystallized change document.
+Before any other work, verify that document against the hash per
+`@sai/policies/issue-format.md` § Change document (Transport): the hash
 and file lines are required in prepare mode, and a missing/unreadable file or a mismatch returns
 `failed` with no changes. Strip the marker and reference lines, use the verified
-file as the crystallized-block intake alongside the remaining envelope tokens,
+file as the change document intake alongside the remaining envelope tokens,
 and retain `direct_build_mode: prepare` as
 invocation-scoped worker state. The marker is composition-only; an ordinary
 `/sai-backfill` invocation without it follows the normal route byte-for-byte.

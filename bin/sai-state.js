@@ -16,11 +16,11 @@ const VALIDATOR_CANDIDATES = [
   path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'),
 ];
 
-// The Ready to Propose detector, resolved the same way. Loaded only by the
-// block emit (`emit --ready-to-propose`).
+// The change document tool, resolved the same way. Loaded only by the document
+// emit (`emit --document-file`) and the document export (`block --export`).
 const DETECTOR_CANDIDATES = [
-  path.join(__dirname, '..', 'tools', 'ready-to-propose.js'),
-  path.join(__dirname, '..', 'sai', 'tools', 'ready-to-propose.js'),
+  path.join(__dirname, '..', 'tools', 'change-document.js'),
+  path.join(__dirname, '..', 'sai', 'tools', 'change-document.js'),
 ];
 
 // Installed and source layouts both put temp-root beside the detector.
@@ -162,11 +162,11 @@ function sessionDir() {
 
 const EMIT_STDIN_FORM = "node <tool-path> emit <id> <machineId> --input-file <path> (event JSON in the input file; stdin `-` is still accepted)";
 const EMIT_PROGRESS_FORM = "node <tool-path> emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256> (the worker's progress report reference, verified and validated here), or --progress --input-file <path> (worker progress payload JSON in the input file; stdin `-` is still accepted)";
-const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --input-file <path> (Ready to Propose block set in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
+const EMIT_DOCUMENTS_FORM = "node <tool-path> emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> [--verdicts-file <path>] ...] (one change document file per change; the verdicts file after a document is the JSON array of its hygiene judgment verdicts)";
 
-const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path> (one Ready to Propose block in the input file, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array; stdin `-` is still accepted)";
+const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>] (the one amended change document)";
 
-// The explore slice machine is the only one that accepts the block emit.
+// The explore slice machine is the only one that accepts the document emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 
 // The Direct Build run state of the explore route follows the slice cursor of
@@ -494,7 +494,13 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire, 
 }
 
 // Flags that never take a value, so a following `-` stays positional.
-const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose', 'export']);
+const BOOLEAN_FLAGS = new Set(['progress', 'export']);
+
+// Document flags: `--document-file` is repeatable and each `--verdicts-file`
+// belongs to the document file named before it. They are collected in order in
+// `out.documents` as `{ file, verdictsFile }`; a verdicts file with no document
+// before it is kept in `out.orphanVerdicts`.
+const DOCUMENT_FLAGS = new Set(['document-file', 'verdicts-file']);
 
 // Event-building flags: repeatable, each carrying one `<field>=<value>` argument.
 // They are collected in order in `out.eventFlags` (a flag without its argument
@@ -502,12 +508,21 @@ const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose', 'export']);
 const EVENT_FLAGS = new Set(['set', 'add', 'set-path']);
 
 function parseArgs(argv) {
-  const out = { command: null, positional: [], named: {}, eventFlags: [] };
+  const out = { command: null, positional: [], named: {}, eventFlags: [], documents: [], orphanVerdicts: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       const flagName = eqIdx > 0 ? arg.slice(2, eqIdx) : arg.slice(2);
+      if (DOCUMENT_FLAGS.has(flagName)) {
+        let value = null;
+        if (eqIdx > 0) value = arg.slice(eqIdx + 1);
+        else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) value = argv[++i];
+        if (flagName === 'document-file') out.documents.push({ file: value, verdictsFile: undefined });
+        else if (out.documents.length === 0 || out.documents[out.documents.length - 1].verdictsFile !== undefined) out.orphanVerdicts = true;
+        else out.documents[out.documents.length - 1].verdictsFile = value;
+        continue;
+      }
       if (EVENT_FLAGS.has(flagName)) {
         let value = null;
         if (eqIdx > 0) value = arg.slice(eqIdx + 1);
@@ -793,8 +808,8 @@ function flagUsageError(message) {
 // source is a usage error that changes nothing.
 function commandEmitFlags(parsed) {
   const [id, machineIdArg, ...extra] = parsed.positional;
-  if (parsed.named['input-file'] !== undefined || parsed.named.progress !== undefined || parsed.named['ready-to-propose'] !== undefined || extra.length > 0) {
-    flagUsageError('--set, --add, and --set-path cannot be combined with --input-file, stdin "-", --progress, or --ready-to-propose');
+  if (parsed.named['input-file'] !== undefined || parsed.named.progress !== undefined || parsed.documents.length > 0 || extra.length > 0) {
+    flagUsageError('--set, --add, and --set-path cannot be combined with --input-file, stdin "-", --progress, or --document-file');
     return;
   }
   if (!id || !machineIdArg) {
@@ -904,63 +919,57 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile
   process.exitCode = outcome.code;
 }
 
-// Block emit: validates the Ready to Propose block set read from stdin with the
-// detector's dispatchable profile BEFORE any session, machine, or registry read,
-// then derives `{ recordedList: [...] }` from the extracted change names
-// (display order) and advances the explore slice machine. The stdin may carry
-// the bounded-judgment verdicts after a `<<<VERDICTS>>>` line (a JSON array, see
-// sai/policies/block-hygiene-judgment.md). The whole set is validated as one
-// unit: a set with a structural violation, a flagged line without a `context`
+// Document emit: validates the change document set named by the repeatable
+// `--document-file` flags with the change-document tool BEFORE any session,
+// machine, or registry read, then derives `{ recordedList: [...] }` from the
+// documents' change names in dependency order and advances the explore slice
+// machine. Each document may be followed by its own `--verdicts-file`, the JSON
+// array of its bounded-judgment verdicts (see sai/policies/block-hygiene-judgment.md),
+// with each `line` counted in the document file. The whole set is validated as
+// one unit: a set with a structural violation, a repeated change name, a
+// dependency that is absent or forms a cycle, a flagged line without a `context`
 // verdict, or a `violation` verdict records nothing. Output always carries
 // `validation`; change names never appear on the wire, so the verdict is
-// projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is empty
-// stdin, stdin with no block heading, or a final block cut off before its
-// `---` line; every other violation is an invalid verdict.
-function projectBlockVerdict(verdict) {
-  const judgment = verdict.judgment || { ok: true, pending: [], violations: [], unknown: [], invalid: [] };
+// projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is an empty
+// set or a file that is not one change document; a `Ready to Propose` block is
+// the retired format (`RETIRED_FORMAT`) and is never converted.
+function projectDocumentVerdict(setResult, checks) {
+  const judgment = { ok: true, pending: [], violations: [], unknown: [], invalid: [] };
+  const flagged = [];
+  checks.forEach((check, index) => {
+    if (!check.judgment.ok) judgment.ok = false;
+    for (const key of ['pending', 'violations', 'unknown', 'invalid']) {
+      for (const entry of check.judgment[key]) judgment[key].push(Object.assign({ document: index }, entry));
+    }
+    for (const entry of check.flagged) flagged.push(Object.assign({ document: index }, entry));
+  });
   return {
-    ok: verdict.dispatchable === true,
-    structural_ok: verdict.ok,
-    profile: verdict.profile,
-    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations, flagged: block.flagged })),
-    violations: verdict.violations,
-    flagged: verdict.flagged,
-    judgment: {
-      ok: judgment.ok,
-      pending: judgment.pending,
-      violations: judgment.violations,
-      unknown: judgment.unknown,
-      invalid: judgment.invalid,
-    },
+    ok: setResult.ok === true && judgment.ok,
+    structural_ok: setResult.ok === true,
+    profile: 'document',
+    documents: checks.map((check, index) => ({ index, violations: check.violations, flagged: check.flagged })),
+    violations: setResult.violations,
+    flagged,
+    judgment,
   };
 }
 
-function blockDeliveryFailed(text, verdict) {
-  if (normalizeEventText(text) === '') return true;
-  if (verdict.blocks.length === 0) return true;
-  const last = verdict.blocks[verdict.blocks.length - 1];
-  return last.violations.some((v) => v.problem === 'MISSING_SEPARATOR');
-}
-
-// Builds, per change name, each recorded block's text, sha256 hash, and the
+// Builds, per change name, each recorded document's text, sha256 hash, and the
 // judgment verdicts of its flagged lines: the session file's top-level `blocks`
 // map. It travels in the same session-file write as the inventory, and a later
-// successful block emit replaces the whole map exactly as it replaces the
+// successful document emit replaces the whole map exactly as it replaces the
 // inventory.
-function buildRecordedBlocks(detector, verdict, text) {
-  const texts = detector.extractBlockTexts(text);
-  const cleared = (verdict.judgment && verdict.judgment.cleared) || [];
-  const blocks = {};
-  verdict.blocks.forEach((block, i) => {
-    blocks[block.name] = {
+function buildRecordedDocuments(texts, checks) {
+  const documents = {};
+  checks.forEach((check, i) => {
+    documents[check.name] = {
       text: texts[i],
-      hash: block.hash,
-      verdicts: cleared
-        .filter((entry) => entry.block === block.index)
+      hash: check.hash,
+      verdicts: check.judgment.cleared
         .map((entry) => ({ clause: entry.clause, line: entry.line, evidence: entry.evidence, verdict: entry.verdict })),
     };
   });
-  return blocks;
+  return documents;
 }
 
 // The `explore-idea@1` stage recorded for this session; the machine's initial
@@ -973,18 +982,19 @@ function ideaStageOf(id) {
   return state && typeof state.stage === 'string' ? state.stage : mod.initialState.stage;
 }
 
-function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName, blockFile, verdictsFile, inputFile) {
+function commandEmitDocuments(id, machineIdArg, eventSource, extraArgs, amendName, documents, orphanVerdicts, inputFile) {
   const amending = amendName !== undefined;
-  const fromFiles = blockFile !== undefined || verdictsFile !== undefined;
-  const fromInputFile = Boolean(inputFile) && !fromFiles;
-  if (!id || !machineIdArg || (fromFiles || fromInputFile ? (eventSource !== undefined && eventSource !== '-') : eventSource !== '-') || (extraArgs && extraArgs.length > 0) || (!fromFiles && !fromInputFile && process.stdin.isTTY) || (amending && (typeof amendName !== 'string' || amendName === ''))) {
-    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from an input file: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
+  const form = amending ? EMIT_AMEND_FORM : EMIT_DOCUMENTS_FORM;
+  if (!id || !machineIdArg || eventSource !== undefined || (extraArgs && extraArgs.length > 0) || inputFile !== undefined || orphanVerdicts
+    || documents.length === 0 || documents.some((entry) => typeof entry.file !== 'string' || entry.file === '' || (entry.verdictsFile !== undefined && (typeof entry.verdictsFile !== 'string' || entry.verdictsFile === '')))
+    || (amending && (typeof amendName !== 'string' || amendName === ''))) {
+    process.stderr.write('emit --document-file requires <id> explore-slice@1 and reads the documents from files: ' + form + '\n');
     process.exitCode = 2;
     return;
   }
   const target = envelope.parseTarget(machineIdArg);
   if (!target || target.key !== READY_TO_PROPOSE_MACHINE) {
-    process.stderr.write('--ready-to-propose is accepted only on ' + READY_TO_PROPOSE_MACHINE + ', got ' + machineIdArg + '\n');
+    process.stderr.write('--document-file is accepted only on ' + READY_TO_PROPOSE_MACHINE + ', got ' + machineIdArg + '\n');
     process.exitCode = 2;
     return;
   }
@@ -992,45 +1002,55 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
   if (!requireValidator()) return;
 
   const detector = loadDetector();
-  if (!detector || typeof detector.detect !== 'function') {
-    process.stderr.write('sai-state could not load the Ready to Propose detector; tried: ' + DETECTOR_CANDIDATES.join(', ') + '\n');
+  if (!detector || typeof detector.checkDocument !== 'function') {
+    process.stderr.write('sai-state could not load the change document tool; tried: ' + DETECTOR_CANDIDATES.join(', ') + '\n');
     process.exitCode = 2;
     return;
   }
 
-  let text = '';
-  if (fromFiles) {
-    try {
-      if (typeof blockFile !== 'string' || typeof verdictsFile !== 'string') throw new Error('--block-file and --verdicts-file are both required');
-      text = detector.composeVerdicts(fs.readFileSync(blockFile, 'utf8'), JSON.parse(fs.readFileSync(verdictsFile, 'utf8')));
-    } catch (error) {
-      writeResponse({ error: 'INVALID_EVENT', reason: 'BLOCK_COMPOSITION_FAILED', detail: error.message });
-      process.exitCode = 1;
-      return;
-    }
-  } else {
-    try { text = readEmitInput(inputFile).text; } catch (error) { inputFileFailure(error); return; }
-  }
-  const verdict = detector.detect(text, 'dispatchable');
-  const validation = projectBlockVerdict(verdict);
-
-  if (blockDeliveryFailed(text, verdict)) {
-    const session = getSession(id);
-    seedFromRecord(session, readSessionRecord(id).record);
-    process.stderr.write('emit --ready-to-propose read an empty or cut-off block set; no transition occurred. Send it as: ' + EMIT_BLOCKS_FORM + '\n');
-    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+  let texts;
+  let verdictLists;
+  try {
+    texts = documents.map((entry) => fs.readFileSync(entry.file, 'utf8'));
+    verdictLists = documents.map((entry) => (entry.verdictsFile === undefined ? [] : JSON.parse(fs.readFileSync(entry.verdictsFile, 'utf8'))));
+    if (verdictLists.some((list) => !Array.isArray(list))) throw new Error('the verdicts of a document must be a JSON array');
+  } catch (error) {
+    writeResponse({ error: 'INVALID_EVENT', reason: 'DOCUMENT_READ_FAILED', detail: error.message });
     process.exitCode = 1;
     return;
   }
 
-  if (!verdict.dispatchable) {
-    writeResponse({ validation });
+  const shapeFailure = texts.map((text) => detector.documentShape(text)).find((shape) => shape !== null);
+  if (shapeFailure !== undefined) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    const retired = texts.some((text) => detector.isRetiredBlockFormat(text));
+    process.stderr.write('emit --document-file read ' + (retired ? 'a retired Ready to Propose block' : 'a file that is not one change document') + '; no transition occurred. Send it as: ' + form + '\n');
+    writeResponse({ error: 'INVALID_EVENT', reason: retired ? 'RETIRED_FORMAT' : 'EVENT_UNPARSEABLE', detail: shapeFailure, next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
     process.exitCode = 1;
     return;
   }
 
   if (amending) {
-    commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName);
+    if (documents.length !== 1) {
+      const session = getSession(id);
+      seedFromRecord(session, readSessionRecord(id).record);
+      process.stderr.write('emit --amend takes exactly one document; no transition occurred. Send it as: ' + EMIT_AMEND_FORM + '\n');
+      writeResponse({ error: 'INVALID_EVENT', reason: 'AMEND_DOCUMENT_COUNT', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+      process.exitCode = 1;
+      return;
+    }
+    commandAmendDocument(id, machineIdArg, detector, texts[0], verdictLists[0], amendName);
+    return;
+  }
+
+  const sliced = texts.length > 1;
+  const checks = texts.map((text, index) => detector.checkDocument(text, { verdicts: verdictLists[index], sliced }));
+  const set = detector.checkSet(texts);
+  const validation = projectDocumentVerdict(set, checks);
+  if (!validation.ok) {
+    writeResponse({ validation });
+    process.exitCode = 1;
     return;
   }
 
@@ -1038,101 +1058,89 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
   if (stage !== BLOCK_STAGE) {
     const session = getSession(id);
     seedFromRecord(session, readSessionRecord(id).record);
-    process.stderr.write('emit --ready-to-propose is accepted only at the ' + BLOCK_STAGE + ' stage of ' + BLOCK_STAGE_MACHINE + ', found ' + stage + '; no transition occurred. Advance the exploration to ' + BLOCK_STAGE + ' first.\n');
+    process.stderr.write('emit --document-file is accepted only at the ' + BLOCK_STAGE + ' stage of ' + BLOCK_STAGE_MACHINE + ', found ' + stage + '; no transition occurred. Advance the exploration to ' + BLOCK_STAGE + ' first.\n');
     writeResponse({ validation, error: 'INVALID_EVENT', reason: 'STAGE_NOT_CRYSTALLIZE', stage, next: pointerFor(session, BLOCK_STAGE_MACHINE) });
     process.exitCode = 1;
     return;
   }
 
-  const dependencies = detector.validateDependencySet(text);
-  if (!dependencies.ok) {
-    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies });
-    process.exitCode = 1;
-    return;
-  }
-  const recordedBlocks = buildRecordedBlocks(detector, verdict, text);
-  // A slice whose block hash equals the stored one keeps its completion and its
-  // parked cursor through the re-registration.
-  const previousBlocks = (readSessionRecord(id).record || {}).blocks || {};
-  const unchanged = dependencies.order.filter((name) => Object.prototype.hasOwnProperty.call(previousBlocks, name)
-    && previousBlocks[name] && previousBlocks[name].hash === recordedBlocks[name].hash);
-  const event = { recordedList: dependencies.order, unchanged };
-  // The inventory and the blocks land in one session-file write; when it fails
-  // the response is the store failure and the earlier inventory and blocks stay.
-  const outcome = runEmit(id, machineIdArg, () => ({ event }), { blocks: recordedBlocks, staleBlocks: [] });
+  const recordedDocuments = buildRecordedDocuments(texts, checks);
+  // A slice whose document hash equals the stored one keeps its completion and
+  // its parked cursor through the re-registration.
+  const previousDocuments = (readSessionRecord(id).record || {}).blocks || {};
+  const unchanged = set.order.filter((name) => Object.prototype.hasOwnProperty.call(previousDocuments, name)
+    && previousDocuments[name] && previousDocuments[name].hash === recordedDocuments[name].hash);
+  const event = { recordedList: set.order, unchanged };
+  // The inventory and the documents land in one session-file write; when it
+  // fails the response is the store failure and the earlier inventory and
+  // documents stay.
+  const outcome = runEmit(id, machineIdArg, () => ({ event }), { blocks: recordedDocuments, staleBlocks: [] });
   writeResponse(Object.assign({ validation }, outcome.payload));
   process.exitCode = outcome.code;
 }
 
-// Single-slice amendment (`emit --ready-to-propose --amend <change-name>`): the
-// dispatchable verdict of the one block is already in hand. The block must be
-// the only one on stdin and carry the amended change name; the machine then
-// accepts the amendment for a pending or stopped slice only, and only an
-// accepted amendment replaces that slice's stored text, hash, and verdicts.
-function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName) {
-  if (verdict.blocks.length !== 1) {
-    const session = getSession(id);
-    seedFromRecord(session, readSessionRecord(id).record);
-    process.stderr.write('emit --ready-to-propose --amend takes exactly one block; no transition occurred. Send it as: ' + EMIT_AMEND_FORM + '\n');
-    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_BLOCK_COUNT', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+// Single-slice amendment (`emit --amend <change-name> --document-file <path>`):
+// the one document must be dispatchable and carry the amended change name; the
+// machine then accepts the amendment for a pending or stopped slice only, and
+// only an accepted amendment replaces that slice's stored text, hash, and
+// verdicts.
+function commandAmendDocument(id, machineIdArg, detector, text, verdicts, amendName) {
+  const recorded = (readSessionRecord(id).record || {}).blocks || {};
+  const check = detector.checkDocument(text, { verdicts, sliced: Object.keys(recorded).length > 1 });
+  const validation = projectDocumentVerdict({ ok: check.ok, violations: [] }, [check]);
+  if (!validation.ok) {
+    writeResponse({ validation });
     process.exitCode = 1;
     return;
   }
-  if (verdict.names[0] !== amendName) {
+  if (check.name !== amendName) {
     const session = getSession(id);
     seedFromRecord(session, readSessionRecord(id).record);
-    process.stderr.write('emit --ready-to-propose --amend read a block whose change name differs from the amended slice; no transition occurred.\n');
+    process.stderr.write('emit --amend read a document whose change name differs from the amended slice; no transition occurred.\n');
     writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_NAME_MISMATCH', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
     process.exitCode = 1;
     return;
   }
 
-  const recorded = (readSessionRecord(id).record || {}).blocks || {};
   if (!Object.prototype.hasOwnProperty.call(recorded, amendName)) {
     const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName, amend_kind: 'content' } }));
     writeResponse(Object.assign({ validation }, outcome.payload));
     process.exitCode = outcome.code;
     return;
   }
-  const resulting = Object.entries(recorded).map(([name, entry]) => name === amendName ? detector.extractBlockTexts(text)[0] : entry.text);
-  // The amended block alone reads as a single change, so a multi-slice
-  // inventory validates the resulting set: every slice keeps an in-scope `I`
-  // and no `I` is duplicated or left without a slice.
-  if (resulting.length > 1) {
-    const setVerdict = detector.detect(resulting.join('\n\n'), 'dispatchable');
-    if (!setVerdict.ok) {
-      const setValidation = Object.assign(projectBlockVerdict(setVerdict), { flagged: validation.flagged, judgment: validation.judgment });
-      writeResponse({ validation: setValidation });
-      process.exitCode = 1;
-      return;
-    }
-  }
-  const dependencies = detector.validateDependencySet(resulting.join('\n\n'));
-  if (!dependencies.ok) {
-    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies, error: 'INVALID_EVENT', reason: 'AMEND_DEPENDENCIES_INVALID' });
+  // The amended document alone reads as one change, so the resulting set is
+  // validated: every slice keeps an in-scope `I`, no `I` is duplicated or left
+  // without a slice, and the names and dependencies stay consistent.
+  const resulting = Object.entries(recorded).map(([name, entry]) => (name === amendName ? text : entry.text));
+  const set = detector.checkSet(resulting);
+  if (!set.ok) {
+    const dependencyProblem = set.violations.some((entry) => entry.problem === 'MISSING_DEPENDENCY' || entry.problem === 'DEPENDENCY_CYCLE');
+    const setValidation = Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(set.violations) });
+    writeResponse(Object.assign({ validation: setValidation }, dependencyProblem ? { error: 'INVALID_EVENT', reason: 'AMEND_DEPENDENCIES_INVALID' } : {}));
     process.exitCode = 1;
     return;
   }
   // Inventory order cannot be changed underneath running or completed work.
-  const previous = detector.validateDependencySet(Object.values(recorded).map(entry => entry.text).join('\n\n'));
-  if (JSON.stringify(previous.order) !== JSON.stringify(dependencies.order)) {
-    writeResponse({ validation, dependencies, error: 'INVALID_EVENT', reason: 'AMEND_REQUIRES_SET_REEMISSION' });
+  const previous = detector.checkSet(Object.values(recorded).map((entry) => entry.text));
+  if (JSON.stringify(previous.order) !== JSON.stringify(set.order)) {
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_REQUIRES_SET_REEMISSION' });
     process.exitCode = 1;
     return;
   }
   // An accepted amendment replaces only that slice's entry, in the same
   // session-file write as the machine outcome; a rejected one stores nothing.
-  const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
+  const entry = buildRecordedDocuments([text], [check])[amendName];
   // The field-by-field comparison decides whether the route authorization stays.
-  const amendKind = detector.compareBlocks(recorded[amendName].text, detector.extractBlockTexts(text)[0]).amend_kind;
+  const amendKind = detector.compareDocuments(recorded[amendName].text, text).amend_kind;
   const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName, amend_kind: amendKind } }), (wire, current) => (wire.rejected ? null : { blocks: Object.assign({}, (current && current.blocks) || {}, { [amendName]: entry }), staleBlocks: ((current && Array.isArray(current.staleBlocks)) ? current.staleBlocks : []).filter((name) => name !== amendName) }));
   writeResponse(Object.assign({ validation, amend_kind: amendKind }, outcome.payload));
   process.exitCode = outcome.code;
 }
 
-// `sai-state block <id> <change-name>`: returns the stored block text and hash
-// of one recorded slice. A missing record, session, or entry is BLOCK_NOT_FOUND
-// (exit 1) with no text; the caller dispatches nothing.
+// `sai-state block <id> <change-name>`: returns the stored change document text
+// and hash of one recorded slice, or with `--export` writes the text to a private
+// transfer file and returns its path. A missing record, session, or entry is
+// BLOCK_NOT_FOUND (exit 1) with no text; the caller dispatches nothing.
 function commandBlock(id, name, exportFile, harness) {
   if (!id || !name) {
     process.stderr.write('block requires <id> <change-name>\n');
@@ -1154,14 +1162,13 @@ function commandBlock(id, name, exportFile, harness) {
   if (exportFile) {
     try {
       const detector = loadDetector();
-      const texts = detector.extractBlockTexts(entry.text);
-      if (texts.length !== 1 || detector.hashBlock(texts[0]) !== entry.hash) throw new Error('Stored block does not match its hash');
-      // Both installed and source layouts put transfer beside the detector.
+      if (detector.documentShape(entry.text) !== null || detector.hashDocument(entry.text) !== entry.hash) throw new Error('Stored document does not match its hash');
+      // Both installed and source layouts put transfer beside the document tool.
       const detectorPath = DETECTOR_CANDIDATES.find(candidate => fs.existsSync(candidate));
       const transfer = require(path.join(path.dirname(detectorPath), 'transfer.js'));
       const { dir } = transfer.open(harness);
-      const reference = transfer.put(dir, 'block.md', Buffer.from(entry.text, 'utf8'));
-      writeResponse({ hash: entry.hash, block_file: reference.path, transfer_dir: dir });
+      const reference = transfer.put(dir, 'document.md', Buffer.from(entry.text, 'utf8'));
+      writeResponse({ hash: entry.hash, document_file: reference.path, transfer_dir: dir });
     } catch (error) {
       writeResponse({ error: 'BLOCK_EXPORT_FAILED', reason: error.message });
       process.exitCode = 1;
@@ -1303,13 +1310,18 @@ function main(argv) {
     commandEmitFlags(parsed);
     return;
   }
-  if (parsed.command === 'emit' && parsed.named['ready-to-propose'] === true) {
+  if (parsed.command === 'emit' && (parsed.named['ready-to-propose'] !== undefined || parsed.named['block-file'] !== undefined)) {
+    process.stderr.write('emit --ready-to-propose and --block-file are retired: the Ready to Propose block is a retired format. Send the change documents as: ' + EMIT_DOCUMENTS_FORM + '\n');
+    process.exitCode = 2;
+    return;
+  }
+  if (parsed.command === 'emit' && (parsed.documents.length > 0 || parsed.orphanVerdicts)) {
     if (parsed.named.progress !== undefined) {
-      process.stderr.write('--ready-to-propose cannot be combined with --progress\n');
+      process.stderr.write('--document-file cannot be combined with --progress\n');
       process.exitCode = 2;
       return;
     }
-    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.named['block-file'], parsed.named['verdicts-file'], parsed.named['input-file']);
+    commandEmitDocuments(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.documents, parsed.orphanVerdicts, parsed.named['input-file']);
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
@@ -1346,9 +1358,8 @@ function main(argv) {
   process.stderr.write('       sai-state emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]   (identifier event built from flags)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>   (the worker progress report reference, verified and validated)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress --input-file <path>   (worker progress payload JSON in the input file; `-` reads stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --input-file <path>   (Ready to Propose block set in the input file; `-` reads stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> --input-file <path>   (one amended block in the input file; `-` reads stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> ...]   (one change document file per change, each optionally followed by its verdicts file)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]   (the one amended change document)\n');
   process.stderr.write('       sai-state block <id> <change-name> [--export --harness <claude|opencode>]\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
