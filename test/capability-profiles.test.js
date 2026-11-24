@@ -81,7 +81,7 @@ test('contract-specific web, auxiliary and delegation access is translated separ
     assert.ok(research.permissions.some(rule => rule.action === action && rule.effect === 'allow'));
   }
   assert.ok(!research.permissions.some(rule => ['subagent', 'new_tool'].includes(rule.action) && rule.effect === 'allow'));
-  assert.ok(!research.permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow'), 'the explorer holds no write grant');
+  assert.ok(!research.permissions.some(rule => rule.action === 'edit' && rule.effect === 'allow' && rule.resource === '*'), 'the explorer holds no unscoped write grant');
   assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.resource.endsWith('/opencode/tool-output/*') && rule.effect === 'allow'));
   const saiTempRoot = path.join(harnessRoot('opencode'), 'sai').split(path.sep).join('/');
   assert.ok(research.permissions.some(rule => rule.action === 'external_directory' && rule.effect === 'allow'
@@ -95,7 +95,8 @@ test('E6 opencode agents may write the Claude Code SAI temp root, and Claude Cod
     assert.ok(rules.some(rule => rule.action === 'external_directory' && rule.resource === `${claudeTempRoot}/*` && rule.effect === 'allow'), `${profile} is granted ${claudeTempRoot}/*`);
   }
   const claude = translate(registry, 'research', 'claude');
-  assert.ok(!claude.allowedTools.includes(claudeTempRoot), 'Claude Code carries no external_directory rule');
+  const rootRules = claude.allowedTools.split(', ').filter(entry => entry.includes(claudeTempRoot));
+  assert.ok(rootRules.every(entry => entry.startsWith('Edit(') || /transfer\.js/.test(entry)), 'Claude Code carries no external_directory rule: only the scoped write rule and the transfer.js put rule name the root');
 });
 
 test('E2 the temp-root rules cover the folders makeTempDir creates when the temp base is a link', { skip: process.platform === 'linux' }, () => {

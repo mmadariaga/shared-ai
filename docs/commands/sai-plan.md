@@ -47,4 +47,6 @@ When the change already has `proposal.md` and a spec file, or `proposal.md` and 
 
 With `experimental.changeTelemetry` on, the command records the run's cost in `telemetry.md` in the change folder at its close, and invoking it pre-authorizes one more local commit for that file; see [change telemetry](../project-settings.md#change-telemetry).
 
+When the spec segment runs, the design segment reuses the research it did: the spec worker's explorers save their reports in a run-scoped research directory, the spec worker records only its exceptions in an annotations file, and design reads those annotations first and researches only its own gaps. A saved file that is no longer usable costs one line in the closing report and never stops the run. Running `/sai-2-design` alone reuses nothing.
+
 The assumptions and the findings left open are reported once, in the closing report, and are not written to the repository. When both segments ended normally, the planning report closes with `Plan done in openspec/changes/{change-name}/. Review it and run /sai-build {change-name} in a new chat when ready.` A publication that was answered `yes` runs before this line and prints its outcome with the reports. Otherwise the command prints the reports so far and ends without the closing line, and publishes nothing.

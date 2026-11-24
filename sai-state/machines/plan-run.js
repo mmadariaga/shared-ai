@@ -16,7 +16,7 @@
 //   attempt       {obstacle}             spends one of the obstacle's attempts
 //   escalate      {obstacle}             the run waits for the user's answer
 //   answer        {obstacle, choice}     `continue` resets the obstacle, `stop` stops the run
-//   record        {ref, path}            ref: assumption | report | report-dir | finding | baseline
+//   record        {ref, path}            ref: assumption | report | report-dir | research-dir | finding | baseline
 //   publication   {value}                the publication answer of the run, yes | no, returned in the
 //                                        `run` view (`''` until answered); an explicit later value
 //                                        replaces the recorded one
@@ -33,6 +33,7 @@ const REFS = Object.freeze({
   assumption: 'assumptions',
   report: 'reports',
   'report-dir': 'report_dirs',
+  'research-dir': 'research_dirs',
   finding: 'findings',
   baseline: 'baselines',
 });

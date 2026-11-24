@@ -32,6 +32,14 @@ When the validated block contains `**Explore origin**`, write the validator's re
 
 Report `spec-intake` together with `research` in the first report, after the research step the first pointer names.
 
+## Research hand-over
+
+Inside `/sai-plan` your brief may name `research_dir`: the directory where your explorers save their reports for the design segment. Without it, none of this applies and `research_files` is an empty list in every `completed` report.
+
+- **Explorers.** Open the task of every `budget-explorer` you dispatch with the line `--report-dir <research_dir>` (`steps/common.md` § Cost discipline). Each explorer answers with the `{path, sha256}` reference of its saved, verbatim report. Keep every reference and never rewrite, summarize, or re-save a report. A report of an explorer that replied in text is not a research file.
+- **Annotations.** Annotations hold your exceptions only: one entry for each point where your own reading departs from, or leaves a gap in, an explorer's report. Write them to a unique draft file in your run directory and save it with `transfer.js put --dir <research_dir> --path spec-annotations.md --exclusive --input-file <draft>`, once, when the `research` step ends (your first report) and only when there is at least one entry; with none, no file exists. Each entry is one line, `<kind> <path>:<line> - <reason in one sentence>`, with `kind` one of `corrected` (a report claim you proved wrong), `rejected` (a premise or claim you refuse), `own-read` (a fact you read yourself that the reports do not carry), or `gap` (a question left open that design should settle). A citation without an entry means that you did not contradict it, not that you confirmed it, because research stops at about 80% confidence.
+- **Report field.** Every `completed` report carries `research_files`, a list of `{path, sha256}` strings: the reference of each saved explorer report and of the annotations file, exactly as `put` and the explorers printed them. The list is empty when you saved nothing. Every later `completed` report, a fix round included, repeats the whole list unchanged.
+
 ## Done
 
 The segment's work is done when:

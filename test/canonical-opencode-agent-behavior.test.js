@@ -150,7 +150,7 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
   const descriptions = {
     budget: 'Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.',
     executor: 'Execute-only command runner. Runs the named commands, or the narrowest one for a stated goal (tests, builds, linters), and returns a low-output report of exit codes and failures. Fixes stay with the caller.',
-    explore: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.',
+    explore: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes only the report that a --report-dir line names.',
   };
 
   for (const name of Object.keys(descriptions)) {
@@ -199,7 +199,7 @@ const CLAUDE_GENERIC_AGENTS = [
   {
     fileName: 'budget-explorer',
     name: 'budget-explorer',
-    description: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.',
+    description: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes only the report that a --report-dir line names.',
     model: 'haiku',
     effort: 'medium',
     fetchTarget: '@sai/policies/explore-agent.md',
@@ -266,8 +266,11 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
           `budget-explorer Bash must be bare Bash, not Bash(...) scoped form which is silently ignored (E12)`);
         assert.match(toolsLine || '', /\bmcp__codegraph__codegraph_explore\b/,
           `budget-explorer must have mcp__codegraph__codegraph_explore tool for structural queries`);
-        assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Patch|Delete|NotebookEdit)\b/,
-          `budget-explorer tools must not have file-writing capabilities`);
+        // Write is the one writing tool: the `research` profile scopes it to the SAI temp root (`write: "temp"`) so a report can be saved.
+        assert.match(toolsLine || '', /\bWrite\b/,
+          `budget-explorer must have the Write tool to save a report`);
+        assert.doesNotMatch(toolsLine || '', /\b(?:Edit|Patch|Delete|NotebookEdit)\b/,
+          `budget-explorer tools must not have any other file-writing capability`);
       } else {
         assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Bash|Patch|Delete|NotebookEdit)\b/,
           `${agent.fileName} tools declaration must expose only read/search capabilities`);
