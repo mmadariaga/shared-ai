@@ -102,22 +102,44 @@ function findCodegraph() {
 }
 
 // The Windows CodeGraph shim is a batch file, which only the command interpreter runs. Only fixed arguments are
-// passed on the command line; the file list travels on stdin.
-const command = (args) => (process.platform === 'win32'
-  ? [process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'codegraph', ...args]]
-  : ['codegraph', args]);
+// passed on the command line; the file list travels on stdin. A timeout that killed only the interpreter would leave
+// CodeGraph running, so on Windows a supervisor runs the interpreter and kills its whole process tree at the timeout,
+// writing TIMEOUT_MARK on its stderr.
+const TIMEOUT_MARK = 'test-select:timeout';
+const SUPERVISOR = `
+const { spawn, spawnSync } = require('child_process');
+const path = require('path');
+const [timeoutMs, shell, ...args] = process.argv.slice(1);
+const taskkill = path.join(process.env.SystemRoot || 'C:\\\\Windows', 'System32', 'taskkill.exe');
+const child = spawn(shell, ['/d', '/s', '/c', 'codegraph', ...args], { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true });
+process.stdin.pipe(child.stdin);
+child.stdin.on('error', () => {});
+child.stdout.pipe(process.stdout);
+const timer = setTimeout(() => {
+  spawnSync(taskkill, ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true });
+  process.stderr.write(${JSON.stringify(TIMEOUT_MARK)});
+  process.exit(1);
+}, Number(timeoutMs));
+child.on('error', () => { clearTimeout(timer); process.exit(1); });
+child.on('close', (code) => { clearTimeout(timer); process.exitCode = code === null ? 1 : code; });
+`;
 
 function codegraph(args, { cwd, timeoutMs, input, failure }) {
-  const [file, argv] = command(args);
+  const windows = process.platform === 'win32';
+  const [file, argv] = windows
+    ? [process.execPath, ['-e', SUPERVISOR, String(timeoutMs), process.env.ComSpec || 'cmd.exe', ...args]]
+    : ['codegraph', args];
   const result = spawnSync(file, argv, {
     cwd,
     encoding: 'utf8',
-    timeout: timeoutMs,
+    // The supervisor enforces the timeout on Windows; this one only bounds a supervisor that never ends.
+    timeout: windows ? timeoutMs + 30000 : timeoutMs,
     input,
     maxBuffer: 256 * 1024 * 1024,
-    stdio: ['pipe', 'pipe', 'ignore'],
+    stdio: ['pipe', 'pipe', windows ? 'pipe' : 'ignore'],
   });
   if (result.error) throw new Fallback(result.error.code === 'ETIMEDOUT' ? 'timeout' : failure);
+  if (windows && (result.stderr || '').includes(TIMEOUT_MARK)) throw new Fallback('timeout');
   if (result.status !== 0) throw new Fallback(failure);
   return result.stdout;
 }

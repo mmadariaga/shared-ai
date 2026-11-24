@@ -220,6 +220,8 @@ function repo(t) {
   git('config', 'user.email', 'test@example.com');
   git('config', 'user.name', 'Test');
   git('config', 'commit.gpgsign', 'false');
+  // The tests compare exact bytes: a runner whose git converts line endings (core.autocrlf) must not change them.
+  git('config', 'core.autocrlf', 'false');
   return { root, git, commit: (message) => { git('add', '-A'); git('commit', '-q', '-m', message); } };
 }
 
